@@ -23,13 +23,18 @@ The Docker container of eXeLearning Web includes an integrated Mercure Hub via N
 
 Nginx is configured to proxy requests to the Mercure Hub:
 
+> **⚠️ Extremely Important:**  
+> The directive `proxy_buffering off;` is **absolutely essential** for Server-Sent Events (SSE) to work correctly with Mercure.  
+> If you omit or misconfigure this line, real-time updates **will not be delivered** to clients, as Nginx will buffer the SSE stream and prevent immediate delivery of events.  
+> **Always ensure** that `proxy_buffering off;` is present in the Mercure location block!
+
 ```nginx
 location ^~ /.well-known/mercure {
     proxy_pass http://127.0.0.1:80;
     proxy_read_timeout 24h;
     proxy_http_version 1.1;
     proxy_set_header Connection "";
-    proxy_buffering off;
+    proxy_buffering off; # <-- THIS LINE IS CRITICAL FOR SSE TO WORK!
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header X-Forwarded-Proto $scheme;
@@ -49,6 +54,9 @@ location = /mercure_400.html {
     return 400 "Bad Request";
 }
 ```
+
+> **In summary:**  
+> If you experience issues with real-time updates or SSE connections hanging, the **first thing to check** is that `proxy_buffering off;` is set in your Nginx configuration for Mercure.
 
 ### `.env` Configuration
 
