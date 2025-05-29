@@ -45,7 +45,7 @@ services:
       TEST_USER2_PASSWORD: "${TEST_USER2_PASSWORD:-1234}"
       
       # Mercure settings
-      MERCURE_URL: "http://localhost:${APP_PORT:-8080}/.well-known/mercure"
+      MERCURE_URL: "http://localhost:8080/.well-known/mercure"
       MERCURE_PUBLIC_URL:
       MERCURE_JWT_SECRET_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
       MERCURE_PUBLISHER_JWT_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
