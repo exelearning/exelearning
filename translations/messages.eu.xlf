@@ -7,11 +7,11 @@
     <body>
       <trans-unit id="cBwQM6_" resname="Permissions error">
         <source>Permissions error</source>
-        <target>~Baimenak errorea</target>
+        <target>Baimenen errorea</target>
       </trans-unit>
       <trans-unit id="Kk_KT2R" resname="This is just a demo version. Not for real projects.">
         <source>This is just a demo version. Not for real projects.</source>
-        <target>~Hau demo bertsioa besterik ez da. Ez da proiektu errealetarako.</target>
+        <target>Hau demo bertsio bat besterik ez da. Ez benetako proiektuetarako.</target>
       </trans-unit>
       <trans-unit id="tiw1v87" resname="Accept">
         <source>Accept</source>
