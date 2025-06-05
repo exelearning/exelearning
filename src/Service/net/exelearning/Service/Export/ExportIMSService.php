@@ -210,7 +210,8 @@ class ExportIMSService implements ExportServiceInterface
                 $newResourcesPrefix,
                 $this->exportType,
                 $isPreview,
-                $translator
+                $translator,
+                $odeNavStructureSyncs
             );
 
             // Convert SimpleXMLElement to DOMDocument

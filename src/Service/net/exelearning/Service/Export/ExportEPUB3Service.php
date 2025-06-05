@@ -253,7 +253,8 @@ class ExportEPUB3Service implements ExportServiceInterface
                 $newResourcesPrefix,
                 $this->exportType,
                 $isPreview,
-                $translator
+                $translator,
+                $odeNavStructureSyncs
             );
 
             // Save page as HTML file
