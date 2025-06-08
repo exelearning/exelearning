@@ -34,6 +34,7 @@ var $exeDevice = {
         msgTime: c_('Time per question'),
         msgCheck: c_('Check'),
         msgSaveScore: c_('Save score'),
+        msgTestFailed: c_("You didn't pass the test. Please try again"),
     },
 
     ideviceBody: null,
@@ -118,6 +119,10 @@ var $exeDevice = {
             '#sortableEvaluation',
         ).checked;
 
+        this.showSolutions = this.ideviceBody.querySelector(
+            '#sortableShowSolutions',
+        ).checked;
+
         this.textAfter = '';
         if (tinyMCE.get('eXeIdeviceTextAfter')) {
             this.textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
@@ -179,6 +184,7 @@ var $exeDevice = {
             msgs: this.msgs,
             scorerp: 0,
             idevice: 'idevice_node',
+            showSolutions: this.showSolutions,
             id: this.id,
         };
         return this.data;
@@ -277,11 +283,21 @@ var $exeDevice = {
             textWrongAnswer_2,
             true,
         );
+        html += this.createShowSolutionsInput();
         html += this.createEvaluationInputs();
         html += `</div>`;
 
         return html;
     },
+
+    createShowSolutionsInput: function () {
+        return `<div>
+                    <p class="Games-Reportdiv">
+                       <label for="sortableShowSolutions"><input type="checkbox" checked id="sortableShowSolutions">${_('Show solutions')}. </label>
+                    </p>
+                </div> `;
+    },
+
 
     createEvaluationInputs: function () {
         return `<div>
@@ -532,6 +548,9 @@ var $exeDevice = {
             data.instructions || _('Arrange the following texts in the correct order to complete the activity.');
         this.ideviceBody.querySelector('#eXeIdeviceTextAfter').value =
             data.textAfter || '';
+        this.ideviceBody.querySelector('#sortableShowSolutions').checked =
+            typeof data.showSolutions !== "undefined" ? data.showSolutions : true;
+
         data.weighted = data.weighted || 100;
         data.repeatActivity = data.repeatActivity || false;
         data.textButtonScorm = data.textButtonScorm || _('Save score');
