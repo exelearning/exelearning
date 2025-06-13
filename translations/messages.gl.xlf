@@ -41,8 +41,8 @@
         <source>Instructions</source>
         <target>Instrucións</target>
       </trans-unit>
-      <trans-unit id="thITPMg" resname="You might create an itinerary of challenges where players won't be able to access a new game or challenge until they get a key in a previous activity. For this purpose, you might establish an access code as well as a message that may be displayed to players when they get a fixed percentage of hits, and be used as a password to a new challenge or a following activity.">
-        <source>You might create an itinerary of challenges where players won't be able to access a new game or challenge until they get a key in a previous activity. For this purpose, you might establish an access code as well as a message that may be displayed to players when they get a fixed percentage of hits, and be used as a password to a new challenge or a following activity.</source>
+      <trans-unit id="S5t_6Ei" resname="You might create a sequence of challenges where players won't be able to access a new game or challenge until they obtain a key from previous activity. For this purpose, you might set up an access code as well as a message that will be displayed to players when they reach a fixed percentage of correct answers, which they can use as a password for a new challenge or a following activity.">
+        <source>You might create a sequence of challenges where players won't be able to access a new game or challenge until they obtain a key from previous activity. For this purpose, you might set up an access code as well as a message that will be displayed to players when they reach a fixed percentage of correct answers, which they can use as a password for a new challenge or a following activity.</source>
         <target>Pódese crear un itinerario de desafíos nos que os xogadores ou as xogadoras non poderán acceder a un novo xogo ou desafío ata que consigan unha clave na actividade previa. Para isto pódese establecer un código de acceso así como unha mensaxe que se amosará aos xogadores ou xogadoras cando acaden unha porcentaxe fixada de acertos e que poderán utilizar como contrasinal para un novo desafío ou unha actividade posterior.</target>
       </trans-unit>
       <trans-unit id="Maxghdy" resname="Access code is required">
@@ -57,16 +57,16 @@
         <source>Question</source>
         <target>Pregunta</target>
       </trans-unit>
-      <trans-unit id="KsUi13v" resname="Show a message or password when reaching the objective">
-        <source>Show a message or password when reaching the objective</source>
+      <trans-unit id="j61vdyB" resname="Display a message or password upon reaching the defined objective">
+        <source>Display a message or password upon reaching the defined objective</source>
         <target>Amosar unha clave ou mensaxe ao acadar o obxectivo marcado</target>
       </trans-unit>
       <trans-unit id="vtsk56f" resname="Message">
         <source>Message</source>
         <target>Mensaxe</target>
       </trans-unit>
-      <trans-unit id="uHAnUQV" resname="Percentage of hits needed to display the message">
-        <source>Percentage of hits needed to display the message</source>
+      <trans-unit id="6WQaM5_" resname="Percentage of correct answers required to display the message">
+        <source>Percentage of correct answers required to display the message</source>
         <target>Porcentaxe de acertos necesarios para amosar a mensaxe</target>
       </trans-unit>
       <trans-unit id="bgoW3zD" resname="You must write a clue">
@@ -101,16 +101,16 @@
         <source>Button text</source>
         <target>Texto do botón</target>
       </trans-unit>
-      <trans-unit id="M75U01I" resname="This will only work when exporting as SCORM ">
-        <source>This will only work when exporting as SCORM </source>
+      <trans-unit id="dTKgGRP" resname="This will only work when exported as SCORM">
+        <source>This will only work when exported as SCORM</source>
         <target>~Só funcionará ao exportar como SCORM</target>
       </trans-unit>
       <trans-unit id="pPZYAc0" resname="The score will be automatically saved after answering each question and at the end of the game.">
         <source>The score will be automatically saved after answering each question and at the end of the game.</source>
         <target>A puntuación gardarase automaticamente despois de que se responda a cada pregunta e ao final da partida.</target>
       </trans-unit>
-      <trans-unit id="yvjOhJv" resname="The button will only be displayed when exporting as SCORM.">
-        <source>The button will only be displayed when exporting as SCORM.</source>
+      <trans-unit id="LT.bNQq" resname="The button will only be displayed when exported as SCORM.">
+        <source>The button will only be displayed when exported as SCORM.</source>
         <target>~O botón só se mostrará ao exportar como SCORM.</target>
       </trans-unit>
       <trans-unit id="7hzwYBq" resname="Weighted">
@@ -133,8 +133,8 @@
         <source>Add questions</source>
         <target>~Engadir preguntas</target>
       </trans-unit>
-      <trans-unit id="7dNrYHe" resname="Act as a teacher with many years of experience.">
-        <source>Act as a teacher with many years of experience.</source>
+      <trans-unit id="uS3p2Fi" resname="Act as a highly experienced teacher.">
+        <source>Act as a highly experienced teacher.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="w28CCkU" resname="Export questions">
@@ -233,8 +233,8 @@
         <source>Examples</source>
         <target>~Exemplos</target>
       </trans-unit>
-      <trans-unit id="J5ZxWxt" resname="You must return only the questions without numbering and without classification or bullet points, inside a code block, and do not include any additional HTML elements like buttons.">
-        <source>You must return only the questions without numbering and without classification or bullet points, inside a code block, and do not include any additional HTML elements like buttons.</source>
+      <trans-unit id="nIgjEQE" resname="You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.">
+        <source>You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.</source>
         <target>~Só debes devolver as preguntas sen numeración e sen clasificación ou puntos, dentro dun bloque de código, e non incluas elementos HTML adicionais como botóns.</target>
       </trans-unit>
       <trans-unit id="z9OKodR" resname="Save">
@@ -397,8 +397,8 @@
         <source>Letter</source>
         <target>~Carta</target>
       </trans-unit>
-      <trans-unit id="Aw7vdSL" resname="Type will be 0 if the word starts with the letter and 1 if the word contains the letter">
-        <source>Type will be 0 if the word starts with the letter and 1 if the word contains the letter</source>
+      <trans-unit id="_bZe2Fx" resname="The type will be 0 if the word starts with the letter and 1 if the word contains the letter">
+        <source>The type will be 0 if the word starts with the letter and 1 if the word contains the letter</source>
         <target>~O tipo será 0 se a palabra comeza coa letra e 1 se a palabra contén a letra</target>
       </trans-unit>
       <trans-unit id="i0qIaMr" resname="Atom">
@@ -461,8 +461,8 @@
         <source>Venus</source>
         <target>~Venus</target>
       </trans-unit>
-      <trans-unit id="8INSXit" resname="What is the process of plants making food?">
-        <source>What is the process of plants making food?</source>
+      <trans-unit id="PT5u0cQ" resname="What process do plants use to produce energy?">
+        <source>What process do plants use to produce energy?</source>
         <target>~Cal é o proceso polo cal as plantas fan a súa comida?</target>
       </trans-unit>
       <trans-unit id="uDiOQgl" resname="Photosynthesis">
@@ -609,12 +609,12 @@
         <source>Does water boil at 100 degrees Celsius?</source>
         <target>~O auga ferve aos 100 graos Celsius?</target>
       </trans-unit>
-      <trans-unit id="26cj_fd" resname="It depends on altitude.">
-        <source>It depends on altitude.</source>
+      <trans-unit id="iYCw6p." resname="It depends on the altitude.">
+        <source>It depends on the altitude.</source>
         <target>~Depende da altitude.</target>
       </trans-unit>
-      <trans-unit id="kwczkCA" resname="Solution can be:">
-        <source>Solution can be:</source>
+      <trans-unit id="YOcqY_2" resname="The solution can be:">
+        <source>The solution can be:</source>
         <target>~A solución pode ser:</target>
       </trans-unit>
       <trans-unit id="wF0e8AY" resname="0 or 1 for True/False">
@@ -681,12 +681,12 @@
         <source>You must return only the questions without numbering and without classification or bullet points</source>
         <target>~Só debes devolver as preguntas sen numeración nin clasificación ou puntos de lista</target>
       </trans-unit>
-      <trans-unit id=".wZ_uer" resname="Could not generate the questions">
-        <source>Could not generate the questions</source>
+      <trans-unit id="7jkX2cG" resname="The questions could not be generated">
+        <source>The questions could not be generated</source>
         <target>~Non se puido xerar as preguntas</target>
       </trans-unit>
-      <trans-unit id="PDz9gxY" resname="Could not generate the questions. Incorrect format">
-        <source>Could not generate the questions. Incorrect format</source>
+      <trans-unit id="Hh35OKu" resname="The questions could not be generated. Incorrect format">
+        <source>The questions could not be generated. Incorrect format</source>
         <target>~Non se puido xerar as preguntas. Formato incorrecto</target>
       </trans-unit>
       <trans-unit id="E35eLN_" resname="An error occurred while retrieving the questions. Please try again.">
@@ -709,8 +709,8 @@
         <source>Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="j7id44X" resname="Generate 10 questions with multiple-choice options. Provide the correct solution as letters (e.g., A, AB), followed by the question and the options, all separated by #.">
-        <source>Generate 10 questions with multiple-choice options. Provide the correct solution as letters (e.g., A, AB), followed by the question and the options, all separated by #.</source>
+      <trans-unit id="iEm_hXE" resname="Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.">
+        <source>Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="0bgCBr1" resname="Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.">
@@ -729,8 +729,8 @@
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="_4uDN5k" resname="Provide only a single ordered list of steps or items, each separated by '#'.">
-        <source>Provide only a single ordered list of steps or items, each separated by '#'.</source>
+      <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
+        <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
@@ -1469,16 +1469,16 @@
         <source>Select image</source>
         <target>Seleccione imaxe</target>
       </trans-unit>
-      <trans-unit id="pE14WAp" resname="Failed to install the new style theme">
-        <source>Failed to install the new style theme</source>
+      <trans-unit id="odnE5A." resname="Failed to install the new style">
+        <source>Failed to install the new style</source>
         <target>~Non se puido instalar o novo tema de estilo</target>
       </trans-unit>
-      <trans-unit id="TP3sBLN" resname="Failed to create the style theme">
-        <source>Failed to create the style theme</source>
+      <trans-unit id="KdeXFDb" resname="Failed to create the style">
+        <source>Failed to create the style</source>
         <target>~Non se puido crear o tema de estilo</target>
       </trans-unit>
-      <trans-unit id="dT6AXGy" resname="Failed to edit the style theme">
-        <source>Failed to edit the style theme</source>
+      <trans-unit id="TS9USrC" resname="Failed to edit the style ">
+        <source>Failed to edit the style </source>
         <target>~Non se puido editar o tema de estilo</target>
       </trans-unit>
       <trans-unit id="cnJ1FXy" resname="Failed to remove theme">
@@ -1913,8 +1913,8 @@
         <source>Incorrect</source>
         <target>Selección incorrecta</target>
       </trans-unit>
-      <trans-unit id="pbcvLdz" resname="Digital blackboard">
-        <source>Digital blackboard</source>
+      <trans-unit id="0auz3hG" resname="Digital whiteboard">
+        <source>Digital whiteboard</source>
         <target>Encerado dixital</target>
       </trans-unit>
       <trans-unit id="dgaY90J" resname="Incomplete activity">
@@ -1981,9 +1981,9 @@
         <source>Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.</source>
         <target>Cree actividades ou nas que dada a definición dunha palabra, se solicite ao alumnado a propia palabra que comeza ou contén a letra que se indica.</target>
       </trans-unit>
-      <trans-unit id="sgOJKEW" resname="Use Instructions">
-        <source>Use Instructions</source>
-        <target>Instrucións do xogo</target>
+      <trans-unit id="iLq5bso" resname="Usage Instructions">
+        <source>Usage Instructions</source>
+        <target>~Instruccións de uso</target>
       </trans-unit>
       <trans-unit id="_nw9BMU" resname="General settings">
         <source>General settings</source>
@@ -2021,8 +2021,8 @@
         <source>Case sensitive</source>
         <target>Distingue entre maiúsculas e minúsculas</target>
       </trans-unit>
-      <trans-unit id="FCsLv6P" resname="Digital blackboard mode">
-        <source>Digital blackboard mode</source>
+      <trans-unit id="z22MMxl" resname="Digital whiteboard mode">
+        <source>Digital whiteboard mode</source>
         <target>Modo encerado dixital</target>
       </trans-unit>
       <trans-unit id="gmmrdCh" resname="Progress report">
@@ -2165,8 +2165,8 @@
         <source>Provide an image</source>
         <target>~Proporciona unha imaxe</target>
       </trans-unit>
-      <trans-unit id="TFBwaE2" resname="Provide an description">
-        <source>Provide an description</source>
+      <trans-unit id="9vldWvn" resname="Provide a description">
+        <source>Provide a description</source>
         <target>~Proporciona unha descripción</target>
       </trans-unit>
       <trans-unit id="Sz6PGZj" resname="Please create at least one card">
@@ -2285,12 +2285,12 @@
         <source>You solved this trial! Please select another one.</source>
         <target>Resolviches este reto! Selecciona outro.</target>
       </trans-unit>
-      <trans-unit id="Whoowd4" resname="Restart the game and the starting time?">
-        <source>Restart the game and the starting time?</source>
+      <trans-unit id="dFA7T.R" resname="This will restart the game and reset its starting time. Do you want to continue?">
+        <source>This will restart the game and reset its starting time. Do you want to continue?</source>
         <target>Reiniciar o xogo e o tempo de inicio?</target>
       </trans-unit>
-      <trans-unit id="aBqSAV2" resname="You must complete all the trials to finish.">
-        <source>You must complete all the trials to finish.</source>
+      <trans-unit id="u3wBZvJ" resname="You must complete all the trials before facing the final challenge.">
+        <source>You must complete all the trials before facing the final challenge.</source>
         <target>Antes de resolver o desafío, completa tódolos retos.</target>
       </trans-unit>
       <trans-unit id="5dHpezG" resname="You already completed this trial.">
@@ -2317,16 +2317,16 @@
         <source>Please add at least one trial.</source>
         <target>Debe engadir un reto polo menos.</target>
       </trans-unit>
-      <trans-unit id="mE6Wmlb" resname="You can only add ten trials.">
-        <source>You can only add ten trials.</source>
+      <trans-unit id="mmRsg4Q" resname="You can only add ten trials to a challenge.">
+        <source>You can only add ten trials to a challenge.</source>
         <target>Só se poden engadir dez retos a un desafío.</target>
       </trans-unit>
       <trans-unit id="Qw2MhQA" resname="Create escape room type activities in which players will have to complete trials before solving the final challenge.">
         <source>Create escape room type activities in which players will have to complete trials before solving the final challenge.</source>
         <target>~Crea actividades do tipo escape room nas que os xogadores teñan que completar probas antes de resolver o desafío final.</target>
       </trans-unit>
-      <trans-unit id="pCDqOt2" resname="Complete all the trials to finish the activity.">
-        <source>Complete all the trials to finish the activity.</source>
+      <trans-unit id="yQNf.LT" resname="Solve all the trials and complete the final challenge.">
+        <source>Solve all the trials and complete the final challenge.</source>
         <target>Resolve tódolos retos e completa o desafío.</target>
       </trans-unit>
       <trans-unit id="f.ypHSo" resname="Trials">
@@ -2393,12 +2393,12 @@
         <source>Are you sure you want clear all form fields?</source>
         <target>Quere limpar tódolos campos?</target>
       </trans-unit>
-      <trans-unit id="Vn4slEC" resname="Please provide the ID of this report">
-        <source>Please provide the ID of this report</source>
+      <trans-unit id="P9ZdDhk" resname="Please provide the ID of this progress report">
+        <source>Please provide the ID of this progress report</source>
         <target>Ten que introducir o identificador deste informe de progreso</target>
       </trans-unit>
-      <trans-unit id="tMZCtPS" resname="You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing you to monitor the completed activities.">
-        <source>You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing you to monitor the completed activities.</source>
+      <trans-unit id="RMl8k5o" resname="You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing to monitor the completed activities.">
+        <source>You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing to monitor the completed activities.</source>
         <target>Pode introducir unha lista de cotexo para ofrecer unha listaxe estruturada e fácil de entender das actividades propostas neste recurso educativo. Será un instrumento útil para a autoavaliación da aprendizaxe do alumnado, ao permitirlle realizar o seguimento das actividades que vai completando.</target>
       </trans-unit>
       <trans-unit id="ARVUhux" resname="Complete the checklist ticking the boxes for all finished activities.">
@@ -2541,8 +2541,8 @@
         <source>Time is up. Please try again</source>
         <target>O teu tempo finalizou. Téntao de novo</target>
       </trans-unit>
-      <trans-unit id="21fIUUo" resname="The game has started! Drag each card to your container">
-        <source>The game has started! Drag each card to your container</source>
+      <trans-unit id="hOzn4Dl" resname="The game has started! Drag each card to its container">
+        <source>The game has started! Drag each card to its container</source>
         <target>O xogo comezou! Arrastra cada tarxeta ata o seu contedor</target>
       </trans-unit>
       <trans-unit id="4veYHRM" resname="Choose another card">
@@ -2573,20 +2573,20 @@
         <source>Brilliant! All perfect!</source>
         <target>Xenial! Todo perfecto!</target>
       </trans-unit>
-      <trans-unit id="s7nBzY0" resname="Great! You have solved this activity in %s attempts. Surely you can do it faster!">
-        <source>Great! You have solved this activity in %s attempts. Surely you can do it faster!</source>
+      <trans-unit id="hog1PqN" resname="Great job! You have solved this activity in %s attempts. Surely you can do it faster!">
+        <source>Great job! You have solved this activity in %s attempts. Surely you can do it faster!</source>
         <target>Estupendo! Resolviches esta actividade en %s intentos. Seguro que podes facelo máis rápido!</target>
       </trans-unit>
       <trans-unit id="YMXcmYC" resname="You placed %s cards in the wrong place. Please try again!">
         <source>You placed %s cards in the wrong place. Please try again!</source>
         <target>Non colocaches %s tarxetas no seu lugar. Téntao de novo!</target>
       </trans-unit>
-      <trans-unit id="KOSo.6q" resname="Great! You have correctly classified most cards, %s, but you can still do better">
-        <source>Great! You have correctly classified most cards, %s, but you can still do better</source>
+      <trans-unit id="92C7f5q" resname="Great job! You have correctly classified most cards, %s, but you can do even better">
+        <source>Great job! You have correctly classified most cards, %s, but you can do even better</source>
         <target>Estupendo! Clasificaches correctamente a maior parte das tarxetas, %s, pero aínda podes mellorar</target>
       </trans-unit>
-      <trans-unit id="YUFQEC7" resname="Great! Only %s cards left to be placed correctly. Strive for perfection!">
-        <source>Great! Only %s cards left to be placed correctly. Strive for perfection!</source>
+      <trans-unit id="GS3eQME" resname="Great job! Only %s cards left to be placed correctly. Strive for perfection!">
+        <source>Great job! Only %s cards left to be placed correctly. Strive for perfection!</source>
         <target>Magnífico! Tan só che quedaron %s tarxetas por colocar correctamente. Busca a perfección!</target>
       </trans-unit>
       <trans-unit id="yDVB9rY" resname="Your score will be automatically saved at the end of the game.">
@@ -2681,8 +2681,8 @@
         <source>Sorry, there are no questions for this type of activity.</source>
         <target>~Por sorte, non hai preguntas para este tipo de actividade.</target>
       </trans-unit>
-      <trans-unit id="fHhbb0o" resname="eXeLearning is a **free** and open source editor to create **educational** resources in an **simple | easy** way. It's available for different **operating** systems.">
-        <source>eXeLearning is a **free** and open source editor to create **educational** resources in an **simple | easy** way. It's available for different **operating** systems.</source>
+      <trans-unit id="_hZIbEQ" resname="eXeLearning is a **free** and open source editor to create **educational** resources in an **simple and easy** way. It's available for different **operating** systems.">
+        <source>eXeLearning is a **free** and open source editor to create **educational** resources in an **simple and easy** way. It's available for different **operating** systems.</source>
         <target>eXeLearning é un editor **libre** e de fontes abertas pensado para crear recursos **educativos** dun xeito **doado e sinxelo**. Está dispoñible para diferentes sistemas **operativos**.</target>
       </trans-unit>
       <trans-unit id="eC7RMZN" resname="Complete">
@@ -2693,8 +2693,8 @@
         <source>Life</source>
         <target>Vida</target>
       </trans-unit>
-      <trans-unit id="vbBN5KL" resname="Try again">
-        <source>Try again</source>
+      <trans-unit id="nkqkg0C" resname="Try again!">
+        <source>Try again!</source>
         <target>Téntao outra vez</target>
       </trans-unit>
       <trans-unit id="2Aemfhm" resname="Check">
@@ -2713,8 +2713,8 @@
         <source>You completed the activity</source>
         <target>Completaches a actividade</target>
       </trans-unit>
-      <trans-unit id="rgZo29Y" resname="Please write some instructions.">
-        <source>Please write some instructions.</source>
+      <trans-unit id="c.vxvxb" resname="Please write the instructions.">
+        <source>Please write the instructions.</source>
         <target>Escriba as instrucións.</target>
       </trans-unit>
       <trans-unit id="NHsqT6R" resname="Please write the feedback.">
@@ -2729,8 +2729,8 @@
         <source>Please write the error message.</source>
         <target>Indique a mensaxe de erro.</target>
       </trans-unit>
-      <trans-unit id="9UdEe.3" resname="Create activities in which the student will have to fill in the blanks of a text, writing or choosing an answer.">
-        <source>Create activities in which the student will have to fill in the blanks of a text, writing or choosing an answer.</source>
+      <trans-unit id="qyxcPwN" resname="Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.">
+        <source>Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.</source>
         <target>Cree actividades nas que o alumnado deberá completar os ocos dun texto escribindo, seleccionando e arrastrando respostas.</target>
       </trans-unit>
       <trans-unit id="lsdWsbD" resname="Read the text and complete the missing words.">
@@ -3037,8 +3037,8 @@
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target>Este contido foi creado con eXeLearning, o seu editor libre e de código aberto para crear contidos educativos.</target>
       </trans-unit>
-      <trans-unit id="kDKTjXw" resname="Download elp file">
-        <source>Download elp file</source>
+      <trans-unit id="V7aVH8i" resname="Download .elp file">
+        <source>Download .elp file</source>
         <target>Descargar o ficheiro .elp</target>
       </trans-unit>
       <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
@@ -3093,8 +3093,8 @@
         <source>Please create at least one activity</source>
         <target>~Por favor, crea polo menos unha actividade</target>
       </trans-unit>
-      <trans-unit id="45AIgvp" resname="Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice vers.">
-        <source>Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice vers.</source>
+      <trans-unit id="3nQi2xN" resname="Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice versa).">
+        <source>Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice versa).</source>
         <target>~Crea actividades de arrastrar e soltar combinando textos, imaxes e clips de audio, permitindo interaccións en calquera dirección (por exemplo, arrastrar texto sobre imaxes ou audio, e viceversa).</target>
       </trans-unit>
       <trans-unit id="GpkLPpO" resname="Drag each item onto the one it matches with">
@@ -3353,20 +3353,20 @@
         <source>Share</source>
         <target>~Compartir</target>
       </trans-unit>
-      <trans-unit id=".DHwbcP" resname="Add dropdown question to form">
-        <source>Add dropdown question to form</source>
+      <trans-unit id="Iv4YqIp" resname="Add a dropdown question to form">
+        <source>Add a dropdown question to form</source>
         <target>~Engadir unha pregunta de menú despregable ao formulario</target>
       </trans-unit>
-      <trans-unit id="wYlFJQl" resname="Add fill question to form">
-        <source>Add fill question to form</source>
+      <trans-unit id="AgdmMmn" resname="Add a fill question to form">
+        <source>Add a fill question to form</source>
         <target>~Engadir unha pregunta de completar ao formulario</target>
       </trans-unit>
-      <trans-unit id="8E9pI2Z" resname="Add true-false question to form">
-        <source>Add true-false question to form</source>
+      <trans-unit id="Epodoyd" resname="Add a true-false question to form">
+        <source>Add a true-false question to form</source>
         <target>~Engadir unha pregunta de verdadeiro-falso ao formulario</target>
       </trans-unit>
-      <trans-unit id="vZrNAOI" resname="Add selection question to form">
-        <source>Add selection question to form</source>
+      <trans-unit id=".85erFk" resname="Add a selection question to form">
+        <source>Add a selection question to form</source>
         <target>~Engadir unha pregunta de selección ao formulario</target>
       </trans-unit>
       <trans-unit id="DoC.9rX" resname="Add this question to form">
@@ -3405,8 +3405,8 @@
         <source>No questions in the form</source>
         <target>~Non hai preguntas no formulario</target>
       </trans-unit>
-      <trans-unit id="jugAHCy" resname="Select pass rate">
-        <source>Select pass rate</source>
+      <trans-unit id="DCmDkZO" resname="Set the pass mark">
+        <source>Set the pass mark</source>
         <target>~Seleccionar taxa de aprobación</target>
       </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
@@ -3425,8 +3425,8 @@
         <source>The question should be clear and unambiguous. Avoid negative premises as they tend to be ambiguous.</source>
         <target>~A pregunta debe ser clara e inequívoca. Evite premisas negativas, xa que adoitan ser ambiguas.</target>
       </trans-unit>
-      <trans-unit id="sTkzNj0" resname="Optional: you can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.">
-        <source>Optional: you can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.</source>
+      <trans-unit id="mLTqS49" resname="Optional: You can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.">
+        <source>Optional: You can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.</source>
         <target>~Opcional: pode escribir outras palabras para completar a actividade do menú despregable. Use a barra vertical para separar as palabras. Este campo pode quedar baleiro.</target>
       </trans-unit>
       <trans-unit id="gTioMsM" resname="If this option is checked, submitted answers with different capitalization will be marked as incorrect">
@@ -3457,8 +3457,8 @@
         <source>Show Solutions</source>
         <target>~Mostrar solucións</target>
       </trans-unit>
-      <trans-unit id="RHEzlBF" resname="Create quizzes with multiple-choice, true/false, and fill-in-the-blank questions..">
-        <source>Create quizzes with multiple-choice, true/false, and fill-in-the-blank questions..</source>
+      <trans-unit id=".9msxfj" resname="Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.">
+        <source>Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.</source>
         <target>~Crea cuestionarios con preguntas de opción múltiple, verdadeiro/falso e completar o espazo en branco.</target>
       </trans-unit>
       <trans-unit id="7JLBUj7" resname="Complete the questions in the following quiz">
@@ -3473,8 +3473,8 @@
         <source>Show questions</source>
         <target>~Mostrar preguntas</target>
       </trans-unit>
-      <trans-unit id="zyv9v7o" resname="True False Help Text:">
-        <source>True False Help Text:</source>
+      <trans-unit id="K4ymNZy" resname="True/False Help Text:">
+        <source>True/False Help Text:</source>
         <target>~Verdadeiro Falso Texto de axuda:</target>
       </trans-unit>
       <trans-unit id="dWcEKgV" resname="Fill Help Text:">
@@ -3529,8 +3529,8 @@
         <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.</source>
         <target>~Escribe o texto para a actividade de completar no campo en branco, xa sexa pegando texto doutra fonte ou escribíndoo directamente no campo. Para escoller as palabras que desexas ocultar, fai dobre clic na palabra para seleccionala e preme o botón "Ocultar/Mostrar palabra" abaixo. Podes definir máis dunha resposta posible se están rodeadas polo signo de barra (|). Exemplo: |gato|perro|pájaro|</target>
       </trans-unit>
-      <trans-unit id="NGcSyjj" resname="Type the text for the fill-in-the-blank activity into the blank field either by pasting text from another source or by typing the text directly into the field. In order to select the words you want to hide, double-click on the word to select it, and click on the Hide/Show word button below. You can define more than one possible answer if they are surrounded by the pipe sign (|). E.g.: |dog|cat|bird|">
-        <source>Type the text for the fill-in-the-blank activity into the blank field either by pasting text from another source or by typing the text directly into the field. In order to select the words you want to hide, double-click on the word to select it, and click on the Hide/Show word button below. You can define more than one possible answer if they are surrounded by the pipe sign (|). E.g.: |dog|cat|bird|</source>
+      <trans-unit id="0PufnT0" resname="Enter the text for the fill-in-the-blanks activity. Highlight the words and use the button at the bottom to turn them into blanks.">
+        <source>Enter the text for the fill-in-the-blanks activity. Highlight the words and use the button at the bottom to turn them into blanks.</source>
         <target>~Se non está marcado, aceptarase un pequeno número de erros de ortografía e de uso de maiúsculas. Se está marcado, non se aceptarán erros de ortografía nin de uso de maiúsculas. Exemplo: Se a resposta correcta é Elefante e di elefante ou Eliphant, ambos serán considerados como "suficientemente preto" polo algoritmo, xa que só hai un erro de ortografía, aínda que a opción "Verificar uso de maiúsculas" estea marcada. Se a verificación de maiúsculas está desactivada neste exemplo, a letra minúscula e non se considerará un erro e tamén se aceptará "eliphant". Se "Calificación estrita" e "Verificar uso de maiúsculas" están activados, a única resposta correcta é "Elefante". Se só está activada "Calificación estrita" e "Verificar uso de maiúsculas" non, tamén se aceptará "elefante".</target>
       </trans-unit>
       <trans-unit id="eh_avyW" resname="If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as &quot;close enough&quot; by the algorithm, as there is only one spelling error, even if &quot;Check capitalization&quot; is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If &quot;Strict qualification&quot; and &quot;Check capitalization&quot; are enabled, the only correct answer is &quot;Elephant&quot;. If only &quot;Strict qualification&quot; is enabled and &quot;Check capitalization&quot; is not, &quot;elephant&quot; will also be accepted.">
@@ -3549,20 +3549,20 @@
         <source>Show menu bar</source>
         <target>Amosar barra de menú</target>
       </trans-unit>
-      <trans-unit id="mlpm.M_" resname="Allow algebra input">
-        <source>Allow algebra input</source>
+      <trans-unit id="xaYxxMC" resname="Algebra input field">
+        <source>Algebra input field</source>
         <target>Liña de entrada alxébrica</target>
       </trans-unit>
-      <trans-unit id="RNZHiBo" resname="Show toolbar">
-        <source>Show toolbar</source>
+      <trans-unit id="JmVyUj." resname="Toolbar">
+        <source>Toolbar</source>
         <target>Amosar barra de ferramentas</target>
       </trans-unit>
-      <trans-unit id="Um5znn." resname="Show toolbar help">
-        <source>Show toolbar help</source>
+      <trans-unit id="7pINrlq" resname="Toolbar help">
+        <source>Toolbar help</source>
         <target>Amosar axuda da barra de ferramentas</target>
       </trans-unit>
-      <trans-unit id="r_wemPa" resname="Show reset icon">
-        <source>Show reset icon</source>
+      <trans-unit id="74x9C0M" resname="Reset icon">
+        <source>Reset icon</source>
         <target>Amosar icona de reinicio</target>
       </trans-unit>
       <trans-unit id="cLBL1hg" resname="Zoom">
@@ -3573,24 +3573,24 @@
         <source>Enable right click</source>
         <target>Activar botón dereito</target>
       </trans-unit>
-      <trans-unit id="F7fBS1h" resname="Error dialogs active">
-        <source>Error dialogs active</source>
+      <trans-unit id="1gSOoFh" resname="Error dialogs">
+        <source>Error dialogs</source>
         <target>Diálogos de erro</target>
       </trans-unit>
       <trans-unit id="qomQKGQ" resname="Prevent focus">
         <source>Prevent focus</source>
         <target>Impedir o foco</target>
       </trans-unit>
-      <trans-unit id="y0QnTPg" resname="Show fullscreen button">
-        <source>Show fullscreen button</source>
+      <trans-unit id="_0wYxEn" resname="Fullscreen button">
+        <source>Fullscreen button</source>
         <target>Amosar botón de pantalla completa</target>
       </trans-unit>
       <trans-unit id="P.o4n.c" resname="Disable auto-scale">
         <source>Disable auto-scale</source>
         <target>Desactivar autoescalado</target>
       </trans-unit>
-      <trans-unit id="Vza6AYN" resname="Show suggestion buttons">
-        <source>Show suggestion buttons</source>
+      <trans-unit id="NOQx1fK" resname="Suggestion buttons">
+        <source>Suggestion buttons</source>
         <target>Amosar os botóns de suxerencias</target>
       </trans-unit>
       <trans-unit id="7v98Nc_" resname="Play button">
@@ -3665,8 +3665,8 @@
         <source>Word Guessing</source>
         <target>Adiviña</target>
       </trans-unit>
-      <trans-unit id="JWvdKSb" resname="Please provide the word definition">
-        <source>Please provide the word definition</source>
+      <trans-unit id="Jiz1RUC" resname="Please provide the definition of the word or phrase">
+        <source>Please provide the definition of the word or phrase</source>
         <target>Indique a definición da palabra</target>
       </trans-unit>
       <trans-unit id="5Mttxuk" resname="Please provide one word or phrase">
@@ -3693,12 +3693,12 @@
         <source>You have to type a text in the editor</source>
         <target>Teclee un texto no editor</target>
       </trans-unit>
-      <trans-unit id="3zrlzMR" resname="Create activities in which given a definition the student has to complete the word filling in the gaps.">
-        <source>Create activities in which given a definition the student has to complete the word filling in the gaps.</source>
+      <trans-unit id="6QG6CWU" resname="Create activities where, given a definition, students complete the word by filling in the missing letters.">
+        <source>Create activities where, given a definition, students complete the word by filling in the missing letters.</source>
         <target>Cree actividades nas que, dada a definición dunha palabra, se solicita ao alumnado a propia palabra completando as letras que faltan.</target>
       </trans-unit>
-      <trans-unit id="OvXafro" resname="0 to 10">
-        <source>0 to 10</source>
+      <trans-unit id="dNy670." resname="From 0 to 10">
+        <source>From 0 to 10</source>
         <target>De 0 a 10</target>
       </trans-unit>
       <trans-unit id="WIS9SKR" resname="Points and lives">
@@ -3713,9 +3713,9 @@
         <source>No lives, 0 to 10 score, right/wrong answers counter... A more educational context.</source>
         <target>~Sen vidas, puntuación de 0 a 10, contador de respostas correctas/incorrectas... Un contexto máis educativo.</target>
       </trans-unit>
-      <trans-unit id="Fc4Ktnw" resname="Just like a game: Try to get a high score (thousands of points) and not to lose your lives.">
-        <source>Just like a game: Try to get a high score (thousands of points) and not to lose your lives.</source>
-        <target>~Semellante a un xogo: Tenta obter unha puntuación alta (miles de puntos) e non perder as túas vidas.</target>
+      <trans-unit id="kxux1e3" resname="Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.">
+        <source>Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.</source>
+        <target>Como un xogo: tenta conseguir miles de puntos e non perder as túas vidas.</target>
       </trans-unit>
       <trans-unit id="o1.9Y1Q" resname="No score and no lives. You have to answer right to get some information (a feedback).">
         <source>No score and no lives. You have to answer right to get some information (a feedback).</source>
@@ -4149,12 +4149,12 @@
         <source>Please write a text.</source>
         <target>Escriba un texto.</target>
       </trans-unit>
-      <trans-unit id="LSzBhFP" resname="Please add an image.">
-        <source>Please add an image.</source>
+      <trans-unit id="gmpjPYB" resname="Please select an image.">
+        <source>Please select an image.</source>
         <target>Engada unha imaxe.</target>
       </trans-unit>
-      <trans-unit id="hLzAwkC" resname="Provide an alternative text (describe the image).">
-        <source>Provide an alternative text (describe the image).</source>
+      <trans-unit id="FzFt5jV" resname="Provide an alternative text for the image (describe the image).">
+        <source>Provide an alternative text for the image (describe the image).</source>
         <target>Proporcione un texto alternativo (unha descrición para a imaxe)</target>
       </trans-unit>
       <trans-unit id="MvJfUR4" resname="Please write a question.">
@@ -4301,8 +4301,8 @@
         <source>see all the slides and answer all the questions</source>
         <target>debe ver todo o contido e responder ás preguntas</target>
       </trans-unit>
-      <trans-unit id="k82Lz4Q" resname="This video has no interactive slides.">
-        <source>This video has no interactive slides.</source>
+      <trans-unit id="p_3X2SD" resname="This video has no interactive elements.">
+        <source>This video has no interactive elements.</source>
         <target>O vídeo non contén contidos interactivos.</target>
       </trans-unit>
       <trans-unit id="gBdYwgf" resname="Incompatible code">
@@ -4485,8 +4485,8 @@
         <source>Allow negative</source>
         <target>Permitir negativos</target>
       </trans-unit>
-      <trans-unit id="5wKex6N" resname="Allow zero as result">
-        <source>Allow zero as result</source>
+      <trans-unit id="mgJoMQC" resname="Allow zero as a result">
+        <source>Allow zero as a result</source>
         <target>Permitir cero como resultado</target>
       </trans-unit>
       <trans-unit id="yfOhvS2" resname="Relative error">
@@ -4529,8 +4529,8 @@
         <source>Math problems</source>
         <target>~Problemas de matemáticas</target>
       </trans-unit>
-      <trans-unit id="Ed5xZre" resname="Sorry... The right answer is:">
-        <source>Sorry... The right answer is:</source>
+      <trans-unit id="Lxu4tki" resname="Sorry, that’s incorrect... The right answer is:">
+        <source>Sorry, that’s incorrect... The right answer is:</source>
         <target>A resposta correcta é:</target>
       </trans-unit>
       <trans-unit id="QsDm_Ws" resname="Create random basic math problems.">
@@ -5445,10 +5445,6 @@
         <source>Create interactive activities where players must solve various puzzles.</source>
         <target>~Crea actividades interactivas onde os xogadores deben resolver varios quebras-cabezas.</target>
       </trans-unit>
-      <trans-unit id="iLq5bso" resname="Usage Instructions">
-        <source>Usage Instructions</source>
-        <target>~Instruccións de uso</target>
-      </trans-unit>
       <trans-unit id="wfK.BjY" resname="Solve the following puzzles.">
         <source>Solve the following puzzles.</source>
         <target>~Resolva os seguintes enigmas.</target>
@@ -5553,8 +5549,8 @@
         <source>Custom score</source>
         <target>Puntuación personalizada</target>
       </trans-unit>
-      <trans-unit id="sRYAbdJ" resname="Play video intro">
-        <source>Play video intro</source>
+      <trans-unit id="TLxnz_g" resname="Play the introduction video">
+        <source>Play the introduction video</source>
         <target>Reproducir vídeo de introdución</target>
       </trans-unit>
       <trans-unit id="bPYv0m5" resname="YouTube URL">
@@ -5617,10 +5613,6 @@
         <source>Play audio when displaying the solution</source>
         <target>Reproducir audio ao amosar a solución</target>
       </trans-unit>
-      <trans-unit id="GiKemdN" resname="Just like a game: Try to get a high score (thousands of points) and not to loose your lives.">
-        <source>Just like a game: Try to get a high score (thousands of points) and not to loose your lives.</source>
-        <target>Como un xogo: tenta conseguir miles de puntos e non perder as túas vidas.</target>
-      </trans-unit>
       <trans-unit id="V2sSnK9" resname="Order">
         <source>Order</source>
         <target>Orde</target>
@@ -5653,8 +5645,8 @@
         <source>There is already a question in that second.</source>
         <target>Xa hai unha pregunta referida a ese segundo.</target>
       </trans-unit>
-      <trans-unit id="nCkd8qM" resname="Please check the video length and the end time">
-        <source>Please check the video length and the end time</source>
+      <trans-unit id="l9dOlHi" resname="The video's end time must be shorter than its total duration">
+        <source>The video's end time must be shorter than its total duration</source>
         <target>O valor do punto final do vídeo debe ser inferior á súa duración</target>
       </trans-unit>
       <trans-unit id="v5lFr7s" resname="Create activities consisting on a video with interactive questions.">
@@ -6141,8 +6133,8 @@
         <source>Please check all the answers in the right order</source>
         <target>Debe marcar as respostas na orde correcta</target>
       </trans-unit>
-      <trans-unit id="hUrxZDe" resname="Roll the dice and answer the question until you complete all the cheeses.">
-        <source>Roll the dice and answer the question until you complete all the cheeses.</source>
+      <trans-unit id=".EhvYA." resname="Roll the dice and answer the question until you get all the cheeses.">
+        <source>Roll the dice and answer the question until you get all the cheeses.</source>
         <target>Lanza o dado e responde á pregunta ata completar tódolos queixos.</target>
       </trans-unit>
       <trans-unit id="HdTSE73" resname="Too many questions! The game can have a maximum of about 800 and 1200 questions. This number can vary a lot depending on the type of questions and the length of the questions, the answers, the URLs and the enriched text.">
@@ -6169,8 +6161,8 @@
         <source>This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.</source>
         <target>Este xogo pode presentar problemas de accesibilidade para algunhas persoas. Debe telo en conta á hora de elaborar contido e, se as persoas destinatarias o requiren, proporcionar unha alternativa accesible.</target>
       </trans-unit>
-      <trans-unit id="figRwq6" resname="You must provide a name for this topic">
-        <source>You must provide a name for this topic</source>
+      <trans-unit id="KOGhcPK" resname="You must provide a name for this topic.">
+        <source>You must provide a name for this topic.</source>
         <target>~Debe proporcionar un nome para este tema</target>
       </trans-unit>
       <trans-unit id="QeWMJTG" resname="TriviExt">
@@ -7521,12 +7513,12 @@
         <source> Reformat</source>
         <target>~ Reformatar</target>
       </trans-unit>
-      <trans-unit id="Y4h3EOs" resname="A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List button.">
-        <source>A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List button.</source>
+      <trans-unit id="HNsudfi" resname="A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List Button.">
+        <source>A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List Button.</source>
         <target>~Crearase unha nova Lista de Definicións. Para engadir un novo termo, só debes colocar o cursor ao final dunha definición e volver a facer clic no botón de Lista de Definicións.</target>
       </trans-unit>
-      <trans-unit id="zFiYGCx" resname="Anchors, nodes or elp">
-        <source>Anchors, nodes or elp</source>
+      <trans-unit id="uahOyci" resname="Anchors, nodes or .elp">
+        <source>Anchors, nodes or .elp</source>
         <target>Áncoras, nodos ou .elp</target>
       </trans-unit>
       <trans-unit id="avp3DmW" resname="Open link in...">
@@ -7677,8 +7669,8 @@
         <source>JavaScript player (for old browsers or browsers that can't play that audio format)</source>
         <target>Reprodutor JavaScript (para navegadores antigos que non reproducen este formato de audio)</target>
       </trans-unit>
-      <trans-unit id="RJ7yKcZ" resname="Use the %s option after recording to define the authorship or the audio title.">
-        <source>Use the %s option after recording to define the authorship or the audio title.</source>
+      <trans-unit id="ccLwVRX" resname="Use the %s option after recording to define the authorship or title of the audio.">
+        <source>Use the %s option after recording to define the authorship or title of the audio.</source>
         <target>~Utiliza a opción %s despois de gravar para definir a autoría ou o título do audio.</target>
       </trans-unit>
       <trans-unit id="P8kqag0" resname="There is no audio input device connected.">
@@ -9424,6 +9416,18 @@
       <trans-unit id="gA4BXFa" resname="Authentication methods:">
         <source>Authentication methods:</source>
         <target>~Métodos de autenticación:</target>
+      </trans-unit>
+      <trans-unit id="9iMmg7m" resname="Save the score">
+        <source>Save the score</source>
+        <target>~Gardar a puntuación</target>
+      </trans-unit>
+      <trans-unit id="qpfRXBy" resname="Automatically save the score">
+        <source>Automatically save the score</source>
+        <target>~Gardar a puntuación automaticamente</target>
+      </trans-unit>
+      <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
+        <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
+        <target>~Escribe ou pega o texto da actividade de completar ocos no campo. Selecciona as palabras e usa o botón de embaixo para ocultalas. Podes definir máis dunha resposta posible usando barras verticais para rodealas e separalas. Por exemplo: |can|gato|paxaro|</target>
       </trans-unit>
     </body>
   </file>

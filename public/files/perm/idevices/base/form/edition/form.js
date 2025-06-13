@@ -837,10 +837,10 @@ var $exeDevice = {
             this.strings.msgEInstructions = _("Instructions");
             this.strings.msgEActivity = _("Activity");
             this.strings.msgEQuestion = _("Question");
-            this.strings.msgEAddDropdownQuestion = _("Add dropdown question to form");
-            this.strings.msgEAddFillQuestion = _("Add fill question to form");
-            this.strings.msgEAddTrueFalseQuestion = _("Add true-false question to form");
-            this.strings.msgEAddSelectionQuestion = _("Add selection question to form");
+            this.strings.msgEAddDropdownQuestion = _("Add a dropdown question to form");
+            this.strings.msgEAddFillQuestion = _("Add a fill question to form");
+            this.strings.msgEAddTrueFalseQuestion = _("Add a true-false question to form");
+            this.strings.msgEAddSelectionQuestion = _("Add a selection question to form");
             this.strings.msgEAddQuestion = _("Add this question to form");
             this.strings.msgESaveQuestion = _("Save");
             this.strings.msgECancelQuestion = _("Cancel");
@@ -856,15 +856,15 @@ var $exeDevice = {
             this.strings.msgETrue = _("True");
             this.strings.msgEFalse = _("False");
             this.strings.msgNoQuestions = _("No questions in the form");
-            this.strings.msgPassRate = _("Select pass rate");
+            this.strings.msgPassRate = _("Set the pass mark");
             this.strings.msgAddBtnAnswers = _("Include a button to display the answers");
             this.strings.msgCapitalization = _("Check capitalization");
             this.strings.msgStrictQualification = _("Strict qualification");
             this.strings.msgInstructionsQuestion = _("The question should be clear and unambiguous. Avoid negative premises as they tend to be ambiguous.");
             this.strings.msgInstructionsSelection = _(`Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.`) + ' ' + this.strings.msgInstructionsQuestion;
             this.strings.msgInstructionsDropdown = _(`Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.`);
-            this.strings.msgInstructionsDropdownOtherWords = _("Optional: you can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.");
-            this.strings.msgInstructionsFill = _(`Type the text for the fill-in-the-blank activity into the blank field either by pasting text from another source or by typing the text directly into the field. In order to select the words you want to hide, double-click on the word to select it, and click on the Hide/Show word button below. You can define more than one possible answer if they are surrounded by the pipe sign (|). E.g.: |dog|cat|bird|`);
+            this.strings.msgInstructionsDropdownOtherWords = _("Optional: You can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.");
+            this.strings.msgInstructionsFill = _(`Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|`);
             this.strings.msgInstructionsFillCapitalization = _("If this option is checked, submitted answers with different capitalization will be marked as incorrect");
             this.strings.msgInstructionsFillStrictQualification = _(`If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.`);
             this.strings.msgInstructionsFillCapitalize = _(`If this option is checked, answers submitted with case differences will be marked as incorrect.`)
@@ -922,7 +922,7 @@ var $exeDevice = {
          */
         createForm(ideviceBody) {
             const html = `<div id="formIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">${_("Create quizzes with multiple-choice, true/false, and fill-in-the-blank questions..")} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_("Use Instructions")}</a></p>
+                <p class="exe-block-info exe-block-dismissible">${_("Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.")} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_("Usage Instructions")}</a></p>
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_("Complete the questions in the following quiz"))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
@@ -1062,7 +1062,7 @@ var $exeDevice = {
          */
         getDefaultLangValues() {
             let defaultLang = {};
-            defaultLang[_("True False Help Text:")] = [$exeDevice.langTrueFalseHelpId, this.strings.msgLangTrueFalseHelp];
+            defaultLang[_("True/False Help Text:")] = [$exeDevice.langTrueFalseHelpId, this.strings.msgLangTrueFalseHelp];
             defaultLang[_("Fill Help Text:")] = [$exeDevice.langFillHelpId, this.strings.msgLangFillHelp];
             defaultLang[_("Dropdown Help Text:")] = [$exeDevice.langDropdownHelpId, this.strings.msgLangDropdownHelp];
             defaultLang[_("Single Selection Help Text:")] = [$exeDevice.langSingleSelectionHelpId, this.strings.msgLangSingleSelectionHelp];

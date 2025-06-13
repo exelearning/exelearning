@@ -69,7 +69,7 @@ var $exeDevice = {
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgEGeneralSettings = _('General settings');
-        msgs.msgEIntrucctions = _('Please write some instructions.');
+        msgs.msgEIntrucctions = _('Please write the instructions.');
         msgs.msgTime = _('Max time');
         msgs.msgERetro = _('Please write the feedback.');
         msgs.msgCodeAccess = _('Access code');
@@ -102,7 +102,7 @@ var $exeDevice = {
             <div id="candadoIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible">
                     ${_('Create activities with a password protected feedback.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/candado.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/candado.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${msgs.msgEGeneralSettings}">

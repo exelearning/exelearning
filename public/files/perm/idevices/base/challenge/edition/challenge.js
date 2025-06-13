@@ -57,8 +57,8 @@ var $exeDevice = {
         msgSolutionError: c_('Sorry. Wrong solution.'),
         msgSolutionCError: c_('Sorry. The solution is wrong.'),
         msgChallengeSolved: c_('You solved this trial! Please select another one.'),
-        msgDesafioReboot: c_('Restart the game and the starting time?'),
-        msgCompleteAllChallenged: c_('You must complete all the trials to finish.'),
+        msgDesafioReboot: c_('This will restart the game and reset its starting time. Do you want to continue?'),
+        msgCompleteAllChallenged: c_('You must complete all the trials before facing the final challenge.'),
         msgSolvedChallenge: c_('You already completed this trial.'),
         msgWriteChallenge: c_('Complete the trial. Write the solution.'),
         msgEndTimeRestart: c_('Time Over. Please restart to try again.'),
@@ -107,7 +107,7 @@ var $exeDevice = {
         );
         msgs.msgSolutionDesafio = _('Please write the challenge solution.');
         msgs.msgOneChallenge = _('Please add at least one trial.');
-        msgs.msgTenChallenges = _('You can only add ten trials.');
+        msgs.msgTenChallenges = _('You can only add ten trials to a challenge.');
         msgs.msgDataChanllenge = _(
             'Please write the title, description and solution of all the trials.',
         );
@@ -324,9 +324,9 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="desafioIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible">${_('Create escape room type activities in which players will have to complete trials before solving the final challenge.')} <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/desafo.html" hreflang="es" target="_blank">${_('Use Instructions')}</a></p>
+            <p class="exe-block-info exe-block-dismissible">${_('Create escape room type activities in which players will have to complete trials before solving the final challenge.')} <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/desafo.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
             <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Complete all the trials to finish the activity.'))}
+                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Solve all the trials and complete the final challenge.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>

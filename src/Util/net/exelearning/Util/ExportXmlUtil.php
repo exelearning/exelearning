@@ -713,7 +713,6 @@ class ExportXmlUtil
      * @param OdeNavStructureSync $odeNavStructureSyncs
      * @param array               $pagesFileData
      * @param array               $odeProperties
-     * @param string              $elpFileName
      * @param string              $resourcesPrefix
      * @param string              $exportType
      *
@@ -724,10 +723,12 @@ class ExportXmlUtil
         $odeNavStructureSyncs,
         $pagesFileData,
         $odeProperties,
-        $elpFileName,
+        $exportDirPath,
         $resourcesPrefix,
         $exportType,
     ) {
+        $exportDirPath = $exportDirPath.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB.DIRECTORY_SEPARATOR;
+
         $package = new \SimpleXMLElement('<?xml version="1.0" encoding="utf-8"?><package></package>');
 
         // package attributes
@@ -740,20 +741,32 @@ class ExportXmlUtil
         $metadata->addAttribute('xmlns:xmlns:dc', 'http://purl.org/dc/elements/1.1/');
 
         // metadata -> language
-        $lang = isset($odeProperties['pp_lang']) ?
-            $odeProperties['pp_lang']->getValue() : Settings::DEFAULT_LOCALE;
+        $lang = isset($odeProperties['pp_lang']) ? $odeProperties['pp_lang']->getValue() : Settings::DEFAULT_LOCALE;
         $languageDC = $metadata->addChild('dc:dc:language', $lang);
 
         // metadata -> identifier
-        $id = isset($odeProperties['lom_general_identifier_entry'])
-            ? $odeProperties['lom_general_identifier_entry']->getValue() : 'ODE-'.$odeId;
+        $id = isset($odeProperties['lom_general_identifier_entry']) ? $odeProperties['lom_general_identifier_entry']->getValue() : 'ODE-'.$odeId;
         $identifierDC = $metadata->addChild('dc:dc:identifier', $id);
         $identifierDC->addAttribute('id', 'pub-id');
 
         // metadata -> title
-        $title = isset($odeProperties['pp_title']) ?
-            $odeProperties['pp_title']->getValue() : 'eXe-p-'.$odeId;
+        $title = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : 'eXe-p-'.$odeId;
         $titleDC = $metadata->addChild('dc:dc:title', $title);
+        $titleDC->addAttribute('xml:lang', $lang);
+
+        // metadata -> description
+        $descriptionValue = isset($odeProperties['pp_description']) ? $odeProperties['pp_description']->getValue() : '';
+        $descriptionDC = $metadata->addChild('dc:dc:description', $descriptionValue);
+        $descriptionDC->addAttribute('xml:lang', $lang);
+
+        // metadata -> license
+        $licenseValue = isset($odeProperties['license']) ? $odeProperties['license']->getValue() : '';
+        $licenseDC = $metadata->addChild('dc:dc:license', $licenseValue);
+        $licenseDC->addAttribute('xml:lang', $lang);
+
+        // metadata -> creator
+        $authorValue = isset($odeProperties['pp_author']) ? $odeProperties['pp_author']->getValue() : '';
+        $creatorDC = $metadata->addChild('dc:dc:creator', $authorValue);
 
         // metadata -> meta
         $date = new \DateTime('now');
@@ -770,6 +783,18 @@ class ExportXmlUtil
         $item->addAttribute('properties', 'nav');
         $item->addAttribute('media-type', 'application/xhtml+xml');
 
+        $visiblesPages = [];
+        $indexNode = 0;
+
+        foreach ($pagesFileData as $key => $pageData) {
+            if (self::isVisibleExport($odeNavStructureSyncs, $indexNode)) {
+                $url = $pageData['fileUrl'];
+                // Add the page to the visibles pages and link it with the previous page and the next page
+                $visiblesPages[$key] = ['url' => $url];
+            }
+            ++$indexNode;
+        }
+
         // manifest -> item [pages]
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             $odePageId = $odeNavStructureSync->getOdePageId();
@@ -778,7 +803,32 @@ class ExportXmlUtil
             $item->addAttribute('id', 'PAGE-'.$odePageId);
             $item->addAttribute('href', $pageData['fileUrl']);
             $item->addAttribute('media-type', 'application/xhtml+xml');
-            $item->addAttribute('properties', 'scripted');
+
+            if (isset($visiblesPages[$odePageId])) {
+                $item->addAttribute('properties', 'scripted');
+            } else {
+                $item->addAttribute('fallback', 'fallback');
+            }
+        }
+
+        $directoriesToCopy = ['content', 'custom', 'idevices', 'libs', 'theme'];
+        foreach ($directoriesToCopy as $directory) {
+            ExportXmlUtil::addCommonExportedFilesToOpfManifest($manifest, $exportDirPath, $directory);
+        }
+
+        // add all files in root directory exept index.html
+        $files = scandir($exportDirPath);
+        foreach ($files as $file) {
+            if ('.' !== $file && '..' !== $file) {
+                $filePath = $exportDirPath.'/'.$file;
+                if (is_file($filePath) && !preg_match('/index\.html$/', $file)) {
+                    $item = $manifest->addChild('item', ' ');
+                    $item->addAttribute('id', $file);
+                    $item->addAttribute('href', $file);
+                    $item->addAttribute('media-type', mime_content_type($filePath));
+                    $item->addAttribute('fallback', 'fallback');
+                }
+            }
         }
 
         // spine
@@ -787,16 +837,14 @@ class ExportXmlUtil
         // spine -> itemref [pages]
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             $odePageId = $odeNavStructureSync->getOdePageId();
-            $itemref = $spine->addChild('itemref', ' ');
-            $itemref->addAttribute('idref', 'PAGE-'.$odePageId);
+            if (isset($visiblesPages[$odePageId])) {
+                $itemref = $spine->addChild('itemref', ' ');
+                $itemref->addAttribute('idref', 'PAGE-'.$odePageId);
+            }
         }
 
         return $package;
     }
-
-    // ///////////////////////////////////////////////////////////////////////////////////
-    // HTML
-    // ///////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Generate ePub3 package.opf file.
@@ -820,36 +868,72 @@ class ExportXmlUtil
         $resourcesPrefix,
         $exportType,
     ) {
-        $html = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><html></html>');
+        $title = $odeProperties['pp_title'] ? $odeProperties['pp_title']->getValue() : '';
+        $lang = $odeProperties['pp_lang'] ? $odeProperties['pp_lang']->getValue() : 'es';
 
-        // html attributes
-        $html->addAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-        $html->addAttribute('xmlns:xmlns:epub', 'http://www.idpf.org/2007/ops');
+        $html = '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="'.$lang.'" lang="'.$lang.'">';
+        $html .= "<head><title>{$title}</title></head>";
+        $html .= '<body><nav epub:type="toc" id="toc"><ol>';
 
-        $lang = isset($odeProperties['pp_lang']) ? $odeProperties['pp_lang']->getValue() : Settings::DEFAULT_LOCALE;
-        $html->addAttribute('xml:xml:lang', $lang);
-        $html->addAttribute('lang', $lang);
+        $visiblesPages = [];
+        $indexNode = 0;
 
-        // html -> head
-        $head = $html->addChild('head', '');
-        $meta = $head->addChild('meta', ' ');
-        $meta->addAttribute('charset', 'utf-8');
+        foreach ($pagesFileData as $key => $pageData) {
+            if (self::isVisibleExport($odeNavStructureSyncs, $indexNode)) {
+                $url = $pageData['fileUrl'];
+                // Add the page to the visibles pages and link it with the previous page and the next page
+                $visiblesPages[$key] = ['url' => $url];
+            }
+            ++$indexNode;
+        }
 
-        // html -> body
-        $body = $html->addChild('body', '');
-
-        // html -> body -> nav
-        $nav = $body->addChild('nav', '');
-        $nav->addAttribute('epub:epub:type', 'toc');
-        $nav->addAttribute('id', 'toc');
-
-        $ol = $nav->addChild('ol', ' ');
+        // Build a tree from the flat list
+        $tree = [];
+        $nodes = [];
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             $odePageId = $odeNavStructureSync->getOdePageId();
-            $pageData = $pagesFileData[$odePageId];
-            $li = $ol->addChild('li', ' ');
-            $a = $li->addChild('a', $odeNavStructureSync->getPageName());
-            $a->addAttribute('href', $pageData['fileUrl']);
+            if (isset($visiblesPages[$odePageId])) {
+                $nodes[$odePageId] = [
+                    'id' => $odePageId,
+                    'parent' => $odeNavStructureSync->getOdeParentPageId(),
+                    'name' => $odeNavStructureSync->getPageName(),
+                    'children' => [],
+                ];
+            }
+        }
+
+        foreach ($nodes as $nodeId => &$node) {
+            if (null !== $node['parent'] && isset($nodes[$node['parent']])) {
+                $nodes[$node['parent']]['children'][] = &$node;
+            } else {
+                $tree[] = &$node;
+            }
+        }
+
+        $html .= self::buildEpub3NavList($tree, $pagesFileData);
+
+        $html .= '</ol></nav></body></html>';
+
+        // Convert the HTML string to a SimpleXMLElement before returning
+        libxml_use_internal_errors(true);
+        $simpleXml = simplexml_load_string($html);
+        libxml_clear_errors();
+
+        return $simpleXml;
+    }
+
+    private static function buildEpub3NavList($nodes, $pagesFileData)
+    {
+        $html = '';
+        foreach ($nodes as $node) {
+            $pageFile = $pagesFileData[$node['id']]['fileUrl'];
+            $html .= "<li><a href=\"{$pageFile}\">{$node['name']}</a>";
+            if (!empty($node['children'])) {
+                $html .= '<ol>';
+                $html .= self::buildEpub3NavList($node['children'], $pagesFileData);
+                $html .= '</ol>';
+            }
+            $html .= '</li>';
         }
 
         return $html;
@@ -2558,6 +2642,30 @@ class ExportXmlUtil
                     $relativePath = str_replace($resourcesDir.'/', '', $file->getPathname());
                     $fileElement = $resource->addChild('file');
                     $fileElement->addAttribute('href', $dir.'/'.$relativePath);
+                }
+            }
+        }
+    }
+
+    /**
+     * Adds exported files to the OPF manifest.
+     *
+     * @param string $exportDirPath the path to the export directory
+     * @param string $dir           the directory to add files from
+     */
+    public static function addCommonExportedFilesToOpfManifest($manifest, $exportDirPath, $dir)
+    {
+        $resourcesDir = $exportDirPath.$dir;
+        if (is_dir($resourcesDir)) {
+            $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($resourcesDir));
+            foreach ($iterator as $file) {
+                if ($file->isFile()) {
+                    $relativePath = str_replace($resourcesDir.'/', '', $file->getPathname());
+                    $item = $manifest->addChild('item', ' ');
+                    $item->addAttribute('id', $dir.'/'.$relativePath);
+                    $item->addAttribute('href', $dir.'/'.$relativePath);
+                    $item->addAttribute('media-type', mime_content_type($file->getPathname()));
+                    $item->addAttribute('fallback', 'fallback');
                 }
             }
         }

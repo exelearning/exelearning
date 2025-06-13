@@ -103,7 +103,7 @@ var $exeDevice = {
             <div id="relateQIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_("Create matching games with images, sounds and enriched texts.")} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_("Use Instructions")}</a>
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_("Usage Instructions")}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">

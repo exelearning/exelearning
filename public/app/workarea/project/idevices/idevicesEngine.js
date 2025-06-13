@@ -1444,6 +1444,8 @@ export default class IdevicesEngine {
                         this.removeClassLoadingBlocks();
                         // Load legacy functions
                         this.loadLegacyExeFunctionalitiesExport();
+                        // Enable internal links
+                        this.enableInternalLinks();
                         // Set header
                         this.setNodeContentHeader();
                         // Set page title
@@ -1961,6 +1963,45 @@ export default class IdevicesEngine {
         $exeABCmusic.init();
         // Legacy $exe object
         $exe.init();
+    }
+
+    /**
+     * Enable internal links
+     *
+     */
+    enableInternalLinks() {
+        let eXeNodeLinks = document.querySelectorAll("a[href^='exe-node']");
+        if (eXeNodeLinks.length > 0) {
+            let pages = eXeLearning.app.project.structure.data;
+            let buttonsPages = document.querySelectorAll(
+                'span.nav-element-text',
+            );
+
+            eXeNodeLinks.forEach((link) => {
+                let pageElement = null;
+                let pageName = 'nopage';
+                let pageId = link.href.replace('exe-node:', '');
+
+                pages.forEach((page) => {
+                    if (page.pageId === pageId) {
+                        pageName = page.pageName;
+                    }
+                });
+
+                buttonsPages.forEach((button) => {
+                    if (button.innerText.includes(pageName)) {
+                        pageElement = button;
+                    }
+                });
+
+                if (pageElement) {
+                    link.onclick = function (event) {
+                        event.preventDefault();
+                        pageElement.click();
+                    };
+                }
+            });
+        }
     }
 
     /**

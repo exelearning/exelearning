@@ -192,7 +192,7 @@ var $exeDevice = {
     checkValues: function () {
         // Check instructiones
         if (this.instructions == '') {
-            eXe.app.alert(_('Please write some instructions.'));
+            eXe.app.alert(_('Please write the instructions.'));
             return false;
         }
         // Check options counter
@@ -299,7 +299,7 @@ var $exeDevice = {
     createForm: function (id) {
         const html = `
         <div id="scrambledlistIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible">${_('Create interactive text ordering activities.')} <a  style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Use Instructions')}</a></p>
+            <p class="exe-block-info exe-block-dismissible">${_('Create interactive text ordering activities.')} <a  style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
                 <fieldset class="exe-fieldset">
@@ -505,7 +505,7 @@ var $exeDevice = {
         // Default values
         var buttonText = c_('Check');
         var rightText = c_('Right!');
-        var wrongText = c_('Sorry... The right answer is:');
+        var wrongText = c_('Sorry, that’s incorrect... The right answer is:');
         // Set form values
         let data = this.idevicePreviousData;
         if (data.options) {

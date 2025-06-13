@@ -74,7 +74,7 @@ var $exeDevice = {
         msgAudio: c_('Audio'),
         msgCorrect: c_('Correct'),
         msgIncorrect: c_('Incorrect'),
-        msgWhiteBoard: c_('Digital blackboard'),
+        msgWhiteBoard: c_('Digital whiteboard'),
         msgClose: c_('Close'),
         msgUncompletedActivity: c_('Incomplete activity'),
         msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
@@ -153,7 +153,7 @@ var $exeDevice = {
             <div id="roscoIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_('Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/rosco.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/rosco.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
@@ -182,7 +182,7 @@ var $exeDevice = {
                                 <label for="roscoCaseSensitive"><input type="checkbox" id="roscoCaseSensitive">${_('Case sensitive')}.</label>
                             </p>
                             <p>
-                                <label for="roscoModeBoard"><input type="checkbox" id="roscoModeBoard">${_('Digital blackboard mode')}.</label>
+                                <label for="roscoModeBoard"><input type="checkbox" id="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
                             </p>
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#roscoEEvaluationHelp" id="roscoEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif"  width="16" height="16" alt="${_('Help')}"/></a></strong>

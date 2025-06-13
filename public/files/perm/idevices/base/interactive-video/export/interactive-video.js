@@ -40,7 +40,7 @@ var $interactivevideo = {
         "seen": "Seen",
         "total": "Total",
         "seeAll": "see all the slides and answer all the questions",
-        "noSlides": "This video has no interactive slides.",
+        "noSlides": "This video has no interactive elements.",
         "goOn": "Continue",
         "error": "Error",
         "dataError": "Incompatible code",

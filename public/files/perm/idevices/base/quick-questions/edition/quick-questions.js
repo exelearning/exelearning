@@ -948,7 +948,7 @@ var $exeDevice = {
             html = `
             <div id="gameQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which students see a video, image or text and they have to choose the right answer.')} <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/quext.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    ${_('Create activities in which students see a video, image or text and they have to choose the right answer.')} <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/quext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
@@ -970,7 +970,7 @@ var $exeDevice = {
                             <p>
                                 <strong class="GameModeLabel"><a href="#quextEGameModeHelp" id="quextEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a>${_('Score')}:</strong>
                                 <input class="QXTE-TypeGame" checked="checked" id="quextETypeActivity" type="radio" name="qxtgamemode" value="1" />
-                                <label for="quextETypeActivity">${_('0 to 10')}</label>
+                                <label for="quextETypeActivity">${_('From 0 to 10')}</label>
                                 <input class="QXTE-TypeGame" id="quextEGameMode" type="radio" name="qxtgamemode" value="0" />
                                 <label for="quextEGameMode">${_('Points and lives')}</label>
                                 <input class="QXTE-TypeGame" id="quextETypeReto" type="radio" name="qxtgamemode" value="2" />
@@ -979,8 +979,8 @@ var $exeDevice = {
                             <div id="quextEGameModeHelp" class="QXTE-TypeGameHelp exe-block-info">
                                 <p>
                                     <ul>
-                                        <li><strong>${_('0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
-                                        <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Try to get a high score (thousands of points) and not to lose your lives.')}</li>
+                                        <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
+                                        <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
                                         <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
                                     </ul>
                                 </p>
@@ -994,7 +994,7 @@ var $exeDevice = {
                                <input type="number" name="quextEPercentajeFB" id="quextEPercentajeFB" value="100" min="5" max="100" step="5" disabled /> <label for="quextEPercentajeFB">${_('% right to see the feedback')}</label>
                             </p>
                             <p id="quextEFeedbackP" class="QXTE-EFeedbackP"><textarea id="quextEFeedBackEditor" class="exe-html-editor"></textarea></p>
-                            <p class="QXTE-Flex"><label>${_('Video Intro')}:</label><input type="text" id="quextEVideoIntro" /><a href="#" class="QXTE-ButtonLink" id="quextEVideoIntroPlay" title="${_('Play video intro')}"><img src="${path}quextIEPlay.png" alt="Play" class="QXTE-EButtonImage" /></a></p>
+                            <p class="QXTE-Flex"><label>${_('Video Intro')}:</label><input type="text" id="quextEVideoIntro" /><a href="#" class="QXTE-ButtonLink" id="quextEVideoIntroPlay" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="Play" class="QXTE-EButtonImage" /></a></p>
                             <p><label for="quextEPercentajeQuestions">%${_('Questions')}:</label><input type="number" name="quextEPercentajeQuestions" id="quextEPercentajeQuestions" value="100" min="1" max="100" /><span id="quextENumeroPercentaje">1/1</span></p>
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#quextEEvaluationHelp" id="quextEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
@@ -1196,7 +1196,7 @@ var $exeDevice = {
                                 <div class="QXTE-EVIOptions">
                                     <label for="quextEVIURL">${_('URL')}:</label>
                                     <input id="quextEVIURL" type="text" />
-                                    <a href="#" id="quextEVIPlayI" class="QXTE-ENavigationButton QXTE-EPlayVideo" title="${_('Play video intro')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="QXTE-EButtonImage b-playintro" /></a>
+                                    <a href="#" id="quextEVIPlayI" class="QXTE-ENavigationButton QXTE-EPlayVideo" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="QXTE-EButtonImage b-playintro" /></a>
                                     <label for="quextEVIStart">${_('Start')}:</label>
                                     <input id="quextEVIStart" type="text" value="00:00:00" readonly />
                                     <label for="quextEVIEnd">${_('End')}:</label>

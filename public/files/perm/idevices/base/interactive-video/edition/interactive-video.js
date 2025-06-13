@@ -40,7 +40,7 @@ var $exeDevice = {
         "seen": c_("Seen"),
         "total": c_("Total"),
         "seeAll": c_("see all the slides and answer all the questions"),
-        "noSlides": c_("This video has no interactive slides."),
+        "noSlides": c_("This video has no interactive elements."),
         "goOn": c_("Continue"),
         "error": c_("Error"),
         "dataError": c_("Incompatible code"),

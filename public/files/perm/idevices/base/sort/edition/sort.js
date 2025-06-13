@@ -137,7 +137,7 @@ var $exeDevice = {
             <div id="gameQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_('Create interactive activities in which players will have to order cards with images, texts and/or sounds.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/ordena.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/ordena.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">

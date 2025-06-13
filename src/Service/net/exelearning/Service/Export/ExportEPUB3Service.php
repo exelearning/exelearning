@@ -142,7 +142,7 @@ class ExportEPUB3Service implements ExportServiceInterface
             $odeNavStructureSyncs,
             $pagesFileData,
             $odeProperties,
-            $elpFileName,
+            $exportDirPath,
             $resourcesPrefix,
             $this->exportType
         );

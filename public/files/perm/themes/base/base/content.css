@@ -329,6 +329,7 @@ button.toggler:focus {
     border: 1px solid #ddd;
     padding: 20px;
     border-radius: 8px;
+    overflow: auto;
 }
 
 .exe-export .box.no-header .box-content{

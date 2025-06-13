@@ -99,7 +99,7 @@ var $exeDevice = {
         mgsSelectEQ :c_('Click on one of the marked chemical elements.'),
         msgNumber: c_('Number'),
         msgGroup: c_('Group'),
-        msgNewTry: c_('Try again'),
+        msgNewTry: c_('Try again!'),
         msgSymbol: c_('Symbol'),
         msgName: c_('Name'),
         msgConfiguration: c_('Configuration'),
@@ -274,7 +274,7 @@ var $exeDevice = {
         <div id="ptQEIdeviceForm">
             <p class="exe-block-info exe-block-dismissible">
                 ${_('Create interactive activities for the periodic table')} 
-                <a style="display:none;" href="https://youtu.be/br6S9kcuJI8" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                <a style="display:none;" href="https://youtu.be/br6S9kcuJI8" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                 <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
             </p>
             <div class="exe-form-tab" title="${_('General settings')}">

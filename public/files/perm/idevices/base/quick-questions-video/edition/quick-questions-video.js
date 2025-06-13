@@ -160,11 +160,11 @@ var $exeDevice = {
         msgs.msgEPointExist = _('There is already a question in that second.');
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideSolution = _('Please write the solution');
-        msgs.msgEDefintion = _('Please provide the word definition');
+        msgs.msgEDefintion = _('Please provide the definition of the word or phrase');
         msgs.msgProvideFB = _(
             'Write the message to be displayed when passing the game',
         );
-        msgs.msgDuration = _('Please check the video length and the end time');
+        msgs.msgDuration = _('The video's end time must be shorter than its total duration');
         msgs.msgFormatVideo = _(
             'Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)',
         );
@@ -746,7 +746,7 @@ var $exeDevice = {
                 <div id="vquextQEIdeviceForm">
                     <p class="exe-block-info exe-block-dismissible" style="position:relative">
                         ${_('Create activities consisting on a video with interactive questions.')} 
-                        <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/vdeoquext.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                        <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/vdeoquext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                         <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                     </p>
                     <div class="exe-form-tab" title="${_('General settings')}">
@@ -770,7 +770,7 @@ var $exeDevice = {
                                 <p>
                                     <strong class="GameModeLabel"><a href="#vquextEGameModeHelp" id="vquextEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a>${_('Score')}:</strong>
                                     <input class="VDQXTE-TypeGame" checked="checked" id="vquextETypeActivity" type="radio" name="vqxtgamemode" value="1" />
-                                    <label for="vquextETypeActivity">${_('0 to 10')}</label>
+                                    <label for="vquextETypeActivity">${_('From 0 to 10')}</label>
                                     <input class="VDQXTE-TypeGame" id="vquextEGameMode" type="radio" name="vqxtgamemode" value="0" />
                                     <label for="vquextEGameMode">${_('Points and lives')}</label>
                                     <input class="VDQXTE-TypeGame" id="vquextETypeReto" type="radio" name="vqxtgamemode" value="2" />
@@ -778,8 +778,8 @@ var $exeDevice = {
                                 </p>
                                 <div id="vquextEGameModeHelp" class="VDQXTE-TypeGameHelp exe-block-info">
                                     <ul>
-                                        <li><strong>${_('0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
-                                        <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Try to get a high score (thousands of points) and not to loose your lives.')}</li>
+                                        <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
+                                        <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
                                         <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
                                     </ul>
                                 </div>
@@ -811,7 +811,7 @@ var $exeDevice = {
                                     <span id="vquextENumeroPercentaje">1/1</span>
                                 </p>
                                 <p>
-                                    <label for="vquextEModeBoard"><input type="checkbox" id="vquextEModeBoard">${_('Digital blackboard mode')}</label>
+                                    <label for="vquextEModeBoard"><input type="checkbox" id="vquextEModeBoard">${_('Digital whiteboard mode')}</label>
                                 </p>
                                 <p class="Games-Reportdiv">
                                     <strong class=""><a href="#vquextEEvaluationHelp" id="vquextEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>

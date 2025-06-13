@@ -59,7 +59,7 @@ var $exeDevice = {
         msgShow: c_('Show'),
         msgHide: c_('Hide'),
         msgCheck: c_('Check'),
-        msgReboot: c_('Try again'),
+        msgReboot: c_('Try again!'),
         msgScore: c_('Score'),
         msgWeight: c_('Weight'),
     },
@@ -322,7 +322,7 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="trueorfalseIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible"">${_('Create interactive True or False quizzes.')} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Use Instructions')}</a></p>
+            <p class="exe-block-info exe-block-dismissible"">${_('Create interactive True or False quizzes.')} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Answer all the questions in this quiz.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">

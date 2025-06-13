@@ -73,7 +73,7 @@ var $exeDevice = {
         msgMoveOne: c_('Move on'),
         msgUseClue: c_('You used one clue. You can only get %s points.'),
         msgUseAllClues: c_('You already used all the clues. You can only get %s points.'),
-        msgModeWhiteBoard: c_('Digital blackboard mode'),
+        msgModeWhiteBoard: c_('Digital whiteboard mode'),
         msgCheckLetter: c_('Check the letter'),
         msgUncompletedActivity: c_('Incomplete activity'),
         msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
@@ -402,7 +402,7 @@ var $exeDevice = {
             <div id="identifyQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_('Create activities in which the players, with some clues, will have to guess a character, an object or the solution to a problem.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/identifica.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/identifica.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">

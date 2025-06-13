@@ -72,7 +72,7 @@ var $exeDevice = {
         msgYes: c_('Yes'),
         msgNo: c_('No'),
         msgTimeOver: c_('Time is up. Please try again'),
-        mgsGameStart: c_('The game has started! Drag each card to your container'),
+        mgsGameStart: c_('The game has started! Drag each card to its container'),
         msgSelectCard: c_('Choose another card'),
         msgSelectCardOne: c_('Choose a card'),
         msgReboot: c_('Restart'),
@@ -83,10 +83,10 @@ var $exeDevice = {
         msgShowAnswers: c_('Check results'),
         msgUnansweredQuestions: c_('There were %s cards to be placed correctly. Do you want to try again?'),
         msgAllCorrect: c_('Brilliant! All perfect!'),
-        msgTooManyTries: c_('Great! You have solved this activity in %s attempts. Surely you can do it faster!'),
+        msgTooManyTries: c_('Great job! You have solved this activity in %s attempts. Surely you can do it faster!'),
         msgQ5: c_('You placed %s cards in the wrong place. Please try again!'),
-        msgQ7: c_('Great! You have correctly classified most cards, %s, but you can still do better'),
-        msgQ9: c_('Great! Only %s cards left to be placed correctly. Strive for perfection!'),
+        msgQ7: c_('Great job! You have correctly classified most cards, %s, but you can do even better'),
+        msgQ9: c_('Great job! Only %s cards left to be placed correctly. Strive for perfection!'),
         msgSaveGameAuto: c_('Your score will be automatically saved at the end of the game.'),
         msgOnlySaveGameAuto: c_('Your score will be automatically saved at the end of the game. You can only play once.'),
         msgEndGamerScore: c_('You can only save your score after finishing the game.'),
@@ -147,7 +147,7 @@ var $exeDevice = {
             <div id="clasificaQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_('Create interactive activities in which players have to classify cards with images, texts and/or sounds.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/clasifica.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/clasifica.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">

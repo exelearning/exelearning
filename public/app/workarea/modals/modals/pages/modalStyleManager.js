@@ -1170,7 +1170,7 @@ export default class ModalStyleManager extends Modal {
             } else {
                 // Show alert
                 this.showElementAlert(
-                    _('Failed to install the new style theme'),
+                    _('Failed to install the new style'),
                     response,
                 );
             }
@@ -1202,10 +1202,7 @@ export default class ModalStyleManager extends Modal {
             return promise;
         } else {
             // Show alert
-            this.showElementAlert(
-                _('Failed to create the style theme'),
-                response,
-            );
+            this.showElementAlert(_('Failed to create the style'), response);
         }
     }
 
@@ -1235,10 +1232,7 @@ export default class ModalStyleManager extends Modal {
             return promise;
         } else {
             // Show alert
-            this.showElementAlert(
-                _('Failed to edit the style theme'),
-                response,
-            );
+            this.showElementAlert(_('Failed to edit the style '), response);
         }
     }
 

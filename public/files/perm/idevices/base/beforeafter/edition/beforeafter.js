@@ -84,7 +84,7 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _('Your browser is not compatible with this tool.');
         msgs.msgCompleteData = _('Provide an image');
         msgs.msgCompleteDataBack = _('Provide an image');
-        msgs.msgDescription = _('Provide an description');
+        msgs.msgDescription = _('Provide a description');
         msgs.msgEOneCard = _('Please create at least one card');
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _('At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.');
@@ -97,7 +97,7 @@ var $exeDevice = {
             <div id="beforeAfterQIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_("Create before-and-after comparisons with side-by-side images of similar or proportional size.")} 
-                    <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/beforeafter-.html" hreflang="es" target="_blank">${_("Use Instructions")}</a>
+                    <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/beforeafter-.html" hreflang="es" target="_blank">${_("Usage Instructions")}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
