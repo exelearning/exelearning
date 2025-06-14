@@ -7,11 +7,11 @@
     <body>
       <trans-unit id="cBwQM6_" resname="Permissions error">
         <source>Permissions error</source>
-        <target>~Baimenak errorea</target>
+        <target>Baimen-errorea</target>
       </trans-unit>
       <trans-unit id="Kk_KT2R" resname="This is just a demo version. Not for real projects.">
         <source>This is just a demo version. Not for real projects.</source>
-        <target>~Hau demo bertsioa besterik ez da. Ez da proiektu errealetarako.</target>
+        <target>Hau demo bertsio bat da. Ez erabili benetako proiektuetarako.</target>
       </trans-unit>
       <trans-unit id="tiw1v87" resname="Accept">
         <source>Accept</source>
@@ -23,7 +23,7 @@
       </trans-unit>
       <trans-unit id="zhlMs3D" resname="iDevice error">
         <source>iDevice error</source>
-        <target>~iDevice errorea</target>
+        <target>iDevicearen errorea</target>
       </trans-unit>
       <trans-unit id="5ieXOaE" resname="Report an Issue">
         <source>Report an Issue</source>
@@ -35,7 +35,7 @@
       </trans-unit>
       <trans-unit id=".mzGlnD" resname="Type your own texts or use the default ones:">
         <source>Type your own texts or use the default ones:</source>
-        <target>~Idatzi zure testu propioak edo erabili lehendik daudenak:</target>
+        <target>Idatzi zure testuak edo erabili lehenetsitakoak:</target>
       </trans-unit>
       <trans-unit id="UmFTqFi" resname="Instructions">
         <source>Instructions</source>
@@ -43,11 +43,11 @@
       </trans-unit>
       <trans-unit id="S5t_6Ei" resname="You might create a sequence of challenges where players won't be able to access a new game or challenge until they obtain a key from previous activity. For this purpose, you might set up an access code as well as a message that will be displayed to players when they reach a fixed percentage of correct answers, which they can use as a password for a new challenge or a following activity.">
         <source>You might create a sequence of challenges where players won't be able to access a new game or challenge until they obtain a key from previous activity. For this purpose, you might set up an access code as well as a message that will be displayed to players when they reach a fixed percentage of correct answers, which they can use as a password for a new challenge or a following activity.</source>
-        <target>Erronka ibilbide sortu nahi baduzu, jokoaren edo erronkaren giltza aurreko jardueran eman dezakezu. Adibidez, asmaketa ehuneko jakin batera iristean mezu batean eman dezakezu hurrengo jardueraren sarbide kodea.</target>
+        <target>Erronka-ibilbide bat sor dezakezu. Jokalariek ezin izango dute joko edo erronka berri batera sartu aurreko jarduera batean gakoa eskuratu arte. Horretarako, sarbide-kodea ezar dezakezu eta mezua erakutsi. Jokalariek arrakasta-portzentaje jakin bat lortzen dutenean agertuko da, erronka berri baterako pasahitz gisa erabiltzeko.</target>
       </trans-unit>
       <trans-unit id="Maxghdy" resname="Access code is required">
         <source>Access code is required</source>
-        <target>Sarbide-kodea derrigorrezkoa da</target>
+        <target>Sarbide-kodea beharrezkoa da</target>
       </trans-unit>
       <trans-unit id="utNdp1g" resname="Access code">
         <source>Access code</source>
@@ -67,35 +67,35 @@
       </trans-unit>
       <trans-unit id="6WQaM5_" resname="Percentage of correct answers required to display the message">
         <source>Percentage of correct answers required to display the message</source>
-        <target>Mezua erakusteko beharrezkoa den asmaketa ehunekoa</target>
+        <target>Mezua erakusteko asmatu behar den portzentajea</target>
       </trans-unit>
       <trans-unit id="bgoW3zD" resname="You must write a clue">
         <source>You must write a clue</source>
-        <target>Lagungarri bat idatzi behar duzu</target>
+        <target>Pista bat idatzi behar duzu</target>
       </trans-unit>
       <trans-unit id="uSoi.bp" resname="You must provide the code to play this game">
         <source>You must provide the code to play this game</source>
-        <target>Jokoan hasteko sartu beharreko kodea eman behar duzu</target>
+        <target>Joko honen kodea eman behar duzu</target>
       </trans-unit>
       <trans-unit id="zhSGQRf" resname="Please explain how to obtain the code to play this game">
         <source>Please explain how to obtain the code to play this game</source>
-        <target>Azaldu nola lortu behar den joko honen sarbide kodea</target>
+        <target>Azaldu nola lortu joko honen kodea</target>
       </trans-unit>
       <trans-unit id="qmvXFPV" resname="Save score">
         <source>Save score</source>
-        <target>Gorde puntuak</target>
+        <target>Gorde puntuazioa</target>
       </trans-unit>
       <trans-unit id="2MMjHQO" resname="Do not save the score">
         <source>Do not save the score</source>
-        <target>Ez gorde puntuak</target>
+        <target>Ez gorde puntuazioa</target>
       </trans-unit>
       <trans-unit id="2xeFLb0" resname="Repeat activity">
         <source>Repeat activity</source>
-        <target>Egin berriro jarduera</target>
+        <target>Errepikatu jarduera</target>
       </trans-unit>
       <trans-unit id="WLTA3.N" resname="Show a button to save the score">
         <source>Show a button to save the score</source>
-        <target>Erakutsi puntuak gordetzeko botoia</target>
+        <target>Erakutsi puntuazioa gordetzeko botoia</target>
       </trans-unit>
       <trans-unit id="24jmizq" resname="Button text">
         <source>Button text</source>
@@ -103,23 +103,23 @@
       </trans-unit>
       <trans-unit id="dTKgGRP" resname="This will only work when exported as SCORM">
         <source>This will only work when exported as SCORM</source>
-        <target>~Honek SCORM moduan esportatzean bakarrik funtzionatuko du</target>
+        <target>SCORM gisa esportatzean soilik funtzionatuko du</target>
       </trans-unit>
       <trans-unit id="pPZYAc0" resname="The score will be automatically saved after answering each question and at the end of the game.">
         <source>The score will be automatically saved after answering each question and at the end of the game.</source>
-        <target>Puntuak automatikoki gordeko dira galdera bakoitza erantzun ondoren eta jokoaren amaieran.</target>
+        <target>Galdera bakoitza erantzun ondoren eta jokoa amaitzean, puntuazioa automatikoki gordeko da.</target>
       </trans-unit>
       <trans-unit id="LT.bNQq" resname="The button will only be displayed when exported as SCORM.">
         <source>The button will only be displayed when exported as SCORM.</source>
-        <target>~Botoia soilik erakutsiko da SCORM moduan esportatzean.</target>
+        <target>Botoia SCORM gisa esportatzean soilik erakutsiko da.</target>
       </trans-unit>
       <trans-unit id="7hzwYBq" resname="Weighted">
         <source>Weighted</source>
-        <target>~Pisutsua</target>
+        <target>Pisuduna</target>
       </trans-unit>
       <trans-unit id="ArxOiUT" resname="You can easily generate multiple questions for the activity using AI.">
         <source>You can easily generate multiple questions for the activity using AI.</source>
-        <target>~AI erabiliz, erraz sor dezakezu galdera anitz jarduerarako.</target>
+        <target>Adimen artifiziala erabiliz, jarduerarako galdera anitz erraz sortu ditzakezu.</target>
       </trans-unit>
       <trans-unit id="oPzjCWg" resname="Import">
         <source>Import</source>
@@ -131,47 +131,47 @@
       </trans-unit>
       <trans-unit id="PiZUDcG" resname="Add questions">
         <source>Add questions</source>
-        <target>~Gehitu galderak</target>
+        <target>Gehitu galderak</target>
       </trans-unit>
       <trans-unit id="uS3p2Fi" resname="Act as a highly experienced teacher.">
         <source>Act as a highly experienced teacher.</source>
-        <target></target>
+        <target>Jokatu esperientzia handiko irakasle gisa.</target>
       </trans-unit>
       <trans-unit id="w28CCkU" resname="Export questions">
         <source>Export questions</source>
-        <target>~Exportatu galderak</target>
+        <target>Esportatu galderak</target>
       </trans-unit>
       <trans-unit id="2iIzK2I" resname="Dog">
         <source>Dog</source>
-        <target>~Txakurra</target>
+        <target>Txakurra</target>
       </trans-unit>
       <trans-unit id="hU3.z0n" resname="Frog">
         <source>Frog</source>
-        <target>~Begi</target>
+        <target>Igela</target>
       </trans-unit>
       <trans-unit id="A3SuGfy" resname="Eagle">
         <source>Eagle</source>
-        <target>~Azeri</target>
+        <target>Arranoa</target>
       </trans-unit>
       <trans-unit id="Gq_qSng" resname="Cat">
         <source>Cat</source>
-        <target>~Katu</target>
+        <target>Katua</target>
       </trans-unit>
       <trans-unit id="LjmHzgp" resname="Wake up">
         <source>Wake up</source>
-        <target>~Esnatu</target>
+        <target>Esnatu</target>
       </trans-unit>
       <trans-unit id="VgaFhx1" resname="Have breakfast">
         <source>Have breakfast</source>
-        <target>~Goza ezazu gosaria</target>
+        <target>Gosaldu</target>
       </trans-unit>
       <trans-unit id="eHSmiUI" resname="Go to work">
         <source>Go to work</source>
-        <target>~Joan lanera</target>
+        <target>Lanera joan</target>
       </trans-unit>
       <trans-unit id="tgLcrlf" resname="Please enter at least one question.">
         <source>Please enter at least one question.</source>
-        <target>~Mesedez, sartu gutxienez galdera bat.</target>
+        <target>Idatzi gutxienez galdera bat, mesedez.</target>
       </trans-unit>
       <trans-unit id="CRd03c8" resname="Activity">
         <source>Activity</source>
@@ -183,11 +183,11 @@
       </trans-unit>
       <trans-unit id="O9DuASa" resname="Content after">
         <source>Content after</source>
-        <target>Edukia ondoren</target>
+        <target>Ondorengo edukia</target>
       </trans-unit>
       <trans-unit id="lszHG7_" resname="Content before">
         <source>Content before</source>
-        <target>Edukia aurretik</target>
+        <target>Aurreko edukia</target>
       </trans-unit>
       <trans-unit id="D5DVjoG" resname="Optional">
         <source>Optional</source>
@@ -195,11 +195,11 @@
       </trans-unit>
       <trans-unit id="9NpcGaw" resname="Custom texts">
         <source>Custom texts</source>
-        <target>~Testu pertsonalizatuak</target>
+        <target>Testu pertsonalizatuak</target>
       </trans-unit>
       <trans-unit id="VTgKlwx" resname="Passwords">
         <source>Passwords</source>
-        <target>Pasahitza</target>
+        <target>Pasahitzak</target>
       </trans-unit>
       <trans-unit id="vZS1nnH" resname="SCORM">
         <source>SCORM</source>
@@ -207,15 +207,15 @@
       </trans-unit>
       <trans-unit id="a0r35vz" resname="You can import questions compatible with this activity from txt or xml (Moodle) files.">
         <source>You can import questions compatible with this activity from txt or xml (Moodle) files.</source>
-        <target>~Galdu ahal izango dituzu jarduera honekin bateragarriak diren galderak txt edo xml (Moodle) fitxategietatik.</target>
+        <target>.txt edo .xml (Moodle) fitxategietatik jarduera honekin bateragarriak diren galderak inporta ditzakezu.</target>
       </trans-unit>
       <trans-unit id="H30YRyz" resname="Import/Export">
         <source>Import/Export</source>
-        <target>~Inportatu/Esportatu</target>
+        <target>Inportatu/Esportatu</target>
       </trans-unit>
       <trans-unit id="iaA3k8T" resname="Prompt">
         <source>Prompt</source>
-        <target>~Galdetegia</target>
+        <target>Eman agindua</target>
       </trans-unit>
       <trans-unit id="Rx5irUP" resname="Questions">
         <source>Questions</source>
@@ -223,7 +223,7 @@
       </trans-unit>
       <trans-unit id="gahpNV7" resname="Generate">
         <source>Generate</source>
-        <target>~Sortu</target>
+        <target>Sortu</target>
       </trans-unit>
       <trans-unit id="wKDRtVE" resname="Formats">
         <source>Formats</source>
@@ -231,11 +231,11 @@
       </trans-unit>
       <trans-unit id="Q1.NSyT" resname="Examples">
         <source>Examples</source>
-        <target>~Adibideak</target>
+        <target>Adibideak</target>
       </trans-unit>
       <trans-unit id="nIgjEQE" resname="You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.">
         <source>You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.</source>
-        <target>~Galderak bakarrik itzuli behar dituzu zenbakitik gabe eta sailkapen edo puntuzko zerrendarik gabe, kode bloke baten barruan, eta ez izan beste edozein HTML elementu, hala nola botoiak.</target>
+        <target>Itzuli soilik galderak zenbakirik, kategoriarik edo bulet punturik gabe, kode-bloke berean eta HTML elementu gehigarririk gabe (botoiak, etab.).</target>
       </trans-unit>
       <trans-unit id="z9OKodR" resname="Save">
         <source>Save</source>
@@ -247,119 +247,119 @@
       </trans-unit>
       <trans-unit id="54w4rz_" resname="You can export its questions in txt format to integrate them into other compatible activities.">
         <source>You can export its questions in txt format to integrate them into other compatible activities.</source>
-        <target>~Galderak esportatu ditzakezu txt formatuan beste jarduera bateragarrietan integratzeko.</target>
+        <target>Galderak .txt formatuan esporta ditzakezu beste jarduera bateragarrietan txertatzeko.</target>
       </trans-unit>
       <trans-unit id="bOxwr9C" resname="Specialty">
         <source>Specialty</source>
-        <target>~Alderdi espezialitatea</target>
+        <target>Espezialitatea</target>
       </trans-unit>
       <trans-unit id="uRnFNV." resname="Biology">
         <source>Biology</source>
-        <target>~Biologia</target>
+        <target>Biologia</target>
       </trans-unit>
       <trans-unit id="HIoQjss" resname="Law">
         <source>Law</source>
-        <target>~Legeria</target>
+        <target>Zuzenbidea</target>
       </trans-unit>
       <trans-unit id="2iHcgur" resname="Economy">
         <source>Economy</source>
-        <target>~Economia</target>
+        <target>Ekonomia</target>
       </trans-unit>
       <trans-unit id="qVKCezd" resname="Education">
         <source>Education</source>
-        <target>~Hezkuntza</target>
+        <target>Hezkuntza</target>
       </trans-unit>
       <trans-unit id="nsHeHKC" resname="Geology">
         <source>Geology</source>
-        <target>~Geologia</target>
+        <target>Geologia</target>
       </trans-unit>
       <trans-unit id="7oKpSxb" resname="History">
         <source>History</source>
-        <target>~Historia</target>
+        <target>Historia</target>
       </trans-unit>
       <trans-unit id="jgehxHV" resname="Computer Science">
         <source>Computer Science</source>
-        <target>~Informatika</target>
+        <target>Informatika</target>
       </trans-unit>
       <trans-unit id="ZESFLva" resname="Mathematics">
         <source>Mathematics</source>
-        <target>~Matematika</target>
+        <target>Matematika</target>
       </trans-unit>
       <trans-unit id="hYA9NWW" resname="Medicine">
         <source>Medicine</source>
-        <target>~Medikuntza</target>
+        <target>Medikuntza</target>
       </trans-unit>
       <trans-unit id="cXXxw9x" resname="Psychology">
         <source>Psychology</source>
-        <target>~Psikologia</target>
+        <target>Psikologia</target>
       </trans-unit>
       <trans-unit id="9AiC6Pp" resname="Chemistry">
         <source>Chemistry</source>
-        <target>~Kimika</target>
+        <target>Kimika</target>
       </trans-unit>
       <trans-unit id="qqxHdZ_" resname="Course">
         <source>Course</source>
-        <target>~Kursoa</target>
+        <target>Maila</target>
       </trans-unit>
       <trans-unit id="eWdRhmo" resname="3rd ESO">
         <source>3rd ESO</source>
-        <target>~3. DBH</target>
+        <target>DBH 3. maila</target>
       </trans-unit>
       <trans-unit id="wzCtHfm" resname="1st Primary">
         <source>1st Primary</source>
-        <target>~Lehen Hezkuntza 1. maila</target>
+        <target>Lehen Hezkuntza 1. maila</target>
       </trans-unit>
       <trans-unit id="bMR8J_0" resname="2nd Primary">
         <source>2nd Primary</source>
-        <target>~Bigarren Hezkuntza 2. maila</target>
+        <target>Lehen Hezkuntza 2. maila</target>
       </trans-unit>
       <trans-unit id="h2k5xVp" resname="3rd Primary">
         <source>3rd Primary</source>
-        <target>~Hirugarren Hezkuntza 3. maila</target>
+        <target>Lehen Hezkuntza 3. maila</target>
       </trans-unit>
       <trans-unit id="Am.kz_P" resname="4th Primary">
         <source>4th Primary</source>
-        <target>~Laugarren Hezkuntza 4. maila</target>
+        <target>Lehen Hezkuntza 4. maila</target>
       </trans-unit>
       <trans-unit id="iYLd.HR" resname="5th Primary">
         <source>5th Primary</source>
-        <target>~Bosgarren Hezkuntza 5. maila</target>
+        <target>Lehen Hezkuntza 5. maila</target>
       </trans-unit>
       <trans-unit id="IDjFUHh" resname="6th Primary">
         <source>6th Primary</source>
-        <target>~Seigarren Hezkuntza 6. maila</target>
+        <target>Lehen Hezkuntza 6. maila</target>
       </trans-unit>
       <trans-unit id="_1bWfas" resname="1st ESO">
         <source>1st ESO</source>
-        <target>~Lehen DBH</target>
+        <target>DBH 1. maila</target>
       </trans-unit>
       <trans-unit id="trKhYEk" resname="2nd ESO">
         <source>2nd ESO</source>
-        <target>~Bigarren DBH</target>
+        <target>DBH 2. maila</target>
       </trans-unit>
       <trans-unit id="dDv9leL" resname="4th ESO">
         <source>4th ESO</source>
-        <target>~Laugarren DBH</target>
+        <target>DBH 4. maila</target>
       </trans-unit>
       <trans-unit id=".EQIA7F" resname="1st Baccalaureate">
         <source>1st Baccalaureate</source>
-        <target>~1. Batxilergoa</target>
+        <target>Batxilergoko 1. maila</target>
       </trans-unit>
       <trans-unit id="HciFyVq" resname="2nd Baccalaureate">
         <source>2nd Baccalaureate</source>
-        <target>~2. Bigarren Batxilergoa</target>
+        <target>Batxilergoko 2. maila</target>
       </trans-unit>
       <trans-unit id="uw.WZ5q" resname="Intermediate Vocational Training">
         <source>Intermediate Vocational Training</source>
-        <target>~3. Lanbide Heziketa Ertainea</target>
+        <target>Erdi-mailako Lanbide Heziketa</target>
       </trans-unit>
       <trans-unit id="CMSfOfg" resname="Higher Vocational Training">
         <source>Higher Vocational Training</source>
-        <target>~4. Lanbide Heziketa Gorenekoa</target>
+        <target>Goi-mailako Lanbide Heziketa</target>
       </trans-unit>
       <trans-unit id="E5qzcNu" resname="Number of Questions">
         <source>Number of Questions</source>
-        <target>~5. Galderen Kopurua</target>
+        <target>Galdera kopurua</target>
       </trans-unit>
       <trans-unit id="GSy11o_" resname="Topic">
         <source>Topic</source>
@@ -379,15 +379,15 @@
       </trans-unit>
       <trans-unit id="qWqqMOi" resname="Neither the word nor the definition must contain #">
         <source>Neither the word nor the definition must contain #</source>
-        <target>~6. Ez da hitza edo definizioa # izan behar</target>
+        <target>Hitzak eta definizioak ez dute # karakterea izan behar</target>
       </trans-unit>
       <trans-unit id="GrS6irX" resname="Heart">
         <source>Heart</source>
-        <target>~7. Bihotza</target>
+        <target>Bihotza</target>
       </trans-unit>
       <trans-unit id="fiooJez" resname="A muscular organ that pumps blood through the body">
         <source>A muscular organ that pumps blood through the body</source>
-        <target>~8. Gorputzean odola ponpatzen duen organo gihartsua</target>
+        <target>Muskuluz osatutako organoa, uzkurdura erritmikoen bidez odola gorputzean barrena zirkulatzea eragiten duena</target>
       </trans-unit>
       <trans-unit id="DL_wAnF" resname="Type">
         <source>Type</source>
@@ -395,27 +395,27 @@
       </trans-unit>
       <trans-unit id="GDGJVCw" resname="Letter">
         <source>Letter</source>
-        <target>~9. Letra</target>
+        <target>Letra</target>
       </trans-unit>
       <trans-unit id="_bZe2Fx" resname="The type will be 0 if the word starts with the letter and 1 if the word contains the letter">
         <source>The type will be 0 if the word starts with the letter and 1 if the word contains the letter</source>
-        <target>~10. Tipa 0 izango da hitza letra batekin hasten bada eta 1 letra hori hitzaren barruan badago</target>
+        <target>Mota 0 izango da hitza letrarekin hasten bada, eta 1 letra hitzaren barruan badago</target>
       </trans-unit>
       <trans-unit id="i0qIaMr" resname="Atom">
         <source>Atom</source>
-        <target>~Atomua</target>
+        <target>Atomoa</target>
       </trans-unit>
       <trans-unit id="gZ_WIsc" resname="The basic unit of a chemical element">
         <source>The basic unit of a chemical element</source>
-        <target>~Elementu kimikoaren unitate oinarria</target>
+        <target>Elementu kimiko baten oinarrizko unitatea</target>
       </trans-unit>
       <trans-unit id="37SyX3s" resname="The study of living organisms">
         <source>The study of living organisms</source>
-        <target>~Organismo bizidunen azterketa</target>
+        <target>Izaki bizidunen ikerketa</target>
       </trans-unit>
       <trans-unit id="nRubxAe" resname="B">
         <source>B</source>
-        <target>~B</target>
+        <target>B</target>
       </trans-unit>
       <trans-unit id="o_GaVF4" resname="Solution">
         <source>Solution</source>
@@ -423,323 +423,323 @@
       </trans-unit>
       <trans-unit id="A80BX0s" resname="OptionA">
         <source>OptionA</source>
-        <target>~AukeraA</target>
+        <target>A aukera</target>
       </trans-unit>
       <trans-unit id="lG5coyv" resname="OptionB">
         <source>OptionB</source>
-        <target>~AukeraB</target>
+        <target>B aukera</target>
       </trans-unit>
       <trans-unit id="2S1TCC_" resname="OptionC">
         <source>OptionC</source>
-        <target>~AukeraC</target>
+        <target>C aukera</target>
       </trans-unit>
       <trans-unit id="OQr8Fru" resname="OptionD">
         <source>OptionD</source>
-        <target>~AukeraD</target>
+        <target>D aukera</target>
       </trans-unit>
       <trans-unit id="W92xQWm" resname="Solution: 0, 1, 2 or 3">
         <source>Solution: 0, 1, 2 or 3</source>
-        <target>~Ebatziunea: 0, 1, 2 edo 3</target>
+        <target>Soluzioa: 0, 1, 2 edo 3</target>
       </trans-unit>
       <trans-unit id="roZg7vS" resname="What is the largest planet in the solar system?">
         <source>What is the largest planet in the solar system?</source>
-        <target>~Zer da eguzki-sistema handiena planeta?</target>
+        <target>Zein da eguzki-sisteman dagoen planetarik handiena?</target>
       </trans-unit>
       <trans-unit id="lfnK1x6" resname="Earth">
         <source>Earth</source>
-        <target>~Lurra</target>
+        <target>Lurra</target>
       </trans-unit>
       <trans-unit id="oGhSn6Z" resname="Jupiter">
         <source>Jupiter</source>
-        <target>~Jupiterrena</target>
+        <target>Jupiter</target>
       </trans-unit>
       <trans-unit id="lvoZCJP" resname="Mars">
         <source>Mars</source>
-        <target>~Marte</target>
+        <target>Marte</target>
       </trans-unit>
       <trans-unit id="zQXldY4" resname="Venus">
         <source>Venus</source>
-        <target>~Venus</target>
+        <target>Artizarra</target>
       </trans-unit>
       <trans-unit id="PT5u0cQ" resname="What process do plants use to produce energy?">
         <source>What process do plants use to produce energy?</source>
-        <target>~Nolakoa da landareek janaria sortzeko prozesua?</target>
+        <target>Zein prozesu erabiltzen dute landareek energia ekoizteko?</target>
       </trans-unit>
       <trans-unit id="uDiOQgl" resname="Photosynthesis">
         <source>Photosynthesis</source>
-        <target>~Fotosintesia</target>
+        <target>Fotosintesia</target>
       </trans-unit>
       <trans-unit id="dIzg8mh" resname="Respiration">
         <source>Respiration</source>
-        <target>~Arnasketak</target>
+        <target>Arnasketa</target>
       </trans-unit>
       <trans-unit id="Y4OGrSx" resname="Digestion">
         <source>Digestion</source>
-        <target>~Digestioa</target>
+        <target>Digestioa</target>
       </trans-unit>
       <trans-unit id="C7ZfPyH" resname="Solution: Any combination of A,B,C and D: A, AC, CD...">
         <source>Solution: Any combination of A,B,C and D: A, AC, CD...</source>
-        <target>~Emaitza: A, B, C eta D konbinazio edozein: A, AC, CD...</target>
+        <target>Soluzioa: Aren, Bren, Cren eta Dren arteko edozein konbinazio: A, AC, CD...</target>
       </trans-unit>
       <trans-unit id="mwSYy_O" resname="A">
         <source>A</source>
-        <target>~A</target>
+        <target>A</target>
       </trans-unit>
       <trans-unit id="Ksq3oiL" resname="Which of the following are mammals?">
         <source>Which of the following are mammals?</source>
-        <target>~Zeintzuk dira ugaztunak?</target>
+        <target>Honako hauetatik zein dira ugaztunak?</target>
       </trans-unit>
       <trans-unit id="12SWIl2" resname="Lizard">
         <source>Lizard</source>
-        <target>~Lizard</target>
+        <target>Muskerra</target>
       </trans-unit>
       <trans-unit id="3rCLJgl" resname="AB">
         <source>AB</source>
-        <target>~AB</target>
+        <target>AB</target>
       </trans-unit>
       <trans-unit id="TstcmWw" resname="Which gases are involved in photosynthesis?">
         <source>Which gases are involved in photosynthesis?</source>
-        <target>~Zeintzuk dira gasak argi-energiaren bidezko argiztapenean parte hartzen dutenak?</target>
+        <target>Zein gasek eragiten dute fotosintesian?</target>
       </trans-unit>
       <trans-unit id="x6_PDUx" resname="Oxygen">
         <source>Oxygen</source>
-        <target>~Oxigenoa</target>
+        <target>Oxigenoa</target>
       </trans-unit>
       <trans-unit id="DUp8s8Q" resname="Carbon dioxide">
         <source>Carbon dioxide</source>
-        <target>~Karbono dioxidoa</target>
+        <target>Karbono dioxidoa</target>
       </trans-unit>
       <trans-unit id="9zAe0yX" resname="Nitrogen">
         <source>Nitrogen</source>
-        <target>~Nitrogenoa</target>
+        <target>Nitrogenoa</target>
       </trans-unit>
       <trans-unit id="GphXeX5" resname="Clue1">
         <source>Clue1</source>
-        <target>~ pista1</target>
+        <target>1 pista</target>
       </trans-unit>
       <trans-unit id="64pdTZr" resname="Clue2">
         <source>Clue2</source>
-        <target>~ pista2</target>
+        <target>2 pista</target>
       </trans-unit>
       <trans-unit id="vz5YPNH" resname="Clue3">
         <source>Clue3</source>
-        <target>~ pista3</target>
+        <target>3 pista</target>
       </trans-unit>
       <trans-unit id="8q1aUi1" resname="Clue4">
         <source>Clue4</source>
-        <target>~Clue4</target>
+        <target>4 pista</target>
       </trans-unit>
       <trans-unit id="VcfEfs6" resname="Clue5">
         <source>Clue5</source>
-        <target>~Clue5</target>
+        <target>5 pista</target>
       </trans-unit>
       <trans-unit id="JwDHQH1" resname="You must provide between 3 and 9 clues">
         <source>You must provide between 3 and 9 clues</source>
-        <target>~Gutxienez 3 eta gehienez 9 pista eman behar dituzu</target>
+        <target>3 eta 9 pista artean eman behar dituzu</target>
       </trans-unit>
       <trans-unit id="L5BMjll" resname="Mercury">
         <source>Mercury</source>
-        <target>~Merkurio</target>
+        <target>Merkurio</target>
       </trans-unit>
       <trans-unit id="wu_cKmL" resname="Closest planet to the Sun">
         <source>Closest planet to the Sun</source>
-        <target>~Eguzkirik hurbilen dagoen planeta</target>
+        <target>Eguzkitik hurbilen dagoen planeta</target>
       </trans-unit>
       <trans-unit id="Vf5U94l" resname="Smallest planet">
         <source>Smallest planet</source>
-        <target>~Txikiena planeta</target>
+        <target>Planeta txikiena</target>
       </trans-unit>
       <trans-unit id="1IDJuNJ" resname="Named after a Roman god">
         <source>Named after a Roman god</source>
-        <target>~Erromatar jainkosa baten izena</target>
+        <target>Erromatar jainko baten izena duena</target>
       </trans-unit>
       <trans-unit id="ZqmQ97D" resname="Group">
         <source>Group</source>
-        <target>Talde</target>
+        <target>Taldea</target>
       </trans-unit>
       <trans-unit id="0xcuBKJ" resname="Group: 0, 1, 2 or 3">
         <source>Group: 0, 1, 2 or 3</source>
-        <target>~Taldea: 0, 1, 2 edo 3</target>
+        <target>Taldea: 0, 1, 2 edo 3</target>
       </trans-unit>
       <trans-unit id="rN2Xlkq" resname="Lion">
         <source>Lion</source>
-        <target>~Lehoi</target>
+        <target>Lehoia</target>
       </trans-unit>
       <trans-unit id="xPBvBFq" resname="Rabbit">
         <source>Rabbit</source>
-        <target>~Untxia</target>
+        <target>Untxia</target>
       </trans-unit>
       <trans-unit id="Yi0N0CD" resname="Tiger">
         <source>Tiger</source>
-        <target>~Tigre</target>
+        <target>Tigrea</target>
       </trans-unit>
       <trans-unit id="BBy5r7r" resname="question">
         <source>question</source>
-        <target>~galdera</target>
+        <target>galdera</target>
       </trans-unit>
       <trans-unit id="TiSWo.k" resname="solution">
         <source>solution</source>
-        <target>~irtenbidea</target>
+        <target>soluzioa</target>
       </trans-unit>
       <trans-unit id="OzYjb2A" resname="suggestion">
         <source>suggestion</source>
-        <target>~iradokizuna</target>
+        <target>iradokizuna</target>
       </trans-unit>
       <trans-unit id="Yh9rtTO" resname="feedback">
         <source>feedback</source>
-        <target>~iruzkina</target>
+        <target>atzeraelikadura</target>
       </trans-unit>
       <trans-unit id="v_usxYW" resname="The format requires a question (non-empty string), a solution (0 or 1), a suggestion (mandatory, can be empty), and feedback (mandatory, can be empty).">
         <source>The format requires a question (non-empty string), a solution (0 or 1), a suggestion (mandatory, can be empty), and feedback (mandatory, can be empty).</source>
-        <target>~Formatak galdera bat (ez hutsik dagoen stringa), irtenbide bat (0 edo 1), iradokizun bat (beharrezkoa, hutsik egon daiteke), eta iruzkina (beharrezkoa, hutsik egon daiteke) eskatzen du.</target>
+        <target>Formatu honek behar ditu: galdera bat (hutsik ez dagoen kate bat), soluzio bat (0 edo 1), iradokizun bat (derrigorrezkoa, baina hutsik egon daiteke ere), eta atzeraelikadura (derrigorrezkoa, baina hutsik egon daiteke ere).</target>
       </trans-unit>
       <trans-unit id="HL1heUa" resname="Is the Earth round?">
         <source>Is the Earth round?</source>
-        <target>~Lurra biribila da?</target>
+        <target>Lurra biribila da?</target>
       </trans-unit>
       <trans-unit id="DIz4.IG" resname="Think about the horizon.">
         <source>Think about the horizon.</source>
-        <target>~Pentsatu horizontearen inguruan.</target>
+        <target>Horizontea kontuan hartu.</target>
       </trans-unit>
       <trans-unit id="b6UpYVh" resname="The Earth is not flat.">
         <source>The Earth is not flat.</source>
-        <target>~Lurra ez da laua.</target>
+        <target>Lurra ez da laua.</target>
       </trans-unit>
       <trans-unit id="_RQlaNv" resname="Does water boil at 100 degrees Celsius?">
         <source>Does water boil at 100 degrees Celsius?</source>
-        <target>~Ura 100 gradu Celsius-en irakiten du?</target>
+        <target>100 oC da uraren irakite-tenperatura?</target>
       </trans-unit>
       <trans-unit id="iYCw6p." resname="It depends on the altitude.">
         <source>It depends on the altitude.</source>
-        <target>~Altitudearen araberakoa da.</target>
+        <target>Altueraren araberakoa da.</target>
       </trans-unit>
       <trans-unit id="YOcqY_2" resname="The solution can be:">
         <source>The solution can be:</source>
-        <target>~Aldez aurretik izan daiteke:</target>
+        <target>Soluzioa izan daiteke:</target>
       </trans-unit>
       <trans-unit id="wF0e8AY" resname="0 or 1 for True/False">
         <source>0 or 1 for True/False</source>
-        <target>~0 edo 1 Egia/Gezurra</target>
+        <target>0 edo 1 Egia/Gezurra</target>
       </trans-unit>
       <trans-unit id="lMJfqi8" resname="any digit from 0 to 3 for single-choice (up to 4 options)">
         <source>any digit from 0 to 3 for single-choice (up to 4 options)</source>
-        <target>~0etik 3ra bitarteko edozein digituk aukera bakarrekoa (4 aukera arte)</target>
+        <target>Aukera bakarreko galderetarako, 0tik 3ra arteko edozein digitu (gehienez 4 aukera)</target>
       </trans-unit>
       <trans-unit id="gBXtx0s" resname="any combination of A-D for multiple-choice (up to 4 options).">
         <source>any combination of A-D for multiple-choice (up to 4 options).</source>
-        <target>~A-D arteko edozein konbinazio aukera anitzeko (4 aukera arte).</target>
+        <target>Aukera anitzeko galderetarako, A eta D letren arteko edozein konbinazio (gehienez 4 aukera).</target>
       </trans-unit>
       <trans-unit id="3mCQkiK" resname="Provide a similar number of questions for each type.">
         <source>Provide a similar number of questions for each type.</source>
-        <target>~Bakoitzentzat antzeko kopuruko galderak eman.</target>
+        <target>Eman antzeko galdera kopurua  galdera-mota bakoitzerako.</target>
       </trans-unit>
       <trans-unit id="XR0VoUB" resname="Which number is prime?">
         <source>Which number is prime?</source>
-        <target>~Zein zenbaki da lehenengoa?</target>
+        <target>Zein zenbaki da lehena?</target>
       </trans-unit>
       <trans-unit id="7BbkFPC" resname="first element">
         <source>first element</source>
-        <target>~lehen elementua</target>
+        <target>lehen elementua</target>
       </trans-unit>
       <trans-unit id="SNp6O6Z" resname="second element">
         <source>second element</source>
-        <target>~bigarren elementua</target>
+        <target>bigarren elementua</target>
       </trans-unit>
       <trans-unit id="9DQ8LW1" resname="third element">
         <source>third element</source>
-        <target>~hirugarren elementua</target>
+        <target>hirugarren elementua</target>
       </trans-unit>
       <trans-unit id="JL._0MR" resname="fourth element">
         <source>fourth element</source>
-        <target>~laugarren element</target>
+        <target>laugarren elementua</target>
       </trans-unit>
       <trans-unit id="E9i9ZQp" resname="Neither the word nor the definition must contain #. The word must have a maximum of 14 letters and must not contain spaces.">
         <source>Neither the word nor the definition must contain #. The word must have a maximum of 14 letters and must not contain spaces.</source>
-        <target>~Ez da hitza edo definizioa # izan behar</target>
+        <target>Ez hitzak ez definizioak ez dute # izan behar. Hitzak 14 letra izan behar ditu gehienez, eta ez du tarterik izan behar.</target>
       </trans-unit>
       <trans-unit id="jLcojpH" resname="Generating questions. Please wait...">
         <source>Generating questions. Please wait...</source>
-        <target>~Galderak sortzen ari da. Itxaron mesedez...</target>
+        <target>Galderak sortzen. Itxaron mesedez...</target>
       </trans-unit>
       <trans-unit id="wNNmRiH" resname="For students of">
         <source>For students of</source>
-        <target>~Ikasleentzat</target>
+        <target>Ikasleentzat</target>
       </trans-unit>
       <trans-unit id="F9zz3Zy" resname="on the following topic">
         <source>on the following topic</source>
-        <target>~hurrengo gaian</target>
+        <target>hurrengo gaiaren inguruan</target>
       </trans-unit>
       <trans-unit id="IdPSzk5" resname="questions">
         <source>questions</source>
-        <target>~galderak</target>
+        <target>galderak</target>
       </trans-unit>
       <trans-unit id="_ViorcP" resname="With the following formats:">
         <source>With the following formats:</source>
-        <target>~Hona hemen formatu hauek:</target>
+        <target>Formatu hauekin:</target>
       </trans-unit>
       <trans-unit id="dN_TtRg" resname="You must return only the questions without numbering and without classification or bullet points">
         <source>You must return only the questions without numbering and without classification or bullet points</source>
-        <target>~Galderak bakarrik itzuli behar dituzu zenbaketarik eta sailkapen edo zerrenda ikurrik gabe</target>
+        <target>Galderak bakarrik itzuli behar dituzu, zenbakirik, sailkapenik edo bulet punturik gabe</target>
       </trans-unit>
       <trans-unit id="7jkX2cG" resname="The questions could not be generated">
         <source>The questions could not be generated</source>
-        <target>~Ez da galderarik sortu</target>
+        <target>Ezin izan dira galderak sortu</target>
       </trans-unit>
       <trans-unit id="Hh35OKu" resname="The questions could not be generated. Incorrect format">
         <source>The questions could not be generated. Incorrect format</source>
-        <target>~Ez da galderarik sortu. Formato okerra</target>
+        <target>Ezin izan dira galderak sortu. Formatu okerra</target>
       </trans-unit>
       <trans-unit id="E35eLN_" resname="An error occurred while retrieving the questions. Please try again.">
         <source>An error occurred while retrieving the questions. Please try again.</source>
-        <target>~Gertaera bat gertatu da galderak lortzean. Saiatu berriro.#Sortu 10 hitz eta haien definizioak, #ren artean #. Ez gehitu # karakterea hitz edo definizioan.#Sortu 30 hitz eta haien definizioak, #ren artean #.#Sortu 10 aukeraketa anitzeko galdera, 2 eta 4 aukera artean. Lehenengo erantzuna jarri (0, 1, 2, edo 3), #eta galdera eta aukera bakoitza, #denak # artean.#Sortu 10 aukeraketa anitzeko galdera, erantzuna letra gisa (A, AB), #eta galdera eta aukera guztiak, # artean.#Sortu 5 erantzun hitz, #eta 3etik 9 arteko pista haien deskribapena. Banatu pista bakoitza # artean.#Banatu elementu hauek: harrapariak, 0, eta belarjaleak, 1, # talde bakoitzeko. Banatu taldearen zenbakia eta elementua # artean.#Sortu 10 egia edo gezurra galdera, #erantzuna (0 = gezurra, 1 = egia), #eta iradokizuna eta feedbacka, # artean. Feedbackak ez du zehazki adierazi behar erantzuna edo ez.#Sortu 10 galdera, #Solution 0/1 egia/gezurra edo 0-3 aukera bakarra edo A-D (edo konbinazioak), #eta galdera eta erantzun aukerak, # artean.#Eman zerrenda bakarra, pauso edo elementu ordenatu bat, # artean.</target>
+        <target>Errorea gertatu da galderak eskuratzean. Saiatu berriro.</target>
       </trans-unit>
       <trans-unit id="X70Hq6M" resname="Sorry, wrong file format">
         <source>Sorry, wrong file format</source>
-        <target>Fitxategiaren formatua okerra da</target>
+        <target>Barkatu, fitxategiaren formatua okerra da</target>
       </trans-unit>
       <trans-unit id="tWpnRhI" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.</source>
-        <target></target>
+        <target>10 hitz eta beren definizioak sortu, # bidez bereizita. Ez erabili # karakterea hitzean edo definizioan bertan.</target>
       </trans-unit>
       <trans-unit id="rK1Tq78" resname="Generate 30 words and their definitions separated by #.">
         <source>Generate 30 words and their definitions separated by #.</source>
-        <target></target>
+        <target>30 hitz eta beren definizioak sortu, # bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="jRrGoMe" resname="Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.">
         <source>Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.</source>
-        <target></target>
+        <target>Sortu aukera anitzeko 10 galdera, 2 eta 4 aukera artean dituztenak. Hasi soluzio zuzenarekin (0, 1, 2, edo 3), ondoren galdera eta aukera bakoitza, denak # bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="iEm_hXE" resname="Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.">
         <source>Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.</source>
-        <target></target>
+        <target>Sortu 10 galdera aukera anitzeko aukerekin. Eman soluzio zuzena letra gisa (adibidez, A, AB), eta ondoren galdera eta aukerak, denak # bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="0bgCBr1" resname="Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.">
         <source>Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.</source>
-        <target></target>
+        <target>Sortu 5 ebazpen-hitz, eta, ondoren, bakoitza deskribatzen duten 3-9 pista. Bereizi pista bakoitza # -rekin.</target>
       </trans-unit>
       <trans-unit id="QCl9NKh" resname="Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.">
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
-        <target></target>
+        <target>Eman 4 elementu eman hemengo talde bakoitzeko: haragijaleak, 0, eta belarjaleak, 1. Bereizi taldearen zenbakia eta elementua # ikurra erabiliz.</target>
       </trans-unit>
       <trans-unit id="DCe79Ym" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target></target>
+        <target>10 "egia ala gezurra" motako galdera sortu. Galdera bakoitzak soluzioa jarrita izan behar du (0 = okerra, 1 = zuzena), iradokizuna eta atzeraelikadura idatzi jarraian, denak # erabilita bereiziz. Atzeraelikadurak ez du derrigorrez zehatz azaldu behar erantzuna zuzena ala okerra den.</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
-        <target></target>
+        <target>10 galdera sortu. Soluzioen aukerak: 0/1 ("egia ala gezurra" motako galderetarako), 0-3 (aukera bakarrekoetarako), edo A-D (edo bestekako konbinazioak) (aukera anitzekoetarako). Ondoren, jarri galdera eta erantzunetarako aukerak (2tik 4ra), denak # erabilita bereiziz.</target>
       </trans-unit>
       <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
-        <target></target>
+        <target>Jarri urratsen edo itemen zerrenda soila ordenatuta, eta bakoitza # erabilita bereizi.</target>
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition</source>
-        <target>~Erakutsi edo ezkutatu nodearen haurrak # Nodoaren haurrak erakutsi edo ezkutatu</target>
+        <target>10 hitz eta beren definizioak sortu eta # erabilita bereizi. Ez erabili # karakterea hitzean edo definizioan bertan.</target>
       </trans-unit>
       <trans-unit id="JOOpn8O" resname="Go to Tools - Preview to see the tooltip content">
         <source>Go to Tools - Preview to see the tooltip content</source>
-        <target>Tresna-Aurrebistara joan argibidearen edukia ikusteko</target>
+        <target>Tresna-aurrebistara joan argibidearen edukia ikusteko</target>
       </trans-unit>
       <trans-unit id="0nNrpBR" resname="'">
         <source>'</source>
@@ -747,7 +747,7 @@
       </trans-unit>
       <trans-unit id="aRkw0uL" resname="If you have made changes and have not saved them, they will be lost. Do you really want to quit?">
         <source>If you have made changes and have not saved them, they will be lost. Do you really want to quit?</source>
-        <target>Aldaketak egin badituzu eta ez badituzu gorde, galduko dira. Benetan atera nahi duzu?</target>
+        <target>Aldaketak egin badituzu eta ez badituzu gorde, galdu egingo dira. Benetan atera nahi duzu?</target>
       </trans-unit>
       <trans-unit id="g.hyGgB" resname="Add">
         <source>Add</source>
@@ -823,7 +823,7 @@
       </trans-unit>
       <trans-unit id="1.pvVTn" resname="Could not retrieve data (Core error)">
         <source>Could not retrieve data (Core error)</source>
-        <target>Datuak ezin izan dira jaso (Core error)</target>
+        <target>Datuak ezin izan dira eskuratu (funtsezko errorea)</target>
       </trans-unit>
       <trans-unit id="B9r0Hn5" resname="Error">
         <source>Error</source>
@@ -843,15 +843,15 @@
       </trans-unit>
       <trans-unit id="pMV5fwv" resname="Show or hide the node's children">
         <source>Show or hide the node's children</source>
-        <target>~Hasi lan egiten berri baten mapan # Lan berri baten mapan hasteko</target>
+        <target>Nodoaren seme-alabak erakutsi edo ezkutatu</target>
       </trans-unit>
       <trans-unit id="BNAv3Xt" resname="Start working on a new mind map">
         <source>Start working on a new mind map</source>
-        <target>~Errorea fitxategia igotzean # Fitxategia igotzean errorea</target>
+        <target>Hasi buru-mapa berri batean lanean</target>
       </trans-unit>
       <trans-unit id="SFNYf0M" resname="Error uploading file">
         <source>Error uploading file</source>
-        <target>~Konexioa galdu da # Konexioa galdu da</target>
+        <target>Fitxategia igotzean errorea</target>
       </trans-unit>
       <trans-unit id="ocO4UcQ" resname="Inline">
         <source>Inline</source>
@@ -907,59 +907,59 @@
       </trans-unit>
       <trans-unit id="gK.uit7" resname="Connection lost">
         <source>Connection lost</source>
-        <target>~Linean dauden erabiltzaileak # Linean dauden erabiltzaileak</target>
+        <target>Konexioa galdu da</target>
       </trans-unit>
       <trans-unit id="bH.yYS4" resname="Users online">
         <source>Users online</source>
-        <target>~Azken gordeta: # Azken gordeta:</target>
+        <target>Linean dauden erabiltzaileak</target>
       </trans-unit>
       <trans-unit id="9P4o.EV" resname="Last save:">
         <source>Last save:</source>
-        <target>~Aurreko bertsiorik ez # Aurreko bertsiorik ez</target>
+        <target>Azken gordetzea:</target>
       </trans-unit>
       <trans-unit id="KvaEN_Q" resname="No previous versions">
         <source>No previous versions</source>
-        <target>~Gordetako proiektua # Gordetako proiektua</target>
+        <target>Aurreko bertsiorik ez</target>
       </trans-unit>
       <trans-unit id="8FwYgt8" resname="Unsaved project">
         <source>Unsaved project</source>
-        <target>~Gaur eguneko egunean gordeta # Gaur eguneko egunean gordeta</target>
+        <target>Gorde gabeko proiektua</target>
       </trans-unit>
       <trans-unit id="4Ys2ifD" resname="Saved one day ago">
         <source>Saved one day ago</source>
-        <target></target>
+        <target>Duela egun bat gorde da</target>
       </trans-unit>
       <trans-unit id="8FQWOUH" resname="Saved %s days ago">
         <source>Saved %s days ago</source>
-        <target>~Gorde %s egun lehenago</target>
+        <target>Duela %s egun gorde da</target>
       </trans-unit>
       <trans-unit id="KvMjhp6" resname="Saved an hours ago">
         <source>Saved an hours ago</source>
-        <target>~Gorde ordu batzuk lehenago</target>
+        <target>Duela ordu batzuk gorde da</target>
       </trans-unit>
       <trans-unit id="U.u.U_K" resname="Saved %s hours ago">
         <source>Saved %s hours ago</source>
-        <target>~Gorde %s ordu lehenago</target>
+        <target>Duela %s ordu gorde da</target>
       </trans-unit>
       <trans-unit id="JB7J20q" resname="Saved %s minutes ago">
         <source>Saved %s minutes ago</source>
-        <target>~Gorde %s minutu lehenago</target>
+        <target>Duela %s minutu gorde da</target>
       </trans-unit>
       <trans-unit id="WTc5nre" resname="Saved a few seconds ago">
         <source>Saved a few seconds ago</source>
-        <target>~Gorde duzun segundo batzuk</target>
+        <target>Duela segundo batzuk gorde da</target>
       </trans-unit>
       <trans-unit id="AA3wtua" resname="Empty session">
         <source>Empty session</source>
-        <target>~Saioa hutsik dago</target>
+        <target>Datu gabeko saioa, hutsa</target>
       </trans-unit>
       <trans-unit id=".yvnMtV" resname="Do you want to logout anyway?">
         <source>Do you want to logout anyway?</source>
-        <target>~Ziur zaude atera nahi duzula?</target>
+        <target>Ziur zaude saioa itxi nahi duzula?</target>
       </trans-unit>
       <trans-unit id="JKl2Twv" resname="Logout">
         <source>Logout</source>
-        <target>~Saioa amaitu</target>
+        <target>Saioa itxi</target>
       </trans-unit>
       <trans-unit id="EhytB4v" resname="Cancel">
         <source>Cancel</source>
@@ -975,23 +975,23 @@
       </trans-unit>
       <trans-unit id="CzxzXbj" resname="Mode:">
         <source>Mode:</source>
-        <target>~Modua:</target>
+        <target>Modua:</target>
       </trans-unit>
       <trans-unit id="NxYTQRJ" resname="Untitled document">
         <source>Untitled document</source>
-        <target>~Izena eman gabeko dokumentua</target>
+        <target>Izenik gabeko dokumentua</target>
       </trans-unit>
       <trans-unit id="W7h4Kea" resname="Share link">
         <source>Share link</source>
-        <target>~Elkarbanitzeko esteka</target>
+        <target>Partekatzeko esteka</target>
       </trans-unit>
       <trans-unit id="wAHWdeY" resname="The share link is:">
         <source>The share link is:</source>
-        <target>~Elkarbanitzeko esteka hau da:</target>
+        <target>Partekatzeko esteka hau da:</target>
       </trans-unit>
       <trans-unit id="umPqmsm" resname="Copy to clipboard">
         <source>Copy to clipboard</source>
-        <target>~Kopiatu arbelean</target>
+        <target>Arbelera kopiatu</target>
       </trans-unit>
       <trans-unit id="cnzcOY5" resname="Text">
         <source>Text</source>
@@ -999,7 +999,7 @@
       </trans-unit>
       <trans-unit id="k4gZ4GL" resname="Interactive activities">
         <source>Interactive activities</source>
-        <target>~Jarduera interaktiboak</target>
+        <target>Jarduera interaktiboak</target>
       </trans-unit>
       <trans-unit id="TfHPH8U" resname="Games">
         <source>Games</source>
@@ -1007,11 +1007,11 @@
       </trans-unit>
       <trans-unit id="sT5mEGg" resname="Others">
         <source>Others</source>
-        <target>~Besteak</target>
+        <target>Besteak</target>
       </trans-unit>
       <trans-unit id="g51Phoz" resname="Close panel">
         <source>Close panel</source>
-        <target>~Itxi panela</target>
+        <target>Panela itxi</target>
       </trans-unit>
       <trans-unit id="WJ.kBLL" resname="Minimize">
         <source>Minimize</source>
@@ -1019,51 +1019,51 @@
       </trans-unit>
       <trans-unit id=".2bNgXe" resname="New file">
         <source>New file</source>
-        <target>~Fitxategi berria</target>
+        <target>Fitxategi berria</target>
       </trans-unit>
       <trans-unit id="t6INLEU" resname="Create new file without saving">
         <source>Create new file without saving</source>
-        <target>~Sortu fitxategi berria gorde gabe</target>
+        <target>Gorde gabe fitxategi berria sortu</target>
       </trans-unit>
       <trans-unit id="H69O3Z." resname="Saving the project...">
         <source>Saving the project...</source>
-        <target>~Proiektua gordean...</target>
+        <target>Proiektua gordetzen...</target>
       </trans-unit>
       <trans-unit id="dNpRpSl" resname="Project saved.">
         <source>Project saved.</source>
-        <target>~Proiektua gorde da.</target>
+        <target>Proiektua gorde da.</target>
       </trans-unit>
       <trans-unit id="Vc8VhHf" resname="Save project">
         <source>Save project</source>
-        <target>~Gorde proiektua</target>
+        <target>Proiektua gorde</target>
       </trans-unit>
       <trans-unit id="NxrxKi9" resname="Please enter the project title:">
         <source>Please enter the project title:</source>
-        <target>~Mesedez, sartu proiektuaren izena:</target>
+        <target>Mesedez, idatzi proiektuaren izenburua:</target>
       </trans-unit>
       <trans-unit id="cPW6CJ0" resname="Google Drive error">
         <source>Google Drive error</source>
-        <target>~Google Drive errorea</target>
+        <target>Google Driveren errorea</target>
       </trans-unit>
       <trans-unit id="KEhkI6s" resname="Unknown">
         <source>Unknown</source>
-        <target>~Ezezaguna</target>
+        <target>Ezezaguna</target>
       </trans-unit>
       <trans-unit id="crz7e6x" resname="Dropbox error">
         <source>Dropbox error</source>
-        <target>~Dropbox errorea</target>
+        <target>Dropboxen errorea</target>
       </trans-unit>
       <trans-unit id="lkPLoyy" resname="Open project">
         <source>Open project</source>
-        <target>~Ireki proiektua</target>
+        <target>Proiektua ireki</target>
       </trans-unit>
       <trans-unit id="JyCHxmf" resname="Open without saving">
         <source>Open without saving</source>
-        <target>~Ireki gorde gabe</target>
+        <target>Gorde gabe ireki</target>
       </trans-unit>
       <trans-unit id="VKEOcXF" resname="No recent projects...">
         <source>No recent projects...</source>
-        <target>~Ez dago azkeneko proiektuak...</target>
+        <target>Ez dago aurreko proiekturik...</target>
       </trans-unit>
       <trans-unit id="iMlLPDz" resname="Download">
         <source>Download</source>
@@ -1071,15 +1071,15 @@
       </trans-unit>
       <trans-unit id="GOVj_ZF" resname="File generation in progress.">
         <source>File generation in progress.</source>
-        <target>~Fitxategia sortzen ari da.</target>
+        <target>Fitxategia sortzen ari da.</target>
       </trans-unit>
       <trans-unit id="AWXmX8z" resname="File generated.">
         <source>File generated.</source>
-        <target>~Fitxategia sortu da.</target>
+        <target>Fitxategia sortu egin da.</target>
       </trans-unit>
       <trans-unit id="rg5P7Hn" resname="Unknown error.">
         <source>Unknown error.</source>
-        <target>~Errore ezezaguna.</target>
+        <target>Errore ezezaguna.</target>
       </trans-unit>
       <trans-unit id="Jp3BFhF" resname="Export">
         <source>Export</source>
@@ -1087,19 +1087,19 @@
       </trans-unit>
       <trans-unit id="B.6HVwv" resname="Generating export files...">
         <source>Generating export files...</source>
-        <target>~Esportazio fitxategiak sortzen...</target>
+        <target>Esportatzeko fitxategiak sortzen...</target>
       </trans-unit>
       <trans-unit id="pOkz4qi" resname="The project has been exported.">
         <source>The project has been exported.</source>
-        <target>~Proiektua esportatu da.</target>
+        <target>Proiektua esportatu egin da.</target>
       </trans-unit>
       <trans-unit id="YZXIGpx" resname="Other users are connected.">
         <source>Other users are connected.</source>
-        <target>~Beste erabiltzaileak konektatuta daude.</target>
+        <target>Beste erabiltzaile batzuk konektatuta daude.</target>
       </trans-unit>
       <trans-unit id="TG2suIV" resname="Link validation tool">
         <source>Link validation tool</source>
-        <target>~Estekaren balidazio tresna</target>
+        <target>Esteken balidazio-tresna</target>
       </trans-unit>
       <trans-unit id="HFY5meK" resname="Looking for broken links...">
         <source>Looking for broken links...</source>
