@@ -1103,23 +1103,23 @@
       </trans-unit>
       <trans-unit id="HFY5meK" resname="Looking for broken links...">
         <source>Looking for broken links...</source>
-        <target>~Bilatzen huts egin duten estekak...</target>
+        <target>Hautsitako estekak bilatzen...</target>
       </trans-unit>
       <trans-unit id="xfCwLyo" resname="No broken links found.">
         <source>No broken links found.</source>
-        <target>~Ez da huts egin duen estekarik aurkitu.</target>
+        <target>Ez da hautsitako estekarik aurkitu.</target>
       </trans-unit>
       <trans-unit id="nUtOCv6" resname="Resources report">
         <source>Resources report</source>
-        <target>~Baliabideen txostena</target>
+        <target>Baliabideen txostena</target>
       </trans-unit>
       <trans-unit id="WLWxF94" resname="Checking the project resources...">
         <source>Checking the project resources...</source>
-        <target>~Proiektuaren baliabideak egiaztatzen...</target>
+        <target>Proiektuaren baliabideak egiaztatzen...</target>
       </trans-unit>
       <trans-unit id=".rEBFC2" resname="The project has no files.">
         <source>The project has no files.</source>
-        <target>~Ez du fitxategirik proiektuak.</target>
+        <target>Proiektuak ez du fitxategirik.</target>
       </trans-unit>
       <trans-unit id="yNlWNXs" resname="Preview">
         <source>Preview</source>
@@ -1127,19 +1127,19 @@
       </trans-unit>
       <trans-unit id="bcRryHO" resname="Generating preview...">
         <source>Generating preview...</source>
-        <target>~Aurrebista sortzen...</target>
+        <target>Aurrebista sortzen...</target>
       </trans-unit>
       <trans-unit id="6.AJt1z" resname="The preview has been generated.">
         <source>The preview has been generated.</source>
-        <target>~Aurrebista sortu da.</target>
+        <target>Aurrebista sortu egin da.</target>
       </trans-unit>
       <trans-unit id="OhU0H.1" resname="multiple users on page">
         <source>multiple users on page</source>
-        <target>~Orri anitzeko erabiltzaileak</target>
+        <target>Erabiltzaile anitz orrian</target>
       </trans-unit>
       <trans-unit id="TbY2TF0" resname="Broken links">
         <source>Broken links</source>
-        <target>~Estekak hautsiak</target>
+        <target>Hautsitako estekak</target>
       </trans-unit>
       <trans-unit id="wbMeKOh" resname="Name">
         <source>Name</source>
@@ -1147,23 +1147,23 @@
       </trans-unit>
       <trans-unit id="eKO.JM8" resname="New page">
         <source>New page</source>
-        <target>~Orria berria</target>
+        <target>Orri berria</target>
       </trans-unit>
       <trans-unit id="XF7VlEf" resname="New name">
         <source>New name</source>
-        <target>~Izena berria</target>
+        <target>Izen berria</target>
       </trans-unit>
       <trans-unit id="ZmooaQd" resname="Rename page">
         <source>Rename page</source>
-        <target>~Orria aldatu</target>
+        <target>Orria berrizendatu</target>
       </trans-unit>
       <trans-unit id="g.UhRlz" resname="Delete page">
         <source>Delete page</source>
-        <target>~Orria ezabatu</target>
+        <target>Orria ezabatu</target>
       </trans-unit>
       <trans-unit id="j6SIwcG" resname="Do you want to delete the page? This cannot be undone.">
         <source>Do you want to delete the page? This cannot be undone.</source>
-        <target>~Orria ezabatu nahi duzu? Hau ezin da desegin.</target>
+        <target>Ziur zaude orria ezabatu nahi duzula? Baietz esanez gero ezin izango da ezabatutakoa berreskuratu.</target>
       </trans-unit>
       <trans-unit id="pRCwpOT" resname="Yes">
         <source>Yes</source>
@@ -1171,23 +1171,23 @@
       </trans-unit>
       <trans-unit id="lEa7VDi" resname="Clone page">
         <source>Clone page</source>
-        <target>~Klonatu orria</target>
+        <target>Orria klonatu</target>
       </trans-unit>
       <trans-unit id="7XhZyBd" resname="Do you want to clone the page?">
         <source>Do you want to clone the page?</source>
-        <target>~Nahi duzu orria klonatu?</target>
+        <target>Ziur zaude orria klonatu nahi duzula?</target>
       </trans-unit>
       <trans-unit id="TmkliwU" resname="Content properties">
         <source>Content properties</source>
-        <target>~Edukien propietateak</target>
+        <target>Edukiaren propietateak</target>
       </trans-unit>
       <trans-unit id="9SQZbAa" resname="Add Text">
         <source>Add Text</source>
-        <target>~Gehitu Testua</target>
+        <target>Testua gehitu</target>
       </trans-unit>
       <trans-unit id="3RtH4TB" resname="Alert">
         <source>Alert</source>
-        <target>~Abisua</target>
+        <target>Alerta</target>
       </trans-unit>
       <trans-unit id="wd1MvZW" resname="No">
         <source>No</source>
@@ -1203,7 +1203,7 @@
       </trans-unit>
       <trans-unit id="EPBD.Jx" resname="About eXeLearning">
         <source>About eXeLearning</source>
-        <target>~eXeLearning-i buruz</target>
+        <target>eXeLearning-i buruz</target>
       </trans-unit>
       <trans-unit id="h5EmhVn" resname="Assistant">
         <source>Assistant</source>
@@ -1211,23 +1211,23 @@
       </trans-unit>
       <trans-unit id="VQ9mySy" resname="File Manager">
         <source>File Manager</source>
-        <target>~Fitxategi Kudeatzailea</target>
+        <target>Fitxategi Kudeatzailea</target>
       </trans-unit>
       <trans-unit id=".QFPbFe" resname="Back">
         <source>Back</source>
-        <target>~Atzera</target>
+        <target>Atzera</target>
       </trans-unit>
       <trans-unit id="32aThvc" resname="iDevice manager">
         <source>iDevice manager</source>
-        <target>~Gailu Kudeatzailea</target>
+        <target>iDeviceen kudeatzailea</target>
       </trans-unit>
       <trans-unit id="fMxz8c4" resname="Search iDevices">
         <source>Search iDevices</source>
-        <target>~Bilatu Gailu Teknologikoak</target>
+        <target>iDeviceak bilatu</target>
       </trans-unit>
       <trans-unit id="wtVkNXt" resname="Default iDevices">
         <source>Default iDevices</source>
-        <target>~Gailu Teknologiko Lehenetsiak</target>
+        <target>iDevice lehenetsiak</target>
       </trans-unit>
       <trans-unit id="jfTZJsv" resname="My iDevices">
         <source>My iDevices</source>
@@ -1235,7 +1235,7 @@
       </trans-unit>
       <trans-unit id="yIQeeyS" resname="Import iDevice">
         <source>Import iDevice</source>
-        <target>Inportatu iDevice-a</target>
+        <target>Inportatu iDevicea</target>
       </trans-unit>
       <trans-unit id="e489ss4" resname="Visibility">
         <source>Visibility</source>
@@ -1255,31 +1255,31 @@
       </trans-unit>
       <trans-unit id="tsxZze5" resname="Delete iDevice">
         <source>Delete iDevice</source>
-        <target>~Ezabatu iDevice</target>
+        <target>iDevicea ezabatu</target>
       </trans-unit>
       <trans-unit id="VBZ1ogU" resname="Delete this iDevice: %s?">
         <source>Delete this iDevice: %s?</source>
-        <target>~Ezabatu iDevice hau: %s?</target>
+        <target>Ezabatu iDevice hau: %s?</target>
       </trans-unit>
       <trans-unit id="1QWTr7I" resname="iDevice properties">
         <source>iDevice properties</source>
-        <target>~iDevice ezaugarriak</target>
+        <target>iDevicearen propietateak</target>
       </trans-unit>
       <trans-unit id="o1s3geg" resname="Failed to install the new iDevice">
         <source>Failed to install the new iDevice</source>
-        <target>~Ezin izan da iDevice berria instalatu</target>
+        <target>Instalatzerakoan iDecviceak huts egin du</target>
       </trans-unit>
       <trans-unit id="cmVmfRk" resname="Could not remove the iDevice">
         <source>Could not remove the iDevice</source>
-        <target>~Ezin izan da iDevice kendu</target>
+        <target>Ezin da iDevicea ezabatu</target>
       </trans-unit>
       <trans-unit id="1Ntsh7c" resname="Legal notes">
         <source>Legal notes</source>
-        <target>~Lege oharrak</target>
+        <target>Lege-oharrak</target>
       </trans-unit>
       <trans-unit id="5dsfyar" resname="New window">
         <source>New window</source>
-        <target>~Leiho berria</target>
+        <target>Leiho berria</target>
       </trans-unit>
       <trans-unit id="kI3gFIV" resname="End">
         <source>End</source>
@@ -1291,23 +1291,23 @@
       </trans-unit>
       <trans-unit id="z_jj13e" resname="Times">
         <source>Times</source>
-        <target>~Orduak</target>
+        <target>Denborak</target>
       </trans-unit>
       <trans-unit id="utOBp7J" resname="Page name">
         <source>Page name</source>
-        <target>~Orrialdearen izena</target>
+        <target>Orrialdearen izena</target>
       </trans-unit>
       <trans-unit id="d8ENBbn" resname="Block name">
         <source>Block name</source>
-        <target>~Bloke izena</target>
+        <target>Blokearen izena</target>
       </trans-unit>
       <trans-unit id="9vmiJ3a" resname="Block position">
         <source>Block position</source>
-        <target>~Bloke posizioa</target>
+        <target>Blokearen kokapena</target>
       </trans-unit>
       <trans-unit id="_b3MDW9" resname="Broken Links">
         <source>Broken Links</source>
-        <target>~Estekaren haustura</target>
+        <target>Hautsitako estekak</target>
       </trans-unit>
       <trans-unit id=".jhcwBR" resname="File">
         <source>File</source>
@@ -1315,7 +1315,7 @@
       </trans-unit>
       <trans-unit id="rYHQpCH" resname="Path">
         <source>Path</source>
-        <target>~Bidea</target>
+        <target>Bidea</target>
       </trans-unit>
       <trans-unit id="5gRL0E1" resname="Size">
         <source>Size</source>
@@ -1323,23 +1323,23 @@
       </trans-unit>
       <trans-unit id="lM4eXWs" resname="Resource Report">
         <source>Resource Report</source>
-        <target>~Baliabideen txostea</target>
+        <target>Baliabideen txostena</target>
       </trans-unit>
       <trans-unit id="EO0SCRh" resname="You don't have the style used by this project.">
         <source>You don't have the style used by this project.</source>
-        <target>~Ez duzu proiektu honek erabiltzen duen estiloa</target>
+        <target>Ez duzu proiektu honek erabiltzen duen estiloa.</target>
       </trans-unit>
       <trans-unit id="PL2fcxN" resname="Theme">
         <source>Theme</source>
-        <target>~Gaia</target>
+        <target>Gaia</target>
       </trans-unit>
       <trans-unit id="w4McUC5" resname="Search saved projects...">
         <source>Search saved projects...</source>
-        <target>~Bilatu gorde diren proiektuak...</target>
+        <target>Gordetako proiektuak bilatu...</target>
       </trans-unit>
       <trans-unit id="p4MqChj" resname="No recent projects found.">
         <source>No recent projects found.</source>
-        <target>~Ez da aurkitu proiektu berririk.</target>
+        <target>Ez da aurreko proiekturik aurkitu.</target>
       </trans-unit>
       <trans-unit id="sn6ELnZ" resname="Version">
         <source>Version</source>
@@ -1351,55 +1351,55 @@
       </trans-unit>
       <trans-unit id="F5YsxHN" resname="Autosaved">
         <source>Autosaved</source>
-        <target>~Auto-gordeta</target>
+        <target>Automatikoki gordeta</target>
       </trans-unit>
       <trans-unit id="vKtCm.n" resname="Delete project">
         <source>Delete project</source>
-        <target>~Ezabatu proiektua</target>
+        <target>Proiektua ezabatu</target>
       </trans-unit>
       <trans-unit id="wTzKK.X" resname="%s of %s used">
         <source>%s of %s used</source>
-        <target>~%s / %s erabili dira</target>
+        <target>%s(e)tik %s erabili dira</target>
       </trans-unit>
       <trans-unit id="wl_iDeV" resname="Open without saving changes">
         <source>Open without saving changes</source>
-        <target>~Gorde gabe ireki</target>
+        <target>Aldaketak gorde gabe ireki</target>
       </trans-unit>
       <trans-unit id="d2WU0Ah" resname="Error opening">
         <source>Error opening</source>
-        <target>~Errorea irekitzean</target>
+        <target>Errorea irekitzean</target>
       </trans-unit>
       <trans-unit id="nxmAi0r" resname="Select a file from your device">
         <source>Select a file from your device</source>
-        <target>~Aukeratu fitxategi bat zure gailutik</target>
+        <target>Zure gailutik fitxategi bat aukeratu</target>
       </trans-unit>
       <trans-unit id="AGCgQbp" resname="Open multiple files">
         <source>Open multiple files</source>
-        <target>~Fitxategi anitzak ireki</target>
+        <target>Fitxategi bat baino gehiago ireki</target>
       </trans-unit>
       <trans-unit id="vV4X2fr" resname="Import error">
         <source>Import error</source>
-        <target>~Importazio errorea</target>
+        <target>Errorea inportatzean</target>
       </trans-unit>
       <trans-unit id="S7tnRBC" resname="The content is not a box or an iDevice">
         <source>The content is not a box or an iDevice</source>
-        <target>~Edukia ez da kutxa edo iDevice bat</target>
+        <target>Edukia ez da kutxa edo iDevice bat</target>
       </trans-unit>
       <trans-unit id="Fg2n1tC" resname="Error while uploading the project.">
         <source>Error while uploading the project.</source>
-        <target>~Errorea proiektua igotzean.</target>
+        <target>Errorea proiektua igotzean.</target>
       </trans-unit>
       <trans-unit id="9ssEipw" resname="Could not open the file.">
         <source>Could not open the file.</source>
-        <target>~ ezin izan da fitxategia ireki.</target>
+        <target>Ezin izan da fitxategia ireki.</target>
       </trans-unit>
       <trans-unit id="S1Udg4B" resname="Could not read all files.">
         <source>Could not read all files.</source>
-        <target>~Ezin izan da fitxategi guztiak irakurri.</target>
+        <target>Ezin izan dira fitxategi guztiak irakurri.</target>
       </trans-unit>
       <trans-unit id="HhDqlPu" resname="Do you want to install it?">
         <source>Do you want to install it?</source>
-        <target>~Ez duzu nahi instalatu?</target>
+        <target>Instalatu nahi duzu?</target>
       </trans-unit>
       <trans-unit id="G3QMbzh" resname="Import style">
         <source>Import style</source>
@@ -1407,7 +1407,7 @@
       </trans-unit>
       <trans-unit id="UoWaP0Y" resname="Show other versions">
         <source>Show other versions</source>
-        <target>~Erakutsi beste bertsioak</target>
+        <target>Beste bertsio batzuk erakutsi</target>
       </trans-unit>
       <trans-unit id="YN8esfy" resname="Preferences">
         <source>Preferences</source>
@@ -1419,15 +1419,15 @@
       </trans-unit>
       <trans-unit id="L8U2bns" resname="Do you want to save the current project?">
         <source>Do you want to save the current project?</source>
-        <target>~Goratu nahi duzu une honetan proiektua?</target>
+        <target>Uneko proiektua gorde nahi duzu?</target>
       </trans-unit>
       <trans-unit id="NdRO0Ek" resname="Exit without saving">
         <source>Exit without saving</source>
-        <target>~Irten gabe gorde gabe</target>
+        <target>Gorde gabe irten</target>
       </trans-unit>
       <trans-unit id="Dpz4_Qq" resname="Error saving">
         <source>Error saving</source>
-        <target>~Errorea gordetzean</target>
+        <target>Errorea gordetzean</target>
       </trans-unit>
       <trans-unit id="PE03cW2" resname="Styles">
         <source>Styles</source>
@@ -1435,35 +1435,35 @@
       </trans-unit>
       <trans-unit id="bU3Dlck" resname="Default themes">
         <source>Default themes</source>
-        <target>~Lehentasun gaiak</target>
+        <target>Estilo lehenetsiak</target>
       </trans-unit>
       <trans-unit id="4xmlt_q" resname="My themes">
         <source>My themes</source>
-        <target>~Nire gaiak</target>
+        <target>Nire gaiak</target>
       </trans-unit>
       <trans-unit id="vt7s_Yo" resname="New theme">
         <source>New theme</source>
-        <target>~Gai berria</target>
+        <target>Gai berria</target>
       </trans-unit>
       <trans-unit id="oBD6axx" resname="My new theme">
         <source>My new theme</source>
-        <target>~Nire gai berria</target>
+        <target>Nire gai berria</target>
       </trans-unit>
       <trans-unit id="bkrp5CF" resname="Import theme">
         <source>Import theme</source>
-        <target>~Inportatu gaia</target>
+        <target>Gai bat inportatu</target>
       </trans-unit>
       <trans-unit id="JazBvdW" resname="Delete theme">
         <source>Delete theme</source>
-        <target>~Ezabatu gaia</target>
+        <target>Gai bat ezabatu</target>
       </trans-unit>
       <trans-unit id="1mUW5e_" resname="Style properties">
         <source>Style properties</source>
-        <target>~Estilo propietateak</target>
+        <target>Estiloaren propietateak</target>
       </trans-unit>
       <trans-unit id="kN1bsUp" resname="Style theme">
         <source>Style theme</source>
-        <target>~Estilo gaia</target>
+        <target>Estiloaren gaia</target>
       </trans-unit>
       <trans-unit id="1KgPIoi" resname="Select image">
         <source>Select image</source>
@@ -1471,23 +1471,23 @@
       </trans-unit>
       <trans-unit id="odnE5A." resname="Failed to install the new style">
         <source>Failed to install the new style</source>
-        <target>~Ezin izan da estilo gaia berria instalatu</target>
+        <target>Huts egin du estiloaren gai berriaren instalazioak</target>
       </trans-unit>
       <trans-unit id="KdeXFDb" resname="Failed to create the style">
         <source>Failed to create the style</source>
-        <target>~Ezin izan da estilo gaia sortu</target>
+        <target>Huts egin du estiloaren gai berriaren sorrerak</target>
       </trans-unit>
       <trans-unit id="TS9USrC" resname="Failed to edit the style ">
         <source>Failed to edit the style </source>
-        <target>~Ezin izan da estilo gaia editatu</target>
+        <target>Huts egin du estiloaren gai berriaren edizioak</target>
       </trans-unit>
       <trans-unit id="cnJ1FXy" resname="Failed to remove theme">
         <source>Failed to remove theme</source>
-        <target>~Ezin izan da gaia ezabatu</target>
+        <target>Huts egin du gaiaren ezabaketak</target>
       </trans-unit>
       <trans-unit id="0ldohLG" resname="Are you sure to delete the theme: ${theme.id}?">
         <source>Are you sure to delete the theme: ${theme.id}?</source>
-        <target>~Ziur zaude gaia ezabatu nahi duzula: ${theme.id}?</target>
+        <target>Ziur zaude gaia ezabatu nahi duzula: ${theme.id}?</target>
       </trans-unit>
       <trans-unit id="4oyaNcE" resname="Upload">
         <source>Upload</source>
@@ -1495,15 +1495,15 @@
       </trans-unit>
       <trans-unit id="JcEtEhk" resname="Upload to Dropbox">
         <source>Upload to Dropbox</source>
-        <target>~Kargatu Dropbox-era</target>
+        <target>Dropboxera igo</target>
       </trans-unit>
       <trans-unit id=".yEIhdI" resname="Root">
         <source>Root</source>
-        <target>~Erroa</target>
+        <target>Erroa</target>
       </trans-unit>
       <trans-unit id="9a1eDpd" resname="Upload to Google Drive">
         <source>Upload to Google Drive</source>
-        <target>~Kargatu Google Drive-era</target>
+        <target>Google Drive-era igo</target>
       </trans-unit>
       <trans-unit id="cIEcUOY" resname="Select an icon">
         <source>Select an icon</source>
@@ -1511,51 +1511,51 @@
       </trans-unit>
       <trans-unit id="UlV3ZZs" resname="No icon">
         <source>No icon</source>
-        <target>~Ikonikorik ez</target>
+        <target>Ikonorik ez</target>
       </trans-unit>
       <trans-unit id="96llu5l" resname="Move up">
         <source>Move up</source>
-        <target>Igo</target>
+        <target>Gora mugitu</target>
       </trans-unit>
       <trans-unit id="9z_jHBJ" resname="Move down">
         <source>Move down</source>
-        <target>Jaitsi</target>
+        <target>Behera mugitu</target>
       </trans-unit>
       <trans-unit id="LMgooqs" resname="Properties">
         <source>Properties</source>
-        <target>Ezaugarriak</target>
+        <target>Propietateak</target>
       </trans-unit>
       <trans-unit id="gloizQK" resname="Clone">
         <source>Clone</source>
-        <target>~Klona egin</target>
+        <target>Klonatu</target>
       </trans-unit>
       <trans-unit id="soQ_C.." resname="Move to">
         <source>Move to</source>
-        <target>~Mugitu</target>
+        <target>Hona mugitu</target>
       </trans-unit>
       <trans-unit id="pVLSTZ6" resname="Check links">
         <source>Check links</source>
-        <target>~Estekak egiaztatu</target>
+        <target>Estekak egiaztatu</target>
       </trans-unit>
       <trans-unit id="Oe.K104" resname="Delete box">
         <source>Delete box</source>
-        <target>~Ezabatu kutxa</target>
+        <target>Blokea ezabatu</target>
       </trans-unit>
       <trans-unit id="_YseMvk" resname="Box properties">
         <source>Box properties</source>
-        <target>~Kutxaren ezaugarriak</target>
+        <target>Blokearen propietateak</target>
       </trans-unit>
       <trans-unit id="pOLfvIx" resname="Move Block to page">
         <source>Move Block to page</source>
-        <target>~Mugitu Blokea orrialdera</target>
+        <target>Blokea orrira mugitu</target>
       </trans-unit>
       <trans-unit id="3l7_Oot" resname="Move">
         <source>Move</source>
-        <target>~Mugitu</target>
+        <target>Mugitu</target>
       </trans-unit>
       <trans-unit id="KSVt3cc" resname="Download error">
         <source>Download error</source>
-        <target>~Deskarga errorea</target>
+        <target>Errorea deskargatzerakoan</target>
       </trans-unit>
       <trans-unit id="OWNfiXE" resname="Show">
         <source>Show</source>
@@ -1563,95 +1563,95 @@
       </trans-unit>
       <trans-unit id="k0oEgy_" resname="Select icon">
         <source>Select icon</source>
-        <target>~Hautatu ikonoa</target>
+        <target>Hautatu ikonoa</target>
       </trans-unit>
       <trans-unit id="XTK6Gxq" resname="Empty">
         <source>Empty</source>
-        <target>~Hutsa</target>
+        <target>Hutsik</target>
       </trans-unit>
       <trans-unit id="7sUNuje" resname="Change title">
         <source>Change title</source>
-        <target>~Aldatu izena</target>
+        <target>Izenburua aldatu</target>
       </trans-unit>
       <trans-unit id="z_qJqv_" resname="Write new title of the block:">
         <source>Write new title of the block:</source>
-        <target>~Idatzi blokea izen berria:</target>
+        <target>Blokearen izenburu berria idatzi:</target>
       </trans-unit>
       <trans-unit id="6G57oAR" resname="Block error">
         <source>Block error</source>
-        <target>~Bloke errorea</target>
+        <target>Blokearen errorea</target>
       </trans-unit>
       <trans-unit id="Ak3_Wjd" resname="Discard changes">
         <source>Discard changes</source>
-        <target>~Ezabatu aldaketak</target>
+        <target>Aldaketak baztertu</target>
       </trans-unit>
       <trans-unit id="BFMIJG_" resname="Discard all changes?">
         <source>Discard all changes?</source>
-        <target>~Ezabatu aldaketa guztiak?</target>
+        <target>Aldaketa guztiak baztertu nahi dituzu?</target>
       </trans-unit>
       <trans-unit id="dOPZCVW" resname="Move iDevice to page">
         <source>Move iDevice to page</source>
-        <target>~Mugitu iDevice orrira</target>
+        <target>iDevicea orrira mugitu</target>
       </trans-unit>
       <trans-unit id="8g6a9xW" resname="File is too large">
         <source>File is too large</source>
-        <target>~Fitxategia handia da</target>
+        <target>Fitxategia handiegia da</target>
       </trans-unit>
       <trans-unit id="LmWdpVc" resname="Error saving the iDevice">
         <source>Error saving the iDevice</source>
-        <target>~Errorea iDevice-a gordetzean</target>
+        <target>Errorea iDevicea gordetzean</target>
       </trans-unit>
       <trans-unit id="iq1Ycbw" resname="Failed to save the iDevice to database">
         <source>Failed to save the iDevice to database</source>
-        <target>~Ezin izan da iDevice-a datu-basean gorde</target>
+        <target>Ezin izan da iDevice-a datu-basean gorde</target>
       </trans-unit>
       <trans-unit id="o0QuXoy" resname="Not allowed">
         <source>Not allowed</source>
-        <target>~Ez da baimentzen</target>
+        <target>Ez da baimentzen</target>
       </trans-unit>
       <trans-unit id="6b66eDm" resname="Remove Block">
         <source>Remove Block</source>
-        <target>~Kendu Blokea</target>
+        <target>Kendu Blokea</target>
       </trans-unit>
       <trans-unit id="fxYTEKl" resname="Failed to load the iDevice.">
         <source>Failed to load the iDevice.</source>
-        <target>~Ezin izan da iDevice-a kargatu.</target>
+        <target>Huts egin du iDevicearen kargak</target>
       </trans-unit>
       <trans-unit id="uvlDjwW" resname="Failed to load the iDevice view.">
         <source>Failed to load the iDevice view.</source>
-        <target>~Ezin izan da iDevice-aren ikuspegia kargatu.</target>
+        <target>Huts egin du iDevicearen ikuspegia kargatzerakoan.</target>
       </trans-unit>
       <trans-unit id="Q_WMYYX" resname="You can't add an iDevice on the root page">
         <source>You can't add an iDevice on the root page</source>
-        <target>~Ez duzu iDevice bat gehitu erroa orri nagusian</target>
+        <target>Ezin da iDevicea gehitu erroko orrian</target>
       </trans-unit>
       <trans-unit id="2Pq3_Wp" resname="Problem adding iDevice">
         <source>Problem adding iDevice</source>
-        <target>~Arazoa iDevice gehitzean</target>
+        <target>Arazoa iDevicea gehitzerakoan</target>
       </trans-unit>
       <trans-unit id="38SLSPC" resname="An error occurred while loading the iDevice.">
         <source>An error occurred while loading the iDevice.</source>
-        <target>~Errorea gertatu da iDevice-a kargatzen ari zenean.</target>
+        <target>Errorea iDevicea kargatzerakoan.</target>
       </trans-unit>
       <trans-unit id="am0vSDJ" resname="Saved">
         <source>Saved</source>
-        <target>~Gordeta</target>
+        <target>Gordeta</target>
       </trans-unit>
       <trans-unit id="yvB7wsp" resname="The project has been saved.">
         <source>The project has been saved.</source>
-        <target>~Proiektuak gorde dira.</target>
+        <target>Proiektua gorde egin da.</target>
       </trans-unit>
       <trans-unit id="E4vyID5" resname="Style changed">
         <source>Style changed</source>
-        <target>~Estiloa aldatu da</target>
+        <target>Estiloa aldatu egin da</target>
       </trans-unit>
       <trans-unit id="PlBZGgy" resname="Undo the last action?">
         <source>Undo the last action?</source>
-        <target>~Desegin azken ekintza?</target>
+        <target>Azken ekintza desegin nahi duzu?</target>
       </trans-unit>
       <trans-unit id="JI04syi" resname="Unable to undo the last action.">
         <source>Unable to undo the last action.</source>
-        <target>~Ezin izan da azken ekintza desegin.</target>
+        <target>Ezin da azken ekintza desegin.</target>
       </trans-unit>
       <trans-unit id="_t85EMU" resname="Required">
         <source>Required</source>
@@ -1659,55 +1659,55 @@
       </trans-unit>
       <trans-unit id="Hrss0sI" resname="Save metadata and properties">
         <source>Save metadata and properties</source>
-        <target>~Gorde metadatuak eta propietateak</target>
+        <target>Metadatuak eta propietateak gorde</target>
       </trans-unit>
       <trans-unit id="bLQntlo" resname="Project properties">
         <source>Project properties</source>
-        <target>~Proiektuaren propietateak</target>
+        <target>Proiektuaren propietateak</target>
       </trans-unit>
       <trans-unit id="eCtKVk0" resname="Please fill in all required fields.">
         <source>Please fill in all required fields.</source>
-        <target>~Mesedez, bete beharrezko eremu guztiak.</target>
+        <target>Mesedez, bete behar diren eremu guztiak bete.</target>
       </trans-unit>
       <trans-unit id="76AHLsl" resname="Project properties saved.">
         <source>Project properties saved.</source>
-        <target>~Proiektuaren propietateak gorde dira.</target>
+        <target>Proiektuaren propietateak gorde egin dira.</target>
       </trans-unit>
       <trans-unit id="Nxwp61M" resname="Properties error">
         <source>Properties error</source>
-        <target>~Propietateetako errorea</target>
+        <target>Errorea propietateetan</target>
       </trans-unit>
       <trans-unit id="jiaDQDT" resname="An error occurred while saving properties">
         <source>An error occurred while saving properties</source>
-        <target>~Errore bat gertatu da propietateak gordetzean</target>
+        <target>Errorea propietateak gordetzerakoan</target>
       </trans-unit>
       <trans-unit id="7pvhS6V" resname="Structure node error">
         <source>Structure node error</source>
-        <target>~Errore nodoaren egitura</target>
+        <target>Errorea egituraren nodoan</target>
       </trans-unit>
       <trans-unit id="pwsne39" resname="An error occurred while saving the node in database">
         <source>An error occurred while saving the node in database</source>
-        <target>~Errorea gertatu da nodoa datu basean gorde bitartean</target>
+        <target>Errorea datu-basean nodoa gordetzerakoan</target>
       </trans-unit>
       <trans-unit id="SG12N9E" resname="An error occurred while cloning the node in database">
         <source>An error occurred while cloning the node in database</source>
-        <target>~Errorea gertatu da nodoa klonatzean datu basean</target>
+        <target>Errorea datu-basean nodoa klonatzerakoan</target>
       </trans-unit>
       <trans-unit id=".govyiK" resname="An error occurred while remove the node in database">
         <source>An error occurred while remove the node in database</source>
-        <target>~Errorea gertatu da nodoa ezabatzean datu basean</target>
+        <target>Errorea datu-basean nodoa kentzerakoan</target>
       </trans-unit>
       <trans-unit id="nq5kuRF" resname="Page properties">
         <source>Page properties</source>
-        <target>~ Orrialdearen ezaugarriak</target>
+        <target>Orrialdearen propietateak</target>
       </trans-unit>
       <trans-unit id="8U3kUJQ" resname="The score can't be saved because this page is not part of a SCORM package.">
         <source>The score can't be saved because this page is not part of a SCORM package.</source>
-        <target>Puntuak ezin dira gorde orri hau ez dalako SCORM pakete baten osagaia.</target>
+        <target>Puntuak ezin dira gorde orri hau ez delako SCORM pakete baten osagaia.</target>
       </trans-unit>
       <trans-unit id="sxO4.lj" resname="A-Z quiz">
         <source>A-Z quiz</source>
-        <target>~A-Z galdera</target>
+        <target>A-Z galdera-jokoa</target>
       </trans-unit>
       <trans-unit id="zd_rImQ" resname="Ready?">
         <source>Ready?</source>
@@ -1731,15 +1731,15 @@
       </trans-unit>
       <trans-unit id="qEHZc8h" resname="Enter the access code">
         <source>Enter the access code</source>
-        <target>Eman sarbide kodea</target>
+        <target>Eman sarbide-kodea</target>
       </trans-unit>
       <trans-unit id="1ZrV8QD" resname="The access code is not correct">
         <source>The access code is not correct</source>
-        <target>Sarbide kodea ez da zuzuena</target>
+        <target>Sarbide-kodea ez da zuzuena</target>
       </trans-unit>
       <trans-unit id="MO1WDco" resname="Game Over!">
         <source>Game Over!</source>
-        <target>Jokoa amaitu da!</target>
+        <target>Jokoa amaitu egin da!</target>
       </trans-unit>
       <trans-unit id="rCc9V0v" resname="New word">
         <source>New word</source>
