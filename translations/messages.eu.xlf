@@ -1747,7 +1747,7 @@
       </trans-unit>
       <trans-unit id="beA0M9R" resname="Starts with %1">
         <source>Starts with %1</source>
-        <target>Hasten da %1-(re)kin</target>
+        <target> %1rekin hasten da</target>
       </trans-unit>
       <trans-unit id="pcucC8i" resname="Contains letter %1">
         <source>Contains letter %1</source>
@@ -1755,7 +1755,7 @@
       </trans-unit>
       <trans-unit id="DCxi7j5" resname="Move on to the next word">
         <source>Move on to the next word</source>
-        <target>Aurrera egin hurrengo hitzara</target>
+        <target>Hurrengo hitzera joan</target>
       </trans-unit>
       <trans-unit id="lpZDhmO" resname="Provide a word">
         <source>Provide a word</source>
@@ -1763,7 +1763,7 @@
       </trans-unit>
       <trans-unit id="PzkeXG6" resname="Cool! The clue is:">
         <source>Cool! The clue is:</source>
-        <target>Primeran! Lagungarria hau da:</target>
+        <target>Primeran! Hauxe da pista:</target>
       </trans-unit>
       <trans-unit id="bN3gL7U" resname="Click here for a new game">
         <source>Click here for a new game</source>
@@ -1771,7 +1771,7 @@
       </trans-unit>
       <trans-unit id="hiMrYNM" resname="You have got %1 hits and %2 misses">
         <source>You have got %1 hits and %2 misses</source>
-        <target>%1 asmatu eta %2 huts egin duzu</target>
+        <target> %1 asmatu d(it)uzu  eta %2 huts egin d(it)uzu</target>
       </trans-unit>
       <trans-unit id="U7Ovl.y" resname="Play Again">
         <source>Play Again</source>
@@ -1779,7 +1779,7 @@
       </trans-unit>
       <trans-unit id="LRR8D6d" resname="Access code required">
         <source>Access code required</source>
-        <target>Sarbide-kodea derrigorrezkoa</target>
+        <target>Sarbide-kodea derrigorrezkoa da</target>
       </trans-unit>
       <trans-unit id="3CxF7TR" resname="The information you were looking for">
         <source>The information you were looking for</source>
@@ -1795,7 +1795,7 @@
       </trans-unit>
       <trans-unit id="CZ08JwF" resname="Hits">
         <source>Hits</source>
-        <target>Asmaketak</target>
+        <target>Asmatutakoak</target>
       </trans-unit>
       <trans-unit id="kyY3Q1a" resname="Errors">
         <source>Errors</source>
@@ -1803,7 +1803,7 @@
       </trans-unit>
       <trans-unit id="vrhWAZp" resname="Time Limit (mm:ss)">
         <source>Time Limit (mm:ss)</source>
-        <target>Denbora-muga (mm:ss), edo bestela epea</target>
+        <target>Denbora-muga (mm:ss)</target>
       </trans-unit>
       <trans-unit id="BgDxXh7" resname="One round">
         <source>One round</source>
@@ -1971,11 +1971,11 @@
       </trans-unit>
       <trans-unit id="xutW92D" resname="Accessibility warning">
         <source>Accessibility warning</source>
-        <target>~Sarbidearen abisu</target>
+        <target>Irisgarritasunari buruzko oharra</target>
       </trans-unit>
       <trans-unit id="gsp4x4D" resname="Starts with/Contains">
         <source>Starts with/Contains</source>
-        <target>~Hasteko/Barne</target>
+        <target>Honela hasten da/du</target>
       </trans-unit>
       <trans-unit id="5fRhuNj" resname="Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.">
         <source>Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.</source>
@@ -1983,11 +1983,11 @@
       </trans-unit>
       <trans-unit id="iLq5bso" resname="Usage Instructions">
         <source>Usage Instructions</source>
-        <target>~Erabilera Argibideak</target>
+        <target>Erabilera-jarraibideak</target>
       </trans-unit>
       <trans-unit id="_nw9BMU" resname="General settings">
         <source>General settings</source>
-        <target>Aukera orokorrak</target>
+        <target>Ezarpen orokorrak</target>
       </trans-unit>
       <trans-unit id="Y1Rf5sq" resname="Observe the letters, identify and fill in the missing words.">
         <source>Observe the letters, identify and fill in the missing words.</source>
@@ -2051,7 +2051,7 @@
       </trans-unit>
       <trans-unit id="d3V4fc6" resname="Show/Hide image">
         <source>Show/Hide image</source>
-        <target>~Erakutsi/Ezabatu irudia</target>
+        <target>Irudia erakutsi/ezkutatu</target>
       </trans-unit>
       <trans-unit id="zxfZL.s" resname="Select Image">
         <source>Select Image</source>
@@ -2079,7 +2079,7 @@
       </trans-unit>
       <trans-unit id="zAWRmDC" resname="Create before-and-after comparisons with side-by-side images of similar or proportional size.">
         <source>Create before-and-after comparisons with side-by-side images of similar or proportional size.</source>
-        <target>~Sortu aurretiko eta ondorengo konparaketak irudi berdineko edo proportzionako tamainako irudiak alde batean eta bestean.</target>
+        <target>Tamaina antzekoa edo proportzionala duten alboz alboko irudiekin, sortu konparazioak aurretik eta ondoren.</target>
       </trans-unit>
       <trans-unit id="gjGGGsg" resname="Add question">
         <source>Add question</source>
@@ -2123,11 +2123,11 @@
       </trans-unit>
       <trans-unit id="fPdQ29G" resname="Before after">
         <source>Before after</source>
-        <target>~Aurre / Berriro</target>
+        <target>Aurretik / Ondoren</target>
       </trans-unit>
       <trans-unit id="xI18KU9" resname="Cool! The information you were looking for">
         <source>Cool! The information you were looking for</source>
-        <target>Primeran! Jakin nahi zenuen informazioa</target>
+        <target>Primeran! Hemen bilatzen zenuen informazioa</target>
       </trans-unit>
       <trans-unit id="7b0LJ3_" resname="No picture question">
         <source>No picture question</source>
@@ -2135,11 +2135,11 @@
       </trans-unit>
       <trans-unit id="9UuTYUI" resname="After image">
         <source>After image</source>
-        <target>~Irudiaren ondoren</target>
+        <target>Irudiaren ondoren</target>
       </trans-unit>
       <trans-unit id="V1EG4Aw" resname="Before image">
         <source>Before image</source>
-        <target>~Irudiaren aurretik</target>
+        <target>Irudiaren aurretik</target>
       </trans-unit>
       <trans-unit id="gefhnBC" resname="Next">
         <source>Next</source>
@@ -2151,7 +2151,7 @@
       </trans-unit>
       <trans-unit id="JeQlTo7" resname="Before/After">
         <source>Before/After</source>
-        <target>~Aurre/Berriro</target>
+        <target>Aurretik / Ondoren</target>
       </trans-unit>
       <trans-unit id="XWKv65p" resname="The selected file does not contain a valid game">
         <source>The selected file does not contain a valid game</source>
@@ -2163,11 +2163,11 @@
       </trans-unit>
       <trans-unit id="gndC41h" resname="Provide an image">
         <source>Provide an image</source>
-        <target>~Irudi bat eman</target>
+        <target>Irudi bat eman</target>
       </trans-unit>
       <trans-unit id="9vldWvn" resname="Provide a description">
         <source>Provide a description</source>
-        <target>~Deskribapen bat eman</target>
+        <target>Deskribapen bat eman</target>
       </trans-unit>
       <trans-unit id="Sz6PGZj" resname="Please create at least one card">
         <source>Please create at least one card</source>
