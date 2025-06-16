@@ -2667,7 +2667,7 @@
       </trans-unit>
       <trans-unit id="devFmcu" resname="Author">
         <source>Author</source>
-        <target>Autor</target>
+        <target>Egilea</target>
       </trans-unit>
       <trans-unit id="34j5zX3" resname="Please select a text file (.txt)">
         <source>Please select a text file (.txt)</source>
@@ -2791,39 +2791,39 @@
       </trans-unit>
       <trans-unit id="wpnKvuQ" resname="The game is over. You scored %s. Hits: %s out of %s.">
         <source>The game is over. You scored %s. Hits: %s out of %s.</source>
-        <target>~Jokoa amaitu da. %s puntuazioarekin. Txartelek: %s / %s.</target>
+        <target>Jokoa amaitu da. Zure puntuazioa: %s. Erantzun zuzenak: %s / %s.</target>
       </trans-unit>
       <trans-unit id="oJTSv6A" resname="Click on a word’s square to see the definition">
         <source>Click on a word’s square to see the definition</source>
-        <target>~Klikatu hitz baten karratuko gainean definizioa ikusteko</target>
+        <target>Egin klik hitz baten gainean bere definizioa ikusteko</target>
       </trans-unit>
       <trans-unit id="WEOMwiV" resname="Horizontals">
         <source>Horizontals</source>
-        <target>~Horizontalak</target>
+        <target>Horizontalak</target>
       </trans-unit>
       <trans-unit id="vbD9M.9" resname="Verticals">
         <source>Verticals</source>
-        <target>~Bertikalak</target>
+        <target>Bertikalak</target>
       </trans-unit>
       <trans-unit id="A9eMGJG" resname="Show/hide definitions">
         <source>Show/hide definitions</source>
-        <target>~Erakutsi/ezkutatu definizioak</target>
+        <target>Definizioak erakutsi/ezkutatu </target>
       </trans-unit>
       <trans-unit id="5xtnPdn" resname="Show/hide background image">
         <source>Show/hide background image</source>
-        <target>~Erakutsi/ezkutatu atzeko irudia</target>
+        <target>Atzekaldeko planoan dagoen irudia erakutsi/ezkutatu</target>
       </trans-unit>
       <trans-unit id="b57XmU9" resname="The crossword must have at least two words">
         <source>The crossword must have at least two words</source>
-        <target>~Elkarrizketa-krosaketa gutxienez bi hitz izan behar ditu</target>
+        <target>Gurutzegramak gutxienez bi hitz izan behar ditu</target>
       </trans-unit>
       <trans-unit id="XXyR3wt" resname="Create crossword-type activities">
         <source>Create crossword-type activities</source>
-        <target>~Sortu elkarrizketa-mota aktivitak</target>
+        <target>Gurutzegrama motako jarduerak sortu</target>
       </trans-unit>
       <trans-unit id="DNATu5p" resname="Complete the following crossword puzzle.">
         <source>Complete the following crossword puzzle.</source>
-        <target>~Osatu hurrengo elkarrizketa-puzkera.</target>
+        <target>Osatu gurutzegrama hau.</target>
       </trans-unit>
       <trans-unit id="i3AJ6Na" resname="Difficulty">
         <source>Difficulty</source>
@@ -2843,7 +2843,7 @@
       </trans-unit>
       <trans-unit id="xgwSv7q" resname="words">
         <source>words</source>
-        <target>~hitzak</target>
+        <target>hitzak</target>
       </trans-unit>
       <trans-unit id="vsw1pFS" resname="Discover">
         <source>Discover</source>
@@ -2927,11 +2927,11 @@
       </trans-unit>
       <trans-unit id="VE5oxsr" resname="Create interactive activities in which players will have to discover pairs, trios or card quartets with images, texts and/or sounds.">
         <source>Create interactive activities in which players will have to discover pairs, trios or card quartets with images, texts and/or sounds.</source>
-        <target>~Sortu jokalariak bikoteak, hirukoteak edo karten kuartetoak aurkitu beharko dituzten jarduera interaktiboak, irudiekin, testuekin eta/edo soinuekin.</target>
+        <target>Jokalariek irudiekin, testuekin edota soinuekin bikoteak, hirukoteak edo karta-laukoteak deskubritu beharko dituzten jarduera interaktiboak sortu.</target>
       </trans-unit>
       <trans-unit id="FlJ.leo" resname="Birds of a feather flock together.">
         <source>Birds of a feather flock together.</source>
-        <target>Topatu bikoteak</target>
+        <target>Luma bateko  hegaztiak elkartzen dira.</target>
       </trans-unit>
       <trans-unit id="JJdxehM" resname="Difficulty levels">
         <source>Difficulty levels</source>
@@ -2939,7 +2939,7 @@
       </trans-unit>
       <trans-unit id="NDTiv4q" resname="Visible cards">
         <source>Visible cards</source>
-        <target>~Ikusgarri dauden karta</target>
+        <target>Agerian dauden kartak</target>
       </trans-unit>
       <trans-unit id=".zsNS7b" resname="Time while the cards will be shown (seconds)">
         <source>Time while the cards will be shown (seconds)</source>
@@ -3091,15 +3091,15 @@
       </trans-unit>
       <trans-unit id="13_eLOl" resname="Please create at least one activity">
         <source>Please create at least one activity</source>
-        <target>~Mesedez, sortu gutxienez jarduera bat</target>
+        <target>Sortu gutxienez jarduera bat, mesedez</target>
       </trans-unit>
       <trans-unit id="3nQi2xN" resname="Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice versa).">
         <source>Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice versa).</source>
-        <target>~Sortu testu, irudi eta audio fitxategiak konbinatzen dituzten arrastatu-eta-askatu jarduerak, edozein norabidetan elkarreraginak ahalbidetuz (adibidez, testua irudien edo audioaren gainean arrastatzea, eta alderantziz).</target>
+        <target>Testuak, irudiak eta audio-klipak konbinatzen dituzten arrastatze- eta jaregite-jarduerak sortu, edozein norabidetako interakzioak ahalbidetuz (adibidez, testua irudietara edo audioetara arrastatzea, eta alderantziz).</target>
       </trans-unit>
       <trans-unit id="GpkLPpO" resname="Drag each item onto the one it matches with">
         <source>Drag each item onto the one it matches with</source>
-        <target>~Arrastatu elementu bakoitza dagokion horretara</target>
+        <target>Arrastatu elementu bakoitza dagokion elementura</target>
       </trans-unit>
       <trans-unit id="gVu3NZC" resname="Source">
         <source>Source</source>
@@ -3107,7 +3107,7 @@
       </trans-unit>
       <trans-unit id="wbmyMpt" resname="Media">
         <source>Media</source>
-        <target>~Media</target>
+        <target>Media</target>
       </trans-unit>
       <trans-unit id="rK8QsxP" resname="Show solution time (seconds)">
         <source>Show solution time (seconds)</source>
@@ -3119,59 +3119,59 @@
       </trans-unit>
       <trans-unit id="Y8LZqt6" resname="activities">
         <source>activities</source>
-        <target>~ekintzak</target>
+        <target>jarduerak</target>
       </trans-unit>
       <trans-unit id="mhXmKpa" resname="Please select a JSON file (.json)">
         <source>Please select a JSON file (.json)</source>
-        <target>~Mesedez, hautatu JSON fitxategi bat (.json)</target>
+        <target>Hautatu JSON fitxategi bat (.json), mesedez</target>
       </trans-unit>
       <trans-unit id="qcFkxQM" resname="This is just an example iDevice.">
         <source>This is just an example iDevice.</source>
-        <target>~Hau da iDevice adibide bat besterik ez da.</target>
+        <target>Hau iDevice adibide bat besterik ez da.</target>
       </trans-unit>
       <trans-unit id="hww8GA_" resname="Write a text that will be saved">
         <source>Write a text that will be saved</source>
-        <target>~Idatzi testu bat, gordeko dena</target>
+        <target>Idatziko duzun testua gorde egingo da</target>
       </trans-unit>
       <trans-unit id="DV3b0n_" resname="Type something...">
         <source>Type something...</source>
-        <target>~Idatzi zerbait...</target>
+        <target>Idatzi zerbait...</target>
       </trans-unit>
       <trans-unit id="wGL_28Z" resname="Select an option from the list (double click to see it)">
         <source>Select an option from the list (double click to see it)</source>
-        <target>~Hautatu aukera zerrendatik (biko klik egin ikusteko)</target>
+        <target>Hautatu zerrendako aukera bat (egin klik bikoitza ikusteko)</target>
       </trans-unit>
       <trans-unit id="wmTSycD" resname="Choose a number">
         <source>Choose a number</source>
-        <target>~Aukeratu zenbaki bat</target>
+        <target>Zenbaki bat aukeratu</target>
       </trans-unit>
       <trans-unit id="7zp46aE" resname="Color picker example">
         <source>Color picker example</source>
-        <target>~Kolore hautatzaile adibidea</target>
+        <target>Kolore-hautatzailearen adibidea</target>
       </trans-unit>
       <trans-unit id="xUB0Czi" resname="Yes/No example">
         <source>Yes/No example</source>
-        <target>~Bai/Ez adibidea</target>
+        <target>Bai/Ez adibidea</target>
       </trans-unit>
       <trans-unit id="Gh267j5" resname="Radio buttons example">
         <source>Radio buttons example</source>
-        <target>~Adar botoien adibidea</target>
+        <target>Aukera botoien adibidea</target>
       </trans-unit>
       <trans-unit id="Wn2XPNj" resname="Element 1">
         <source>Element 1</source>
-        <target>~Elementua 1</target>
+        <target>1. elementua</target>
       </trans-unit>
       <trans-unit id="ASFGF94" resname="Element 2">
         <source>Element 2</source>
-        <target>~Elementua 2</target>
+        <target>2. elementua</target>
       </trans-unit>
       <trans-unit id="E8xOjcu" resname="Element 3">
         <source>Element 3</source>
-        <target>~Elementua 3</target>
+        <target>3. elementua</target>
       </trans-unit>
       <trans-unit id="t93UWKG" resname="Please write some text.">
         <source>Please write some text.</source>
-        <target>~Mesedez, idatzi testu bat.</target>
+        <target>Idatzi testu bat, mesedez.</target>
       </trans-unit>
       <trans-unit id="Fs.7BfM" resname="Example">
         <source>Example</source>
@@ -3179,15 +3179,15 @@
       </trans-unit>
       <trans-unit id="dQS1rbc" resname="External website">
         <source>External website</source>
-        <target>~Webgune kanpoko</target>
+        <target>Kanpoko webgunea</target>
       </trans-unit>
       <trans-unit id="k.iFheR" resname="Remember that in HTTPS sites it is not possible to include HTTP pages">
         <source>Remember that in HTTPS sites it is not possible to include HTTP pages</source>
-        <target>~Gogoratu HTTPS guneetan HTTP orrialdeak sartzea ezinezkoa dela</target>
+        <target>Gogoratu HTTPS protokoloa erabiltzen duten guneetan ezin dela HTTP protokoloa darabilen orrialderik sartu</target>
       </trans-unit>
       <trans-unit id="30rKYPD" resname="Frame height:">
         <source>Frame height:</source>
-        <target>~Markoaren altuera:</target>
+        <target>Markoaren altuera:</target>
       </trans-unit>
       <trans-unit id="sjhYjJB" resname="small">
         <source>small</source>
@@ -3207,11 +3207,11 @@
       </trans-unit>
       <trans-unit id="t9h1YOO" resname="Unable to display an iframe loaded over HTTP on a website that uses HTTPS.">
         <source>Unable to display an iframe loaded over HTTP on a website that uses HTTPS.</source>
-        <target>~HTTPS erabiltzen duen webgune batean HTTP bidez kargatutako iframe bat erakustea ezin daiteke.</target>
+        <target>HTTP protokolo bidez kargatuta dagoen iframe bat ezin da HTTPS protokoloa erabiltzen duen webgune batean erakutsi.</target>
       </trans-unit>
       <trans-unit id="i3DCptU" resname="empty field">
         <source>empty field</source>
-        <target>~hutsik dagoen eremua</target>
+        <target>Hutsik dagoen eremua</target>
       </trans-unit>
       <trans-unit id="mWcW572" resname="Insert">
         <source>Insert</source>
@@ -3219,7 +3219,7 @@
       </trans-unit>
       <trans-unit id="7AQwApM" resname="incorrect">
         <source>incorrect</source>
-        <target>~Okerra</target>
+        <target>Okerra</target>
       </trans-unit>
       <trans-unit id="A.2D9iI" resname="Right. That's the card.">
         <source>Right. That's the card.</source>
@@ -3239,7 +3239,7 @@
       </trans-unit>
       <trans-unit id="n.n5hj5" resname="Memory cards">
         <source>Memory cards</source>
-        <target>~Memoria txartelak</target>
+        <target>Oroimen kartak</target>
       </trans-unit>
       <trans-unit id="HWekgRg" resname="True">
         <source>True</source>
@@ -3255,7 +3255,7 @@
       </trans-unit>
       <trans-unit id="GlVw8L8" resname="Game time is over. Your score is %s.">
         <source>Game time is over. Your score is %s.</source>
-        <target>Jokoaren denbora amaitu da. Zure puntu kopurua %s da.</target>
+        <target>Jokoaren denbora amaitu da. Zure puntuazioa %s da.</target>
       </trans-unit>
       <trans-unit id="OHpcg.X" resname="Finish">
         <source>Finish</source>
@@ -3263,11 +3263,11 @@
       </trans-unit>
       <trans-unit id="2QRc0q1" resname="Maximum card number: %s.">
         <source>Maximum card number: %s.</source>
-        <target>Karta kopuru maximoa: %s.</target>
+        <target>Karta kopuru maximoa: %s da.</target>
       </trans-unit>
       <trans-unit id="sO4LwLI" resname="Create card memory games with images, sounds or rich text.">
         <source>Create card memory games with images, sounds or rich text.</source>
-        <target>Sortu karta oroimen motako jokoak irudiekin, soinuekin edo testu aberatsekin.</target>
+        <target>Irudi, soinu edo testu aberatsarekin  oroimen karta jokoak sortu.</target>
       </trans-unit>
       <trans-unit id="NLWTK5c" resname="Click on the cards to see what they hide.">
         <source>Click on the cards to see what they hide.</source>
@@ -3295,7 +3295,7 @@
       </trans-unit>
       <trans-unit id="OTc71OS" resname="You scores is">
         <source>You scores is</source>
-        <target>~Zure puntuazioa da</target>
+        <target>Zure puntuazioa da</target>
       </trans-unit>
       <trans-unit id="BbK2K6u" resname="Result">
         <source>Result</source>
@@ -3307,15 +3307,15 @@
       </trans-unit>
       <trans-unit id="eiLihYG" resname="Show answers">
         <source>Show answers</source>
-        <target>~Erantzunak erakutsi</target>
+        <target>Erakutsi erantzunak</target>
       </trans-unit>
       <trans-unit id="7s.0_Tq" resname="Congratulations! You passed the test">
         <source>Congratulations! You passed the test</source>
-        <target>~Zorionak! Testa gainditu duzu</target>
+        <target>Zorionak! Proba gainditu duzu</target>
       </trans-unit>
       <trans-unit id="YMTBTg5" resname="Sorry. You failed the test">
         <source>Sorry. You failed the test</source>
-        <target>~Barkatu. Testa ez duzu gainditu</target>
+        <target>Barkatu. Proba ez duzu gainditu</target>
       </trans-unit>
       <trans-unit id="RZR9FtQ" resname="Select whether the statement is true or false">
         <source>Select whether the statement is true or false</source>
@@ -3323,27 +3323,27 @@
       </trans-unit>
       <trans-unit id="EAE7Y9Z" resname="Choose the correct answer among the options proposed">
         <source>Choose the correct answer among the options proposed</source>
-        <target>~Aukeratu proposatutako aukeren artean erantzun zuzena</target>
+        <target>Proposatutako aukeren artean erantzun zuzena aukeratu</target>
       </trans-unit>
       <trans-unit id="Vz.4otj" resname="Fill in the blanks with the appropriate word">
         <source>Fill in the blanks with the appropriate word</source>
-        <target>~Bete hutsuneak hitz egoki batekin</target>
+        <target>Bete hutsuneak dagokion hitz egoki batekin</target>
       </trans-unit>
       <trans-unit id="u10JVhP" resname="Multiple choice with only one correct answer">
         <source>Multiple choice with only one correct answer</source>
-        <target>~Aukeraketa anitza, erantzun zuzena bakarrarekin</target>
+        <target>Erantzun zuzen bakarrareko aukera anitzeko galdera</target>
       </trans-unit>
       <trans-unit id="G12Ra8z" resname="Multiple choice with multiple corrects answers">
         <source>Multiple choice with multiple corrects answers</source>
-        <target>~Hautapen anitzeko erantzun zuzuekin</target>
+        <target>Erantzun zuzen anitzeko aukera anitzeko galdera</target>
       </trans-unit>
       <trans-unit id="DC.r8BB" resname="Sorry, the selected file does not contain any questions that are compatible with this activity.">
         <source>Sorry, the selected file does not contain any questions that are compatible with this activity.</source>
-        <target>~Barkatu, hautatutako fitxategiak ez du jarduera honekin bateragarriak diren galderarik.</target>
+        <target>Barkatu, hautatutako fitxategiak ez du jarduera honekin bateragarri den galderarik.</target>
       </trans-unit>
       <trans-unit id="LHANtja" resname="Please add at least one question">
         <source>Please add at least one question</source>
-        <target>~Mesedez, gehitu galdera bat gutxienez</target>
+        <target>Gehitu gutxienez galdera bat, mesedez</target>
       </trans-unit>
       <trans-unit id="eykRC72" resname="Language settings">
         <source>Language settings</source>
@@ -3351,47 +3351,47 @@
       </trans-unit>
       <trans-unit id="Coc0Gni" resname="Share">
         <source>Share</source>
-        <target>~Partekatu</target>
+        <target>Partekatu</target>
       </trans-unit>
       <trans-unit id="Iv4YqIp" resname="Add a dropdown question to form">
         <source>Add a dropdown question to form</source>
-        <target>~Gehitu galdetegiaren zerrendako galdera bat</target>
+        <target>Goitibeherako galdera bat gehitu inprimakiari</target>
       </trans-unit>
       <trans-unit id="AgdmMmn" resname="Add a fill question to form">
         <source>Add a fill question to form</source>
-        <target>~Gehitu bete galdera galdetegira</target>
+        <target>Betetze-galdera bat gehitu inprimakiari</target>
       </trans-unit>
       <trans-unit id="Epodoyd" resname="Add a true-false question to form">
         <source>Add a true-false question to form</source>
-        <target>~Gehitu egia-falsa galdera galdetegira</target>
+        <target>Egia-gezurra motako galdera bat gehitu inprimakiari</target>
       </trans-unit>
       <trans-unit id=".85erFk" resname="Add a selection question to form">
         <source>Add a selection question to form</source>
-        <target>~Gehitu hautaketa galdera galdetegira</target>
+        <target>Hautapen galdera bat gehitu inprimakiari</target>
       </trans-unit>
       <trans-unit id="DoC.9rX" resname="Add this question to form">
         <source>Add this question to form</source>
-        <target>~Gehitu galdera hau galdetegira</target>
+        <target>Galdera hau gehitu inprimakiari</target>
       </trans-unit>
       <trans-unit id="fEeElvJ" resname="Remove">
         <source>Remove</source>
-        <target>~Ezabatu</target>
+        <target>Ezabatu</target>
       </trans-unit>
       <trans-unit id="qxlEh6x" resname="Form preview">
         <source>Form preview</source>
-        <target>~Aurrebista formularioa</target>
+        <target>Inprimakiaren aurrebista</target>
       </trans-unit>
       <trans-unit id="y6EIAlw" resname="Question type">
         <source>Question type</source>
-        <target>~Galderaren motorea</target>
+        <target>Galdera mota</target>
       </trans-unit>
       <trans-unit id="zAvH.Tt" resname="Show/Hide word">
         <source>Show/Hide word</source>
-        <target>~Erakutsi/Ezabatu hitza</target>
+        <target>Hitza erakutsi/ezkutatu</target>
       </trans-unit>
       <trans-unit id="9yeOAW0" resname="Add new option">
         <source>Add new option</source>
-        <target>~Gehitu aukera berria</target>
+        <target>Aukera berria gehitu</target>
       </trans-unit>
       <trans-unit id="2m.1OGR" resname="Other words">
         <source>Other words</source>
@@ -3399,11 +3399,11 @@
       </trans-unit>
       <trans-unit id="lzl2Fu_" resname="cat|dog|fish">
         <source>cat|dog|fish</source>
-        <target>~katua|txakurra|arraina</target>
+        <target>katua|txakurra|arraina</target>
       </trans-unit>
       <trans-unit id="K5TCq89" resname="No questions in the form">
         <source>No questions in the form</source>
-        <target>~Ez dago galderarik inprimakian</target>
+        <target>Ez dago galderarik inprimakian</target>
       </trans-unit>
       <trans-unit id="DCmDkZO" resname="Set the pass mark">
         <source>Set the pass mark</source>
@@ -3411,35 +3411,35 @@
       </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
-        <target>~Erakutsi erantzunak botoia gehitu</target>
+        <target>Erantzunak bistaratzeko botoi bat gehitu</target>
       </trans-unit>
       <trans-unit id=".ChpKdA" resname="Check capitalization">
         <source>Check capitalization</source>
-        <target>~Begiratu maiuskulak</target>
+        <target>Maiuskulak egiaztatu</target>
       </trans-unit>
       <trans-unit id="x_IDsoo" resname="Strict qualification">
         <source>Strict qualification</source>
-        <target>~Kalifikazio zorrotza</target>
+        <target>Kalifikazio zorrotza</target>
       </trans-unit>
       <trans-unit id="0fRoL4C" resname="The question should be clear and unambiguous. Avoid negative premises as they tend to be ambiguous.">
         <source>The question should be clear and unambiguous. Avoid negative premises as they tend to be ambiguous.</source>
-        <target>~Galdera argia eta zalantzarik gabea izan behar da. Saihestu ezazu premisa negatiboak, hauek zalantzazkoak izan ohi baitira.</target>
+        <target>Galderak argia eta zalantzarik gabea izan behar du. Saihestu premisa negatiboak, anbiguoak izateko joera baitute.</target>
       </trans-unit>
       <trans-unit id="mLTqS49" resname="Optional: You can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.">
         <source>Optional: You can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.</source>
-        <target>~Aukerazkoa: idatzi beste hitz batzuk jaitsiera-menuaren jarduera osatzeko. Erabili barra bertikala hitzak bereizteko. Honek hutsik utzi daiteke.</target>
+        <target>Aukerakoa: Beste hitz batzuk idatz ditzakezu goitibeherako jarduera osatzeko. Erabili barra bertikala hitzak bereizteko. Eremu hau hutsik utz daiteke.</target>
       </trans-unit>
       <trans-unit id="gTioMsM" resname="If this option is checked, submitted answers with different capitalization will be marked as incorrect">
         <source>If this option is checked, submitted answers with different capitalization will be marked as incorrect</source>
-        <target>~Honek aukera markatuta badago, kapitalizazio desberdineko erantzunak ez direnak akats gisa markatuko dira.</target>
+        <target>Aukera hau markatuta badago, maiuskula ezberdinak dituzten erantzunak oker gisa markatuko dira.</target>
       </trans-unit>
       <trans-unit id="S82tf8I" resname="Are you sure you want to delete this question? This can't be undone.">
         <source>Are you sure you want to delete this question? This can't be undone.</source>
-        <target>~Ziur zaude galdera hau ezabatu nahi duzula? Hau ezin da desegin.</target>
+        <target>Ziur zaude galdera hau ezabatu nahi duzula? Behin ezabatuta, ezin da berreskuratu.</target>
       </trans-unit>
       <trans-unit id="p32sPXB" resname="Are you sure you want to discard the changes? This can't be undone.">
         <source>Are you sure you want to discard the changes? This can't be undone.</source>
-        <target>~Ziur zaude aldaketak baztertu nahi dituzula? Hau ezin da desegin.</target>
+        <target>Ziur zaude aldaketak baztertu nahi dituzula? Behin baztertuta, ezin dira berreskuratu.</target>
       </trans-unit>
       <trans-unit id="EpXL8TP" resname="Dropdown">
         <source>Dropdown</source>
