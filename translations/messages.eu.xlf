@@ -2175,7 +2175,7 @@
       </trans-unit>
       <trans-unit id="W0r1NMk" resname="At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.">
         <source>At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.</source>
-        <target>~Gutxienez irudi batek deskribapenik ez du, seguru zaude jarraitu nahi duzula barnean ez jartzearekin? Horrek ez duena irudia desgaitasunak dituzten erabiltzaile batzuek sarbidegabea izan daiteke, edo testu nabigatzaile bat erabiltzen dutenentzat, edo irudiekin Weba nabigatzen dutenentzat.</target>
+        <target>Gutxienez irudi batek ez du deskribapenik, ziur zaude hori gabe jarraitu nahi duzula? Horrela, irudia ez da erabilgarri izango desgaitasuna duten erabiltzaileentzat, testu-nabigatzailea erabiltzen dutenentzat edo irudirik gabe web orria arakatzen dutenentzat.</target>
       </trans-unit>
       <trans-unit id="VKiX34Q" resname="The report identifier must have at least 5 characters">
         <source>The report identifier must have at least 5 characters</source>
@@ -2187,11 +2187,11 @@
       </trans-unit>
       <trans-unit id="fQdHKPd" resname="Images">
         <source>Images</source>
-        <target>~Irudiak</target>
+        <target>Irudiak</target>
       </trans-unit>
       <trans-unit id="Cf7Y.Ra" resname="Both images should have a similar or proportional size.">
         <source>Both images should have a similar or proportional size.</source>
-        <target>~Bi irudiek tamaina antzeko edo proportzionala izan behar dute.</target>
+        <target>Bi irudiek tamaina antzekoa edo proportzionala izan behar dute.</target>
       </trans-unit>
       <trans-unit id="NMmVjl0" resname="Description">
         <source>Description</source>
@@ -2199,7 +2199,7 @@
       </trans-unit>
       <trans-unit id="WmlZhep" resname="Vertical orientation">
         <source>Vertical orientation</source>
-        <target>~Bertikala orientazioa</target>
+        <target>Orientazio bertikala</target>
       </trans-unit>
       <trans-unit id="8q3F30o" resname="Position">
         <source>Position</source>
@@ -2207,7 +2207,7 @@
       </trans-unit>
       <trans-unit id="pJZJlf4" resname="Before">
         <source>Before</source>
-        <target>Optimizatu aurretik</target>
+        <target>Aurretik</target>
       </trans-unit>
       <trans-unit id="o3vRjwz" resname="More">
         <source>More</source>
@@ -2343,7 +2343,7 @@
       </trans-unit>
       <trans-unit id="I3Hqir3" resname="Feedback">
         <source>Feedback</source>
-        <target>Feedbacka</target>
+        <target>Atzeraelikadura</target>
       </trans-unit>
       <trans-unit id="Dptvysv" resname="Time">
         <source>Time</source>
@@ -2499,7 +2499,7 @@
       </trans-unit>
       <trans-unit id="3hMXtDx" resname="Community/Company">
         <source>Community/Company</source>
-        <target>~Komunitatea/Enpresa</target>
+        <target>Komunitatea/Enpresa</target>
       </trans-unit>
       <trans-unit id="tK2UBvf" resname="Decoration">
         <source>Decoration</source>
@@ -2507,7 +2507,7 @@
       </trans-unit>
       <trans-unit id="xfZv5NJ" resname="Do you want to delete this row?">
         <source>Do you want to delete this row?</source>
-        <target>~Ezabatu nahi duzu errenkada hau?</target>
+        <target>Ziur zaude errenkada hau ezabatu nahi duzula?</target>
       </trans-unit>
       <trans-unit id="TOvreKm" resname="You can only use text at this item's level">
         <source>You can only use text at this item's level</source>
@@ -2535,7 +2535,7 @@
       </trans-unit>
       <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
         <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target><![CDATA[__You need at least %s&percnt; of correct answers to get the information. Please try again.]]></target>
+        <target><![CDATA[__Gutxienez %s% erantzun zuzen behar dituzu informazioa lortzeko. Mesedez, saiatu berriro.]]></target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -2567,7 +2567,7 @@
       </trans-unit>
       <trans-unit id="ZTguMuX" resname="There were %s cards to be placed correctly. Do you want to try again?">
         <source>There were %s cards to be placed correctly. Do you want to try again?</source>
-        <target>%s txartel geratu zaizkizu behar bezala jartzeko. Berriro saiatu nahi duzu?\n</target>
+        <target>%s txartel geratu zaizkizu behar bezala jartzeko. Berriro saiatu nahi duzu?</target>
       </trans-unit>
       <trans-unit id="Q8WMDwC" resname="Brilliant! All perfect!">
         <source>Brilliant! All perfect!</source>
@@ -2615,7 +2615,7 @@
       </trans-unit>
       <trans-unit id="VQOPvRh" resname="Create interactive activities in which players have to classify cards with images, texts and/or sounds.">
         <source>Create interactive activities in which players have to classify cards with images, texts and/or sounds.</source>
-        <target>~Sortu jarduera interaktiboak, non jokalariek irudi, testu eta/edo soinuzko karta sailkatu behar dituzten.</target>
+        <target>Jokalariek kartak irudiekin, testuekin eta/edo soinuekin sailkatzeko modua izango duten jarduera interaktiboak sortu.</target>
       </trans-unit>
       <trans-unit id="hu4n_hW" resname="Drag each card to its container.">
         <source>Drag each card to its container.</source>
@@ -2647,7 +2647,7 @@
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
-        <target>~Irudiaren atzera</target>
+        <target>Irudiaren atzealdea</target>
       </trans-unit>
       <trans-unit id="y7BloA5" resname="Hit">
         <source>Hit</source>
@@ -2671,15 +2671,15 @@
       </trans-unit>
       <trans-unit id="34j5zX3" resname="Please select a text file (.txt)">
         <source>Please select a text file (.txt)</source>
-        <target>~Mesedez, hautatu testu fitxategi bat (.txt)</target>
+        <target>Mesedez, testu fitxategi bat (.txt) hautatu</target>
       </trans-unit>
       <trans-unit id="Ei1YdI6" resname="Incorrect group number">
         <source>Incorrect group number</source>
-        <target>~Talde zenbaki okerra</target>
+        <target>Talde zenbaki okerra</target>
       </trans-unit>
       <trans-unit id="PPkm.oU" resname="Sorry, there are no questions for this type of activity.">
         <source>Sorry, there are no questions for this type of activity.</source>
-        <target>~Barkatu, ez dago galderarik jarduera mota honetarako.</target>
+        <target>Barkatu, ez dago galderarik jarduera mota honetarako.</target>
       </trans-unit>
       <trans-unit id="_hZIbEQ" resname="eXeLearning is a **free** and open source editor to create **educational** resources in an **simple and easy** way. It's available for different **operating** systems.">
         <source>eXeLearning is a **free** and open source editor to create **educational** resources in an **simple and easy** way. It's available for different **operating** systems.</source>
@@ -2719,7 +2719,7 @@
       </trans-unit>
       <trans-unit id="NHsqT6R" resname="Please write the feedback.">
         <source>Please write the feedback.</source>
-        <target>Idatzi feedbacka.</target>
+        <target>Idatzi atzeraelikadura.</target>
       </trans-unit>
       <trans-unit id="gAIeEpx" resname="Error message">
         <source>Error message</source>
@@ -2731,7 +2731,7 @@
       </trans-unit>
       <trans-unit id="qyxcPwN" resname="Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.">
         <source>Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.</source>
-        <target>Sortu jarduerak non ikasleek testu baten zuloak bete behar dituzten idazten edo erantzun bat hautatzen.</target>
+        <target>Ikasleak testu baten hutsuneak bete behar dituen jarduerak sortu. Erantzunak idatziz, hitzak arrastatuz edo hautatuz eman ahalko dira.</target>
       </trans-unit>
       <trans-unit id="lsdWsbD" resname="Read the text and complete the missing words.">
         <source>Read the text and complete the missing words.</source>
@@ -2763,7 +2763,7 @@
       </trans-unit>
       <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
         <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target><![CDATA[__Incorrect letters allowed (&percnt;)]]></target>
+        <target><![CDATA[__Baimendutako hizki okerrak (%)]]></target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
