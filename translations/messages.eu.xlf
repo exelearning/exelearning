@@ -2771,11 +2771,11 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
         <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[__&percnt; right to see the feedback]]></target>
+        <target><![CDATA[__% k du atzeraelikadura ikusteko eskubidea]]></target>
       </trans-unit>
       <trans-unit id="mA7cA0x" resname="Crossword">
         <source>Crossword</source>
-        <target>~Hitziluma</target>
+        <target>Gurutzegrama</target>
       </trans-unit>
       <trans-unit id="p_GS4Zf" resname="Provide a word or phrase">
         <source>Provide a word or phrase</source>
