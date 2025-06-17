@@ -2535,7 +2535,7 @@
       </trans-unit>
       <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
         <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target><![CDATA[__You need at least %s&percnt; of correct answers to get the information. Please try again.]]></target>
+        <target>You need at least %s&percnt; of correct answers to get the information. Please try again.</target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
