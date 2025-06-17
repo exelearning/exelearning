@@ -104,18 +104,18 @@ jobs:
       - name: Decode Windows certificate
         if: matrix.os == 'windows-latest'
         run: |
-          echo "${{ secrets.CERT_P12 }}" | base64 --decode > windows-cert.pfx
+          echo "${{ secrets.WIN_CERT_P12 }}" | base64 --decode > windows-cert.pfx
         shell: bash
 
       # Use the Makefile package target
       - name: Package application using Makefile
         env:
           # GitHub Releases API token for electron-builder
-          # TO-DO Change for this other lines when release the code in the exelearning/exelearning repo
-          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.EXELEARNING_GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WIN_CSC_LINK: ./windows-cert.pfx
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
 
         run: |
           # Run the package command with the version
