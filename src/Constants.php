@@ -343,4 +343,7 @@ class Constants
 
     // Gravatar (empty string to disable gravatar icons)
     public const GRAVATAR_BASE_URL = 'https://www.gravatar.com/avatar/';
+
+    // Locks
+    public const RESOURCE_LOCK_TIMEOUT_SECONDS = 900; // 15 minutes
 }
