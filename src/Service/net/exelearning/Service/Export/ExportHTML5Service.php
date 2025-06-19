@@ -155,46 +155,7 @@ class ExportHTML5Service implements ExportServiceInterface
                 $odeNavStructureSyncs
             );
 
-            // convert SimpleXMLElement to string
-            $pageExportHTMLString = $pageExportHTML->asXML();
-
-            // Convert HTML entities to their corresponding characters
-            // Decode HTML entities inside the <head> section
-            $pageExportHTMLString = preg_replace_callback(
-                '/(<head[^>]*>)(.*?)(<\/head>)/is',
-                function ($matches) {
-                    return $matches[1] . html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8') . $matches[3];
-                },
-                $pageExportHTMLString
-            );
-
-            // Decode HTML entities inside <div id="siteUserFooter">
-            $pageExportHTMLString = preg_replace_callback(
-                '/(<div\s+id="siteUserFooter"[^>]*>)(.*?)(<\/div>)/is',
-                function ($matches) {
-                    return $matches[1] . html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8') . $matches[3];
-                },
-                $pageExportHTMLString
-            );
-            // Remove CDATA sections but keep their content
-            $pageExportHTMLString = preg_replace('/<!\[CDATA\[(.*?)\]\]>/s', '$1', $pageExportHTMLString);
-
-            $pageExportHTMLString = preg_replace('/^<\?xml[^>]+>\s*/', '', $pageExportHTMLString);
-
-            // Insert <meta charset="UTF-8"> at the beginning of the <head> section
-            $pageExportHTMLString = preg_replace(
-                '/<head([^>]*)>/i',
-                '<head$1>' . PHP_EOL . '    <meta charset="UTF-8">',
-                $pageExportHTMLString,
-                1
-            );
-
-            // Ensure UTF-8 encoding
-            $pageExportHTMLString = mb_convert_encoding($pageExportHTMLString, 'UTF-8', 'auto');
-
-            $pageExportHTMLString = '<!DOCTYPE html>'.PHP_EOL.$pageExportHTMLString;
-
-            file_put_contents($pageFile, $pageExportHTMLString);
+            file_put_contents($pageFile, ExportXmlUtil::fixCustomCodeExportHTML($pageExportHTML));
 
             // Insert idevices html view
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
