@@ -216,7 +216,6 @@ class ExportIMSService implements ExportServiceInterface
 
             file_put_contents($pageFile, ExportXmlUtil::fixCustomCodeExportHTML($pageExportHTML));
 
-
             // Insert idevices html view
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {

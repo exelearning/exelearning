@@ -1215,14 +1215,15 @@ class ExportXmlUtil
                     $attrs = $matches[1];
                     $content = $matches[2];
                     // Avoid double CDATA
-                    if (strpos($content, '<![CDATA[') === false) {
-                        $content = "<![CDATA[\n" . $content . "\n]]>";
+                    if (false === strpos($content, '<![CDATA[')) {
+                        $content = "<![CDATA[\n".$content."\n]]>";
                     }
+
                     return "<script{$attrs}>{$content}</script>";
                 },
                 $extraHead
             );
-            
+
             // convert $head to DOMDocument to add new node easily
             $domHead = dom_import_simplexml($head)->ownerDocument;
             $customCode = new \DOMDocument();
@@ -1698,14 +1699,14 @@ class ExportXmlUtil
                     $attrs = $matches[1];
                     $content = $matches[2];
                     // Avoid double CDATA
-                    if (strpos($content, '<![CDATA[') === false) {
-                        $content = "<![CDATA[\n" . $content . "\n]]>";
+                    if (false === strpos($content, '<![CDATA[')) {
+                        $content = "<![CDATA[\n".$content."\n]]>";
                     }
+
                     return "<script{$attrs}>{$content}</script>";
                 },
                 $extraFooter
             );
-
 
             $siteUserFooter = $pageFooterContent->addChild('div', ' ');
             $siteUserFooter->addAttribute('id', 'siteUserFooter');
@@ -2779,50 +2780,50 @@ class ExportXmlUtil
     /**
      * Fixes custom code in the exported HTML.
      *
-     * @param SimpleXMLElement $pageExportHTML The page export HTML as a SimpleXMLElement.
-     * @return string The fixed HTML as a string.
+     * @param SimpleXMLElement $pageExportHTML the page export HTML as a SimpleXMLElement
+     *
+     * @return string the fixed HTML as a string
      */
     public static function fixCustomCodeExportHTML($pageExportHTML)
     {
-         // convert SimpleXMLElement to string
-            $pageExportHTMLString = $pageExportHTML->asXML();
+        // convert SimpleXMLElement to string
+        $pageExportHTMLString = $pageExportHTML->asXML();
 
-            // Convert HTML entities to their corresponding characters
-            // Decode HTML entities inside the <head> section
-            $pageExportHTMLString = preg_replace_callback(
-                '/(<head[^>]*>)(.*?)(<\/head>)/is',
-                function ($matches) {
-                    return $matches[1] . html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8') . $matches[3];
-                },
-                $pageExportHTMLString
-            );
+        // Convert HTML entities to their corresponding characters
+        // Decode HTML entities inside the <head> section
+        $pageExportHTMLString = preg_replace_callback(
+            '/(<head[^>]*>)(.*?)(<\/head>)/is',
+            function ($matches) {
+                return $matches[1].html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8').$matches[3];
+            },
+            $pageExportHTMLString
+        );
 
-            // Decode HTML entities inside <div id="siteUserFooter">
-            $pageExportHTMLString = preg_replace_callback(
-                '/(<div\s+id="siteUserFooter"[^>]*>)(.*?)(<\/div>)/is',
-                function ($matches) {
-                    return $matches[1] . html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8') . $matches[3];
-                },
-                $pageExportHTMLString
-            );
-            
-            // Remove CDATA sections but keep their content
-            $pageExportHTMLString = preg_replace('/<!\[CDATA\[(.*?)\]\]>/s', '$1', $pageExportHTMLString);
+        // Decode HTML entities inside <div id="siteUserFooter">
+        $pageExportHTMLString = preg_replace_callback(
+            '/(<div\s+id="siteUserFooter"[^>]*>)(.*?)(<\/div>)/is',
+            function ($matches) {
+                return $matches[1].html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8').$matches[3];
+            },
+            $pageExportHTMLString
+        );
 
-            $pageExportHTMLString = preg_replace('/^<\?xml[^>]+>\s*/', '', $pageExportHTMLString);
+        // Remove CDATA sections but keep their content
+        $pageExportHTMLString = preg_replace('/<!\[CDATA\[(.*?)\]\]>/s', '$1', $pageExportHTMLString);
 
-            // Insert <meta charset="UTF-8"> at the beginning of the <head> section
-            $pageExportHTMLString = preg_replace(
-                '/<head([^>]*)>/i',
-                '<head$1>' . PHP_EOL . '    <meta charset="UTF-8">',
-                $pageExportHTMLString,
-                1
-            );
+        $pageExportHTMLString = preg_replace('/^<\?xml[^>]+>\s*/', '', $pageExportHTMLString);
 
-            // Ensure UTF-8 encoding
-            $pageExportHTMLString = mb_convert_encoding($pageExportHTMLString, 'UTF-8', 'auto');
+        // Insert <meta charset="UTF-8"> at the beginning of the <head> section
+        $pageExportHTMLString = preg_replace(
+            '/<head([^>]*)>/i',
+            '<head$1>'.PHP_EOL.'    <meta charset="UTF-8">',
+            $pageExportHTMLString,
+            1
+        );
 
-            return '<!DOCTYPE html>'.PHP_EOL.$pageExportHTMLString;
+        // Ensure UTF-8 encoding
+        $pageExportHTMLString = mb_convert_encoding($pageExportHTMLString, 'UTF-8', 'auto');
+
+        return '<!DOCTYPE html>'.PHP_EOL.$pageExportHTMLString;
     }
-
 }

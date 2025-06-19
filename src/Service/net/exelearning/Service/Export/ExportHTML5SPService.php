@@ -284,7 +284,6 @@ class ExportHTML5SPService implements ExportServiceInterface
 
         file_put_contents($pageFile, ExportXmlUtil::fixCustomCodeExportHTML($pageExportHTML));
 
-
         // Insert idevices html view
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
