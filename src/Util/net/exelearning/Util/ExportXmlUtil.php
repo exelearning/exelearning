@@ -1184,6 +1184,21 @@ class ExportXmlUtil
 
         $extraHead = $odeProperties['pp_extraHeadContent']->getValue();
         if ('' != $extraHead) {
+            // Add CDATA to all <script> tags in $extraHead
+            $extraHead = preg_replace_callback(
+                '#<script\b([^>]*)>(.*?)</script>#is',
+                function ($matches) {
+                    $attrs = $matches[1];
+                    $content = $matches[2];
+                    // Avoid double CDATA
+                    if (strpos($content, '<![CDATA[') === false) {
+                        $content = "<![CDATA[\n" . $content . "\n]]>";
+                    }
+                    return "<script{$attrs}>{$content}</script>";
+                },
+                $extraHead
+            );
+            
             // convert $head to DOMDocument to add new node easily
             $domHead = dom_import_simplexml($head)->ownerDocument;
             $customCode = new \DOMDocument();
@@ -1197,13 +1212,6 @@ class ExportXmlUtil
                 $domHead->documentElement->appendChild($import);
             }
 
-            // simplexml load the DOM but introduce scaping characters
-            // so we need to convert it back to SimpleXMLElement
-            // $domHead->formatOutput = true; // format output
-            // $domHead->preserveWhiteSpace = false; // remove unnecessary white spaces
-            // $domHead->encoding = 'UTF-8'; // set encoding
-            // $domHead->normalizeDocument(); // normalize the document
-            // $domHead->removeChild($domHead->doctype); // remove doctype
             $head = simplexml_import_dom($domHead);
         }
 
