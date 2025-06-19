@@ -219,22 +219,30 @@ class ExportSCORM12Service implements ExportServiceInterface
                 $odeNavStructureSyncs
             );
 
-            // Convert SimpleXMLElement to DOMDocument
-            $dom = new \DOMDocument('1.0', 'UTF-8');
-            $dom->formatOutput = true;
-            $importedNode = $dom->importNode(
-                dom_import_simplexml($pageExportHTML),
-                true // deep copy
+            // convert SimpleXMLElement to string
+            $pageExportHTMLString = $pageExportHTML->asXML();
+
+            // Convert HTML entities to their corresponding characters
+            $pageExportHTMLString = html_entity_decode($pageExportHTMLString, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            // Remove CDATA sections but keep their content
+            $pageExportHTMLString = preg_replace('/<!\[CDATA\[(.*?)\]\]>/s', '$1', $pageExportHTMLString);
+
+            $pageExportHTMLString = preg_replace('/^<\?xml[^>]+>\s*/', '', $pageExportHTMLString);
+
+            // Insert <meta charset="UTF-8"> at the beginning of the <head> section
+            $pageExportHTMLString = preg_replace(
+                '/<head([^>]*)>/i',
+                '<head$1>' . PHP_EOL . '    <meta charset="UTF-8">',
+                $pageExportHTMLString,
+                1
             );
-            $dom->appendChild($importedNode);
 
-            // Write the file as real HTML5
-            $dom->saveHTMLFile($pageFile);
+            // Ensure UTF-8 encoding
+            $pageExportHTMLString = mb_convert_encoding($pageExportHTMLString, 'UTF-8', 'auto');
 
-            // Añade el doctype al principio del HTML5: <!DOCTYPE html>
-            $pageFileNewText = '<!DOCTYPE html>'.PHP_EOL.file_get_contents($pageFile);
+            $pageExportHTMLString = '<!DOCTYPE html>'.PHP_EOL.$pageExportHTMLString;
 
-            file_put_contents($pageFile, $pageFileNewText);
+            file_put_contents($pageFile, $pageExportHTMLString);
 
             // Insert idevices html view
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {

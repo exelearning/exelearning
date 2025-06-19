@@ -257,8 +257,30 @@ class ExportEPUB3Service implements ExportServiceInterface
                 $odeNavStructureSyncs
             );
 
-            // Save page as HTML file
-            $pageExportHTML->saveXML($pageFile);
+            // convert SimpleXMLElement to string
+            $pageExportHTMLString = $pageExportHTML->asXML();
+
+            // Convert HTML entities to their corresponding characters
+            $pageExportHTMLString = html_entity_decode($pageExportHTMLString, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            // Remove CDATA sections but keep their content
+            $pageExportHTMLString = preg_replace('/<!\[CDATA\[(.*?)\]\]>/s', '$1', $pageExportHTMLString);
+
+            $pageExportHTMLString = preg_replace('/^<\?xml[^>]+>\s*/', '', $pageExportHTMLString);
+
+            // Insert <meta charset="UTF-8"> at the beginning of the <head> section
+            $pageExportHTMLString = preg_replace(
+                '/<head([^>]*)>/i',
+                '<head$1>' . PHP_EOL . '    <meta charset="UTF-8">',
+                $pageExportHTMLString,
+                1
+            );
+
+            // Ensure UTF-8 encoding
+            $pageExportHTMLString = mb_convert_encoding($pageExportHTMLString, 'UTF-8', 'auto');
+
+            $pageExportHTMLString = '<!DOCTYPE html>'.PHP_EOL.$pageExportHTMLString;
+
+            file_put_contents($pageFile, $pageExportHTMLString);
 
             // Insert idevices html view
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {

@@ -1208,6 +1208,22 @@ class ExportXmlUtil
         $extraHead = $odeProperties['pp_extraHeadContent']->getValue();
         if ('' != $extraHead) {
             // convert $head to DOMDocument to add new node easily
+            // Add CDATA to all <script> tags in $extraHead
+            $extraHead = preg_replace_callback(
+                '#<script\b([^>]*)>(.*?)</script>#is',
+                function ($matches) {
+                    $attrs = $matches[1];
+                    $content = $matches[2];
+                    // Avoid double CDATA
+                    if (strpos($content, '<![CDATA[') === false) {
+                        $content = "<![CDATA[\n" . $content . "\n]]>";
+                    }
+                    return "<script{$attrs}>{$content}</script>";
+                },
+                $extraHead
+            );
+            
+            // convert $head to DOMDocument to add new node easily
             $domHead = dom_import_simplexml($head)->ownerDocument;
             $customCode = new \DOMDocument();
             $wrapper = '<wrapper>'.$extraHead.'</wrapper>';
@@ -1220,7 +1236,6 @@ class ExportXmlUtil
                 $domHead->documentElement->appendChild($import);
             }
 
-            // TODO simplexml load the DOM but introduce scaping characters
             $head = simplexml_import_dom($domHead);
         }
 
@@ -1675,6 +1690,23 @@ class ExportXmlUtil
 
         $extraFooter = $odeProperties['footer']->getValue();
         if ('' != $extraFooter) {
+            // convert $footer to DOMDocument to add new node easily
+            // Add CDATA to all <script> tags in $extraFooter
+            $extraFooter = preg_replace_callback(
+                '#<script\b([^>]*)>(.*?)</script>#is',
+                function ($matches) {
+                    $attrs = $matches[1];
+                    $content = $matches[2];
+                    // Avoid double CDATA
+                    if (strpos($content, '<![CDATA[') === false) {
+                        $content = "<![CDATA[\n" . $content . "\n]]>";
+                    }
+                    return "<script{$attrs}>{$content}</script>";
+                },
+                $extraFooter
+            );
+
+
             $siteUserFooter = $pageFooterContent->addChild('div', ' ');
             $siteUserFooter->addAttribute('id', 'siteUserFooter');
             $siteExtra = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><footer></footer>');
