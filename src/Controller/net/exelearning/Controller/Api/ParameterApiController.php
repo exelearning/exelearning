@@ -276,6 +276,7 @@ class ParameterApiController extends DefaultApiController
         // PACKAGE PROPERTIES
 
         // Content metadata
+        $this->translator->trans('Properties');
         $this->translator->trans('Content metadata');
         // $this->translator->trans('Title');
         $this->translator->trans('The name given to the resource.');
