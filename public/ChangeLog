@@ -15,7 +15,6 @@
 
 - Application English texts review.
 - Form iDevice validation errors.
-- Form iDevice
 - Rubric iDevice errors.
 - Text iDevice: Allow two different texts in the feedback button.
 - Old Wikipedia iDevice: Contents presentation revision.
@@ -29,7 +28,7 @@
 - Hide other sections' child pages from the navigation menu.
 - Effects: Colors revision.
 - Advanced page preferences (SEO title and description).
-- Boxes order in collaborative edition.
+- Boxes order problems in collaborative edition.
 - Bootstrap's tooltips failed with iDevices that use jQuery UI.
 
 ### Upgraded
