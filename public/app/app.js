@@ -397,7 +397,6 @@ class App {
                         <li>No procesa bien los enlaces internos de elp antiguos.</li>
                         <li>Ya no existe el editor de iDevices.</li>
                         <li>Si estás editando un iDevice no puedes cambiar su título.</li>
-                        <li>Hay textos mal traducidos o sin traducir.</li>
                         <li>La exportación SCORM 2004 no funciona bien.</li>
                     </ul>
                     <p><strong>Si encuentras algo más:</strong> Ayuda → Informar de un fallo</p>
