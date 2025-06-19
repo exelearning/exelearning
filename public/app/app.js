@@ -61,6 +61,8 @@ class App {
         await this.showProvisionalToDoWarning();
         // Add the notranslate class to some elements
         await this.addNoTranslateForGoogle();
+        // Execute the custom JavaScript code
+        await this.runCustomJavaScriptCode();
     }
 
     /**
@@ -247,6 +249,16 @@ class App {
         $('.exe-icon, .auto-icon, #nav_list .root-icon').each(function () {
             $(this).addClass('notranslate');
         });
+    }
+
+    /**
+     * Execute the custom JavaScript code
+     *
+     */
+    async runCustomJavaScriptCode() {
+        try {
+            $eXeLearningCustom.init();
+        } catch (e) {}
     }
 
     /**

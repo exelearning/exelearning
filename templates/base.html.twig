@@ -10,6 +10,8 @@
         {# include own css #}
         <link rel="stylesheet" href="{{ asset('style/server.css') }}">
         {% endblock %}
+        <link class="exe" rel="stylesheet" href="{{ asset('style/workarea/custom.css') }}">
+        <script class="exe" src="{{ asset('libs/jquery/jquery.min.js') }}"></script>
         {% block javascripts %}
         {{ encore_entry_script_tags('app') }}
         {% endblock %}
@@ -17,5 +19,6 @@
     </head>
     <body>
         {% block body %}{% endblock %}
+        <script src="{{ asset('app/workarea/custom.js') }}"></script>
     </body>
 </html>
