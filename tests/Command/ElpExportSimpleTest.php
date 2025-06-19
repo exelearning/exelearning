@@ -87,8 +87,8 @@ class ElpExportSimpleTest extends KernelTestCase
         );
         $this->assertGreaterThan(
             0,
-            $crawler->filterXPath('//nav[@id="siteNav"]//a[contains(normalize-space(.),"Index")]')->count(),
-            'Navigation link for "Index" not found.'
+            $crawler->filterXPath('//nav[@id="siteNav"]//a[contains(normalize-space(.),"Índice")]')->count(),
+            'Navigation link for "Índice" not found.'
         );
 
         // Main content
