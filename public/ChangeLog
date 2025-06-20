@@ -43,6 +43,7 @@
 ### Removed
 
 - Old classification properties. Current fields: Title, Language, Authorship, License, Description.
+- Disable AppImage generation due to sandboxing issues on Ubuntu 24.04+
 
 ## v3.0.0-beta2 - 2025-06-02
 
