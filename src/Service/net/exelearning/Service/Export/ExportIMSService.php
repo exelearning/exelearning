@@ -214,22 +214,7 @@ class ExportIMSService implements ExportServiceInterface
                 $odeNavStructureSyncs
             );
 
-            // Convert SimpleXMLElement to DOMDocument
-            $dom = new \DOMDocument('1.0', 'UTF-8');
-            $dom->formatOutput = true;
-            $importedNode = $dom->importNode(
-                dom_import_simplexml($pageExportHTML),
-                true // deep copy
-            );
-            $dom->appendChild($importedNode);
-
-            // Write the file as real HTML5
-            $dom->saveHTMLFile($pageFile);
-
-            // Añade el doctype al principio del HTML5: <!DOCTYPE html>
-            $pageFileNewText = '<!DOCTYPE html>'.PHP_EOL.file_get_contents($pageFile);
-
-            file_put_contents($pageFile, $pageFileNewText);
+            file_put_contents($pageFile, ExportXmlUtil::fixCustomCodeExportHTML($pageExportHTML));
 
             // Insert idevices html view
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {

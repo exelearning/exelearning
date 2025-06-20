@@ -1208,6 +1208,23 @@ class ExportXmlUtil
         $extraHead = $odeProperties['pp_extraHeadContent']->getValue();
         if ('' != $extraHead) {
             // convert $head to DOMDocument to add new node easily
+            // Add CDATA to all <script> tags in $extraHead
+            $extraHead = preg_replace_callback(
+                '#<script\b([^>]*)>(.*?)</script>#is',
+                function ($matches) {
+                    $attrs = $matches[1];
+                    $content = $matches[2];
+                    // Avoid double CDATA
+                    if (false === strpos($content, '<![CDATA[')) {
+                        $content = "<![CDATA[\n".$content."\n]]>";
+                    }
+
+                    return "<script{$attrs}>{$content}</script>";
+                },
+                $extraHead
+            );
+
+            // convert $head to DOMDocument to add new node easily
             $domHead = dom_import_simplexml($head)->ownerDocument;
             $customCode = new \DOMDocument();
             $wrapper = '<wrapper>'.$extraHead.'</wrapper>';
@@ -1220,7 +1237,6 @@ class ExportXmlUtil
                 $domHead->documentElement->appendChild($import);
             }
 
-            // TODO simplexml load the DOM but introduce scaping characters
             $head = simplexml_import_dom($domHead);
         }
 
@@ -1675,6 +1691,23 @@ class ExportXmlUtil
 
         $extraFooter = $odeProperties['footer']->getValue();
         if ('' != $extraFooter) {
+            // convert $footer to DOMDocument to add new node easily
+            // Add CDATA to all <script> tags in $extraFooter
+            $extraFooter = preg_replace_callback(
+                '#<script\b([^>]*)>(.*?)</script>#is',
+                function ($matches) {
+                    $attrs = $matches[1];
+                    $content = $matches[2];
+                    // Avoid double CDATA
+                    if (false === strpos($content, '<![CDATA[')) {
+                        $content = "<![CDATA[\n".$content."\n]]>";
+                    }
+
+                    return "<script{$attrs}>{$content}</script>";
+                },
+                $extraFooter
+            );
+
             $siteUserFooter = $pageFooterContent->addChild('div', ' ');
             $siteUserFooter->addAttribute('id', 'siteUserFooter');
             $siteExtra = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><footer></footer>');
@@ -2743,5 +2776,58 @@ class ExportXmlUtil
 
         // If there are no restrictions, it is visible
         return true;
+    }
+
+    /**
+     * Fixes custom code in the exported HTML.
+     *
+     * @param SimpleXMLElement $pageExportHTML the page export HTML as a SimpleXMLElement
+     *
+     * @return string the fixed HTML as a string
+     */
+    public static function fixCustomCodeExportHTML($pageExportHTML)
+    {
+        // convert SimpleXMLElement to string
+        $pageExportHTMLString = $pageExportHTML->asXML();
+
+        // Convert HTML entities to their corresponding characters
+        // Decode HTML entities inside the <head> section
+        $pageExportHTMLString = preg_replace_callback(
+            '/(<head[^>]*>)(.*?)(<\/head>)/is',
+            function ($matches) {
+                return $matches[1].html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8').$matches[3];
+            },
+            $pageExportHTMLString
+        );
+
+        // Decode HTML entities inside <div id="siteUserFooter">
+        $pageExportHTMLString = preg_replace_callback(
+            '/(<div\s+id="siteUserFooter"[^>]*>)(.*?)(<\/div>)/is',
+            function ($matches) {
+                return $matches[1].html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8').$matches[3];
+            },
+            $pageExportHTMLString
+        );
+
+        // Remove CDATA sections but keep their content
+        $pageExportHTMLString = preg_replace('/<!\[CDATA\[(.*?)\]\]>/s', '$1', $pageExportHTMLString);
+
+        $pageExportHTMLString = preg_replace('/^<\?xml[^>]+>\s*/', '', $pageExportHTMLString);
+
+        // Insert <meta charset="UTF-8"> at the beginning of the <head> section
+        $pageExportHTMLString = preg_replace(
+            '/<head([^>]*)>/i',
+            '<head$1>'.PHP_EOL.'    <meta charset="UTF-8">',
+            $pageExportHTMLString,
+            1
+        );
+
+        // Ensure UTF-8 encoding
+        // Only convert if not already UTF-8, to avoid double-encoding issues
+        if (!mb_check_encoding($pageExportHTMLString, 'UTF-8')) {
+            $pageExportHTMLString = mb_convert_encoding($pageExportHTMLString, 'UTF-8', 'auto');
+        }
+
+        return '<!DOCTYPE html>'.PHP_EOL.$pageExportHTMLString;
     }
 }

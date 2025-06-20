@@ -257,8 +257,7 @@ class ExportEPUB3Service implements ExportServiceInterface
                 $odeNavStructureSyncs
             );
 
-            // Save page as HTML file
-            $pageExportHTML->saveXML($pageFile);
+            file_put_contents($pageFile, ExportXmlUtil::fixCustomCodeExportHTML($pageExportHTML));
 
             // Insert idevices html view
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
