@@ -2822,7 +2822,10 @@ class ExportXmlUtil
         );
 
         // Ensure UTF-8 encoding
-        $pageExportHTMLString = mb_convert_encoding($pageExportHTMLString, 'UTF-8', 'auto');
+        // Only convert if not already UTF-8, to avoid double-encoding issues
+        if (!mb_check_encoding($pageExportHTMLString, 'UTF-8')) {
+            $pageExportHTMLString = mb_convert_encoding($pageExportHTMLString, 'UTF-8', 'auto');
+        }
 
         return '<!DOCTYPE html>'.PHP_EOL.$pageExportHTMLString;
     }
