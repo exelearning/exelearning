@@ -14,22 +14,23 @@
 ### Fixed
 
 - Application English texts review.
+- Page preference (Visible in export).
+- Advanced page preferences (SEO title and description).
+- Hide other sections' child pages from the navigation menu.
+- ePub navigation menu errors.
+- Work area: Contrast between elements.
+- Icons missing when using Google Translate.
+- Hide the "not appropriate" license in page.
+- Boxes order problems in collaborative edition.
+- Bootstrap's tooltips failed with iDevices that use jQuery UI.
 - Form iDevice validation errors.
 - Rubric iDevice errors.
 - Text iDevice: Allow two different texts in the feedback button.
 - Old Wikipedia iDevice: Contents presentation revision.
-- Work area: Not enough contrast between elements.
-- Icons missing when using Google Translate.
-- Hide the "not appropriate" license in page.
-- ePub navigation menu errors.
+- Effects: Colors revision.
 - APP_PORT different from 8080 caused Mercure connection issues.
 - Improve Mercure SSE setup documentation.
 - Platform integration tests.
-- Hide other sections' child pages from the navigation menu.
-- Effects: Colors revision.
-- Advanced page preferences (SEO title and description).
-- Boxes order problems in collaborative edition.
-- Bootstrap's tooltips failed with iDevices that use jQuery UI.
 
 ### Upgraded
 
