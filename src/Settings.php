@@ -72,7 +72,6 @@ class Settings
         'video/webm',
     ];
 
-    public const SECOND_TYPE_PLATFORM_COLLECTION_ID = 'c62d024b-474b-49a4-9286-4eb7ca035c07'; // Collection where insert the ode item
     public const PLATFORM_INTEGRATION = 0; // Active integrated platform (Set here the api value from PLATFORMS array)
 
     public const JWT_SECRET_HASH = 'HS256'; // JWT Signature algorithm

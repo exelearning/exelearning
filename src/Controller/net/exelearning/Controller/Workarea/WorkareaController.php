@@ -69,7 +69,6 @@ class WorkareaController extends DefaultWorkareaController
         // Get elpFileName
         $odePlatformNew = $request->get('newOde');
         $odePlatformId = $request->get('odeId');
-        $odeSecondTypePlatformId = $request->get('item_uuid');
 
         // Check installation type
         $isOfflineInstallation = SettingsUtil::installationTypeIsOffline();
@@ -233,7 +232,6 @@ class WorkareaController extends DefaultWorkareaController
                     'usernameFirsLetter' => $userLoggedNameFirsLetter,
                     'acceptedLopd' => $acceptedLopd,
                     'odePlatformId' => $odePlatformId,
-                    'odeSecondTypePlatformId' => $odeSecondTypePlatformId,
                     'newOde' => $odePlatformNew,
                     'gravatarUrl' => $userGravatarUrl,
                 ],
