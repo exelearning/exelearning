@@ -171,7 +171,7 @@ make help
 
 ## Documentation
 
-The full project documentation is available in the [`doc`](./doc/00-index.md) directory
+The full project documentation is available in the [`doc`](./doc/00-index.md) directory.
 
 ## Contributors
 
