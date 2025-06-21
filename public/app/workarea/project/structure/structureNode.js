@@ -65,7 +65,9 @@ export default class StructureNode {
         for (let [key, value] of Object.entries(this.properties)) {
             // skip if missing
             if (!properties[key]) {
-                console.warn(`Missing property '${key}' in odeNavStructureSyncProperties`);
+                console.warn(
+                    `Missing property '${key}' in odeNavStructureSyncProperties`,
+                );
                 continue;
             }
             if (onlyHeritable) {
