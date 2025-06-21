@@ -63,6 +63,13 @@ export default class StructureNode {
      */
     setProperties(properties, onlyHeritable) {
         for (let [key, value] of Object.entries(this.properties)) {
+            // skip if missing
+            if (!properties[key]) {
+                console.warn(
+                    `Missing property '${key}' in odeNavStructureSyncProperties`,
+                );
+                continue;
+            }
             if (onlyHeritable) {
                 if (properties[key].heritable)
                     value.value = properties[key].value;
