@@ -8,7 +8,7 @@
 .exe-content .exe-accordion h2{border-radius:3px;margin:0;font-size:1em}
 .js .exe-accordion h2{padding:0;border:0;display:block;background:none;border-radius:3px}
 html .js .fx-accordion-title{text-decoration:none}
-.fx-accordion-title.active,.fx-accordion-title:hover{/*background:#4c4c4c;*/filter:alpha(opacity=90);opacity:.9;text-decoration:none}
+.exe-content .fx-accordion-title.active,.exe-content .fx-accordion-title:hover,.exe-content .fx-accordion-title:focus{/*background:#4c4c4c;*/filter:alpha(opacity=90);opacity:.9;text-decoration:none}
 .fx-accordion-section:last-child .fx-accordion-title{border-bottom:none}
 .fx-accordion-content{padding:0 15px;display:none; margin-top: 10px;}
 /* Tabs */
@@ -38,7 +38,7 @@ html .js .fx-accordion-title{text-decoration:none}
 .fx-prev-next a{font-family:Arial,Verdana,Helvetica,sans-serif}
 .fx-pagination .fx-disabled{filter:alpha(opacity=30);opacity:.3}
 .fx-pagination .fx-disabled,.fx-pagination .fx-disabled a,.fx-pagination .fx-disabled a:hover{cursor:text;text-decoration:none}
-.fx-pagination .fx-current a{background:#333;color:#fff}
+.exe-content .fx-pagination .fx-current a{background:#333;color:#fff}
 .fx-page-content{display:none;background:#efefef;padding:1px 15px .5em 15px;border-radius:5px}
 .fx-page-content.fx-current{display:block}
 /* Carousel */
@@ -75,7 +75,7 @@ div.fx-timeline-toggler{float:right;margin-right:0;white-space:nowrap}
 div.fx-timeline-major{clear:left;float:left;margin:0 0 12px;width:95%}
 .fx-timeline-major h2{cursor:pointer;font-size:1.2em;margin:0 0 10px;padding:4px 4px 4px 20px}
 .fx-timeline-major h2:before{content:"—";margin-left:-20px}
-.fx-timeline-major h2 a{background:#333;border-radius:4px;color:#fff;line-height:2.3em;padding:5px 10px;text-decoration:none}
+.exe-content .fx-timeline-major h2 a{background:#333;border-radius:4px;color:#fff;line-height:2.3em;padding:5px 10px;text-decoration:none}
 div.fx-timeline-minor{clear:left;float:left;margin:0 12px 0 0;padding:4px 4px 4px 0;position:relative}
 .fx-timeline-minor h3{clear:left;font-size:1.25em;list-style-type:none;line-height:1.2em;margin:5px 0 12px;padding:0 0 0 24px;white-space:nowrap}
 .fx-timeline-major h3:before{content:"‒";margin:0 9px 0 -25px}
@@ -107,16 +107,17 @@ html[xmlns] .fx-timeline-container,html[xmlns] .fx-timeline-event{display:block}
 .exe-epub3 .exe-timeline h2{background:#555;color:#FFF;padding:5px 20px;border-radius:5px;border-top-left-radius:0;border-bottom-left-radius:0;margin:5px 0 5px -25px;display:inline-block}
 .exe-epub3 .exe-timeline h3:before{content:"‒ ";margin:0 5px 0 -25px}
 
-/* Colors (simplified) */
-.iDevice .exe-carousel li.fx-C2{background:none}
-/* iDevices with emphasis */
-.emphasis1 .exe-fx .fx-C1,
-.emphasis1 .exe-fx .fx-C1 a{
+/* Colors (simplified example) */
+/*
+.exe-content .exe-carousel li.fx-C2{background:none}
+.box-content .exe-fx .fx-C1,
+.box-content .exe-fx .fx-C1 a{
 background:#333;
 color:#FFF;
 }
-.emphasis1 .exe-fx .fx-C2,
-.emphasis1 .exe-fx .fx-C2 a,
-.emphasis1 .fx-pagination a{
+.box-content .exe-fx .fx-C2,
+.box-content .exe-fx .fx-C2 a,
+.box-content .fx-pagination a{
 background:#FFF;
 }
+*/

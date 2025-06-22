@@ -454,6 +454,9 @@ export default class IdeviceBlockNode {
             .querySelector('#moveUp' + this.blockId)
             .addEventListener('click', (element) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
+                // Hide the actions menu if needed
+                var elm = $('#dropdownMenuButton' + this.blockId);
+                if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
                 // Check odeComponent flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, null)
@@ -514,6 +517,9 @@ export default class IdeviceBlockNode {
             .querySelector('#moveDown' + this.blockId)
             .addEventListener('click', (element) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
+                // Hide the actions menu if needed
+                var elm = $('#dropdownMenuButton' + this.blockId);
+                if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
                 // Check odeComponent flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, null)
@@ -573,6 +579,9 @@ export default class IdeviceBlockNode {
         this.blockButtons
             .querySelector('#deleteBlock' + this.blockId)
             .addEventListener('click', (element) => {
+                // Hide the actions menu if needed
+                var elm = $('#dropdownMenuButton' + this.blockId);
+                if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
                 // Check odeComponent flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, null)
@@ -771,6 +780,9 @@ export default class IdeviceBlockNode {
         // Add event
         this.toggleElement.addEventListener('click', (element) => {
             if (this.toggleElement.classList.contains('box-toggle-on')) {
+                // Hide the actions menu if needed
+                var elm = $('#dropdownMenuButton' + this.blockId);
+                if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
                 this.toggleOff();
             } else {
                 this.toggleOn();

@@ -1231,42 +1231,6 @@ class OdeApiController extends DefaultApiController
             }
         }
 
-        // Sibling keys
-        // Properties -> Cataloguing
-        foreach (Properties::PROPERTIES_SIBLING_KEYS_BY_PROPERTIES as $keyProperty => $keyCataloguing) {
-            $oldPropertyValue = $databaseOdePropertiesOldValues[$keyProperty];
-            // $newPropertyValue = isset($propertiesData[$keyProperty]) ? $propertiesData[$keyProperty] : null;
-            $newPropertyValue = $propertiesData[$keyProperty];
-            if ($newPropertyValue && $newPropertyValue->getValue() != $oldPropertyValue) {
-                $newCataloguingValue = $databaseOdePropertiesData[$keyCataloguing];
-                $newCataloguingValue->setValue($newPropertyValue->getValue());
-                $this->entityManager->persist($newCataloguingValue);
-            }
-        }
-
-        // Sibling keys
-        // Cataloguing -> Properties
-        foreach (Properties::PROPERTIES_SIBLING_KEYS_BY_CATALOGUING as $keyCataloguing => $keyProperty) {
-            $oldCataloguingValue = $databaseOdePropertiesOldValues[$keyCataloguing];
-            $newCataloguingValue = isset($propertiesData[$keyCataloguing]) ? $propertiesData[$keyCataloguing] : null;
-            if ($newCataloguingValue && $newCataloguingValue->getValue() != $oldCataloguingValue) {
-                $newPropertyValue = $databaseOdePropertiesData[$keyProperty];
-                $newPropertyValue->setValue($newCataloguingValue->getValue());
-                $this->entityManager->persist($newPropertyValue);
-            }
-        }
-
-        // Sibling keys
-        // Cataloguing -> Cataloguing
-        foreach (Properties::CATALOGUING_METADATA_TYPE_UNIDIRECTIONAL_SIBLING_KEYS as $key1 => $key2) {
-            $prop1 = isset($propertiesData[$key1]) ? $propertiesData[$key1] : null;
-            $prop2 = isset($databaseOdePropertiesData[$key2]) ? $databaseOdePropertiesData[$key2] : null;
-            if ($prop1 && $prop2) {
-                $prop2->setValue(Properties::METADATA_TYPES[$prop1->getValue()]);
-                $this->entityManager->persist($prop2);
-            }
-        }
-
         $this->entityManager->flush();
 
         $odePropertiesDtos = [];

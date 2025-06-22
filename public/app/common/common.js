@@ -700,7 +700,7 @@ var $exeDevices = {
                             .then(() => $.ajax({ url: $game.scormFunctions, dataType: "script" }))
                             .then(initScorm)
                             .fail((_, textStatus) => {
-                                console.error("Error cargando SCORM:", textStatus);
+                                console.error("Error loading SCORM:", textStatus);
                             })
                             .always(() => {
                                 $game.enable();
@@ -718,7 +718,7 @@ var $exeDevices = {
                         return;
                     }
                 } catch (err) {
-                    console.error("Error en init():", err);
+                    console.error("init() error:", err);
                 } finally {
                     if (!scormFlow) {
                         $game.enable();
@@ -1030,7 +1030,7 @@ var $exeDevices = {
                     try {
                         return JSON.parse(str) || {};
                     } catch (e) {
-                        console.error("parseJSONSafe: Error al parsear JSON. Usando objeto vacío como fallback.");
+                        console.error("parseJSONSafe: Could not parse JSON. Using empty object fallback.");
                         return {};
                     }
                 },

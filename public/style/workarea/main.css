@@ -1759,6 +1759,7 @@ body[mode="advanced"] #main #head #exe-mode-check {
     border-radius: var(--radius);
     width: max-content;
     min-width: 250px;
+    padding-top: 8px;
 }
 
 .modal-open .modal-content :is(input[type="text"], textarea) {
@@ -3890,11 +3891,6 @@ body #node-content .box-head {
     border-bottom: 0;
 }
 
-#node-content .hidden-idevices [data-bs-toggle="dropdown"] {
-    opacity: .3;
-    pointer-events: none;
-}
-
 #node-content .box-head.dragging {
     margin: 0 var(--margin-m);
     margin-top: var(--margin-din-l);
@@ -4547,17 +4543,20 @@ body > .tooltip{
     background-color: var(--dark-exe-color-text);
     opacity: 1 !important;
 }
-.tooltip.bs-tooltip-end .tooltip-arrow::before {
-    border-right-color: var(--dark-exe-color-text) !important;
+.bs-tooltip-top .tooltip-arrow::before, .bs-tooltip-auto[data-popper-placement^=top] .tooltip-arrow::before {
+    border-top-color: var(--dark-exe-color-text)!important;;
 }
-.tooltip.bs-tooltip-start .tooltip-arrow::before {
-    border-left-color: var(--dark-exe-color-text) !important;
+
+.bs-tooltip-end .tooltip-arrow::before, .bs-tooltip-auto[data-popper-placement^=right] .tooltip-arrow::before {
+    border-right-color: var(--dark-exe-color-text)!important;;
 }
-.tooltip.bs-tooltip-bottom .tooltip-arrow::before {
-    border-bottom-color: var(--dark-exe-color-text) !important;
+
+.bs-tooltip-bottom .tooltip-arrow::before, .bs-tooltip-auto[data-popper-placement^=bottom] .tooltip-arrow::before {
+    border-bottom-color: var(--dark-exe-color-text)!important;;
 }
-.tooltip.bs-tooltip-top .tooltip-arrow::before {
-    border-top-color: var(--dark-exe-color-text) !important;
+
+.bs-tooltip-start .tooltip-arrow::before, .bs-tooltip-auto[data-popper-placement^=left] .tooltip-arrow::before {
+    border-left-color: var(--dark-exe-color-text)!important;;
 }
 
 
@@ -4597,14 +4596,6 @@ body > .tooltip{
 /* Minified block */
 #workarea article.hidden-idevices .idevice_node {
     display: none;
-}
-
-/* To review (see #290) */
-#properties-node-content-form .exe-form-tabs,
-.property-row[property="pp_learningResourceType"],
-#properties_package_description,
-#properties_package_usage {
-    display: none !important;
 }
 
 #node-content .form-properties.categories .exe-properties-form-content {
@@ -5633,9 +5624,9 @@ body > .tooltip{
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    top: -12px;
-    right: -12px;
+    position: absolute;
+    top: 12px;
+    right: 12px;
   }
   
   .modal-open .modal-header .close:hover {

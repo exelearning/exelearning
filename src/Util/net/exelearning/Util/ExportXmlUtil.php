@@ -1012,7 +1012,8 @@ class ExportXmlUtil
             $userPreferencesDtos,
             $theme,
             $resourcesPrefix,
-            $exportDynamicPage
+            $exportDynamicPage,
+            $exportType
         );
 
         self::appendSimpleXml($head, $headContent);
@@ -1108,6 +1109,7 @@ class ExportXmlUtil
         $theme,
         $resourcesPrefix,
         $exportDynamicPage,
+        $exportType,
     ) {
         $head = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><head></head>');
 
@@ -1138,29 +1140,50 @@ class ExportXmlUtil
             }
         }
 
-        if (!empty($odeProperties['pp_title']) && '' != $odeProperties['pp_title']->getValue()) {
-            $titleValueText = $odeProperties['pp_title']->getValue();
-
-            // HTML title for any html page apart from index.html
-            if (!$pagesFileData[$odeNavStructureSync->getOdePageId()]['isIndex']) {
-                $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
-                $pagePropertiesDict = [];
-                foreach ($pageProperties as $property) {
-                    if ($property->getValue()) {
-                        $pagePropertiesDict[$property->getKey()] = $property->getValue();
-                    }
-                }
-                if (isset($pagePropertiesDict['titlePage'])) {
-                    // HTML title: Page title | Package title
-                    $titleValueText = $pagePropertiesDict['titlePage'].' | '.$titleValueText;
-                }
+        $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
+        $pagePropertiesDict = [];
+        foreach ($pageProperties as $property) {
+            if ($property->getValue()) {
+                $pagePropertiesDict[$property->getKey()] = $property->getValue();
             }
+        }
+
+        if (!empty($odeProperties['pp_title']) && '' != $odeProperties['pp_title']->getValue()
+            && Constants::ELP_PROPERTIES_NO_TITLE_NAME != $odeProperties['pp_title']->getValue()) {
+            $titleValueText = $odeProperties['pp_title']->getValue();
         } else {
             $titleValueText = Constants::ELP_PROPERTIES_NO_TITLE_NAME;
         }
 
+        // HTML title for any html page apart from index.html
+        if (!$pagesFileData[$odeNavStructureSync->getOdePageId()]['isIndex']) {
+            if (isset($pagePropertiesDict['titlePage'])) {
+                // HTML title: title Node | Package title
+                $titleValueText = $pagePropertiesDict['titlePage'].' | '.$titleValueText;
+            }
+        }
+
+        // HTML title for any html page - SEO title property (except for single-page)
+        if (Constants::EXPORT_TYPE_HTML5_SP != $exportType && isset($pagePropertiesDict['titleHtml']) && '' != $pagePropertiesDict['titleHtml']) {
+            // HTML title: SEO title property
+            $titleValueText = $pagePropertiesDict['titleHtml'];
+        }
+
         if ($exportDynamicPage) {
             $head->addChild('title', $titleValueText);
+            $descriptionText = $odeProperties['pp_description']->getValue();
+            if (!$pagesFileData[$odeNavStructureSync->getOdePageId()]['isIndex']) {
+                $descriptionText = '';
+            }
+            // SEO description, except for single-page
+            if (Constants::EXPORT_TYPE_HTML5_SP != $exportType && isset($pagePropertiesDict['description'])) {
+                $descriptionText = $pagePropertiesDict['description'];
+            }
+            if ('' != $descriptionText) {
+                $description = $head->addChild('meta');
+                $description->addAttribute('name', 'description');
+                $description->addAttribute('content', htmlspecialchars($descriptionText));
+            }
         }
 
         // Script JS class
@@ -1197,13 +1220,7 @@ class ExportXmlUtil
                 $domHead->documentElement->appendChild($import);
             }
 
-            // simplexml load the DOM but introduce scaping characters
-            // so we need to convert it back to SimpleXMLElement
-            // $domHead->formatOutput = true; // format output
-            // $domHead->preserveWhiteSpace = false; // remove unnecessary white spaces
-            // $domHead->encoding = 'UTF-8'; // set encoding
-            // $domHead->normalizeDocument(); // normalize the document
-            // $domHead->removeChild($domHead->doctype); // remove doctype
+            // TODO simplexml load the DOM but introduce scaping characters
             $head = simplexml_import_dom($domHead);
         }
 
@@ -1537,16 +1554,21 @@ class ExportXmlUtil
             self::appendSimpleXml($exe, $navButtons);
         }
 
-        $pageFooter = $exe->addChild('footer', '');
-        $pageFooter->addAttribute('id', 'siteFooter');
+        // Add a page footer if it requires a license and/or has custom footer
+        $license = $odeProperties['license']->getValue();
+        $extraFooter = $odeProperties['footer']->getValue();
+        if ('not appropriate' != $license || '' != $extraFooter) {
+            $pageFooter = $exe->addChild('footer', '');
+            $pageFooter->addAttribute('id', 'siteFooter');
 
-        // Page license and custom code
-        $pageLicense = self::createHTMLPageFooter(
-            $odeProperties,
-            $exportDynamicPage,
-        );
+            // Page license and custom code
+            $pageLicense = self::createHTMLPageFooter(
+                $odeProperties,
+                $exportDynamicPage,
+            );
 
-        self::appendSimpleXml($pageFooter, $pageLicense);
+            self::appendSimpleXml($pageFooter, $pageLicense);
+        }
 
         // Made with eXe
         if (
@@ -1625,36 +1647,36 @@ class ExportXmlUtil
         $pageFooterContent = $pageFooterWrapper->addChild('div', ' ');
         $pageFooterContent->addAttribute('id', 'siteFooterContent');
 
-        $pageFooterLicense = $pageFooterContent->addChild('div', ' ');
-        $pageFooterLicense->addAttribute('id', 'packageLicense');
-        $pageFooterLicenseP = $pageFooterLicense->addChild('p', ' ');
-        $pageFooterLicenseTitle = $pageFooterLicenseP->addChild('span', 'Licencia: ');
-        $pageFooterLicenseTitle->addAttribute('class', 'license-label');
-
         // License
         if (isset($odeProperties['license'])) {
             $license = $odeProperties['license']->getValue();
-            $licensesLinks = Properties::LICENSES_LINKS;
-            if (array_key_exists($license, $licensesLinks)) {
-                $licenseLink = $licensesLinks[$license];
-                $pageFooterLicenseClass = str_replace('https://creativecommons.org/licenses/', '', $licenseLink);
-                $pageFooterLicenseClass = explode('/', $pageFooterLicenseClass);
-                $pageFooterLicenseClass = 'cc cc-'.$pageFooterLicenseClass[0];
-                $pageFooterLicense->addAttribute('class', $pageFooterLicenseClass);
-                $pageFooterLicenseA = $pageFooterLicenseP->addChild('a', $license);
-                $pageFooterLicenseA->addAttribute('href', $licenseLink);
-                $pageFooterLicenseA->addAttribute('class', 'license');
-            } else {
-                $pageFooterLicenseText = $pageFooterLicenseP->addChild('span', $license);
-                $pageFooterLicenseText->addAttribute('class', 'license');
+            if ('not appropriate' != $license) {
+                $pageFooterLicense = $pageFooterContent->addChild('div', ' ');
+                $pageFooterLicense->addAttribute('id', 'packageLicense');
+                $pageFooterLicenseP = $pageFooterLicense->addChild('p', ' ');
+                $pageFooterLicenseTitle = $pageFooterLicenseP->addChild('span', 'Licencia: ');
+                $pageFooterLicenseTitle->addAttribute('class', 'license-label');
+                $licensesLinks = Properties::LICENSES_LINKS;
+                if (array_key_exists($license, $licensesLinks)) {
+                    $licenseLink = $licensesLinks[$license];
+                    $pageFooterLicenseClass = str_replace('https://creativecommons.org/licenses/', '', $licenseLink);
+                    $pageFooterLicenseClass = explode('/', $pageFooterLicenseClass);
+                    $pageFooterLicenseClass = 'cc cc-'.$pageFooterLicenseClass[0];
+                    $pageFooterLicense->addAttribute('class', $pageFooterLicenseClass);
+                    $pageFooterLicenseA = $pageFooterLicenseP->addChild('a', $license);
+                    $pageFooterLicenseA->addAttribute('href', $licenseLink);
+                    $pageFooterLicenseA->addAttribute('class', 'license');
+                } else {
+                    $pageFooterLicenseText = $pageFooterLicenseP->addChild('span', $license);
+                    $pageFooterLicenseText->addAttribute('class', 'license');
+                }
             }
         }
 
-        $siteUserFooter = $pageFooterContent->addChild('div', ' ');
-        $siteUserFooter->addAttribute('id', 'siteUserFooter');
-
         $extraFooter = $odeProperties['footer']->getValue();
         if ('' != $extraFooter) {
+            $siteUserFooter = $pageFooterContent->addChild('div', ' ');
+            $siteUserFooter->addAttribute('id', 'siteUserFooter');
             $siteExtra = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><footer></footer>');
             // convert $head to DOMDocument to add new node easily
             $domExtra = dom_import_simplexml($siteExtra)->ownerDocument;
@@ -1814,12 +1836,12 @@ class ExportXmlUtil
             $link['class'] = isset($link['class']) ? $link['class'].' daddy' : 'daddy';
         }
 
-        // Add class other-section to all ul which first child is a li ant li class is not active
+        // Add class other-section to all ul which first child is li and li class is not active
         $ulNodesCounter = 0;
         $ulNodes = $navUl->xpath('//ul');
         foreach ($ulNodes as $ulNode) {
             // Check the ancestors
-            $liNodes = $ulNode->xpath('./li/ancestor::li');
+            $liNodes = $ulNode->xpath('./parent::li');
             $allInactive = true;
             foreach ($liNodes as $liNode) {
                 if (isset($liNode['class']) && false !== strpos($liNode['class'], 'active')) {
@@ -2309,6 +2331,7 @@ class ExportXmlUtil
         }
 
         $ideviceContainer->addAttribute('id', $odeComponentsSync->getOdeIdeviceId());
+        $ideviceContainer->addAttribute('id-resource', $idevicesMapping[$odeComponentsSync->getOdeIdeviceId()]);
         $ideviceContainer->addAttribute('class', $class);
 
         if ($exportDynamicPage && $ideviceTypeData) {

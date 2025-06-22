@@ -2399,7 +2399,7 @@
       </trans-unit>
       <trans-unit id="RMl8k5o" resname="You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing to monitor the completed activities.">
         <source>You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing to monitor the completed activities.</source>
-        <target>Kontrol-zerrenda bat erabil dezake hezkuntza-baliabide honetan iradokitako jarduerak modu egituratu eta erraz batean ulertzeko. Tresna baliagarria izango da ikasleen autoerregulaziorako, aukera emango baitio egindako jardueren jarraipena egiteko.\n</target>
+        <target>Kontrol-zerrenda bat erabil dezake hezkuntza-baliabide honetan iradokitako jarduerak modu egituratu eta erraz batean ulertzeko. Tresna baliagarria izango da ikasleen autoerregulaziorako, aukera emango baitio egindako jardueren jarraipena egiteko.</target>
       </trans-unit>
       <trans-unit id="ARVUhux" resname="Complete the checklist ticking the boxes for all finished activities.">
         <source>Complete the checklist ticking the boxes for all finished activities.</source>
@@ -2567,7 +2567,7 @@
       </trans-unit>
       <trans-unit id="ZTguMuX" resname="There were %s cards to be placed correctly. Do you want to try again?">
         <source>There were %s cards to be placed correctly. Do you want to try again?</source>
-        <target>%s txartel geratu zaizkizu behar bezala jartzeko. Berriro saiatu nahi duzu?\n</target>
+        <target>%s txartel geratu zaizkizu behar bezala jartzeko. Berriro saiatu nahi duzu?</target>
       </trans-unit>
       <trans-unit id="Q8WMDwC" resname="Brilliant! All perfect!">
         <source>Brilliant! All perfect!</source>
@@ -5271,7 +5271,7 @@
       </trans-unit>
       <trans-unit id="xJ4l9P0" resname="The following table registers the results you have obtained in the completed, suggested and assessed activities in this educational resource.">
         <source>The following table registers the results you have obtained in the completed, suggested and assessed activities in this educational resource.</source>
-        <target>Hurrengo taulan, hezkuntza-baliabide honetan egindako jardueretan lortutako emaitzak jasotzen dira.\n</target>
+        <target>Hurrengo taulan, hezkuntza-baliabide honetan egindako jardueretan lortutako emaitzak jasotzen dira.</target>
       </trans-unit>
       <trans-unit id="NZqykoC" resname="Average score">
         <source>Average score</source>
@@ -5899,7 +5899,7 @@
       </trans-unit>
       <trans-unit id="cq8z40o" resname="Select media files">
         <source>Select media files</source>
-        <target>Multimedia-fitxategiak aukeratu\n</target>
+        <target>Multimedia-fitxategiak aukeratu</target>
       </trans-unit>
       <trans-unit id="wTcOgiD" resname="Brilliant! All correct!">
         <source>Brilliant! All correct!</source>
@@ -6021,9 +6021,9 @@
         <source>Phrase</source>
         <target>Esaldi</target>
       </trans-unit>
-      <trans-unit id="rbTrbqE" resname="Task information">
-        <source>Task information</source>
-        <target>Atazaren informazioa</target>
+      <trans-unit id="rbTrbqE" resname="Task information (optional)">
+        <source>Task information (optional)</source>
+        <target>Atazaren informazioa (hautazkoa)</target>
       </trans-unit>
       <trans-unit id="d5DnJBX" resname="Estimated duration">
         <source>Estimated duration</source>

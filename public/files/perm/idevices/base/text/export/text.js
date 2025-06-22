@@ -105,17 +105,30 @@ var $text = {
     renderBehaviour(data, accesibility) {
         if (data.ideviceId) {
             const $btns = $(`#${data.ideviceId} .feedbacktooglebutton`);
+            if ($btns.length!=1) return;
+            let $btnsTxt = $btns.val();
+            $btnsTxt = $btnsTxt.split('|');
+            if ($btnsTxt.length==2) {
+                const $btnsTxtA = $btnsTxt[0];
+                const $btnsTxtB = $btnsTxt[1];
+                $btns.val($btnsTxtA);
+                $btns.attr('data-text-a', $btnsTxtA);
+                $btns.attr('data-text-b', $btnsTxtB);
+            }
             $btns.off('click');
             $btns.closest('.feedback-button').removeClass('clearfix');
             $btns.on('click', function () {
+                let e = $(this);
                 if ($text.working) return false;
                 let feedback = $(this).parent().next();
                 $text.working = true;
                 if (feedback.is(':visible')) {
+                    if (e[0].hasAttribute('data-text-a')) $btns.val(e.attr('data-text-a'));
                     feedback.fadeOut(function(){
                         $text.working = false;
                     });
                 } else {
+                    if (e[0].hasAttribute('data-text-b')) $btns.val(e.attr('data-text-b'));
                     feedback.fadeIn(function(){
                         $text.working = false;
                     });

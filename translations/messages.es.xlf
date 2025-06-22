@@ -2771,7 +2771,7 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
         <source>&amp;percnt; right to see the feedback</source>
-        <target><![CDATA[&percnt; de aciertos requerid para ver la retroalimentación]]></target>
+        <target><![CDATA[&percnt; de aciertos requerido para ver la retroalimentación]]></target>
       </trans-unit>
       <trans-unit id="mA7cA0x" resname="Crossword">
         <source>Crossword</source>
@@ -4459,7 +4459,7 @@
       </trans-unit>
       <trans-unit id="ry23WQ6" resname="Allow negative">
         <source>Allow negative</source>
-        <target>Permitir negativos\n</target>
+        <target>Permitir negativos</target>
       </trans-unit>
       <trans-unit id="mgJoMQC" resname="Allow zero as a result">
         <source>Allow zero as a result</source>
@@ -5993,9 +5993,9 @@
         <source>Phrase</source>
         <target>Frase</target>
       </trans-unit>
-      <trans-unit id="rbTrbqE" resname="Task information">
-        <source>Task information</source>
-        <target>Información de la tarea</target>
+      <trans-unit id="rbTrbqE" resname="Task information (optional)">
+        <source>Task information (optional)</source>
+        <target>Información de la tarea (opcional)</target>
       </trans-unit>
       <trans-unit id="d5DnJBX" resname="Estimated duration">
         <source>Estimated duration</source>
@@ -6423,7 +6423,7 @@
       </trans-unit>
       <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
         <source>Action &amp; Expression</source>
-        <target><![CDATA[Action & Expression]]></target>
+        <target>Acción y expresión</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>

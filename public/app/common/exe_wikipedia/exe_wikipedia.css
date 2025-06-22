@@ -157,6 +157,7 @@
 .exe-wikipedia-content .navbox .navbar{display:block;font-size:100%}
 .exe-wikipedia-content .navbox-title .navbar{float:left;text-align:left;margin-right:0.5em;width:6em}
 /* Other elements */
+.exe-wikipedia-content .mw-heading2 h2{margin-top:1em}
 .exe-wikipedia-content #siteNotice{display:none}
 .exe-wikipedia-content .firstHeading,
 .exe-wikipedia-content #firstHeading{margin-top:0;font-size:1.5em}
@@ -263,7 +264,7 @@
 .exe-wikipedia-content main.mw-body #p-lang-btn{display:none}
 /* TinyMCE (in eXe) */
 #tinymce .exe-wikipedia-content{position:relative}
-#tinymce .exe-wikipedia-content:before{content:"Wikipedia";color:#666;font-size: .8em;font-style:italic;position:absolute;top: 5px;right: 5px;}
+#tinymce .exe-wikipedia-content:first-of-type:before{content:"Wikipedia";color:#666;font-size: .8em;font-style:italic;position:absolute;top: 5px;right: 5px;}
 #tinymce .exe-wikipedia-content{padding: 20px;border: 1px dotted #000}
 #tinymce .exe-wikipedia-content .exe-wikipedia-content{padding: 0;border: 0;}
 #tinymce .exe-wikipedia-content .exe-wikipedia-content:before{content:""}

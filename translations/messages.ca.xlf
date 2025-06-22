@@ -6021,9 +6021,9 @@
         <source>Phrase</source>
         <target>Frase</target>
       </trans-unit>
-      <trans-unit id="rbTrbqE" resname="Task information">
-        <source>Task information</source>
-        <target>Informació de la tasca</target>
+      <trans-unit id="rbTrbqE" resname="Task information (optional)">
+        <source>Task information (optional)</source>
+        <target>Informació de la tasca (opcional)</target>
       </trans-unit>
       <trans-unit id="d5DnJBX" resname="Estimated duration">
         <source>Estimated duration</source>

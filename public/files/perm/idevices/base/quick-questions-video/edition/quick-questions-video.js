@@ -164,7 +164,7 @@ var $exeDevice = {
         msgs.msgProvideFB = _(
             'Write the message to be displayed when passing the game',
         );
-        msgs.msgDuration = _('The video's end time must be shorter than its total duration');
+        msgs.msgDuration = _("The video's end time must be shorter than its total duration");
         msgs.msgFormatVideo = _(
             'Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)',
         );

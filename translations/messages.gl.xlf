@@ -3043,7 +3043,7 @@
       </trans-unit>
       <trans-unit id="dap6H5j" resname="This block will create a link to download the elp file. Write some use instructions and customize your download link.">
         <source>This block will create a link to download the elp file. Write some use instructions and customize your download link.</source>
-        <target>Este bloque creará unha ligazón para descargar o ficheiro .elp. Escriba algunhas instrucións de uso e configure a ligazón\n de descarga.</target>
+        <target>Este bloque creará unha ligazón para descargar o ficheiro .elp. Escriba algunhas instrucións de uso e configure a ligazón de descarga.</target>
       </trans-unit>
       <trans-unit id="vaXcPZz" resname="Download link">
         <source>Download link</source>
@@ -6021,9 +6021,9 @@
         <source>Phrase</source>
         <target>Frase</target>
       </trans-unit>
-      <trans-unit id="rbTrbqE" resname="Task information">
-        <source>Task information</source>
-        <target>Información da tarefa</target>
+      <trans-unit id="rbTrbqE" resname="Task information (optional)">
+        <source>Task information (optional)</source>
+        <target>Información da tarefa (opcional)</target>
       </trans-unit>
       <trans-unit id="d5DnJBX" resname="Estimated duration">
         <source>Estimated duration</source>

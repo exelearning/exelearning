@@ -126,11 +126,12 @@ jobs:
         uses: crazy-max/ghaction-virustotal@v4
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           update_release_body: true
           files: |
-            dist/*.msi
-            dist/*.exe
-            dist/*.dmg
-            dist/*.zip
-            dist/*.deb
-            dist/*.rpm
+            .msi$
+            .exe$
+            .dmg$
+            .deb$
+            .rpm$
+            .zip$

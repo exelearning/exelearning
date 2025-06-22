@@ -15,7 +15,7 @@ var $exeDevice = {
     // Text area
     textareaTitle: _("Text"),
     // Fieldsets
-    infoTitle: _("Task information"),
+    infoTitle: _("Task information (optional)"),
     feedbackTitle: _("Feedback"),
     // Inputs
     feedbakInputTitle: _("Button text"),

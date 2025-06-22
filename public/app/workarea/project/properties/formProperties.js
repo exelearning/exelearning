@@ -385,6 +385,7 @@ export default class FormProperties {
         buttonSave.classList.add('confirm');
         buttonSave.classList.add('btn');
         buttonSave.classList.add('btn-primary');
+        buttonSave.classList.add('mt-3');
         buttonSave.innerHTML = _('Save metadata and properties');
         footer.append(buttonSave);
 

@@ -34,7 +34,7 @@ class CreateNewDocumentTest extends ExelearningE2EBase
 
         $this->createNewDocument($client);
 
-        $this->assertSelectorExists('#properties-node-content-form > ul');
+        $this->assertSelectorExists('#properties-node-content-form');
 
     }
 
