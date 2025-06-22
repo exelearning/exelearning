@@ -28,7 +28,6 @@ Each production release generates and publishes the following installers:
 
 * `.deb` (Debian/Ubuntu)
 * `.rpm` (RedHat, Fedora)
-* `.AppImage` (portable executable)
 
 ### **macOS**
 
