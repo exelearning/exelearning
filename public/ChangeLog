@@ -18,7 +18,7 @@
 - Advanced page preferences (SEO title and description).
 - Hide other sections' child pages from the navigation menu.
 - ePub navigation menu errors.
-- SCORM viewer growing scrollbar problem.
+- Growing scrollbar problems in auto-resized iframes like eXe Moodle viewers.
 - Work area: Contrast between elements.
 - Icons missing when using Google Translate.
 - Hide the "not appropriate" license in page.
