@@ -2331,6 +2331,7 @@ class ExportXmlUtil
         }
 
         $ideviceContainer->addAttribute('id', $odeComponentsSync->getOdeIdeviceId());
+        $ideviceContainer->addAttribute('id-resource', $idevicesMapping[$odeComponentsSync->getOdeIdeviceId()]);
         $ideviceContainer->addAttribute('class', $class);
 
         if ($exportDynamicPage && $ideviceTypeData) {
