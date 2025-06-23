@@ -1725,7 +1725,7 @@ class ExportXmlUtil
             }
 
             $siteExtra = simplexml_import_dom($domExtra);
-            self::appendSimpleXml($siteUserFooter, $siteExtra);
+            self::appendSimpleXml($siteUserFooter, $siteExtra, true);
         }
 
         return $pageFooterWrapper;
