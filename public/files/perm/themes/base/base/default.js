@@ -1,5 +1,7 @@
 var myTheme = {
     init: function () {
+        // Common functions
+        if (this.inIframe()) $("body").addClass("in-iframe");
         if (!$('body').hasClass('exe-web-site')) return;
         // Add menu and search bar togglers
         var togglers =
@@ -63,17 +65,14 @@ var myTheme = {
                 window.scroll(0, 0);
             }
         });
-        // Nav min-height
-        $(window).on('resize scroll click', function () {
-            $('#siteNav').css('min-height', $(document).height() + 'px');
-        });
-        $('#siteNav').css('min-height', $(document).height() + 'px');
-        // Fixed navigation
-        $('#siteNav').wrap('<div id="sidebar-nav"></div>');
-        myTheme.checkNav();
-        $(window).bind('resize', function () {
+        if (!this.inIframe()) {
+            // Fixed navigation
+            $('#siteNav').wrap('<div id="sidebar-nav"></div>');
             myTheme.checkNav();
-        });
+            $(window).bind('resize', function () {
+                myTheme.checkNav();
+            });
+        }
         // To review (special links)
         $('#siteNav a').each(function (i) {
             var t = $(this).text().trim();
@@ -89,6 +88,13 @@ var myTheme = {
         });
         // Search form
         this.searchForm();
+    },
+    inIframe : function(){
+        try {
+            return window.self !== window.top;
+        } catch (e) {
+            return true;
+        }
     },
     searchForm: function () {
         $('#exe-client-search-text').attr('class', 'form-control');
