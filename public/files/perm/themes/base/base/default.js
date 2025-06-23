@@ -1,7 +1,7 @@
 var myTheme = {
     init: function () {
         // Common functions
-        if (this.inIframe()) $("body").addClass("in-iframe");
+        if (this.inIframe()) $('body').addClass('in-iframe');
         if (!$('body').hasClass('exe-web-site')) return;
         // Add menu and search bar togglers
         var togglers =
@@ -89,7 +89,7 @@ var myTheme = {
         // Search form
         this.searchForm();
     },
-    inIframe : function(){
+    inIframe: function () {
         try {
             return window.self !== window.top;
         } catch (e) {
