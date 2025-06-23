@@ -32,6 +32,10 @@ body.exe-web-site{
     min-height: calc(100vh - 30px);
 }
 
+.exe-export.exe-scorm .exe-content{
+    min-height: 0;
+}
+
 .exe-content .page-title{
     color: #438606;
     font-size: 1.7rem;
