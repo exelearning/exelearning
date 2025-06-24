@@ -18,22 +18,6 @@ var MojoMagnify = (function () {
 
     function withStyle(name) {
         return true;
-         /*var cssstyle;
-        var valor = false;
-        var cssstyle;
-        for (cssstyle = 0; cssstyle < document.styleSheets.length; cssstyle++) {
-            var clcss = new Array();
-            if (document.styleSheets[cssstyle].cssRules)
-                clcss = document.styleSheets[cssstyle].cssRules
-            else if (document.styleSheets[cssstyle].rules)
-                clcss = document.styleSheets[cssstyle].rules
-            for (var t = 0; t < clcss.length; t++) {
-                if (clcss[t].selectorText === name) {
-                    valor = true
-                }
-            }
-        }
-        return valor;*/
     };
     var $ = function (id) {
         return document.getElementById(id);

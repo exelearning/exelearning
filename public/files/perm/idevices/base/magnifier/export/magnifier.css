@@ -1,0 +1,90 @@
+.MNF-MainContainer a:link,
+.MNF-MainContainer a:link,
+.MNF-MainContainer a:visited,
+.MNF-MainContainer a:focus {
+    border: 0;
+    border-bottom: none;
+    border-width: 0;
+    outline: none;
+    outline-width: 0;
+    text-decoration: none !important;
+}
+
+
+.MNF-MainContainer {
+    font-size: 1em;
+    width: 100%;
+}
+
+.MNF-instructions {
+    margin-bottom: 1em;
+}
+
+
+.MNF-MainContainer .MNF-Select {
+    padding: 3px;
+    border: 1px solid #ccc;
+    height: 1.75rem;
+}
+
+.MNF-FullLinkImage {
+    right: 0;
+    top: 0;
+    position: absolute;
+    z-index: 20;
+    display: block;
+    height: 2em;
+    width: 2em;
+
+}
+.MNF-FullImage {
+    background-image: url(exezoomf.png);
+    background-size: 100% 100%;    
+    height: 2em;
+    width: 2em;
+}
+
+
+
+.ImageMagnifierIdevice {
+    position: relative;
+    display: inline-block;
+}
+
+.ImageMagnifierIdevice .image-thumbnail {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+}
+
+.mojomagnify_border {
+    position: absolute;
+    border-radius: 50%;
+    width: var(--mojo-glass-size, 150px);
+    height: var(--mojo-glass-size, 150px);
+    pointer-events: none;
+    mix-blend-mode: multiply;
+}
+
+.selectzoomglass,
+.selectsizeglass {
+    margin: 0 .5em;
+    padding: .2em .4em;
+    font-size: .9em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    vertical-align: middle;
+}
+.zoomglass {
+    display: inline-flex;
+    align-items: center;
+    background: #f9f9f9;
+    padding: .3em;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    gap: .5em;
+}
+
+
+
