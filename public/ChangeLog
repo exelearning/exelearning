@@ -5,6 +5,7 @@
 ### Added
 
 - Complete Valencian (Valencià) translation.
+- Galician (Galego) translation update.
 - Form iDevice: Slideshow mode and Check capitalization options.
 - Transitions when collapsing/expanding feedback contents and boxes.
 - Function to know who's editing an iDevice in collaborative editing.
@@ -13,6 +14,7 @@
 
 ### Fixed
 
+- Problems opening old .elp files.
 - Application English texts review.
 - Page preference (Visible in export).
 - Advanced page preferences (SEO title and description).
