@@ -619,18 +619,12 @@ export default class NavbarFile {
         };
         // Save
         let response;
-        // Case second type platform
-        if (eXeLearning.config.platformType == 2) {
-            response =
-                await eXeLearning.app.api.postSecondTypePlatformIntegrationElpUpload(
-                    data,
-                );
-        } else {
-            response =
-                await eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload(
-                    data,
-                );
-        }
+
+        response =
+            await eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload(
+                data,
+            );
+
         if (response.responseMessage == 'OK') {
             window.onbeforeunload = null;
             window.location.replace(response.returnUrl);
