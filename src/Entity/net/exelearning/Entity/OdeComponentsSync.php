@@ -319,6 +319,7 @@ class OdeComponentsSync extends BaseEntity
     {
         $prefixPageNodeLink = Constants::IDEVICE_NODE_LINK_NAME_IN_EXE;
         $html = $this->htmlView;
+        $json = $this->jsonProperties;
         $linksHref = [];
         preg_match_all('/<a\s+[^>]*href=(["\'])(.*?)\1[^>]*>/i', $html, $matches);
         if (isset($matches[2]) && !empty($matches[2])) {
@@ -335,14 +336,16 @@ class OdeComponentsSync extends BaseEntity
 
                 if (isset($fullPathPag[$pathOnly])) {
                     $newId = $fullPathPag[$pathOnly];
-
                     $newFormattedLink = $prefixPageNodeLink.$newId;
-
-                    $html = str_replace($originalLinkHref, $newFormattedLink, $html);
+                    if (null !== $this->htmlView) {
+                        $this->htmlView = str_replace($originalLinkHref, $newFormattedLink, $this->htmlView);
+                    }
+                    if (null !== $this->jsonProperties) {
+                        $this->jsonProperties = str_replace($originalLinkHref, $newFormattedLink, $this->jsonProperties);
+                    }
                 }
             }
         }
-        $this->htmlView = $html;
 
         return true;
     }
@@ -404,6 +407,9 @@ class OdeComponentsSync extends BaseEntity
                             $pageUrl = '#page-content-'.$key;
                         } else {
                             $pageUrl = $data['fileUrl'];
+                            if (str_starts_with($pageUrl, 'html/')) {
+                                $pageUrl = substr($pageUrl, strlen('html/'));
+                            }
                         }
                         $this->htmlView = str_replace($pageLinkString, $pageUrl, $this->htmlView);
                     }

@@ -1034,6 +1034,7 @@ class OdeXmlUtil
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
                     $htmlView = $odeComponentsSync->getHtmlView() ?? '';
+
                     if (str_contains($htmlView, Constants::IDEVICE_NODE_LINK_NAME_IN_EXE)) {
                         $odeComponentsSync->replaceOldInternalLinks($fullPathMap);
                     }
