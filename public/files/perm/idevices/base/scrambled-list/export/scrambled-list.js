@@ -93,13 +93,14 @@ var $scrambledlist = {
             ? eXe.app.getIdeviceInstalledExportPath('scrambled-list')
             : $('.idevice_node.scrambled-list').eq(0).attr('data-idevice-path');
 
-        data.id = ideviceId ?? data.id;
+        data.id = ideviceId ?? data.ideviceId ?? data.id;
         data.msgs = data.msgs || this.getMessages();
         data.evaluation = data.evaluation || false;
         data.evaluationID = data.evaluationID || '';
         data.isScorm = data.isScorm || 0;
         data.time = data.time || 0;
         data.repeatActivity = true;
+        data.showSolutions = typeof data.showSolutions !== "undefined" ? data.showSolutions : true;
 
         data.textButtonScorm =
             data.escapedData && data.exportScorm.textButtonScorm
@@ -251,7 +252,7 @@ var $scrambledlist = {
     initSCORM: function (ldata) {
         let parsedData = (typeof ldata === 'string') ? JSON.parse(ldata) : ldata;
         $scrambledlist.mScorm = window.scorm;
-        if ( $scrambledlist.mScorm.init()); {
+        if ($scrambledlist.mScorm.init()) {
             this.initScormData(parsedData);
         }
 
@@ -415,7 +416,7 @@ var $scrambledlist = {
 
         $scrambledlist.getListLinks(listOrder);
 
-        $(`#exe-sortableListButton-${listOrder}`).click(function () {
+        $(`#exe-sortableListButton-${listOrder}`).on('click', function () {
             $scrambledlist.check(this, listOrder);
         });
     },
@@ -477,17 +478,28 @@ var $scrambledlist = {
                     .attr('class', 'feedback feedback-right')
                     .fadeIn();
             else
-                feedback
-                    .html(
-                        '<p>' +
-                        $('.exe-sortableList-wrongText', activity).text() +
-                        '</p><ul>' +
-                        rightAnswers.html() +
-                        '</ul>',
-                    )
-                    .hide()
-                    .attr('class', 'feedback feedback-wrong')
-                    .fadeIn();
+                if (!data.showSolutions) {
+                    feedback
+                        .html(
+                            '<p>' + data.msgs.msgTestFailed + '</p>'
+                        ).hide()
+                        .attr('class', 'feedback feedback-wrong')
+                        .fadeIn();
+
+                } else {
+                    feedback
+                        .html(
+                            '<p>' +
+                            $('.exe-sortableList-wrongText', activity).text() +
+                            '</p><ul>' +
+                            rightAnswers.html() +
+                            '</ul>',
+                        )
+                        .hide()
+                        .attr('class', 'feedback feedback-wrong')
+                        .fadeIn();
+                }
+
         }
         $exeDevices.iDevice.gamification.math.updateLatex('#sl' + data.id);
     },
@@ -562,14 +574,13 @@ var $scrambledlist = {
             msgActityComply: 'Ya has realizado esta actividad.',
             msgUncompletedActivity: 'Actividad no completada',
             msgSuccessfulActivity: 'Actividad: Superada. Puntuación: %s',
-            msgUnsuccessfulActivity:
-                'Actividad: No superada. Puntuación: %s',
-
+            msgUnsuccessfulActivity: 'Actividad: No superada. Puntuación: %s',
             msgStartGame: 'Haz clic aquí para comenzar',
             msgSaveScore: 'Guardar puntuación',
             msgSubmit: 'Enviar',
             msgTime: 'Tiempo',
             msgCheck: 'Comprobar',
+            msgTestFailed: "No has superado la prueba. Inténtalo de nuevo.",
         };
         return msgs;
     },
