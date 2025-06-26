@@ -278,7 +278,6 @@ var $trueorfalse = {
         const html = data.showSlider
             ? $trueorfalse.generateSlideshow(data) :
             $trueorfalse.generatePage(data);
-        console.log(html)
         return html;
     },
 
