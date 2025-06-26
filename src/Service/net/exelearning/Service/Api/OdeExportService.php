@@ -679,7 +679,6 @@ class OdeExportService implements OdeExportServiceInterface
                     } else {
                         $newResourcesPrefix = $resourcesPrefix;
                     }
-
                     $odeComponentsSyncClone->replaceLinksHtml(
                         $newIdeviceId,
                         $ideviceResourcesMapping,

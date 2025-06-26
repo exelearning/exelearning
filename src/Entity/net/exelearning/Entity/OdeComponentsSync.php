@@ -333,7 +333,6 @@ class OdeComponentsSync extends BaseEntity
                 $estnodes = explode(':', $pathOnly);
                 array_shift($estnodes);
                 $pathOnly = implode(':', $estnodes);
-
                 if (isset($fullPathPag[$pathOnly])) {
                     $newId = $fullPathPag[$pathOnly];
                     $newFormattedLink = $prefixPageNodeLink.$newId;
@@ -406,9 +405,10 @@ class OdeComponentsSync extends BaseEntity
                         if (Constants::EXPORT_TYPE_HTML5_SP == $exportType) {
                             $pageUrl = '#page-content-'.$key;
                         } else {
-                            $pageUrl = $data['fileUrl'];
-                            if (str_starts_with($pageUrl, 'html/')) {
-                                $pageUrl = substr($pageUrl, strlen('html/'));
+                            if (!$data['isIndex']) {
+                                $pageUrl = '..'.Constants::SLASH.$data['fileUrl'];
+                            } else {
+                                $pageUrl = $data['fileUrl'];
                             }
                         }
                         $this->htmlView = str_replace($pageLinkString, $pageUrl, $this->htmlView);
