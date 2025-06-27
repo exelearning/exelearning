@@ -1006,7 +1006,7 @@ class OdeXmlUtil
             if ($node->getPageName()) {
                 $nodeIdToIndex[$node->getOdePageId()] = [
                     'id' => $node->getOdePageId(),
-                    'name' => $node->getPageName(),
+                    'name' => urldecode($node->getPageName()),
                     'parent_id' => $node->getOdeParentPageId(),
                 ];
             }
