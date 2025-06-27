@@ -383,8 +383,8 @@ class Properties
     ];
 
     public const PROPERTIES_CATEGORIES_TITLE = [
+        'properties' => self::TRANS_PREFIX.'Properties',
         // Old cataloguing tabs (see #63)
-        // 'properties' => self::TRANS_PREFIX.'Properties',
         // 'cataloguing' => self::TRANS_PREFIX.'Cataloguing',
     ];
 

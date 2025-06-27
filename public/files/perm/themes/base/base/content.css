@@ -28,8 +28,12 @@ body.exe-web-site{
     color: #333;
 }
 
-.exe-export .exe-content{
+.js .exe-export .exe-content{
     min-height: calc(100vh - 30px);
+}
+
+.js .in-iframe .exe-content{
+    min-height: 0;
 }
 
 .exe-content .page-title{
@@ -114,7 +118,15 @@ body.exe-web-site{
     width:300px;
     padding-top: 66px;
     padding-left: 8px;
-    height: 100%;
+}
+#siteNav:after{
+    content:"";
+    width:300px;
+    height:100vh;
+    background:#F6F6F6;
+    position: absolute;
+    left:0;
+    border-right:1px solid #F0F0F0
 }
 #siteFooterExtra{
     margin-bottom:2em;
@@ -430,7 +442,8 @@ button.toggler:focus {
 
 /* Responsive design */
 @media (max-width: 767.98px) {
-    #siteNav{
+    #siteNav,
+    #siteNav:after{
         width: 255px;
     }
     #siteNav a{
@@ -455,6 +468,9 @@ button.toggler:focus {
         padding: 68px 10px 20px 10px;
         min-height: 0!important;
         height: auto!important;
+    }
+    #siteNav:after{
+        display: none;
     }
     body.exe-web-site main.page{
         padding-top: 2.5em;

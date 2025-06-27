@@ -182,21 +182,34 @@ up-local: check-env
 	@TMPDIR=$$(mktemp -d /tmp/exelearning-XXXXXX) && \
 	echo "Using temporary directory: $$TMPDIR" && \
 	export DB_DRIVER=pdo_sqlite && \
+	export APP_ENV=dev && \
 	export APP_DEBUG=1 && \
-	export APP_ONLINE_MODE=0 && \
+	export APP_ONLINE_MODE=1 && \
 	export DB_PATH="$$TMPDIR/exelearning.db" && \
 	export FILES_DIR="$$TMPDIR/" && \
 	export TEST_USER_EMAIL="user@exelearning.net" && \
 	export TEST_USER_PASSWORD="1234" && \
 	export TEST_USER_USERNAME="testuser" && \
 	export APP_SECRET=mySuperSecretKey && \
-	php bin/console doctrine:schema:update --complete --force && \
+	php bin/console doctrine:schema:update --force && \
 	php bin/console app:create-user "$${TEST_USER_EMAIL}" "$${TEST_USER_PASSWORD}" "$${TEST_USER_USERNAME}" --no-fail && \
 	php bin/console cache:clear && \
 	php bin/console assets:install public && \
-	php bin/console doctrine:query:sql "SELECT * FROM user" && \
-	symfony server:start --no-tls
-	symfony server:log
+	php bin/console dbal:run-sql "SELECT * FROM users" && \
+	php -d variables_order=EGPCS -S 127.0.0.1:8000 -t public public/router.php
+
+# Start the unit tests in a local environment
+test-local: check-env
+	@echo "\033[31mWarning: Running tests in local environment may cause unexpected behavior. Use at your own risk.\033[0m"
+	@TMPDIR=$$(mktemp -d /tmp/exe-test-XXXXXX) && \
+	echo "Using temporary directory: $$TMPDIR" && \
+	DB_DRIVER=pdo_sqlite \
+	DB_PATH="$$TMPDIR/exelearning.db" \
+	FILES_DIR="$$TMPDIR/" \
+	APP_ENV=dev \
+	APP_DEBUG=1 \
+	APP_SECRET=TestSecretKey \
+	composer --no-cache phpunit-unit
 
 # Generate a new migration class from changes in mapping information and compy them to the ./migrations local folder
 migration: check-docker check-env upd
@@ -391,6 +404,7 @@ help:
 	@echo "  test-e2e              - Run e2e tests with PHPUnit (chrome)"
 	@echo "  test-e2e-realtime     - Run e2e-realtime tests with PHPUnit (chrome)"
 	@echo "  test-shell            - Open a shell inside the exelearning container (and the chrome container)"
+	@echo "  test-local            - Run unit tests in local environment (no Docker, SQLite tmp DB)"
 	@echo ""
 	@echo "Packaging:"
 	@echo ""

@@ -1012,7 +1012,8 @@ class ExportXmlUtil
             $userPreferencesDtos,
             $theme,
             $resourcesPrefix,
-            $exportDynamicPage
+            $exportDynamicPage,
+            $exportType
         );
 
         self::appendSimpleXml($head, $headContent);
@@ -1108,6 +1109,7 @@ class ExportXmlUtil
         $theme,
         $resourcesPrefix,
         $exportDynamicPage,
+        $exportType,
     ) {
         $head = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><head></head>');
 
@@ -1138,29 +1140,50 @@ class ExportXmlUtil
             }
         }
 
-        if (!empty($odeProperties['pp_title']) && '' != $odeProperties['pp_title']->getValue()) {
-            $titleValueText = $odeProperties['pp_title']->getValue();
-
-            // HTML title for any html page apart from index.html
-            if (!$pagesFileData[$odeNavStructureSync->getOdePageId()]['isIndex']) {
-                $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
-                $pagePropertiesDict = [];
-                foreach ($pageProperties as $property) {
-                    if ($property->getValue()) {
-                        $pagePropertiesDict[$property->getKey()] = $property->getValue();
-                    }
-                }
-                if (isset($pagePropertiesDict['titlePage'])) {
-                    // HTML title: Page title | Package title
-                    $titleValueText = $pagePropertiesDict['titlePage'].' | '.$titleValueText;
-                }
+        $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
+        $pagePropertiesDict = [];
+        foreach ($pageProperties as $property) {
+            if ($property->getValue()) {
+                $pagePropertiesDict[$property->getKey()] = $property->getValue();
             }
+        }
+
+        if (!empty($odeProperties['pp_title']) && '' != $odeProperties['pp_title']->getValue()
+            && Constants::ELP_PROPERTIES_NO_TITLE_NAME != $odeProperties['pp_title']->getValue()) {
+            $titleValueText = $odeProperties['pp_title']->getValue();
         } else {
             $titleValueText = Constants::ELP_PROPERTIES_NO_TITLE_NAME;
         }
 
+        // HTML title for any html page apart from index.html
+        if (!$pagesFileData[$odeNavStructureSync->getOdePageId()]['isIndex']) {
+            if (isset($pagePropertiesDict['titlePage'])) {
+                // HTML title: title Node | Package title
+                $titleValueText = $pagePropertiesDict['titlePage'].' | '.$titleValueText;
+            }
+        }
+
+        // HTML title for any html page - SEO title property (except for single-page)
+        if (Constants::EXPORT_TYPE_HTML5_SP != $exportType && isset($pagePropertiesDict['titleHtml']) && '' != $pagePropertiesDict['titleHtml']) {
+            // HTML title: SEO title property
+            $titleValueText = $pagePropertiesDict['titleHtml'];
+        }
+
         if ($exportDynamicPage) {
             $head->addChild('title', $titleValueText);
+            $descriptionText = $odeProperties['pp_description']->getValue();
+            if (!$pagesFileData[$odeNavStructureSync->getOdePageId()]['isIndex']) {
+                $descriptionText = '';
+            }
+            // SEO description, except for single-page
+            if (Constants::EXPORT_TYPE_HTML5_SP != $exportType && isset($pagePropertiesDict['description'])) {
+                $descriptionText = $pagePropertiesDict['description'];
+            }
+            if ('' != $descriptionText) {
+                $description = $head->addChild('meta');
+                $description->addAttribute('name', 'description');
+                $description->addAttribute('content', htmlspecialchars($descriptionText));
+            }
         }
 
         // Script JS class
@@ -1197,13 +1220,7 @@ class ExportXmlUtil
                 $domHead->documentElement->appendChild($import);
             }
 
-            // simplexml load the DOM but introduce scaping characters
-            // so we need to convert it back to SimpleXMLElement
-            // $domHead->formatOutput = true; // format output
-            // $domHead->preserveWhiteSpace = false; // remove unnecessary white spaces
-            // $domHead->encoding = 'UTF-8'; // set encoding
-            // $domHead->normalizeDocument(); // normalize the document
-            // $domHead->removeChild($domHead->doctype); // remove doctype
+            // TODO simplexml load the DOM but introduce scaping characters
             $head = simplexml_import_dom($domHead);
         }
 
@@ -2314,6 +2331,7 @@ class ExportXmlUtil
         }
 
         $ideviceContainer->addAttribute('id', $odeComponentsSync->getOdeIdeviceId());
+        $ideviceContainer->addAttribute('id-resource', $idevicesMapping[$odeComponentsSync->getOdeIdeviceId()]);
         $ideviceContainer->addAttribute('class', $class);
 
         if ($exportDynamicPage && $ideviceTypeData) {

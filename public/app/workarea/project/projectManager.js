@@ -49,6 +49,8 @@ export default class projectManager {
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
+        // Call the function to execute sorting and reordering
+        this.sortBlocksById(true);
         // Set offline atributtes
         this.setInstallationTypeAttribute();
         // Run autosave
@@ -224,10 +226,7 @@ export default class projectManager {
                     this.odeSession = eXeLearning.symfony.odeSessionId;
                     window.location.replace('workarea');
                 }
-            } else if (
-                eXeLearning.user.odePlatformId ||
-                eXeLearning.user.odeSecondTypePlatformId
-            ) {
+            } else if (eXeLearning.user.odePlatformId) {
                 this.loadPlatformProject(odeSessionId);
             } else if (eXeLearning.user.newOde) {
                 this.newSession(odeSessionId);
@@ -250,24 +249,19 @@ export default class projectManager {
     async loadPlatformProject(odeSessionId) {
         // Check odeSessionId and set on bbdd
         let odePlatformId = eXeLearning.user.odePlatformId;
-        let odeSecondTypePlatformId = eXeLearning.user.odeSecondTypePlatformId;
+
         const urlParams = new URLSearchParams(window.location.search);
         let jwtToken = urlParams.get('jwt_token');
         let params = {
-            odePlatformId: odePlatformId
-                ? odePlatformId
-                : odeSecondTypePlatformId,
+            odePlatformId,
             odeSessionId: odeSessionId,
             platformUrlGet: eXeLearning.config.platformUrlGet,
             jwt_token: jwtToken,
         };
         let response;
-        if (eXeLearning.user.odePlatformId == null) {
-            response =
-                await this.app.api.secondTypePlatformIntegrationOpenElp(params);
-        } else {
-            response = await this.app.api.platformIntegrationOpenElp(params);
-        }
+
+        response = await this.app.api.platformIntegrationOpenElp(params);
+
         if (response.responseMessage == 'OK') {
             let params = {
                 odeFileName: response.elpFileName,
@@ -1110,9 +1104,12 @@ export default class projectManager {
             odeBlockSync,
             true,
         );
+        // Fix the order of blocks when creating a new content block
+        let blockPosition = nodeContentElement.children.length - 1;
+
         nodeContentElement.insertBefore(
             cloneBlockNode.blockContent,
-            nodeContentElement.children[cloneBlockNode.order],
+            nodeContentElement.children[blockPosition], //nodeContentElement.children[cloneBlockNode.order],
         );
 
         // Load Idevices in block if node-content is on mode "view"
@@ -2407,5 +2404,51 @@ export default class projectManager {
             });
             return true;
         }
+    }
+
+    /**
+     * Sorts <article> elements inside #node-content by their IDs
+     * and reorders them visually in the DOM.
+     *
+     * @param {boolean} ascending - If true, sorts ascending (a → b); if false, descending (b → a)
+     */
+    sortBlocksById(ascending = true) {
+        // Get the main container elements
+        let workareaElement = document.querySelector('#main #workarea');
+        let nodeContainerElement = workareaElement.querySelector(
+            '#node-content-container',
+        );
+        let nodeContentElement =
+            nodeContainerElement.querySelector('#node-content');
+
+        // Get and sort <article> elements by ID
+        let sortedArticles = Array.from(nodeContentElement.children)
+            .filter((el) => el.tagName.toLowerCase() === 'article')
+            .sort((a, b) => {
+                return ascending
+                    ? a.id.localeCompare(b.id)
+                    : b.id.localeCompare(a.id);
+            });
+
+        // Loop through sorted elements
+        sortedArticles.forEach((el) => {
+            const text = el.querySelector('.exe-text-activity p');
+            const udl = el.querySelector('.exe-udlContent-content > div');
+
+            // Get the content from the <article>, fallback to placeholder
+            const content = text
+                ? text.innerText
+                : udl?.innerText || '[No content]';
+
+            // Shorten long content strings for display
+            const shortened =
+                content.length > 50 ? content.slice(0, 50) + '…' : content;
+
+            // Log the ID and shortened content
+            console.log('id: ' + el.id + ' content: ' + shortened);
+
+            // Re-append the element to reorder it in the DOM
+            nodeContentElement.appendChild(el);
+        });
     }
 }
