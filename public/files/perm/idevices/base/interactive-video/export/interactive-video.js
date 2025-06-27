@@ -170,7 +170,7 @@ var $interactivevideo = {
         if (es.length == 0) return;
 
         if (es.length > 1) {
-            var msg = InteractiveVideo.i18n.error + " - " + InteractiveVideo.i18n.onlyOne;
+            var msg = $interactivevideo.i18n.error + " - " + InteractiveVideo.i18n.onlyOne;
             if (this.isInExe) eXe.app.alert(msg);
             else alert(msg);
             return false;
@@ -181,10 +181,10 @@ var $interactivevideo = {
         // Default strings
         if (typeof (InteractiveVideo) != "undefined" && typeof (InteractiveVideo.i18n) != "undefined") {
             for (var _i in InteractiveVideo.i18n) {
-                InteractiveVideo.i18n[_i] = InteractiveVideo.i18n[_i];
+                $interactivevideo.i18n[_i] = InteractiveVideo.i18n[_i];
             };
         }
-        var i18n = InteractiveVideo.i18n;
+        var i18n = $interactivevideo.i18n;
 
 
         var html = '\
@@ -205,11 +205,11 @@ var $interactivevideo = {
         }
 
         if (typeof (InteractiveVideo) != "undefined") {
-            InteractiveVideo.scorm = typeof InteractiveVideo.scorm == "undefined" ? InteractiveVideo.scorm : InteractiveVideo.scorm;
-            InteractiveVideo.scoreNIA = typeof InteractiveVideo.scoreNIA == "undefined" ? true : InteractiveVideo.scoreNIA;
-            InteractiveVideo.evaluation = typeof InteractiveVideo.evaluation == "undefined" ? false : InteractiveVideo.evaluation;
-            InteractiveVideo.evaluationID = typeof InteractiveVideo.evaluationID == "undefined" ? '' : InteractiveVideo.evaluationID;
-            InteractiveVideo.ideviceID = typeof InteractiveVideo.ideviceID == "undefined" ? '' : InteractiveVideo.ideviceID;
+            $interactivevideo.scorm = typeof InteractiveVideo.scorm == "undefined" ? $interactivevideo.scorm : InteractiveVideo.scorm;
+            $interactivevideo.scoreNIA = typeof InteractiveVideo.scoreNIA == "undefined" ? true : InteractiveVideo.scoreNIA;
+            $interactivevideo.evaluation = typeof InteractiveVideo.evaluation == "undefined" ? false : InteractiveVideo.evaluation;
+            $interactivevideo.evaluationID = typeof InteractiveVideo.evaluationID == "undefined" ? '' : InteractiveVideo.evaluationID;
+            $interactivevideo.ideviceID = typeof InteractiveVideo.ideviceID == "undefined" ? '' : InteractiveVideo.ideviceID;
             $interactivevideo.mOptions = $interactivevideo.getOptions(InteractiveVideo);
             var buttonScorm = $exeDevices.iDevice.gamification.scorm.addButtonScoreNew($interactivevideo.mOptions)
             html += buttonScorm;
@@ -359,7 +359,7 @@ var $interactivevideo = {
         }
         $interactivevideo.saveEvaluation();
 
-    },    
+    },
 
     inIframe: function () {
         try {
@@ -1842,24 +1842,29 @@ var $interactivevideo = {
             $interactivevideo.observers.clear();
         }
     },
-    getOptions: function (IV) {
 
-        const $idevices = $('.idevice_node');
-        const deviceId = $('.exe-interactive-video').eq(0).closest('.idevice_node').attr('id');
-        const index = $idevices.index($('#' + deviceId));
-        let title = $('.exe-interactive-video').eq(0).closest('article').find('header .box-title').text() || '';
+    getOptions: function (IV) {
+        const $idevices = $('.idevice_node'),
+            $video = $('.exe-interactive-video').eq(0),
+            deviceId = $video.closest('.idevice_node').attr('id'),
+            index = $idevices.index($('#' + deviceId));
+
+        let title = $video.closest('article').find('header .box-title').text() || '';
         title = title.replace(/"/g, ' ');
+
+        if (!IV.scorm) IV.scorm = {};
+        if (IV.scorm.isScorm == null) IV.scorm.isScorm = 0;
+        if (!IV.scorm.textButtonScorm) IV.scorm.textButtonScorm = 'Guardar puntuación';
 
         return {
             id: IV.ideviceID,
             scorerp: 0,
-            weighted: IV.weighted ?? 100,
-            evaluation: IV.evaluationID.length !== 0,
-            evaluationID: IV.evaluationID,
+            weighted: IV.weighted != null ? IV.weighted : 100,
+            evaluation: !!(IV.evaluationID && IV.evaluationID.length),
+            evaluationID: IV.evaluationID || '',
             isInExe: this.isInExe,
             main: '.exe-interactive-video',
             idevice: 'exe-interactive-video',
-            scorerp: 0,
             idevicePath: this.idevicePath,
             textButtonScorm: IV.scorm.textButtonScorm,
             isScorm: IV.scorm.isScorm,
@@ -1867,11 +1872,9 @@ var $interactivevideo = {
             msgs: IV.i18n,
             ideviceNumber: index + 1,
             title: title
-
         };
+    }
 
-
-    },
 }
 
 $(function () {
