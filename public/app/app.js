@@ -59,6 +59,8 @@ class App {
         await this.showProvisionalDemoWarning();
         // To do warning (remove this as soon as possible)
         await this.showProvisionalToDoWarning();
+        // Add not extracted strings (to review)
+        await this.addNotExtractedLinks();
         // Add the notranslate class to some elements
         await this.addNoTranslateForGoogle();
     }
@@ -237,6 +239,20 @@ class App {
             // Check for errors
             this.check();
         }
+    }
+
+    /**
+     * Some strings are not found with "make translations" due to the "make fix-js" formatting
+     *
+     */
+    async addNotExtractedLinks() {
+        let strs = [
+            // ideviceNode.js
+            _('Delete iDevice? This cannot be undone.'),
+            _('iDevice deleted. Now the box is empty. Delete the box too?'),
+            // projectManager.js
+            _('You are editing an iDevice. Please close it before continuing'),
+        ];
     }
 
     /**
