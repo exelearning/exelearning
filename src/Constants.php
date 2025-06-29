@@ -100,6 +100,7 @@ class Constants
     public const TRANSLATION_DEFAULT_FORMAT = 'xlf'; // format for translation files
     // Do not extract strings from these files:
     public const TRANSLATION_EXCEPTIONS = [
+        '/app/public/app/common/fMath/js/jquery-ui/jquery-ui.min.js',
         '/app/public/libs/filegator/js/chunk-vendors.js',
         '/app/public/libs/jquery-ui/jquery-ui.min.js',
         '/app/public/files/perm/idevices/base/classify/export/0jquery-ui.min.js',

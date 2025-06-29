@@ -741,10 +741,6 @@
         <source>Go to Tools - Preview to see the tooltip content</source>
         <target>Ves a «Eines - Previsualització» per mostrar el contingut de l'indicador de funció</target>
       </trans-unit>
-      <trans-unit id="0nNrpBR" resname="'">
-        <source>'</source>
-        <target>'</target>
-      </trans-unit>
       <trans-unit id="aRkw0uL" resname="If you have made changes and have not saved them, they will be lost. Do you really want to quit?">
         <source>If you have made changes and have not saved them, they will be lost. Do you really want to quit?</source>
         <target>Si heu fet canvis i no els heu desat, es perdran. Voleu de veritat sortir ?</target>

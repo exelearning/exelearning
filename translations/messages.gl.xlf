@@ -741,10 +741,6 @@
         <source>Go to Tools - Preview to see the tooltip content</source>
         <target>Ir a Ferramentas - Vista previa para ver o contido das ferramentas</target>
       </trans-unit>
-      <trans-unit id="0nNrpBR" resname="'">
-        <source>'</source>
-        <target>'</target>
-      </trans-unit>
       <trans-unit id="aRkw0uL" resname="If you have made changes and have not saved them, they will be lost. Do you really want to quit?">
         <source>If you have made changes and have not saved them, they will be lost. Do you really want to quit?</source>
         <target>Vanse perder os cambios se non os garda. Está seguro de querer saír?</target>
