@@ -247,6 +247,9 @@ class App {
      */
     async addNotExtractedLinks() {
         let strs = [
+            // ideviceNode.js
+            _('Delete iDevice? This cannot be undone.'),
+            _('iDevice deleted. Now the box is empty. Delete the box too?'),
             // projectManager.js
             _('You are editing an iDevice. Please close it before continuing'),
         ];
