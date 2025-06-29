@@ -9437,6 +9437,14 @@
         <source>Primary author/s of the resource.</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
+        <source>You can choose a different licence for the current project.</source>
+        <target>~Uneko proiektuarentzat lizentzia desberdin bat aukeratu dezakezu.</target>
+      </trans-unit>
+      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
+        <source>Primary author/s of the resource.</source>
+        <target>~Baliabidearen egile nagusiak.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

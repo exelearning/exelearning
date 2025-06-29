@@ -9491,11 +9491,11 @@
       </trans-unit>
       <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
         <source>You can choose a different licence for the current project.</source>
-        <target></target>
+        <target>Puedes elegir una licencia distinta para el proyecto actual.</target>
       </trans-unit>
       <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
         <source>Primary author/s of the resource.</source>
-        <target></target>
+        <target>Principales autores del recurso.</target>
       </trans-unit>
     </body>
   </file>
