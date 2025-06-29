@@ -3529,10 +3529,6 @@
         <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.</source>
         <target>~Enmetu la tekston por la faldebla agado en la faldebla kampo aŭ per algluo de teksto de alia fonto aŭ per tajpado rekte en la kampo. Por elekti kiujn vortojn elekti, duoble-klaku sur vorto por elekti ĝin kaj klaku la butonon "Montri/Hidii" sube.</target>
       </trans-unit>
-      <trans-unit id="0PufnT0" resname="Enter the text for the fill-in-the-blanks activity. Highlight the words and use the button at the bottom to turn them into blanks.">
-        <source>Enter the text for the fill-in-the-blanks activity. Highlight the words and use the button at the bottom to turn them into blanks.</source>
-        <target>~Tajpu la tekston por la plenigu-en-la-blanko-agado en la malplena kampo aŭ per algluo de teksto de alia fonto aŭ per tajpado rekte en la kampo. Por elekti kiujn vortojn vi volas kaŝi, duoble-klaku sur la vorto por elekti ĝin, kaj klaku la butonon Hidii/Montri vorton sube. Vi povas difini pli ol unu eblan respondon se ili estas ĉirkaŭitaj de la pipe-signo (|). Ekz.: |hundo|kato|birdo|</target>
-      </trans-unit>
       <trans-unit id="eh_avyW" resname="If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as &quot;close enough&quot; by the algorithm, as there is only one spelling error, even if &quot;Check capitalization&quot; is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If &quot;Strict qualification&quot; and &quot;Check capitalization&quot; are enabled, the only correct answer is &quot;Elephant&quot;. If only &quot;Strict qualification&quot; is enabled and &quot;Check capitalization&quot; is not, &quot;elephant&quot; will also be accepted.">
         <source>If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.</source>
         <target>~Se ne markita, malgranda nombro da ortografiaj kaj majuskla eraroj estos akceptitaj. Se markita, neniuj ortografiaj aŭ majuskla eraroj estos akceptitaj. Ekzemplo: Se la ĝusta respondo estas Elefanto kaj ĝi diras elefanto aŭ Eliphanto, ambaŭ estos konsiderataj "proksime sufiĉe" de la algoritmo, ĉar estas nur unu ortografia eraro, eĉ se "Kontrolu majusklojn" estas markita. Se la majuskla kontrolo estas malŝaltita en ĉi tiu ekzemplo, la malgranda letero e ne estos konsiderata eraro kaj eliphanto ankaŭ estos akceptata. Se "Strikta kvalifiko" kaj "Kontrolu majusklojn" estas aktivigitaj, la sola ĝusta respondo estas "Elefanto". Se nur "Strikta kvalifiko" estas aktivigita kaj "Kontrolu majusklojn" ne, "elefanto" ankaŭ estos akceptata.</target>
@@ -8017,18 +8013,6 @@
         <source>Failed to upload file</source>
         <target>~Malsukcesis alŝuti dosieron</target>
       </trans-unit>
-      <trans-unit id="uj6qgsu" resname="Access">
-        <source>Access</source>
-        <target>~Aksesoj</target>
-      </trans-unit>
-      <trans-unit id="zCmWOyM" resname="Access Type">
-        <source>Access Type</source>
-        <target>~Aksesotipo</target>
-      </trans-unit>
-      <trans-unit id="dtOd8PK" resname="active">
-        <source>active</source>
-        <target>~aktiva</target>
-      </trans-unit>
       <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
         <source>Search bar (Website export only)</source>
         <target>~Serĉu boto (Nur reteja eksportado)</target>
@@ -8041,145 +8025,13 @@
         <source>Advanced (SEO)</source>
         <target>~Plua (SEO)</target>
       </trans-unit>
-      <trans-unit id="21sXCFE" resname="Aggregation Level">
-        <source>Aggregation Level</source>
-        <target>~Afiŝnivelo</target>
-      </trans-unit>
       <trans-unit id="w9rqboO" resname="Allows to minimize/display content">
         <source>Allows to minimize/display content</source>
         <target>~Permesas minimumigi/montri enhavon</target>
       </trans-unit>
-      <trans-unit id="UizfO70" resname="analyse">
-        <source>analyse</source>
-        <target>~analizi</target>
-      </trans-unit>
-      <trans-unit id="j3bED29" resname="Annotation">
-        <source>Annotation</source>
-        <target>~Noto</target>
-      </trans-unit>
-      <trans-unit id="30xdS3B" resname="atomic">
-        <source>atomic</source>
-        <target>~atomara</target>
-      </trans-unit>
       <trans-unit id="m8yNoyg" resname="Author URL">
         <source>Author URL</source>
         <target>~Aŭtora URL</target>
-      </trans-unit>
-      <trans-unit id="sQA8sGg" resname="blended">
-        <source>blended</source>
-        <target>~ miksita</target>
-      </trans-unit>
-      <trans-unit id="DhkCWrO" resname="browser">
-        <source>browser</source>
-        <target>~retumilo</target>
-      </trans-unit>
-      <trans-unit id="bmxHASz" resname="Catalog">
-        <source>Catalog</source>
-        <target>~Katalogo</target>
-      </trans-unit>
-      <trans-unit id="GFmbqIO" resname="Cataloging standard">
-        <source>Cataloging standard</source>
-        <target>~Katalogada normo</target>
-      </trans-unit>
-      <trans-unit id="I1l.nih" resname="Cataloguing">
-        <source>Cataloguing</source>
-        <target>~Katalogado</target>
-      </trans-unit>
-      <trans-unit id="Gx_b7tA" resname="Classification">
-        <source>Classification</source>
-        <target>~Klasifiko</target>
-      </trans-unit>
-      <trans-unit id="aDw_yhA" resname="classroom">
-        <source>classroom</source>
-        <target>~klasĉambro</target>
-      </trans-unit>
-      <trans-unit id="kX5Iheb" resname="closed exercise or problem">
-        <source>closed exercise or problem</source>
-        <target>~fermita ekzerco aŭ problemo</target>
-      </trans-unit>
-      <trans-unit id="Kx.tMNA" resname="Cognitive Process">
-        <source>Cognitive Process</source>
-        <target>~Kognitiva Proceso</target>
-      </trans-unit>
-      <trans-unit id="qHVbKJo" resname="collaborate">
-        <source>collaborate</source>
-        <target>~kollabori</target>
-      </trans-unit>
-      <trans-unit id="MPgsWGQ" resname="collection">
-        <source>collection</source>
-        <target>~kolekto</target>
-      </trans-unit>
-      <trans-unit id="HCsS8LU" resname="communicate">
-        <source>communicate</source>
-        <target>~komuniki</target>
-      </trans-unit>
-      <trans-unit id="ZsoFFM7" resname="compare">
-        <source>compare</source>
-        <target>~kompari</target>
-      </trans-unit>
-      <trans-unit id="voiPl0F" resname="compete">
-        <source>compete</source>
-        <target>~konkurenci</target>
-      </trans-unit>
-      <trans-unit id="pmAJY0E" resname="computer scientist">
-        <source>computer scientist</source>
-        <target>~komputila sciencisto</target>
-      </trans-unit>
-      <trans-unit id="QIVs3zF" resname="conceptual map">
-        <source>conceptual map</source>
-        <target>~koncepta mapo</target>
-      </trans-unit>
-      <trans-unit id="m8_BFMv" resname="connect">
-        <source>connect</source>
-        <target>~konekti</target>
-      </trans-unit>
-      <trans-unit id="cfWzr3y" resname="consider">
-        <source>consider</source>
-        <target>~pripensi</target>
-      </trans-unit>
-      <trans-unit id="NygWi6y" resname="content provider">
-        <source>content provider</source>
-        <target>~provizanto de enhavo</target>
-      </trans-unit>
-      <trans-unit id="ms66Sj7" resname="Context">
-        <source>Context</source>
-        <target>~Konteksto</target>
-      </trans-unit>
-      <trans-unit id="2H4w0Zr" resname="contextualize">
-        <source>contextualize</source>
-        <target>~kontekstigi</target>
-      </trans-unit>
-      <trans-unit id="NyLbmPm" resname="contextualized case problem">
-        <source>contextualized case problem</source>
-        <target>~kontekstigita kazo-problemo</target>
-      </trans-unit>
-      <trans-unit id="30baqPN" resname="contribution">
-        <source>contribution</source>
-        <target>~kontribuo</target>
-      </trans-unit>
-      <trans-unit id="Cuac1eP" resname="Contribution">
-        <source>Contribution</source>
-        <target>~Kontribuo</target>
-      </trans-unit>
-      <trans-unit id="Jrt_AT3" resname="control">
-        <source>control</source>
-        <target>~kontrolo</target>
-      </trans-unit>
-      <trans-unit id="1QFOzBE" resname="cooperate">
-        <source>cooperate</source>
-        <target>~kuniĝi</target>
-      </trans-unit>
-      <trans-unit id="8jg5YjP" resname="Copyright And Other Restrictions">
-        <source>Copyright And Other Restrictions</source>
-        <target>~Aŭtorrajtoj kaj aliaj limigoj</target>
-      </trans-unit>
-      <trans-unit id="1OC.26o" resname="Cost">
-        <source>Cost</source>
-        <target>~Kosto</target>
-      </trans-unit>
-      <trans-unit id="CzW9uKn" resname="Coverage">
-        <source>Coverage</source>
-        <target>~Kovrado</target>
       </trans-unit>
       <trans-unit id="D0HXVrd" resname="Editable export">
         <source>Editable export</source>
@@ -8213,21 +8065,9 @@
         <source>The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.</source>
         <target>~La alirebleco-baro ebligas al vizitantoj manipuli iujn aspektojn de via retejo, kiel tiparo kaj teksta grandeco.</target>
       </trans-unit>
-      <trans-unit id="BGpp5_J" resname="creator">
-        <source>creator</source>
-        <target>~kreatoro</target>
-      </trans-unit>
       <trans-unit id="e72fZ2G" resname="CSS Class">
         <source>CSS Class</source>
         <target>~CSS Klaso</target>
-      </trans-unit>
-      <trans-unit id="qBy_Aas" resname="Days">
-        <source>Days</source>
-        <target>~Tagoj</target>
-      </trans-unit>
-      <trans-unit id="V3GiFng" resname="decide">
-        <source>decide</source>
-        <target>~decidi</target>
       </trans-unit>
       <trans-unit id="QLYaHhh" resname="License for the new documents">
         <source>License for the new documents</source>
@@ -8237,625 +8077,45 @@
         <source>You can choose a different language for the current project.</source>
         <target>~Vi povas elekti alian lingvon por la nuna projekto.</target>
       </trans-unit>
-      <trans-unit id="9ak38ci" resname="define">
-        <source>define</source>
-        <target>~difini</target>
-      </trans-unit>
-      <trans-unit id="CcgNHS0" resname="describe">
-        <source>describe</source>
-        <target>~priskribi</target>
-      </trans-unit>
-      <trans-unit id="OKT5yHe" resname="design">
-        <source>design</source>
-        <target>~dizajni</target>
-      </trans-unit>
-      <trans-unit id="4vJAS9W" resname="diagram">
-        <source>diagram</source>
-        <target>~diagramo</target>
-      </trans-unit>
-      <trans-unit id="KXjuAt6" resname="didactic game">
-        <source>didactic game</source>
-        <target>~didakta ludo</target>
-      </trans-unit>
       <trans-unit id="GYlJ0QA" resname="Different title on the page">
         <source>Different title on the page</source>
         <target>~Diverse titolo en la paĝo</target>
-      </trans-unit>
-      <trans-unit id="cyvj7af" resname="difficult">
-        <source>difficult</source>
-        <target>~malfacila</target>
-      </trans-unit>
-      <trans-unit id="iCqd_lw" resname="discuss">
-        <source>discuss</source>
-        <target>~diskuti</target>
-      </trans-unit>
-      <trans-unit id="dKhl.s." resname="discussion activity">
-        <source>discussion activity</source>
-        <target>~diskuta aktiveco</target>
-      </trans-unit>
-      <trans-unit id="Dm0vwa8" resname="distance">
-        <source>distance</source>
-        <target>~distanco</target>
-      </trans-unit>
-      <trans-unit id="dgdAkJu" resname="draft">
-        <source>draft</source>
-        <target>~skizo</target>
-      </trans-unit>
-      <trans-unit id="CSSpmeX" resname="dual free content license GPL and EUPL">
-        <source>dual free content license GPL and EUPL</source>
-        <target>~duala libera enhavlicenco GPL kaj EUPL</target>
-      </trans-unit>
-      <trans-unit id="omSlwYb" resname="easy">
-        <source>easy</source>
-        <target>~facila</target>
-      </trans-unit>
-      <trans-unit id="B4ksnX0" resname="education expert">
-        <source>education expert</source>
-        <target>~edukada spertulo</target>
-      </trans-unit>
-      <trans-unit id="5mJkzNh" resname="Educational">
-        <source>Educational</source>
-        <target>~Edukada</target>
-      </trans-unit>
-      <trans-unit id="4Vm4sxO" resname="educational validator">
-        <source>educational validator</source>
-        <target>~eduka validigilo</target>
       </trans-unit>
       <trans-unit id="JZi_tm0" resname="Email">
         <source>Email</source>
         <target>~Retpoŝto</target>
       </trans-unit>
-      <trans-unit id="6yueven" resname="Entity">
-        <source>Entity</source>
-        <target>~Ento</target>
-      </trans-unit>
-      <trans-unit id="RPUHE9I" resname="Entry">
-        <source>Entry</source>
-        <target>~Eniro</target>
-      </trans-unit>
-      <trans-unit id="QZOsPod" resname="exam">
-        <source>exam</source>
-        <target>~ekzameno</target>
-      </trans-unit>
-      <trans-unit id="nQOUezh" resname="exercise">
-        <source>exercise</source>
-        <target>~ekzerco</target>
-      </trans-unit>
-      <trans-unit id="OiRXx2I" resname="experiment">
-        <source>experiment</source>
-        <target>~eksperimento</target>
-      </trans-unit>
-      <trans-unit id="uOQQPzB" resname="explain">
-        <source>explain</source>
-        <target>~klarigi</target>
-      </trans-unit>
-      <trans-unit id="xpk0YfD" resname="expositive">
-        <source>expositive</source>
-        <target>~eksplikanta</target>
-      </trans-unit>
-      <trans-unit id="3MmH10C" resname="extrapolate">
-        <source>extrapolate</source>
-        <target>~ekstrapoli</target>
-      </trans-unit>
-      <trans-unit id="AcoWwgo" resname="face to face">
-        <source>face to face</source>
-        <target>~Vizaĝal vizaĝe</target>
-      </trans-unit>
-      <trans-unit id="mN.652t" resname="family">
-        <source>family</source>
-        <target>~familio</target>
-      </trans-unit>
-      <trans-unit id="XktYcMV" resname="figure">
-        <source>figure</source>
-        <target>~figuro</target>
-      </trans-unit>
-      <trans-unit id="sVb5j1n" resname="final">
-        <source>final</source>
-        <target>~fina</target>
-      </trans-unit>
-      <trans-unit id="PUTsW0F" resname="For Group Work">
-        <source>For Group Work</source>
-        <target>~Por Grupo Laboro</target>
-      </trans-unit>
-      <trans-unit id="ukp7GFs" resname="For Individual Tuition">
-        <source>For Individual Tuition</source>
-        <target>~Por Individua Instruado</target>
-      </trans-unit>
-      <trans-unit id="Ji1pkuA" resname="free software license EUPL">
-        <source>free software license EUPL</source>
-        <target>~libera programaro-permesilo EUPL</target>
-      </trans-unit>
-      <trans-unit id="42uh.jA" resname="free software license GPL">
-        <source>free software license GPL</source>
-        <target>~libera programaro-permesilo GPL</target>
-      </trans-unit>
-      <trans-unit id="7DZh3v1" resname="General description">
-        <source>General description</source>
-        <target>~Ĝenerala priskribo</target>
-      </trans-unit>
-      <trans-unit id="Af_BsDR" resname="general public">
-        <source>general public</source>
-        <target>~ĝenerala publiko</target>
-      </trans-unit>
-      <trans-unit id="FPo_THX" resname="gifted learner">
-        <source>gifted learner</source>
-        <target>~donaca lernanto</target>
-      </trans-unit>
-      <trans-unit id="L.a1qli" resname="graph">
-        <source>graph</source>
-        <target>~grafiko</target>
-      </trans-unit>
-      <trans-unit id="XP8onCV" resname="graphical designer">
-        <source>graphical designer</source>
-        <target>~grafika desegnisto</target>
-      </trans-unit>
-      <trans-unit id="J3_3OBy" resname="group">
-        <source>group</source>
-        <target>~grupo</target>
-      </trans-unit>
-      <trans-unit id="uwkTpT5" resname="guided reading">
-        <source>guided reading</source>
-        <target>~gvidita legado</target>
-      </trans-unit>
       <trans-unit id="22GeuW5" resname="Header image">
         <source>Header image</source>
         <target>~Kapo bildo</target>
-      </trans-unit>
-      <trans-unit id="pdeXyW0" resname="hierarchical">
-        <source>hierarchical</source>
-        <target>~hierarkia</target>
-      </trans-unit>
-      <trans-unit id="6UM_CvB" resname="high">
-        <source>high</source>
-        <target>~alta</target>
       </trans-unit>
       <trans-unit id="37wivZ3" resname="ID">
         <source>ID</source>
         <target>~ID</target>
       </trans-unit>
-      <trans-unit id="ESqCpM6" resname="implement">
-        <source>implement</source>
-        <target>~realigi</target>
-      </trans-unit>
-      <trans-unit id="9fulTOC" resname="independent">
-        <source>independent</source>
-        <target>~sendependa</target>
-      </trans-unit>
-      <trans-unit id="gB2fC96" resname="index">
-        <source>index</source>
-        <target>~indekso</target>
-      </trans-unit>
-      <trans-unit id="cWIb29G" resname="individual">
-        <source>individual</source>
-        <target>~individuo</target>
-      </trans-unit>
-      <trans-unit id="CpcLPBS" resname="information scientist">
-        <source>information scientist</source>
-        <target>~informadiko</target>
-      </trans-unit>
-      <trans-unit id="RhzCJ5T" resname="initiator">
-        <source>initiator</source>
-        <target>~initiatoro</target>
-      </trans-unit>
-      <trans-unit id="wiULcfx" resname="innovate">
-        <source>innovate</source>
-        <target>~novigi</target>
-      </trans-unit>
-      <trans-unit id="xDKv_u0" resname="Installation Remarks">
-        <source>Installation Remarks</source>
-        <target>~Instalaĵaj Rimarkoj</target>
-      </trans-unit>
-      <trans-unit id="8AQu6a3" resname="Installation remarks">
-        <source>Installation remarks</source>
-        <target>~Instalaĵaj rimarkoj</target>
-      </trans-unit>
-      <trans-unit id="F8hOXmU" resname="instructional designer">
-        <source>instructional designer</source>
-        <target>~instrua desegnisto</target>
-      </trans-unit>
-      <trans-unit id="o0hS8qP" resname="intellectual property license">
-        <source>intellectual property license</source>
-        <target>~intelekta proprieta rajtolo</target>
-      </trans-unit>
-      <trans-unit id="ONh78_D" resname="Intended End User Role">
-        <source>Intended End User Role</source>
-        <target>~Celita Uzanto-Rolo</target>
-      </trans-unit>
-      <trans-unit id=".OaYuob" resname="Intended User Role">
-        <source>Intended User Role</source>
-        <target>~Celita Uzanto-Rolo</target>
-      </trans-unit>
-      <trans-unit id="pqrSJ2C" resname="Interactive Type">
-        <source>Interactive Type</source>
-        <target>~Interaga Tipo</target>
-      </trans-unit>
-      <trans-unit id="GbqKVv_" resname="Interactivity Level">
-        <source>Interactivity Level</source>
-        <target>~Interaga Nivelo</target>
-      </trans-unit>
-      <trans-unit id="5D2xvNT" resname="Interactivity Type">
-        <source>Interactivity Type</source>
-        <target>~Interaga Tipo</target>
-      </trans-unit>
-      <trans-unit id="xQcsI6r" resname="investigate">
-        <source>investigate</source>
-        <target>~esplori</target>
-      </trans-unit>
-      <trans-unit id="PMVIJBi" resname="judge">
-        <source>judge</source>
-        <target>~juĝi</target>
-      </trans-unit>
-      <trans-unit id="zlisa7z" resname="Keyword">
-        <source>Keyword</source>
-        <target>~Ŝlosilvorto</target>
-      </trans-unit>
-      <trans-unit id="TtHkErw" resname="Kind">
-        <source>Kind</source>
-        <target>~Speco</target>
-      </trans-unit>
-      <trans-unit id="s4Jgj7N" resname="laboratory">
-        <source>laboratory</source>
-        <target>~laboratorio</target>
-      </trans-unit>
-      <trans-unit id="5YItNZ6" resname="learner">
-        <source>learner</source>
-        <target>~lernanto</target>
-      </trans-unit>
-      <trans-unit id="_IHW5Bx" resname="learner with other specific educational support needs">
-        <source>learner with other specific educational support needs</source>
-        <target>~lernanto kun aliaj specifaj edukaj subtenbezonoj</target>
-      </trans-unit>
-      <trans-unit id="rOMIuu4" resname="learners late integration into the education system">
-        <source>learners late integration into the education system</source>
-        <target>~lernantoj malfrua integriĝo en la edukadsistemon</target>
-      </trans-unit>
-      <trans-unit id="4tsTAV3" resname="learning objects">
-        <source>learning objects</source>
-        <target>~lernobjektoj</target>
-      </trans-unit>
-      <trans-unit id="FeV8cvY" resname="Learning Resource Type">
-        <source>Learning Resource Type</source>
-        <target>~Tipo de Lernresurso</target>
-      </trans-unit>
-      <trans-unit id="UJdB6GY" resname="lecture">
-        <source>lecture</source>
-        <target>~prelego</target>
-      </trans-unit>
-      <trans-unit id="rJwz6Qp" resname="license GFDL">
-        <source>license GFDL</source>
-        <target>~licenco GFDL</target>
-      </trans-unit>
       <trans-unit id="XWyckJx" resname="License URL">
         <source>License URL</source>
         <target>~URL de la licenco</target>
-      </trans-unit>
-      <trans-unit id="hjqXHn." resname="Life Cycle">
-        <source>Life Cycle</source>
-        <target>~Vivo-Ciklo</target>
-      </trans-unit>
-      <trans-unit id="zJVYc0I" resname="linear">
-        <source>linear</source>
-        <target>~lineara</target>
       </trans-unit>
       <trans-unit id="4bgAmj2" resname="Links color">
         <source>Links color</source>
         <target>~Koloro de ligoj</target>
       </trans-unit>
-      <trans-unit id="nODxdW." resname="Location">
-        <source>Location</source>
-        <target>~Loko</target>
-      </trans-unit>
       <trans-unit id="Ulft.2T" resname="Logo image">
         <source>Logo image</source>
         <target>~Logo bildo</target>
-      </trans-unit>
-      <trans-unit id="zkwcCsQ" resname="low">
-        <source>low</source>
-        <target>~malalta</target>
-      </trans-unit>
-      <trans-unit id="mtaOaU5" resname="manager">
-        <source>manager</source>
-        <target>~administranto</target>
-      </trans-unit>
-      <trans-unit id="vGZfUwN" resname="master class">
-        <source>master class</source>
-        <target>~majstroklaso</target>
-      </trans-unit>
-      <trans-unit id="bw_tjTu" resname="Maximum version">
-        <source>Maximum version</source>
-        <target>~Plej alta versio</target>
-      </trans-unit>
-      <trans-unit id="aq03c27" resname="Meta-Metadata">
-        <source>Meta-Metadata</source>
-        <target>~Meta-Metadatum</target>
-      </trans-unit>
-      <trans-unit id="RNq95Bn" resname="Metadata Schema">
-        <source>Metadata Schema</source>
-        <target>~Metadatum Schema</target>
       </trans-unit>
       <trans-unit id="YSMMgnW" resname="Minimized">
         <source>Minimized</source>
         <target>~Minimigita</target>
       </trans-unit>
-      <trans-unit id="x0smtjM" resname="Minimum version">
-        <source>Minimum version</source>
-        <target>~Minimuma versio</target>
-      </trans-unit>
-      <trans-unit id="BwZgx_c" resname="mixed">
-        <source>mixed</source>
-        <target>~miksa</target>
-      </trans-unit>
-      <trans-unit id="HvpPDtl" resname="Modality">
-        <source>Modality</source>
-        <target>~Modalo</target>
-      </trans-unit>
-      <trans-unit id="YujtjNq" resname="Months">
-        <source>Months</source>
-        <target>~Monatoj</target>
-      </trans-unit>
-      <trans-unit id="DGVj_42" resname="motivate">
-        <source>motivate</source>
-        <target>~motivi</target>
-      </trans-unit>
-      <trans-unit id="fAoZaaN" resname="narrative text">
-        <source>narrative text</source>
-        <target>~narativa teksto</target>
-      </trans-unit>
-      <trans-unit id="kWD6AEE" resname="networked">
-        <source>networked</source>
-        <target>~rete konektita</target>
-      </trans-unit>
-      <trans-unit id="97VS4Ka" resname="non-universal">
-        <source>non-universal</source>
-        <target>~ne-universala</target>
-      </trans-unit>
-      <trans-unit id="WhxOOER" resname="not appropriate">
-        <source>not appropriate</source>
-        <target>~ne taŭga</target>
-      </trans-unit>
-      <trans-unit id="xrf7sCi" resname="observe">
-        <source>observe</source>
-        <target>~observi</target>
-      </trans-unit>
-      <trans-unit id="2iKqac1" resname="open problem">
-        <source>open problem</source>
-        <target>~malferma problemo</target>
-      </trans-unit>
-      <trans-unit id="A0oQFhG" resname="operating system">
-        <source>operating system</source>
-        <target>~operaciumo</target>
-      </trans-unit>
-      <trans-unit id="PRkdF56" resname="ordinary learner">
-        <source>ordinary learner</source>
-        <target>~ordinara lernanto</target>
-      </trans-unit>
-      <trans-unit id="VgrHoaE" resname="Organization">
-        <source>Organization</source>
-        <target>~Organizo</target>
-      </trans-unit>
-      <trans-unit id="owPXSSz" resname="organize">
-        <source>organize</source>
-        <target>~organizi</target>
-      </trans-unit>
-      <trans-unit id="RCfQI7G" resname="organize oneself">
-        <source>organize oneself</source>
-        <target>~organizi sin mem</target>
-      </trans-unit>
-      <trans-unit id="oB.cj2b" resname="other free software licenses">
-        <source>other free software licenses</source>
-        <target>~Aliaj senpagaj programaj permesiloj</target>
-      </trans-unit>
-      <trans-unit id="GNaGrtA" resname="Other Platforms Requirement">
-        <source>Other Platforms Requirement</source>
-        <target>~Alia platforma postulo</target>
-      </trans-unit>
-      <trans-unit id="saopdG4" resname="Other platforms requirements">
-        <source>Other platforms requirements</source>
-        <target>~Aliaj platformaj postuloj</target>
-      </trans-unit>
-      <trans-unit id="HeLDtqB" resname="Package">
-        <source>Package</source>
-        <target>~Pakaĵo</target>
-      </trans-unit>
-      <trans-unit id="sQGAhLa" resname="plan">
-        <source>plan</source>
-        <target>~plano</target>
-      </trans-unit>
-      <trans-unit id="zSRk3oQ" resname="practise">
-        <source>practise</source>
-        <target>~praktiki</target>
-      </trans-unit>
-      <trans-unit id="KfDhVRP" resname="Preknowledge">
-        <source>Preknowledge</source>
-        <target>~Antaŭkono</target>
-      </trans-unit>
-      <trans-unit id="ebpVUzY" resname="presencial">
-        <source>presencial</source>
-        <target>~persona ĉeesto</target>
-      </trans-unit>
-      <trans-unit id="qIN9E6f" resname="Primary author of the resource.">
-        <source>Primary author of the resource.</source>
-        <target>~Ĉefa aŭtoro de la rimedo.</target>
-      </trans-unit>
-      <trans-unit id="V53AFdn" resname="problem statement">
-        <source>problem statement</source>
-        <target>~problemo deklaro</target>
-      </trans-unit>
-      <trans-unit id="zaREENo" resname="produce">
-        <source>produce</source>
-        <target>~produkti</target>
-      </trans-unit>
-      <trans-unit id="eNebiJJ" resname="proprietary license">
-        <source>proprietary license</source>
-        <target>~proprietary licenco</target>
-      </trans-unit>
-      <trans-unit id="gDKf6fE" resname="prove">
-        <source>prove</source>
-        <target>~pruvi</target>
-      </trans-unit>
-      <trans-unit id="ZdkcTiy" resname="publisher">
-        <source>publisher</source>
-        <target>~eldonanto</target>
-      </trans-unit>
-      <trans-unit id="VXHMNQO" resname="Purpose">
-        <source>Purpose</source>
-        <target>~Celo</target>
-      </trans-unit>
-      <trans-unit id="ENJB0MJ" resname="questionnaire">
-        <source>questionnaire</source>
-        <target>~demando</target>
-      </trans-unit>
-      <trans-unit id="RIc0vV7" resname="real environment">
-        <source>real environment</source>
-        <target>~vera medio</target>
-      </trans-unit>
-      <trans-unit id="gcQ0vCP" resname="real or virtual learning environment">
-        <source>real or virtual learning environment</source>
-        <target>~vera aŭ virtuala lernmedio</target>
-      </trans-unit>
-      <trans-unit id=".55uZuN" resname="real project">
-        <source>real project</source>
-        <target>~vera projekto</target>
-      </trans-unit>
-      <trans-unit id="2KRdPVP" resname="recognize">
-        <source>recognize</source>
-        <target>~rekoni</target>
-      </trans-unit>
-      <trans-unit id="g9vABJ." resname="Relation">
-        <source>Relation</source>
-        <target>~rilato</target>
-      </trans-unit>
-      <trans-unit id="MFNgJrr" resname="remember">
-        <source>remember</source>
-        <target>~memori</target>
-      </trans-unit>
-      <trans-unit id="_mQMh8I" resname="represent">
-        <source>represent</source>
-        <target>~reprezenti</target>
-      </trans-unit>
-      <trans-unit id="RIsY97t" resname="Requirement">
-        <source>Requirement</source>
-        <target>~postulo</target>
-      </trans-unit>
-      <trans-unit id="oWq4tqq" resname="Resource">
-        <source>Resource</source>
-        <target>~Rimedoj</target>
-      </trans-unit>
-      <trans-unit id="HQ6bkhA" resname="resources and integrated resources">
-        <source>resources and integrated resources</source>
-        <target>~rimedoj kaj integritaj rimedoj</target>
-      </trans-unit>
-      <trans-unit id="3ntTDtP" resname="revised">
-        <source>revised</source>
-        <target>~reviziita</target>
-      </trans-unit>
-      <trans-unit id="tzP7xvu" resname="Rights">
-        <source>Rights</source>
-        <target>~Rajtoj</target>
-      </trans-unit>
-      <trans-unit id="wVFHuss" resname="Role">
-        <source>Role</source>
-        <target>~Rolo</target>
-      </trans-unit>
-      <trans-unit id="SMuAR0E" resname="Schema">
-        <source>Schema</source>
-        <target>~Skemo</target>
-      </trans-unit>
-      <trans-unit id="SYE9Xxb" resname="schoolmate">
-        <source>schoolmate</source>
-        <target>~klasamikulo</target>
-      </trans-unit>
-      <trans-unit id="bwgY_rk" resname="script writer">
-        <source>script writer</source>
-        <target>~skriptoverkisto</target>
-      </trans-unit>
       <trans-unit id="FMzFNH2" resname="Select a language.">
         <source>Select a language.</source>
         <target>~Elektu lingvon.</target>
       </trans-unit>
-      <trans-unit id="6lFlNCM" resname="self assessment">
-        <source>self assessment</source>
-        <target>~mem-takso</target>
-      </trans-unit>
-      <trans-unit id="sqRm8FJ" resname="Semantic Density">
-        <source>Semantic Density</source>
-        <target>~Semantika denseco</target>
-      </trans-unit>
-      <trans-unit id="_PzGfSL" resname="simulate">
-        <source>simulate</source>
-        <target>~simuli</target>
-      </trans-unit>
-      <trans-unit id="c8YCrFD" resname="simulation">
-        <source>simulation</source>
-        <target>~simulado</target>
-      </trans-unit>
-      <trans-unit id="RqTNf71" resname="slide">
-        <source>slide</source>
-        <target>~glitado</target>
-      </trans-unit>
-      <trans-unit id="Bp2o_aP" resname="solve">
-        <source>solve</source>
-        <target>~solvi</target>
-      </trans-unit>
-      <trans-unit id="9IE_RfK" resname="special needs learner">
-        <source>special needs learner</source>
-        <target>~lernanto kun specialaj bezonoj</target>
-      </trans-unit>
-      <trans-unit id="6H6sYgm" resname="subject matter expert">
-        <source>subject matter expert</source>
-        <target>~fakto-spertulo</target>
-      </trans-unit>
-      <trans-unit id="yyBK.sP" resname="summarize">
-        <source>summarize</source>
-        <target>~resumi</target>
-      </trans-unit>
-      <trans-unit id="F5N28mP" resname="table">
-        <source>table</source>
-        <target>~tabelo</target>
-      </trans-unit>
-      <trans-unit id="IKju3Ip" resname="Taxon">
-        <source>Taxon</source>
-        <target>~Takso</target>
-      </trans-unit>
-      <trans-unit id="BBS.6d_" resname="Taxon Path">
-        <source>Taxon Path</source>
-        <target>~Taxon Vojo</target>
-      </trans-unit>
-      <trans-unit id="vjiwjNj" resname="teacher">
-        <source>teacher</source>
-        <target>~instruisto</target>
-      </trans-unit>
-      <trans-unit id="44uMq3t" resname="teaching sequences">
-        <source>teaching sequences</source>
-        <target>~instrua sekvencoj</target>
-      </trans-unit>
-      <trans-unit id="Mgxuf1B" resname="Technical">
-        <source>Technical</source>
-        <target>~Teknika</target>
-      </trans-unit>
-      <trans-unit id="UVY_oYi" resname="technical implementer">
-        <source>technical implementer</source>
-        <target>~teknika plenumanto</target>
-      </trans-unit>
-      <trans-unit id="pl2r5vt" resname="technical validator">
-        <source>technical validator</source>
-        <target>~teknika validiganto</target>
-      </trans-unit>
-      <trans-unit id="guZb9cX" resname="terminator">
-        <source>terminator</source>
-        <target>~terminatoro</target>
-      </trans-unit>
       <trans-unit id="madT9LT" resname="Texts and Links">
         <source>Texts and Links</source>
         <target>~Tekstoj kaj Ligiloj</target>
-      </trans-unit>
-      <trans-unit id="HHjWAu7" resname="textual-image analysis">
-        <source>textual-image analysis</source>
-        <target>~tekstaj-bildaj analizo</target>
-      </trans-unit>
-      <trans-unit id=".U_S7_5" resname="The current document license can be modified in the project properties.">
-        <source>The current document license can be modified in the project properties.</source>
-        <target>~La nuna dokumenta permesilo povas esti ŝanĝita en la projekto-eco.</target>
       </trans-unit>
       <trans-unit id="q_eBNIy" resname="The name given to the resource.">
         <source>The name given to the resource.</source>
@@ -8869,93 +8129,21 @@
         <source>Title in page</source>
         <target>~Titolo en paĝo</target>
       </trans-unit>
-      <trans-unit id="JBK5AuU" resname="training programmes, courses and plans">
-        <source>training programmes, courses and plans</source>
-        <target>~trejnaj programoj, kursoj kaj planoj</target>
-      </trans-unit>
-      <trans-unit id="Jd5JhKZ" resname="tutor">
-        <source>tutor</source>
-        <target>~gvidanto</target>
-      </trans-unit>
-      <trans-unit id="rNnBpWR" resname="Typical Age Range">
-        <source>Typical Age Range</source>
-        <target>~Tipa Aĝa Rango</target>
-      </trans-unit>
-      <trans-unit id="n54ZAYb" resname="Typical Learning Time">
-        <source>Typical Learning Time</source>
-        <target>~Tipa Lernotempo</target>
-      </trans-unit>
-      <trans-unit id="W3MzJgn" resname="unavailable">
-        <source>unavailable</source>
-        <target>~ne disponebla</target>
-      </trans-unit>
-      <trans-unit id="n6W2ANg" resname="understand">
-        <source>understand</source>
-        <target>~kompreni</target>
-      </trans-unit>
-      <trans-unit id="wIA0cI5" resname="universal">
-        <source>universal</source>
-        <target>~universala</target>
-      </trans-unit>
       <trans-unit id="c_yVrgu" resname="Content metadata">
         <source>Content metadata</source>
         <target>~Enhava metadatoj</target>
-      </trans-unit>
-      <trans-unit id="yLi09Hb" resname="Usage">
-        <source>Usage</source>
-        <target>~Uzo</target>
       </trans-unit>
       <trans-unit id="wx6YU0S" resname="Export options">
         <source>Export options</source>
         <target>~Eksportaj opcioj</target>
       </trans-unit>
-      <trans-unit id="MUgx_VX" resname="validator">
-        <source>validator</source>
-        <target>~validigilo</target>
-      </trans-unit>
       <trans-unit id="HgsKUL1" resname="Version control">
         <source>Version control</source>
         <target>~Versio-registaro</target>
       </trans-unit>
-      <trans-unit id="ZfoVZ_A" resname="very difficult">
-        <source>very difficult</source>
-        <target>~tre malfacile</target>
-      </trans-unit>
-      <trans-unit id="GYP9kEx" resname="very easy">
-        <source>very easy</source>
-        <target>~tre facile</target>
-      </trans-unit>
-      <trans-unit id="NR8UKDE" resname="very high">
-        <source>very high</source>
-        <target>~tre alta</target>
-      </trans-unit>
-      <trans-unit id="BxZU8UH" resname="very low">
-        <source>very low</source>
-        <target>~tre malalta</target>
-      </trans-unit>
       <trans-unit id="QkjXw6z" resname="Visible in export">
         <source>Visible in export</source>
         <target>~Videbla en eksportado</target>
-      </trans-unit>
-      <trans-unit id="LOXAsQW" resname="webquest">
-        <source>webquest</source>
-        <target>~reteqesto</target>
-      </trans-unit>
-      <trans-unit id="yk63IXe" resname="write up">
-        <source>write up</source>
-        <target>~skribi</target>
-      </trans-unit>
-      <trans-unit id="LmbM1Ve" resname="Years">
-        <source>Years</source>
-        <target>~Jaro</target>
-      </trans-unit>
-      <trans-unit id="4JG.lHu" resname="public domain">
-        <source>public domain</source>
-        <target>~publika domajno</target>
-      </trans-unit>
-      <trans-unit id="KoqKM6m" resname="yes">
-        <source>yes</source>
-        <target>~jes</target>
       </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
@@ -8964,42 +8152,6 @@
       <trans-unit id="3GtxOhW" resname="A text with the page number will be added on each page.">
         <source>A text with the page number will be added on each page.</source>
         <target>~Teksto kun la paĝnumero estos aldonita al ĉiu paĝo.</target>
-      </trans-unit>
-      <trans-unit id="wsapniW" resname="discipline">
-        <source>discipline</source>
-        <target>~disciplino</target>
-      </trans-unit>
-      <trans-unit id="wQsXb.." resname="idea">
-        <source>idea</source>
-        <target>~ideo</target>
-      </trans-unit>
-      <trans-unit id="xpjDDyt" resname="prerequisite">
-        <source>prerequisite</source>
-        <target>~antaŭkondiĉo</target>
-      </trans-unit>
-      <trans-unit id="SSgp6YN" resname="educational objective">
-        <source>educational objective</source>
-        <target>~eduka celo</target>
-      </trans-unit>
-      <trans-unit id="mnvUn4K" resname="accessibility restrictions">
-        <source>accessibility restrictions</source>
-        <target>~alirebleco limigoj</target>
-      </trans-unit>
-      <trans-unit id="9OJQi1F" resname="educational level">
-        <source>educational level</source>
-        <target>~eduka nivelo</target>
-      </trans-unit>
-      <trans-unit id="u0SqAXw" resname="skill level">
-        <source>skill level</source>
-        <target>~kapableco nivelo</target>
-      </trans-unit>
-      <trans-unit id="iq1mM4p" resname="security level">
-        <source>security level</source>
-        <target>~sekureco nivelo</target>
-      </trans-unit>
-      <trans-unit id="0rmPBpD" resname="competency">
-        <source>competency</source>
-        <target>~kompetenteco</target>
       </trans-unit>
       <trans-unit id="1gXPiJp" resname="Custom code">
         <source>Custom code</source>
