@@ -1675,6 +1675,31 @@ class ExportXmlUtil
 
         $extraFooter = $odeProperties['footer']->getValue();
         if ('' != $extraFooter) {
+            function encodeScriptContents($html)
+            {
+                return preg_replace_callback(
+                    '#<script(?![^>]*\bsrc=)([^>]*)>(.*?)</script>#is',
+                    function ($matches) {
+                        $attrs = $matches[1];
+                        $content = $matches[2];
+
+                        // Replace non ASCII characters
+                        $encoded = preg_replace_callback(
+                            '/[^\x20-\x7E]/u',
+                            function ($char) {
+                                $code = unpack('N', mb_convert_encoding($char[0], 'UCS-4BE', 'UTF-8'))[1];
+
+                                return sprintf('\\u%04x', $code);
+                            },
+                            $content
+                        );
+
+                        return "<script$attrs>$encoded</script>";
+                    },
+                    $html
+                );
+            }
+            $extraFooter = encodeScriptContents($extraFooter);
             $siteUserFooter = $pageFooterContent->addChild('div', ' ');
             $siteUserFooter->addAttribute('id', 'siteUserFooter');
             $siteExtra = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><footer></footer>');
