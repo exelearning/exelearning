@@ -11,15 +11,15 @@
       </trans-unit>
       <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
         <source>Delete iDevice? This cannot be undone.</source>
-        <target></target>
+        <target>~Ezabatu iDevice-a? Ekintza hau ez da desegin daiteke.</target>
       </trans-unit>
       <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
         <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
-        <target></target>
+        <target>~iDevice-a ezabatu da. Orain kaxa hutsik dago. Ezabatu kaxa ere?</target>
       </trans-unit>
       <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
         <source>You are editing an iDevice. Please close it before continuing</source>
-        <target></target>
+        <target>~iDevice bat editatzen ari zara. Mesedez, jarraitu aurretik itxi ezazu.</target>
       </trans-unit>
       <trans-unit id="Kk_KT2R" resname="This is just a demo version. Not for real projects.">
         <source>This is just a demo version. Not for real projects.</source>
@@ -155,7 +155,7 @@
       </trans-unit>
       <trans-unit id="uS3p2Fi" resname="Act as a highly experienced teacher.">
         <source>Act as a highly experienced teacher.</source>
-        <target></target>
+        <target>~Joka ezazu esperientzia handiko irakasle baten moduan.</target>
       </trans-unit>
       <trans-unit id="w28CCkU" resname="Export questions">
         <source>Export questions</source>
@@ -719,39 +719,39 @@
       </trans-unit>
       <trans-unit id="tWpnRhI" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.</source>
-        <target></target>
+        <target>~Sortu 10 hitz eta bakoitzaren definizioa, # bidez bereizita. Ez erabili # karakterea ez hitzean ezta definizioan ere.</target>
       </trans-unit>
       <trans-unit id="rK1Tq78" resname="Generate 30 words and their definitions separated by #.">
         <source>Generate 30 words and their definitions separated by #.</source>
-        <target></target>
+        <target>~Sortu 30 hitz eta haien definizioak, # bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="jRrGoMe" resname="Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.">
         <source>Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.</source>
-        <target></target>
+        <target>~Sortu aukera anitzeko 10 galdera, 2 eta 4 aukera artean. Hasi erantzun zuzenarekin (0, 1, 2 edo 3), jarraitu galderarekin eta aukera bakoitzarekin, dena # bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="iEm_hXE" resname="Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.">
         <source>Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.</source>
-        <target></target>
+        <target>~Sortu aukera anitzeko 10 galdera. Eman erantzun zuzena letren bidez (adibidez, A, AB), eta jarraitu galderarekin eta aukerekin, dena # bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="0bgCBr1" resname="Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.">
         <source>Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.</source>
-        <target></target>
+        <target>~Sortu 5 soluzio-hitz, eta bakoitzaren deskribapen gisa 3 eta 9 pista artean. Pista bakoitza # bidez bereizi.</target>
       </trans-unit>
       <trans-unit id="QCl9NKh" resname="Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.">
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
-        <target></target>
+        <target>~Eman 4 elementu talde bakoitzarentzat: haragijaleak (0) eta belarjaleak (1). Bereizi talde zenbakia eta elementua # ikurrarekin.</target>
       </trans-unit>
       <trans-unit id="DCe79Ym" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target></target>
+        <target>~Sortu egia edo gezurra motako 10 galdera. Galdera bakoitzak izan behar du soluzioa (0 = gezurra, 1 = egia), gomendio bat eta feedbacka, dena # bidez bereizita. Feedbackak ez du esplizituki adierazi behar erantzuna zuzena edo okerra den.</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
-        <target></target>
+        <target>~Sortu 10 galdera. 'Soluzioa' izan daiteke 0/1 (egia/gezurra), 0-3 (aukera bakarrekoa), edo A-D (edo konbinazioak) aukera anitzeko galderetarako. Ondoren, eman galdera eta erantzun aukerak (2 eta 4 artean), dena '#' bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
-        <target></target>
+        <target>~Eman urrats edo elementuen zerrenda ordenatu bakarra, bakoitza '#' bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition</source>
@@ -943,7 +943,7 @@
       </trans-unit>
       <trans-unit id="4Ys2ifD" resname="Saved one day ago">
         <source>Saved one day ago</source>
-        <target></target>
+        <target>~Duela egun bat gorde da</target>
       </trans-unit>
       <trans-unit id="8FQWOUH" resname="Saved %s days ago">
         <source>Saved %s days ago</source>
@@ -8183,7 +8183,7 @@
       </trans-unit>
       <trans-unit id="mY5HJFL" resname="HEAD">
         <source>HEAD</source>
-        <target></target>
+        <target>HEAD</target>
       </trans-unit>
       <trans-unit id="cYFfQgT" resname="HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...">
         <source>HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...</source>

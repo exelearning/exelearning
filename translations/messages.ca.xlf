@@ -135,7 +135,7 @@
       </trans-unit>
       <trans-unit id="uS3p2Fi" resname="Act as a highly experienced teacher.">
         <source>Act as a highly experienced teacher.</source>
-        <target></target>
+        <target>~Actueu com un docent amb molta experiència.</target>
       </trans-unit>
       <trans-unit id="w28CCkU" resname="Export questions">
         <source>Export questions</source>
@@ -699,39 +699,39 @@
       </trans-unit>
       <trans-unit id="tWpnRhI" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.</source>
-        <target></target>
+        <target>~Genera 10 paraules seguides de les seues definicions, separades per #. No inclogues el caràcter # ni en la paraula ni en la definició.</target>
       </trans-unit>
       <trans-unit id="rK1Tq78" resname="Generate 30 words and their definitions separated by #.">
         <source>Generate 30 words and their definitions separated by #.</source>
-        <target></target>
+        <target>~Genera 30 paraules i les seues definicions separades per #.</target>
       </trans-unit>
       <trans-unit id="jRrGoMe" resname="Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.">
         <source>Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.</source>
-        <target></target>
+        <target>~Crea 10 preguntes de resposta múltiple amb entre 2 i 4 opcions. Comença amb la solució correcta (0, 1, 2 o 3), seguida de la pregunta i cadascuna de les opcions, tot separat per #.</target>
       </trans-unit>
       <trans-unit id="iEm_hXE" resname="Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.">
         <source>Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.</source>
-        <target></target>
+        <target>~Genera 10 preguntes de resposta múltiple. Proporciona la resposta correcta amb lletres (ex. A, AB), seguida de la pregunta i les opcions, tot separat per #.</target>
       </trans-unit>
       <trans-unit id="0bgCBr1" resname="Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.">
         <source>Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.</source>
-        <target></target>
+        <target>~Crea 5 paraules solució seguides de 3 a 9 pistes que descriguen cadascuna. Separa cada pista amb #.</target>
       </trans-unit>
       <trans-unit id="QCl9NKh" resname="Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.">
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
-        <target></target>
+        <target>~Proporciona 4 elements per a cadascun d’aquests grups: carnívors, 0, i herbívors, 1. Separa el número del grup i l’element amb el símbol #.</target>
       </trans-unit>
       <trans-unit id="DCe79Ym" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target></target>
+        <target>~Genera 10 preguntes de vertader o fals. Cada pregunta ha d’incloure la solució (0 = fals, 1 = vertader), seguida d’una proposta i un comentari, tot separat per #. A més, el comentari no ha d’indicar explícitament si la resposta és correcta o no.</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
-        <target></target>
+        <target>~Genera 10 preguntes. La "Solució" pot ser 0/1 per a vertader/fals, 0-3 per a una sola opció, o A-D (o combinacions) per a resposta múltiple. A continuació, proporciona la pregunta i les opcions de resposta (de 2 a 4), tot separat per '#'.</target>
       </trans-unit>
       <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
-        <target></target>
+        <target>~Proporciona només una llista ordenada de passos o elements, cadascun separat per '#'.</target>
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition</source>
@@ -923,7 +923,7 @@
       </trans-unit>
       <trans-unit id="4Ys2ifD" resname="Saved one day ago">
         <source>Saved one day ago</source>
-        <target></target>
+        <target>~Desat fa un dia</target>
       </trans-unit>
       <trans-unit id="8FQWOUH" resname="Saved %s days ago">
         <source>Saved %s days ago</source>
@@ -8155,7 +8155,7 @@
       </trans-unit>
       <trans-unit id="mY5HJFL" resname="HEAD">
         <source>HEAD</source>
-        <target></target>
+        <target>HEAD</target>
       </trans-unit>
       <trans-unit id="cYFfQgT" resname="HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...">
         <source>HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...</source>

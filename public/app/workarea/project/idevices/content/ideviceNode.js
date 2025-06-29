@@ -2142,7 +2142,7 @@ export default class IdeviceNode {
                     eXeLearning.app.modals.confirm.show({
                         title: _('Remove Block'),
                         body: _(
-                            'When deleting the idevice the block has been left empty. Do you want to delete it too?',
+                            'iDevice deleted. Now the box is empty. Delete the box too?',
                         ),
                         confirmButtonText: _('Yes'),
                         confirmExec: () => {
