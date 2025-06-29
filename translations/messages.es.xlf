@@ -8079,7 +8079,7 @@
       </trans-unit>
       <trans-unit id="mY5HJFL" resname="HEAD">
         <source>HEAD</source>
-        <target></target>
+        <target>HEAD</target>
       </trans-unit>
       <trans-unit id="cYFfQgT" resname="HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...">
         <source>HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...</source>
