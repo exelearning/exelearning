@@ -2333,7 +2333,7 @@ class OdeXmlUtil
 
             // To review mn: If $isDropdown isn’t set, check the XML for a “Dropdown” marker
             if (!$isDropdown || empty($isDropdown)) {
-                 $isDropdown = $nodeIdeviceNotaInfo->xpath(".//f:unicode[@value='Dropdown']");
+                $isDropdown = $nodeIdeviceNotaInfo->xpath(".//f:unicode[@value='Dropdown']");
             }
 
             if ($isDropdown) {
