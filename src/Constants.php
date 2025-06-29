@@ -101,6 +101,7 @@ class Constants
     // Do not extract strings from these files:
     public const TRANSLATION_EXCEPTIONS = [
         '/app/public/libs/filegator/js/chunk-vendors.js',
+        '/app/public/libs/jquery-ui/jquery-ui.min.js',
         '/app/public/files/perm/idevices/base/classify/export/0jquery-ui.min.js',
         '/app/public/files/perm/idevices/base/dragdrop/export/0jquery-ui.min.js',
         '/app/public/files/perm/idevices/base/relate/export/jquery-ui.min.js',

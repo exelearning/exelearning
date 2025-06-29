@@ -897,7 +897,7 @@ var $exeDevice = {
         const data = window.URL.createObjectURL(newBlob);
         const link = document.createElement('a');
         link.href = data;
-        link.download = `${_('true-or-false')}.txt`;
+        link.download = `${_('True or false')}.txt`;
 
         document.getElementById('trueorfalseIdeviceForm').appendChild(link);
         link.click();

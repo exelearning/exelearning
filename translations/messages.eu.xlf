@@ -6021,7 +6021,7 @@
         <source>Phrase</source>
         <target>Esaldi</target>
       </trans-unit>
-      <trans-unit id="rbTrbqE" resname="Task information (optional)">
+      <trans-unit id="FyjlitU" resname="Task information (optional)">
         <source>Task information (optional)</source>
         <target>Atazaren informazioa (hautazkoa)</target>
       </trans-unit>
@@ -9428,6 +9428,14 @@
       <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
         <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
         <target>~Idatzi edo jo espazio zuria zelaian bete behar den jardueraren testua. Aukeratu hitzak eta erabili beheko botoia horiek ezkutatzeko. Erantzun posible bat baino gehiago defini dezakezu, barra bertikalak erabiliz, horiek inguratu eta bereizteko. Ej.: |perro| gato| pájaro|</target>
+      </trans-unit>
+      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
+        <source>You can choose a different licence for the current project.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
+        <source>Primary author/s of the resource.</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>
