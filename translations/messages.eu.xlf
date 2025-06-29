@@ -749,7 +749,7 @@
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
         <target>~Sortu 10 galdera. 'Soluzioa' izan daiteke 0/1 (egia/gezurra), 0-3 (aukera bakarrekoa), edo A-D (edo konbinazioak) aukera anitzeko galderetarako. Ondoren, eman galdera eta erantzun aukerak (2 eta 4 artean), dena '#' bidez bereizita.</target>
       </trans-unit>
-      <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
+      <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'." >
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
         <target>~Eman urrats edo elementuen zerrenda ordenatu bakarra, bakoitza '#' bidez bereizita.</target>
       </trans-unit>
