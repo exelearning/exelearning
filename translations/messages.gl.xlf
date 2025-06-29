@@ -1479,7 +1479,7 @@
       </trans-unit>
       <trans-unit id="TS9USrC" resname="Failed to edit the style ">
         <source>Failed to edit the style </source>
-        <target>~Non se puido editar o tema de estilo</target>
+        <target>~Non se puido editar o tema de estilo </target>
       </trans-unit>
       <trans-unit id="cnJ1FXy" resname="Failed to remove theme">
         <source>Failed to remove theme</source>
@@ -7879,7 +7879,7 @@
       </trans-unit>
       <trans-unit id="cpeFILa" resname="Change the text of the tabs adding a title to each Heading 2 with the &quot;Insert/Edit Attributes&quot; option: ">
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
-        <target>~Cambia o texto das lapelas engadindo un título a cada Encabezado 2 coa opción "Inserir/Editar atributos":</target>
+        <target>~Cambia o texto das lapelas engadindo un título a cada Encabezado 2 coa opción "Inserir/Editar atributos": </target>
       </trans-unit>
       <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
         <source>From Wikipedia, the free encyclopedia.</source>

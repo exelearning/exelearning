@@ -1479,7 +1479,7 @@
       </trans-unit>
       <trans-unit id="TS9USrC" resname="Failed to edit the style ">
         <source>Failed to edit the style </source>
-        <target>La edición del estilo ha fallado</target>
+        <target>La edición del estilo ha fallado </target>
       </trans-unit>
       <trans-unit id="cnJ1FXy" resname="Failed to remove theme">
         <source>Failed to remove theme</source>
@@ -7643,7 +7643,7 @@
       </trans-unit>
       <trans-unit id="KsL_IKW" resname="Use the ">
         <source>Use the </source>
-        <target>Usa la opción %s después de grabar para definir la autoría o el título del audio.</target>
+        <target>Usa la opción %s después de grabar para definir la autoría o el título del audio. </target>
       </trans-unit>
       <trans-unit id="P8kqag0" resname="There is no audio input device connected.">
         <source>There is no audio input device connected.</source>
@@ -7851,7 +7851,7 @@
       </trans-unit>
       <trans-unit id="cpeFILa" resname="Change the text of the tabs adding a title to each Heading 2 with the &quot;Insert/Edit Attributes&quot; option: ">
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
-        <target>Cambia el texto de las pestañas añadiendo un título a cada Encabezado 2 con la opción "Insertar/Editar atributos":</target>
+        <target>Cambia el texto de las pestañas añadiendo un título a cada Encabezado 2 con la opción "Insertar/Editar atributos": </target>
       </trans-unit>
       <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
         <source>From Wikipedia, the free encyclopedia.</source>

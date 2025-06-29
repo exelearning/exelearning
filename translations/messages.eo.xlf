@@ -1479,7 +1479,7 @@
       </trans-unit>
       <trans-unit id="TS9USrC" resname="Failed to edit the style ">
         <source>Failed to edit the style </source>
-        <target>~Malsukcesis redakti la stilan temon</target>
+        <target>~Malsukcesis redakti la stilan temon </target>
       </trans-unit>
       <trans-unit id="cnJ1FXy" resname="Failed to remove theme">
         <source>Failed to remove theme</source>
@@ -5735,7 +5735,7 @@
       </trans-unit>
       <trans-unit id="rxFYMTS" resname="Spanish ">
         <source>Spanish </source>
-        <target>~Hispana</target>
+        <target>~Hispana </target>
       </trans-unit>
       <trans-unit id="jVpqXrM" resname="New rubric">
         <source>New rubric</source>
@@ -5743,7 +5743,7 @@
       </trans-unit>
       <trans-unit id="dsEhesQ" resname="New rubric: ">
         <source>New rubric: </source>
-        <target>~Nova rubriko:</target>
+        <target>~Nova rubriko: </target>
       </trans-unit>
       <trans-unit id="kOCPDGr" resname="Example rubrics">
         <source>Example rubrics</source>
@@ -7659,7 +7659,7 @@
       </trans-unit>
       <trans-unit id="bic38e_" resname="It works with ">
         <source>It works with </source>
-        <target>~Ĝi funkcias kun</target>
+        <target>~Ĝi funkcias kun </target>
       </trans-unit>
       <trans-unit id="fzSje.H" resname="Duration:">
         <source>Duration:</source>
