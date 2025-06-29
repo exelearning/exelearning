@@ -8589,6 +8589,14 @@
         <source>Upload to Drive</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
+        <source>Delete iDevice? This cannot be undone.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
+        <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

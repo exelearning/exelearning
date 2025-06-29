@@ -8585,6 +8585,18 @@
         <source>Primary author/s of the resource.</source>
         <target>Principales autores del recurso.</target>
       </trans-unit>
+      <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
+        <source>Delete iDevice? This cannot be undone.</source>
+        <target>¿Eliminar el iDevice? Esta acción no se puede deshacer.</target>
+      </trans-unit>
+      <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
+        <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
+        <target>iDevice eliminado. Ahora la caja está vacía. ¿Eliminar también la caja?</target>
+      </trans-unit>
+      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
+        <source>You are editing an iDevice. Please close it before continuing</source>
+        <target>Estás editando un iDevice. Por favor, ciérralo antes de continuar.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

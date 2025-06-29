@@ -9,6 +9,18 @@
         <source>Permissions error</source>
         <target>~Permesaj eraro</target>
       </trans-unit>
+      <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
+        <source>Delete iDevice? This cannot be undone.</source>
+        <target>~Ĉu forigi la iDevice-on? Ĉi tio ne povas esti malfarita.</target>
+      </trans-unit>
+      <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
+        <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
+        <target>~La iDevice estis forigita. Nun la skatolo estas malplena. Ĉu forigi ankaŭ la skatolon?</target>
+      </trans-unit>
+      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
+        <source>You are editing an iDevice. Please close it before continuing</source>
+        <target>~Vi redaktas iDevice-on. Bonvolu fermi ĝin antaŭ ol daŭrigi.</target>
+      </trans-unit>
       <trans-unit id="Kk_KT2R" resname="This is just a demo version. Not for real projects.">
         <source>This is just a demo version. Not for real projects.</source>
         <target>~Ĉi tio estas nur demo-versio. Ne por realaj projektoj.</target>
@@ -84,6 +96,14 @@
       <trans-unit id="qmvXFPV" resname="Save score">
         <source>Save score</source>
         <target>~Konservi poentaron</target>
+      </trans-unit>
+      <trans-unit id="9iMmg7m" resname="Save the score">
+        <source>Save the score</source>
+        <target>~Konservi la poentaron</target>
+      </trans-unit>
+      <trans-unit id="qpfRXBy" resname="Automatically save the score">
+        <source>Automatically save the score</source>
+        <target>~Aŭtomate konservi la poentaron</target>
       </trans-unit>
       <trans-unit id="2MMjHQO" resname="Do not save the score">
         <source>Do not save the score</source>
@@ -1475,7 +1495,7 @@
       </trans-unit>
       <trans-unit id="TS9USrC" resname="Failed to edit the style ">
         <source>Failed to edit the style </source>
-        <target>~Malsukcesis redakti la stilan temon </target>
+        <target>~Malsukcesis redakti la stilan temon</target>
       </trans-unit>
       <trans-unit id="cnJ1FXy" resname="Failed to remove theme">
         <source>Failed to remove theme</source>
@@ -3513,6 +3533,10 @@
         <source>Form</source>
         <target>~Formo</target>
       </trans-unit>
+      <trans-unit id="KfqryR." resname="Slides list">
+        <source>Slides list</source>
+        <target>~Paĝetolisto</target>
+      </trans-unit>
       <trans-unit id="z_TDAhl" resname="Please select a text file (.txt) or a Moodle XML file (.xml)">
         <source>Please select a text file (.txt) or a Moodle XML file (.xml)</source>
         <target>~Bonvolu elekti tekstan dosieron (.txt) aŭ Moodle XML-dosieron (.xml)</target>
@@ -3524,6 +3548,10 @@
       <trans-unit id="Jgo0fmJ" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the &quot;Show/Hide&quot; button below.">
         <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.</source>
         <target>~Enmetu la tekston por la faldebla agado en la faldebla kampo aŭ per algluo de teksto de alia fonto aŭ per tajpado rekte en la kampo. Por elekti kiujn vortojn elekti, duoble-klaku sur vorto por elekti ĝin kaj klaku la butonon "Montri/Hidii" sube.</target>
+      </trans-unit>
+      <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
+        <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
+        <target>~Tajpu aŭ algluu la tekston por la pleniga agado en la kampon. Elektu la vortojn kaj uzu la butonon sube por kaŝi ilin. Vi povas difini pli ol unu eblan respondon uzante vertikalajn stangojn por ĉirkaŭi kaj apartigi ilin. Ekz.: |hundo|kato|birdo|</target>
       </trans-unit>
       <trans-unit id="eh_avyW" resname="If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as &quot;close enough&quot; by the algorithm, as there is only one spelling error, even if &quot;Check capitalization&quot; is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If &quot;Strict qualification&quot; and &quot;Check capitalization&quot; are enabled, the only correct answer is &quot;Elephant&quot;. If only &quot;Strict qualification&quot; is enabled and &quot;Check capitalization&quot; is not, &quot;elephant&quot; will also be accepted.">
         <source>If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.</source>
@@ -4196,10 +4224,6 @@
       <trans-unit id="tH805Hs" resname="Remove slide %s?">
         <source>Remove slide %s?</source>
         <target>~Ĉu forigi paĝeton %s?</target>
-      </trans-unit>
-      <trans-unit id="KfqryR." resname="Slides list">
-        <source>Slides list</source>
-        <target>~Paĝetolisto</target>
       </trans-unit>
       <trans-unit id="o8So2MJ" resname="New slide">
         <source>New slide</source>
@@ -5613,6 +5637,10 @@
         <source>Go to</source>
         <target>~Iru al</target>
       </trans-unit>
+      <trans-unit id="l9dOlHi" resname="The video's end time must be shorter than its total duration">
+        <source>The video's end time must be shorter than its total duration</source>
+        <target>~Bonvolu kontroli la longon de la video kaj la fino-tempon</target>
+      </trans-unit>
       <trans-unit id="i66zYWo" resname="Video test">
         <source>Video test</source>
         <target>~Videotesto</target>
@@ -5636,10 +5664,6 @@
       <trans-unit id="y9T7U06" resname="There is already a question in that second.">
         <source>There is already a question in that second.</source>
         <target>~Jam ekzistas demando en tiu dua.</target>
-      </trans-unit>
-      <trans-unit id="l9dOlHi" resname="The video's end time must be shorter than its total duration">
-        <source>The video's end time must be shorter than its total duration</source>
-        <target>~Bonvolu kontroli la longon de la video kaj la fino-tempon</target>
       </trans-unit>
       <trans-unit id="v5lFr7s" resname="Create activities consisting on a video with interactive questions.">
         <source>Create activities consisting on a video with interactive questions.</source>
@@ -5727,7 +5751,7 @@
       </trans-unit>
       <trans-unit id="rxFYMTS" resname="Spanish ">
         <source>Spanish </source>
-        <target>~Hispana </target>
+        <target>~Hispana</target>
       </trans-unit>
       <trans-unit id="jVpqXrM" resname="New rubric">
         <source>New rubric</source>
@@ -5735,7 +5759,7 @@
       </trans-unit>
       <trans-unit id="dsEhesQ" resname="New rubric: ">
         <source>New rubric: </source>
-        <target>~Nova rubriko: </target>
+        <target>~Nova rubriko:</target>
       </trans-unit>
       <trans-unit id="kOCPDGr" resname="Example rubrics">
         <source>Example rubrics</source>
@@ -6443,7 +6467,7 @@
       </trans-unit>
       <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
         <source>Action &amp; Expression</source>
-        <target>~Ago kaj Esprimo</target>
+        <target><![CDATA[__Action & Expression]]></target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>
@@ -7651,7 +7675,7 @@
       </trans-unit>
       <trans-unit id="bic38e_" resname="It works with ">
         <source>It works with </source>
-        <target>~Ĝi funkcias kun </target>
+        <target>~Ĝi funkcias kun</target>
       </trans-unit>
       <trans-unit id="fzSje.H" resname="Duration:">
         <source>Duration:</source>
@@ -7871,7 +7895,7 @@
       </trans-unit>
       <trans-unit id="cpeFILa" resname="Change the text of the tabs adding a title to each Heading 2 with the &quot;Insert/Edit Attributes&quot; option: ">
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option: </source>
-        <target>~Ŝanĝu la tekston de la langetoj aldonante titolon al ĉiu Kapitolo 2 kun la opcio "Enmetu/Redaktu Atribuojn": </target>
+        <target>~Ŝanĝu la tekston de la langetoj aldonante titolon al ĉiu Kapitolo 2 kun la opcio "Enmetu/Redaktu Atribuojn":</target>
       </trans-unit>
       <trans-unit id="a_z9o2Y" resname="From Wikipedia, the free encyclopedia.">
         <source>From Wikipedia, the free encyclopedia.</source>
@@ -8009,25 +8033,101 @@
         <source>Failed to upload file</source>
         <target>~Malsukcesis alŝuti dosieron</target>
       </trans-unit>
-      <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
-        <source>Search bar (Website export only)</source>
-        <target>~Serĉu boto (Nur reteja eksportado)</target>
+      <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
+        <source>You can choose a different language for the current project.</source>
+        <target>~Vi povas elekti alian lingvon por la nuna projekto.</target>
       </trans-unit>
-      <trans-unit id="jb5jN3p" resname="A search box will be added to every page of the website.">
-        <source>A search box will be added to every page of the website.</source>
-        <target>~Alĝustoskribo estos aldonita al ĉiu paĝo de la retejo.</target>
+      <trans-unit id="QLYaHhh" resname="License for the new documents">
+        <source>License for the new documents</source>
+        <target>~Liceo por la novaj dokumentoj</target>
       </trans-unit>
-      <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
-        <source>Advanced (SEO)</source>
-        <target>~Plua (SEO)</target>
+      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
+        <source>You can choose a different licence for the current project.</source>
+        <target>~Vi povas elekti malsaman permesilon por la nuna projekto.</target>
+      </trans-unit>
+      <trans-unit id="HgsKUL1" resname="Version control">
+        <source>Version control</source>
+        <target>~Versio-registaro</target>
+      </trans-unit>
+      <trans-unit id="madT9LT" resname="Texts and Links">
+        <source>Texts and Links</source>
+        <target>~Tekstoj kaj Ligiloj</target>
+      </trans-unit>
+      <trans-unit id="m8yNoyg" resname="Author URL">
+        <source>Author URL</source>
+        <target>~Aŭtora URL</target>
+      </trans-unit>
+      <trans-unit id="XWyckJx" resname="License URL">
+        <source>License URL</source>
+        <target>~URL de la licenco</target>
+      </trans-unit>
+      <trans-unit id="4bgAmj2" resname="Links color">
+        <source>Links color</source>
+        <target>~Koloro de ligoj</target>
+      </trans-unit>
+      <trans-unit id="22GeuW5" resname="Header image">
+        <source>Header image</source>
+        <target>~Kapo bildo</target>
+      </trans-unit>
+      <trans-unit id="Ulft.2T" resname="Logo image">
+        <source>Logo image</source>
+        <target>~Logo bildo</target>
+      </trans-unit>
+      <trans-unit id="QkjXw6z" resname="Visible in export">
+        <source>Visible in export</source>
+        <target>~Videbla en eksportado</target>
+      </trans-unit>
+      <trans-unit id="37wivZ3" resname="ID">
+        <source>ID</source>
+        <target>~ID</target>
+      </trans-unit>
+      <trans-unit id="e72fZ2G" resname="CSS Class">
+        <source>CSS Class</source>
+        <target>~CSS Klaso</target>
       </trans-unit>
       <trans-unit id="w9rqboO" resname="Allows to minimize/display content">
         <source>Allows to minimize/display content</source>
         <target>~Permesas minimumigi/montri enhavon</target>
       </trans-unit>
-      <trans-unit id="m8yNoyg" resname="Author URL">
-        <source>Author URL</source>
-        <target>~Aŭtora URL</target>
+      <trans-unit id="YSMMgnW" resname="Minimized">
+        <source>Minimized</source>
+        <target>~Minimigita</target>
+      </trans-unit>
+      <trans-unit id="boXVpbM" resname="Title HTML">
+        <source>Title HTML</source>
+        <target>~Titolo HTML</target>
+      </trans-unit>
+      <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
+        <source>Advanced (SEO)</source>
+        <target>~Plua (SEO)</target>
+      </trans-unit>
+      <trans-unit id="GYlJ0QA" resname="Different title on the page">
+        <source>Different title on the page</source>
+        <target>~Diverse titolo en la paĝo</target>
+      </trans-unit>
+      <trans-unit id="OGj102e" resname="Title in page">
+        <source>Title in page</source>
+        <target>~Titolo en paĝo</target>
+      </trans-unit>
+      <trans-unit id="c_yVrgu" resname="Content metadata">
+        <source>Content metadata</source>
+        <target>~Enhava metadatoj</target>
+      </trans-unit>
+      <trans-unit id="q_eBNIy" resname="The name given to the resource.">
+        <source>The name given to the resource.</source>
+        <target>~La nomo donita al la rimedo.</target>
+      </trans-unit>
+      <trans-unit id="FMzFNH2" resname="Select a language.">
+        <source>Select a language.</source>
+        <target>~Elektu lingvon.</target>
+      </trans-unit>
+      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
+        <source>Primary author/s of the resource.</source>
+        <target>~Ĉefaj aŭtoroj de la rimedo.</target>
+      </trans-unit>
+      <trans-unit id="wx6YU0S" resname="Export options">
+        <source>Export options</source>
+        <target>~Eksportaj opcioj</target>
       </trans-unit>
       <trans-unit id="D0HXVrd" resname="Editable export">
         <source>Editable export</source>
@@ -8053,94 +8153,6 @@
         <source>A copy of the eXeLearning file will be included when exporting the content.</source>
         <target>~Kopio de la eXeLearning-dosiero estos inkludita kiam vi eksportas la enhavon.</target>
       </trans-unit>
-      <trans-unit id="WEXSR5D" resname="Accessibility toolbar">
-        <source>Accessibility toolbar</source>
-        <target>~Alirebleco-baro</target>
-      </trans-unit>
-      <trans-unit id="bpqFrqX" resname="The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.">
-        <source>The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.</source>
-        <target>~La alirebleco-baro ebligas al vizitantoj manipuli iujn aspektojn de via retejo, kiel tiparo kaj teksta grandeco.</target>
-      </trans-unit>
-      <trans-unit id="e72fZ2G" resname="CSS Class">
-        <source>CSS Class</source>
-        <target>~CSS Klaso</target>
-      </trans-unit>
-      <trans-unit id="QLYaHhh" resname="License for the new documents">
-        <source>License for the new documents</source>
-        <target>~Liceo por la novaj dokumentoj</target>
-      </trans-unit>
-      <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
-        <source>You can choose a different language for the current project.</source>
-        <target>~Vi povas elekti alian lingvon por la nuna projekto.</target>
-      </trans-unit>
-      <trans-unit id="GYlJ0QA" resname="Different title on the page">
-        <source>Different title on the page</source>
-        <target>~Diverse titolo en la paĝo</target>
-      </trans-unit>
-      <trans-unit id="JZi_tm0" resname="Email">
-        <source>Email</source>
-        <target>~Retpoŝto</target>
-      </trans-unit>
-      <trans-unit id="22GeuW5" resname="Header image">
-        <source>Header image</source>
-        <target>~Kapo bildo</target>
-      </trans-unit>
-      <trans-unit id="37wivZ3" resname="ID">
-        <source>ID</source>
-        <target>~ID</target>
-      </trans-unit>
-      <trans-unit id="XWyckJx" resname="License URL">
-        <source>License URL</source>
-        <target>~URL de la licenco</target>
-      </trans-unit>
-      <trans-unit id="4bgAmj2" resname="Links color">
-        <source>Links color</source>
-        <target>~Koloro de ligoj</target>
-      </trans-unit>
-      <trans-unit id="Ulft.2T" resname="Logo image">
-        <source>Logo image</source>
-        <target>~Logo bildo</target>
-      </trans-unit>
-      <trans-unit id="YSMMgnW" resname="Minimized">
-        <source>Minimized</source>
-        <target>~Minimigita</target>
-      </trans-unit>
-      <trans-unit id="FMzFNH2" resname="Select a language.">
-        <source>Select a language.</source>
-        <target>~Elektu lingvon.</target>
-      </trans-unit>
-      <trans-unit id="madT9LT" resname="Texts and Links">
-        <source>Texts and Links</source>
-        <target>~Tekstoj kaj Ligiloj</target>
-      </trans-unit>
-      <trans-unit id="q_eBNIy" resname="The name given to the resource.">
-        <source>The name given to the resource.</source>
-        <target>~La nomo donita al la rimedo.</target>
-      </trans-unit>
-      <trans-unit id="boXVpbM" resname="Title HTML">
-        <source>Title HTML</source>
-        <target>~Titolo HTML</target>
-      </trans-unit>
-      <trans-unit id="OGj102e" resname="Title in page">
-        <source>Title in page</source>
-        <target>~Titolo en paĝo</target>
-      </trans-unit>
-      <trans-unit id="c_yVrgu" resname="Content metadata">
-        <source>Content metadata</source>
-        <target>~Enhava metadatoj</target>
-      </trans-unit>
-      <trans-unit id="wx6YU0S" resname="Export options">
-        <source>Export options</source>
-        <target>~Eksportaj opcioj</target>
-      </trans-unit>
-      <trans-unit id="HgsKUL1" resname="Version control">
-        <source>Version control</source>
-        <target>~Versio-registaro</target>
-      </trans-unit>
-      <trans-unit id="QkjXw6z" resname="Visible in export">
-        <source>Visible in export</source>
-        <target>~Videbla en eksportado</target>
-      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>~Paĝa kalkulilo</target>
@@ -8148,6 +8160,22 @@
       <trans-unit id="3GtxOhW" resname="A text with the page number will be added on each page.">
         <source>A text with the page number will be added on each page.</source>
         <target>~Teksto kun la paĝnumero estos aldonita al ĉiu paĝo.</target>
+      </trans-unit>
+      <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
+        <source>Search bar (Website export only)</source>
+        <target>~Serĉu boto (Nur reteja eksportado)</target>
+      </trans-unit>
+      <trans-unit id="jb5jN3p" resname="A search box will be added to every page of the website.">
+        <source>A search box will be added to every page of the website.</source>
+        <target>~Alĝustoskribo estos aldonita al ĉiu paĝo de la retejo.</target>
+      </trans-unit>
+      <trans-unit id="WEXSR5D" resname="Accessibility toolbar">
+        <source>Accessibility toolbar</source>
+        <target>~Alirebleco-baro</target>
+      </trans-unit>
+      <trans-unit id="bpqFrqX" resname="The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.">
+        <source>The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.</source>
+        <target>~La alirebleco-baro ebligas al vizitantoj manipuli iujn aspektojn de via retejo, kiel tiparo kaj teksta grandeco.</target>
       </trans-unit>
       <trans-unit id="1gXPiJp" resname="Custom code">
         <source>Custom code</source>
@@ -8361,6 +8389,10 @@
         <source>Sign in</source>
         <target>~Ensaluti</target>
       </trans-unit>
+      <trans-unit id="JZi_tm0" resname="Email">
+        <source>Email</source>
+        <target>~Retpoŝto</target>
+      </trans-unit>
       <trans-unit id="GqmFSHc" resname="Password">
         <source>Password</source>
         <target>~Pasvorto</target>
@@ -8368,6 +8400,10 @@
       <trans-unit id="es02HnE" resname="Other authentication methods:">
         <source>Other authentication methods:</source>
         <target>~Alia aŭtentokontrolaj metodoj:</target>
+      </trans-unit>
+      <trans-unit id="gA4BXFa" resname="Authentication methods:">
+        <source>Authentication methods:</source>
+        <target>~Aŭtentikiga metodoj:</target>
       </trans-unit>
       <trans-unit id="p.fuLaB" resname="Guest">
         <source>Guest</source>
@@ -8560,38 +8596,6 @@
       <trans-unit id="rFqGW9s" resname="Upload to Drive">
         <source>Upload to Drive</source>
         <target>~Alŝuti al Drive</target>
-      </trans-unit>
-      <trans-unit id="gA4BXFa" resname="Authentication methods:">
-        <source>Authentication methods:</source>
-        <target>~Aŭtentikiga metodoj:</target>
-      </trans-unit>
-      <trans-unit id="9iMmg7m" resname="Save the score">
-        <source>Save the score</source>
-        <target>~Konservi la poentaron</target>
-      </trans-unit>
-      <trans-unit id="qpfRXBy" resname="Automatically save the score">
-        <source>Automatically save the score</source>
-        <target>~Aŭtomate konservi la poentaron</target>
-      </trans-unit>
-      <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
-        <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
-        <target>~Tajpu aŭ algluu la tekston por la pleniga agado en la kampon. Elektu la vortojn kaj uzu la butonon sube por kaŝi ilin. Vi povas difini pli ol unu eblan respondon uzante vertikalajn stangojn por ĉirkaŭi kaj apartigi ilin. Ekz.: |hundo|kato|birdo|</target>
-      </trans-unit>
-      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
-        <source>You can choose a different licence for the current project.</source>
-        <target>~Vi povas elekti malsaman permesilon por la nuna projekto.</target>
-      </trans-unit>
-      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
-        <source>Primary author/s of the resource.</source>
-        <target>~Ĉefa(j) aŭtoro(j) de la rimedo.</target>
-      </trans-unit>
-      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
-        <source>You can choose a different licence for the current project.</source>
-        <target>~Vi povas elekti malsaman permesilon por la nuna projekto.</target>
-      </trans-unit>
-      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
-        <source>Primary author/s of the resource.</source>
-        <target>~Ĉefaj aŭtoroj de la rimedo.</target>
       </trans-unit>
     </body>
   </file>

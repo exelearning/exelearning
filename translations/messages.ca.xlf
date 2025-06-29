@@ -995,7 +995,7 @@
       </trans-unit>
       <trans-unit id="k4gZ4GL" resname="Interactive activities">
         <source>Interactive activities</source>
-        <target>~activitats interactives</target>
+        <target>~Activitats interactives</target>
       </trans-unit>
       <trans-unit id="TfHPH8U" resname="Games">
         <source>Games</source>
@@ -8584,6 +8584,18 @@
       <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
         <source>Primary author/s of the resource.</source>
         <target>~Autors principals del recurs.</target>
+      </trans-unit>
+      <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
+        <source>Delete iDevice? This cannot be undone.</source>
+        <target>~Eliminar l’iDevice? Aquesta acció no es pot desfer.</target>
+      </trans-unit>
+      <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
+        <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
+        <target>~iDevice eliminat. Ara la capsa està buida. Eliminar també la capsa?</target>
+      </trans-unit>
+      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
+        <source>You are editing an iDevice. Please close it before continuing</source>
+        <target>~Estàs editant un iDevice. Si us plau, tanca’l abans de continuar.</target>
       </trans-unit>
     </body>
   </file>

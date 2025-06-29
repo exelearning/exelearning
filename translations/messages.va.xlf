@@ -8585,6 +8585,18 @@
         <source>Primary author/s of the resource.</source>
         <target>~Autor o autors principals del recurs.</target>
       </trans-unit>
+      <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
+        <source>Delete iDevice? This cannot be undone.</source>
+        <target>~Eliminar l’iDevice? Aquesta acció no es pot desfer.</target>
+      </trans-unit>
+      <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
+        <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
+        <target>~S’ha eliminat l’iDevice. Ara la caixa està buida. Voleu eliminar també la caixa?</target>
+      </trans-unit>
+      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
+        <source>You are editing an iDevice. Please close it before continuing</source>
+        <target>~Estàs editant un iDevice. Per favor, tanca’l abans de continuar.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
