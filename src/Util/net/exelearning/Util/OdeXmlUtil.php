@@ -1034,7 +1034,6 @@ class OdeXmlUtil
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
                     $htmlView = $odeComponentsSync->getHtmlView() ?? '';
-
                     if (str_contains($htmlView, Constants::IDEVICE_NODE_LINK_NAME_IN_EXE)) {
                         $odeComponentsSync->replaceOldInternalLinks($fullPathMap);
                     }
@@ -2331,6 +2330,12 @@ class OdeXmlUtil
         foreach ($nodeIdevicesNotaInfo as $nodeIdeviceNotaInfo) {
             $nodeIdeviceNotaInfo->registerXPathNamespace('f', $xpathNamespace);
             $isDropdown = $nodeIdeviceNotaInfo->xpath("f:dictionary/f:unicode[@value='DropDown Activity']");
+
+            // To review mn: If $isDropdown isn’t set, check the XML for a “Dropdown” marker
+            if (!$isDropdown || empty($isDropdown)) {
+                 $isDropdown = $nodeIdeviceNotaInfo->xpath(".//f:unicode[@value='Dropdown']");
+            }
+
             if ($isDropdown) {
                 $result = OdeOldXmlDropdownIdevice::oldElpDropdownIdeviceStructure($odeSessionId, $odePageId, $nodeIdeviceNotaInfo, $generatedIds, $xpathNamespace);
                 foreach ($result['odeComponentsSync'] as $odeComponentSync) {
