@@ -691,39 +691,39 @@
       </trans-unit>
       <trans-unit id="E35eLN_" resname="An error occurred while retrieving the questions. Please try again.">
         <source>An error occurred while retrieving the questions. Please try again.</source>
-        <target></target>
+        <target>~Eraro okazis dum la serĉado de la demandoj. Bonvolu reprovi.</target>
       </trans-unit>
       <trans-unit id="X70Hq6M" resname="Sorry, wrong file format">
         <source>Sorry, wrong file format</source>
-        <target></target>
+        <target>~Bedaŭrinde, malĝusta dosierformato</target>
       </trans-unit>
       <trans-unit id="tWpnRhI" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.</source>
-        <target></target>
+        <target>~Kreu 10 vortojn sekvatajn de iliaj difinoj, apartigitaj per #. Ne inkluzivu la signon # nek en la vorto nek en la difino.</target>
       </trans-unit>
       <trans-unit id="rK1Tq78" resname="Generate 30 words and their definitions separated by #.">
         <source>Generate 30 words and their definitions separated by #.</source>
-        <target></target>
+        <target>~Generu 30 vortojn kaj iliajn difinojn apartigitajn per #.</target>
       </trans-unit>
       <trans-unit id="jRrGoMe" resname="Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.">
         <source>Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.</source>
-        <target></target>
+        <target>~Kreu 10 plurelektajn demandojn kun 2 ĝis 4 opcioj. Komencu per la ĝusta solvo (0, 1, 2, aŭ 3), sekvata de la demando kaj ĉiu opcio, ĉiuj apartigitaj per #.</target>
       </trans-unit>
       <trans-unit id="iEm_hXE" resname="Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.">
         <source>Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.</source>
-        <target></target>
+        <target>~Kreu 10 plurelektajn demandojn. Donu la ĝustan respondon per literoj (ekz., A, AB), sekvata de la demando kaj la opcioj, ĉiuj apartigitaj per #.</target>
       </trans-unit>
       <trans-unit id="0bgCBr1" resname="Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.">
         <source>Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.</source>
-        <target></target>
+        <target>~Kreu 5 solvovortojn sekvatajn de 3 ĝis 9 indicoj kiuj priskribas ĉiun. Apartigu ĉiun indicon per #.</target>
       </trans-unit>
       <trans-unit id="QCl9NKh" resname="Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.">
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
-        <target></target>
+        <target>~Provizu 4 elementojn por ĉiu el ĉi tiuj grupoj: karnomanĝuloj, 0, kaj herbomanĝuloj, 1. Apartigu la grupnumeron kaj la elementon uzante la simbolon #.</target>
       </trans-unit>
       <trans-unit id="DCe79Ym" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target></target>
+        <target>~Kreu 10 demandojn pri veraj aŭ falsaj aferoj. Ĉiu demando devas inkluzivi la solvon (0 = falsa, 1 = vera), sekvata de sugesto kaj rimarko, ĉiuj apartigitaj per #. Krome, la rimarko ne devas eksplicite indiki ĉu la respondo estas ĝusta aŭ malĝusta.</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
@@ -731,15 +731,15 @@
       </trans-unit>
       <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
-        <target></target>
+        <target>~Provizu nur unu ordigitan liston de paŝoj aŭ eroj, ĉiun apartigitan per '#'.</target>
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition</source>
-        <target></target>
+        <target>~Generu 10 vortojn sekvatajn de iliaj difinoj, apartigitaj per #. Ne inkluzivu la signon # nek en la vorto nek en la difino.</target>
       </trans-unit>
       <trans-unit id="JOOpn8O" resname="Go to Tools - Preview to see the tooltip content">
         <source>Go to Tools - Preview to see the tooltip content</source>
-        <target></target>
+        <target>~Iru al Iloj - Antaŭrigardo por vidi la enhavon de la ŝprucmesaĝo</target>
       </trans-unit>
       <trans-unit id="0nNrpBR" resname="'">
         <source>'</source>
@@ -747,23 +747,23 @@
       </trans-unit>
       <trans-unit id="aRkw0uL" resname="If you have made changes and have not saved them, they will be lost. Do you really want to quit?">
         <source>If you have made changes and have not saved them, they will be lost. Do you really want to quit?</source>
-        <target></target>
+        <target>~Se vi faris ŝanĝojn kaj ne konservis ilin, ili perdiĝos. Ĉu vi vere volas ĉesi?</target>
       </trans-unit>
       <trans-unit id="g.hyGgB" resname="Add">
         <source>Add</source>
-        <target></target>
+        <target>~Aldoni</target>
       </trans-unit>
       <trans-unit id="Z_crX_u" resname="Delete">
         <source>Delete</source>
-        <target></target>
+        <target>~Forigi</target>
       </trans-unit>
       <trans-unit id="M.l1CPU" resname="Edit">
         <source>Edit</source>
-        <target></target>
+        <target>~Redakti</target>
       </trans-unit>
       <trans-unit id="sVJ8JPP" resname="Undo">
         <source>Undo</source>
-        <target></target>
+        <target>~Malfari</target>
       </trans-unit>
       <trans-unit id="sdF.3Sa" resname="Redo">
         <source>Redo</source>
@@ -4575,19 +4575,19 @@
       </trans-unit>
       <trans-unit id="4PgfFKC" resname="Feedback (optional)">
         <source>Feedback (optional)</source>
-        <target>~Uzu la Respondon por aldoni klarigon aŭ la ĝustan formulon.</target>
+        <target>~Religo (nedeviga)</target>
       </trans-unit>
       <trans-unit id="YBgPMTj" resname="Use the Feedback to add an explanation or the right formula.">
         <source>Use the Feedback to add an explanation or the right formula.</source>
-        <target>~Nur la Respondo estas opcia</target>
+        <target>~Uzu la Respondon por aldoni klarigon aŭ la ĝustan formulon.</target>
       </trans-unit>
       <trans-unit id="zLxaN5h" resname="Only the Feedback is optional">
         <source>Only the Feedback is optional</source>
-        <target>~Bonvolu skribi la tekston de la demando</target>
+        <target>~Nur la Religo estas laŭvola</target>
       </trans-unit>
       <trans-unit id="E4tBWK8" resname="Please write the question text">
         <source>Please write the question text</source>
-        <target></target>
+        <target>~Bonvolu skribi la tekston de la demando</target>
       </trans-unit>
       <trans-unit id="n7vsB54" resname="The domain of at least one variable is not correct">
         <source>The domain of at least one variable is not correct</source>
