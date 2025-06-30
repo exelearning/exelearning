@@ -75,8 +75,8 @@ class OdeOldXmlGalleryImageIdevice
                     ? UrlUtil::getOdeSessionUrl($odeSessionId)
                     : '';
 
-                $fullImagePath     = $sessionPath . $odeIdeviceId . Constants::SLASH . (string) $imagePath[0]['value'];
-                $fullThumbnailPath = $sessionPath . $odeIdeviceId . Constants::SLASH . (string) $imagePath[1]['value'];
+                $fullImagePath = $sessionPath.$odeIdeviceId.Constants::SLASH.(string) $imagePath[0]['value'];
+                $fullThumbnailPath = $sessionPath.$odeIdeviceId.Constants::SLASH.(string) $imagePath[1]['value'];
 
                 // Common replacements for JSON paths
                 $commonReplaces = [
