@@ -2395,9 +2395,7 @@ var $exeDevice = {
             const strictSpan = bodyQuestion.querySelector('span[id^="fillStrictQualification"]');
 
             const checkCapitalization = capSpan ? capSpan.innerHTML.trim() : '';
-            console.log(checkCapitalization)
             const strictQualification = strictSpan ? strictSpan.innerHTML.trim() : '';
-            console.log(checkCapitalization)
 
             const questionHTML = clone.innerHTML;
 
@@ -2423,7 +2421,6 @@ var $exeDevice = {
             const strictInput = $exeDevice.ideviceBody.querySelector(
                 `input[type="checkbox"][id^="checkStrictQualification_${$exeDevice.formPreviewId}"]`
             );
-            console.log(`input[type="checkbox"][id^="checkStrictQualification_${$exeDevice.formPreviewId}"]`)
             if (strictInput) {
                 strictInput.checked = strictQualification == "true";
             } else {
