@@ -9,14 +9,6 @@
         <source>Permissions error</source>
         <target>~Baimenak errorea</target>
       </trans-unit>
-      <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
-        <source>Delete iDevice? This cannot be undone.</source>
-        <target>~Ezabatu iDevice-a? Ekintza hau ez da desegin daiteke.</target>
-      </trans-unit>
-      <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
-        <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
-        <target>~iDevice-a ezabatu da. Orain kaxa hutsik dago. Ezabatu kaxa ere?</target>
-      </trans-unit>
       <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
         <source>You are editing an iDevice. Please close it before continuing</source>
         <target>~iDevice bat editatzen ari zara. Mesedez, jarraitu aurretik itxi ezazu.</target>
@@ -749,7 +741,7 @@
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
         <target>~Sortu 10 galdera. 'Soluzioa' izan daiteke 0/1 (egia/gezurra), 0-3 (aukera bakarrekoa), edo A-D (edo konbinazioak) aukera anitzeko galderetarako. Ondoren, eman galdera eta erantzun aukerak (2 eta 4 artean), dena '#' bidez bereizita.</target>
       </trans-unit>
-      <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'." >
+      <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
         <target>~Eman urrats edo elementuen zerrenda ordenatu bakarra, bakoitza '#' bidez bereizita.</target>
       </trans-unit>
@@ -8596,6 +8588,14 @@
       <trans-unit id="rFqGW9s" resname="Upload to Drive">
         <source>Upload to Drive</source>
         <target>~Kargatu Drive-ra</target>
+      </trans-unit>
+      <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
+        <source>Delete iDevice? This cannot be undone.</source>
+        <target>~Ezabatu iDevice-a? Ekintza hau ez da desegin daiteke.</target>
+      </trans-unit>
+      <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
+        <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
+        <target>~iDevice-a ezabatu da. Orain kaxa hutsik dago. Ezabatu kaxa ere?</target>
       </trans-unit>
     </body>
   </file>
