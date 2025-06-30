@@ -4,22 +4,22 @@
 
 ### Added
 
-- Complete translations: `es` (Español), `va` (Valencià)
-- Updated translations: `ca` (Català), `eu` (Euskara), `gl` (Galego), `eo` (Esperanto)
+- Complete translations: es (Español), va (Valencià)
+- Updated translations: ca (Català), eu (Euskara), gl (Galego), eo (Esperanto)
 - **Form iDevice:** Slideshow mode and "Check capitalization" options
 - **True/False iDevice:** Slideshow mode
 - Transitions for collapsing/expanding feedback content and boxes
 - Function to know who is editing an iDevice in collaborative mode
-- Make commands: `up-local` and `test-local`
+- Make commands: up-local and test-local
 - UI customization via CSS and JavaScript
 
 ### Fixed
 
 - Reviewed English texts throughout the application
-- Errors when opening old `.elp` files
-- Broken internal links in old `.elp` files
+- Errors when opening old .elp files
+- Broken internal links in old .elp files
 - "Visible in export" page preference
-- Encoding issues in `<head>` and page footer
+- Encoding issues in HEAD and page footer
 - Advanced page preferences (SEO title and description)
 - Child pages from other sections showing in the navigation menu
 - Navigation menu errors in ePub exports
@@ -29,24 +29,24 @@
 - Display of the "Not appropriate" license on pages
 - Box order issues in collaborative editing
 - Conflicts between Bootstrap tooltips and iDevices using jQuery UI
-- **Image Gallery iDevice:** Missing image titles from old `.elp` files
+- **Image Gallery iDevice:** Missing image titles from old .elp files
 - **Form iDevice:** Validation issues
 - **Rubric iDevice:** "Apply rubric" errors
 - **Text iDevice:**
-  - Missing images in old `.elp` files
+  - Missing images in old .elp files
   - Support for two different texts in the feedback button
 - **Old Wikipedia iDevice:** Content presentation revision
 - **Effects:** Color adjustments
-- Mercure connection issues when `APP_PORT` differs from `8080`
+- Mercure connection issues when APP_PORT differs from 8080
 - Errors in platform integration tests
 
 ### Upgraded
 
-- Bootstrap: `v5.1.3` → `v5.3.6`
-- Electron: `30.5.1` → `36.3.2`
-- jQuery: `v3.6.0` → `v3.7.1`
-- MariaDB: `11.7` → `11.8` (in `/doc/deploy`)
-- Symfony: `7.2` → `7.3`
+- Bootstrap: v5.1.3 → v5.3.6
+- Electron: 30.5.1 → 36.3.2
+- jQuery: v3.6.0 → v3.7.1
+- MariaDB: 11.7 → 11.8 (in /doc/deploy)
+- Symfony: 7.2 → 7.3
 - SSE setup documentation for Mercure
 
 ### Removed
