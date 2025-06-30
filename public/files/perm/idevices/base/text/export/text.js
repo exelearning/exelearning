@@ -17,7 +17,7 @@ var $text = {
     feedbackTitleId: "textFeedbackInput",
     feedbackContentId: "textFeedbackTextarea",
 
-    defaultBtnFeedbackText: "Mostrar retroalimentación",
+    defaultBtnFeedbackText: $exe_i18n.showFeedback,
 
     /**
      * Engine execution order: 1
