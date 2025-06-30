@@ -4,9 +4,10 @@
 
 ### Added
 
-- Complete Valencian (Valencià) translation.
-- Galician (Galego) translation update.
+- Complete translations: es (Español), va (Valencià).
+- Translation update: ca (Català), eu (Euskara), gl (Galego), eo (Esperanto).
 - Form iDevice: Slideshow mode and Check capitalization options.
+- True/False iDevice: Slideshow (carousel) mode.
 - Transitions when collapsing/expanding feedback contents and boxes.
 - Function to know who's editing an iDevice in collaborative editing.
 - Make commands: up-local and test-local.
@@ -14,9 +15,11 @@
 
 ### Fixed
 
-- Problems opening old .elp files.
 - Application English texts review.
+- Problems opening old .elp files.
+- Internal links in old .elp files.
 - Page preference (Visible in export).
+- HEAD and page footer encoding problems.
 - Advanced page preferences (SEO title and description).
 - Hide other sections' child pages from the navigation menu.
 - ePub navigation menu errors.
@@ -26,8 +29,10 @@
 - Hide the "not appropriate" license in page.
 - Boxes order problems in collaborative edition.
 - Bootstrap's tooltips failed with iDevices that use jQuery UI.
+- Image gallery iDevice: Missing image titles included in old .elp files.
 - Form iDevice validation errors.
 - Rubric iDevice errors.
+- Text iDevice: Missing images in old .elp files.
 - Text iDevice: Allow two different texts in the feedback button.
 - Old Wikipedia iDevice: Contents presentation revision.
 - Effects: Colors revision.
