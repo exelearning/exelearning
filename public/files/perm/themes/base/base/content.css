@@ -133,11 +133,9 @@ body.exe-web-site{
     color: #555;
     font-size: .95em;
 }
-/* To review
 #siteNav .other-section{
     display: none;
 }
-*/
 #sidebar-nav.fixed{
     position: fixed;
 }
