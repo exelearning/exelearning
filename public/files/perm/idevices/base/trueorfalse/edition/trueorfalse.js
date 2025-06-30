@@ -334,13 +334,13 @@ var $exeDevice = {
                             <label for="tofEShowSlider"><input type="checkbox" name="tofEShowSlider" id="tofEShowSlider"/>${_('Slides list')}</label>
                         </p>
                         <p>
-                            <label for="tofEIsTest"><input type="checkbox" id="tofEIsTest">${_('Test')}.</label>
+                            <label for="tofEIsTest"><input type="checkbox" id="tofEIsTest">${_('Test')}</label>
                             <span id="tofETimeDiv" class="hidden">
                                 <label for="tofETime">${_('Time (minutes)')}: <input type="number" name="tofETime" id="tofETime" value="0" min="0" max="59" /></label>
                             </span>
                         </p>                     
                         <p>
-                            <label for="tofEQuestionsRandom"><input type="checkbox" id="tofEQuestionsRandom">${_('Random questions')}.</label>
+                            <label for="tofEQuestionsRandom"><input type="checkbox" id="tofEQuestionsRandom">${_('Random questions')}</label>
                         </p>                     
                         <p>
                             <label for="tofEPercentageQuestions">%${_('Questions')}:<input type="number" name="tofEPercentageQuestions" id="tofEPercentageQuestions" value="100" min="1" max="100" /></label><span id="tofENumeroPercentaje">1/1</span>
@@ -897,7 +897,7 @@ var $exeDevice = {
         const data = window.URL.createObjectURL(newBlob);
         const link = document.createElement('a');
         link.href = data;
-        link.download = `${_('true-or-false')}.txt`;
+        link.download = `${_('True or false')}.txt`;
 
         document.getElementById('trueorfalseIdeviceForm').appendChild(link);
         link.click();
