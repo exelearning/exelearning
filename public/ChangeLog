@@ -6,8 +6,8 @@
 
 - Complete translations: es (Español), va (Valencià)
 - Updated translations: ca (Català), eu (Euskara), gl (Galego), eo (Esperanto)
-- **Form iDevice:** Slideshow mode and "Check capitalization" options
-- **True/False iDevice:** Slideshow mode
+- Form iDevice: Slideshow mode and "Check capitalization" options
+- True/False iDevice: Slideshow mode
 - Transitions for collapsing/expanding feedback content and boxes
 - Function to know who is editing an iDevice in collaborative mode
 - Make commands: up-local and test-local
@@ -29,14 +29,14 @@
 - Display of the "Not appropriate" license on pages
 - Box order issues in collaborative editing
 - Conflicts between Bootstrap tooltips and iDevices using jQuery UI
-- **Image Gallery iDevice:** Missing image titles from old .elp files
-- **Form iDevice:** Validation issues
-- **Rubric iDevice:** "Apply rubric" errors
-- **Text iDevice:**
+- Image Gallery iDevice: Missing image titles from old .elp files
+- Form iDevice: Validation issues
+- Rubric iDevice: "Apply rubric" errors
+- Text iDevice:
   - Missing images in old .elp files
   - Support for two different texts in the feedback button
-- **Old Wikipedia iDevice:** Content presentation revision
-- **Effects:** Color adjustments
+- Old Wikipedia iDevice: Content presentation revision
+- Effects: Color adjustments
 - Mercure connection issues when APP_PORT differs from 8080
 - Errors in platform integration tests
 
@@ -59,7 +59,7 @@
 ## v3.0.0-beta2 - 2025-06-02
 
 - First eXeLearning 3.0 beta release with source code
-- License changed to **AGPL 3.0**
+- License changed to AGPL 3.0
 - Complete Spanish translation
 - Updated installation instructions
 - "Version control" preference temporarily hidden

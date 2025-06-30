@@ -3098,6 +3098,15 @@ body[mode="advanced"] #main #head #exe-mode-check {
     margin-left: .7em;
 }
 
+#modalReleaseNotes .md-converted-content h3.lead{
+  margin-top: 1em;
+  font-size: 1.2em;
+}
+
+#modalReleaseNotes .md-converted-content hr{
+  margin: 2em 0;
+}
+
 /* Modal legal notes */
 #modalLegalNotes .modal-dialog {
     max-width: 900px;
