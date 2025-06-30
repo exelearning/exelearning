@@ -9,6 +9,10 @@
         <source>Permissions error</source>
         <target>Error de permisos</target>
       </trans-unit>
+      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
+        <source>You are editing an iDevice. Please close it before continuing</source>
+        <target>Estás editando un iDevice. Por favor, ciérralo antes de continuar.</target>
+      </trans-unit>
       <trans-unit id="Kk_KT2R" resname="This is just a demo version. Not for real projects.">
         <source>This is just a demo version. Not for real projects.</source>
         <target>Esta es una versión para pruebas. No se debe usar para crear proyectos finales.</target>
@@ -84,6 +88,14 @@
       <trans-unit id="qmvXFPV" resname="Save score">
         <source>Save score</source>
         <target>Guardar la puntuación</target>
+      </trans-unit>
+      <trans-unit id="9iMmg7m" resname="Save the score">
+        <source>Save the score</source>
+        <target>Guardar la puntuación</target>
+      </trans-unit>
+      <trans-unit id="qpfRXBy" resname="Automatically save the score">
+        <source>Automatically save the score</source>
+        <target>Guardar la puntuación automáticamente</target>
       </trans-unit>
       <trans-unit id="2MMjHQO" resname="Do not save the score">
         <source>Do not save the score</source>
@@ -3025,6 +3037,10 @@
         <source>General information about this educational resource</source>
         <target>Información general sobre este recurso educativo</target>
       </trans-unit>
+      <trans-unit id="6EtaWNj" resname="License">
+        <source>License</source>
+        <target>Licencia</target>
+      </trans-unit>
       <trans-unit id="yhR_etC" resname="This content was created with eXeLearning, your free and open source editor to create educational resources.">
         <source>This content was created with eXeLearning, your free and open source editor to create educational resources.</source>
         <target>Este contenido fue creado con eXeLearning, el editor libre y de fuente abierta diseñado para crear recursos educativos.</target>
@@ -3133,6 +3149,10 @@
         <source>Select an option from the list (double click to see it)</source>
         <target>Selecciona una opción de la lista (haz doble clic para verla)</target>
       </trans-unit>
+      <trans-unit id="wmTSycD" resname="Choose a number">
+        <source>Choose a number</source>
+        <target>Elige un número</target>
+      </trans-unit>
       <trans-unit id="7zp46aE" resname="Color picker example">
         <source>Color picker example</source>
         <target>Ejemplo de selector de color</target>
@@ -3164,6 +3184,10 @@
       <trans-unit id="Fs.7BfM" resname="Example">
         <source>Example</source>
         <target>Ejemplo</target>
+      </trans-unit>
+      <trans-unit id="dQS1rbc" resname="External website">
+        <source>External website</source>
+        <target>Sitio web externo</target>
       </trans-unit>
       <trans-unit id="k.iFheR" resname="Remember that in HTTPS sites it is not possible to include HTTP pages">
         <source>Remember that in HTTPS sites it is not possible to include HTTP pages</source>
@@ -3501,9 +3525,29 @@
         <source>Form</source>
         <target>Formulario</target>
       </trans-unit>
+      <trans-unit id="KfqryR." resname="Slides list">
+        <source>Slides list</source>
+        <target>Lista de fotogramas</target>
+      </trans-unit>
       <trans-unit id="z_TDAhl" resname="Please select a text file (.txt) or a Moodle XML file (.xml)">
         <source>Please select a text file (.txt) or a Moodle XML file (.xml)</source>
         <target>Selecciona un archivo de texto (.txt) o un archivo XML de Moodle (.xml)</target>
+      </trans-unit>
+      <trans-unit id="7nyr4WG" resname="Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.">
+        <source>Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.</source>
+        <target>Haz clic en el botón para cambiar de preguntas con una respuesta correcta a preguntas con varias respuestas correctas.</target>
+      </trans-unit>
+      <trans-unit id="Jgo0fmJ" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the &quot;Show/Hide&quot; button below.">
+        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.</source>
+        <target>Introduce el texto para la actividad desplegable. Marca las palabras y usa el botón de la parte inferior para añadirlas al desplegable.</target>
+      </trans-unit>
+      <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
+        <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
+        <target>Escribe o pega el texto de la actividad en el campo. Para ocultar una palabra, selecciónala y pulsa el botón de abajo. Puedes definir varias respuestas válidas rodeándolas y separándolas con barras verticales. Ejemplo: |perro|gato|pájaro|</target>
+      </trans-unit>
+      <trans-unit id="eh_avyW" resname="If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as &quot;close enough&quot; by the algorithm, as there is only one spelling error, even if &quot;Check capitalization&quot; is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If &quot;Strict qualification&quot; and &quot;Check capitalization&quot; are enabled, the only correct answer is &quot;Elephant&quot;. If only &quot;Strict qualification&quot; is enabled and &quot;Check capitalization&quot; is not, &quot;elephant&quot; will also be accepted.">
+        <source>If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.</source>
+        <target>Por defecto se acepta un número pequeño de errores. Si marcas la casilla no se admitirán errores. Ejemplo: si la respuesta es "Elefante", "elefante" y "Elifante" serán consideradas "suficientemente correctas" por el algoritmo, porque solo hay un error, aunque "Comprobar mayúsculas" esté activado. Si "Comprobar mayúsculas" y "Calificación estricta" están activadas, la única respuesta correcta será "Elefante".</target>
       </trans-unit>
       <trans-unit id="PFzdC37" resname="If this option is checked, answers submitted with case differences will be marked as incorrect.">
         <source>If this option is checked, answers submitted with case differences will be marked as incorrect.</source>
@@ -3881,6 +3925,10 @@
         <source>identify</source>
         <target>identificar</target>
       </trans-unit>
+      <trans-unit id="L.Avp.J" resname="Image gallery">
+        <source>Image gallery</source>
+        <target>Galería de imágenes</target>
+      </trans-unit>
       <trans-unit id="Olhjv_H" resname="Link Title">
         <source>Link Title</source>
         <target>Título del enlace</target>
@@ -3888,10 +3936,6 @@
       <trans-unit id="2dUkgir" resname="Link Author">
         <source>Link Author</source>
         <target>Autor del enlace</target>
-      </trans-unit>
-      <trans-unit id="6EtaWNj" resname="License">
-        <source>License</source>
-        <target>Licencia</target>
       </trans-unit>
       <trans-unit id="Xt7hurv" resname="Choose a license...">
         <source>Choose a license...</source>
@@ -4173,10 +4217,6 @@
         <source>Remove slide %s?</source>
         <target>¿Eliminar el fotograma %s?</target>
       </trans-unit>
-      <trans-unit id="KfqryR." resname="Slides list">
-        <source>Slides list</source>
-        <target>Lista de fotogramas</target>
-      </trans-unit>
       <trans-unit id="o8So2MJ" resname="New slide">
         <source>New slide</source>
         <target>Nuevo fotograma</target>
@@ -4328,6 +4368,10 @@
       <trans-unit id="lIU._xu" resname="Recommended type">
         <source>Recommended type</source>
         <target>Tipo recomendado</target>
+      </trans-unit>
+      <trans-unit id="tIpKalw" resname="Please select a file or provide a valid video URL.">
+        <source>Please select a file or provide a valid video URL.</source>
+        <target>Selecciona un archivo o proporciona una URL de vídeo válida.</target>
       </trans-unit>
       <trans-unit id="j8eXIlW" resname="Wrong URL. Expected format:">
         <source>Wrong URL. Expected format:</source>
@@ -5585,6 +5629,10 @@
         <source>Go to</source>
         <target>Ir a</target>
       </trans-unit>
+      <trans-unit id="l9dOlHi" resname="The video's end time must be shorter than its total duration">
+        <source>The video's end time must be shorter than its total duration</source>
+        <target>El valor del punto final del vídeo debe ser inferior a su duración</target>
+      </trans-unit>
       <trans-unit id="i66zYWo" resname="Video test">
         <source>Video test</source>
         <target>Videotest</target>
@@ -5608,10 +5656,6 @@
       <trans-unit id="y9T7U06" resname="There is already a question in that second.">
         <source>There is already a question in that second.</source>
         <target>Ya hay una pregunta referida a ese segundo.</target>
-      </trans-unit>
-      <trans-unit id="l9dOlHi" resname="The video's end time must be shorter than its total duration">
-        <source>The video's end time must be shorter than its total duration</source>
-        <target>El valor del punto final del vídeo debe ser inferior a su duración</target>
       </trans-unit>
       <trans-unit id="v5lFr7s" resname="Create activities consisting on a video with interactive questions.">
         <source>Create activities consisting on a video with interactive questions.</source>
@@ -5816,6 +5860,10 @@
       <trans-unit id="YxuvdUc" resname="Delete the column?">
         <source>Delete the column?</source>
         <target>¿Borrar la columna?</target>
+      </trans-unit>
+      <trans-unit id="1WTTY.L" resname="Please export the content to apply the rubric.">
+        <source>Please export the content to apply the rubric.</source>
+        <target>Exporta el contenido para aplicar la rúbrica.</target>
       </trans-unit>
       <trans-unit id="0fyNG8V" resname="Add at least 3 elements.">
         <source>Add at least 3 elements.</source>
@@ -7629,6 +7677,10 @@
         <source>JavaScript player (for old browsers or browsers that can't play that audio format)</source>
         <target>Reproductor JavaScript (para navegadores antiguos que no reproducen ese formato de audio)</target>
       </trans-unit>
+      <trans-unit id="ccLwVRX" resname="Use the %s option after recording to define the authorship or title of the audio.">
+        <source>Use the %s option after recording to define the authorship or title of the audio.</source>
+        <target>Usa la opción %s después de grabar para definir la autoría o el título del audio.</target>
+      </trans-unit>
       <trans-unit id="P8kqag0" resname="There is no audio input device connected.">
         <source>There is no audio input device connected.</source>
         <target>No se ha encontrado ninguna entrada de audio.</target>
@@ -7777,9 +7829,9 @@
         <source>Stop</source>
         <target>Detener</target>
       </trans-unit>
-      <trans-unit id="1WTTY.L" resname="Please export the content to apply the rubric.">
-        <source>Please export the content to apply the rubric.</source>
-        <target>Exporta el contenido para aplicar la rúbrica.</target>
+      <trans-unit id="HsF0U2c" resname="Go to Tools - Preview to see this working">
+        <source>Go to Tools - Preview to see this working</source>
+        <target>Vaya a Utilidades - Visualización previa para ver esto funcionando</target>
       </trans-unit>
       <trans-unit id="h6bZedq" resname="ePub export warning: This might not work in some ePub readers.">
         <source>ePub export warning: This might not work in some ePub readers.</source>
@@ -7973,57 +8025,29 @@
         <source>Failed to upload file</source>
         <target>Error al subir el archivo</target>
       </trans-unit>
-      <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
-        <source>Advanced (SEO)</source>
-        <target>Avanzado (SEO)</target>
-      </trans-unit>
-      <trans-unit id="w9rqboO" resname="Allows to minimize/display content">
-        <source>Allows to minimize/display content</source>
-        <target>Permite minimizar/mostrar contenido</target>
-      </trans-unit>
-      <trans-unit id="m8yNoyg" resname="Author URL">
-        <source>Author URL</source>
-        <target>Dirección (URL) del Autor</target>
-      </trans-unit>
-      <trans-unit id="H3EiJ5m" resname="&quot;Made with eXeLearning&quot; link">
-        <source>"Made with eXeLearning" link</source>
-        <target>Enlace "Hecho con eXeLearning"</target>
-      </trans-unit>
-      <trans-unit id="OToz6k0" resname="Help us spreading eXeLearning. Checking this option, a &quot;Made with eXeLearning&quot; link will be displayed in your pages.">
-        <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
-        <target>Ayúdanos a difundir eXeLearning. Si marcas esta opción se incluirá un "Hecho con eXeLearning" en tus páginas.</target>
-      </trans-unit>
-      <trans-unit id="bpqFrqX" resname="The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.">
-        <source>The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.</source>
-        <target>La barra de accesibilidad permite a los usuarios personalizar algunos aspectos de las páginas, como la tipografía o el tamaño de letra.</target>
-      </trans-unit>
-      <trans-unit id="e72fZ2G" resname="CSS Class">
-        <source>CSS Class</source>
-        <target>Clase CSS</target>
+      <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
+        <source>You can choose a different language for the current project.</source>
+        <target>Puedes elegir un idioma diferente para tu proyecto.</target>
       </trans-unit>
       <trans-unit id="QLYaHhh" resname="License for the new documents">
         <source>License for the new documents</source>
         <target>Licencia para nuevos contenidos</target>
       </trans-unit>
-      <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
-        <source>You can choose a different language for the current project.</source>
-        <target>Puedes elegir un idioma diferente para tu proyecto.</target>
+      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
+        <source>You can choose a different licence for the current project.</source>
+        <target>Puedes elegir una licencia distinta para el proyecto actual.</target>
       </trans-unit>
-      <trans-unit id="GYlJ0QA" resname="Different title on the page">
-        <source>Different title on the page</source>
-        <target>Título diferente en la página</target>
+      <trans-unit id="HgsKUL1" resname="Version control">
+        <source>Version control</source>
+        <target>Control de versiones</target>
       </trans-unit>
-      <trans-unit id="JZi_tm0" resname="Email">
-        <source>Email</source>
-        <target>Correo electrónico</target>
+      <trans-unit id="madT9LT" resname="Texts and Links">
+        <source>Texts and Links</source>
+        <target>Textos y enlaces</target>
       </trans-unit>
-      <trans-unit id="22GeuW5" resname="Header image">
-        <source>Header image</source>
-        <target>Imagen de encabezado</target>
-      </trans-unit>
-      <trans-unit id="37wivZ3" resname="ID">
-        <source>ID</source>
-        <target>Id</target>
+      <trans-unit id="m8yNoyg" resname="Author URL">
+        <source>Author URL</source>
+        <target>Dirección (URL) del Autor</target>
       </trans-unit>
       <trans-unit id="XWyckJx" resname="License URL">
         <source>License URL</source>
@@ -8033,29 +8057,45 @@
         <source>Links color</source>
         <target>Color enlaces</target>
       </trans-unit>
+      <trans-unit id="22GeuW5" resname="Header image">
+        <source>Header image</source>
+        <target>Imagen de encabezado</target>
+      </trans-unit>
       <trans-unit id="Ulft.2T" resname="Logo image">
         <source>Logo image</source>
         <target>Logotipo</target>
+      </trans-unit>
+      <trans-unit id="QkjXw6z" resname="Visible in export">
+        <source>Visible in export</source>
+        <target>Visible en la exportación</target>
+      </trans-unit>
+      <trans-unit id="37wivZ3" resname="ID">
+        <source>ID</source>
+        <target>Id</target>
+      </trans-unit>
+      <trans-unit id="e72fZ2G" resname="CSS Class">
+        <source>CSS Class</source>
+        <target>Clase CSS</target>
+      </trans-unit>
+      <trans-unit id="w9rqboO" resname="Allows to minimize/display content">
+        <source>Allows to minimize/display content</source>
+        <target>Permite minimizar/mostrar contenido</target>
       </trans-unit>
       <trans-unit id="YSMMgnW" resname="Minimized">
         <source>Minimized</source>
         <target>Minimizado</target>
       </trans-unit>
-      <trans-unit id="FMzFNH2" resname="Select a language.">
-        <source>Select a language.</source>
-        <target>Seleccionar idioma.</target>
-      </trans-unit>
-      <trans-unit id="madT9LT" resname="Texts and Links">
-        <source>Texts and Links</source>
-        <target>Textos y enlaces</target>
-      </trans-unit>
-      <trans-unit id="q_eBNIy" resname="The name given to the resource.">
-        <source>The name given to the resource.</source>
-        <target>Nombre dado al recurso.</target>
-      </trans-unit>
       <trans-unit id="boXVpbM" resname="Title HTML">
         <source>Title HTML</source>
         <target>Título HTML</target>
+      </trans-unit>
+      <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
+        <source>Advanced (SEO)</source>
+        <target>Avanzado (SEO)</target>
+      </trans-unit>
+      <trans-unit id="GYlJ0QA" resname="Different title on the page">
+        <source>Different title on the page</source>
+        <target>Título diferente en la página</target>
       </trans-unit>
       <trans-unit id="OGj102e" resname="Title in page">
         <source>Title in page</source>
@@ -8065,13 +8105,73 @@
         <source>Content metadata</source>
         <target>Metadatos</target>
       </trans-unit>
-      <trans-unit id="HgsKUL1" resname="Version control">
-        <source>Version control</source>
-        <target>Control de versiones</target>
+      <trans-unit id="q_eBNIy" resname="The name given to the resource.">
+        <source>The name given to the resource.</source>
+        <target>Nombre dado al recurso.</target>
       </trans-unit>
-      <trans-unit id="QkjXw6z" resname="Visible in export">
-        <source>Visible in export</source>
-        <target>Visible en la exportación</target>
+      <trans-unit id="FMzFNH2" resname="Select a language.">
+        <source>Select a language.</source>
+        <target>Seleccionar idioma.</target>
+      </trans-unit>
+      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
+        <source>Primary author/s of the resource.</source>
+        <target>Principales autores del recurso.</target>
+      </trans-unit>
+      <trans-unit id="wx6YU0S" resname="Export options">
+        <source>Export options</source>
+        <target>Opciones de exportación</target>
+      </trans-unit>
+      <trans-unit id="D0HXVrd" resname="Editable export">
+        <source>Editable export</source>
+        <target>Exportación editable</target>
+      </trans-unit>
+      <trans-unit id="7AV73ZR" resname="The exported content will be editable with eXeLearning.">
+        <source>The exported content will be editable with eXeLearning.</source>
+        <target>Podrás editar el contenido exportado con eXeLearning.</target>
+      </trans-unit>
+      <trans-unit id="H3EiJ5m" resname="&quot;Made with eXeLearning&quot; link">
+        <source>"Made with eXeLearning" link</source>
+        <target>Enlace "Hecho con eXeLearning"</target>
+      </trans-unit>
+      <trans-unit id="OToz6k0" resname="Help us spreading eXeLearning. Checking this option, a &quot;Made with eXeLearning&quot; link will be displayed in your pages.">
+        <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
+        <target>Ayúdanos a difundir eXeLearning. Si marcas esta opción se incluirá un "Hecho con eXeLearning" en tus páginas.</target>
+      </trans-unit>
+      <trans-unit id="UcqsRJ2" resname="Include a copy of the source file">
+        <source>Include a copy of the source file</source>
+        <target>Incluir una copia del código fuente (elp).</target>
+      </trans-unit>
+      <trans-unit id="JDiMBVc" resname="A copy of the eXeLearning file will be included when exporting the content.">
+        <source>A copy of the eXeLearning file will be included when exporting the content.</source>
+        <target>Se incluirá una copia del archivo de eXeLearning en la exportación.</target>
+      </trans-unit>
+      <trans-unit id="AK7eXCi" resname="Page counter">
+        <source>Page counter</source>
+        <target>Contador de páginas</target>
+      </trans-unit>
+      <trans-unit id="3GtxOhW" resname="A text with the page number will be added on each page.">
+        <source>A text with the page number will be added on each page.</source>
+        <target>La exportación incluirá un texto con el número de página.</target>
+      </trans-unit>
+      <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
+        <source>Search bar (Website export only)</source>
+        <target>Buscador (solo en al exportar un sitio web)</target>
+      </trans-unit>
+      <trans-unit id="jb5jN3p" resname="A search box will be added to every page of the website.">
+        <source>A search box will be added to every page of the website.</source>
+        <target>Se incluirá una caja de búsqueda en todas las páginas.</target>
+      </trans-unit>
+      <trans-unit id="WEXSR5D" resname="Accessibility toolbar">
+        <source>Accessibility toolbar</source>
+        <target>Barra de accesibilidad</target>
+      </trans-unit>
+      <trans-unit id="bpqFrqX" resname="The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.">
+        <source>The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.</source>
+        <target>La barra de accesibilidad permite a los usuarios personalizar algunos aspectos de las páginas, como la tipografía o el tamaño de letra.</target>
+      </trans-unit>
+      <trans-unit id="1gXPiJp" resname="Custom code">
+        <source>Custom code</source>
+        <target>Código personalizado</target>
       </trans-unit>
       <trans-unit id="mY5HJFL" resname="HEAD">
         <source>HEAD</source>
@@ -8084,6 +8184,22 @@
       <trans-unit id="2Cud8eD" resname="Page footer">
         <source>Page footer</source>
         <target>Pie de página</target>
+      </trans-unit>
+      <trans-unit id="XGqioqo" resname="Type any HTML. It will be placed after every page content. No JavaScript code will be executed inside eXe.">
+        <source>Type any HTML. It will be placed after every page content. No JavaScript code will be executed inside eXe.</source>
+        <target>Puedes usar HTML. Se incluirá en el pie de página. El código JavaScript no se ejecutará dentro de eXe.</target>
+      </trans-unit>
+      <trans-unit id="CHFL0oA" resname="eXeLearning %s is a development version. It is not for production use.">
+        <source>eXeLearning %s is a development version. It is not for production use.</source>
+        <target>eXeLearning %s es una versión en desarrollo. No se debe usar en producción.</target>
+      </trans-unit>
+      <trans-unit id="0z54hWm" resname="This is just a demo version. Not for real projects. Days before it expires: %s">
+        <source>This is just a demo version. Not for real projects. Days before it expires: %s</source>
+        <target>Esta es una versión para pruebas. No se debe usar para crear proyectos finales. Días antes de que deje de funcionar: %s</target>
+      </trans-unit>
+      <trans-unit id="PH37mHg" resname="eXeLearning %s has expired! Please download the latest version.">
+        <source>eXeLearning %s has expired! Please download the latest version.</source>
+        <target>eXeLearning %s es una versión para pruebas y ha caducado. Por favor, descarga la última versión.</target>
       </trans-unit>
       <trans-unit id="6uaf2P2" resname="Unable to extract zip file">
         <source>Unable to extract zip file</source>
@@ -8169,9 +8285,21 @@
         <source>Failed to read the XML content, please open the file in eXeLearning 2.9, save and try to open it here again. Please report if it fails. Thank you.</source>
         <target>Falló la lectura del contenido XML. Abre el archivo en eXeLearning 2.9, guarda e intenta abrirlo aquí de nuevo. Por favor informa si falla. Gracias.</target>
       </trans-unit>
+      <trans-unit id="qhJ89vm" resname="There was a problem retrieving the data of the file">
+        <source>There was a problem retrieving the data of the file</source>
+        <target>Hubo un problema al recuperar los datos del archivo</target>
+      </trans-unit>
+      <trans-unit id="XWQ75wL" resname="File extension incorrect">
+        <source>File extension incorrect</source>
+        <target>Extensión de archivo incorrecta</target>
+      </trans-unit>
       <trans-unit id="EVKxznK" resname="There was a problem opening file">
         <source>There was a problem opening file</source>
         <target>Hubo un problema al abrir el archivo</target>
+      </trans-unit>
+      <trans-unit id="1LKHhts" resname="There was a problem opening the elp file">
+        <source>There was a problem opening the elp file</source>
+        <target>Hubo un problema al abrir el archivo elp</target>
       </trans-unit>
       <trans-unit id="4N_3GhJ" resname="Cannot load the content of this component">
         <source>Cannot load the content of this component</source>
@@ -8253,6 +8381,10 @@
         <source>Sign in</source>
         <target>Iniciar sesión</target>
       </trans-unit>
+      <trans-unit id="JZi_tm0" resname="Email">
+        <source>Email</source>
+        <target>Correo electrónico</target>
+      </trans-unit>
       <trans-unit id="GqmFSHc" resname="Password">
         <source>Password</source>
         <target>Contraseña</target>
@@ -8260,6 +8392,10 @@
       <trans-unit id="es02HnE" resname="Other authentication methods:">
         <source>Other authentication methods:</source>
         <target>Otros métodos de autenticación:</target>
+      </trans-unit>
+      <trans-unit id="gA4BXFa" resname="Authentication methods:">
+        <source>Authentication methods:</source>
+        <target>Métodos de autenticación:</target>
       </trans-unit>
       <trans-unit id="p.fuLaB" resname="Guest">
         <source>Guest</source>
@@ -8453,138 +8589,6 @@
         <source>Upload to Drive</source>
         <target>Subir a Drive</target>
       </trans-unit>
-      <trans-unit id="dQS1rbc" resname="External website">
-        <source>External website</source>
-        <target>Sitio web externo</target>
-      </trans-unit>
-      <trans-unit id="L.Avp.J" resname="Image gallery">
-        <source>Image gallery</source>
-        <target>Galería de imágenes</target>
-      </trans-unit>
-      <trans-unit id="D0HXVrd" resname="Editable export">
-        <source>Editable export</source>
-        <target>Exportación editable</target>
-      </trans-unit>
-      <trans-unit id="7AV73ZR" resname="The exported content will be editable with eXeLearning.">
-        <source>The exported content will be editable with eXeLearning.</source>
-        <target>Podrás editar el contenido exportado con eXeLearning.</target>
-      </trans-unit>
-      <trans-unit id="wx6YU0S" resname="Export options">
-        <source>Export options</source>
-        <target>Opciones de exportación</target>
-      </trans-unit>
-      <trans-unit id="1gXPiJp" resname="Custom code">
-        <source>Custom code</source>
-        <target>Código personalizado</target>
-      </trans-unit>
-      <trans-unit id="CHFL0oA" resname="eXeLearning %s is a development version. It is not for production use.">
-        <source>eXeLearning %s is a development version. It is not for production use.</source>
-        <target>eXeLearning %s es una versión en desarrollo. No se debe usar en producción.</target>
-      </trans-unit>
-      <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
-        <source>Search bar (Website export only)</source>
-        <target>Buscador (solo en al exportar un sitio web)</target>
-      </trans-unit>
-      <trans-unit id="jb5jN3p" resname="A search box will be added to every page of the website.">
-        <source>A search box will be added to every page of the website.</source>
-        <target>Se incluirá una caja de búsqueda en todas las páginas.</target>
-      </trans-unit>
-      <trans-unit id="UcqsRJ2" resname="Include a copy of the source file">
-        <source>Include a copy of the source file</source>
-        <target>Incluir una copia del código fuente (elp).</target>
-      </trans-unit>
-      <trans-unit id="JDiMBVc" resname="A copy of the eXeLearning file will be included when exporting the content.">
-        <source>A copy of the eXeLearning file will be included when exporting the content.</source>
-        <target>Se incluirá una copia del archivo de eXeLearning en la exportación.</target>
-      </trans-unit>
-      <trans-unit id="WEXSR5D" resname="Accessibility toolbar">
-        <source>Accessibility toolbar</source>
-        <target>Barra de accesibilidad</target>
-      </trans-unit>
-      <trans-unit id="AK7eXCi" resname="Page counter">
-        <source>Page counter</source>
-        <target>Contador de páginas</target>
-      </trans-unit>
-      <trans-unit id="3GtxOhW" resname="A text with the page number will be added on each page.">
-        <source>A text with the page number will be added on each page.</source>
-        <target>La exportación incluirá un texto con el número de página.</target>
-      </trans-unit>
-      <trans-unit id="XGqioqo" resname="Type any HTML. It will be placed after every page content. No JavaScript code will be executed inside eXe.">
-        <source>Type any HTML. It will be placed after every page content. No JavaScript code will be executed inside eXe.</source>
-        <target>Puedes usar HTML. Se incluirá en el pie de página. El código JavaScript no se ejecutará dentro de eXe.</target>
-      </trans-unit>
-      <trans-unit id="0z54hWm" resname="This is just a demo version. Not for real projects. Days before it expires: %s">
-        <source>This is just a demo version. Not for real projects. Days before it expires: %s</source>
-        <target>Esta es una versión para pruebas. No se debe usar para crear proyectos finales. Días antes de que deje de funcionar: %s</target>
-      </trans-unit>
-      <trans-unit id="tIpKalw" resname="Please select a file or provide a valid video URL.">
-        <source>Please select a file or provide a valid video URL.</source>
-        <target>Selecciona un archivo o proporciona una URL de vídeo válida.</target>
-      </trans-unit>
-      <trans-unit id="PH37mHg" resname="eXeLearning %s has expired! Please download the latest version.">
-        <source>eXeLearning %s has expired! Please download the latest version.</source>
-        <target>eXeLearning %s es una versión para pruebas y ha caducado. Por favor, descarga la última versión.</target>
-      </trans-unit>
-      <trans-unit id="qhJ89vm" resname="There was a problem retrieving the data of the file">
-        <source>There was a problem retrieving the data of the file</source>
-        <target>Hubo un problema al recuperar los datos del archivo</target>
-      </trans-unit>
-      <trans-unit id="XWQ75wL" resname="File extension incorrect">
-        <source>File extension incorrect</source>
-        <target>Extensión de archivo incorrecta</target>
-      </trans-unit>
-      <trans-unit id="1LKHhts" resname="There was a problem opening the elp file">
-        <source>There was a problem opening the elp file</source>
-        <target>Hubo un problema al abrir el archivo elp</target>
-      </trans-unit>
-      <trans-unit id="wmTSycD" resname="Choose a number">
-        <source>Choose a number</source>
-        <target>Elige un número</target>
-      </trans-unit>
-      <trans-unit id="HsF0U2c" resname="Go to Tools - Preview to see this working">
-        <source>Go to Tools - Preview to see this working</source>
-        <target>Vaya a Utilidades - Visualización previa para ver esto funcionando</target>
-      </trans-unit>
-      <trans-unit id="7nyr4WG" resname="Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.">
-        <source>Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.</source>
-        <target>Haz clic en el botón para cambiar de preguntas con una respuesta correcta a preguntas con varias respuestas correctas.</target>
-      </trans-unit>
-      <trans-unit id="Jgo0fmJ" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the &quot;Show/Hide&quot; button below.">
-        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.</source>
-        <target>Introduce el texto para la actividad desplegable. Marca las palabras y usa el botón de la parte inferior para añadirlas al desplegable.</target>
-      </trans-unit>
-      <trans-unit id="eh_avyW" resname="If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as &quot;close enough&quot; by the algorithm, as there is only one spelling error, even if &quot;Check capitalization&quot; is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If &quot;Strict qualification&quot; and &quot;Check capitalization&quot; are enabled, the only correct answer is &quot;Elephant&quot;. If only &quot;Strict qualification&quot; is enabled and &quot;Check capitalization&quot; is not, &quot;elephant&quot; will also be accepted.">
-        <source>If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.</source>
-        <target>Por defecto se acepta un número pequeño de errores. Si marcas la casilla no se admitirán errores. Ejemplo: si la respuesta es "Elefante", "elefante" y "Elifante" serán consideradas "suficientemente correctas" por el algoritmo, porque solo hay un error, aunque "Comprobar mayúsculas" esté activado. Si "Comprobar mayúsculas" y "Calificación estricta" están activadas, la única respuesta correcta será "Elefante".</target>
-      </trans-unit>
-      <trans-unit id="ccLwVRX" resname="Use the %s option after recording to define the authorship or title of the audio.">
-        <source>Use the %s option after recording to define the authorship or title of the audio.</source>
-        <target>Usa la opción %s después de grabar para definir la autoría o el título del audio.</target>
-      </trans-unit>
-      <trans-unit id="gA4BXFa" resname="Authentication methods:">
-        <source>Authentication methods:</source>
-        <target>Métodos de autenticación:</target>
-      </trans-unit>
-      <trans-unit id="9iMmg7m" resname="Save the score">
-        <source>Save the score</source>
-        <target>Guardar la puntuación</target>
-      </trans-unit>
-      <trans-unit id="qpfRXBy" resname="Automatically save the score">
-        <source>Automatically save the score</source>
-        <target>Guardar la puntuación automáticamente</target>
-      </trans-unit>
-      <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
-        <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
-        <target>Escribe o pega el texto de la actividad en el campo. Para ocultar una palabra, selecciónala y pulsa el botón de abajo. Puedes definir varias respuestas válidas rodeándolas y separándolas con barras verticales. Ejemplo: |perro|gato|pájaro|</target>
-      </trans-unit>
-      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
-        <source>You can choose a different licence for the current project.</source>
-        <target>Puedes elegir una licencia distinta para el proyecto actual.</target>
-      </trans-unit>
-      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
-        <source>Primary author/s of the resource.</source>
-        <target>Principales autores del recurso.</target>
-      </trans-unit>
       <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
         <source>Delete iDevice? This cannot be undone.</source>
         <target>¿Eliminar el iDevice? Esta acción no se puede deshacer.</target>
@@ -8592,10 +8596,6 @@
       <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
         <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
         <target>iDevice eliminado. Ahora la caja está vacía. ¿Eliminar también la caja?</target>
-      </trans-unit>
-      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
-        <source>You are editing an iDevice. Please close it before continuing</source>
-        <target>Estás editando un iDevice. Por favor, ciérralo antes de continuar.</target>
       </trans-unit>
     </body>
   </file>
