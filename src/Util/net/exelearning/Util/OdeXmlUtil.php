@@ -1006,7 +1006,7 @@ class OdeXmlUtil
             if ($node->getPageName()) {
                 $nodeIdToIndex[$node->getOdePageId()] = [
                     'id' => $node->getOdePageId(),
-                    'name' => $node->getPageName(),
+                    'name' => urldecode($node->getPageName()),
                     'parent_id' => $node->getOdeParentPageId(),
                 ];
             }
@@ -2330,6 +2330,12 @@ class OdeXmlUtil
         foreach ($nodeIdevicesNotaInfo as $nodeIdeviceNotaInfo) {
             $nodeIdeviceNotaInfo->registerXPathNamespace('f', $xpathNamespace);
             $isDropdown = $nodeIdeviceNotaInfo->xpath("f:dictionary/f:unicode[@value='DropDown Activity']");
+
+            // To review mn: If $isDropdown isn’t set, check the XML for a “Dropdown” marker
+            if (!$isDropdown || empty($isDropdown)) {
+                $isDropdown = $nodeIdeviceNotaInfo->xpath(".//f:unicode[@value='Dropdown']");
+            }
+
             if ($isDropdown) {
                 $result = OdeOldXmlDropdownIdevice::oldElpDropdownIdeviceStructure($odeSessionId, $odePageId, $nodeIdeviceNotaInfo, $generatedIds, $xpathNamespace);
                 foreach ($result['odeComponentsSync'] as $odeComponentSync) {

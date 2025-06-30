@@ -288,6 +288,7 @@ class ParameterApiController extends DefaultApiController
         // $this->translator->trans('Description');
 
         // Export options
+        $this->translator->trans('Export options');
         $this->translator->trans('Editable export');
         $this->translator->trans('The exported content will be editable with eXeLearning.');
         $this->translator->trans('"Made with eXeLearning" link');
