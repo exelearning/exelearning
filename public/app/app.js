@@ -409,9 +409,6 @@ class App {
                         <li>No hay editor de estilos.</li>
                         <li>Falta Archivo - Imprimir.</li>
                         <li>No se puede exportar o importar una página.</li>
-                        <li>Hay pocas opciones de catalogación.</li>
-                        <li>No procesa bien los enlaces internos de elp antiguos.</li>
-                        <li>Ya no existe el editor de iDevices.</li>
                         <li>Si estás editando un iDevice no puedes cambiar su título.</li>
                         <li>La exportación SCORM 2004 no funciona bien.</li>
                     </ul>
