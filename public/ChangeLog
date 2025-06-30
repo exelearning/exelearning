@@ -4,63 +4,68 @@
 
 ### Added
 
-- Complete translations: es (Español), va (Valencià).
-- Translation update: ca (Català), eu (Euskara), gl (Galego), eo (Esperanto).
-- Form iDevice: Slideshow mode and Check capitalization options.
-- True/False iDevice: Slideshow (carousel) mode.
-- Transitions when collapsing/expanding feedback contents and boxes.
-- Function to know who's editing an iDevice in collaborative editing.
-- Make commands: up-local and test-local.
-- UI customization options (CSS and JavaScript).
+- Complete translations: `es` (Español), `va` (Valencià)
+- Updated translations: `ca` (Català), `eu` (Euskara), `gl` (Galego), `eo` (Esperanto)
+- **Form iDevice:** Slideshow mode and "Check capitalization" options
+- **True/False iDevice:** Slideshow mode
+- Transitions for collapsing/expanding feedback content and boxes
+- Function to know who is editing an iDevice in collaborative mode
+- Make commands: `up-local` and `test-local`
+- UI customization via CSS and JavaScript
 
 ### Fixed
 
-- Application English texts review.
-- Problems opening old .elp files.
-- Internal links in old .elp files.
-- Page preference (Visible in export).
-- HEAD and page footer encoding problems.
-- Advanced page preferences (SEO title and description).
-- Hide other sections' child pages from the navigation menu.
-- ePub navigation menu errors.
-- Growing scrollbar problems in auto-resized iframes like eXe Moodle viewers.
-- Work area: Contrast between elements.
-- Icons missing when using Google Translate.
-- Hide the "not appropriate" license in page.
-- Boxes order problems in collaborative edition.
-- Bootstrap's tooltips failed with iDevices that use jQuery UI.
-- Image gallery iDevice: Missing image titles included in old .elp files.
-- Form iDevice validation errors.
-- Rubric iDevice errors.
-- Text iDevice: Missing images in old .elp files.
-- Text iDevice: Allow two different texts in the feedback button.
-- Old Wikipedia iDevice: Contents presentation revision.
-- Effects: Colors revision.
-- APP_PORT different from 8080 caused Mercure connection issues.
-- Improve Mercure SSE setup documentation.
-- Platform integration tests.
+- Reviewed English texts throughout the application
+- Errors when opening old `.elp` files
+- Broken internal links in old `.elp` files
+- "Visible in export" page preference
+- Encoding issues in `<head>` and page footer
+- Advanced page preferences (SEO title and description)
+- Child pages from other sections showing in the navigation menu
+- Navigation menu errors in ePub exports
+- Scrollbar growth in auto-resizing iframes (e.g., eXe Moodle viewers)
+- Insufficient contrast between elements in the work area
+- Missing icons when using Google Translate
+- Display of the "Not appropriate" license on pages
+- Box order issues in collaborative editing
+- Conflicts between Bootstrap tooltips and iDevices using jQuery UI
+- **Image Gallery iDevice:** Missing image titles from old `.elp` files
+- **Form iDevice:** Validation issues
+- **Rubric iDevice:** "Apply rubric" errors
+- **Text iDevice:**
+  - Missing images in old `.elp` files
+  - Support for two different texts in the feedback button
+- **Old Wikipedia iDevice:** Content presentation revision
+- **Effects:** Color adjustments
+- Mercure connection issues when `APP_PORT` differs from `8080`
+- Errors in platform integration tests
 
 ### Upgraded
 
-- Bootstrap: v5.1.3 to v5.3.6
-- Electron: 30.5.1 to 36.3.2
-- jQuery: v3.6.0 to v3.7.1
-- MariaDB: 11.7 to 11.8 in /doc/deploy
-- Symfony: 7.2 to 7.3
+- Bootstrap: `v5.1.3` → `v5.3.6`
+- Electron: `30.5.1` → `36.3.2`
+- jQuery: `v3.6.0` → `v3.7.1`
+- MariaDB: `11.7` → `11.8` (in `/doc/deploy`)
+- Symfony: `7.2` → `7.3`
+- SSE setup documentation for Mercure
 
 ### Removed
 
-- Old classification properties. Current fields: Title, Language, Authorship, License, Description.
-- Disable AppImage generation due to sandboxing issues on Ubuntu 24.04+
+- Deprecated classification fields: Only Title, Language, Authorship, License, and Description remain
+- AppImage generation (sandboxing issues in Ubuntu 24.04+)
+
+---
 
 ## v3.0.0-beta2 - 2025-06-02
 
-- eXeLearning 3.0 first beta release with source code.
-- License changed to AGPL 3.0.
-- Complete Spanish translation.
-- Install instructions updated.
-- "Version control" preference temporarily hidden.
+- First eXeLearning 3.0 beta release with source code
+- License changed to **AGPL 3.0**
+- Complete Spanish translation
+- Updated installation instructions
+- "Version control" preference temporarily hidden
+
+---
 
 ## v3.0.0-beta1 - 2025-05-27
 
-- eXeLearning 3.0 first beta release available for testing and collaborating.
+- eXeLearning 3.0 first beta release available for testing and collaborating
