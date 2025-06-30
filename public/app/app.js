@@ -63,6 +63,8 @@ class App {
         await this.addNotExtractedLinks();
         // Add the notranslate class to some elements
         await this.addNoTranslateForGoogle();
+        // Execute the custom JavaScript code
+        await this.runCustomJavaScriptCode();
     }
 
     /**
@@ -266,6 +268,16 @@ class App {
     }
 
     /**
+     * Execute the custom JavaScript code
+     *
+     */
+    async runCustomJavaScriptCode() {
+        try {
+            $eXeLearningCustom.init();
+        } catch (e) {}
+    }
+
+    /**
      * "Not for production use" warning (alpha, beta, rc... versions)
      *
      */
@@ -397,11 +409,7 @@ class App {
                         <li>No hay editor de estilos.</li>
                         <li>Falta Archivo - Imprimir.</li>
                         <li>No se puede exportar o importar una página.</li>
-                        <li>Hay pocas opciones de catalogación.</li>
-                        <li>No procesa bien los enlaces internos de elp antiguos.</li>
-                        <li>Ya no existe el editor de iDevices.</li>
                         <li>Si estás editando un iDevice no puedes cambiar su título.</li>
-                        <li>Hay textos mal traducidos o sin traducir.</li>
                         <li>La exportación SCORM 2004 no funciona bien.</li>
                     </ul>
                     <p><strong>Si encuentras algo más:</strong> Ayuda → Informar de un fallo</p>
