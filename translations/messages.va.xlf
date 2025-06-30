@@ -9,6 +9,10 @@
         <source>Permissions error</source>
         <target>Error de permisos</target>
       </trans-unit>
+      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
+        <source>You are editing an iDevice. Please close it before continuing</source>
+        <target>~Estàs editant un iDevice. Per favor, tanca’l abans de continuar.</target>
+      </trans-unit>
       <trans-unit id="Kk_KT2R" resname="This is just a demo version. Not for real projects.">
         <source>This is just a demo version. Not for real projects.</source>
         <target>Aquesta és només una versió de demostració. No per a projectes reals.</target>
@@ -84,6 +88,14 @@
       <trans-unit id="qmvXFPV" resname="Save score">
         <source>Save score</source>
         <target>Guarda la puntuació</target>
+      </trans-unit>
+      <trans-unit id="9iMmg7m" resname="Save the score">
+        <source>Save the score</source>
+        <target>~Desa la puntuació</target>
+      </trans-unit>
+      <trans-unit id="qpfRXBy" resname="Automatically save the score">
+        <source>Automatically save the score</source>
+        <target>~Desa la puntuació automàticament</target>
       </trans-unit>
       <trans-unit id="2MMjHQO" resname="Do not save the score">
         <source>Do not save the score</source>
@@ -3513,6 +3525,10 @@
         <source>Form</source>
         <target>Formulari</target>
       </trans-unit>
+      <trans-unit id="KfqryR." resname="Slides list">
+        <source>Slides list</source>
+        <target>Llista de diapositives</target>
+      </trans-unit>
       <trans-unit id="z_TDAhl" resname="Please select a text file (.txt) or a Moodle XML file (.xml)">
         <source>Please select a text file (.txt) or a Moodle XML file (.xml)</source>
         <target>Si us plau, selecciona un arxiu de text (.txt) o un arxiu XML de Moodle (.xml)</target>
@@ -3524,6 +3540,10 @@
       <trans-unit id="Jgo0fmJ" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the &quot;Show/Hide&quot; button below.">
         <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.</source>
         <target>Introdueix el text per a l'activitat desplegable en el camp desplegable ja sigui enganxant el text d'una altra font o escrivint-lo directament al camp. Per seleccionar quines paraules triar, doble clic a una paraula per seleccionar-la i fes clic al botó "Mostrar/Amagar" a sota.</target>
+      </trans-unit>
+      <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
+        <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
+        <target>~Escriviu o enganxeu el text de l'activitat d'omplir espais en blanc al camp. Seleccioneu les paraules i utilitzeu el botó de sota per ocultar-les. Podeu definir més d'una resposta possible utilitzant barres verticals per envoltar-les i separar-les. P. ex.: |gos|gat|ocell|</target>
       </trans-unit>
       <trans-unit id="eh_avyW" resname="If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as &quot;close enough&quot; by the algorithm, as there is only one spelling error, even if &quot;Check capitalization&quot; is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If &quot;Strict qualification&quot; and &quot;Check capitalization&quot; are enabled, the only correct answer is &quot;Elephant&quot;. If only &quot;Strict qualification&quot; is enabled and &quot;Check capitalization&quot; is not, &quot;elephant&quot; will also be accepted.">
         <source>If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.</source>
@@ -4196,10 +4216,6 @@
       <trans-unit id="tH805Hs" resname="Remove slide %s?">
         <source>Remove slide %s?</source>
         <target>Voleu eliminar la diapositiva %s?</target>
-      </trans-unit>
-      <trans-unit id="KfqryR." resname="Slides list">
-        <source>Slides list</source>
-        <target>Llista de diapositives</target>
       </trans-unit>
       <trans-unit id="o8So2MJ" resname="New slide">
         <source>New slide</source>
@@ -5613,6 +5629,10 @@
         <source>Go to</source>
         <target>Vés a</target>
       </trans-unit>
+      <trans-unit id="l9dOlHi" resname="The video's end time must be shorter than its total duration">
+        <source>The video's end time must be shorter than its total duration</source>
+        <target>El valor del punt final del vídeo ha de ser inferior a la seua duració</target>
+      </trans-unit>
       <trans-unit id="i66zYWo" resname="Video test">
         <source>Video test</source>
         <target>Prova de vídeo</target>
@@ -5636,10 +5656,6 @@
       <trans-unit id="y9T7U06" resname="There is already a question in that second.">
         <source>There is already a question in that second.</source>
         <target>Ja hi ha una qüestió referida a aqueix segon.</target>
-      </trans-unit>
-      <trans-unit id="l9dOlHi" resname="The video's end time must be shorter than its total duration">
-        <source>The video's end time must be shorter than its total duration</source>
-        <target>El valor del punt final del vídeo ha de ser inferior a la seua duració</target>
       </trans-unit>
       <trans-unit id="v5lFr7s" resname="Create activities consisting on a video with interactive questions.">
         <source>Create activities consisting on a video with interactive questions.</source>
@@ -8009,25 +8025,101 @@
         <source>Failed to upload file</source>
         <target>No s'ha pogut pujar el fitxer</target>
       </trans-unit>
-      <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
-        <source>Search bar (Website export only)</source>
-        <target>Barra de cerca (només exportació del lloc web)</target>
+      <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
+        <source>You can choose a different language for the current project.</source>
+        <target>Pots triar un idioma diferent per al projecte actual.</target>
       </trans-unit>
-      <trans-unit id="jb5jN3p" resname="A search box will be added to every page of the website.">
-        <source>A search box will be added to every page of the website.</source>
-        <target>S'afegirà una caixa de cerca a cada pàgina del lloc web.</target>
+      <trans-unit id="QLYaHhh" resname="License for the new documents">
+        <source>License for the new documents</source>
+        <target>Llicència per als nous documents</target>
       </trans-unit>
-      <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
-        <source>Advanced (SEO)</source>
-        <target>Avançat (SEO)</target>
+      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
+        <source>You can choose a different licence for the current project.</source>
+        <target>~Pots triar una llicència diferent per al projecte actual.</target>
+      </trans-unit>
+      <trans-unit id="HgsKUL1" resname="Version control">
+        <source>Version control</source>
+        <target>Control de versions</target>
+      </trans-unit>
+      <trans-unit id="madT9LT" resname="Texts and Links">
+        <source>Texts and Links</source>
+        <target>Texts i Enllaços</target>
+      </trans-unit>
+      <trans-unit id="m8yNoyg" resname="Author URL">
+        <source>Author URL</source>
+        <target>URL de l'autoria</target>
+      </trans-unit>
+      <trans-unit id="XWyckJx" resname="License URL">
+        <source>License URL</source>
+        <target>URL de la llicència</target>
+      </trans-unit>
+      <trans-unit id="4bgAmj2" resname="Links color">
+        <source>Links color</source>
+        <target>Color dels enllaços</target>
+      </trans-unit>
+      <trans-unit id="22GeuW5" resname="Header image">
+        <source>Header image</source>
+        <target>Imatge d'encapçalament</target>
+      </trans-unit>
+      <trans-unit id="Ulft.2T" resname="Logo image">
+        <source>Logo image</source>
+        <target>Imatge del logotip</target>
+      </trans-unit>
+      <trans-unit id="QkjXw6z" resname="Visible in export">
+        <source>Visible in export</source>
+        <target>Visible a l'exportació</target>
+      </trans-unit>
+      <trans-unit id="37wivZ3" resname="ID">
+        <source>ID</source>
+        <target>Identificador</target>
+      </trans-unit>
+      <trans-unit id="e72fZ2G" resname="CSS Class">
+        <source>CSS Class</source>
+        <target>Classe CSS</target>
       </trans-unit>
       <trans-unit id="w9rqboO" resname="Allows to minimize/display content">
         <source>Allows to minimize/display content</source>
         <target>Permet minimitzar/mostrar contingut</target>
       </trans-unit>
-      <trans-unit id="m8yNoyg" resname="Author URL">
-        <source>Author URL</source>
-        <target>URL de l'autoria</target>
+      <trans-unit id="YSMMgnW" resname="Minimized">
+        <source>Minimized</source>
+        <target>Minimitzat</target>
+      </trans-unit>
+      <trans-unit id="boXVpbM" resname="Title HTML">
+        <source>Title HTML</source>
+        <target>Títol HTML</target>
+      </trans-unit>
+      <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
+        <source>Advanced (SEO)</source>
+        <target>Avançat (SEO)</target>
+      </trans-unit>
+      <trans-unit id="GYlJ0QA" resname="Different title on the page">
+        <source>Different title on the page</source>
+        <target>Títol diferent a la pàgina</target>
+      </trans-unit>
+      <trans-unit id="OGj102e" resname="Title in page">
+        <source>Title in page</source>
+        <target>Títol a la pàgina</target>
+      </trans-unit>
+      <trans-unit id="c_yVrgu" resname="Content metadata">
+        <source>Content metadata</source>
+        <target>Metadades de contingut</target>
+      </trans-unit>
+      <trans-unit id="q_eBNIy" resname="The name given to the resource.">
+        <source>The name given to the resource.</source>
+        <target>El nom que s'ha donat al recurs.</target>
+      </trans-unit>
+      <trans-unit id="FMzFNH2" resname="Select a language.">
+        <source>Select a language.</source>
+        <target>Seleccioneu l'idioma.</target>
+      </trans-unit>
+      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
+        <source>Primary author/s of the resource.</source>
+        <target>~Autor o autors principals del recurs.</target>
+      </trans-unit>
+      <trans-unit id="wx6YU0S" resname="Export options">
+        <source>Export options</source>
+        <target>Opcions d'exportació</target>
       </trans-unit>
       <trans-unit id="D0HXVrd" resname="Editable export">
         <source>Editable export</source>
@@ -8053,94 +8145,6 @@
         <source>A copy of the eXeLearning file will be included when exporting the content.</source>
         <target>S'inclourà una còpia del fitxer eXeLearning en exportar el contingut.</target>
       </trans-unit>
-      <trans-unit id="WEXSR5D" resname="Accessibility toolbar">
-        <source>Accessibility toolbar</source>
-        <target>Barra d'accessibilitat</target>
-      </trans-unit>
-      <trans-unit id="bpqFrqX" resname="The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.">
-        <source>The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.</source>
-        <target>La barra d'accessibilitat permet als usuaris personalitzar alguns aspectes de les pàgines, com la tipografia o la grandària de lletra.</target>
-      </trans-unit>
-      <trans-unit id="e72fZ2G" resname="CSS Class">
-        <source>CSS Class</source>
-        <target>Classe CSS</target>
-      </trans-unit>
-      <trans-unit id="QLYaHhh" resname="License for the new documents">
-        <source>License for the new documents</source>
-        <target>Llicència per als nous documents</target>
-      </trans-unit>
-      <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
-        <source>You can choose a different language for the current project.</source>
-        <target>Pots triar un idioma diferent per al projecte actual.</target>
-      </trans-unit>
-      <trans-unit id="GYlJ0QA" resname="Different title on the page">
-        <source>Different title on the page</source>
-        <target>Títol diferent a la pàgina</target>
-      </trans-unit>
-      <trans-unit id="JZi_tm0" resname="Email">
-        <source>Email</source>
-        <target>Correu electrònic</target>
-      </trans-unit>
-      <trans-unit id="22GeuW5" resname="Header image">
-        <source>Header image</source>
-        <target>Imatge d'encapçalament</target>
-      </trans-unit>
-      <trans-unit id="37wivZ3" resname="ID">
-        <source>ID</source>
-        <target>Identificador</target>
-      </trans-unit>
-      <trans-unit id="XWyckJx" resname="License URL">
-        <source>License URL</source>
-        <target>URL de la llicència</target>
-      </trans-unit>
-      <trans-unit id="4bgAmj2" resname="Links color">
-        <source>Links color</source>
-        <target>Color dels enllaços</target>
-      </trans-unit>
-      <trans-unit id="Ulft.2T" resname="Logo image">
-        <source>Logo image</source>
-        <target>Imatge del logotip</target>
-      </trans-unit>
-      <trans-unit id="YSMMgnW" resname="Minimized">
-        <source>Minimized</source>
-        <target>Minimitzat</target>
-      </trans-unit>
-      <trans-unit id="FMzFNH2" resname="Select a language.">
-        <source>Select a language.</source>
-        <target>Seleccioneu l'idioma.</target>
-      </trans-unit>
-      <trans-unit id="madT9LT" resname="Texts and Links">
-        <source>Texts and Links</source>
-        <target>Texts i Enllaços</target>
-      </trans-unit>
-      <trans-unit id="q_eBNIy" resname="The name given to the resource.">
-        <source>The name given to the resource.</source>
-        <target>El nom que s'ha donat al recurs.</target>
-      </trans-unit>
-      <trans-unit id="boXVpbM" resname="Title HTML">
-        <source>Title HTML</source>
-        <target>Títol HTML</target>
-      </trans-unit>
-      <trans-unit id="OGj102e" resname="Title in page">
-        <source>Title in page</source>
-        <target>Títol a la pàgina</target>
-      </trans-unit>
-      <trans-unit id="c_yVrgu" resname="Content metadata">
-        <source>Content metadata</source>
-        <target>Metadades de contingut</target>
-      </trans-unit>
-      <trans-unit id="wx6YU0S" resname="Export options">
-        <source>Export options</source>
-        <target>Opcions d'exportació</target>
-      </trans-unit>
-      <trans-unit id="HgsKUL1" resname="Version control">
-        <source>Version control</source>
-        <target>Control de versions</target>
-      </trans-unit>
-      <trans-unit id="QkjXw6z" resname="Visible in export">
-        <source>Visible in export</source>
-        <target>Visible a l'exportació</target>
-      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>Comptador de pàgines</target>
@@ -8148,6 +8152,22 @@
       <trans-unit id="3GtxOhW" resname="A text with the page number will be added on each page.">
         <source>A text with the page number will be added on each page.</source>
         <target>S'afegirà un text amb el número de pàgina a cada pàgina.</target>
+      </trans-unit>
+      <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
+        <source>Search bar (Website export only)</source>
+        <target>Barra de cerca (només exportació del lloc web)</target>
+      </trans-unit>
+      <trans-unit id="jb5jN3p" resname="A search box will be added to every page of the website.">
+        <source>A search box will be added to every page of the website.</source>
+        <target>S'afegirà una caixa de cerca a cada pàgina del lloc web.</target>
+      </trans-unit>
+      <trans-unit id="WEXSR5D" resname="Accessibility toolbar">
+        <source>Accessibility toolbar</source>
+        <target>Barra d'accessibilitat</target>
+      </trans-unit>
+      <trans-unit id="bpqFrqX" resname="The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.">
+        <source>The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.</source>
+        <target>La barra d'accessibilitat permet als usuaris personalitzar alguns aspectes de les pàgines, com la tipografia o la grandària de lletra.</target>
       </trans-unit>
       <trans-unit id="1gXPiJp" resname="Custom code">
         <source>Custom code</source>
@@ -8361,6 +8381,10 @@
         <source>Sign in</source>
         <target>Inicia sessió</target>
       </trans-unit>
+      <trans-unit id="JZi_tm0" resname="Email">
+        <source>Email</source>
+        <target>Correu electrònic</target>
+      </trans-unit>
       <trans-unit id="GqmFSHc" resname="Password">
         <source>Password</source>
         <target>Contrasenya</target>
@@ -8368,6 +8392,10 @@
       <trans-unit id="es02HnE" resname="Other authentication methods:">
         <source>Other authentication methods:</source>
         <target>Altres mètodes d'autenticació:</target>
+      </trans-unit>
+      <trans-unit id="gA4BXFa" resname="Authentication methods:">
+        <source>Authentication methods:</source>
+        <target>Mètodes d'autenticació:</target>
       </trans-unit>
       <trans-unit id="p.fuLaB" resname="Guest">
         <source>Guest</source>
@@ -8561,30 +8589,6 @@
         <source>Upload to Drive</source>
         <target>Pujar a Drive</target>
       </trans-unit>
-      <trans-unit id="gA4BXFa" resname="Authentication methods:">
-        <source>Authentication methods:</source>
-        <target>Mètodes d'autenticació:</target>
-      </trans-unit>
-      <trans-unit id="9iMmg7m" resname="Save the score">
-        <source>Save the score</source>
-        <target>~Desa la puntuació</target>
-      </trans-unit>
-      <trans-unit id="qpfRXBy" resname="Automatically save the score">
-        <source>Automatically save the score</source>
-        <target>~Desa la puntuació automàticament</target>
-      </trans-unit>
-      <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
-        <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
-        <target>~Escriviu o enganxeu el text de l'activitat d'omplir espais en blanc al camp. Seleccioneu les paraules i utilitzeu el botó de sota per ocultar-les. Podeu definir més d'una resposta possible utilitzant barres verticals per envoltar-les i separar-les. P. ex.: |gos|gat|ocell|</target>
-      </trans-unit>
-      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
-        <source>You can choose a different licence for the current project.</source>
-        <target>~Pots triar una llicència diferent per al projecte actual.</target>
-      </trans-unit>
-      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
-        <source>Primary author/s of the resource.</source>
-        <target>~Autor o autors principals del recurs.</target>
-      </trans-unit>
       <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
         <source>Delete iDevice? This cannot be undone.</source>
         <target>~Eliminar l’iDevice? Aquesta acció no es pot desfer.</target>
@@ -8592,10 +8596,6 @@
       <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
         <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
         <target>~S’ha eliminat l’iDevice. Ara la caixa està buida. Voleu eliminar també la caixa?</target>
-      </trans-unit>
-      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
-        <source>You are editing an iDevice. Please close it before continuing</source>
-        <target>~Estàs editant un iDevice. Per favor, tanca’l abans de continuar.</target>
       </trans-unit>
     </body>
   </file>
