@@ -2183,7 +2183,7 @@
       </trans-unit>
       <trans-unit id="Jt6iKEG" resname="Slide to reveal the differences between the images.">
         <source>Slide to reveal the differences between the images.</source>
-        <target>~Irudiak alde batera utzi eta aldea erakutsi.</target>
+        <target>Irudien gainetik igaro beraien arteko desberdintasunak ikusteko.</target>
       </trans-unit>
       <trans-unit id="fQdHKPd" resname="Images">
         <source>Images</source>
@@ -3319,7 +3319,7 @@
       </trans-unit>
       <trans-unit id="RZR9FtQ" resname="Select whether the statement is true or false">
         <source>Select whether the statement is true or false</source>
-        <target>~Aukeratu ea adierazpena egia den edo gezurra</target>
+        <target>Aukeratu adierazpena egia edo gezurra den</target>
       </trans-unit>
       <trans-unit id="EAE7Y9Z" resname="Choose the correct answer among the options proposed">
         <source>Choose the correct answer among the options proposed</source>
@@ -3407,7 +3407,7 @@
       </trans-unit>
       <trans-unit id="DCmDkZO" resname="Set the pass mark">
         <source>Set the pass mark</source>
-        <target>~Aukeratu pasatzeko tasa</target>
+        <target>Gutxieneko puntuazioa ezarri</target>
       </trans-unit>
       <trans-unit id="jkH6U0E" resname="Include a button to display the answers">
         <source>Include a button to display the answers</source>
@@ -3447,23 +3447,23 @@
       </trans-unit>
       <trans-unit id="E3Qb1Tb" resname="True-False">
         <source>True-False</source>
-        <target>~Benetako-Zuzena</target>
+        <target>Egia-Gezurra</target>
       </trans-unit>
       <trans-unit id="k4B9FNM" resname="Fill">
         <source>Fill</source>
-        <target>~Bete</target>
+        <target>Bete</target>
       </trans-unit>
       <trans-unit id="p1KxkjQ" resname="Show Solutions">
         <source>Show Solutions</source>
-        <target>~Erakutsi Soluzioak</target>
+        <target>Erantzunak erakutsi</target>
       </trans-unit>
       <trans-unit id=".9msxfj" resname="Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.">
         <source>Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.</source>
-        <target>~Sortu galderak aukeraketa anitzeko, benetako/gezurra, eta hutsuneak betetzeko galderak erabiliz.</target>
+        <target>Sortu probak aukera anitzeko, egia/gezurra erantzuneko eta hutsuneak betetzeko galderekin.</target>
       </trans-unit>
       <trans-unit id="7JLBUj7" resname="Complete the questions in the following quiz">
         <source>Complete the questions in the following quiz</source>
-        <target>~Osatu hurrengo galdeketa galderak.</target>
+        <target>Osatu hurrengo probako galderak.</target>
       </trans-unit>
       <trans-unit id="nqfJQkk" resname="Random questions">
         <source>Random questions</source>
@@ -3471,43 +3471,43 @@
       </trans-unit>
       <trans-unit id="5DWSt.L" resname="Show questions">
         <source>Show questions</source>
-        <target>~Erakutsi galderak</target>
+        <target>Erakutsi galderak</target>
       </trans-unit>
       <trans-unit id="K4ymNZy" resname="True/False Help Text:">
         <source>True/False Help Text:</source>
-        <target>~Benetako Faltsua Laguntza Testua:</target>
+        <target>Egia/Gezurra Laguntza Testua:</target>
       </trans-unit>
       <trans-unit id="dWcEKgV" resname="Fill Help Text:">
         <source>Fill Help Text:</source>
-        <target>~Bete Laguntza Testua:</target>
+        <target>Bete Laguntza Testua:</target>
       </trans-unit>
       <trans-unit id="mCT4Im5" resname="Dropdown Help Text:">
         <source>Dropdown Help Text:</source>
-        <target>~Dropdown Laguntza Testua:</target>
+        <target>Zabaldu Laguntza Testu menua:</target>
       </trans-unit>
       <trans-unit id="Pstg2p6" resname="Single Selection Help Text:">
         <source>Single Selection Help Text:</source>
-        <target>~Aukeraketa Bakarreko Laguntza Testua:</target>
+        <target>Aukeraketa Bakarreko Laguntza Testua:</target>
       </trans-unit>
       <trans-unit id="19W3mZT" resname="Multiple Selection Help Text:">
         <source>Multiple Selection Help Text:</source>
-        <target>~Aukeraketa Anitzaren Laguntza Testua:</target>
+        <target>Aukeraketa Anitzeko Laguntza Testua:</target>
       </trans-unit>
       <trans-unit id="0vo2ca9" resname="Text for the button to check the answers:">
         <source>Text for the button to check the answers:</source>
-        <target>~Testu botoian erantzunak egiaztatzeko:</target>
+        <target>Erantzunak egiaztatzeko botoiaren testua:</target>
       </trans-unit>
       <trans-unit id="R9Z8GTJ" resname="Text for the button to reset the answers:">
         <source>Text for the button to reset the answers:</source>
-        <target>~Testu botoian erantzunak berrezartzeko:</target>
+        <target>Erantzunak berrabiarazteko botoiaren testua:</target>
       </trans-unit>
       <trans-unit id="B79PbsI" resname="Text for the button to show the solutions:">
         <source>Text for the button to show the solutions:</source>
-        <target>~Testu botoian irtenbideak erakusteko:</target>
+        <target>Erantzunak erakusteko botoiaren testua:</target>
       </trans-unit>
       <trans-unit id="_DhM0bq" resname="Hide questions">
         <source>Hide questions</source>
-        <target>~Ezkutatu galderak</target>
+        <target>Ezkutatu galderak</target>
       </trans-unit>
       <trans-unit id="lQPZRnV" resname="Attention">
         <source>Attention</source>
@@ -3515,35 +3515,35 @@
       </trans-unit>
       <trans-unit id="TqmNo1i" resname="Form">
         <source>Form</source>
-        <target>~Inprimakia</target>
+        <target>Inprimakia</target>
       </trans-unit>
       <trans-unit id="z_TDAhl" resname="Please select a text file (.txt) or a Moodle XML file (.xml)">
         <source>Please select a text file (.txt) or a Moodle XML file (.xml)</source>
-        <target>~Mesedez, hautatu testu-fitxategi bat (.txt) edo Moodle XML fitxategi bat (.xml)</target>
+        <target>Mesedez, hautatu testu-fitxategi bat (.txt) edo Moodle XML fitxategi bat (.xml)</target>
       </trans-unit>
       <trans-unit id="7nyr4WG" resname="Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.">
         <source>Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.</source>
-        <target>~Klikatu botoia aktibatzeko galderen artean aukera emateko, erantzun zuzena duen galdera edo aukera askorekin galdera.</target>
+        <target>Klikatu txandakatze-botoian erantzun zuzen bakarra duten galderen eta erantzun zuzen posible asko dituzten galderen artean aldatzeko.</target>
       </trans-unit>
       <trans-unit id="Jgo0fmJ" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the &quot;Show/Hide&quot; button below.">
         <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.</source>
-        <target>~Sartu testua jaitsiera-jarduerarako jaitsiera-eremuan beste iturri batetik testua itsatsi edo zuzenean idatziz. Hitzak aukeratzeko, bikoitza klik egin hitz batean eta klikatu beheko "Erakutsi/Ezkutatu" botoian.</target>
+        <target>Idatzi jarduera zabalgarrirako testua dagokion eremuan, beste iturri batetik itsatsiz edo zuzenean idatziz. Zabalgarri egin nahi dituzun hitzak, gainean klik bikoitza eginez hautatu eta beheko 'Erakutsi/Ezkutatu' botoiari sakatu.</target>
       </trans-unit>
       <trans-unit id="0PufnT0" resname="Enter the text for the fill-in-the-blanks activity. Highlight the words and use the button at the bottom to turn them into blanks.">
         <source>Enter the text for the fill-in-the-blanks activity. Highlight the words and use the button at the bottom to turn them into blanks.</source>
-        <target>~Idatzi hutsunea betetzeko jarduerarako testua hutsune-eremuan beste iturri batetik testua itsatsi edo zuzenean idatziz. Hitzak ezkutatzeko, bikoitza klik egin hitz batean eta klikatu beheko "Ezkutatu/Erakutsi" hitza botoian. Erantzun posible gehiago definitu ditzakezu barra-seinalea (|) inguratuta daudenean. Adibidez: |txakur|katu|txori|</target>
+        <target>Sartu hutsuneak betetzeko jardueraren testua. Hautatu hitzak eta erabili beheko botoia hutsune bihurtzeko.</target>
       </trans-unit>
       <trans-unit id="eh_avyW" resname="If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as &quot;close enough&quot; by the algorithm, as there is only one spelling error, even if &quot;Check capitalization&quot; is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If &quot;Strict qualification&quot; and &quot;Check capitalization&quot; are enabled, the only correct answer is &quot;Elephant&quot;. If only &quot;Strict qualification&quot; is enabled and &quot;Check capitalization&quot; is not, &quot;elephant&quot; will also be accepted.">
         <source>If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.</source>
-        <target>~Ez markatuta, ortografia eta letra larriak akats txiki batzuk onartuko dira. Markatuta, ez da akatsik onartuko. Adibidez: Erantzun zuzena Elefantea bada eta "elefantea" edo "Eliphant" esaten badu, biak "hurbildu" bezala hartuko dira algoritmoaren arabera, akats ortografiko bat egon arren, "Letra larriak egiaztatu" markatuta egon arren. Kasuaren egiaztapena desgaituta badago, letra xeheko "e" akatsik ez da kontuan hartuko eta "eliphant" ere onartuko da. "Zehazkiaren kalifikazioa" eta "Letra larriak egiaztatu" aktibatuta badaude, erantzun zuzena "Elefantea" izango da. "Zehazkiaren kalifikazioa" bakarrik aktibatuta eta "Letra larriak egiaztatu" ez bada, "elefantea" ere onartuko da.</target>
+        <target>Markatu gabe badago, ortografia- eta hizki larri-akats gutxi batzuk onartuko dira. Markatuta badago, ez da akatsik onartuko ez ortografian, ezta hizki larri-idazkeran ere. Adibidea: Erantzun zuzena Elefante bada, eta idatzita dago elefante edo Elifante, algoritmoak biak "nahikoa hurbil" bezala hartuko ditu, letra bakarreko akatsa dagoelako, nahiz eta "Hizki larri-xeheak kontuan hartu?" aukera aktibatuta egon. Adibidearekin jarraituz, hizki larrien egiaztapena desgaituta badago, hasierako letra xehea (e) ez da akastzat hartuko, eta elifante ere onartuko da. "Zorroztasunez zuzendu?" eta "Hizki larri-xeheak kontuan hartu?" aukera biak aktibatuta badaude, erantzun zuzen bakarra "Elefante" izango da. "Zorroztasunez zuzendu?" aktibatuta badago baina "Hizki larri-xeheak kontuan hartu?" ez, "elefante" ere onartuko da.</target>
       </trans-unit>
       <trans-unit id="PFzdC37" resname="If this option is checked, answers submitted with case differences will be marked as incorrect.">
         <source>If this option is checked, answers submitted with case differences will be marked as incorrect.</source>
-        <target>~Aukera hau markatuta badago, kasu-diferentziak dituzten erantzunak ez direla zuzena markatuko da.</target>
+        <target>Aukera hau markatuta badago, maiuskula/minuskula arteko desberdintasunak dituzten erantzunak okertzat hartuko dira.</target>
       </trans-unit>
       <trans-unit id="q6ii5GA" resname="GeoGebra activity">
         <source>GeoGebra activity</source>
-        <target>~GeoGebra jarduera</target>
+        <target>GeoGebra jarduera</target>
       </trans-unit>
       <trans-unit id="3O1bMGf" resname="Show menu bar">
         <source>Show menu bar</source>
@@ -3563,7 +3563,7 @@
       </trans-unit>
       <trans-unit id="74x9C0M" resname="Reset icon">
         <source>Reset icon</source>
-        <target>~Bistaratu berrezarri ikonoa</target>
+        <target>Berrezarpen-ikonoa</target>
       </trans-unit>
       <trans-unit id="cLBL1hg" resname="Zoom">
         <source>Zoom</source>
@@ -3595,7 +3595,7 @@
       </trans-unit>
       <trans-unit id="7v98Nc_" resname="Play button">
         <source>Play button</source>
-        <target>~Jolastu botoia</target>
+        <target>Erreproduzitzeko botoia</target>
       </trans-unit>
       <trans-unit id="_voUbyf" resname="General Settings">
         <source>General Settings</source>
@@ -3651,7 +3651,7 @@
       </trans-unit>
       <trans-unit id="eB0t8N8" resname="Guess">
         <source>Guess</source>
-        <target>~Zer egin</target>
+        <target>Asmatu</target>
       </trans-unit>
       <trans-unit id="HbKwGB_" resname="You lost one life">
         <source>You lost one life</source>
@@ -3711,7 +3711,7 @@
       </trans-unit>
       <trans-unit id="eqUIfuk" resname="No lives, 0 to 10 score, right/wrong answers counter... A more educational context.">
         <source>No lives, 0 to 10 score, right/wrong answers counter... A more educational context.</source>
-        <target>~Ez dago bizitzarik, 0etik 10era puntuazioa, erantzun zuzena/gezurra kontagailua... Hezkuntza testuinguru batean.</target>
+        <target>Ez dago bizitza-sistemarik; puntuazioa 0tik 10era bitartekoa da, eta erantzun zuzenen eta okerren kopurua bistaratzen da. Hezkuntza testuingurura bideratuta.</target>
       </trans-unit>
       <trans-unit id="kxux1e3" resname="Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.">
         <source>Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.</source>
@@ -3735,7 +3735,7 @@
       </trans-unit>
       <trans-unit id="m74z__f" resname="Words/Phrases">
         <source>Words/Phrases</source>
-        <target>~Hitzak/Frazeak</target>
+        <target>Hitzak/Esaldiak</target>
       </trans-unit>
       <trans-unit id="QBnu6HY" resname="Multimedia Type">
         <source>Multimedia Type</source>
@@ -3771,19 +3771,19 @@
       </trans-unit>
       <trans-unit id="sAFAm2Z" resname="Word/Phrase">
         <source>Word/Phrase</source>
-        <target>~Hitz/Frazea</target>
+        <target>Hitza/Esaldia</target>
       </trans-unit>
       <trans-unit id="ML4CRs6" resname="This video is not available">
         <source>This video is not available</source>
-        <target>~Bideo hau ez dago erabilgarri</target>
+        <target>Bideo hau ez dago ikusgai</target>
       </trans-unit>
       <trans-unit id="LHG3fpx" resname="Hidden image">
         <source>Hidden image</source>
-        <target>~Ezkutuko irudia</target>
+        <target>Ezkutuko irudia</target>
       </trans-unit>
       <trans-unit id="1ZlI_Iv" resname="Time game">
         <source>Time game</source>
-        <target>~Denbora jokoa</target>
+        <target>Jokoko denbora</target>
       </trans-unit>
       <trans-unit id="aNSQ9R8" resname="Option">
         <source>Option</source>
@@ -3799,23 +3799,23 @@
       </trans-unit>
       <trans-unit id="rEYqGBR" resname="Click on a card. Attempts: %s">
         <source>Click on a card. Attempts: %s</source>
-        <target>~Klik egin karta batean. Saiakerak: %s</target>
+        <target>Egin klik karta batean. Saiakerak: %s</target>
       </trans-unit>
       <trans-unit id="n1s0_oY" resname="No more attempts left. Please answer the question.">
         <source>No more attempts left. Please answer the question.</source>
-        <target>~Ez dago saiakerarik geratzen. Mesedez, erantzun galdera.</target>
+        <target>Ez dago saiakera gehiagorik. Mesedez, erantzun galderari.</target>
       </trans-unit>
       <trans-unit id="JkHkLBK" resname="Time Over. 0 points">
         <source>Time Over. 0 points</source>
-        <target>~Ordua agortu da. 0 puntu</target>
+        <target>Denbora agortu da. 0 puntu</target>
       </trans-unit>
       <trans-unit id="aSTeHg2" resname="Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.">
         <source>Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.</source>
-        <target>~Sortu erronka interaktiboak, non ikasleek irudi ezkutua baten zatiak progresiboki agertzen dituzten eta ondoren irudiaren pista visualen arabera erantzun zuzena aukeratzen dutenak.</target>
+        <target>Sortu erronka interaktiboak: ikasleek irudi ezkutu baten zatiak erakusten dituzte eta, ikusitakoaren arabera, erantzun egokia hautatzen dute..</target>
       </trans-unit>
       <trans-unit id="rNk_v1D" resname="Reveal the hidden image and choose the right answer.">
         <source>Reveal the hidden image and choose the right answer.</source>
-        <target>~Aurkitu irudi ezkutua eta aukeratu erantzun zuzena.</target>
+        <target>Irudi ezkutua erakutsi eta aukeratu erantzun zuzena.</target>
       </trans-unit>
       <trans-unit id=".zR6.NC" resname="Random options">
         <source>Random options</source>
@@ -3823,11 +3823,11 @@
       </trans-unit>
       <trans-unit id="qh.tuf7" resname="Card hidden time (seconds)">
         <source>Card hidden time (seconds)</source>
-        <target>~Karta ezkutatutako denbora (segundu)</target>
+        <target>Kartaren ezkutatze-denbora (segundutan)</target>
       </trans-unit>
       <trans-unit id="GaobWKe" resname="Time (seconds)">
         <source>Time (seconds)</source>
-        <target>~Denbora (segundu)</target>
+        <target>Denbora (segundutan)</target>
       </trans-unit>
       <trans-unit id="mwkgsc5" resname="Rows">
         <source>Rows</source>
@@ -3911,19 +3911,19 @@
       </trans-unit>
       <trans-unit id="JY3jLte" resname="identify">
         <source>identify</source>
-        <target>~identifikatu</target>
+        <target>identifikatu</target>
       </trans-unit>
       <trans-unit id="L.Avp.J" resname="Image gallery">
         <source>Image gallery</source>
-        <target>~Irudi galeria</target>
+        <target>Irudi galeria</target>
       </trans-unit>
       <trans-unit id="Olhjv_H" resname="Link Title">
         <source>Link Title</source>
-        <target>~Esteka Izenburua</target>
+        <target>Estekaren izenburua</target>
       </trans-unit>
       <trans-unit id="2dUkgir" resname="Link Author">
         <source>Link Author</source>
-        <target>~Esteka Egilea</target>
+        <target>Estekaren egilea</target>
       </trans-unit>
       <trans-unit id="Xt7hurv" resname="Choose a license...">
         <source>Choose a license...</source>
@@ -3943,23 +3943,23 @@
       </trans-unit>
       <trans-unit id="_96CGbV" resname="Choose files or drag them here.">
         <source>Choose files or drag them here.</source>
-        <target>~Aukeratu fitxategiak edo arrastatu hemen.</target>
+        <target>Aukeratu fitxategiak edo arrastatu hemen.</target>
       </trans-unit>
       <trans-unit id="n0tPVNi" resname="The gallery has no images.">
         <source>The gallery has no images.</source>
-        <target>~Ez dago irudirik galerian.</target>
+        <target>Ez dago irudirik galerian.</target>
       </trans-unit>
       <trans-unit id=".3Xk4pN" resname="Edit information">
         <source>Edit information</source>
-        <target>~Editatu informazioa</target>
+        <target>Editatu informazioa</target>
       </trans-unit>
       <trans-unit id="JzjJ7kA" resname="Edit image">
         <source>Edit image</source>
-        <target>~Editatu irudia</target>
+        <target>Editatu irudia</target>
       </trans-unit>
       <trans-unit id="N7p0a3Q" resname="Image attribution">
         <source>Image attribution</source>
-        <target>~Irudiaren atribuzioa</target>
+        <target>Irudiaren egiletza</target>
       </trans-unit>
       <trans-unit id="b3RkWmB" resname="Interactive video editor">
         <source>Interactive video editor</source>
@@ -3967,7 +3967,7 @@
       </trans-unit>
       <trans-unit id="CzPIvSQ" resname="Show/Hide help">
         <source>Show/Hide help</source>
-        <target>~Erakutsi/Ezkutatu laguntza</target>
+        <target>Erakutsi/Ezkutatu laguntza</target>
       </trans-unit>
       <trans-unit id="vAR7Z6u" resname="Close help">
         <source>Close help</source>
@@ -4223,7 +4223,7 @@
       </trans-unit>
       <trans-unit id="I3UAekb" resname="The YouTube API might have changed.">
         <source>The YouTube API might have changed.</source>
-        <target>~YouTube API-ak aldatu ahal izan du.</target>
+        <target>Baliteke YouTube APIa aldatu izana.</target>
       </trans-unit>
       <trans-unit id="KNqXdPG" resname="Local file">
         <source>Local file</source>
@@ -4263,11 +4263,11 @@
       </trans-unit>
       <trans-unit id="fDr8jzs" resname="The video is not that long. Check the start/end time.">
         <source>The video is not that long. Check the start/end time.</source>
-        <target>~Bideoa ez da hain luzea. Egiaztatu hasiera/amaiera denbora.</target>
+        <target>Bideoa ez da hain luzea. Egiaztatu hasiera/amaiera denbora.</target>
       </trans-unit>
       <trans-unit id="20aVC9W" resname="Please check the start/end time.">
         <source>Please check the start/end time.</source>
-        <target>~Mesedez, egiaztatu hasiera/amaiera denbora.</target>
+        <target>Mesedez, egiaztatu hasiera/amaiera denbora.</target>
       </trans-unit>
       <trans-unit id="DmOBCiE" resname="Set the time for the slide to be shown">
         <source>Set the time for the slide to be shown</source>
@@ -4363,7 +4363,7 @@
       </trans-unit>
       <trans-unit id="tIpKalw" resname="Please select a file or provide a valid video URL.">
         <source>Please select a file or provide a valid video URL.</source>
-        <target>~Mesedez, aukeratu fitxategi bat edo eman bideoaren URL baliokorra.</target>
+        <target>Aukeratu fitxategi bat edo eman bideoaren baliozko URLa, mesedez.</target>
       </trans-unit>
       <trans-unit id="j8eXIlW" resname="Wrong URL. Expected format:">
         <source>Wrong URL. Expected format:</source>
@@ -4371,7 +4371,7 @@
       </trans-unit>
       <trans-unit id="6WmYFgT" resname="Interactive video">
         <source>Interactive video</source>
-        <target>~Bideo interaktiboa</target>
+        <target>Bideo interaktiboa</target>
       </trans-unit>
       <trans-unit id="R5KPHB6" resname="You can only add one Interactive Video iDevice per page.">
         <source>You can only add one Interactive Video iDevice per page.</source>
@@ -4383,7 +4383,7 @@
       </trans-unit>
       <trans-unit id="K9sgpC1" resname="Math operations">
         <source>Math operations</source>
-        <target>~Matematika eragiketak</target>
+        <target>Eragiketa matematikoak</target>
       </trans-unit>
       <trans-unit id="Qvyrj2P" resname="Answered">
         <source>Answered</source>
@@ -4403,7 +4403,7 @@
       </trans-unit>
       <trans-unit id="Zw3tWVK" resname="Write a valid operator: +-x*/:">
         <source>Write a valid operator: +-x*/:</source>
-        <target>~Idatzi operatorerik baliokidea: +-x*/:</target>
+        <target>Idatzi baliozko operadore bat: +-x*/ :</target>
       </trans-unit>
       <trans-unit id="osgaYGr" resname="Create basic math operation games (addition, subtraction, multiplication, division). The student will have to guess the result, operator or an operand.">
         <source>Create basic math operation games (addition, subtraction, multiplication, division). The student will have to guess the result, operator or an operand.</source>
@@ -4499,7 +4499,7 @@
       </trans-unit>
       <trans-unit id="DpYu48b" resname="% right to see the feedback">
         <source>% right to see the feedback</source>
-        <target>~% feedback ikusi ahal izateko</target>
+        <target>% zuzena, atzeraelikadura ikusteko</target>
       </trans-unit>
       <trans-unit id="ye8G32n" resname="Please specify the number of operations">
         <source>Please specify the number of operations</source>
@@ -4527,7 +4527,7 @@
       </trans-unit>
       <trans-unit id="cA3WL53" resname="Math problems">
         <source>Math problems</source>
-        <target>~Matematika arazoak</target>
+        <target>Problema matematikoak</target>
       </trans-unit>
       <trans-unit id="Lxu4tki" resname="Sorry, that’s incorrect... The right answer is:">
         <source>Sorry, that’s incorrect... The right answer is:</source>
@@ -4603,7 +4603,7 @@
       </trans-unit>
       <trans-unit id="oDlpEVO" resname="Padlock">
         <source>Padlock</source>
-        <target>~ giltza</target>
+        <target>Giltzarrapoa</target>
       </trans-unit>
       <trans-unit id="LUt.HDH" resname="Create activities with a password protected feedback.">
         <source>Create activities with a password protected feedback.</source>
@@ -4611,83 +4611,83 @@
       </trans-unit>
       <trans-unit id="GdlXqEx" resname="Atomic number">
         <source>Atomic number</source>
-        <target>~Atomo zenbakia</target>
+        <target>Zenbaki atomikoa</target>
       </trans-unit>
       <trans-unit id="wf7GMxW" resname="Find the element with the number">
         <source>Find the element with the number</source>
-        <target>~Elementuaren zenbakia aurkitu</target>
+        <target>Zenbakidun elementua aurkitu</target>
       </trans-unit>
       <trans-unit id="UfNpSmO" resname="Click on this chemical element">
         <source>Click on this chemical element</source>
-        <target>~Klik egin elementu kimiko honetan</target>
+        <target>Egin klik elementu kimiko honetan</target>
       </trans-unit>
       <trans-unit id="rO94z3w" resname="Periodic table">
         <source>Periodic table</source>
-        <target>~Periodic table</target>
+        <target>Taula periodikoa</target>
       </trans-unit>
       <trans-unit id="cxaAFw2" resname="Verify">
         <source>Verify</source>
-        <target>~Egiaztatu</target>
+        <target>Egiaztatu</target>
       </trans-unit>
       <trans-unit id="mTk06ov" resname="Play again">
         <source>Play again</source>
-        <target>~Berriro jokatu</target>
+        <target>Berriro jokatu</target>
       </trans-unit>
       <trans-unit id="N6sh8Ge" resname="The game is over. Your score is %s. Correct answers: %s out of %s.">
         <source>The game is over. Your score is %s. Correct answers: %s out of %s.</source>
-        <target>~Jokoa amaitu da. Zure puntuazioa %s da. Erantzun zuzenak: %s/%s.</target>
+        <target>Jokoa amaitu da. Zure puntuazioa %s da. Erantzun zuzenak: %s-tik %s.</target>
       </trans-unit>
       <trans-unit id="TShEEVp" resname="Enter a valid atomic number">
         <source>Enter a valid atomic number</source>
-        <target>~Sartu zenbaki atomiko baliokorra</target>
+        <target>Sartu baliozko zenbaki atomiko bat</target>
       </trans-unit>
       <trans-unit id="JB85Wnx" resname="The element name must contain only letters">
         <source>The element name must contain only letters</source>
-        <target>~Elementuaren izena letra soilak izan behar ditu</target>
+        <target>Elementuaren izenak letrak baino ez ditu izan behar</target>
       </trans-unit>
       <trans-unit id="acHCsww" resname="The symbol must contain one or two letters, starting with an uppercase letter">
         <source>The symbol must contain one or two letters, starting with an uppercase letter</source>
-        <target>~Ikurra letra bat edo bi izan behar ditu, letra larri batekin hasten dena</target>
+        <target>Sinboloak letra bat edo bi izan behar ditu, letra larriz hasita.</target>
       </trans-unit>
       <trans-unit id="5zzvdmW" resname="Select a group of chemical elements">
         <source>Select a group of chemical elements</source>
-        <target>~Aukeratu elementu kimikoen taldea</target>
+        <target>Elementu kimiko multzo bat aukeratu.</target>
       </trans-unit>
       <trans-unit id="ua0Wh3V" resname="Write a valid configuration based, if applicable, on the preceding noble gas">
         <source>Write a valid configuration based, if applicable, on the preceding noble gas</source>
-        <target>~Idatzi konfigurazio baliokidea, baldin badago, aurreko noble gasaren arabera</target>
+        <target>Idatzi ezazu, hala badagokio, aurreko gas noblean oinarritutako baliozko konfigurazio bat</target>
       </trans-unit>
       <trans-unit id="K.DEKB1" resname="Enter the oxidation states of this element, separated by commas">
         <source>Enter the oxidation states of this element, separated by commas</source>
-        <target>~Sartu elementu honen oxidazio egoerak, koma batez bereizita</target>
+        <target>Sartu, koma batez bereizita, elementu honen oxidazio egoerak</target>
       </trans-unit>
       <trans-unit id="ubwodl5" resname="Click on a chemical element">
         <source>Click on a chemical element</source>
-        <target>~Klikatu elementu kimiko batean</target>
+        <target>Klikatu elementu kimiko batean</target>
       </trans-unit>
       <trans-unit id="4XhreEw" resname="Correct. Click on another element">
         <source>Correct. Click on another element</source>
-        <target>~Zuzena. Klikatu beste elementu batean</target>
+        <target>Zuzena. Klikatu beste elementu batean</target>
       </trans-unit>
       <trans-unit id="hk1Z9ZX" resname="That is not correct. Try again">
         <source>That is not correct. Try again</source>
-        <target>~Ez da zuzena. Saiatu berriro</target>
+        <target>Ez da zuzena. Saiatu berriro</target>
       </trans-unit>
       <trans-unit id="S3GAWZ0" resname="You have used all your attempts. Try another element">
         <source>You have used all your attempts. Try another element</source>
-        <target>~Saiatu zure saiakerak guztiz erabili dituzu. Saiatu beste elementu batekin</target>
+        <target>Zure saiakera posible guztiak erabili dituzu. Saiatu beste elementu batekin</target>
       </trans-unit>
       <trans-unit id="rYFqi3U" resname="Try another element">
         <source>Try another element</source>
-        <target>~Saiatu beste elementu batekin</target>
+        <target>Beste elementu batekin saiatu</target>
       </trans-unit>
       <trans-unit id="u885a45" resname="That is not correct. Next element">
         <source>That is not correct. Next element</source>
-        <target>~Ez da zuzena. Hurrengo elementua</target>
+        <target>Ez da zuzena. Hurrengo elementua</target>
       </trans-unit>
       <trans-unit id="3afW0Sd" resname="Correct. This is the chemical element we are looking for">
         <source>Correct. This is the chemical element we are looking for</source>
-        <target>~Zuzena. Hau da bilatzen ari garen elementu kimikoa</target>
+        <target>Zuzena. Hau da bilatzen ari garen elementu kimikoa</target>
       </trans-unit>
       <trans-unit id="NjHrVmr" resname="That is not correct. You clicked on: %s. Number of attempts: %d. Try again">
         <source>That is not correct. You clicked on: %s. Number of attempts: %d. Try again</source>
