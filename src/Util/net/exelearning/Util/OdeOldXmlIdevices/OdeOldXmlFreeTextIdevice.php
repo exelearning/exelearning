@@ -56,6 +56,7 @@ class OdeOldXmlFreeTextIdevice
             if (!empty($nodeFeedbackIdevice)) {
                 $nodeFeedbackIdevice = $nodeFeedbackIdevice[0];
             }
+
             foreach ($nodeIdevices as $nodeIdevice) {
                 // IDEVICE TEXT CONTENT
                 if ($nodeIdevice->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}) {
@@ -67,9 +68,7 @@ class OdeOldXmlFreeTextIdevice
                     $subOdePagStructureSync->setOdeSessionId($odeSessionId);
                     $subOdePagStructureSync->setOdePageId($odePageId);
                     $subOdePagStructureSync->setOdeBlockId($odeBlockId);
-                    // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
 
-                    // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
                     $blockName = (string) $blockNameNode[0];
                     if (in_array($blockName, ['Free Text', 'FPD - Free Text'], true)) {
                         $blockName = '';
@@ -81,13 +80,6 @@ class OdeOldXmlFreeTextIdevice
 
                     // Get pagStructureSync properties
                     $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
-                    // foreach($oldXmlListInstDict->{self::OLD_ODE_XML_UNICODE} as $oldXmlListInstDictUnicode){
-                    //     // array_push($odeResponse, $oldXmlListInstDictUnicode);
-                    //     if($oldXmlListInstDictUnicode["value"]) {
-                    //         $odePagStructureSync->setBlockName($oldXmlListInstDictUnicode["value"]);
-                    //     }
-
-                    // }
 
                     $odeComponentsSync = new OdeComponentsSync();
                     $odeIdeviceId = Util::generateIdCheckUnique($generatedIds);
@@ -100,19 +92,11 @@ class OdeOldXmlFreeTextIdevice
                     $odeComponentsSync->setOdeBlockId($odeBlockId);
                     $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
 
-                    // $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
-
                     $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
-                    // Set type
                     $odeComponentsSync->setOdeIdeviceTypeName('text');
 
                     foreach ($nodeIdevice->{self::OLD_ODE_XML_DICTIONARY} as $oldXmlListDictListInstDictListInstDict) {
-                        // $oldXmlListDictListInstDictListInstDict->registerXPathNamespace('f', $xpathNamespace);
-                        // $fileTextPathToChange = $oldXmlListDictListInstDictListInstDict->xpath('//f:unicode[@content="true"]starts-with(@src,"resources/")]');
-                        // src="resources/
-
                         $sessionPath = null;
-
                         if (!empty($odeSessionId)) {
                             $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
                         }
@@ -126,86 +110,71 @@ class OdeOldXmlFreeTextIdevice
                             isset($oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[2]['content'])
                             && $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[2]['content'] == 'true'
                         ) {
-                            if (isset($commonReplaces)) {
-                                $odeComponentsSyncHtmlView = self::applyReplaces(
-                                    $commonReplaces,
-                                    $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[2]['value']
-                                );
-                            } else {
-                                $odeComponentsSyncHtmlView = $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[2]['value'];
-                            }
+                            $odeComponentsSyncHtmlView = self::applyReplaces(
+                                $commonReplaces,
+                                $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[2]['value']
+                            );
 
                             $prologue = '<?xml encoding="UTF-8">';
                             $html = $prologue.$odeComponentsSyncHtmlView;
                             $doc = new \DOMDocument();
                             @$doc->loadHTML($html);
                             $xpath = new \DOMXPath($doc);
-                            $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
+                            $src = $xpath->evaluate('//img/@src', $doc);
                             foreach ($src as $srcValue) {
-                                $srcString = (string) $srcValue->value;
-                                array_push($result['srcRoutes'], $srcString);
+                                $result['srcRoutes'][] = (string) $srcValue->value;
                             }
 
                             $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
 
                             // Create json properties
-
                             $jsonProperties = self::JSON_PROPERTIES;
                             $jsonProperties['ideviceId'] = $odeIdeviceId;
                             $jsonProperties['textTextarea'] = $odeComponentsSyncHtmlView;
 
-                            // Get the feedback from idevice (only one)
+                            // Get feedback and button caption from idevice (only one)
                             if (!empty($nodeFeedbackIdevice)) {
                                 $nodeFeedbackIdevice->registerXPathNamespace('f', $xpathNamespace);
-                                $nodeHtmltextFeedback = $nodeFeedbackIdevice->xpath('f:dictionary/f:string[@value="content_w_resourcePaths"]/
-                                following-sibling::f:unicode[1]/@value')[0];
-                                $sessionPath = null;
 
-                                if (!empty($odeSessionId)) {
-                                    $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
+                                // Extract feedback HTML
+                                $nodeHtmltextFeedback = $nodeFeedbackIdevice->xpath(
+                                    'f:dictionary/f:string[@value="content_w_resourcePaths"]/following-sibling::f:unicode[1]/@value'
+                                )[0];
+                                $odeComponentsSyncFeedbackHtmlView = self::applyReplaces(
+                                    $commonReplaces,
+                                    (string) $nodeHtmltextFeedback
+                                );
+
+                                // Extract button caption text
+                                $buttonCaptionNode = $nodeFeedbackIdevice->xpath(
+                                    'f:dictionary/f:string[@value="buttonCaption"]/following-sibling::f:unicode[1]/@value'
+                                );
+                                if (!empty($buttonCaptionNode)) {
+                                    $jsonProperties['textFeedbackInput'] = (string) $buttonCaptionNode[0];
                                 }
 
-                                // Common replaces for all OdeComponents
-                                $commonReplaces = [
-                                    'resources'.Constants::SLASH => $sessionPath.$odeIdeviceId.Constants::SLASH,
-                                ];
-
-                                if (isset($commonReplaces)) {
-                                    $odeComponentsSyncFeedbackHtmlView = self::applyReplaces(
-                                        $commonReplaces,
-                                        (string) $nodeHtmltextFeedback
-                                    );
-                                } else {
-                                    $odeComponentsSyncFeedbackHtmlView = (string) $nodeHtmltextFeedback;
-                                }
-
+                                // Update srcRoutes for feedback
                                 $prologue = '<?xml encoding="UTF-8">';
-                                $html = $prologue.$odeComponentsSyncFeedbackHtmlView;
-                                $doc = new \DOMDocument();
-                                @$doc->loadHTML($html);
-                                $xpath = new \DOMXPath($doc);
-                                $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
-                                foreach ($src as $srcValue) {
-                                    $srcString = (string) $srcValue->value;
-                                    array_push($result['srcRoutes'], $srcString);
+                                $docFb = new \DOMDocument();
+                                @$docFb->loadHTML($prologue.$odeComponentsSyncFeedbackHtmlView);
+                                $xpathFb = new \DOMXPath($docFb);
+                                $srcFb = $xpathFb->evaluate('//img/@src', $docFb);
+                                foreach ($srcFb as $srcValue) {
+                                    $result['srcRoutes'][] = (string) $srcValue->value;
                                 }
+
                                 // Set feedback in properties json
                                 $jsonProperties['textFeedbackTextarea'] = $odeComponentsSyncFeedbackHtmlView;
                             }
 
-                            // Create jsonProperties for idevice
-                            $jsonProperties = json_encode($jsonProperties);
-                            $odeComponentsSync->setJsonProperties($jsonProperties);
-
-                            // OdeComponentsSync property fields
+                            // Finalize jsonProperties
+                            $odeComponentsSync->setJsonProperties(json_encode($jsonProperties));
                             $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
-
-                            // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
                             $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
                         }
                     }
+                    $result['odeComponentsSync'][] = $subOdePagStructureSync;
                 }
-                array_push($result['odeComponentsSync'], $subOdePagStructureSync);
             }
         }
 

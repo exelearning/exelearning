@@ -42,7 +42,6 @@ var $imagegallery = {
      * @returns {Boolean}
      */
     renderBehaviour(data) {
-
         const $node = $('#' + data.ideviceId),
             isInExe = eXe.app.isInExe();
         if (!isInExe && $node.length == 1){

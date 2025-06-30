@@ -149,7 +149,7 @@ var $form = {
 
         const data = JSON.parse(JSON.stringify(odata));
         data.msgs = $form.mergeFields(data.msgs, $form.msgs);
-        data.id = ideviceId ?? data.id;
+        data.id = ideviceId || data.ideviceId || data.id;
         data.evaluation = data.evaluation || false;
         data.evaluationID = data.evaluationID || '';
         data.time = data.time || 0;
