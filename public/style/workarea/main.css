@@ -4637,7 +4637,7 @@ body > .tooltip{
 }
 
 /* To review (see #359 & #360) */
-#modalStyleManagerContent .themes-button-container{
+#modalStyleManagerContent .themes-button-container .themes-button-new{
     display: none;
 }
 
