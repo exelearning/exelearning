@@ -27,7 +27,7 @@
         "i18n": "^0.15.1"
     },
     "devDependencies": {
-        "electron": "^36.3.2",
+        "electron": "^37.1.0",
         "electron-builder": "^26.0.12",
         "eslint": "^9.20.0",
         "eslint-config-prettier": "^10.1.5",
