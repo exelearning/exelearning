@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<theme>
+  <name>example</name>
+  <title>Example</title>
+  <version>2025</version>
+  <compatibility>3.0</compatibility>
+  <author>eXeLearning.net</author>
+  <license>Creative Commons by-sa</license>
+  <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
+  <description>Just an example to test the "Style manager".</description>
+  <downloadable>0</downloadable>
+</theme>
