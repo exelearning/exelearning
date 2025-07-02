@@ -24,149 +24,230 @@ class OdeOldXmlImageMagnifierIdevice
     // Create jsonProperties for idevice
     public const JSON_PROPERTIES = [
         'ideviceId' => '',
-        'textInfoDurationInput' => '',
-        'textInfoParticipantsInput' => '',
-        'textInfoDurationTextInput' => 'Duration:',
-        'textInfoParticipantsTextInput' => 'Grouping:',
         'textTextarea' => '',
-        'textFeedbackInput' => 'Show Feedback',
-        'textFeedbackTextarea' => '',
     ];
 
     public static function oldElpImageMagnifierIdeviceStructure($odeSessionId, $odePageId, $galleryImageNodes, $generatedIds, $xpathNamespace)
     {
-        $result['odeComponentsSync'] = [];
-        $result['srcRoutes'] = [];
-        $jsonImages = [];
+        $result = [
+            'odeComponentsSync' => [],
+            'srcRoutes' => [],
+        ];
 
         foreach ($galleryImageNodes as $galleryImageNode) {
-            // Count images to set in json
-            $imageCount = 0;
-            // Get Images
             $galleryImageNode->registerXPathNamespace('f', $xpathNamespace);
-            $images = $galleryImageNode->xpath("f:dictionary/f:instance/f:dictionary/f:instance[@class='exe.engine.resource.Resource']");
-
-            // Get blockName
-            $blockNameNode = $galleryImageNode->xpath("f:dictionary/f:string[@value='caption']/following-sibling::f:unicode[1]/@value");
-
-            $htmlContentNode = $galleryImageNode->xpath("f:dictionary/f:instance[@class='exe.engine.field.TextAreaField']/f:dictionary/
-            f:string[@value='content_w_resourcePaths']/following-sibling::f:unicode[1]");
-
             $odeIdeviceId = Util::generateIdCheckUnique($generatedIds);
             $generatedIds[] = $odeIdeviceId;
-            $odeComponentsMapping[] = $odeIdeviceId;
 
-            foreach ($images as $image) {
-                // Get Image  and thumbnail path
-                $image->registerXPathNamespace('f', $xpathNamespace);
-                $imagePath = $image->xpath("f:dictionary/f:string[@value='_storageName']/following-sibling::f:string[1]");
+            $def = (string) ($galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.MagnifierField']
+             /f:dictionary
+             /f:string[@value='defaultImage']
+             /following-sibling::f:unicode[1]"
+            )[0]['value'] ?? '');
 
-                $sessionPath = null;
+            $glass = (string) ($galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.MagnifierField']
+             /f:dictionary
+             /f:string[@value='glassSize']
+             /following-sibling::f:unicode[1]"
+            )[0]['value'] ?? '');
 
-                if (!empty($odeSessionId)) {
-                    $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
+            $init = (string) ($galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.MagnifierField']
+             /f:dictionary
+             /f:string[@value='initialZSize']
+             /following-sibling::f:unicode[1]"
+            )[0]['value'] ?? '');
+
+            $max = (string) ($galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.MagnifierField']
+             /f:dictionary
+             /f:string[@value='maxZSize']
+             /following-sibling::f:unicode[1]"
+            )[0]['value'] ?? '');
+
+            $w = (string) ($galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.MagnifierField']
+             /f:dictionary
+             /f:string[@value='width']
+             /following-sibling::f:unicode[1]"
+            )[0]['value'] ?? '');
+
+            $h = (string) ($galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.MagnifierField']
+             /f:dictionary
+             /f:string[@value='height']
+             /following-sibling::f:unicode[1]"
+            )[0]['value'] ?? '');
+
+            $width = $w;
+            $height = $h;
+
+            $imageResource = (string) ($galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.MagnifierField']
+             /f:dictionary
+             /f:instance[@class='exe.engine.resource.Resource']
+             /f:dictionary
+             /f:string[@value='_storageName']
+             /following-sibling::f:string[1]"
+            )[0]['value'] ?? '');
+            $imageResource = basename($imageResource);
+            $filenames = [];
+
+            if (!empty($imageResource)) {
+                $filenames[] = $imageResource;
+            }
+
+            $isDefaultImage = (string) ($galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.MagnifierField']
+             /f:dictionary
+             /f:string[@value='isDefaultImage']
+             /following-sibling::f:bool[1]"
+            )[0]['value'] ?? '');
+
+            $message = (string) ($galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.MagnifierField']
+             /f:dictionary
+             /f:string[@value='message']
+             /following-sibling::f:string[1]"
+            )[0]['value'] ?? '');
+
+            $lupaGlobals = [];
+            $globalKeys = [
+                '_title', '_alignInstruc', '_author', '_captionInstruc',
+                '_dimensionInstruc', '_glassSizeInstruc', '_initialZoomInstruc',
+                '_maxZoomInstruc', '_purpose', '_tip', '_typeName',
+            ];
+            foreach ($globalKeys as $key) {
+                $node = $galleryImageNode->xpath(
+                    "f:dictionary/f:string[@value='{$key}']/following-sibling::f:unicode[1]"
+                );
+                $lupaGlobals[$key] = isset($node[0]) ? (string) $node[0]['value'] : '';
+            }
+
+            $filenames = [];
+
+            if (!empty($imageResource)) {
+                $filenames[] = $imageResource;
+            }
+
+            $defaults = $galleryImageNode->xpath(
+                ".//f:instance[@class='exe.engine.field.MagnifierField']
+              /f:dictionary
+              /f:string[@value='defaultImage']
+              /following-sibling::f:unicode[1]"
+            );
+            foreach ($defaults as $d) {
+                $filenames[] = basename((string) $d['value']);
+            }
+
+            $resources = $galleryImageNode->xpath(".//f:instance[@class='exe.engine.resource.Resource']");
+            foreach ($resources as $res) {
+                $path = $res->xpath(
+                    "f:dictionary
+                 /f:string[@value='_storageName']
+                 /following-sibling::f:string[1]"
+                );
+                if (!empty($path)) {
+                    $filenames[] = basename((string) $path[0]['value']);
                 }
+            }
 
-                $fullImagePath = $sessionPath.$odeIdeviceId.Constants::SLASH.(string) $imagePath[0]['value'];
-                // $fullThumbnailPath = $sessionPath . $odeIdeviceId . Constants::SLASH . (string) $imagePath[1]["value"];
+            $textAreas = $galleryImageNode->xpath(
+                ".//f:instance[@class='exe.engine.field.TextAreaField']
+              /f:dictionary
+              /f:unicode"
+            );
+            foreach ($textAreas as $htmlNode) {
+                $html = (string) $htmlNode['value'];
+                if (preg_match_all('/<img[^>]+src="resources\\/([^"]+)"/', $html, $m)) {
+                    foreach ($m[1] as $img) {
+                        $filenames[] = basename($img);
+                    }
+                }
+            }
 
-                // Common replaces for all OdeComponents
-                $commonReplaces = [
-                    '{{image_path}}' => $sessionPath.$odeIdeviceId.Constants::SLASH.(string) $imagePath[0]['value'],
-                    // "{{thumb_path}}" => $sessionPath . $odeIdeviceId . Constants::SLASH . (string) $imagePath[1]["value"]
-                ];
+            $filenames = array_unique($filenames);
+            $sessionPath = !empty($odeSessionId) ? UrlUtil::getOdeSessionUrl($odeSessionId) : '';
+            $jsonImages = [];
 
-                array_push($jsonImages, $fullImagePath);
-
-                array_push($result['srcRoutes'], $fullImagePath);
-                // array_push($result["srcRoutes"], $fullThumbnailPath);
-
-                ++$imageCount;
+            foreach ($filenames as $file) {
+                $fullImagePath = $sessionPath.$odeIdeviceId.Constants::SLASH.$file;
+                $jsonImages[] = $fullImagePath;
+                $result['srcRoutes'][] = $fullImagePath;
             }
 
             $subOdePagStructureSync = new OdePagStructureSync();
             $odeBlockId = Util::generateIdCheckUnique($generatedIds);
             $generatedIds[] = $odeBlockId;
 
-            // OdePagStructureSync fields
             $subOdePagStructureSync->setOdeSessionId($odeSessionId);
             $subOdePagStructureSync->setOdePageId($odePageId);
             $subOdePagStructureSync->setOdeBlockId($odeBlockId);
-            // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
 
-            // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
-            $subOdePagStructureSync->setBlockName($blockNameNode[0]);
+            $blockNameNode = $galleryImageNode->xpath(
+                "f:dictionary/f:string[@value='caption']/following-sibling::f:unicode[1]/@value"
+            );
+            $subOdePagStructureSync->setBlockName((string) $blockNameNode[0]);
 
-            $orderPage = (string) $galleryImageNode['reference'];
-            $subOdePagStructureSync->setOdePagStructureSyncOrder(intval($orderPage));
-
-            // Get pagStructureSync properties
+            $orderPage = intval($galleryImageNode['reference']);
+            $subOdePagStructureSync->setOdePagStructureSyncOrder($orderPage);
             $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
 
             $odeComponentsSync = new OdeComponentsSync();
-
-            // OdeComponentsSync fields
             $odeComponentsSync->setOdeSessionId($odeSessionId);
             $odeComponentsSync->setOdePageId($odePageId);
             $odeComponentsSync->setOdeBlockId($odeBlockId);
             $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
+            $odeComponentsSync->setOdeComponentsSyncOrder(1);
+            $odeComponentsSync->setOdeIdeviceTypeName('magnifier');
 
-            // $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
+            $htmlContentNode = $galleryImageNode->xpath(
+                "f:dictionary
+             /f:instance[@class='exe.engine.field.TextAreaField']
+             /f:dictionary
+             /f:string[@value='content_w_resourcePaths']
+             /following-sibling::f:unicode[1]"
+            );
+            $originalHtml = isset($htmlContentNode[0]) ? (string) $htmlContentNode[0]['value'] : '';
+            $originalHtml = preg_replace(
+                '#(<img[^>]+src=["\'])resources/([^"\']+)#',
+                '$1'.$sessionPath.$odeIdeviceId.Constants::SLASH.'$2',
+                $originalHtml
+            );
 
-            $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
-            // Set type
-            $odeComponentsSync->setOdeIdeviceTypeName('text');
-
-            // $oldXmlListDictListInstDictListInstDict->registerXPathNamespace('f', $xpathNamespace);
-            // $fileTextPathToChange = $oldXmlListDictListInstDictListInstDict->xpath('//f:unicode[@content="true"]starts-with(@src,"resources/")]');
-            // src="resources/
-
-            $sessionPath = null;
-
-            if (!empty($odeSessionId)) {
-                $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
-            }
-
-            // Common replaces for all OdeComponents
-            $commonReplaces = [
-                'resources'.Constants::SLASH => $sessionPath.$odeIdeviceId.Constants::SLASH,
-            ];
-
-            if (isset($commonReplaces)) {
-                // $odeComponentsSyncHtmlView = self::applyReplaces($commonReplaces,
-                // $externalUrlNode->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}[6]["value"]);
-            } else {
-                // $odeComponentsSyncHtmlView = $externalUrlNode->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}[6]["value"];
-            }
-            $odeComponentsSyncHtmlView = '';
-            // $externalUrlDiv = self::SET_EXTERNAL_URL_DIV;
-
-            // $htmlReplace = ["{{image_count}}" => $odeComponentsSyncHtmlView];
-            // $externalUrlDiv = self::applyHtmlChange($htmlReplace, $externalUrlDiv);
-
-            // $odeComponentsSync->setHtmlView($externalUrlDiv);
+            $odeComponentsSync->setHtmlView($originalHtml);
 
             $jsonProperties = self::JSON_PROPERTIES;
             $jsonProperties['ideviceId'] = $odeIdeviceId;
-            foreach ($jsonImages as $key => $jsonImage) {
-                $odeComponentsSyncHtmlView .= '<img src="'.$jsonImage.'"></img>';
-            }
-            $odeComponentsSyncHtmlView = $odeComponentsSyncHtmlView.(string) $htmlContentNode[0]['value'];
+            $jsonProperties['textTextarea'] = $originalHtml;
+            $jsonProperties += [
+                'defaultImage' => $sessionPath.$odeIdeviceId.Constants::SLASH.basename($def),
+                'glassSize' => $glass,
+                'initialZSize' => $init,
+                'maxZSize' => $max,
+                'width' => $width,
+                'height' => $height,
+                'imageResource' => $sessionPath.$odeIdeviceId.Constants::SLASH.$imageResource,
+                'isDefaultImage' => $isDefaultImage,
+                'message' => $message,
+            ];
+            $jsonProperties += $lupaGlobals;
 
-            $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
-
-            $jsonProperties['textTextarea'] = $odeComponentsSyncHtmlView;
-            // Create jsonProperties for idevice
-
-            $jsonProperties = json_encode($jsonProperties);
-            $odeComponentsSync->setJsonProperties($jsonProperties);
-
-            // OdeComponentsSync property fields
+            $odeComponentsSync->setJsonProperties(json_encode($jsonProperties));
             $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
-
             $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
-
-            array_push($result['odeComponentsSync'], $subOdePagStructureSync);
+            $result['odeComponentsSync'][] = $subOdePagStructureSync;
         }
 
         return $result;
