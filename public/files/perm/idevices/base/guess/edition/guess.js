@@ -121,7 +121,7 @@ var $exeDevice = {
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideDefinition = _('Please provide the word definition');
+        msgs.msgEProvideDefinition = _('Please provide the definition of the word or phrase');
         msgs.msgESelectFile = _(
             'The selected file does not contain a valid game',
         );
@@ -169,8 +169,8 @@ var $exeDevice = {
             html = `
             <div id="gameQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which given a definition the student has to complete the word filling in the gaps.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/adivina.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    ${_('Create activities where, given a definition, students complete the word by filling in the missing letters.')} 
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/adivina.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
@@ -214,7 +214,7 @@ var $exeDevice = {
                                     ${_('Score')}:
                                 </strong>
                                 <input class="ADVNE-TypeGame" checked="checked" id="adivinaETypeActivity" type="radio" name="qxtgamemode" value="1" />
-                                <label for="adivinaETypeActivity">${_('0 to 10')}</label>
+                                <label for="adivinaETypeActivity">${_('From 0 to 10')}</label>
                                 <input class="ADVNE-TypeGame" id="adivinaEGameMode" type="radio" name="qxtgamemode" value="0" />
                                 <label for="adivinaEGameMode">${_('Points and lives')}</label>
                                 <input class="ADVNE-TypeGame" id="adivinaETypeReto" type="radio" name="qxtgamemode" value="2" />
@@ -222,8 +222,8 @@ var $exeDevice = {
                             </p>
                             <div id="adivinaEGameModeHelp" class="exe-block-info ADVNE-TypeGameHelp" style="padding-top:8px">
                                 <ul>
-                                    <li><strong>${_('0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
-                                    <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Try to get a high score (thousands of points) and not to lose your lives.')}</li>
+                                    <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
+                                    <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
                                     <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
                                 </ul>
                             </div>
@@ -253,7 +253,7 @@ var $exeDevice = {
                             </p>
                             <p>
                                 <label for="adivinaModeBoard">
-                                    <input type="checkbox" id="adivinaModeBoard">${_('Digital blackboard mode')}
+                                    <input type="checkbox" id="adivinaModeBoard">${_('Digital whiteboard mode')}
                                 </label>
                             </p>
                             <p style="display:none">

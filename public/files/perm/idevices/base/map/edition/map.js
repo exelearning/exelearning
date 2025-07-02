@@ -153,7 +153,7 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideDefinition = _('Please provide the word definition');
+        msgs.msgEProvideDefinition = _('Please provide the definition of the word or phrase');
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image',
         );
@@ -189,7 +189,7 @@ var $exeDevice = {
             'The silence time is wrong. Check the video duration.',
         );
         msgs.msgProvideSolution = _('Please write the solution');
-        msgs.msgEDefintion = _('Please provide the word definition');
+        msgs.msgEDefintion = _('Please provide the definition of the word or phrase');
         msgs.msgNotHitCuestion = _(
             'The question marked as next in case of success does not exist.',
         );
@@ -229,7 +229,7 @@ var $exeDevice = {
                 <p class="exe-block-info exe-block-dismissible">
                     ${_('Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...')}
                     <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/mapa.html" hreflang="es" target="_blank">
-                        ${_('Use Instructions')}
+                        ${_('Usage Instructions')}
                     </a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>

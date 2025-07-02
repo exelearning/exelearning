@@ -117,8 +117,8 @@ var $exeDevice = {
             html = `
             <div id="dragdropQIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice vers.')} 
-                    <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    ${_('Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice versa).')} 
+                    <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">

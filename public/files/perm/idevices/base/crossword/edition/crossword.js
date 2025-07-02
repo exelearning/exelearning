@@ -132,7 +132,7 @@ var $exeDevice = {
         <div id="ccgmQEIdeviceForm">
             <p class="exe-block-info exe-block-dismissible">
                 ${_('Create crossword-type activities')} 
-                <a style="display:none;" href="https://youtu.be/br6S9kcuJI8" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                <a style="display:none;" href="https://youtu.be/br6S9kcuJI8" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                 <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
             </p>
             <div class="exe-form-tab" title="${_('General settings')}">

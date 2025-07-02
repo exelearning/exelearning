@@ -503,6 +503,7 @@ export default class ModalProperties extends Modal {
             let helpIcon = document.createElement('icon');
             helpIcon.innerHTML = 'contact_support';
             helpIcon.classList.add('form-help-exe-icon');
+            helpIcon.classList.add('auto-icon');
             let helpSpanText = document.createElement('span');
             helpSpanText.classList.add('help-content');
             helpSpanText.classList.add('help-hidden');

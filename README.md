@@ -181,11 +181,11 @@ The full project documentation is available in the [`doc`](./doc/00-index.md) di
 
 ## License
 
-Distributed under the GNU General Public License v3.0. See `LICENSE` for more information.
+Distributed under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0. See `LICENSE` for more information.
 
 ---
 
-**eXeLearning** is an AGPL-licensed free/libre tool to create and publish open educational resources.
+**eXeLearning** is a free/libre tool to create and publish open educational resources.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 

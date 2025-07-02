@@ -214,7 +214,8 @@ class ExportSCORM2004Service implements ExportServiceInterface
                 $newResourcesPrefix,
                 $this->exportType,
                 $isPreview,
-                $translator
+                $translator,
+                $odeNavStructureSyncs
             );
 
             // Convert SimpleXMLElement to DOMDocument

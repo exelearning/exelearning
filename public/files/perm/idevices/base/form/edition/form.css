@@ -488,6 +488,15 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
     box-shadow: 0px 0px 5px var(--dark-exe-color);
 }
 
+#formIdeviceForm .FormViewContainer input.fillInput {
+    margin: 6px 2px !important;
+    max-width: 120px !important;
+}
+
+#formIdeviceForm .FormViewContainer select.dropdownSelect {
+    margin: 6px 2px !important;
+}
+
 #formIdeviceForm .Games-Reportdiv {
     display: flex;
     justify-content: flex-start;
@@ -503,8 +512,6 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
 #formIdeviceForm .GameModeLabel {
     font-weight: normal
 }
-
-
 
 #formIdeviceFormTab2 p:first-child {
     margin-top: 0;

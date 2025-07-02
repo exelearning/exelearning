@@ -319,6 +319,7 @@ class OdeComponentsSync extends BaseEntity
     {
         $prefixPageNodeLink = Constants::IDEVICE_NODE_LINK_NAME_IN_EXE;
         $html = $this->htmlView;
+        $json = $this->jsonProperties;
         $linksHref = [];
         preg_match_all('/<a\s+[^>]*href=(["\'])(.*?)\1[^>]*>/i', $html, $matches);
         if (isset($matches[2]) && !empty($matches[2])) {
@@ -330,19 +331,22 @@ class OdeComponentsSync extends BaseEntity
                 $cleanedLinkHref = urldecode($cleanedLinkHref);
                 $pathOnly = str_replace($prefixPageNodeLink, '', $cleanedLinkHref);
                 $estnodes = explode(':', $pathOnly);
-                array_shift($estnodes);
-                $pathOnly = implode(':', $estnodes);
-
+                if (count($estnodes) > 1) {
+                    array_shift($estnodes);
+                    $pathOnly = implode(':', $estnodes);
+                }
                 if (isset($fullPathPag[$pathOnly])) {
                     $newId = $fullPathPag[$pathOnly];
-
                     $newFormattedLink = $prefixPageNodeLink.$newId;
-
-                    $html = str_replace($originalLinkHref, $newFormattedLink, $html);
+                    if (null !== $this->htmlView) {
+                        $this->htmlView = str_replace($originalLinkHref, $newFormattedLink, $this->htmlView);
+                    }
+                    if (null !== $this->jsonProperties) {
+                        $this->jsonProperties = str_replace($originalLinkHref, $newFormattedLink, $this->jsonProperties);
+                    }
                 }
             }
         }
-        $this->htmlView = $html;
 
         return true;
     }
@@ -358,6 +362,7 @@ class OdeComponentsSync extends BaseEntity
      * @param string $elpFileName
      * @param string $resourcesPrefix
      * @param string $exportType
+     * @param string $isIndex
      *
      * @return void
      */
@@ -370,6 +375,7 @@ class OdeComponentsSync extends BaseEntity
         $elpFileName,
         $resourcesPrefix,
         $exportType,
+        $isIndex,
     ) {
         // Replace idevice resources links
         $this->replaceIdeviceResourcesLinks(
@@ -403,8 +409,13 @@ class OdeComponentsSync extends BaseEntity
                         if (Constants::EXPORT_TYPE_HTML5_SP == $exportType) {
                             $pageUrl = '#page-content-'.$key;
                         } else {
-                            $pageUrl = $data['fileUrl'];
+                            if (!$isIndex) {
+                                $pageUrl = '..'.Constants::SLASH.$data['fileUrl'];
+                            } else {
+                                $pageUrl = $data['fileUrl'];
+                            }
                         }
+
                         $this->htmlView = str_replace($pageLinkString, $pageUrl, $this->htmlView);
                     }
                 }

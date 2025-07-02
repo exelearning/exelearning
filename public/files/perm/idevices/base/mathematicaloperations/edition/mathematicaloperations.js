@@ -105,7 +105,7 @@ var $exeDevice = {
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideDefinition = _('Please provide the word definition');
+        msgs.msgEProvideDefinition = _('Please provide the definition of the word or phrase');
         msgs.msgESelectFile = _(
             'The selected file does not contain a valid game',
         );
@@ -151,7 +151,7 @@ var $exeDevice = {
                 <p class="exe-block-info exe-block-dismissible">
                     ${_('Create basic math operation games (addition, subtraction, multiplication, division). The student will have to guess the result, operator or an operand.')}
                     <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/operaciones_matemticas.html" hreflang="es" target="_blank">
-                        ${_('Use Instructions')}
+                        ${_('Usage Instructions')}
                     </a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
@@ -214,7 +214,7 @@ var $exeDevice = {
                                 <label for="eRMQNegativesFractions"><input id="eRMQNegativesFractions" type="checkbox" /> ${_('Allow negative')}.</label>
                             </p>
                             <p id="eRMQZeroDiv">
-                                <label for="eRMQzero"><input id="eRMQzero" type="checkbox" /> ${_('Allow zero as result')}</label>
+                                <label for="eRMQzero"><input id="eRMQzero" type="checkbox" /> ${_('Allow zero as a result')}</label>
                             </p>
                             <p id="eRMQErrorRelativeDiv">
                                 <input class="MTOE-ErrorType" id="eRMQRelative" type="checkbox" name="eRMQtype" value="0" />

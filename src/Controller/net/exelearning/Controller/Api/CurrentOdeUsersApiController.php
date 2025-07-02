@@ -39,6 +39,22 @@ class CurrentOdeUsersApiController extends DefaultApiController
         parent::__construct($entityManager, $logger);
     }
 
+    #[Route('/get/user/by/current/component/id', methods: ['GET'], name: 'get_user_by_current_component_id')]
+    public function getUserByCurrentComponentId(Request $request)
+    {
+        $currentComponentId = $request->query->get('current_component_id');
+        $userData = $this->entityManager->createQuery(
+            'SELECT c.user FROM App\Entity\net\exelearning\Entity\CurrentOdeUsers c 
+         WHERE c.currentComponentId = :componentId'
+        )
+            ->setParameter('componentId', $currentComponentId)
+            ->setMaxResults(1)
+            ->getOneOrNullResult(\Doctrine\ORM\Query::HYDRATE_SCALAR); // Solo datos escalares
+        $jsonData = $this->getJsonSerialized($userData);
+
+        return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
     #[Route('/user/get', methods: ['GET'], name: 'api_current_ode_users_for_user_get')]
     public function getCurrentOdeUsersForUserAction(Request $request)
     {

@@ -169,7 +169,7 @@ var $exeDevice = {
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideSolution = _('Please write the solution');
-        msgs.msgEDefintion = _('Please provide the word definition');
+        msgs.msgEDefintion = _('Please provide the definition of the word or phrase');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNotHitCuestion = _(
             'The question marked as next in case of success does not exist.',
@@ -1196,7 +1196,7 @@ var $exeDevice = {
             <div id="quickMultipleQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_('Create activities with multiple choice questions or questions in which you have to put the answers in the right order.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/selecciona.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/selecciona.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
@@ -1232,7 +1232,7 @@ var $exeDevice = {
                             <p>
                                 <strong class="GameModeLabel"><a href="#seleccionaEGameModeHelp" id="seleccionaEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a>${_('Score')}:</strong>
                                 <input class="SLCNE-TypeGame" checked="checked" id="seleccionaETypeActivity" type="radio" name="slcgamemode" value="1" />
-                                <label for="seleccionaETypeActivity">${_('0 to 10')}</label>
+                                <label for="seleccionaETypeActivity">${_('From 0 to 10')}</label>
                                 <input class="SLCNE-TypeGame" id="seleccionaEGameMode" type="radio" name="slcgamemode" value="0" />
                                 <label for="seleccionaEGameMode">${_('Points and lives')}</label>
                                 <input class="SLCNE-TypeGame" id="seleccionaETypeReto" type="radio" name="slcgamemode" value="2" />
@@ -1240,8 +1240,8 @@ var $exeDevice = {
                             </p>
                             <div id="seleccionaEGameModeHelp" class="exe-block-info SLCNE-TypeGameHelp">
                                 <ul>
-                                    <li><strong>${_('0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
-                                    <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Try to get a high score (thousands of points) and not to loose your lives.')}</li>
+                                    <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
+                                    <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
                                     <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
                                 </ul>
                             </div>
@@ -1254,9 +1254,9 @@ var $exeDevice = {
                                 <label for="seleccionaEPercentajeFB"><input type="number" name="seleccionaEPercentajeFB" id="seleccionaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />${_('&percnt; right to see the feedback')}</label>
                             </p>
                             <p id="seleccionaEFeedbackP" class="SLCNE-EFeedbackP"><textarea id="seleccionaEFeedBackEditor" class="exe-html-editor"></textarea></p>
-                            <p class="SLCNE-Flex"><label for="seleccionaEVideoIntro">${_('Video Intro')}:</label><input type="text" id="seleccionaEVideoIntro" /><a href="#" class="SLCNE-ButtonLink" id="seleccionaEVideoIntroPlay" title="${_('Play video intro')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="SLCNE-EButtonImage" /></a></p>
+                            <p class="SLCNE-Flex"><label for="seleccionaEVideoIntro">${_('Video Intro')}:</label><input type="text" id="seleccionaEVideoIntro" /><a href="#" class="SLCNE-ButtonLink" id="seleccionaEVideoIntroPlay" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="SLCNE-EButtonImage" /></a></p>
                             <p><label for="seleccionaEPercentajeQuestions">%${_('Questions')}:  <input type="number" name="seleccionaEPercentajeQuestions" id="seleccionaEPercentajeQuestions" value="100" min="1" max="100" /> </label><span id="seleccionaENumeroPercentaje">1/1</span></p>
-                            <p><label for="seleccionaModeBoard"><input type="checkbox" id="seleccionaModeBoard">${_('Digital blackboard mode')}</label></p>
+                            <p><label for="seleccionaModeBoard"><input type="checkbox" id="seleccionaModeBoard">${_('Digital whiteboard mode')}</label></p>
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#seleccionaEEvaluationHelp" id="seleccionaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="seleccionaEEvaluation"><label for="seleccionaEEvaluation">${_('Progress report')}.</label>
@@ -1475,7 +1475,7 @@ var $exeDevice = {
                                 <div class="SLCNE-EVIOptions">
                                     <label for="seleccionaEVIURL">${_('URL')}:</label>
                                     <input id="seleccionaEVIURL" type="text" />
-                                    <a href="#" id="seleccionaEVIPlayI" class="SLCNE-ENavigationButton SLCNE-EPlayVideo" title="${_('Play video intro')}"><img src="${path}quextIEPlay.png" alt="${_('Play video intro')}" class="SLCNE-EButtonImage b-playintro" /></a>
+                                    <a href="#" id="seleccionaEVIPlayI" class="SLCNE-ENavigationButton SLCNE-EPlayVideo" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play the introduction video')}" class="SLCNE-EButtonImage b-playintro" /></a>
                                     <label for="seleccionaEVIStart">${_('Start')}:</label>
                                     <input id="seleccionaEVIStart" type="text" value="00:00:00" readonly />
                                     <label for="seleccionaEVIEnd">${_('End')}:</label>

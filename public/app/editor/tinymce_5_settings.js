@@ -422,7 +422,9 @@ var $exeTinyMCE = {
             eXeLearning.app.themes.selected.path +
             'content.css,' +
             eXeLearning.app.api.apiUrlBase +
-            '/app/editor/tinymce_5_extra.css'
+            '/app/editor/tinymce_5_extra.css,' +
+            eXeLearning.app.api.apiUrlBase +
+            '/libs/bootstrap/bootstrap.min.css'
         );
     },
 

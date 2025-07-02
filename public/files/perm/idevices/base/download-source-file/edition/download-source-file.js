@@ -168,7 +168,7 @@ var $exeDevice = {
     var str4 = c_("Author");
     var str5 = c_("License");
     var str6 = c_("This content was created with eXeLearning, your free and open source editor to create educational resources.");
-    var str7 = c_("Download elp file");
+    var str7 = c_("Download .elp file");
 
     var defaultContent = '\
 			<table class="exe-table">\

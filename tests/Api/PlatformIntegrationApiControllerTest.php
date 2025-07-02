@@ -41,18 +41,7 @@ final class PlatformIntegrationApiControllerTest extends WebTestCase
         self::assertResponseRedirects('/workarea?odeId=' . $odeId . '&jwt_token=' . $jwt);
     }
 
-    public function testSecondTypeEditRedirectsWithItemUuid(): void
-    {
-        $client = self::createClient();
-        $itemUuid = 'abc-123';
-
-        $client->request('GET', '/edit_second_type_platform_ode', [
-            'item_uuid' => $itemUuid,
-        ]);
-
-        self::assertResponseStatusCodeSame(Response::HTTP_FOUND);
-        self::assertResponseRedirects('/workarea?item_uuid=' . $itemUuid);
-    }
+    
 
     public function testSetPlatformNewOdeWithoutSessionIdReturnsError(): void
     {

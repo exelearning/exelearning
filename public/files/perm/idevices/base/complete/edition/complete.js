@@ -55,7 +55,7 @@ var $exeDevice = {
         msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
         msgClose: c_('Close'),
         msgSolution: c_('Solution'),
-        msgTry: c_('Try again'),
+        msgTry: c_('Try again!'),
         msgCheck: c_('Check'),
         msgEndScore: c_('You got %s right answers and %d errors.'),
         msgEndTime: c_('Time over.'),
@@ -78,7 +78,7 @@ var $exeDevice = {
         const msgs = this.msgs;
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgEGeneralSettings = _('General settings');
-        msgs.msgEIntrucctions = _('Please write some instructions.');
+        msgs.msgEIntrucctions = _('Please write the instructions.');
         msgs.msgTime = _('Max time');
         msgs.msgERetro = _('Please write the feedback.');
         msgs.msgCodeAccess = _('Access code');
@@ -113,8 +113,8 @@ var $exeDevice = {
         const html = `
             <div id="completeQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create activities in which the student will have to fill in the blanks of a text, writing or choosing an answer.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/completa.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    ${_('Create activities in which the student must fill in the blanks of a text by writing, dragging or selecting the answer.')}
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/completa.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                      <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
@@ -187,7 +187,7 @@ var $exeDevice = {
                         <div class="CMPT-EPanel" id="cmptEPanel">
                             <p>
                                 <label for="cmptEText" class="sr-av">${_('Text')}:</label>
-                                <textarea id="cmptEText" class="exe-html-editor">${c_("eXeLearning is a **free** and open source editor to create **educational** resources in an **simple | easy** way. It's available for different **operating** systems.").replace(/\*\*/g, '@@')}</textarea>
+                                <textarea id="cmptEText" class="exe-html-editor">${c_("eXeLearning is a **free** and open source editor to create **educational** resources in an **simple and easy** way. It's available for different **operating** systems.").replace(/\*\*/g, '@@')}</textarea>
                             </p>
                         </div>
                     </fieldset>

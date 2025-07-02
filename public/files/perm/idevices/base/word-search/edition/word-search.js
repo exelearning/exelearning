@@ -90,7 +90,7 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideDefinition = _('Please provide the word definition');
+        msgs.msgEProvideDefinition = _('Please provide the definition of the word or phrase');
         msgs.msgESelectFile = _(
             'The selected file does not contain a valid game',
         );
@@ -310,7 +310,7 @@ var $exeDevice = {
                 <div id="sopaQEIdeviceForm">
                     <p class="exe-block-info exe-block-dismissible" style="position:relative">
                         ${_('Create word search games with additional text, images or sound.')}
-                        <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/sopa_de_letras.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                        <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/sopa_de_letras.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                         <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                     </p>
                     <div class="exe-form-tab" title="${_('General settings')}">

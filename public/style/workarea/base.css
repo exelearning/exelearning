@@ -399,6 +399,14 @@ body [dir='rtl'] {
     display: block
 }
 
+.box-toggle {
+    display: none;
+}
+
+.js .box-toggle {
+    display: inline-block;
+}
+
 .sr-av,
 .js .js-sr-av,
 .exe-hidden-accessible,

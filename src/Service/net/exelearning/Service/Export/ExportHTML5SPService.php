@@ -126,6 +126,18 @@ class ExportHTML5SPService implements ExportServiceInterface
         $isPreview,
         $translator,
     ) {
+        $visiblesPages = [];
+        $indexNode = 0;
+
+        foreach ($pagesFileData as $key => $pageData) {
+            if (ExportXmlUtil::isVisibleExport($odeNavStructureSyncs, $indexNode)) {
+                $url = $pageData['fileUrl'];
+                // Add the page to the visibles pages and link it with the previous page and the next page
+                $visiblesPages[$key] = ['url' => $url];
+            }
+            ++$indexNode;
+        }
+
         // This export generates a single html page with all the component
         // We separate the index from the rest of the pages
         $otherOdeNavStructureSyncs = [];
@@ -134,7 +146,9 @@ class ExportHTML5SPService implements ExportServiceInterface
             if ($pageData['isIndex']) {
                 $indexOdeNavStructureSync = $odeNavStructureSync;
             } else {
-                $otherOdeNavStructureSyncs[] = $odeNavStructureSync;
+                if (isset($visiblesPages[$odeNavStructureSync->getOdePageId()])) {
+                    $otherOdeNavStructureSyncs[] = $odeNavStructureSync;
+                }
             }
         }
 

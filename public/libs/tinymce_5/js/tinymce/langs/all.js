@@ -346,10 +346,10 @@ tinymce.addI18n('all',{
 " Reformat": _(" Reformat"),
 "Update": _("Update"),
 // Definition List
-"A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List button.": _("A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List button."),
+"A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List Button.": _("A new Definition List will be created. To add a new term, just place the cursor at the end of a definition and click again the Definition List Button."),
 "Yes": _("Yes"),
 // Insert/Edit Link
-"Anchors, nodes or elp": _("Anchors, nodes or elp"),
+"Anchors, nodes or .elp": _("Anchors, nodes or .elp"),
 "Open link in...": _("Open link in..."),
 "Include File Information": _("Include File Information"),
 "File size": _("File size"),
@@ -395,7 +395,7 @@ tinymce.addI18n('all',{
 // Audio recorder
 "Duration:": _("Duration:"),
 "JavaScript player (for old browsers or browsers that can't play that audio format)": _("JavaScript player (for old browsers or browsers that can't play that audio format)"),
-"Use the %s option after recording to define the authorship or the audio title.": _("Use the %s option after recording to define the authorship or the audio title."),
+"Use the %s option after recording to define the authorship or title of the audio.": _("Use the %s option after recording to define the authorship or title of the audio."),
 "There is no audio input device connected.": _("There is no audio input device connected."),
 // Tooltip
 "Link title": _("Link title"),

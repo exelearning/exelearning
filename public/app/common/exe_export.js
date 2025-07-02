@@ -11,19 +11,19 @@ $exeExport = {
         try {
             this.addBoxToggleEvent();
         } catch (err) {
-            console.error('error: failed to initialize box toggle events');
+            console.error('Error: Failed to initialize box toggle events');
         }
         try {
             this.setExe();
             this.initExe();
             this.initJsonIdevices();
         } catch (err) {
-            console.error('error: failed to initialize content');
+            console.error('Error: Failed to initialize content');
         }
         try {
             this.loadScorm();
         } catch (err) {
-            console.error('error: failed to initialize scorm');
+            console.error('Error: Failed to initialize SCORM');
         }
 
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
@@ -225,13 +225,11 @@ $exeExport = {
     }
 }
 
-//////////////////////////////////////////////////////
-
 $(function () {
     $exeExport.init();
 });
 
-/* exe_search.js */
+/* To review: This should be in a different file (exe_search.js) */
 $exeExport.searchBar = {
     deepLinking : false,
     markResults : false,

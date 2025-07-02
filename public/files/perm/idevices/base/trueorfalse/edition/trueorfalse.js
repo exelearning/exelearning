@@ -59,9 +59,11 @@ var $exeDevice = {
         msgShow: c_('Show'),
         msgHide: c_('Hide'),
         msgCheck: c_('Check'),
-        msgReboot: c_('Try again'),
+        msgReboot: c_('Try again!'),
         msgScore: c_('Score'),
         msgWeight: c_('Weight'),
+        msgNext: c_('Next'),
+        msgPrevious: c_('Previous'),
     },
 
     init: function (element, previousData, path) {
@@ -322,20 +324,23 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             html = `
         <div id="trueorfalseIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible"">${_('Create interactive True or False quizzes.')} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Use Instructions')}</a></p>
+            <p class="exe-block-info exe-block-dismissible"">${_('Create interactive True or False quizzes.')} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
             <div class="exe-form-tab" title="${_('General settings')}">
                 ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Answer all the questions in this quiz.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
                         <p>
-                            <label for="tofEIsTest"><input type="checkbox" id="tofEIsTest">${_('Test')}.</label>
+                            <label for="tofEShowSlider"><input type="checkbox" name="tofEShowSlider" id="tofEShowSlider"/>${_('Slides list')}</label>
+                        </p>
+                        <p>
+                            <label for="tofEIsTest"><input type="checkbox" id="tofEIsTest">${_('Test')}</label>
                             <span id="tofETimeDiv" class="hidden">
                                 <label for="tofETime">${_('Time (minutes)')}: <input type="number" name="tofETime" id="tofETime" value="0" min="0" max="59" /></label>
                             </span>
                         </p>                     
                         <p>
-                            <label for="tofEQuestionsRandom"><input type="checkbox" id="tofEQuestionsRandom">${_('Random questions')}.</label>
+                            <label for="tofEQuestionsRandom"><input type="checkbox" id="tofEQuestionsRandom">${_('Random questions')}</label>
                         </p>                     
                         <p>
                             <label for="tofEPercentageQuestions">%${_('Questions')}:<input type="number" name="tofEPercentageQuestions" id="tofEPercentageQuestions" value="100" min="1" max="100" /></label><span id="tofENumeroPercentaje">1/1</span>
@@ -566,6 +571,7 @@ var $exeDevice = {
                 this.value = value;
                 $exeDevice.updateQuestionsNumber();
             });
+
         $exeDevices.iDevice.gamification.share.addEvents(
             6,
             $exeDevice.insertQuestions,
@@ -592,44 +598,26 @@ var $exeDevice = {
     },
 
     importText: function (content) {
-        const lines = content.split('\n'),
-            allowRegex = /^[^\s#].*?#(0|1)#.*?#.*?$/;
-        let valids = 0;
-        let questions = JSON.parse(JSON.stringify($exeDevice.questionsGame));
-        lines.forEach(function (line) {
-            const p = $exeDevice.getDefaultQuestion();
-            if (allowRegex.test(line)) {
-                const linarray = line.trim().split('#');
-                p.question = linarray[0];
-                p.solution = parseInt(linarray[1]);
-                p.suggestion = linarray[2] || '';
-                p.feedback = linarray[3] || '';
-                questions.push(p);
-                valids++;
-            }
-        });
+        const lines = content.split('\n');
+        $exeDevice.insertQuestions(lines)
 
-        return valids > 0 ? questions : false;
     },
 
     importCuestionaryXML: function (xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
         if ($(xmlDoc).find('parsererror').length > 0) return false;
 
         const quiz = $(xmlDoc).find('quiz').first();
         if (quiz.length === 0) return false;
 
-        const questions = quiz.find('question'),
-            questionsJson = [];
+        const questions = quiz.find('question');
+        const questionsJson = [];
 
         questions.each(function () {
-            const question = $(this),
-                type = question.attr('type');
-
-            if (type !== 'truefalse') {
-                return;
-            }
+            const question = $(this);
+            const type = question.attr('type');
+            if (type !== 'truefalse') return;
 
             const questionText = question
                 .find('questiontext > text')
@@ -637,54 +625,34 @@ var $exeDevice = {
                 .text()
                 .trim();
 
-            const generalFeedback = question
-                .find('generalfeedback > text')
-                .first()
-                .text()
-                .trim();
-
-            const answers = question.find('answer');
-            let solution = undefined;
             let feedback = '';
+            const fbNode = question.find('feedback > text').first();
+            if (fbNode.length) {
+                feedback = fbNode.text().trim();
+            }
 
-            answers.each(function () {
-                const answer = $(this);
-                const fraction = parseInt(answer.attr('fraction'), 10);
-                if (fraction === 100) {
-                    const answerText = answer
-                        .find('text')
-                        .first()
-                        .text()
-                        .trim()
-                        .toLowerCase();
-                    solution = answerText === 'true' ? 1 : 0;
-                    feedback = answer
-                        .find('feedback > text')
-                        .first()
-                        .text()
-                        .trim();
-                }
-            });
+            const suggestion = '';
+
+            let solution;
+            const ansText = question.find('answer > text').first().text().trim().toLowerCase();
+            if (ansText === 'true') {
+                solution = 1;
+            } else if (ansText === 'false') {
+                solution = 0;
+            }
+
             if (typeof solution !== 'undefined' && questionText) {
                 questionsJson.push({
-                    question: questionText || '',
-                    feedback: feedback || '',
-                    suggestion: generalFeedback || '',
-                    solution: solution || 0,
+                    question: questionText,
+                    feedback: feedback,
+                    suggestion: suggestion,
+                    solution: solution
                 });
             }
         });
 
-        let valids = 0;
-        let questionsG = JSON.parse(JSON.stringify($exeDevice.questionsGame));
-        questionsJson.forEach(function (q) {
-            if (q.question && typeof q.solution !== 'undefined') {
-                questionsG.push(q);
-                valids++;
-            }
-        });
-
-        return valids > 0 ? questionsG : false;
+        const questionsG = questionsJson.filter(q => q.question && typeof q.solution !== 'undefined');
+        $exeDevice.addQuestions(questionsG);
     },
 
     importGame: function (content, filetype) {
@@ -694,23 +662,17 @@ var $exeDevice = {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
-            let questions = false;
             if (filetype.match('text/plain')) {
-                questions = $exeDevice.importText(content);
+                $exeDevice.importText(content);
             } else if (
                 filetype.match('application/xml') ||
                 filetype.match('text/xml')
             ) {
-                questions = $exeDevice.importCuestionaryXML(content);
-            }
-            if (questions) {
-                $exeDevice.questionsGame = JSON.parse(
-                    JSON.stringify(questions),
-                );
+                $exeDevice.importMoodle(content);
             } else {
-                $exeDevice.showMessage(_('Sorry, wrong file format'));
-                return;
+                eXe.app.alert(_('Sorry, wrong file format'));
             }
+            return;
         } else if (!game || typeof game.typeGame === 'undefined') {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
             return;
@@ -744,27 +706,64 @@ var $exeDevice = {
         $('.exe-form-tabs li:first-child a').click();
     },
 
-    insertQuestions: function(lines) {
-        lines.forEach(line => {
-            const p               = $exeDevice.getDefaultQuestion(),
-                  lineContent     = line.replace('v-f#', ''),
-                  parts           = lineContent.split('#'),
-                  [question = '', solutionRaw = '', suggestion = '', feedback = ''] = parts;
-    
-            p.question   = question;
-            p.solution   = ['true', '1'].includes(solutionRaw.trim().toLowerCase());
-            p.suggestion = suggestion;
-            p.feedback   = feedback;
-    
-            $exeDevice.questionsGame.push(p)
-        })
-    
-        $exeDevice.active = 0
-        $exeDevice.showQuestion($exeDevice.active)
-        $exeDevice.deleteEmptyQuestion()
-        $exeDevice.updateQuestionsNumber()
+    importMoodle: function (xmlString) {
+        const xmlDoc = $.parseXML(xmlString),
+            $xml = $(xmlDoc);
+        if ($xml.find('quiz').length > 0) {
+            $exeDevice.importCuestionaryXML(xmlString);
+        } else {
+            eXe.app.alert(_('Sorry, wrong file format'));
+        }
     },
-    
+
+
+    insertQuestions: function (lines) {
+        const lineFormat = /^vof#[^\s#].*?#(0|1)#.*?#.*?|[^\s#].*?#(0|1)#.*?#.*?|[01]#[^#]+$/
+        let questions = [];
+        lines.forEach(line => {
+            if (lineFormat.test(line)) {
+                const p = $exeDevice.getDefaultQuestion();
+                const lineContent = line.replace('v-f#', '');
+                let question = '';
+                let solutionRaw = '';
+                let suggestion = '';
+                let feedback = '';
+                const simplePattern = /^[01]#[^#]+$/;
+                if (simplePattern.test(lineContent)) {
+                    [solutionRaw, question] = lineContent.split('#');
+                } else {
+                    const parts = lineContent.split('#');
+                    [question = '', solutionRaw = '', suggestion = '', feedback = ''] = parts;
+                }
+
+                p.question = question;
+                p.solution = ['true', '1'].includes(solutionRaw.trim().toLowerCase());
+                p.suggestion = suggestion;
+                p.feedback = feedback;
+
+                questions.push(p);
+            }
+        });
+        $exeDevice.addQuestions(questions)
+
+    },
+    addQuestions: function (questions) {
+        if (!questions || questions.length == 0) {
+            eXe.app.alert(
+                _('Sorry, there are no questions for this type of activity.'),
+            );
+            return;
+        }
+        for (let i = 0; i < questions.length; i++) {
+            $exeDevice.questionsGame.push(questions[i]);
+        }
+        $exeDevice.active = 0;
+        $exeDevice.showQuestion($exeDevice.active);
+        $exeDevice.deleteEmptyQuestion();
+        $exeDevice.updateQuestionsNumber();
+        $('.exe-form-tabs li:first-child a').click();
+    },
+
     deleteEmptyQuestion: function () {
         if (tinyMCE.get('tofEQuestionEditor')) {
             question = tinyMCE.get('tofEQuestionEditor').getContent();
@@ -803,6 +802,7 @@ var $exeDevice = {
         $('#tofETime').val(game.time);
         $('#tofEQuestionsRandom').prop('checked', game.questionsRandom);
         $('#tofEPercentageQuestions').val(game.percentageQuestions);
+        $('#tofEShowSlider').prop('checked', game.showSlider || false);
         $('#tofEIsTest').prop('checked', game.isTest || false);
 
         if (game.isTest) {
@@ -813,6 +813,8 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.showSlider =
+            typeof game.showSlider !== 'undefined' ? game.showSlider : false;
         $exeDevices.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
@@ -908,7 +910,8 @@ var $exeDevice = {
     getLinesQuestions: function (questionsGame) {
         let lineswords = [];
         for (let i = 0; i < questionsGame.length; i++) {
-            let question = `v-f#${questionsGame[i].question}#${questionsGame[i].solution}#${questionsGame[i].feedback}#${questionsGame[i].suggestion}`;
+            const solution = questionsGame[i].solution && questionsGame[i].solution !== 'false' ? 1 : 0;
+            let question = `v-f#${questionsGame[i].question}#${solution}#${questionsGame[i].feedback}#${questionsGame[i].suggestion}`;
             lineswords.push(question);
         }
         return lineswords;
@@ -925,7 +928,9 @@ var $exeDevice = {
             isTest = $('#tofEIsTest').is(':checked'),
             id = $exeDevice.id,
             time = parseInt($('#tofETime').val(), 10),
-            questionsGame = $exeDevice.questionsGame;
+            questionsGame = $exeDevice.questionsGame,
+            showSlider = $('#tofEShowSlider').is(':checked');
+
 
         evaluation = isTest ? evaluation : false;
 
@@ -993,6 +998,7 @@ var $exeDevice = {
             weighted: scorm.weighted || 100,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            showSlider: showSlider,
             ideviceId: id,
         };
     },

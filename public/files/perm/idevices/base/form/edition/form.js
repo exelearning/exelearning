@@ -106,6 +106,8 @@ var $exeDevice = {
         'msgPlayStart': c_("Click here to start"),
         'msgTrue': c_("True"),
         'msgFalse': c_("False"),
+        'msgNext': c_("Next"),
+        'msgPrevious': c_("Previous"),
 
     },
 
@@ -239,6 +241,10 @@ var $exeDevice = {
         this.ideviceBody.querySelector("#frmEQuestionsRandom").checked = previousData.questionsRandom || false;
         this.ideviceBody.querySelector("#frmEPercentageQuestions").value = previousData.percentageQuestions || 100;
         this.ideviceBody.querySelector("#frmETime").value = previousData.time ?? 0;
+
+        previousData.showSlider = typeof previousData.showSlider !== 'undefined' ? previousData.showSlider : false;
+        this.ideviceBody.querySelector("#frmEShowSlider").checked = previousData.showSlider;
+
         previousData.weighted = previousData.weighted ?? 100;
         previousData.repeatActivity = previousData.repeatActivity ?? false;
 
@@ -285,6 +291,7 @@ var $exeDevice = {
         this[$exeDevice.dropdownPassRateId] = $exeDevice.ideviceBody.querySelector(`[id^="${$exeDevice.dropdownPassRateId}"]`).value;
         this[$exeDevice.checkAddBtnAnswersId] = $exeDevice.ideviceBody.querySelector(`#${$exeDevice.checkAddBtnAnswersId}`).checked;
 
+        this.showSlider = this.ideviceBody.querySelector("#frmEShowSlider").checked;
 
         this.passRate = 50
         this.addBtnAnswers = $exeDevice.ideviceBody.querySelector(`#checkAddBtnAnswers`).checked;
@@ -675,7 +682,6 @@ var $exeDevice = {
         data.repeatActivity = this.repeatActivity;
         data.isScorm = this.isScorm;
         data.textButtonScorm = this.textButtonScorm;
-        data.repeatActivity = this.repeatActivity;
         data.weighted = this.weighted;
         data.msgs = this.datamsg;
         data.id = data.ideviceId;
@@ -687,6 +693,7 @@ var $exeDevice = {
         data.passRate = 5;
         data.addBtnAnswers = this.addBtnAnswers;
         data.eXeIdeviceTextAfter = this.eXeIdeviceTextAfter;
+        data.showSlider = this.showSlider;
 
 
         return data;
@@ -830,10 +837,10 @@ var $exeDevice = {
             this.strings.msgEInstructions = _("Instructions");
             this.strings.msgEActivity = _("Activity");
             this.strings.msgEQuestion = _("Question");
-            this.strings.msgEAddDropdownQuestion = _("Add dropdown question to form");
-            this.strings.msgEAddFillQuestion = _("Add fill question to form");
-            this.strings.msgEAddTrueFalseQuestion = _("Add true-false question to form");
-            this.strings.msgEAddSelectionQuestion = _("Add selection question to form");
+            this.strings.msgEAddDropdownQuestion = _("Add a dropdown question to form");
+            this.strings.msgEAddFillQuestion = _("Add a fill question to form");
+            this.strings.msgEAddTrueFalseQuestion = _("Add a true-false question to form");
+            this.strings.msgEAddSelectionQuestion = _("Add a selection question to form");
             this.strings.msgEAddQuestion = _("Add this question to form");
             this.strings.msgESaveQuestion = _("Save");
             this.strings.msgECancelQuestion = _("Cancel");
@@ -849,28 +856,24 @@ var $exeDevice = {
             this.strings.msgETrue = _("True");
             this.strings.msgEFalse = _("False");
             this.strings.msgNoQuestions = _("No questions in the form");
-            this.strings.msgPassRate = _("Select pass rate");
+            this.strings.msgPassRate = _("Set the pass mark");
             this.strings.msgAddBtnAnswers = _("Include a button to display the answers");
             this.strings.msgCapitalization = _("Check capitalization");
             this.strings.msgStrictQualification = _("Strict qualification");
-
             this.strings.msgInstructionsQuestion = _("The question should be clear and unambiguous. Avoid negative premises as they tend to be ambiguous.");
             this.strings.msgInstructionsSelection = _(`Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.`) + ' ' + this.strings.msgInstructionsQuestion;
             this.strings.msgInstructionsDropdown = _(`Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.`);
-            this.strings.msgInstructionsDropdownOtherWords = _("Optional: you can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.");
-            this.strings.msgInstructionsFill = _(`Type the text for the fill-in-the-blank activity into the blank field either by pasting text from another source or by typing the text directly into the field. In order to select the words you want to hide, double-click on the word to select it, and click on the Hide/Show word button below. You can define more than one possible answer if they are surrounded by the pipe sign (|). E.g.: |dog|cat|bird|`);
+            this.strings.msgInstructionsDropdownOtherWords = _("Optional: You can type other words to complete the drop-down activity. Use the vertical bar to separate the words. This field can be left blank.");
+            this.strings.msgInstructionsFill = _(`Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|`);
             this.strings.msgInstructionsFillCapitalization = _("If this option is checked, submitted answers with different capitalization will be marked as incorrect");
             this.strings.msgInstructionsFillStrictQualification = _(`If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.`);
             this.strings.msgInstructionsFillCapitalize = _(`If this option is checked, answers submitted with case differences will be marked as incorrect.`)
-
             this.strings.msgConfirmRemoveQuestion = _("Are you sure you want to delete this question? This can't be undone.");
             this.strings.msgConfirmCancelEdit = _("Are you sure you want to discard the changes? This can't be undone.");
-
             this.strings.questDropdown = _("Dropdown");
             this.strings.questSelection = _("Selection");
             this.strings.questTrueFalse = _("True-False");
             this.strings.questFill = _("Fill");
-
             this.strings.msgLangTrueFalseHelp = _("Select whether the statement is true or false");
             this.strings.msgLangDropdownHelp = _("Choose the correct answer among the options proposed");
             this.strings.msgLangFillHelp = _("Fill in the blanks with the appropriate word");
@@ -887,8 +890,6 @@ var $exeDevice = {
                 "fill": this.strings.questFill
             }
         }
-
-
 
         generateStringsQuestions(questions) {
             let qStrings = {};
@@ -921,15 +922,18 @@ var $exeDevice = {
          */
         createForm(ideviceBody) {
             const html = `<div id="formIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">${_("Create quizzes with multiple-choice, true/false, and fill-in-the-blank questions..")} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_("Use Instructions")}</a></p>
+                <p class="exe-block-info exe-block-dismissible">${_("Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.")} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_("Usage Instructions")}</a></p>
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_("Complete the questions in the following quiz"))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_("Options")}</a></legend>
-                        <div>              
+                        <div>
+                            <p>
+                                <label for="frmEShowSlider"><input type="checkbox" name="frmEShowSlider" id="frmEShowSlider"/>${_('Slides list')}</label>
+                            </p>
                             <p>
                                 <label for="frmEQuestionsRandom"><input type="checkbox" id="frmEQuestionsRandom">${_("Random questions")}.</label>
-                            </p>\  
+                            </p>
                             <p id="frmETimeDiv">
                                     <label for="frmETime">${_("Time (minutes)")}: <input type="number" name="frmETime" id="frmETime" value="0" min="0" max="59" /></label>
                             </p>                     
@@ -974,15 +978,12 @@ var $exeDevice = {
                                         ${this.createButtonHTML($exeDevice.btnAddSelectionTop, this.strings.questSelection, this.strings.msgEAddSelectionQuestion, "add-question-button")}
                                     </div>
                                 </div>
-                        
                                 <!-- No Questions Message -->
                                 <div id="${$exeDevice.msgNoQuestionsId}" class="container">${this.strings.msgNoQuestions}</div>
-                        
                                 <!-- Form Preview -->
                                 <div class="container">
                                     <ul id="${$exeDevice.formPreviewId}"></ul>
                                 </div>
-                        
                                 <!-- Bottom Questions Container -->
                                 <div class="container-add-questions">
                                 ${this.createIconHTML($exeDevice.btnQuestionsBottom, "add", _("Show questions"), "show-questions")}
@@ -992,11 +993,10 @@ var $exeDevice = {
                                     ${this.createButtonHTML($exeDevice.btnAddDropdownBottom, this.strings.questDropdown, this.strings.msgEAddDropdownQuestion, "add-question-button")}
                                     ${this.createButtonHTML($exeDevice.btnAddSelectionBottom, this.strings.questSelection, this.strings.msgEAddSelectionQuestion, "add-question-button")}
                                 </div>
-                                </div>                        
-                                
                             </div>
-                                ${$exeDevices.iDevice.common.getTextFieldset("after")}
+                        </div>
                     </fieldset>
+                    ${$exeDevices.iDevice.common.getTextFieldset("after")}
                 </div>
                 ${$exeDevices.iDevice.gamification.scorm.getTab(true)}
                 ${$exeDevices.iDevice.gamification.common.getLanguageTab($exeDevice.ci18n)}
@@ -1062,7 +1062,7 @@ var $exeDevice = {
          */
         getDefaultLangValues() {
             let defaultLang = {};
-            defaultLang[_("True False Help Text:")] = [$exeDevice.langTrueFalseHelpId, this.strings.msgLangTrueFalseHelp];
+            defaultLang[_("True/False Help Text:")] = [$exeDevice.langTrueFalseHelpId, this.strings.msgLangTrueFalseHelp];
             defaultLang[_("Fill Help Text:")] = [$exeDevice.langFillHelpId, this.strings.msgLangFillHelp];
             defaultLang[_("Dropdown Help Text:")] = [$exeDevice.langDropdownHelpId, this.strings.msgLangDropdownHelp];
             defaultLang[_("Single Selection Help Text:")] = [$exeDevice.langSingleSelectionHelpId, this.strings.msgLangSingleSelectionHelp];
@@ -1264,7 +1264,7 @@ var $exeDevice = {
 
                 //$exeTinyMCE.init("multiple-visible", ".exe-html-editor");
                 $exeTinyMCE.init("multiple-visible", ".exe-html-editor", {
-                    forced_root_block: "", // Evita que TinyMCE meta <p> automáticamente
+                    forced_root_block: "",
                     forced_br_newlines: true,
                     force_p_newlines: false
                 });
@@ -1385,7 +1385,7 @@ var $exeDevice = {
 
                 //$exeTinyMCE.init("multiple-visible", ".exe-html-editor");
                 $exeTinyMCE.init("multiple-visible", ".exe-html-editor", {
-                    forced_root_block: "", // Evita que TinyMCE meta <p> automáticamente
+                    forced_root_block: "",
                     forced_br_newlines: true,
                     force_p_newlines: false
                 });
@@ -1528,7 +1528,6 @@ var $exeDevice = {
                 let formPreview = $exeDevice.ideviceBody.querySelector(`#${$exeDevice.formPreviewId}`);
                 let liQuestion = `<li class="FormView_question">${dropdownQuestion}</li>`;
                 formPreview.insertAdjacentHTML(relativePosition, liQuestion);
-
                 $exeTinyMCE.init("multiple-visible", ".exe-html-editor");
                 form.behaviourButtonSaveQuestion("dropdown");
                 form.behaviourButtonRemoveQuestion();
@@ -1557,23 +1556,23 @@ var $exeDevice = {
 
             let html = `<div id="${$exeDevice.formPreviewId}TextareaContainer" class="questionTextarea">
                         <div class="inline instructions">
-                        ${createInlineIcon(`${$exeDevice.iconActivityId}_${this.generateRandomId()}`, $exeDevice.iconDropdown)}
-                        ${this.createActivityTitle("dropdown")}
-                        ${createHelpButton()}
+                            ${createInlineIcon(`${$exeDevice.iconActivityId}_${this.generateRandomId()}`, $exeDevice.iconDropdown)}
+                            ${this.createActivityTitle("dropdown")}
+                            ${createHelpButton()}
                         </div>
                         ${this.createTextArea(textareaId)}
                         ${this.showHideWordButton(textareaId)}
                         <div id="${$exeDevice.formPreviewId}InputTextContainer" class="question-input-text">
-                        <div class="inline instructions">
-                            <div class="instructions">${this.strings.msgOtherWords}</div>
-                            ${createHelpButton()}
-                        </div>
-                        ${this.createInputText(`${$exeDevice.formPreviewId}InputText`, "", "", "", this.strings.msgExampleOtherWords)}
+                            <div class="inline instructions">
+                                <div class="instructions">${this.strings.msgOtherWords}</div>
+                                ${createHelpButton()}
+                            </div>
+                            ${this.createInputText(`${$exeDevice.formPreviewId}InputText`, "", "", "", this.strings.msgExampleOtherWords)}
                         </div>
                         <div class="inline footer-buttons-container">
-                        ${this.createSaveQuestionButton()}
-                        ${edit ? this.createCancelQuestionButton() : ""}
-                        ${this.createRemoveQuestionButton()}
+                            ${this.createSaveQuestionButton()}
+                            ${edit ? this.createCancelQuestionButton() : ""}
+                            ${this.createRemoveQuestionButton()}
                         </div>
                     </div>`;
 
@@ -1672,7 +1671,7 @@ var $exeDevice = {
                     form.disableArrowUpDown();
                     $exeDevice.updateQuestionsNumber();
                 });
-            $
+
         }
 
         /**
@@ -1723,7 +1722,7 @@ var $exeDevice = {
             return `<fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${this.strings.msgEFormView}</a></legend>
                     <div>
-                    <ul id="${$exeDevice.formPreviewId}"></ul>
+                        <ul id="${$exeDevice.formPreviewId}"></ul>
                     </div>
                 </fieldset>`;
         }
@@ -1865,14 +1864,32 @@ var $exeDevice = {
             </div>`;
         }
 
+
+        removeOrAddUnderline(editorId) {
+            const editor = tinyMCE.get(editorId);
+            if (!editor) return;
+            editor.focus();
+            editor.execCommand('Underline');
+            const body = editor.getBody();
+            const spans = body.querySelectorAll('span[style*="text-decoration: underline"]');
+
+            spans.forEach(span => {
+                const u = body.ownerDocument.createElement('u');
+                while (span.firstChild) {
+                    u.appendChild(span.firstChild);
+                }
+                span.parentNode.replaceChild(u, span);
+            });
+        }
+
         /**
- *  GET HTML of question container input text
- *
- * @param {*} id
- * @param {*} label
- *
- * @return string
- */
+         *  GET HTML of question container input text
+         *
+         * @param {*} id
+         * @param {*} label
+         *
+         * @return string
+         */
         createQuestionInputTextFieldset(id, label) {
             let html = ``;
             html += `<fieldset class="exe-fieldset exe-fieldset-closed">`;
@@ -1965,21 +1982,27 @@ var $exeDevice = {
             return html;
         }
 
-        /**
-         * GET HTML Show/Hide word button
-         *
-         * @param {*} editorId
-         *
-         * @return string
-         */
         showHideWordButton(editorId) {
-            let html = ``;
-            let func = `tinyMCE.get('${editorId}').getDoc().execCommand('Underline',false,false)`;
-            html += `<input type="button" id="buttonshowhide" value="${this.strings.msgEShowHideWord}" onclick="${func}" class="question-button"/>`;
+            const btnId = `buttonShowHide_${editorId}`;
+            const html = `
+            <input
+                type="button"
+                id="${btnId}"
+                value="${this.strings.msgEShowHideWord}"
+                class="question-button"
+            />
+            `;
+
+            setTimeout(() => {
+                document
+                    .getElementById(btnId)
+                    ?.addEventListener('click', () => {
+                        this.removeOrAddUnderline(editorId);
+                    });
+            }, 0);
 
             return html;
         }
-
 
         /**
          *
@@ -2186,7 +2209,7 @@ var $exeDevice = {
                         form.setDataFromSelectionQuestion(question);
                         // $exeTinyMCE.init("multiple-visible", ".exe-html-editor");
                         $exeTinyMCE.init("multiple-visible", ".exe-html-editor", {
-                            forced_root_block: "", // Evita que TinyMCE meta <p> automáticamente
+                            forced_root_block: "",
                             forced_br_newlines: true,
                             force_p_newlines: false
                         });
@@ -2353,66 +2376,94 @@ var $exeDevice = {
          * @param {*} question
          */
         setDataFromFillQuestion(question) {
-            let checkCapitalization = $exeDevice.ideviceBody.querySelector(`#${$exeDevice.checkCapitalizationId}_container`).querySelector("INPUT");
-            let strictQualification = $exeDevice.ideviceBody.querySelector(`#${$exeDevice.checkStrictQualificationId}_container`).querySelector("INPUT");
-
-            let bodyQuestion = question.querySelector("[id^=QuestionElement]");
-            let questionText = "";
-
-            let inputs = bodyQuestion.querySelectorAll("INPUT");
-            let spans = bodyQuestion.querySelectorAll("SPAN");
-
-            questionText = bodyQuestion.innerHTML;
-
-            inputs.forEach(input => {
-                questionText = questionText.replace(input.outerHTML, "");
+            const bodyQuestion = question.querySelector('[id^="QuestionElement"]');
+            if (!bodyQuestion) {
+                console.error('No element with an id starting with "QuestionElement" was found.');
+                return;
+            }
+            const clone = bodyQuestion.cloneNode(true);
+            clone.querySelectorAll('input.fillInput').forEach(input => {
+                input.remove();
             });
-            spans.forEach((span, index) => {
-                if (index < spans.length - 2) {
-                    questionText = questionText.replace(span.outerHTML, `<u>${span.innerHTML}</u>`);
-                }
-                else {
-                    if (span.id.includes("Capitalization")) {
-                        checkCapitalization.checked = span.innerHTML == "true";
-                    } else if (span.id.includes("StrictQualification")) {
-                        strictQualification.checked = span.innerHTML == "true";
-                    }
-                    questionText = questionText.replace(span.outerHTML, "");
-                }
+            clone.querySelectorAll('span[id^="fillAnswer"]').forEach(span => {
+                const u = document.createElement('u');
+                u.innerHTML = span.innerHTML;
+                span.replaceWith(u);
             });
 
-            let newTextarea = $exeDevice.ideviceBody.querySelector(`TEXTAREA[id^=${$exeDevice.formPreviewId}`);
-            newTextarea.innerHTML = questionText;
+            const capSpan = bodyQuestion.querySelector('span[id^="fillCapitalization"]');
+            const strictSpan = bodyQuestion.querySelector('span[id^="fillStrictQualification"]');
+
+            const checkCapitalization = capSpan ? capSpan.innerHTML.trim() : '';
+            const strictQualification = strictSpan ? strictSpan.innerHTML.trim() : '';
+
+            const questionHTML = clone.innerHTML;
+
+            const textarea = $exeDevice.ideviceBody.querySelector(
+                `textarea[id^="${$exeDevice.formPreviewId}"]`
+            );
+            if (textarea) {
+                textarea.value = questionHTML.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi, '');
+            } else {
+                console.warn(`No <textarea> with an id starting with "${$exeDevice.formPreviewId}" was found.`);
+            }
+
+            const capInput = $exeDevice.ideviceBody.querySelector(
+                `input[type="checkbox"][id^="checkCapitalization_${$exeDevice.formPreviewId}"]`
+            );
+
+            if (capInput) {
+                capInput.checked = checkCapitalization == 'true';
+            } else {
+                console.warn(`No <input> with the id "#checkCapitalization_${$exeDevice.formPreviewId}" was found.`);
+            }
+
+            const strictInput = $exeDevice.ideviceBody.querySelector(
+                `input[type="checkbox"][id^="checkStrictQualification_${$exeDevice.formPreviewId}"]`
+            );
+            if (strictInput) {
+                strictInput.checked = strictQualification == "true";
+            } else {
+                console.warn(`No <input> with the id "checkStrictQualification_${$exeDevice.formPreviewId}S" was found.`);
+            }
         }
 
-        /**
-         *
-         * @param {*} question
-         */
         setDataFromDropdownQuestion(question) {
-            let bodyQuestion = question.querySelector("[id^=QuestionElement]");
-            let questionText = "";
-            let otherWordsText = "";
+            const bodyQuestion = question.querySelector('[id^="QuestionElement"]');
+            if (!bodyQuestion) {
+                console.error('No element with an id that starts with "QuestionElement" was found.');
+                return;
+            }
 
-            let selects = bodyQuestion.querySelectorAll("SELECT");
-            let spans = bodyQuestion.querySelectorAll('SPAN[id^="dropdownAnswer');
+            const clone = bodyQuestion.cloneNode(true);
 
-            questionText = bodyQuestion.innerHTML;
-
-            selects.forEach(select => {
-                questionText = questionText.replace(select.outerHTML, "");
+            clone.querySelectorAll('select').forEach(select => {
+                select.remove();
             });
-            spans.forEach(span => {
-                questionText = questionText.replace(span.outerHTML, `<u>${span.innerHTML}</u>`);
+            clone.querySelectorAll('span[id^="dropdownAnswer"]').forEach(span => {
+                const u = document.createElement('u');
+                u.innerHTML = span.innerHTML;
+                span.replaceWith(u);
             });
 
-            otherWordsText = bodyQuestion.querySelector(`SPAN[id^="dropdownWrongAnswer`).innerHTML;
 
-            let newTextarea = $exeDevice.ideviceBody.querySelector(`TEXTAREA[id^=${$exeDevice.formPreviewId}`);
-            newTextarea.innerHTML = questionText
+            const questionHTML = clone.innerHTML;
+            const wrongSpan = bodyQuestion.querySelector('span[id^="dropdownWrongAnswer"]');
+            const otherWordsText = wrongSpan ? wrongSpan.innerHTML : '';
 
-            let otherWordsInput = $exeDevice.ideviceBody.querySelector(`#${$exeDevice.formPreviewId}InputText`);
-            otherWordsInput.value = otherWordsText;
+            const textarea = $exeDevice.ideviceBody.querySelector(`textarea[id^="${$exeDevice.formPreviewId}"]`);
+            if (textarea) {
+                textarea.value = questionHTML.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi, '');
+            } else {
+                console.warn(`No <textarea> with an id starting with "${$exeDevice.formPreviewId}" was found.`);
+            }
+
+            const otherInput = $exeDevice.ideviceBody.querySelector(`#${$exeDevice.formPreviewId}InputText`);
+            if (otherInput) {
+                otherInput.value = otherWordsText;
+            } else {
+                console.warn(`No <input> with the id "${$exeDevice.formPreviewId}InputText" was found.`);
+            }
         }
 
         /**
@@ -2445,41 +2496,55 @@ var $exeDevice = {
         * @returns
         */
         getProcessTextDropdownQuestion(baseText, otherWordsText) {
+            let $wrapper = $('<div>').append(baseText);
+            let $dropdownBaseText = $wrapper.find('div.dropdownBaseText');
+            if ($dropdownBaseText.length) {
+                $dropdownBaseText.remove();
+            }
+
+            let $dropdownWrongAnswer = $wrapper.find('span.dropdownWrongAnswer');
+            let wrongAnswer = '';
+            if ($dropdownWrongAnswer.length) {
+                wrongAnswer = $dropdownWrongAnswer.html().trim();
+                $dropdownWrongAnswer.remove();
+            }
+            var textBase = $wrapper.html().trim();
+
             let regexReplace = /(<u>).*?(<\/u>)/;
             let regexElement = /(?<=<u>).*?(?=<\/u>)/;
             let regexElementsAll = /(?<=<u>).*?(?=<\/u>)/g;
-            let otherWords = (otherWordsText) ? otherWordsText.split("|") : [];
-            let allMatchs = [...baseText.matchAll(regexElementsAll)];
-            let allOptions = allMatchs.concat(otherWords);
+            let otherWords = otherWordsText ? otherWordsText.split("|") : [];
+
+            let allMatchs = [...textBase.matchAll(regexElementsAll)];
+            let allOptions = allMatchs.map(m => m[0]).concat(otherWords);
             let allOptionsShuffle = this.shuffle(allOptions);
+
             let selectId = this.generateRandomId();
-            // Replace underline strings
-            let htmlDropdown = baseText;
+            let htmlDropdown = textBase;
             while (htmlDropdown.search(regexReplace) >= 0) {
                 selectId = this.generateRandomId();
-                let answerString = htmlDropdown.match(regexElement);
+                let answerString = htmlDropdown.match(regexElement)[0];
                 htmlDropdown = htmlDropdown.replace(
                     regexReplace,
                     this.getSelectDropdownQuestion(selectId, allOptionsShuffle, answerString)
                 );
             }
+            selectId = this.generateRandomId();
+            let wrongSpan = `<span id="dropdownWrongAnswer_${selectId}" class="dropdownWrongAnswer" style="display:none">${otherWordsText || wrongAnswer}</span>`;
+            if (!htmlDropdown.includes("dropdownWrongAnswer")) {
+                htmlDropdown += wrongSpan;
+            } else {
+                let oldWrongAnswers = /<span id="dropdownWrongAnswer[^>]*>[\s\S]*?<\/span>/;
+                htmlDropdown = htmlDropdown.replace(oldWrongAnswers, wrongSpan);
+            }
 
             selectId = this.generateRandomId();
-            if (!htmlDropdown.includes("dropdownWrongAnswer")) {
-                htmlDropdown += `<span id="dropdownWrongAnswer_${selectId}" class="dropdownWrongAnswer" style="display:none">${otherWordsText}</span>`;
-            }
-            else {
-                let oldWrongAnswers = new RegExp('<span id="dropdownWrongAnswer[^>]*>[^<]+<\/span>');
-                let newWrongAnswers = `<span id="dropdownWrongAnswer_${selectId}" class="dropdownWrongAnswer" style="display:none">${otherWordsText}</span>`;
-                htmlDropdown = htmlDropdown.replace(oldWrongAnswers, newWrongAnswers);
-            }
+            let baseDiv = `<div id="dropdownBaseText_${selectId}" class="dropdownBaseText" style="display:none">${textBase}</div>`;
             if (!htmlDropdown.includes("dropdownBaseText")) {
-                htmlDropdown += `<div id="dropdownBaseText_${selectId}" class="dropdownBaseText" style="display:none">${baseText}</div>`;
-            }
-            else {
-                let oldBaseText = new RegExp('<div id="dropdownBaseText[^>]*>[^<]+<\/div>');
-                let newBaseText = `<div id="dropdownBaseText_${selectId}" class="dropdownBaseText" style="display:none">${baseText}</div>`;
-                htmlDropdown = htmlDropdown.replace(oldBaseText, newBaseText);
+                htmlDropdown += baseDiv;
+            } else {
+                let oldBaseText = /<div id="dropdownBaseText[^>]*>[\s\S]*?<\/div>/;
+                htmlDropdown = htmlDropdown.replace(oldBaseText, baseDiv);
             }
             return htmlDropdown;
         }
@@ -2514,8 +2579,6 @@ var $exeDevice = {
             return htmlSelection;
         }
 
-
-
         /**
         *
         * @param {*} baseText
@@ -2545,38 +2608,66 @@ var $exeDevice = {
         }
 
         /**
-     *
-     * @param {*} baseText
-     * @param {*} checkCapitalization
-     * @param {*} strictQualification
-     * @returns
-     */
+         *
+         * @param {*} baseText
+         * @param {*} checkCapitalization
+         * @param {*} strictQualification
+         * @returns
+         */
         getProcessTextFillQuestion(baseText, checkCapitalization, strictQualification) {
+            let $wrapper = $('<div>').append(baseText);
+            let $fillBaseText = $wrapper.find('div.fillBaseText');
+            if ($fillBaseText.length) {
+                $fillBaseText.remove();
+            }
+
+            let $capSpan = $wrapper.find('span[id^="fillCapitalization"]');
+            if ($capSpan.length) {
+                $capSpan.remove();
+            }
+
+            let $strictSpan = $wrapper.find('span[id^="fillStrictQualification"]');
+            if ($strictSpan.length) {
+                $strictSpan.remove();
+            }
+
+            let textBase = $wrapper.html().trim();
+
             let regexReplace = /(<u>).*?(<\/u>)/;
             let regexElement = /(?<=<u>).*?(?=<\/u>)/;
-            let regexElementsAll = /(?<=<u>).*?(?=<\/u>)/g;
-            let htmlFill = baseText;
 
-            // Replace underline strings
+            let htmlFill = textBase;
             while (htmlFill.search(regexReplace) >= 0) {
-                let answerString = htmlFill.match(regexElement).toString().trim();
+                let answerString = htmlFill.match(regexElement)[0].toString().trim();
                 let inputId = this.generateRandomId();
                 htmlFill = htmlFill.replace(
                     regexReplace,
-                    `<input id="fillInput_${inputId}" type="text" data-id="${inputId}" class="fillInput" />
-            <span id="fillAnswer_${inputId}" class="fillAnswer" style="display:none;">${answerString}</span>`
+                    `<input id="fillInput_${inputId}" type="text" data-id="${inputId}" class="fillInput" /> <span id="fillAnswer_${inputId}" class="fillAnswer" style="display:none;">${answerString}</span>`
                 );
             }
 
-            htmlFill += `<span id="fillCapitalization_${this.generateRandomId()}" style="display:none;">${checkCapitalization}</span>`;
-            htmlFill += `<span id="fillStrictQualification_${this.generateRandomId()}" style="display:none;">${strictQualification}</span>`;
-            if (!htmlFill.includes("fillBaseText")) {
-                htmlFill += `<div id="fillBaseText_${this.generateRandomId()}" class="fillBaseText" style="display:none">${baseText}</div>`;
+            let capSpanHTML = `<span id="fillCapitalization_${this.generateRandomId()}" style="display:none;">${checkCapitalization}</span>`;
+            if (!htmlFill.includes("fillCapitalization")) {
+                htmlFill += capSpanHTML;
+            } else {
+                let oldCap = /<span id="fillCapitalization[^>]*>[\s\S]*?<\/span>/;
+                htmlFill = htmlFill.replace(oldCap, capSpanHTML);
             }
-            else {
-                let oldBaseText = new RegExp('<div id="fillBaseText[^>]*>[^<]+<\/div>');
-                let newBaseText = `<div id="fillBaseText_${this.generateRandomId()}" class="fillBaseText" style="display:none">${baseText}</div>`;
-                htmlFill = htmlFill.replace(oldBaseText, newBaseText);
+
+            let strictSpanHTML = `<span id="fillStrictQualification_${this.generateRandomId()}" style="display:none;">${strictQualification}</span>`;
+            if (!htmlFill.includes("fillStrictQualification")) {
+                htmlFill += strictSpanHTML;
+            } else {
+                let oldStrict = /<span id="fillStrictQualification[^>]*>[\s\S]*?<\/span>/;
+                htmlFill = htmlFill.replace(oldStrict, strictSpanHTML);
+            }
+
+            let baseDiv = `<div id="fillBaseText_${this.generateRandomId()}" class="fillBaseText" style="display:none">${textBase}</div>`;
+            if (!htmlFill.includes("fillBaseText")) {
+                htmlFill += baseDiv;
+            } else {
+                let oldBase = /<div id="fillBaseText[^>]*>[\s\S]*?<\/div>/;
+                htmlFill = htmlFill.replace(oldBase, baseDiv);
             }
 
             return htmlFill;
@@ -2598,7 +2689,6 @@ var $exeDevice = {
             })
             selectDropdown += `</select>`;
             selectDropdown += `<span id="dropdownAnswer_${id}" class="dropdownAnswer" style="display:none">${answer}</span>`;
-
             return selectDropdown;
         }
 

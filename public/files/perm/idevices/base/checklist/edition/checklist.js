@@ -45,15 +45,15 @@ var $exeDevice = {
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideID = _('Please provide the ID of this report');
+        msgs.msgEProvideID = _('Please provide the ID of this progress report');
     },
 
     createForm: function () {
         const html = `
         <div id="gameQEIdeviceForm">
             <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${_('You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing you to monitor the completed activities.')}
-                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/lista_de_cotejo.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                ${_('You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing to monitor the completed activities.')}
+                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/lista_de_cotejo.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                 <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
             </p>
             <div class="exe-form-tab" title="${_('General settings')}">

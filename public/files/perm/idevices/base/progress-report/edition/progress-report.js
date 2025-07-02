@@ -297,7 +297,7 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         var msgs = this.msgs;
-        msgs.msgEProvideID = _("Please provide the ID of this report");
+        msgs.msgEProvideID = _("Please provide the ID of this progress report");
     },
     createForm: function () {
 
@@ -306,7 +306,7 @@ var $exeDevice = {
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_("It shows the result of the pupils in the activities linked to their average score.")} 
                     <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/informe_de_progreso.html" hreflang="es" target="_blank">
-                        ${_("Use Instructions")}
+                        ${_("Usage Instructions")}
                     </a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>

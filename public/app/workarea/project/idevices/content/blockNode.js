@@ -343,6 +343,7 @@ export default class IdeviceBlockNode {
         this.addBehaviourExportBlockButton();
         this.addBehaviourToggleBlockButton();
         this.addTooltips();
+        this.addNoTranslateForGoogle();
         // Check links (disabled) this.addBehaviourCheckBlockLinksButton();
 
         return this.blockButtons;
@@ -453,6 +454,9 @@ export default class IdeviceBlockNode {
             .querySelector('#moveUp' + this.blockId)
             .addEventListener('click', (element) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
+                // Hide the actions menu if needed
+                var elm = $('#dropdownMenuButton' + this.blockId);
+                if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
                 // Check odeComponent flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, null)
@@ -513,6 +517,9 @@ export default class IdeviceBlockNode {
             .querySelector('#moveDown' + this.blockId)
             .addEventListener('click', (element) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
+                // Hide the actions menu if needed
+                var elm = $('#dropdownMenuButton' + this.blockId);
+                if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
                 // Check odeComponent flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, null)
@@ -572,6 +579,9 @@ export default class IdeviceBlockNode {
         this.blockButtons
             .querySelector('#deleteBlock' + this.blockId)
             .addEventListener('click', (element) => {
+                // Hide the actions menu if needed
+                var elm = $('#dropdownMenuButton' + this.blockId);
+                if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
                 // Check odeComponent flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, null)
@@ -770,6 +780,9 @@ export default class IdeviceBlockNode {
         // Add event
         this.toggleElement.addEventListener('click', (element) => {
             if (this.toggleElement.classList.contains('box-toggle-on')) {
+                // Hide the actions menu if needed
+                var elm = $('#dropdownMenuButton' + this.blockId);
+                if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
                 this.toggleOff();
             } else {
                 this.toggleOn();
@@ -786,6 +799,14 @@ export default class IdeviceBlockNode {
             'exe-app-tooltip',
         );
         eXeLearning.app.common.initTooltips(this.blockButtons);
+    }
+
+    /**
+     * Icons should not be translated
+     *
+     */
+    addNoTranslateForGoogle() {
+        $('.auto-icon', this.ideviceButtons).addClass('notranslate');
     }
 
     /**

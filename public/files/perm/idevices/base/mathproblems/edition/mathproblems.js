@@ -75,7 +75,7 @@ var $exeDevice = {
         msgQuestion: c_('Question'),
         msgCorrect: c_('Right!'),
         msgClose: c_('Close'),
-        msgNotCorrect: c_('Sorry... The right answer is:'),
+        msgNotCorrect: c_('Sorry, that’s incorrect... The right answer is:'),
         msgSolution: c_('Solution'),
         msgCheck: c_('Check'),
         msgEndGameM: c_('You finished the game. Your score is %s.'),
@@ -120,7 +120,7 @@ var $exeDevice = {
         const html = `
             <div id="gameQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">${_('Create random basic math problems.')} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/problemas_de_matemticas.html" hreflang="es" target="_blank">${_('Use Instructions')}</a>
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/problemas_de_matemticas.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
@@ -160,7 +160,7 @@ var $exeDevice = {
                                 <span id="eCQNumeroPercentaje">1/1</span>
                             </p>
                             <p style="display:none">
-                                <label for="eCQModeBoard"><input type="checkbox" id="eCQModeBoard">${_('Digital blackboard mode')}</label>
+                                <label for="eCQModeBoard"><input type="checkbox" id="eCQModeBoard">${_('Digital whiteboard mode')}</label>
                             </p>
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#eCQEEvaluationHelp" id="eCQEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${$exeDevice.idevicePath}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>

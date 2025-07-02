@@ -141,7 +141,7 @@ var $exeDevice = {
         msgs.msgProvideSolution = _("Please write the solution");
         msgs.msgNameThemes = _('You must indicate a name for all the selected topics.');
         msgs.msgCmpleteAllQuestions = _('You must complete all the questions of all the selected topics correctly.');
-        msgs.msgGameIntrunctions = _("Roll the dice and answer the question until you complete all the cheeses.");
+        msgs.msgGameIntrunctions = _("Roll the dice and answer the question until you get all the cheeses.");
         msgs.tooManyQuestions = _("Too many questions! The game can have a maximum of about 800 and 1200 questions. This number can vary a lot depending on the type of questions and the length of the questions, the answers, the URLs and the enriched text.");
         msgs.msgNoSuportBrowser = _("Your browser is not compatible with this tool.");
         msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
@@ -795,7 +795,7 @@ var $exeDevice = {
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_("Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.")} 
                     <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/triviext.html" hreflang="es" target="_blank">
-                        ${_("Use Instructions")}
+                        ${_("Usage Instructions")}
                     </a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
@@ -832,7 +832,7 @@ var $exeDevice = {
                             </p>
                             <p>
                                 <label for="trivialModeBoard">
-                                    <input type="checkbox" id="trivialModeBoard">${_("Digital blackboard mode")}
+                                    <input type="checkbox" id="trivialModeBoard">${_("Digital whiteboard mode")}
                                 </label>
                             </p>
                              <p class="Games-Reportdiv">
@@ -1583,7 +1583,7 @@ var $exeDevice = {
             nombreTema = $('#trivialNameTema').val();
 
         if (nombreTema.length == 0) {
-            message = _("You must provide a name for this topic");
+            message = _("You must provide a name for this topic.");
         }
         p.type = parseInt($('input[name=tvlmediatype]:checked').val());
         p.time = parseInt($('input[name=tvltime]:checked').val());

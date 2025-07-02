@@ -40,7 +40,7 @@ var $exeDevice = {
         "seen": c_("Seen"),
         "total": c_("Total"),
         "seeAll": c_("see all the slides and answer all the questions"),
-        "noSlides": c_("This video has no interactive slides."),
+        "noSlides": c_("This video has no interactive elements."),
         "goOn": c_("Continue"),
         "error": c_("Error"),
         "dataError": c_("Incompatible code"),
@@ -335,6 +335,7 @@ var $exeDevice = {
             if (typeof (InteractiveVideo) == 'object' && typeof (InteractiveVideo.slides) == 'object') {
                 top.interactiveVideoEditor.activityToSave = InteractiveVideo;
                 // i18n
+                InteractiveVideo.scorm =  InteractiveVideo.scorm ?? $exeDevice.scorm;
                 $exeDevices.iDevice.gamification.common.setLanguageTabValues(InteractiveVideo.i18n);
                 $exeDevices.iDevice.gamification.scorm.setValues(InteractiveVideo.scorm.isScorm, InteractiveVideo.scorm.textButtonScorm, InteractiveVideo.scorm.repeatActivity);
                 InteractiveVideo.scoreNIA = typeof InteractiveVideo.scoreNIA == "undefined" ? true : InteractiveVideo.scoreNIA;
