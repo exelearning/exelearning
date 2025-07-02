@@ -2,7 +2,7 @@ var $exeTinyMCE = {
     // imagetools is disabled because it generates base64 images
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
     plugins:
-        'tooltips exeaudio pastemath abcmusic exemindmap rssfeed modalwindow exealign exeimage exemedia toggletoolbars exeeffects easyattributes advlist lists autolink exelink charmap preview anchor searchreplace visualchars visualblocks code codemagic fullscreen insertdatetime table paste template hr clearfloat addcontent definitionlist blockquoteandcite pastecode abbr exegames_hangman directionality',
+        'tooltips exeaudio edicuatex abcmusic exemindmap rssfeed modalwindow exealign exeimage exemedia toggletoolbars exeeffects easyattributes advlist lists autolink exelink charmap preview anchor searchreplace visualchars visualblocks code codemagic fullscreen insertdatetime table paste template hr clearfloat addcontent definitionlist blockquoteandcite pastecode abbr exegames_hangman directionality',
     // These buttons will be visible when the others are hidden
     buttons0:
         'toggletoolbars | undo redo | bold italic | formatselect | alignleft aligncenter alignright alignjustify | exelink unlink | bullist numlist | exeimage exemedia | fullscreen',
@@ -12,7 +12,7 @@ var $exeTinyMCE = {
     buttons2:
         'alignleft aligncenter alignright alignjustify clearfloat addcontent | bullist numlist definitionlist | exelink unlink | outdent indent | blockquote blockquoteandcite | ltr rtl',
     buttons3:
-        'undo redo | cut copy paste pastetext | pastehtml pastecode pastemath | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exeaudio abcmusic | codemagic | fullscreen',
+        'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exeaudio abcmusic | codemagic | fullscreen',
     browser_spellcheck: true,
 
     path_to_folder: '/libs/tinymce_5/js/tinymce/',
