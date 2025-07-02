@@ -143,14 +143,13 @@ var $magnifier = {
                 </a> 
                 <div class="ImageMagnifierIdevice">
                     <div class="image-thumbnail" id="image-thumbnail-${instance}">
-                        <div
-                            style="position: relative; display: block; width: 600px; height: auto; margin-bottom: 50px;">
+                        <div style="position: relative; display: block; width:${data.width}; height: auto; margin-bottom: 50px;">
                             <img id="magnifier-${instance}"
                                 src="${data.image}"
                                 data-magnifysrc="${data.image}"
                                 width="${data.width}" height="" data-size="${data.glassSize} " data-zoom="${data.initialZSize}">
                             <div
-                                style="position: absolute; left: 0px; top: 0px; width: 600px; height: auto; overflow: hidden; display: none;">
+                                style="position: absolute; left: 0px; top: 0px; width:${data.width}; height: auto; overflow: hidden; display: none;">
                                 <div class="zoomglass"
                                     style="position: absolute; overflow: hidden; left: 591px; top: 369px;"><img
                                         style="position: absolute; max-width: none; max-height: none; left: -1522px; top: -954px;"
