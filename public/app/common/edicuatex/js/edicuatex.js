@@ -257,6 +257,7 @@ async function initializeLatexEditor() {
 
     const addMenu = async (menuInfo) => {
         if (loadedMenus.has(menuInfo.id)) return;
+        menuInfo.url = 'menus/' + menuInfo.url;
         const data = await fetchMenuData(menuInfo.url);
         if (data) {
             loadedMenus.set(menuInfo.id, { ...menuInfo, data });
