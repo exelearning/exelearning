@@ -189,7 +189,7 @@ async function initializeLatexEditor() {
     }
 
     // --- CONFIG & STATE ---
-    const MANIFEST_URL = './menus.json';
+    const MANIFEST_URL = './menus/menus.json';
     const MAX_RECENTS = 12;
     let loadedMenus = new Map();
     let menuCache = new Map();
@@ -611,7 +611,7 @@ async function initializeLatexEditor() {
         }
         const BASE_NAME = 'base.json';
         if (manifestMenus.find(m => m.file === BASE_NAME)) {
-            const data = await fetchMenuData(`./${BASE_NAME}`);
+            const data = await fetchMenuData(`./menus/${BASE_NAME}`);
             if (data) loadedMenus.set(BASE_NAME, { id: BASE_NAME, url: `./${BASE_NAME}`, source: 'default', name: 'Base', data });
         }
         const previouslyAdded = loadAddedMenusFromStorage();
