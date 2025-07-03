@@ -64,6 +64,7 @@ security:
         - { path: '^/admin', roles: [IS_AUTHENTICATED_FULLY] }
         - { path: '^/workarea', roles: [IS_AUTHENTICATED_FULLY] }
         - { path: '^/api', roles: [IS_AUTHENTICATED_FULLY] }
+        - { path: ^/apiRest/users, roles: ROLE_ADMIN } 
 
         # api path can be accesed without being authenticated
         #- { path: '^/api', roles: [IS_AUTHENTICATED_ANONYMOUSLY] }
