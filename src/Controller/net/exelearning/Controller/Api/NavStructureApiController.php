@@ -495,6 +495,17 @@ class NavStructureApiController extends DefaultApiController
             if (!empty($odeNavStructureSync)) {
                 $anyError = false;
 
+                $deletedPageIds = [];
+                foreach ($nodesToDeleteEntities as $nodeEntity) {
+                    if (null !== $nodeEntity->getOdePageId()) {
+                        $deletedPageIds[] = (int) $nodeEntity->getOdePageId();
+                    }
+                }
+
+                if (!empty($deletedPageIds)) {
+                    $this->cleanCrossReferencesForDeletedNodes($deletedPageIds, $odeNavStructureSync->getOdeSessionId());
+                }
+
                 // Get OdeNavStructureSync to delete
                 $odeNavStructureSyncsToDelete = $this->getOdeNavStructureSyncsToDelete($odeNavStructureSync);
 
@@ -930,5 +941,157 @@ class NavStructureApiController extends DefaultApiController
         }
 
         return $maxOrder;
+    }
+
+    /**
+     * Processes an HTML string to clean exe-links pointing to a specific page.
+     */
+    private function processAndCleanHtmlInternalLinks(string $htmlContent, string $targetHref): string|false
+    {
+        if (empty($htmlContent)) {
+            return $htmlContent;
+        }
+
+        if (!str_contains($htmlContent, $targetHref)) {
+            return $htmlContent;
+        }
+
+        $dom = new \DOMDocument();
+        if (!@$dom->loadHTML($htmlContent, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NOERROR | LIBXML_NOWARNING)) {
+            return false;
+        }
+
+        $xpath = new \DOMXPath($dom);
+        $nodesToModify = $xpath->query("//a[contains(@href, '{$targetHref}')]");
+        $modified = false;
+
+        if ($nodesToModify->length > 0) {
+            for ($i = $nodesToModify->length - 1; $i >= 0; --$i) {
+                $node = $nodesToModify->item($i);
+
+                if ($node && $node->parentNode) {
+                    $linkText = $node->nodeValue;
+                    $textNode = $dom->createTextNode($linkText);
+                    $node->parentNode->replaceChild($textNode, $node);
+                    $modified = true;
+                }
+            }
+        }
+
+        if ($modified) {
+            $newHtmlContent = $dom->saveHTML();
+            if (false === $newHtmlContent) {
+                return false;
+            }
+
+            return $newHtmlContent;
+        } else {
+            return $htmlContent;
+        }
+    }
+
+    /**
+     * Recursively traverses a decoded JSON array/object and applies HTML link cleaning to any string value found.
+     */
+    private function recursivelyCleanJsonHtml(array $data, array $targetHrefs, int $componentId, bool &$modifiedGlobalFlag): array
+    {
+        foreach ($data as $key => &$value) {
+            if (is_array($value)) {
+                // If the value is an array (or JSON sub-object), recursively call this function
+                $value = $this->recursivelyCleanJsonHtml($value, $targetHrefs, $componentId, $modifiedGlobalFlag);
+            } elseif (is_string($value)) {
+                // If the value is a string, attempt to clean it as HTML
+                $currentContent = $value;
+                $updatedContentForField = $currentContent;
+
+                // Loop through each targetHref to apply cleaning
+                foreach ($targetHrefs as $singleTargetHref) {
+                    $tempContent = $this->processAndCleanHtmlInternalLinks($updatedContentForField, $singleTargetHref);
+                    if (false === $tempContent) {
+                        // Revert to original for this field if error
+                        $updatedContentForField = $currentContent;
+                        break;
+                    } elseif ($tempContent !== $updatedContentForField) {
+                        $updatedContentForField = $tempContent;
+                        $modifiedGlobalFlag = true;
+                    }
+                }
+                // Assign the fully processed content back to the value (even if it's the original because of an error or no changes)
+                if ($updatedContentForField !== $currentContent) {
+                    $value = $updatedContentForField;
+                }
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Cleans cross-references of links within session iDevices that point to any of the deleted page IDs.
+     */
+    private function cleanCrossReferencesForDeletedNodes(array $deletedPageIds, string $sessionId): void
+    {
+        // Build a collection of all target href patterns
+        $targetHrefs = array_map(fn ($id) => 'exe-node:'.$id, $deletedPageIds);
+
+        $componentRepo = $this->entityManager->getRepository(\App\Entity\net\exelearning\Entity\OdeComponentsSync::class);
+        $allComponentsInSession = $componentRepo->findBy(['odeSessionId' => $sessionId]);
+
+        foreach ($allComponentsInSession as $component) {
+            $componentId = $component->getId();
+            $anyComponentContentModified = false;
+
+            // Process html_view
+            $currentHtmlView = $component->getHtmlView();
+            if (!empty($currentHtmlView)) {
+                $newHtmlView = $currentHtmlView;
+                $htmlViewModified = false;
+
+                // Loop through each targetHref to apply cleaning
+                foreach ($targetHrefs as $singleTargetHref) {
+                    $tempNewHtmlView = $this->processAndCleanHtmlInternalLinks($newHtmlView, $singleTargetHref);
+                    if (false === $tempNewHtmlView) {
+                        $newHtmlView = $currentHtmlView;
+                        $htmlViewModified = false;
+                        continue 2;
+                    } elseif ($tempNewHtmlView !== $newHtmlView) {
+                        $newHtmlView = $tempNewHtmlView;
+                        $htmlViewModified = true;
+                    }
+                }
+                if ($htmlViewModified) {
+                    $component->setHtmlView($newHtmlView);
+                    $anyComponentContentModified = true;
+                }
+            }
+
+            // Process json_properties (any string field within)
+            $originalJsonProperties = $component->getJsonProperties();
+            if (!empty($originalJsonProperties)) {
+                try {
+                    $decodedJson = json_decode($originalJsonProperties, true);
+
+                    if (is_array($decodedJson)) {
+                        $jsonModifiedFlag = false;
+                        // Pass ALL targetHrefs to the recursive function
+                        $newDecodedJson = $this->recursivelyCleanJsonHtml($decodedJson, $targetHrefs, $componentId, $jsonModifiedFlag);
+
+                        if ($jsonModifiedFlag) {
+                            $component->setJsonProperties(json_encode($newDecodedJson));
+                            $anyComponentContentModified = true;
+                        }
+                    } else {
+                        // JSON decoding failed or resulted in non-array (e.g., null)
+                    }
+                } catch (\Exception $e) {
+                    // Catching exceptions during JSON processing
+                }
+            }
+
+            // If something in the component (HTML_VIEW or JSON_PROPERTIES) was modified, mark it for persistence
+            if ($anyComponentContentModified) {
+                $this->entityManager->persist($component);
+            }
+        }
     }
 }
