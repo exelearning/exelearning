@@ -4691,311 +4691,311 @@
       </trans-unit>
       <trans-unit id="NjHrVmr" resname="That is not correct. You clicked on: %s. Number of attempts: %d. Try again">
         <source>That is not correct. You clicked on: %s. Number of attempts: %d. Try again</source>
-        <target>~Ez da zuzena. Sakatu duzuna: %s. Saiakera kopurua: %d. Saiatu berriro</target>
+        <target>Ez da zuzena. %s sakatu duzu. Saiakera kopurua: %d. Saiatu berriro</target>
       </trans-unit>
       <trans-unit id="ZCimwcH" resname="You have used all your attempts">
         <source>You have used all your attempts</source>
-        <target>~Zure saiakerak guztiz erabili dituzu</target>
+        <target>Saiakera guztiak erabili dituzu</target>
       </trans-unit>
       <trans-unit id="IDy6iw." resname="That is not correct. You clicked on: %s.">
         <source>That is not correct. You clicked on: %s.</source>
-        <target>~Ez da zuzena. Sakatu duzuna: %s.</target>
+        <target>Ez da zuzena. %s sakatu duzu.</target>
       </trans-unit>
       <trans-unit id="l.1DO0Z" resname="Complete the missing information in this element">
         <source>Complete the missing information in this element</source>
-        <target>~Osatu elementu honetan falta diren informazioak</target>
+        <target>Osatu elementu honetan falta den informazioa</target>
       </trans-unit>
       <trans-unit id="JZ3dw2V" resname="Click on one of the marked chemical elements.">
         <source>Click on one of the marked chemical elements.</source>
-        <target>~Klikatu elementu kimiko markatuetako batean.</target>
+        <target>Klikatu markatutako elementu kimiko batean.</target>
       </trans-unit>
       <trans-unit id="zZCzfg2" resname="Number">
         <source>Number</source>
-        <target>~Zenbakia</target>
+        <target>Zenbakia</target>
       </trans-unit>
       <trans-unit id="84PNGwz" resname="Symbol">
         <source>Symbol</source>
-        <target>~Ikurra</target>
+        <target>Ikurra</target>
       </trans-unit>
       <trans-unit id="nkUQV2V" resname="Configuration">
         <source>Configuration</source>
-        <target>~Konfigurazioa</target>
+        <target>Ezarpena</target>
       </trans-unit>
       <trans-unit id="zjgqqSx" resname="Oxidations">
         <source>Oxidations</source>
-        <target>~Oxidazioak</target>
+        <target>Oxidazioak</target>
       </trans-unit>
       <trans-unit id="hDE_H_3" resname="Alkali metal">
         <source>Alkali metal</source>
-        <target>~Alkali metal</target>
+        <target>Metal alkalinoa</target>
       </trans-unit>
       <trans-unit id="leZlQEU" resname="Alkaline earth metal">
         <source>Alkaline earth metal</source>
-        <target>~Lurrun metal alkalikoa</target>
+        <target>Metal lurralkalinoa</target>
       </trans-unit>
       <trans-unit id="9RTpjIz" resname="Transition metal">
         <source>Transition metal</source>
-        <target>~Trantsizio metal</target>
+        <target>Trantsizio metal</target>
       </trans-unit>
       <trans-unit id="USK2boZ" resname="Post-transition metal">
         <source>Post-transition metal</source>
-        <target>~Post-trantsizio metal</target>
+        <target>Trantsizio osteko metala</target>
       </trans-unit>
       <trans-unit id=".0OVqwz" resname="Metalloid">
         <source>Metalloid</source>
-        <target>~Metaloide</target>
+        <target>Metaloidea</target>
       </trans-unit>
       <trans-unit id="jTiR46n" resname="Non-metal">
         <source>Non-metal</source>
-        <target>~Metala ez dena</target>
+        <target>Ez-metala</target>
       </trans-unit>
       <trans-unit id="ERtSOoJ" resname="Halogen">
         <source>Halogen</source>
-        <target>~Halogenoa</target>
+        <target>Halogenoa</target>
       </trans-unit>
       <trans-unit id="P9WZ3Ga" resname="Noble gas">
         <source>Noble gas</source>
-        <target>~Gas noblea</target>
+        <target>Gas noblea</target>
       </trans-unit>
       <trans-unit id="DhQ6U0H" resname="Lanthanide">
         <source>Lanthanide</source>
-        <target>~Lanthanidoa</target>
+        <target>Lantanoidea</target>
       </trans-unit>
       <trans-unit id="wdQOfFk" resname="Actinide">
         <source>Actinide</source>
-        <target>~Aktinidoa</target>
+        <target>Aktinidoa</target>
       </trans-unit>
       <trans-unit id="7hutPPO" resname="Hydrogen">
         <source>Hydrogen</source>
-        <target>~Hydrogenoa</target>
+        <target>Hidrogenoa</target>
       </trans-unit>
       <trans-unit id="an2DPbB" resname="Helium">
         <source>Helium</source>
-        <target>~Helioa</target>
+        <target>Helioa</target>
       </trans-unit>
       <trans-unit id="YoGQw5G" resname="Lithium">
         <source>Lithium</source>
-        <target>~Lithioa</target>
+        <target>Litioa</target>
       </trans-unit>
       <trans-unit id="KuVpk39" resname="Beryllium">
         <source>Beryllium</source>
-        <target>~Berilioa</target>
+        <target>Berilioa</target>
       </trans-unit>
       <trans-unit id="_.N59Hz" resname="Boron">
         <source>Boron</source>
-        <target>~Boroa</target>
+        <target>Boroa</target>
       </trans-unit>
       <trans-unit id="qvuPJUd" resname="Carbon">
         <source>Carbon</source>
-        <target>~Karbonoa</target>
+        <target>Karbonoa</target>
       </trans-unit>
       <trans-unit id="KvKeP89" resname="Fluorine">
         <source>Fluorine</source>
-        <target>~Fluorina</target>
+        <target>Fluorra</target>
       </trans-unit>
       <trans-unit id="2cHhCI_" resname="Neon">
         <source>Neon</source>
-        <target>~Neon</target>
+        <target>Neoia</target>
       </trans-unit>
       <trans-unit id="VoIb5NC" resname="Sodium">
         <source>Sodium</source>
-        <target>~Sodio</target>
+        <target>Sodioa</target>
       </trans-unit>
       <trans-unit id="l2vtETu" resname="Magnesium">
         <source>Magnesium</source>
-        <target>~Magnesio</target>
+        <target>Magnesioa</target>
       </trans-unit>
       <trans-unit id="ZBlvLmD" resname="Aluminum">
         <source>Aluminum</source>
-        <target>~Aluminio</target>
+        <target>Aluminioa</target>
       </trans-unit>
       <trans-unit id="2Qsvg0o" resname="Silicon">
         <source>Silicon</source>
-        <target>~Silizio</target>
+        <target>Silizioa</target>
       </trans-unit>
       <trans-unit id="hUVxn32" resname="Phosphorus">
         <source>Phosphorus</source>
-        <target>~Fosforo</target>
+        <target>Fosforoa</target>
       </trans-unit>
       <trans-unit id="pAPrsrO" resname="Sulfur">
         <source>Sulfur</source>
-        <target>~Sulfuro</target>
+        <target>Sufrea</target>
       </trans-unit>
       <trans-unit id="VhfTm8b" resname="Chlorine">
         <source>Chlorine</source>
-        <target>~Klorino</target>
+        <target>Kloroa</target>
       </trans-unit>
       <trans-unit id="dXe5aUv" resname="Argon">
         <source>Argon</source>
-        <target>~Argono</target>
+        <target>Argona</target>
       </trans-unit>
       <trans-unit id="t06e084" resname="Potassium">
         <source>Potassium</source>
-        <target>~Potasio</target>
+        <target>Potasioa</target>
       </trans-unit>
       <trans-unit id="E_HVCqI" resname="Calcium">
         <source>Calcium</source>
-        <target>~Kaltzio</target>
+        <target>Kaltzioa</target>
       </trans-unit>
       <trans-unit id="cgv2E09" resname="Scandium">
         <source>Scandium</source>
-        <target>~Skandio</target>
+        <target>Eskandioa</target>
       </trans-unit>
       <trans-unit id=".2E6BV4" resname="Titanium">
         <source>Titanium</source>
-        <target>~Titanio</target>
+        <target>Titanioa</target>
       </trans-unit>
       <trans-unit id="uDVk3U3" resname="Vanadium">
         <source>Vanadium</source>
-        <target>~Vanadio</target>
+        <target>Banadioa</target>
       </trans-unit>
       <trans-unit id="L7G94Qr" resname="Chromium">
         <source>Chromium</source>
-        <target>~Kromio</target>
+        <target>Kromoa</target>
       </trans-unit>
       <trans-unit id="zTFMRQs" resname="Manganese">
         <source>Manganese</source>
-        <target>~Manganeso</target>
+        <target>Manganesoa</target>
       </trans-unit>
       <trans-unit id="af7rDHC" resname="Iron">
         <source>Iron</source>
-        <target>~Burdin</target>
+        <target>Burdina</target>
       </trans-unit>
       <trans-unit id="ZeiVq_R" resname="Cobalt">
         <source>Cobalt</source>
-        <target>~Kobalto</target>
+        <target>Kobaltoa</target>
       </trans-unit>
       <trans-unit id="LrGCawd" resname="Nickel">
         <source>Nickel</source>
-        <target>~Nikel</target>
+        <target>Nikela</target>
       </trans-unit>
       <trans-unit id="Ja2aRKK" resname="Copper">
         <source>Copper</source>
-        <target>~Kobre</target>
+        <target>Kobrea</target>
       </trans-unit>
       <trans-unit id="fraxMlp" resname="Zinc">
         <source>Zinc</source>
-        <target>~Zink</target>
+        <target>Zinka</target>
       </trans-unit>
       <trans-unit id="JTc2eMZ" resname="Gallium">
         <source>Gallium</source>
-        <target>~Gallio</target>
+        <target>Galioa</target>
       </trans-unit>
       <trans-unit id="fEijfSI" resname="Germanium">
         <source>Germanium</source>
-        <target>~Germanio</target>
+        <target>Germanioa</target>
       </trans-unit>
       <trans-unit id="vZb2zT8" resname="Arsenic">
         <source>Arsenic</source>
-        <target>~Arsenikoa</target>
+        <target>Artsenikoa</target>
       </trans-unit>
       <trans-unit id="_ghQ458" resname="Selenium">
         <source>Selenium</source>
-        <target>~Selenio</target>
+        <target>Selenioa</target>
       </trans-unit>
       <trans-unit id="R0S01Ep" resname="Bromine">
         <source>Bromine</source>
-        <target>~Bromoa</target>
+        <target>Bromoa</target>
       </trans-unit>
       <trans-unit id="f2ROd8A" resname="Krypton">
         <source>Krypton</source>
-        <target>~Krypton</target>
+        <target>Kriptona</target>
       </trans-unit>
       <trans-unit id="H1YejCd" resname="Rubidium">
         <source>Rubidium</source>
-        <target>~Rubidio</target>
+        <target>Rubidioa</target>
       </trans-unit>
       <trans-unit id="REVYTGz" resname="Strontium">
         <source>Strontium</source>
-        <target>~Strontio</target>
+        <target>Estrontzioa</target>
       </trans-unit>
       <trans-unit id="t8irBYv" resname="Yttrium">
         <source>Yttrium</source>
-        <target>~Yttrium</target>
+        <target>Itrioa</target>
       </trans-unit>
       <trans-unit id="4O1XPyV" resname="Zirconium">
         <source>Zirconium</source>
-        <target>~Zirconio</target>
+        <target>Zirkonioa</target>
       </trans-unit>
       <trans-unit id="bjrmgMD" resname="Niobium">
         <source>Niobium</source>
-        <target>~Niobio</target>
+        <target>Niobiuma</target>
       </trans-unit>
       <trans-unit id="VN21uZH" resname="Molybdenum">
         <source>Molybdenum</source>
-        <target>~Molibdeno</target>
+        <target>Molibdenoa</target>
       </trans-unit>
       <trans-unit id="Mmwm9QO" resname="Technetium">
         <source>Technetium</source>
-        <target>~Teknetio</target>
+        <target>Teknezioa</target>
       </trans-unit>
       <trans-unit id="XZrgXCZ" resname="Ruthenium">
         <source>Ruthenium</source>
-        <target>~Rutenio</target>
+        <target>Rutenioa</target>
       </trans-unit>
       <trans-unit id="BYx5xfo" resname="Rhodium">
         <source>Rhodium</source>
-        <target>~Rodiio</target>
+        <target>Rodioa</target>
       </trans-unit>
       <trans-unit id="uVmX2ly" resname="Palladium">
         <source>Palladium</source>
-        <target>~Paladio</target>
+        <target>Paladioa</target>
       </trans-unit>
       <trans-unit id="5WbKOSn" resname="Silver">
         <source>Silver</source>
-        <target>~Zilarra</target>
+        <target>Zilarra</target>
       </trans-unit>
       <trans-unit id="fdqsmmE" resname="Cadmium">
         <source>Cadmium</source>
-        <target>~Kadmio</target>
+        <target>Kadmioa</target>
       </trans-unit>
       <trans-unit id="ghDbAiC" resname="Indium">
         <source>Indium</source>
-        <target>~Indio</target>
+        <target>Indioa</target>
       </trans-unit>
       <trans-unit id="gU.Bn1w" resname="Tin">
         <source>Tin</source>
-        <target>~Estalagmena</target>
+        <target>Eztainua</target>
       </trans-unit>
       <trans-unit id="g208UJk" resname="Antimony">
         <source>Antimony</source>
-        <target>~Antimonia</target>
+        <target>Antimonioa</target>
       </trans-unit>
       <trans-unit id="HjOkQ_5" resname="Tellurium">
         <source>Tellurium</source>
-        <target>~Tellurio</target>
+        <target>Telurioa</target>
       </trans-unit>
       <trans-unit id="oVWUkNj" resname="Iodine">
         <source>Iodine</source>
-        <target>~Iodina</target>
+        <target>Iodoa</target>
       </trans-unit>
       <trans-unit id="q5t4L4O" resname="Xenon">
         <source>Xenon</source>
-        <target>~Xenona</target>
+        <target>Xenona</target>
       </trans-unit>
       <trans-unit id="Hm6glAY" resname="Cesium">
         <source>Cesium</source>
-        <target>~Cesioa</target>
+        <target>Zesioa</target>
       </trans-unit>
       <trans-unit id="Kq79CIq" resname="Barium">
         <source>Barium</source>
-        <target>~Barioa</target>
+        <target>Barioa</target>
       </trans-unit>
       <trans-unit id="2vVFFBp" resname="Lanthanum">
         <source>Lanthanum</source>
-        <target>~Lanthanum</target>
+        <target>Lantanoa</target>
       </trans-unit>
       <trans-unit id="bfhNLwM" resname="Cerium">
         <source>Cerium</source>
-        <target>~Cerio</target>
+        <target>Zerioa</target>
       </trans-unit>
       <trans-unit id="Hb.2zCf" resname="Praseodymium">
         <source>Praseodymium</source>
-        <target>~Praseodimio</target>
+        <target>Praseodimioa</target>
       </trans-unit>
       <trans-unit id="l0d0QZh" resname="Neodymium">
         <source>Neodymium</source>
-        <target>~Neodimio</target>
+        <target>Neodimioa</target>
       </trans-unit>
       <trans-unit id="QacxClD" resname="Promethium">
         <source>Promethium</source>
