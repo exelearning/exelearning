@@ -20,8 +20,9 @@ class UserApiControllerRest extends AbstractController
         private UserRepository $userRepository,
         private EntityManagerInterface $em,
         private SerializerInterface $serializer,
-        private ValidatorInterface $validator
-    ) {}
+        private ValidatorInterface $validator,
+    ) {
+    }
 
     #[Route('', name: 'api_users_index', methods: ['GET'])]
     public function index(): JsonResponse
@@ -29,7 +30,7 @@ class UserApiControllerRest extends AbstractController
         $users = $this->userRepository->findAll();
 
         return $this->json([
-            'data' => $users, Response::HTTP_OK
+            'data' => $users, Response::HTTP_OK,
         ]);
     }
 
@@ -37,7 +38,7 @@ class UserApiControllerRest extends AbstractController
     public function show(User $user): JsonResponse
     {
         return $this->json([
-            'data' => $user, Response::HTTP_OK
+            'data' => $user, Response::HTTP_OK,
         ]);
     }
 
@@ -84,7 +85,7 @@ class UserApiControllerRest extends AbstractController
             $this->em->flush();
 
             return $this->json([
-                'data' => $user, Response::HTTP_OK
+                'data' => $user, Response::HTTP_OK,
             ]);
         } catch (\Exception $e) {
             return $this->json([
@@ -112,8 +113,8 @@ class UserApiControllerRest extends AbstractController
                     'message' => 'User was already blocked',
                     'data' => [
                         'user_id' => $user->getId(),
-                        'is_active' => false
-                    ]
+                        'is_active' => false,
+                    ],
                 ], Response::HTTP_OK);
             }
 
@@ -125,17 +126,17 @@ class UserApiControllerRest extends AbstractController
                 'message' => 'User blocked successfully',
                 'data' => [
                     'user_id' => $user->getId(),
-                    'is_active' => $user->getIsActive()
-                ]
+                    'is_active' => $user->getIsActive(),
+                ],
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
-            $this->logger->error('Block user error: ' . $e->getMessage());
+            $this->logger->error('Block user error: '.$e->getMessage());
 
             return $this->json([
                 'status' => 'error',
                 'message' => 'Failed to block user',
                 'system_message' => $e->getMessage(), // Solo para desarrollo
-                'code' => 'USER_BLOCK_FAILED'
+                'code' => 'USER_BLOCK_FAILED',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -150,8 +151,8 @@ class UserApiControllerRest extends AbstractController
                     'message' => 'User was already active',
                     'data' => [
                         'user_id' => $user->getId(),
-                        'is_active' => true
-                    ]
+                        'is_active' => true,
+                    ],
                 ], Response::HTTP_OK);
             }
 
@@ -163,17 +164,17 @@ class UserApiControllerRest extends AbstractController
                 'message' => 'User unblocked successfully',
                 'data' => [
                     'user_id' => $user->getId(),
-                    'is_active' => $user->getIsActive()
-                ]
+                    'is_active' => $user->getIsActive(),
+                ],
             ], Response::HTTP_OK);
         } catch (\Exception $e) {
-            $this->logger->error('Unblock user error: ' . $e->getMessage());
+            $this->logger->error('Unblock user error: '.$e->getMessage());
 
             return $this->json([
                 'status' => 'error',
                 'message' => 'Failed to unblock user',
                 'system_message' => $e->getMessage(), // Solo para desarrollo
-                'code' => 'USER_UNBLOCK_FAILED'
+                'code' => 'USER_UNBLOCK_FAILED',
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
