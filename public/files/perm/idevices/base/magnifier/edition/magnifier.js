@@ -154,6 +154,7 @@ var $exeDevice = {
             return false;
         }
     },
+    
     addEvents: function () {
         $('#mnfFileInput').on('change', function () {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
@@ -169,20 +170,7 @@ var $exeDevice = {
             }
             $('#mnfPreviewImage').attr('src', selectedFile);
 
-            $ordenaMultimedia.on('click', '.MNF-FullLinkImage', function (e) {
-                e.stopPropagation();
-                const $image = $(this)
-                    .closest('.ODNP-CardContainer')
-                    .find('.ODNP-Image'),
-                    largeImageSrc = $image.attr('src');
-                if (largeImageSrc && largeImageSrc.length > 3) {
-                    $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
-                        largeImageSrc,
-                        $('#ordenaGameContainer-' + instance),
-                    );
-                }
-            });
-        });
+         });
 
     },
 
@@ -206,7 +194,7 @@ var $exeDevice = {
         html = html.replace(/`/g, '\\`');
 
         const textTextarea = `\n${html}\n`;
-        js = {
+        return {
             id,
             typeGame: 'magnifier',
             textTextarea,
@@ -221,8 +209,6 @@ var $exeDevice = {
             glassSize,
             ideviceId: id,
         };
-        console.log(js)
-        return js
         
     },
 };
