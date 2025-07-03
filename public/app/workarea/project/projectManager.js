@@ -226,10 +226,7 @@ export default class projectManager {
                     this.odeSession = eXeLearning.symfony.odeSessionId;
                     window.location.replace('workarea');
                 }
-            } else if (
-                eXeLearning.user.odePlatformId ||
-                eXeLearning.user.odeSecondTypePlatformId
-            ) {
+            } else if (eXeLearning.user.odePlatformId) {
                 this.loadPlatformProject(odeSessionId);
             } else if (eXeLearning.user.newOde) {
                 this.newSession(odeSessionId);
@@ -252,24 +249,19 @@ export default class projectManager {
     async loadPlatformProject(odeSessionId) {
         // Check odeSessionId and set on bbdd
         let odePlatformId = eXeLearning.user.odePlatformId;
-        let odeSecondTypePlatformId = eXeLearning.user.odeSecondTypePlatformId;
+
         const urlParams = new URLSearchParams(window.location.search);
         let jwtToken = urlParams.get('jwt_token');
         let params = {
-            odePlatformId: odePlatformId
-                ? odePlatformId
-                : odeSecondTypePlatformId,
+            odePlatformId,
             odeSessionId: odeSessionId,
             platformUrlGet: eXeLearning.config.platformUrlGet,
             jwt_token: jwtToken,
         };
         let response;
-        if (eXeLearning.user.odePlatformId == null) {
-            response =
-                await this.app.api.secondTypePlatformIntegrationOpenElp(params);
-        } else {
-            response = await this.app.api.platformIntegrationOpenElp(params);
-        }
+
+        response = await this.app.api.platformIntegrationOpenElp(params);
+
         if (response.responseMessage == 'OK') {
             let params = {
                 odeFileName: response.elpFileName,
@@ -2407,7 +2399,7 @@ export default class projectManager {
             eXeLearning.app.modals.alert.show({
                 title: _('Info'),
                 body: _(
-                    'You are currently editing an iDevice. Please close it before continuing',
+                    'You are editing an iDevice. Please close it before continuing',
                 ),
             });
             return true;

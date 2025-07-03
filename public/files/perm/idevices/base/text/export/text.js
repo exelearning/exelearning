@@ -6,11 +6,8 @@
  *
  * License: http://creativecommons.org/licenses/by-sa/4.0/
  */
-
 var $text = {
-
     ideviceClass: "textIdeviceContent",
-
     working: false,
     durationId: "textInfoDurationInput",
     durationTextId: "textInfoDurationTextInput",
@@ -20,205 +17,158 @@ var $text = {
     feedbackTitleId: "textFeedbackInput",
     feedbackContentId: "textFeedbackTextarea",
 
-    defaultBtnFeedbackText: "Show Feedback",
+    defaultBtnFeedbackText: $exe_i18n.showFeedback,
 
     /**
-     * eXe idevice engine
-     * Json idevice api function
      * Engine execution order: 1
-     *
      * Get the base html of the idevice view
-     *
-     * @param {Object} data
-     * @param {Number} accesibility
-     * @param {String} template
-     * @returns {String}
      */
-    renderView: function (data, accessibility, template) {
-        // Generate html content from data values
-        let infoContentHTML = this.createInfoHTML(
-            data[this.durationId] === "" ? "" : data[`${this.durationTextId}`],
+    renderView(data, accessibility, template) {
+        const hmltdata = $text.getHTMLView(data)
+        return template.replace("{content}", hmltdata);
+    },
+
+    getHTMLView(data, pathMedia) {
+        const isInExe = eXe.app.isInExe();
+        const durationText = isInExe
+            ? c_(data[this.durationTextId])
+            : data[this.durationTextId];
+        const participantsText = isInExe
+            ? c_(data[this.participantsTextId])
+            : data[this.participantsTextId];
+
+        const infoContentHTML = this.createInfoHTML(
+            data[this.durationId] === "" ? "" : durationText,
             data[this.durationId],
-            data[this.participantsId] === "" ? "" : data[this.participantsTextId],
+            data[this.participantsId] === "" ? "" : participantsText,
             data[this.participantsId]
         );
 
-        let mainContentHTML = data[this.mainContentId];
+        let contentHtml = data[this.mainContentId];
+        if (!isInExe && pathMedia) contentHtml = this.replaceResourceDirectoryPaths(pathMedia, contentHtml);
 
         const temp = document.createElement('div');
-        temp.innerHTML = mainContentHTML;
+        temp.innerHTML = contentHtml;
 
         const btnDiv = temp.querySelector('.feedback-button');
+        let buttonFeedBackText = data[this.feedbackTitleId];
         if (btnDiv) {
             const inputEl = btnDiv.querySelector('input.feedbackbutton');
-            if (inputEl) {
-                data[this.feedbackTitleId] = inputEl.value;
-            }
+            if (inputEl) buttonFeedBackText = isInExe ? c_(inputEl.value) : inputEl.value;
             btnDiv.remove();
         }
 
+        let feedBackHtml = data[this.feedbackContentId] || "";
+        if (!isInExe && pathMedia) feedBackHtml = this.replaceResourceDirectoryPaths(pathMedia, feedBackHtml);
         const fbDiv = temp.querySelector('.feedback.js-feedback');
         if (fbDiv) {
-            const content = fbDiv.innerHTML
-            data[this.feedbackContentId] = content;
+            feedBackHtml = fbDiv.innerHTML;
             fbDiv.remove();
         }
 
-        mainContentHTML = temp.innerHTML;
-        data[this.mainContentId] = mainContentHTML;
 
-        const feedbackContentHTML = data[this.feedbackContentId] === "" ?
-            "" :
-            this.createFeedbackHTML(
-                data[this.feedbackTitleId] === "" ?
-                    this.defaultBtnFeedbackText :
-                    data[this.feedbackTitleId],
-                data[this.feedbackContentId]
-            );
+        contentHtml = temp.innerHTML;
+        if (feedBackHtml) {
+            buttonFeedBackText = buttonFeedBackText === "" ? this.defaultBtnFeedbackText : buttonFeedBackText;
+            if (isInExe) buttonFeedBackText = c_(buttonFeedBackText);
+        }
 
-        const activityContent = infoContentHTML
-            + mainContentHTML
-            + feedbackContentHTML
-            + `<p class="clearfix"> </p>`;
+        data["textInfoParticipantsTextInput"] = participantsText;
+        data["textInfoDurationTextInput"] = durationText;
+        data["textTextarea"] = contentHtml;
+        data["textFeedbackInput"] = buttonFeedBackText;
+        data["textFeedbackTextarea"] = feedBackHtml;
+
+        const feedbackContentHTML = feedBackHtml === "" ? "" : this.createFeedbackHTML(buttonFeedBackText, feedBackHtml);
+        const activityContent = infoContentHTML + contentHtml + feedbackContentHTML + `<p class="clearfix"></p>`;
 
         let htmlContent = `<div class="${this.ideviceClass}">`;
         htmlContent += this.createMainContent(activityContent);
         htmlContent += `</div>`;
 
-        // Use template export/text.html
-        // Insert the html content inside the template
-        // Save html in database
-        return template.replace("{content}", htmlContent);
+        return htmlContent;
     },
 
-
     /**
-     * Json idevice api function
      * Engine execution order: 2
-     *
-     * Add the behavior and other functionalities to idevice
-     *
-     * @param {Object} data
-     * @param {Number} accesibility
-     * @returns {Boolean}
+     * Add behavior and functionalities
      */
-    renderBehaviour(data, accesibility) {
-        if (data.ideviceId) {
-            const $btns = $(`#${data.ideviceId} .feedbacktooglebutton`);
-            if ($btns.length!=1) return;
-            let $btnsTxt = $btns.val();
-            $btnsTxt = $btnsTxt.split('|');
-            if ($btnsTxt.length==2) {
-                const $btnsTxtA = $btnsTxt[0];
-                const $btnsTxtB = $btnsTxt[1];
-                $btns.val($btnsTxtA);
-                $btns.attr('data-text-a', $btnsTxtA);
-                $btns.attr('data-text-b', $btnsTxtB);
-            }
-            $btns.off('click');
-            $btns.closest('.feedback-button').removeClass('clearfix');
-            $btns.on('click', function () {
-                let e = $(this);
-                if ($text.working) return false;
-                let feedback = $(this).parent().next();
-                $text.working = true;
-                if (feedback.is(':visible')) {
-                    if (e[0].hasAttribute('data-text-a')) $btns.val(e.attr('data-text-a'));
-                    feedback.fadeOut(function(){
-                        $text.working = false;
-                    });
-                } else {
-                    if (e[0].hasAttribute('data-text-b')) $btns.val(e.attr('data-text-b'));
-                    feedback.fadeIn(function(){
-                        $text.working = false;
-                    });
-                }
-            });
+    renderBehaviour(data, accessibility, ideviceId) {
+        const $node = $('#' + data.ideviceId);
+        const isInExe = eXe.app.isInExe();
+
+        if (!isInExe && $node.length) {
+            let pathMedia = $('html').is('#exe-index')
+                ? 'content/resources/' + $node.first().attr('id-resource')
+                : '../content/resources/' + $node.first().attr('id-resource');
+
+            const newHtml = this.getHTMLView(data, pathMedia);
+            if (newHtml) $node.html(newHtml);
         }
 
-        $(document).off('click', '.feedbackbutton');
-        $(document).on('click', '.feedbackbutton', function () {
-            $(this)
-                .closest('.feedback-button').removeClass('clearfix')
-                .closest('.idevice_node')
-                .find('.js-feedback')
-                .toggleClass('js-hidden');
+        const $btn = $(`#${data.ideviceId} input.feedbacktooglebutton`);
+        if ($btn.length !== 1) return;
+
+        const [textA, textB = textA] = $btn.val().split('|');
+        $btn.val(textA).attr('data-text-a', textA).attr('data-text-b', textB);
+        $btn.off('click').closest('.feedback-button').removeClass('clearfix');
+
+        $btn.on('click', function () {
+            if ($text.working) return false;
+            $text.working = true;
+            const btn = $(this);
+            const feedbackEl = btn.parent().next();
+
+            if (feedbackEl.is(':visible')) {
+                btn.val(btn.attr('data-text-a'));
+                feedbackEl.fadeOut(() => { $text.working = false; });
+            } else {
+                btn.val(btn.attr('data-text-b'));
+                feedbackEl.fadeIn(() => { $text.working = false; });
+            }
         });
     },
 
-    /**
-     * Json idevice api function
-     * Engine execution order: 3
-     *
-     * Initialize idevice parameters if necessary
-     *
-     * @param {Object} data
-     * @param {Number} accesibility
-     */
-    init: function (data, accesibility) {
+    replaceResourceDirectoryPaths(newDir, htmlString) {
+        let dir = newDir.trim();
+        if (!dir.endsWith('/')) dir += '/';
 
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        doc.querySelectorAll('img[src], video[src], audio[src], a[href]')
+            .forEach(el => {
+                const attr = el.hasAttribute('src') ? 'src' : 'href';
+                const val = el.getAttribute(attr).trim();
+                if (/^\/?files\//.test(val)) {
+                    const filename = val.split('/').pop() || '';
+                    el.setAttribute(attr, dir + filename);
+                }
+            });
+        return doc.body.innerHTML;
     },
 
-    /**
-     * Json idevice api function
-     * Engine execution order: 3
-     *
-     * Initialize idevice parameters if necessary
-     *
-     * @param {String} content
-     */
+    init(data, accessibility) { },
+
     createMainContent(content) {
-        let html = `
-      <div class="exe-text-activity">
-        <div>
-          ${content}
-        </div>
-      </div>`;
-        return html;
+        return `
+            <div class="exe-text-activity">
+                <div>${content}</div>
+            </div>`;
     },
 
-    /**
-   * Json idevice api function
-   * Engine execution order: 3
-   *
-   * Initialize idevice parameters if necessary
-   *
-   * @param {String} durationText
-   * @param {String} durationValue
-   * @param {String} participantsText
-   * @param {String} participantsValue
-   */
     createInfoHTML(durationText, durationValue, participantsText, participantsValue) {
-        let html = `
-      <dl>
-        <div class="inline">
-          <dt><span title="${durationText}">${durationText}</span></dt>
-          <dd>${durationValue}</dd>
-        </div>
-        <div class="inline">
-          <dt><span title="${participantsText}">${participantsText}</span></dt>
-          <dd>${participantsValue}</dd>
-        </div>
-      </dl>`
-        return html;
+        return `
+            <dl>
+                <div class="inline"><dt><span title="${durationText}">${durationText}</span></dt><dd>${durationValue}</dd></div>
+                <div class="inline"><dt><span title="${participantsText}">${participantsText}</span></dt><dd>${participantsValue}</dd></div>
+            </dl>`;
     },
 
-    /**
-     * html basic feedback template
-     *
-     * @param {String} title
-     * @param {String} content
-     */
     createFeedbackHTML(title, content) {
-        let html = `
-      <div class="iDevice_buttons feedback-button js-required">
-        <input type="button" class="feedbacktooglebutton" value="${title}" />
-      </div>
-      <div class="feedback js-feedback js-hidden">
-      ${content}
-      </div>
-      `;
-        return html;
+        return `
+            <div class="iDevice_buttons feedback-button js-required">
+                <input type="button" class="feedbacktooglebutton" value="${title}" />
+            </div>
+            <div class="feedback js-feedback js-hidden">${content}</div>`;
     }
-
-}
+};

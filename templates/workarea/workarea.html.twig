@@ -18,7 +18,6 @@
 
 {% block javascripts %}
     {# External libs #}
-    <script class="exe" src="{{ asset('libs/jquery/jquery.min.js') }}" defer></script>
     <script class="exe" src="{{ asset('libs/jquery-ui/jquery-ui.min.js') }}" defer></script>
     <script class="exe" src="{{ asset('libs/bootstrap/bootstrap.bundle.min.js') }}" defer></script>
     <script class="exe" src="{{ asset('libs/multi-dropdown.js') }}" defer></script>
@@ -27,6 +26,7 @@
     {# eXeLearning common legacy objects #}
     <script class="exe" type="module" src="{{ asset('app/common/app_common.js') }}" defer></script>
     <script class="exe" src="{{ asset('app/common/common_i18n.js') }}" defer></script>
+    <script class="exe" src="{{ asset('app/common/common_edition.js') }}"></script>
     <script class="exe" src="{{ asset('app/common/common.js') }}" defer></script>
     <script class="exe" src="{{ asset('app/common/exe_effects/exe_effects.js') }}" defer></script>
     <script class="exe" src="{{ asset('app/common/exe_games/exe_games.js') }}" defer></script>

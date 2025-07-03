@@ -679,7 +679,7 @@ class OdeExportService implements OdeExportServiceInterface
                     } else {
                         $newResourcesPrefix = $resourcesPrefix;
                     }
-
+                    $isIndex = $pageData['isIndex'];
                     $odeComponentsSyncClone->replaceLinksHtml(
                         $newIdeviceId,
                         $ideviceResourcesMapping,
@@ -688,7 +688,8 @@ class OdeExportService implements OdeExportServiceInterface
                         $userPreferencesDtos,
                         $elpFileName,
                         $newResourcesPrefix,
-                        $exportType
+                        $exportType,
+                        $isIndex
                     );
 
                     $odeComponentsSyncCloneArray[$ideviceId] = $odeComponentsSyncClone;

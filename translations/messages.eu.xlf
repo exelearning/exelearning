@@ -9,6 +9,10 @@
         <source>Permissions error</source>
         <target>~Baimenak errorea</target>
       </trans-unit>
+      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
+        <source>You are editing an iDevice. Please close it before continuing</source>
+        <target>~iDevice bat editatzen ari zara. Mesedez, jarraitu aurretik itxi ezazu.</target>
+      </trans-unit>
       <trans-unit id="Kk_KT2R" resname="This is just a demo version. Not for real projects.">
         <source>This is just a demo version. Not for real projects.</source>
         <target>~Hau demo bertsioa besterik ez da. Ez da proiektu errealetarako.</target>
@@ -85,6 +89,14 @@
         <source>Save score</source>
         <target>Gorde puntuak</target>
       </trans-unit>
+      <trans-unit id="9iMmg7m" resname="Save the score">
+        <source>Save the score</source>
+        <target>~Gorde puntuazioa</target>
+      </trans-unit>
+      <trans-unit id="qpfRXBy" resname="Automatically save the score">
+        <source>Automatically save the score</source>
+        <target>~Gorde puntuazioa automatikoki</target>
+      </trans-unit>
       <trans-unit id="2MMjHQO" resname="Do not save the score">
         <source>Do not save the score</source>
         <target>Ez gorde puntuak</target>
@@ -135,7 +147,7 @@
       </trans-unit>
       <trans-unit id="uS3p2Fi" resname="Act as a highly experienced teacher.">
         <source>Act as a highly experienced teacher.</source>
-        <target></target>
+        <target>~Joka ezazu esperientzia handiko irakasle baten moduan.</target>
       </trans-unit>
       <trans-unit id="w28CCkU" resname="Export questions">
         <source>Export questions</source>
@@ -699,39 +711,39 @@
       </trans-unit>
       <trans-unit id="tWpnRhI" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.</source>
-        <target></target>
+        <target>~Sortu 10 hitz eta bakoitzaren definizioa, # bidez bereizita. Ez erabili # karakterea ez hitzean ezta definizioan ere.</target>
       </trans-unit>
       <trans-unit id="rK1Tq78" resname="Generate 30 words and their definitions separated by #.">
         <source>Generate 30 words and their definitions separated by #.</source>
-        <target></target>
+        <target>~Sortu 30 hitz eta haien definizioak, # bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="jRrGoMe" resname="Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.">
         <source>Create 10 multiple-choice questions with 2 to 4 options. Start with the correct solution (0, 1, 2, or 3), followed by the question and each option, all separated by #.</source>
-        <target></target>
+        <target>~Sortu aukera anitzeko 10 galdera, 2 eta 4 aukera artean. Hasi erantzun zuzenarekin (0, 1, 2 edo 3), jarraitu galderarekin eta aukera bakoitzarekin, dena # bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="iEm_hXE" resname="Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.">
         <source>Generate 10 multiple-choice questions. Provide the correct answer as letters (e.g., A, AB), followed by the question and the options, all separated by #.</source>
-        <target></target>
+        <target>~Sortu aukera anitzeko 10 galdera. Eman erantzun zuzena letren bidez (adibidez, A, AB), eta jarraitu galderarekin eta aukerekin, dena # bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="0bgCBr1" resname="Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.">
         <source>Create 5 solution words followed by 3 to 9 clues that describe each one. Separate each clue with #.</source>
-        <target></target>
+        <target>~Sortu 5 soluzio-hitz, eta bakoitzaren deskribapen gisa 3 eta 9 pista artean. Pista bakoitza # bidez bereizi.</target>
       </trans-unit>
       <trans-unit id="QCl9NKh" resname="Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.">
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
-        <target></target>
+        <target>~Eman 4 elementu talde bakoitzarentzat: haragijaleak (0) eta belarjaleak (1). Bereizi talde zenbakia eta elementua # ikurrarekin.</target>
       </trans-unit>
       <trans-unit id="DCe79Ym" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target></target>
+        <target>~Sortu egia edo gezurra motako 10 galdera. Galdera bakoitzak izan behar du soluzioa (0 = gezurra, 1 = egia), gomendio bat eta feedbacka, dena # bidez bereizita. Feedbackak ez du esplizituki adierazi behar erantzuna zuzena edo okerra den.</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
-        <target></target>
+        <target>~Sortu 10 galdera. 'Soluzioa' izan daiteke 0/1 (egia/gezurra), 0-3 (aukera bakarrekoa), edo A-D (edo konbinazioak) aukera anitzeko galderetarako. Ondoren, eman galdera eta erantzun aukerak (2 eta 4 artean), dena '#' bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="su9EOJR" resname="Provide only one ordered list of steps or items, each separated by '#'.">
         <source>Provide only one ordered list of steps or items, each separated by '#'.</source>
-        <target></target>
+        <target>~Eman urrats edo elementuen zerrenda ordenatu bakarra, bakoitza '#' bidez bereizita.</target>
       </trans-unit>
       <trans-unit id="jDQWHZw" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition">
         <source>Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition</source>
@@ -740,10 +752,6 @@
       <trans-unit id="JOOpn8O" resname="Go to Tools - Preview to see the tooltip content">
         <source>Go to Tools - Preview to see the tooltip content</source>
         <target>Tresna-Aurrebistara joan argibidearen edukia ikusteko</target>
-      </trans-unit>
-      <trans-unit id="0nNrpBR" resname="'">
-        <source>'</source>
-        <target>'</target>
       </trans-unit>
       <trans-unit id="aRkw0uL" resname="If you have made changes and have not saved them, they will be lost. Do you really want to quit?">
         <source>If you have made changes and have not saved them, they will be lost. Do you really want to quit?</source>
@@ -927,7 +935,7 @@
       </trans-unit>
       <trans-unit id="4Ys2ifD" resname="Saved one day ago">
         <source>Saved one day ago</source>
-        <target></target>
+        <target>~Duela egun bat gorde da</target>
       </trans-unit>
       <trans-unit id="8FQWOUH" resname="Saved %s days ago">
         <source>Saved %s days ago</source>
@@ -3517,6 +3525,10 @@
         <source>Form</source>
         <target>~Inprimakia</target>
       </trans-unit>
+      <trans-unit id="KfqryR." resname="Slides list">
+        <source>Slides list</source>
+        <target>Diapositiba-zerrenda</target>
+      </trans-unit>
       <trans-unit id="z_TDAhl" resname="Please select a text file (.txt) or a Moodle XML file (.xml)">
         <source>Please select a text file (.txt) or a Moodle XML file (.xml)</source>
         <target>~Mesedez, hautatu testu-fitxategi bat (.txt) edo Moodle XML fitxategi bat (.xml)</target>
@@ -3529,9 +3541,9 @@
         <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.</source>
         <target>~Sartu testua jaitsiera-jarduerarako jaitsiera-eremuan beste iturri batetik testua itsatsi edo zuzenean idatziz. Hitzak aukeratzeko, bikoitza klik egin hitz batean eta klikatu beheko "Erakutsi/Ezkutatu" botoian.</target>
       </trans-unit>
-      <trans-unit id="0PufnT0" resname="Enter the text for the fill-in-the-blanks activity. Highlight the words and use the button at the bottom to turn them into blanks.">
-        <source>Enter the text for the fill-in-the-blanks activity. Highlight the words and use the button at the bottom to turn them into blanks.</source>
-        <target>~Idatzi hutsunea betetzeko jarduerarako testua hutsune-eremuan beste iturri batetik testua itsatsi edo zuzenean idatziz. Hitzak ezkutatzeko, bikoitza klik egin hitz batean eta klikatu beheko "Ezkutatu/Erakutsi" hitza botoian. Erantzun posible gehiago definitu ditzakezu barra-seinalea (|) inguratuta daudenean. Adibidez: |txakur|katu|txori|</target>
+      <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
+        <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
+        <target>~Idatzi edo jo espazio zuria zelaian bete behar den jardueraren testua. Aukeratu hitzak eta erabili beheko botoia horiek ezkutatzeko. Erantzun posible bat baino gehiago defini dezakezu, barra bertikalak erabiliz, horiek inguratu eta bereizteko. Ej.: |perro| gato| pájaro|</target>
       </trans-unit>
       <trans-unit id="eh_avyW" resname="If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as &quot;close enough&quot; by the algorithm, as there is only one spelling error, even if &quot;Check capitalization&quot; is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If &quot;Strict qualification&quot; and &quot;Check capitalization&quot; are enabled, the only correct answer is &quot;Elephant&quot;. If only &quot;Strict qualification&quot; is enabled and &quot;Check capitalization&quot; is not, &quot;elephant&quot; will also be accepted.">
         <source>If unchecked, a small number of spelling and capitalization errors will be accepted. If checked, no spelling or capitalization errors will be accepted. Example: If the correct answer is Elephant and it says elephant or Eliphant, both will be considered as "close enough" by the algorithm, as there is only one spelling error, even if "Check capitalization" is checked. If the case check is disabled in this example, the lowercase letter e is not considered an error and eliphant will also be accepted. If "Strict qualification" and "Check capitalization" are enabled, the only correct answer is "Elephant". If only "Strict qualification" is enabled and "Check capitalization" is not, "elephant" will also be accepted.</source>
@@ -4204,10 +4216,6 @@
       <trans-unit id="tH805Hs" resname="Remove slide %s?">
         <source>Remove slide %s?</source>
         <target>%s diapositiba ezabatu?</target>
-      </trans-unit>
-      <trans-unit id="KfqryR." resname="Slides list">
-        <source>Slides list</source>
-        <target>Diapositiba-zerrenda</target>
       </trans-unit>
       <trans-unit id="o8So2MJ" resname="New slide">
         <source>New slide</source>
@@ -5621,6 +5629,10 @@
         <source>Go to</source>
         <target>Hona joan</target>
       </trans-unit>
+      <trans-unit id="l9dOlHi" resname="The video's end time must be shorter than its total duration">
+        <source>The video's end time must be shorter than its total duration</source>
+        <target>Egiaztatu bideoaren iraupena eta amaiera unea</target>
+      </trans-unit>
       <trans-unit id="i66zYWo" resname="Video test">
         <source>Video test</source>
         <target>~Bideoaren proba</target>
@@ -5644,10 +5656,6 @@
       <trans-unit id="y9T7U06" resname="There is already a question in that second.">
         <source>There is already a question in that second.</source>
         <target>Dagoeneko galdera bat dago segundo horretan.</target>
-      </trans-unit>
-      <trans-unit id="l9dOlHi" resname="The video's end time must be shorter than its total duration">
-        <source>The video's end time must be shorter than its total duration</source>
-        <target>Egiaztatu bideoaren iraupena eta amaiera unea</target>
       </trans-unit>
       <trans-unit id="v5lFr7s" resname="Create activities consisting on a video with interactive questions.">
         <source>Create activities consisting on a video with interactive questions.</source>
@@ -5735,7 +5743,7 @@
       </trans-unit>
       <trans-unit id="rxFYMTS" resname="Spanish ">
         <source>Spanish </source>
-        <target>Espainiera</target>
+        <target>~Espainiar</target>
       </trans-unit>
       <trans-unit id="jVpqXrM" resname="New rubric">
         <source>New rubric</source>
@@ -6021,7 +6029,7 @@
         <source>Phrase</source>
         <target>Esaldi</target>
       </trans-unit>
-      <trans-unit id="rbTrbqE" resname="Task information (optional)">
+      <trans-unit id="FyjlitU" resname="Task information (optional)">
         <source>Task information (optional)</source>
         <target>Atazaren informazioa (hautazkoa)</target>
       </trans-unit>
@@ -8017,169 +8025,101 @@
         <source>Failed to upload file</source>
         <target>~Ezin izan da fitxategia kargatu</target>
       </trans-unit>
-      <trans-unit id="uj6qgsu" resname="Access">
-        <source>Access</source>
-        <target>Sarbidea</target>
+      <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
+        <source>You can choose a different language for the current project.</source>
+        <target>~Uneko proiekturako beste hizkuntza bat aukeratu dezakezu.</target>
       </trans-unit>
-      <trans-unit id="zCmWOyM" resname="Access Type">
-        <source>Access Type</source>
-        <target>Sarbide mota</target>
+      <trans-unit id="QLYaHhh" resname="License for the new documents">
+        <source>License for the new documents</source>
+        <target>~Dokumentu berrietarako lizentzia</target>
       </trans-unit>
-      <trans-unit id="dtOd8PK" resname="active">
-        <source>active</source>
-        <target>aktiboa</target>
+      <trans-unit id="3D7z5XX" resname="You can choose a different licence for the current project.">
+        <source>You can choose a different licence for the current project.</source>
+        <target>~Uneko proiektuarentzat lizentzia desberdin bat aukeratu dezakezu.</target>
       </trans-unit>
-      <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
-        <source>Search bar (Website export only)</source>
-        <target>~Bilaketa-barra (Webgune esportazioa soilik)</target>
+      <trans-unit id="HgsKUL1" resname="Version control">
+        <source>Version control</source>
+        <target>~Bertsioaren kontrola</target>
       </trans-unit>
-      <trans-unit id="jb5jN3p" resname="A search box will be added to every page of the website.">
-        <source>A search box will be added to every page of the website.</source>
-        <target>~Webgune bakoitzaren orrialdean bilaketa-kutxa bat gehituko da.</target>
-      </trans-unit>
-      <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
-        <source>Advanced (SEO)</source>
-        <target>~Aurreratua (SEO)</target>
-      </trans-unit>
-      <trans-unit id="21sXCFE" resname="Aggregation Level">
-        <source>Aggregation Level</source>
-        <target>Agregazio maila</target>
-      </trans-unit>
-      <trans-unit id="w9rqboO" resname="Allows to minimize/display content">
-        <source>Allows to minimize/display content</source>
-        <target>~Edukia minimizatu/erakutsi ahal izango da</target>
-      </trans-unit>
-      <trans-unit id="UizfO70" resname="analyse">
-        <source>analyse</source>
-        <target>analizatu</target>
-      </trans-unit>
-      <trans-unit id="j3bED29" resname="Annotation">
-        <source>Annotation</source>
-        <target>Oharra</target>
-      </trans-unit>
-      <trans-unit id="30xdS3B" resname="atomic">
-        <source>atomic</source>
-        <target>atomikoa</target>
+      <trans-unit id="madT9LT" resname="Texts and Links">
+        <source>Texts and Links</source>
+        <target>~Testuak eta Estekak</target>
       </trans-unit>
       <trans-unit id="m8yNoyg" resname="Author URL">
         <source>Author URL</source>
         <target>Egilearen URLa</target>
       </trans-unit>
-      <trans-unit id="sQA8sGg" resname="blended">
-        <source>blended</source>
-        <target>asistentzia mistoa</target>
+      <trans-unit id="XWyckJx" resname="License URL">
+        <source>License URL</source>
+        <target>~Lizentziaren URLa</target>
       </trans-unit>
-      <trans-unit id="DhkCWrO" resname="browser">
-        <source>browser</source>
-        <target>nabigatzailea</target>
+      <trans-unit id="4bgAmj2" resname="Links color">
+        <source>Links color</source>
+        <target>Loturen kolorea</target>
       </trans-unit>
-      <trans-unit id="bmxHASz" resname="Catalog">
-        <source>Catalog</source>
-        <target>Katalogoa</target>
+      <trans-unit id="22GeuW5" resname="Header image">
+        <source>Header image</source>
+        <target>~Goiburuko irudia</target>
       </trans-unit>
-      <trans-unit id="GFmbqIO" resname="Cataloging standard">
-        <source>Cataloging standard</source>
-        <target>~Katalogazio estandarra</target>
+      <trans-unit id="Ulft.2T" resname="Logo image">
+        <source>Logo image</source>
+        <target>~Logo irudia</target>
       </trans-unit>
-      <trans-unit id="I1l.nih" resname="Cataloguing">
-        <source>Cataloguing</source>
-        <target>Katalogazioa</target>
+      <trans-unit id="QkjXw6z" resname="Visible in export">
+        <source>Visible in export</source>
+        <target>~Inportazilean ikusgai</target>
       </trans-unit>
-      <trans-unit id="Gx_b7tA" resname="Classification">
-        <source>Classification</source>
-        <target>Sailkapena</target>
+      <trans-unit id="37wivZ3" resname="ID">
+        <source>ID</source>
+        <target>Id</target>
       </trans-unit>
-      <trans-unit id="aDw_yhA" resname="classroom">
-        <source>classroom</source>
-        <target>ikasgela</target>
+      <trans-unit id="e72fZ2G" resname="CSS Class">
+        <source>CSS Class</source>
+        <target>~CSS Klasea</target>
       </trans-unit>
-      <trans-unit id="kX5Iheb" resname="closed exercise or problem">
-        <source>closed exercise or problem</source>
-        <target>itxitako ariketa edo problema</target>
+      <trans-unit id="w9rqboO" resname="Allows to minimize/display content">
+        <source>Allows to minimize/display content</source>
+        <target>~Edukia minimizatu/erakutsi ahal izango da</target>
       </trans-unit>
-      <trans-unit id="Kx.tMNA" resname="Cognitive Process">
-        <source>Cognitive Process</source>
-        <target>Prozesu kognitiboa</target>
+      <trans-unit id="YSMMgnW" resname="Minimized">
+        <source>Minimized</source>
+        <target>~Murriztua</target>
       </trans-unit>
-      <trans-unit id="qHVbKJo" resname="collaborate">
-        <source>collaborate</source>
-        <target>lagundu</target>
+      <trans-unit id="boXVpbM" resname="Title HTML">
+        <source>Title HTML</source>
+        <target>~Izenburua HTML</target>
       </trans-unit>
-      <trans-unit id="MPgsWGQ" resname="collection">
-        <source>collection</source>
-        <target>bilduma</target>
+      <trans-unit id="jMqEuPp" resname="Advanced (SEO)">
+        <source>Advanced (SEO)</source>
+        <target>~Aurreratua (SEO)</target>
       </trans-unit>
-      <trans-unit id="HCsS8LU" resname="communicate">
-        <source>communicate</source>
-        <target>komunikatu</target>
+      <trans-unit id="GYlJ0QA" resname="Different title on the page">
+        <source>Different title on the page</source>
+        <target>~Orriaren titulu desberdina</target>
       </trans-unit>
-      <trans-unit id="ZsoFFM7" resname="compare">
-        <source>compare</source>
-        <target>konparatu</target>
+      <trans-unit id="OGj102e" resname="Title in page">
+        <source>Title in page</source>
+        <target>~Orainoko orrialdeko izenburua</target>
       </trans-unit>
-      <trans-unit id="voiPl0F" resname="compete">
-        <source>compete</source>
-        <target>lehiatu</target>
+      <trans-unit id="c_yVrgu" resname="Content metadata">
+        <source>Content metadata</source>
+        <target>~Edukien metadatuak</target>
       </trans-unit>
-      <trans-unit id="pmAJY0E" resname="computer scientist">
-        <source>computer scientist</source>
-        <target>informatikaria</target>
+      <trans-unit id="q_eBNIy" resname="The name given to the resource.">
+        <source>The name given to the resource.</source>
+        <target>Baliabideari emandako izena.</target>
       </trans-unit>
-      <trans-unit id="QIVs3zF" resname="conceptual map">
-        <source>conceptual map</source>
-        <target>mapa kontzeptuala</target>
+      <trans-unit id="FMzFNH2" resname="Select a language.">
+        <source>Select a language.</source>
+        <target>Aukeratu hizkuntza.</target>
       </trans-unit>
-      <trans-unit id="m8_BFMv" resname="connect">
-        <source>connect</source>
-        <target>harremanak egin</target>
+      <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
+        <source>Primary author/s of the resource.</source>
+        <target>~Baliabidearen egile nagusiak.</target>
       </trans-unit>
-      <trans-unit id="cfWzr3y" resname="consider">
-        <source>consider</source>
-        <target>hausnartu</target>
-      </trans-unit>
-      <trans-unit id="NygWi6y" resname="content provider">
-        <source>content provider</source>
-        <target>edukien hornitzailea</target>
-      </trans-unit>
-      <trans-unit id="ms66Sj7" resname="Context">
-        <source>Context</source>
-        <target>Testuingurua</target>
-      </trans-unit>
-      <trans-unit id="2H4w0Zr" resname="contextualize">
-        <source>contextualize</source>
-        <target>testuinguratu</target>
-      </trans-unit>
-      <trans-unit id="NyLbmPm" resname="contextualized case problem">
-        <source>contextualized case problem</source>
-        <target>testuinguruan jarritako kasua</target>
-      </trans-unit>
-      <trans-unit id="30baqPN" resname="contribution">
-        <source>contribution</source>
-        <target>~laguntza</target>
-      </trans-unit>
-      <trans-unit id="Cuac1eP" resname="Contribution">
-        <source>Contribution</source>
-        <target>Ekarpena</target>
-      </trans-unit>
-      <trans-unit id="Jrt_AT3" resname="control">
-        <source>control</source>
-        <target>kontrolatu</target>
-      </trans-unit>
-      <trans-unit id="1QFOzBE" resname="cooperate">
-        <source>cooperate</source>
-        <target>kooperatu</target>
-      </trans-unit>
-      <trans-unit id="8jg5YjP" resname="Copyright And Other Restrictions">
-        <source>Copyright And Other Restrictions</source>
-        <target>Copyright eta bestelako murrizketak</target>
-      </trans-unit>
-      <trans-unit id="1OC.26o" resname="Cost">
-        <source>Cost</source>
-        <target>Kostua</target>
-      </trans-unit>
-      <trans-unit id="CzW9uKn" resname="Coverage">
-        <source>Coverage</source>
-        <target>Estaldura</target>
+      <trans-unit id="wx6YU0S" resname="Export options">
+        <source>Export options</source>
+        <target>~Esportatzeko aukerak</target>
       </trans-unit>
       <trans-unit id="D0HXVrd" resname="Editable export">
         <source>Editable export</source>
@@ -8205,758 +8145,6 @@
         <source>A copy of the eXeLearning file will be included when exporting the content.</source>
         <target>~EtxeLearning fitxategiaren kopia bat barne hartuko da edukiak esportatzen direnean.</target>
       </trans-unit>
-      <trans-unit id="WEXSR5D" resname="Accessibility toolbar">
-        <source>Accessibility toolbar</source>
-        <target>~Sarbideko tresna-barra</target>
-      </trans-unit>
-      <trans-unit id="bpqFrqX" resname="The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.">
-        <source>The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.</source>
-        <target>Sartzeko barrari esker, erabiltzaileek gunearen alderdi batzuk pertsonalizatu ditzakete, hala nola hizki-mota eta tamaina.</target>
-      </trans-unit>
-      <trans-unit id="BGpp5_J" resname="creator">
-        <source>creator</source>
-        <target>sortzailea</target>
-      </trans-unit>
-      <trans-unit id="e72fZ2G" resname="CSS Class">
-        <source>CSS Class</source>
-        <target>~CSS Klasea</target>
-      </trans-unit>
-      <trans-unit id="qBy_Aas" resname="Days">
-        <source>Days</source>
-        <target>Egunak</target>
-      </trans-unit>
-      <trans-unit id="V3GiFng" resname="decide">
-        <source>decide</source>
-        <target>erabaki</target>
-      </trans-unit>
-      <trans-unit id="QLYaHhh" resname="License for the new documents">
-        <source>License for the new documents</source>
-        <target>~Dokumentu berrietarako lizentzia</target>
-      </trans-unit>
-      <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
-        <source>You can choose a different language for the current project.</source>
-        <target>~Uneko proiekturako beste hizkuntza bat aukeratu dezakezu.</target>
-      </trans-unit>
-      <trans-unit id="9ak38ci" resname="define">
-        <source>define</source>
-        <target>zehaztu</target>
-      </trans-unit>
-      <trans-unit id="CcgNHS0" resname="describe">
-        <source>describe</source>
-        <target>deskribatu</target>
-      </trans-unit>
-      <trans-unit id="OKT5yHe" resname="design">
-        <source>design</source>
-        <target>diseinatu</target>
-      </trans-unit>
-      <trans-unit id="4vJAS9W" resname="diagram">
-        <source>diagram</source>
-        <target>diagrama</target>
-      </trans-unit>
-      <trans-unit id="KXjuAt6" resname="didactic game">
-        <source>didactic game</source>
-        <target>joko didaktikoa</target>
-      </trans-unit>
-      <trans-unit id="GYlJ0QA" resname="Different title on the page">
-        <source>Different title on the page</source>
-        <target>~Orriaren titulu desberdina</target>
-      </trans-unit>
-      <trans-unit id="cyvj7af" resname="difficult">
-        <source>difficult</source>
-        <target>zaila</target>
-      </trans-unit>
-      <trans-unit id="iCqd_lw" resname="discuss">
-        <source>discuss</source>
-        <target>eztabaidatu</target>
-      </trans-unit>
-      <trans-unit id="dKhl.s." resname="discussion activity">
-        <source>discussion activity</source>
-        <target>eztabaidak</target>
-      </trans-unit>
-      <trans-unit id="Dm0vwa8" resname="distance">
-        <source>distance</source>
-        <target>urrutikoa</target>
-      </trans-unit>
-      <trans-unit id="dgdAkJu" resname="draft">
-        <source>draft</source>
-        <target>zirriborroa</target>
-      </trans-unit>
-      <trans-unit id="CSSpmeX" resname="dual free content license GPL and EUPL">
-        <source>dual free content license GPL and EUPL</source>
-        <target>GPL eta EUPL lizentzia aske bikoitza</target>
-      </trans-unit>
-      <trans-unit id="omSlwYb" resname="easy">
-        <source>easy</source>
-        <target>erraza</target>
-      </trans-unit>
-      <trans-unit id="B4ksnX0" resname="education expert">
-        <source>education expert</source>
-        <target>hezkuntzan aditua</target>
-      </trans-unit>
-      <trans-unit id="5mJkzNh" resname="Educational">
-        <source>Educational</source>
-        <target>Hezkuntzarako</target>
-      </trans-unit>
-      <trans-unit id="4Vm4sxO" resname="educational validator">
-        <source>educational validator</source>
-        <target>hezkuntzako berrikuslea</target>
-      </trans-unit>
-      <trans-unit id="JZi_tm0" resname="Email">
-        <source>Email</source>
-        <target>Posta elektronikoa</target>
-      </trans-unit>
-      <trans-unit id="6yueven" resname="Entity">
-        <source>Entity</source>
-        <target>Entitatea</target>
-      </trans-unit>
-      <trans-unit id="RPUHE9I" resname="Entry">
-        <source>Entry</source>
-        <target>Sarrera</target>
-      </trans-unit>
-      <trans-unit id="QZOsPod" resname="exam">
-        <source>exam</source>
-        <target>azterketa</target>
-      </trans-unit>
-      <trans-unit id="nQOUezh" resname="exercise">
-        <source>exercise</source>
-        <target>ariketa</target>
-      </trans-unit>
-      <trans-unit id="OiRXx2I" resname="experiment">
-        <source>experiment</source>
-        <target>esperimentua</target>
-      </trans-unit>
-      <trans-unit id="uOQQPzB" resname="explain">
-        <source>explain</source>
-        <target>azaldu</target>
-      </trans-unit>
-      <trans-unit id="xpk0YfD" resname="expositive">
-        <source>expositive</source>
-        <target>azalpenekoa</target>
-      </trans-unit>
-      <trans-unit id="3MmH10C" resname="extrapolate">
-        <source>extrapolate</source>
-        <target>estrapolatu</target>
-      </trans-unit>
-      <trans-unit id="AcoWwgo" resname="face to face">
-        <source>face to face</source>
-        <target>erdizuzenekoa</target>
-      </trans-unit>
-      <trans-unit id="mN.652t" resname="family">
-        <source>family</source>
-        <target>familia</target>
-      </trans-unit>
-      <trans-unit id="XktYcMV" resname="figure">
-        <source>figure</source>
-        <target>zenbakia</target>
-      </trans-unit>
-      <trans-unit id="sVb5j1n" resname="final">
-        <source>final</source>
-        <target>amaiera</target>
-      </trans-unit>
-      <trans-unit id="PUTsW0F" resname="For Group Work">
-        <source>For Group Work</source>
-        <target>Talde lanerako</target>
-      </trans-unit>
-      <trans-unit id="ukp7GFs" resname="For Individual Tuition">
-        <source>For Individual Tuition</source>
-        <target>Banaka lantzeko</target>
-      </trans-unit>
-      <trans-unit id="Ji1pkuA" resname="free software license EUPL">
-        <source>free software license EUPL</source>
-        <target>EUPL lizentzia askea</target>
-      </trans-unit>
-      <trans-unit id="42uh.jA" resname="free software license GPL">
-        <source>free software license GPL</source>
-        <target>GPL lizentzia askea</target>
-      </trans-unit>
-      <trans-unit id="7DZh3v1" resname="General description">
-        <source>General description</source>
-        <target>Deskribapen orokorra</target>
-      </trans-unit>
-      <trans-unit id="Af_BsDR" resname="general public">
-        <source>general public</source>
-        <target>publikoa oro har</target>
-      </trans-unit>
-      <trans-unit id="FPo_THX" resname="gifted learner">
-        <source>gifted learner</source>
-        <target>gaitasun intelektual altuko ikaslea</target>
-      </trans-unit>
-      <trans-unit id="L.a1qli" resname="graph">
-        <source>graph</source>
-        <target>grafikoa</target>
-      </trans-unit>
-      <trans-unit id="XP8onCV" resname="graphical designer">
-        <source>graphical designer</source>
-        <target>diseinatzaile grafikoa</target>
-      </trans-unit>
-      <trans-unit id="J3_3OBy" resname="group">
-        <source>group</source>
-        <target>taldekoa</target>
-      </trans-unit>
-      <trans-unit id="uwkTpT5" resname="guided reading">
-        <source>guided reading</source>
-        <target>gidatutako irakurketak</target>
-      </trans-unit>
-      <trans-unit id="22GeuW5" resname="Header image">
-        <source>Header image</source>
-        <target>~Goiburuko irudia</target>
-      </trans-unit>
-      <trans-unit id="pdeXyW0" resname="hierarchical">
-        <source>hierarchical</source>
-        <target>ierarkikoa</target>
-      </trans-unit>
-      <trans-unit id="6UM_CvB" resname="high">
-        <source>high</source>
-        <target>altua</target>
-      </trans-unit>
-      <trans-unit id="37wivZ3" resname="ID">
-        <source>ID</source>
-        <target>Id</target>
-      </trans-unit>
-      <trans-unit id="ESqCpM6" resname="implement">
-        <source>implement</source>
-        <target>aplikatu</target>
-      </trans-unit>
-      <trans-unit id="9fulTOC" resname="independent">
-        <source>independent</source>
-        <target>independentea</target>
-      </trans-unit>
-      <trans-unit id="gB2fC96" resname="index">
-        <source>index</source>
-        <target>indizea</target>
-      </trans-unit>
-      <trans-unit id="cWIb29G" resname="individual">
-        <source>individual</source>
-        <target>indibiduala</target>
-      </trans-unit>
-      <trans-unit id="CpcLPBS" resname="information scientist">
-        <source>information scientist</source>
-        <target>dokumentalista</target>
-      </trans-unit>
-      <trans-unit id="RhzCJ5T" resname="initiator">
-        <source>initiator</source>
-        <target>abiarazlea</target>
-      </trans-unit>
-      <trans-unit id="wiULcfx" resname="innovate">
-        <source>innovate</source>
-        <target>berritu</target>
-      </trans-unit>
-      <trans-unit id="xDKv_u0" resname="Installation Remarks">
-        <source>Installation Remarks</source>
-        <target>Instalaziorako oharrak</target>
-      </trans-unit>
-      <trans-unit id="8AQu6a3" resname="Installation remarks">
-        <source>Installation remarks</source>
-        <target>~Instalazio oharra</target>
-      </trans-unit>
-      <trans-unit id="F8hOXmU" resname="instructional designer">
-        <source>instructional designer</source>
-        <target>hezkuntzako diseinatzailea</target>
-      </trans-unit>
-      <trans-unit id="o0hS8qP" resname="intellectual property license">
-        <source>intellectual property license</source>
-        <target>jabego intelektualaren lizentzia</target>
-      </trans-unit>
-      <trans-unit id="ONh78_D" resname="Intended End User Role">
-        <source>Intended End User Role</source>
-        <target>Hartzailearen rola</target>
-      </trans-unit>
-      <trans-unit id=".OaYuob" resname="Intended User Role">
-        <source>Intended User Role</source>
-        <target>~Helburuko erabiltzaile rola</target>
-      </trans-unit>
-      <trans-unit id="pqrSJ2C" resname="Interactive Type">
-        <source>Interactive Type</source>
-        <target>~Interaktibitate mota</target>
-      </trans-unit>
-      <trans-unit id="GbqKVv_" resname="Interactivity Level">
-        <source>Interactivity Level</source>
-        <target>Elkarreragin maila</target>
-      </trans-unit>
-      <trans-unit id="5D2xvNT" resname="Interactivity Type">
-        <source>Interactivity Type</source>
-        <target>Elkarreragin mota</target>
-      </trans-unit>
-      <trans-unit id="xQcsI6r" resname="investigate">
-        <source>investigate</source>
-        <target>ikertu</target>
-      </trans-unit>
-      <trans-unit id="PMVIJBi" resname="judge">
-        <source>judge</source>
-        <target>epaitu</target>
-      </trans-unit>
-      <trans-unit id="zlisa7z" resname="Keyword">
-        <source>Keyword</source>
-        <target>Gako-hitza</target>
-      </trans-unit>
-      <trans-unit id="TtHkErw" resname="Kind">
-        <source>Kind</source>
-        <target>Mota</target>
-      </trans-unit>
-      <trans-unit id="s4Jgj7N" resname="laboratory">
-        <source>laboratory</source>
-        <target>laborategia</target>
-      </trans-unit>
-      <trans-unit id="5YItNZ6" resname="learner">
-        <source>learner</source>
-        <target>ikaslea</target>
-      </trans-unit>
-      <trans-unit id="_IHW5Bx" resname="learner with other specific educational support needs">
-        <source>learner with other specific educational support needs</source>
-        <target>hezkuntza-laguntza bereziko beharrak dituen ikaslea</target>
-      </trans-unit>
-      <trans-unit id="rOMIuu4" resname="learners late integration into the education system">
-        <source>learners late integration into the education system</source>
-        <target>hezkuntzako sisteman berandu sartu den ikaslea</target>
-      </trans-unit>
-      <trans-unit id="4tsTAV3" resname="learning objects">
-        <source>learning objects</source>
-        <target>ikaskuntzako helburuak</target>
-      </trans-unit>
-      <trans-unit id="FeV8cvY" resname="Learning Resource Type">
-        <source>Learning Resource Type</source>
-        <target>Hezkuntzako Errekurtso mota</target>
-      </trans-unit>
-      <trans-unit id="UJdB6GY" resname="lecture">
-        <source>lecture</source>
-        <target>hitzaldia</target>
-      </trans-unit>
-      <trans-unit id="rJwz6Qp" resname="license GFDL">
-        <source>license GFDL</source>
-        <target>GFDL lizentzia</target>
-      </trans-unit>
-      <trans-unit id="XWyckJx" resname="License URL">
-        <source>License URL</source>
-        <target>~Lizentziaren URLa</target>
-      </trans-unit>
-      <trans-unit id="hjqXHn." resname="Life Cycle">
-        <source>Life Cycle</source>
-        <target>Bizi-zikloa</target>
-      </trans-unit>
-      <trans-unit id="zJVYc0I" resname="linear">
-        <source>linear</source>
-        <target>lineala</target>
-      </trans-unit>
-      <trans-unit id="4bgAmj2" resname="Links color">
-        <source>Links color</source>
-        <target>Loturen kolorea</target>
-      </trans-unit>
-      <trans-unit id="nODxdW." resname="Location">
-        <source>Location</source>
-        <target>Lokalizazioa</target>
-      </trans-unit>
-      <trans-unit id="Ulft.2T" resname="Logo image">
-        <source>Logo image</source>
-        <target>~Logo irudia</target>
-      </trans-unit>
-      <trans-unit id="zkwcCsQ" resname="low">
-        <source>low</source>
-        <target>baxua</target>
-      </trans-unit>
-      <trans-unit id="mtaOaU5" resname="manager">
-        <source>manager</source>
-        <target>administratzailea</target>
-      </trans-unit>
-      <trans-unit id="vGZfUwN" resname="master class">
-        <source>master class</source>
-        <target>ikasgai magistrala</target>
-      </trans-unit>
-      <trans-unit id="bw_tjTu" resname="Maximum version">
-        <source>Maximum version</source>
-        <target>~Maximo bertsioa</target>
-      </trans-unit>
-      <trans-unit id="aq03c27" resname="Meta-Metadata">
-        <source>Meta-Metadata</source>
-        <target>Meta - Metadatuak</target>
-      </trans-unit>
-      <trans-unit id="RNq95Bn" resname="Metadata Schema">
-        <source>Metadata Schema</source>
-        <target>Metadatuen eskema</target>
-      </trans-unit>
-      <trans-unit id="YSMMgnW" resname="Minimized">
-        <source>Minimized</source>
-        <target>~Murriztua</target>
-      </trans-unit>
-      <trans-unit id="x0smtjM" resname="Minimum version">
-        <source>Minimum version</source>
-        <target>~Gutxieneko bertsioa</target>
-      </trans-unit>
-      <trans-unit id="BwZgx_c" resname="mixed">
-        <source>mixed</source>
-        <target>konbinatua</target>
-      </trans-unit>
-      <trans-unit id="HvpPDtl" resname="Modality">
-        <source>Modality</source>
-        <target>Modalitatea</target>
-      </trans-unit>
-      <trans-unit id="YujtjNq" resname="Months">
-        <source>Months</source>
-        <target>Hilabeteak</target>
-      </trans-unit>
-      <trans-unit id="DGVj_42" resname="motivate">
-        <source>motivate</source>
-        <target>motibatu</target>
-      </trans-unit>
-      <trans-unit id="fAoZaaN" resname="narrative text">
-        <source>narrative text</source>
-        <target>narrazio testua</target>
-      </trans-unit>
-      <trans-unit id="kWD6AEE" resname="networked">
-        <source>networked</source>
-        <target>sarean</target>
-      </trans-unit>
-      <trans-unit id="97VS4Ka" resname="non-universal">
-        <source>non-universal</source>
-        <target>ez unibertsala</target>
-      </trans-unit>
-      <trans-unit id="WhxOOER" resname="not appropriate">
-        <source>not appropriate</source>
-        <target>ez dagokio</target>
-      </trans-unit>
-      <trans-unit id="xrf7sCi" resname="observe">
-        <source>observe</source>
-        <target>begiratu</target>
-      </trans-unit>
-      <trans-unit id="2iKqac1" resname="open problem">
-        <source>open problem</source>
-        <target>problema irekia</target>
-      </trans-unit>
-      <trans-unit id="A0oQFhG" resname="operating system">
-        <source>operating system</source>
-        <target>sistema eragilea</target>
-      </trans-unit>
-      <trans-unit id="PRkdF56" resname="ordinary learner">
-        <source>ordinary learner</source>
-        <target>~ikasle arrunta</target>
-      </trans-unit>
-      <trans-unit id="VgrHoaE" resname="Organization">
-        <source>Organization</source>
-        <target>Antolaketa</target>
-      </trans-unit>
-      <trans-unit id="owPXSSz" resname="organize">
-        <source>organize</source>
-        <target>antolatu</target>
-      </trans-unit>
-      <trans-unit id="RCfQI7G" resname="organize oneself">
-        <source>organize oneself</source>
-        <target>norberak bere burua antolatu</target>
-      </trans-unit>
-      <trans-unit id="oB.cj2b" resname="other free software licenses">
-        <source>other free software licenses</source>
-        <target>bestelako lizentzia askeak</target>
-      </trans-unit>
-      <trans-unit id="GNaGrtA" resname="Other Platforms Requirement">
-        <source>Other Platforms Requirement</source>
-        <target>~Beste plataformen eskakizunak</target>
-      </trans-unit>
-      <trans-unit id="saopdG4" resname="Other platforms requirements">
-        <source>Other platforms requirements</source>
-        <target>~Beste plataformen eskakizunak</target>
-      </trans-unit>
-      <trans-unit id="HeLDtqB" resname="Package">
-        <source>Package</source>
-        <target>Paketea</target>
-      </trans-unit>
-      <trans-unit id="sQGAhLa" resname="plan">
-        <source>plan</source>
-        <target>planifikatu</target>
-      </trans-unit>
-      <trans-unit id="zSRk3oQ" resname="practise">
-        <source>practise</source>
-        <target>praktikatu</target>
-      </trans-unit>
-      <trans-unit id="KfDhVRP" resname="Preknowledge">
-        <source>Preknowledge</source>
-        <target>Aurreko ezagutzak</target>
-      </trans-unit>
-      <trans-unit id="ebpVUzY" resname="presencial">
-        <source>presencial</source>
-        <target>zuzenekoa</target>
-      </trans-unit>
-      <trans-unit id="qIN9E6f" resname="Primary author of the resource.">
-        <source>Primary author of the resource.</source>
-        <target>Baliabidearen egile nagusia.</target>
-      </trans-unit>
-      <trans-unit id="V53AFdn" resname="problem statement">
-        <source>problem statement</source>
-        <target>problemaren enuntziatua</target>
-      </trans-unit>
-      <trans-unit id="zaREENo" resname="produce">
-        <source>produce</source>
-        <target>produzitu</target>
-      </trans-unit>
-      <trans-unit id="eNebiJJ" resname="proprietary license">
-        <source>proprietary license</source>
-        <target>~lizentzia pribatua</target>
-      </trans-unit>
-      <trans-unit id="gDKf6fE" resname="prove">
-        <source>prove</source>
-        <target>egiaztatu</target>
-      </trans-unit>
-      <trans-unit id="ZdkcTiy" resname="publisher">
-        <source>publisher</source>
-        <target>argitalpenaren editorea</target>
-      </trans-unit>
-      <trans-unit id="VXHMNQO" resname="Purpose">
-        <source>Purpose</source>
-        <target>Asmoa</target>
-      </trans-unit>
-      <trans-unit id="ENJB0MJ" resname="questionnaire">
-        <source>questionnaire</source>
-        <target>galdetegia</target>
-      </trans-unit>
-      <trans-unit id="RIc0vV7" resname="real environment">
-        <source>real environment</source>
-        <target>benetako ingurunea</target>
-      </trans-unit>
-      <trans-unit id="gcQ0vCP" resname="real or virtual learning environment">
-        <source>real or virtual learning environment</source>
-        <target>ikaskuntzako eszenatoki erreala edo birtuala</target>
-      </trans-unit>
-      <trans-unit id=".55uZuN" resname="real project">
-        <source>real project</source>
-        <target>benetako proiektua</target>
-      </trans-unit>
-      <trans-unit id="2KRdPVP" resname="recognize">
-        <source>recognize</source>
-        <target>ezagutu</target>
-      </trans-unit>
-      <trans-unit id="g9vABJ." resname="Relation">
-        <source>Relation</source>
-        <target>Harremana</target>
-      </trans-unit>
-      <trans-unit id="MFNgJrr" resname="remember">
-        <source>remember</source>
-        <target>gogoratu</target>
-      </trans-unit>
-      <trans-unit id="_mQMh8I" resname="represent">
-        <source>represent</source>
-        <target>ordezkatu</target>
-      </trans-unit>
-      <trans-unit id="RIsY97t" resname="Requirement">
-        <source>Requirement</source>
-        <target>Baldintza</target>
-      </trans-unit>
-      <trans-unit id="oWq4tqq" resname="Resource">
-        <source>Resource</source>
-        <target>Baliabidea</target>
-      </trans-unit>
-      <trans-unit id="HQ6bkhA" resname="resources and integrated resources">
-        <source>resources and integrated resources</source>
-        <target>batez bestekoak eta integratutako batez bestekoak</target>
-      </trans-unit>
-      <trans-unit id="3ntTDtP" resname="revised">
-        <source>revised</source>
-        <target>berrikusia</target>
-      </trans-unit>
-      <trans-unit id="tzP7xvu" resname="Rights">
-        <source>Rights</source>
-        <target>Eskubideak</target>
-      </trans-unit>
-      <trans-unit id="wVFHuss" resname="Role">
-        <source>Role</source>
-        <target>Rola</target>
-      </trans-unit>
-      <trans-unit id="SMuAR0E" resname="Schema">
-        <source>Schema</source>
-        <target>~Eskema</target>
-      </trans-unit>
-      <trans-unit id="SYE9Xxb" resname="schoolmate">
-        <source>schoolmate</source>
-        <target>kidea</target>
-      </trans-unit>
-      <trans-unit id="bwgY_rk" resname="script writer">
-        <source>script writer</source>
-        <target>gidoilaria</target>
-      </trans-unit>
-      <trans-unit id="FMzFNH2" resname="Select a language.">
-        <source>Select a language.</source>
-        <target>Aukeratu hizkuntza.</target>
-      </trans-unit>
-      <trans-unit id="6lFlNCM" resname="self assessment">
-        <source>self assessment</source>
-        <target>autoebaluazioa</target>
-      </trans-unit>
-      <trans-unit id="sqRm8FJ" resname="Semantic Density">
-        <source>Semantic Density</source>
-        <target>Dentsitate semantikoa</target>
-      </trans-unit>
-      <trans-unit id="_PzGfSL" resname="simulate">
-        <source>simulate</source>
-        <target>simulatu</target>
-      </trans-unit>
-      <trans-unit id="c8YCrFD" resname="simulation">
-        <source>simulation</source>
-        <target>simulazioa</target>
-      </trans-unit>
-      <trans-unit id="RqTNf71" resname="slide">
-        <source>slide</source>
-        <target>diapositiba</target>
-      </trans-unit>
-      <trans-unit id="Bp2o_aP" resname="solve">
-        <source>solve</source>
-        <target>ebatzi</target>
-      </trans-unit>
-      <trans-unit id="9IE_RfK" resname="special needs learner">
-        <source>special needs learner</source>
-        <target>hezkuntzako behar bereziak dituen ikaslea</target>
-      </trans-unit>
-      <trans-unit id="6H6sYgm" resname="subject matter expert">
-        <source>subject matter expert</source>
-        <target>materian aditua</target>
-      </trans-unit>
-      <trans-unit id="yyBK.sP" resname="summarize">
-        <source>summarize</source>
-        <target>sintetizatu</target>
-      </trans-unit>
-      <trans-unit id="F5N28mP" resname="table">
-        <source>table</source>
-        <target>taula</target>
-      </trans-unit>
-      <trans-unit id="IKju3Ip" resname="Taxon">
-        <source>Taxon</source>
-        <target>Taxona</target>
-      </trans-unit>
-      <trans-unit id="BBS.6d_" resname="Taxon Path">
-        <source>Taxon Path</source>
-        <target>Taxonaren bidea</target>
-      </trans-unit>
-      <trans-unit id="vjiwjNj" resname="teacher">
-        <source>teacher</source>
-        <target>irakaslea</target>
-      </trans-unit>
-      <trans-unit id="44uMq3t" resname="teaching sequences">
-        <source>teaching sequences</source>
-        <target>sekuentzia didaktikoak</target>
-      </trans-unit>
-      <trans-unit id="Mgxuf1B" resname="Technical">
-        <source>Technical</source>
-        <target>Teknikoa</target>
-      </trans-unit>
-      <trans-unit id="UVY_oYi" resname="technical implementer">
-        <source>technical implementer</source>
-        <target>garatzaile teknikoa</target>
-      </trans-unit>
-      <trans-unit id="pl2r5vt" resname="technical validator">
-        <source>technical validator</source>
-        <target>berrikusle teknikoa</target>
-      </trans-unit>
-      <trans-unit id="guZb9cX" resname="terminator">
-        <source>terminator</source>
-        <target>akabatzailea</target>
-      </trans-unit>
-      <trans-unit id="madT9LT" resname="Texts and Links">
-        <source>Texts and Links</source>
-        <target>~Testuak eta Estekak</target>
-      </trans-unit>
-      <trans-unit id="HHjWAu7" resname="textual-image analysis">
-        <source>textual-image analysis</source>
-        <target>testu-irudien iruzkinak</target>
-      </trans-unit>
-      <trans-unit id=".U_S7_5" resname="The current document license can be modified in the project properties.">
-        <source>The current document license can be modified in the project properties.</source>
-        <target>~Uneko dokumentu lizentzia proiektuaren ezaugarrien artean alda daiteke.</target>
-      </trans-unit>
-      <trans-unit id="q_eBNIy" resname="The name given to the resource.">
-        <source>The name given to the resource.</source>
-        <target>Baliabideari emandako izena.</target>
-      </trans-unit>
-      <trans-unit id="boXVpbM" resname="Title HTML">
-        <source>Title HTML</source>
-        <target>~Izenburua HTML</target>
-      </trans-unit>
-      <trans-unit id="OGj102e" resname="Title in page">
-        <source>Title in page</source>
-        <target>~Orainoko orrialdeko izenburua</target>
-      </trans-unit>
-      <trans-unit id="JBK5AuU" resname="training programmes, courses and plans">
-        <source>training programmes, courses and plans</source>
-        <target>ikastaroak, plangintzak eta prestakuntzako programak</target>
-      </trans-unit>
-      <trans-unit id="Jd5JhKZ" resname="tutor">
-        <source>tutor</source>
-        <target>tutorea</target>
-      </trans-unit>
-      <trans-unit id="rNnBpWR" resname="Typical Age Range">
-        <source>Typical Age Range</source>
-        <target>Hartzailearen ohiko adina</target>
-      </trans-unit>
-      <trans-unit id="n54ZAYb" resname="Typical Learning Time">
-        <source>Typical Learning Time</source>
-        <target>Ohiko ikaskuntzaren denbora</target>
-      </trans-unit>
-      <trans-unit id="W3MzJgn" resname="unavailable">
-        <source>unavailable</source>
-        <target>ez eskuragarri</target>
-      </trans-unit>
-      <trans-unit id="n6W2ANg" resname="understand">
-        <source>understand</source>
-        <target>ulertu</target>
-      </trans-unit>
-      <trans-unit id="wIA0cI5" resname="universal">
-        <source>universal</source>
-        <target>unibertsala</target>
-      </trans-unit>
-      <trans-unit id="c_yVrgu" resname="Content metadata">
-        <source>Content metadata</source>
-        <target>~Edukien metadatuak</target>
-      </trans-unit>
-      <trans-unit id="yLi09Hb" resname="Usage">
-        <source>Usage</source>
-        <target>Erabilera</target>
-      </trans-unit>
-      <trans-unit id="wx6YU0S" resname="Export options">
-        <source>Export options</source>
-        <target>~Esportatzeko aukerak</target>
-      </trans-unit>
-      <trans-unit id="MUgx_VX" resname="validator">
-        <source>validator</source>
-        <target>berrikuslea</target>
-      </trans-unit>
-      <trans-unit id="HgsKUL1" resname="Version control">
-        <source>Version control</source>
-        <target>~Bertsioaren kontrola</target>
-      </trans-unit>
-      <trans-unit id="ZfoVZ_A" resname="very difficult">
-        <source>very difficult</source>
-        <target>oso zaila</target>
-      </trans-unit>
-      <trans-unit id="GYP9kEx" resname="very easy">
-        <source>very easy</source>
-        <target>oso erraza</target>
-      </trans-unit>
-      <trans-unit id="NR8UKDE" resname="very high">
-        <source>very high</source>
-        <target>oso altua</target>
-      </trans-unit>
-      <trans-unit id="BxZU8UH" resname="very low">
-        <source>very low</source>
-        <target>oso baxua</target>
-      </trans-unit>
-      <trans-unit id="QkjXw6z" resname="Visible in export">
-        <source>Visible in export</source>
-        <target>~Inportazilean ikusgai</target>
-      </trans-unit>
-      <trans-unit id="LOXAsQW" resname="webquest">
-        <source>webquest</source>
-        <target>webquest</target>
-      </trans-unit>
-      <trans-unit id="yk63IXe" resname="write up">
-        <source>write up</source>
-        <target>idatzi</target>
-      </trans-unit>
-      <trans-unit id="LmbM1Ve" resname="Years">
-        <source>Years</source>
-        <target>Urteak</target>
-      </trans-unit>
-      <trans-unit id="4JG.lHu" resname="public domain">
-        <source>public domain</source>
-        <target>jabari publikoa</target>
-      </trans-unit>
-      <trans-unit id="KoqKM6m" resname="yes">
-        <source>yes</source>
-        <target>bai</target>
-      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>~Orrialde-kopurua</target>
@@ -8965,41 +8153,21 @@
         <source>A text with the page number will be added on each page.</source>
         <target>~Orrialde bakoitzean zenbakia duen testu bat gehituko da.</target>
       </trans-unit>
-      <trans-unit id="wsapniW" resname="discipline">
-        <source>discipline</source>
-        <target>diziplina</target>
+      <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
+        <source>Search bar (Website export only)</source>
+        <target>~Bilaketa-barra (Webgune esportazioa soilik)</target>
       </trans-unit>
-      <trans-unit id="wQsXb.." resname="idea">
-        <source>idea</source>
-        <target>ideia</target>
+      <trans-unit id="jb5jN3p" resname="A search box will be added to every page of the website.">
+        <source>A search box will be added to every page of the website.</source>
+        <target>~Webgune bakoitzaren orrialdean bilaketa-kutxa bat gehituko da.</target>
       </trans-unit>
-      <trans-unit id="xpjDDyt" resname="prerequisite">
-        <source>prerequisite</source>
-        <target>aurrebaldintza</target>
+      <trans-unit id="WEXSR5D" resname="Accessibility toolbar">
+        <source>Accessibility toolbar</source>
+        <target>~Sarbideko tresna-barra</target>
       </trans-unit>
-      <trans-unit id="SSgp6YN" resname="educational objective">
-        <source>educational objective</source>
-        <target>hezkuntzako helburua</target>
-      </trans-unit>
-      <trans-unit id="mnvUn4K" resname="accessibility restrictions">
-        <source>accessibility restrictions</source>
-        <target>erabilerraztasuneko mugak</target>
-      </trans-unit>
-      <trans-unit id="9OJQi1F" resname="educational level">
-        <source>educational level</source>
-        <target>hezkuntzako maila</target>
-      </trans-unit>
-      <trans-unit id="u0SqAXw" resname="skill level">
-        <source>skill level</source>
-        <target>trebetasun maila</target>
-      </trans-unit>
-      <trans-unit id="iq1mM4p" resname="security level">
-        <source>security level</source>
-        <target>segurtasun maila</target>
-      </trans-unit>
-      <trans-unit id="0rmPBpD" resname="competency">
-        <source>competency</source>
-        <target>eskumena</target>
+      <trans-unit id="bpqFrqX" resname="The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.">
+        <source>The accessibility toolbar allows visitors to manipulate some aspects of your site, such as font and text size.</source>
+        <target>Sartzeko barrari esker, erabiltzaileek gunearen alderdi batzuk pertsonalizatu ditzakete, hala nola hizki-mota eta tamaina.</target>
       </trans-unit>
       <trans-unit id="1gXPiJp" resname="Custom code">
         <source>Custom code</source>
@@ -9007,7 +8175,7 @@
       </trans-unit>
       <trans-unit id="mY5HJFL" resname="HEAD">
         <source>HEAD</source>
-        <target></target>
+        <target>HEAD</target>
       </trans-unit>
       <trans-unit id="cYFfQgT" resname="HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...">
         <source>HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...</source>
@@ -9213,6 +8381,10 @@
         <source>Sign in</source>
         <target>~Saioa hasi</target>
       </trans-unit>
+      <trans-unit id="JZi_tm0" resname="Email">
+        <source>Email</source>
+        <target>Posta elektronikoa</target>
+      </trans-unit>
       <trans-unit id="GqmFSHc" resname="Password">
         <source>Password</source>
         <target>~Pasahitza</target>
@@ -9220,6 +8392,10 @@
       <trans-unit id="es02HnE" resname="Other authentication methods:">
         <source>Other authentication methods:</source>
         <target>~Beste autentifikazio metodoak:</target>
+      </trans-unit>
+      <trans-unit id="gA4BXFa" resname="Authentication methods:">
+        <source>Authentication methods:</source>
+        <target>~Autentifikazio metodoak:</target>
       </trans-unit>
       <trans-unit id="p.fuLaB" resname="Guest">
         <source>Guest</source>
@@ -9413,21 +8589,13 @@
         <source>Upload to Drive</source>
         <target>~Kargatu Drive-ra</target>
       </trans-unit>
-      <trans-unit id="gA4BXFa" resname="Authentication methods:">
-        <source>Authentication methods:</source>
-        <target>~Autentifikazio metodoak:</target>
+      <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
+        <source>Delete iDevice? This cannot be undone.</source>
+        <target>~Ezabatu iDevice-a? Ekintza hau ez da desegin daiteke.</target>
       </trans-unit>
-      <trans-unit id="9iMmg7m" resname="Save the score">
-        <source>Save the score</source>
-        <target>~Gorde puntuazioa</target>
-      </trans-unit>
-      <trans-unit id="qpfRXBy" resname="Automatically save the score">
-        <source>Automatically save the score</source>
-        <target>~Gorde puntuazioa automatikoki</target>
-      </trans-unit>
-      <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
-        <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
-        <target>~Idatzi edo jo espazio zuria zelaian bete behar den jardueraren testua. Aukeratu hitzak eta erabili beheko botoia horiek ezkutatzeko. Erantzun posible bat baino gehiago defini dezakezu, barra bertikalak erabiliz, horiek inguratu eta bereizteko. Ej.: |perro| gato| pájaro|</target>
+      <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
+        <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
+        <target>~iDevice-a ezabatu da. Orain kaxa hutsik dago. Ezabatu kaxa ere?</target>
       </trans-unit>
     </body>
   </file>

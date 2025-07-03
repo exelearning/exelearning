@@ -1207,6 +1207,8 @@ class ExportXmlUtil
 
         $extraHead = $odeProperties['pp_extraHeadContent']->getValue();
         if ('' != $extraHead) {
+            // Replace non ASCII characters in inline SCRIPT tags
+            $extraHead = self::encodeScriptContents($extraHead);
             // convert $head to DOMDocument to add new node easily
             $domHead = dom_import_simplexml($head)->ownerDocument;
             $customCode = new \DOMDocument();
@@ -1631,6 +1633,38 @@ class ExportXmlUtil
     }
 
     /**
+     *  Replace non ASCII characters in inline SCRIPT tags.
+     *
+     * Use UCS-4BE Unicode encoding instead of HTML entities
+     *
+     * @return string
+     */
+    public static function encodeScriptContents($html)
+    {
+        return preg_replace_callback(
+            '#<script(?![^>]*\bsrc=)([^>]*)>(.*?)</script>#is',
+            function ($matches) {
+                $attrs = $matches[1];
+                $content = $matches[2];
+
+                // Replace non ASCII characters
+                $encoded = preg_replace_callback(
+                    '/[^\x20-\x7E]/u',
+                    function ($char) {
+                        $code = unpack('N', mb_convert_encoding($char[0], 'UCS-4BE', 'UTF-8'))[1];
+
+                        return sprintf('\\u%04x', $code);
+                    },
+                    $content
+                );
+
+                return "<script$attrs>$encoded</script>";
+            },
+            $html
+        );
+    }
+
+    /**
      *  Generates page license (package license).
      *
      * @param array $odeProperties
@@ -1675,6 +1709,9 @@ class ExportXmlUtil
 
         $extraFooter = $odeProperties['footer']->getValue();
         if ('' != $extraFooter) {
+            $extraFooter = '<div>'.$extraFooter.'</div>';
+            // Replace non ASCII characters in inline SCRIPT tags
+            $extraFooter = self::encodeScriptContents($extraFooter);
             $siteUserFooter = $pageFooterContent->addChild('div', ' ');
             $siteUserFooter->addAttribute('id', 'siteUserFooter');
             $siteExtra = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><footer></footer>');
@@ -2331,6 +2368,7 @@ class ExportXmlUtil
         }
 
         $ideviceContainer->addAttribute('id', $odeComponentsSync->getOdeIdeviceId());
+        $ideviceContainer->addAttribute('id-resource', $idevicesMapping[$odeComponentsSync->getOdeIdeviceId()]);
         $ideviceContainer->addAttribute('class', $class);
 
         if ($exportDynamicPage && $ideviceTypeData) {

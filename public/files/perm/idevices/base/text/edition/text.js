@@ -147,34 +147,58 @@ var $exeDevice = {
     },
 
     loadPreviousValues: function () {
+        function isValid(val) {
+            return val != null && !(typeof val === 'string' && val.trim() === '');
+        }
+
         const data = this.idevicePreviousData;
         const defaults = {
-            [this.infoInputDurationId]:        this.infoDurationInputValue,
-            [this.infoInputDurationTextId]:    this.infoDurationTextInputValue,
-            [this.infoInputParticipantsId]:    this.infoParticipantsInputValue,
-            [this.infoInputParticipantsTextId]:this.infoParticipantsTextInputValue,
-            [this.feedbakInputId]:             this.feedbakInputValue,
-            [this.feedbackTextareaId]:         this.feedbakInputInstructions
+            [this.infoInputDurationId]: this.infoDurationInputValue,
+            [this.infoInputDurationTextId]: this.infoDurationTextInputValue,
+            [this.infoInputParticipantsId]: this.infoParticipantsInputValue,
+            [this.infoInputParticipantsTextId]: this.infoParticipantsTextInputValue,
+            [this.feedbakInputId]: this.feedbakInputValue,
+            [this.feedbackTextareaId]: this.feedbakInputInstructions
         };
-    
-        for (const [key, originalValue] of Object.entries(data)) {
-            if (!key || key === "ideviceId") continue;
-    
+
+        const unionKeys = new Set([
+            ...Object.keys(defaults),
+            ...Object.keys(data)
+        ]);
+
+        const finalValues = {};
+        unionKeys.forEach(key => {
+            if (!key || key === "ideviceId") return;   // descartamos si no es relevante
+
+            const orig = data[key];
+            const hasDefault = defaults.hasOwnProperty(key);
+
+            if (isValid(orig)) {
+                finalValues[key] = orig;
+            } else if (hasDefault) {
+                finalValues[key] = defaults[key];
+            } else {
+                finalValues[key] = orig;
+            }
+        });
+
+        for (const [key, val] of Object.entries(finalValues)) {
             const el = this.ideviceBody.querySelector(`#${key}`);
             if (!el) continue;
-    
-            let val = originalValue;
-            if (val === '' && defaults.hasOwnProperty(key)) {
-                val = defaults[key];
-            }
-            if (key.toLowerCase().includes('textarea')) {
+
+            if (el.tagName === "TEXTAREA" || key.toLowerCase().includes("textarea")) {
                 $(el).val(val);
+            } else if (el.tagName === "INPUT") {
+                const useTranslation = isValid(data[key]);
+                const displayValue = useTranslation ? c_(val) : val;
+                el.setAttribute("value", displayValue);
+
             } else {
-                el.setAttribute("value", val);
+                el.textContent = val;
             }
         }
     },
-    
+
 
     /**
      * Set events to form

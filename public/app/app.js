@@ -59,8 +59,12 @@ class App {
         await this.showProvisionalDemoWarning();
         // To do warning (remove this as soon as possible)
         await this.showProvisionalToDoWarning();
+        // Add not extracted strings (to review)
+        await this.addNotExtractedLinks();
         // Add the notranslate class to some elements
         await this.addNoTranslateForGoogle();
+        // Execute the custom JavaScript code
+        await this.runCustomJavaScriptCode();
     }
 
     /**
@@ -240,6 +244,20 @@ class App {
     }
 
     /**
+     * Some strings are not found with "make translations" due to the "make fix-js" formatting
+     *
+     */
+    async addNotExtractedLinks() {
+        let strs = [
+            // ideviceNode.js
+            _('Delete iDevice? This cannot be undone.'),
+            _('iDevice deleted. Now the box is empty. Delete the box too?'),
+            // projectManager.js
+            _('You are editing an iDevice. Please close it before continuing'),
+        ];
+    }
+
+    /**
      * Add the notranslate class to some elements (see #43)
      *
      */
@@ -247,6 +265,16 @@ class App {
         $('.exe-icon, .auto-icon, #nav_list .root-icon').each(function () {
             $(this).addClass('notranslate');
         });
+    }
+
+    /**
+     * Execute the custom JavaScript code
+     *
+     */
+    async runCustomJavaScriptCode() {
+        try {
+            $eXeLearningCustom.init();
+        } catch (e) {}
     }
 
     /**
@@ -381,11 +409,7 @@ class App {
                         <li>No hay editor de estilos.</li>
                         <li>Falta Archivo - Imprimir.</li>
                         <li>No se puede exportar o importar una página.</li>
-                        <li>Hay pocas opciones de catalogación.</li>
-                        <li>No procesa bien los enlaces internos de elp antiguos.</li>
-                        <li>Ya no existe el editor de iDevices.</li>
                         <li>Si estás editando un iDevice no puedes cambiar su título.</li>
-                        <li>Hay textos mal traducidos o sin traducir.</li>
                         <li>La exportación SCORM 2004 no funciona bien.</li>
                     </ul>
                     <p><strong>Si encuentras algo más:</strong> Ayuda → Informar de un fallo</p>

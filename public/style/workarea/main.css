@@ -2364,10 +2364,6 @@ body[mode="advanced"] #main #head #exe-mode-check {
 }
 
 /* To review */
-#modalIdeviceManager .idevices-button-import{
-    visibility: hidden;
-}
-
 #modalIdeviceManager .modal-content {
     width: 100%;
     height: 600px;
@@ -3096,6 +3092,15 @@ body[mode="advanced"] #main #head #exe-mode-check {
 #modalReleaseNotes .md-converted-content h2 span{
     font-size: .7em;
     margin-left: .7em;
+}
+
+#modalReleaseNotes .md-converted-content h3.lead{
+  margin-top: 1em;
+  font-size: 1.2em;
+}
+
+#modalReleaseNotes .md-converted-content hr{
+  margin: 2em 0;
 }
 
 /* Modal legal notes */
@@ -4628,7 +4633,7 @@ body > .tooltip{
 }
 
 /* To review (see #359 & #360) */
-#modalStyleManagerContent .themes-button-container{
+#modalStyleManagerContent .themes-button-container .themes-button-new{
     display: none;
 }
 
@@ -4800,8 +4805,7 @@ body > .tooltip{
   }
   
   /* To review */
-  #navbar-button-assistant,
-  #navbar-button-idevice-manager{display:none}
+  #navbar-button-assistant{display:none}
   
   .dropdown-toggle::after {
     border-top: 0.3em solid #64647a;

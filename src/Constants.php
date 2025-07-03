@@ -8,7 +8,7 @@ namespace App;
 class Constants
 {
     public const APP_VERSION = 'v0.0.0-alpha';
-    public const DEMO_EXPIRATION_DATE = '20250702'; // Expiration date for the offline beta versions: YYYYMMDD (empty for no expiration date)
+    public const DEMO_EXPIRATION_DATE = '20250801'; // Expiration date for the offline beta versions: YYYYMMDD (empty for no expiration date)
 
     // Directories
     public const PUBLIC_DIR_NAME = 'public';
@@ -100,7 +100,9 @@ class Constants
     public const TRANSLATION_DEFAULT_FORMAT = 'xlf'; // format for translation files
     // Do not extract strings from these files:
     public const TRANSLATION_EXCEPTIONS = [
+        '/app/public/app/common/fMath/js/jquery-ui/jquery-ui.min.js',
         '/app/public/libs/filegator/js/chunk-vendors.js',
+        '/app/public/libs/jquery-ui/jquery-ui.min.js',
         '/app/public/files/perm/idevices/base/classify/export/0jquery-ui.min.js',
         '/app/public/files/perm/idevices/base/dragdrop/export/0jquery-ui.min.js',
         '/app/public/files/perm/idevices/base/relate/export/jquery-ui.min.js',

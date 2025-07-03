@@ -42,5 +42,6 @@ export default class ModalReleaseNotes extends Modal {
             }
             e.attr('class', 'lead mb-4');
         });
+        $('h3', viewer).attr('class', 'lead mb-3');
     }
 }
