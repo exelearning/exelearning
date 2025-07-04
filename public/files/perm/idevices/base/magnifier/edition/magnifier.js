@@ -140,7 +140,7 @@ var $exeDevice = {
         $('#mnfInitialZoomSelect').val(initialZSize);
         $('#mnfLensSizeSelect').val(glassSize);
         if (tinymce.get('instructions')) {
-            tinymce.get('instructions').setContent(dataGame.textTextarea);
+            tinymce.get('instructions').setContent(textTextarea);
         } else {
             $('#instructions').val(textTextarea);
         }
@@ -154,7 +154,6 @@ var $exeDevice = {
             return false;
         }
     },
-    
     addEvents: function () {
         $('#mnfFileInput').on('change', function () {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
@@ -170,7 +169,7 @@ var $exeDevice = {
             }
             $('#mnfPreviewImage').attr('src', selectedFile);
 
-         });
+        });
 
     },
 
@@ -194,7 +193,7 @@ var $exeDevice = {
         html = html.replace(/`/g, '\\`');
 
         const textTextarea = `\n${html}\n`;
-        return {
+        return  {
             id,
             typeGame: 'magnifier',
             textTextarea,
@@ -209,6 +208,7 @@ var $exeDevice = {
             glassSize,
             ideviceId: id,
         };
+
         
     },
 };
