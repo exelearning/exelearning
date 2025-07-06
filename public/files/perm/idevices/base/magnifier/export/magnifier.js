@@ -5,10 +5,12 @@ var $magnifier = {
 
     renderView: function (data, accesibility, template, ideviceId) {
         const ldata = $magnifier.transformObject(data, ideviceId);
-        return template.replace('{content}', this.createInterfaceMagnifier(ldata));
+        let html = this.createInterfaceMagnifier(ldata)
+        return template.replace('{content}', html);
     },
 
     transformObject: function (data, ideviceId) {
+        console.log('transformObject', data)
         this.isInExe = eXe.app.isInExe();
         this.idevicePath = this.isInExe
             ? eXe.app.getIdeviceInstalledExportPath("magnifier")
@@ -17,7 +19,7 @@ var $magnifier = {
 
         const id = data.ideviceId || ideviceId || data.id
 
-        const width = data.width || '';
+        const width = (!data.width || data.width > 1200) ? 600 : data.width;
         const height = data.height ?? '';
         const align = data.align ?? 'left';
         const defaultImage = $magnifier.idevicePath + 'hood.jpg';
@@ -28,7 +30,7 @@ var $magnifier = {
         const isDefaultImage = data.isDefaultImage;
         const image = isDefaultImage == "0" ? imageResource : defaultImage;
 
-        return {
+        const sdata = {
             id: id,
             typeGame: 'magnifier',
             textTextarea,
@@ -44,6 +46,9 @@ var $magnifier = {
             msgs: data.msgs || $magnifier.msgs,
             ideviceId: id
         };
+
+        console.log('sdata', sdata)
+        return sdata
     },
 
     getImageName: function (imgPath) {
@@ -53,7 +58,7 @@ var $magnifier = {
     renderBehaviour: function (data, accesibility, ideviceId) {
 
         const ldata = $magnifier.transformObject(data, ideviceId);
-        const $node = $('#' + data.ideviceId);
+        let $node = $('#' + data.ideviceId);
         if (!eXe.app.isInExe()) {
             let html = this.createInterfaceMagnifier(ldata)
             $node.html(`<div class="exe-magnifier-container">${html}</div>`)
@@ -64,7 +69,7 @@ var $magnifier = {
             $magnifier.addEvents(ldata);
         } else {
             const cb = '$magnifier.addEvents(' + JSON.stringify(ldata) + ');';
-            $exe.loadScript(ldata.idevicePath + '0_mojomagnify.js', cb);
+            $exe.loadScript(ldata.idevicePath + 'mojomagnify.js', cb);
         }
     },
 
@@ -111,33 +116,34 @@ var $magnifier = {
 
 
     createInterfaceMagnifier: function (data) {
+        console.log('createInterfaceMagnifier', data)
         const instance = data.ideviceId
-        let flexDir = '', alignItems = '', textAlign = 'left';
+        let flexDir = '', alignItems = '', textAlign = 'left'
         switch (data.align) {
             case 'right':
-                flexDir = 'row';
-                alignItems = 'start';
-                textAlign = 'left';
-                break;
+                flexDir = 'row'
+                alignItems = 'start'
+                textAlign = 'left'
+                break
             case 'left':
-                flexDir = 'row-reverse';
-                alignItems = 'start';
-                textAlign = 'left';
-                break;
+                flexDir = 'row-reverse'
+                alignItems = 'start'
+                textAlign = 'left'
+                break
             case 'center':
             default:
-                flexDir = 'column';
-                alignItems = 'center';
-                textAlign = 'center';
+                flexDir = 'column'
+                alignItems = 'center'
+                textAlign = 'center'
         }
 
-        const html =`
+        return `
         <div class="MNF-MainContainer" id="mnfPMainContainer-${instance}" style="display:flex; flex-direction:${flexDir}; align-items:${alignItems};">
             <div class="MNF-instructions" style="flex:1; text-align:${textAlign}; margin:${data.align === 'center' ? '0 0 1rem' : '0 1rem'};">
                 ${data.textTextarea}
             </div>
             <div class="MNF-image-wrapper" id="image-wrapper-${instance}" style="flex-shrink:0;">
-                <a href="#" class="MNF-FullLinkImage"  title ="${data.msgs.msgFullScreen}" aria-label="${data.msgs.msgFullScreen}" >
+                <a href="#" class="MNF-FullLinkImage" title="${data.msgs.msgFullScreen}" aria-label="${data.msgs.msgFullScreen}">
                     <div class="MNF-FullImage MNF-Activo" aria-hidden="true"></div>
                     <span class="sr-av">${data.msgs.msgFullScreen}</span>
                 </a> 
@@ -145,29 +151,22 @@ var $magnifier = {
                     <div class="image-thumbnail" id="image-thumbnail-${instance}">
                         <div style="position: relative; display: block; width:${data.width}; height: auto; margin-bottom: 50px;">
                             <img id="magnifier-${instance}"
-                                src="${data.image}"
-                                data-magnifysrc="${data.image}"
-                                width="${data.width}" height="" data-size="${data.glassSize} " data-zoom="${data.initialZSize}">
-                            <div
-                                style="position: absolute; left: 0px; top: 0px; width:${data.width}; height: auto; overflow: hidden; display: none;">
-                                <div class="zoomglass"
-                                    style="position: absolute; overflow: hidden; left: 591px; top: 369px;"><img
-                                        style="position: absolute; max-width: none; max-height: none; left: -1522px; top: -954px;"
-                                        src="">
-                                    <div class="mojomagnify_border"></div>
-                                </div>
-                            </div>                            
+                                 src="${data.image}"
+                                 data-magnifysrc="${data.image}"
+                                 width="${data.width}" height=""
+                                 data-size="${data.glassSize}"
+                                 data-zoom="${data.initialZSize}">
                         </div>
                     </div>
                 </div>
             </div>
         </div>`
-    return html
     },
+
 
     addEvents: function (data) {
         const instance = data.ideviceId;
-               // Lógica de fullscreen…
+        // Lógica de fullscreen…
         $('#mnfPMainContainer-' + instance)
             .off('click', '.MNF-FullLinkImage')
             .on('click', '.MNF-FullLinkImage', function (e) {
@@ -177,17 +176,9 @@ var $magnifier = {
                         .showFullscreenImage(data.image, $('#mnfPMainContainer-' + instance));
                 }
             });
-
-        try {
-            setTimeout(function(){
-                if (typeof MojoMagnify !== 'undefined') MojoMagnify.init();
-            }, 500)
-            
-        } catch (e) {
-            if (e.name === 'SecurityError') {
-                console.warn('mojomagnify: no se pudieron leer reglas CSS externas; lupa sin estilos dinámicos.');
-            } else throw e;
-        }
+        setTimeout(function () {
+            MojoMagnify.init();
+        }, 500)
     },
 
     init: function (data, accesibility) {

@@ -121,7 +121,7 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (data) {
-        const width = data.width || 600;
+       const width = (!data.width || data.width > 1200) ? 600 : data.width;
         const height = data.height ?? '';
         const align = data.align ?? 'left';
         const defaultImage = $exeDevice.idevicePath + 'hood.jpg';
@@ -176,7 +176,7 @@ var $exeDevice = {
     validateData: function () {
         const id = $exeDevice.id,
             imageResource = $('#mnfFileInput').val(),
-            isDefaultImage = $('#mnfFileInput').val() ? "0" : "1",
+            isDefaultImage = imageResource ? "0" : "1",
             width = $('#mnfWidthInput').val() || '',
             height = $('#mnfHeightInput').val() || '',
             initialZSize = $('#mnfInitialZoomSelect').val() || 100,
@@ -193,7 +193,7 @@ var $exeDevice = {
         html = html.replace(/`/g, '\\`');
 
         const textTextarea = `\n${html}\n`;
-        return  {
+        return {
             id,
             typeGame: 'magnifier',
             textTextarea,
@@ -209,6 +209,6 @@ var $exeDevice = {
             ideviceId: id,
         };
 
-        
+
     },
 };

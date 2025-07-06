@@ -226,7 +226,7 @@ class OdeOldXmlImageMagnifierIdevice
                 $originalHtml
             );
 
-            $odeComponentsSync->setHtmlView($originalHtml);
+            //$odeComponentsSync->setHtmlView($originalHtml);
 
             $jsonProperties = self::JSON_PROPERTIES;
             $jsonProperties['ideviceId'] = $odeIdeviceId;

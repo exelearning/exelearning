@@ -21,10 +21,8 @@
 }
 
 
-.MNF-MainContainer .MNF-Select {
-    padding: 3px;
-    border: 1px solid #ccc;
-    height: 1.75rem;
+.ImageMagnifierIdevice select {
+    margin-top: 0.5em;
 }
 
 .MNF-FullLinkImage {
@@ -78,7 +76,6 @@
     position: relative;
     display: inline-block;
     overflow: hidden;
-    cursor:none;
 }
 
 .mojomagnify_border {
