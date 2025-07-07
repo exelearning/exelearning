@@ -1,9 +1,0 @@
-@font-face {
-    	font-family: 'DejaVu Sans Mono';
-    	font-style:normal;
-      	
-	src: url('DejaVuSansMono.eot');
-  	src: local('?'),
-         url('DejaVuSansMono.woff') format('woff'), url('DejaVuSansMono.ttf') format('truetype'), url('DejaVuSansMono.svg') format('svg'); 
-}
-

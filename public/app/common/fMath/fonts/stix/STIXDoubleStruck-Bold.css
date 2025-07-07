@@ -1,9 +1,0 @@
-@font-face {
-    	font-family: 'STIXDoubleStruckBold';
-    	font-style:normal;
-      	
-	src: url('STIXDoubleStruck-Bold.eot');
-  	src: local('?'),
-         url('STIXDoubleStruck-Bold.woff') format('woff'), url('STIXDoubleStruck-Bold.ttf') format('truetype'), url('STIXDoubleStruck-Bold.svg') format('svg'); 
-}
-

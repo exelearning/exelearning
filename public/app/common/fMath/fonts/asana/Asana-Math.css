@@ -1,9 +1,0 @@
-@font-face {
-    	font-family: 'Asana Math';
-    	font-style:normal;
-      	
-	src: url('Asana-Math.eot');
-  	src: local('?'),
-         url('Asana-Math.woff') format('woff'), url('Asana-Math.ttf') format('truetype'), url('Asana-Math.svg') format('svg'); 
-}
-
