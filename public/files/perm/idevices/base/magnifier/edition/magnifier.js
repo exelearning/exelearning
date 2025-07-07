@@ -14,12 +14,15 @@ var $exeDevice = {
     idevicePath: '',
     msgs: {
         msgFullScreen: _('Full screen'),
+        msgNotImage: _('The image is not available.')
     },
     id: false,
     ci18n: {
         msgTypeGame: _('Magnifier'),
 
     },
+    idevicePath: '',
+    defaultImage: '',
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
@@ -27,6 +30,8 @@ var $exeDevice = {
         this.idevicePreviousData = previousData;
 
         this.idevicePath = path;
+
+        this.defaultImage = path + 'hood.jpg'
 
         this.id = $(element).attr('idevice-id');
         this.setMessagesInfo();
@@ -121,10 +126,10 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (data) {
-       const width = (!data.width || data.width > 1200) ? 600 : data.width;
+        const width = (!data.width || data.width > 1200) ? 600 : data.width;
         const height = data.height ?? '';
         const align = data.align ?? 'left';
-        const defaultImage = $exeDevice.idevicePath + 'hood.jpg';
+        const defaultImage = $exeDevice.defaultImage;
         const textTextarea = data.textTextarea;
         const glassSize = data.glassSize ? data.glassSize : 1;
         const imageResource = data.imageResource;
@@ -132,8 +137,10 @@ var $exeDevice = {
         const isDefaultImage = data.isDefaultImage;
         const pathImage = isDefaultImage == "0" ? imageResource : '';
         const image = isDefaultImage == "0" ? imageResource : defaultImage;
-        $('#mnfPreviewImage').attr('src', image);
         $('#mnfFileInput').val(pathImage);
+        $exeDevice.loadImageWithFallback(data);
+        $('#mnfPreviewImage').attr('src', image);
+
         $('#mnfWidthInput').val(width);
         $('#mnfHeightInput').val(height);
         $('#mnfAlignSelect').val(align);
@@ -145,7 +152,17 @@ var $exeDevice = {
             $('#instructions').val(textTextarea);
         }
     },
+    loadImageWithFallback: function (data) {
+        $('#mnfPreviewImage').off('error')
+            .on('error', function () {
+                $(this).off('error')    // evita bucles si la fallback falla también
+                    .attr('src', $exeDevice.defaultImage);
+                data.isDefaultImage = "0"
+                $('#mnfFileInput').val('');
 
+            })
+            .attr('src', data.image);
+    },
     save: function () {
         let dataGame = $exeDevice.validateData();
         if (dataGame) {
