@@ -6163,11 +6163,11 @@
       </trans-unit>
       <trans-unit id="KOGhcPK" resname="You must provide a name for this topic.">
         <source>You must provide a name for this topic.</source>
-        <target>~Eremu honetarako izena jarri behar duzu</target>
+        <target>Izen bat eman behar diozu eremu honi.</target>
       </trans-unit>
       <trans-unit id="QeWMJTG" resname="TriviExt">
         <source>TriviExt</source>
-        <target>~TriviExt</target>
+        <target>TriviExt</target>
       </trans-unit>
       <trans-unit id="HGeTBGG" resname="You must indicate a name for all the selected topics.">
         <source>You must indicate a name for all the selected topics.</source>
@@ -6179,31 +6179,31 @@
       </trans-unit>
       <trans-unit id="v8b7icS" resname="True or false">
         <source>True or false</source>
-        <target>~Egia edo gezurra</target>
+        <target>Egia edo gezurra</target>
       </trans-unit>
       <trans-unit id="yL1tLKw" resname="Suggestion">
         <source>Suggestion</source>
-        <target>~Gomendioa</target>
+        <target>Gomendioa</target>
       </trans-unit>
       <trans-unit id="teSzm6w" resname="Please write the question.">
         <source>Please write the question.</source>
-        <target>~Mesedez, idatzi galdera.</target>
+        <target>Idatzi galdera, mesedez.</target>
       </trans-unit>
       <trans-unit id="ivjM9D7" resname="Select the correct answer">
         <source>Select the correct answer</source>
-        <target>~Aukeratu erantzun zuzena</target>
+        <target>Aukeratu erantzun zuzena</target>
       </trans-unit>
       <trans-unit id="wZALt03" resname="SCORM grades can only be saved in Quiz mode">
         <source>SCORM grades can only be saved in Quiz mode</source>
-        <target>~SCORM notak soilik Quiz moduan gorde daitezke</target>
+        <target>SCORM kalifikazioak Quiz moduan bakarrik gorde daitezke</target>
       </trans-unit>
       <trans-unit id="_DQNt6e" resname="Create interactive True or False quizzes.">
         <source>Create interactive True or False quizzes.</source>
-        <target>~Sortu interaktibo True edo False galderak.</target>
+        <target>Egia edo Gezurra motako galdera interaktiboak sortu.</target>
       </trans-unit>
       <trans-unit id="fTFxfzc" resname="Answer all the questions in this quiz.">
         <source>Answer all the questions in this quiz.</source>
-        <target>~Erantzun galdera guztiak galderan.</target>
+        <target>Galdetegi honetako galdera guztiei erantzun.</target>
       </trans-unit>
       <trans-unit id="UzFjbr5" resname="Easier to read">
         <source>Easier to read</source>
@@ -6467,7 +6467,7 @@
       </trans-unit>
       <trans-unit id="CBMdY7N" resname="Word search">
         <source>Word search</source>
-        <target>~Hitzen bilaketa</target>
+        <target>Hitz bilaketa</target>
       </trans-unit>
       <trans-unit id="GvAlGJs" resname="You found all the words. Your score is %s.">
         <source>You found all the words. Your score is %s.</source>
@@ -6475,7 +6475,7 @@
       </trans-unit>
       <trans-unit id="maox5no" resname="Try with fewer words">
         <source>Try with fewer words</source>
-        <target>~Saiatu hitz gutxiagorekin</target>
+        <target>Hitz gutxiagorekin saiatu</target>
       </trans-unit>
       <trans-unit id="cjMfFzu" resname="Create word search games with additional text, images or sound.">
         <source>Create word search games with additional text, images or sound.</source>
@@ -6487,7 +6487,7 @@
       </trans-unit>
       <trans-unit id="u9iHD3m" resname="Show &quot;Solve&quot; button.">
         <source>Show "Solve" button.</source>
-        <target>~Erakutsi "Ebatzi" botoia.</target>
+        <target>"Ebatzi" botoia erakutsi.</target>
       </trans-unit>
       <trans-unit id="NyUqrF6" resname="Diagonal">
         <source>Diagonal</source>
@@ -6499,23 +6499,23 @@
       </trans-unit>
       <trans-unit id="1RFEUr3" resname="Selected: {0} of {1}">
         <source>Selected: {0} of {1}</source>
-        <target>~Aukeratua: {0} guztietatik {1}</target>
+        <target>{1}-tik {0} aukeratua(k)</target>
       </trans-unit>
       <trans-unit id="jhabtrD" resname="Uploading {0}% of {1}">
         <source>Uploading {0}% of {1}</source>
-        <target>~Kargatzen {0}% {1}</target>
+        <target>{1}-tik {0}% kargatzen</target>
       </trans-unit>
       <trans-unit id="Nq1CAoe" resname="{0} is too large, please upload files less than {1}">
         <source>{0} is too large, please upload files less than {1}</source>
-        <target>~{0} oso handia da, mesedez, kargatu {1} baino txikiagoko fitxategiak</target>
+        <target>{0} handiegia da, mesedez, igo {1} baino txikiagoak diren fitxategiak</target>
       </trans-unit>
       <trans-unit id="u3Lgp9d" resname="{0} failed to upload">
         <source>{0} failed to upload</source>
-        <target>~{0} kargatu ez daiteke</target>
+        <target>{0}(e)k huts egin du igotzean</target>
       </trans-unit>
       <trans-unit id="eCTXUiT" resname="{0} Per Page">
         <source>{0} Per Page</source>
-        <target>~Orriko {0}</target>
+        <target>{0} Orriko</target>
       </trans-unit>
       <trans-unit id="xM2rg3U" resname="Folder">
         <source>Folder</source>
@@ -6523,15 +6523,15 @@
       </trans-unit>
       <trans-unit id="lNnbOxU" resname="Not Found">
         <source>Not Found</source>
-        <target>~Ez da aurkitu</target>
+        <target>Ez da aurkitu</target>
       </trans-unit>
       <trans-unit id="qqQY1rt" resname="Not Allowed">
         <source>Not Allowed</source>
-        <target>~Ez da baimendu</target>
+        <target>Baimendu gabea</target>
       </trans-unit>
       <trans-unit id="BfXv0G_" resname="Unknown error">
         <source>Unknown error</source>
-        <target>~Errore ezezaguna</target>
+        <target>Errore ezezaguna</target>
       </trans-unit>
       <trans-unit id="vW4PrEl" resname="Add files">
         <source>Add files</source>
@@ -6539,7 +6539,7 @@
       </trans-unit>
       <trans-unit id="OKwLQ.A" resname="No pagination">
         <source>No pagination</source>
-        <target>~Ez dago orrialdaketarik</target>
+        <target>Orri-zenbaketarik gabea</target>
       </trans-unit>
       <trans-unit id="ExFLJqx" resname="Home">
         <source>Home</source>
@@ -6551,27 +6551,27 @@
       </trans-unit>
       <trans-unit id="SOf5.ap" resname="Please fill out this field">
         <source>Please fill out this field</source>
-        <target>~Mesedez, bete eremua hau</target>
+        <target>Bete eremu hau mesedez</target>
       </trans-unit>
       <trans-unit id="6A2UfPi" resname="Zip">
         <source>Zip</source>
-        <target>~Zip</target>
+        <target>Zip</target>
       </trans-unit>
       <trans-unit id="fAdtaUZ" resname="Batch Download">
         <source>Batch Download</source>
-        <target>~Multzoa deskargatu</target>
+        <target>Deskargatu multzoa</target>
       </trans-unit>
       <trans-unit id="uASP3Z9" resname="Unzip">
         <source>Unzip</source>
-        <target>~Deskargatu zipa</target>
+        <target>Deskonprimitu</target>
       </trans-unit>
       <trans-unit id="2OBCGbu" resname="Copy link">
         <source>Copy link</source>
-        <target>~Kopiatu esteka</target>
+        <target>Esteka kopiatu</target>
       </trans-unit>
       <trans-unit id="tLFxco7" resname="Drop files to upload">
         <source>Drop files to upload</source>
-        <target>~Kargatu fitxategiak arrastatu</target>
+        <target>Igo nahi dituzun fitxategiak ekarri hona</target>
       </trans-unit>
       <trans-unit id="R4ejw1a" resname="Select Folder">
         <source>Select Folder</source>
@@ -6579,11 +6579,11 @@
       </trans-unit>
       <trans-unit id="tooLhd2" resname="Files">
         <source>Files</source>
-        <target>~Fitxategiak</target>
+        <target>Fitxategiak</target>
       </trans-unit>
       <trans-unit id="t_hjNeq" resname="Paused">
         <source>Paused</source>
-        <target>~Geldituta</target>
+        <target>Pausatuta</target>
       </trans-unit>
       <trans-unit id="HaWmb6s" resname="Home Folder">
         <source>Home Folder</source>
@@ -6591,43 +6591,43 @@
       </trans-unit>
       <trans-unit id="3wtDbCp" resname="Leave blank for no change">
         <source>Leave blank for no change</source>
-        <target>~Ezazu aldatzeko ezer ez uzteko hutsik utzi</target>
+        <target>Aldaketarik ez egiteko, hutsik utzi</target>
       </trans-unit>
       <trans-unit id="cH5dmrY" resname="Are you sure you want to do this?">
         <source>Are you sure you want to do this?</source>
-        <target>~Ziur zaude hau egin nahi duzula?</target>
+        <target>Ziur zaude hau egin nahi duzula?</target>
       </trans-unit>
       <trans-unit id="OczhMQg" resname="Are you sure you want to allow access to everyone?">
         <source>Are you sure you want to allow access to everyone?</source>
-        <target>~Ziur zaude guztiei sarbidea baimentzeko?</target>
+        <target>Ziur zaude denei sarbidea baimendu nahi diezula?</target>
       </trans-unit>
       <trans-unit id="sa3Py1X" resname="Are you sure you want to stop all uploads?">
         <source>Are you sure you want to stop all uploads?</source>
-        <target>~Ziur zaude kargaketa guztiak gelditu nahi dituzula?</target>
+        <target>Ziur zaude igoera guztiak geldiarazi nahi dituzula?</target>
       </trans-unit>
       <trans-unit id="0yVywJH" resname="Something went wrong">
         <source>Something went wrong</source>
-        <target>~Zerbait gaizki joan da</target>
+        <target>Zerbait gaizki joan da</target>
       </trans-unit>
       <trans-unit id="6Bvb_3V" resname="Invalid directory">
         <source>Invalid directory</source>
-        <target>~Direktorio baliogabea</target>
+        <target>Direktorio baliogabea</target>
       </trans-unit>
       <trans-unit id="LR30_Bm" resname="This field is required">
         <source>This field is required</source>
-        <target>~Eremu hau beharrezkoa da</target>
+        <target>Eremu hau derrigorrezkoa da</target>
       </trans-unit>
       <trans-unit id="YBDJnwa" resname="Updated">
         <source>Updated</source>
-        <target>~Eguneratuta</target>
+        <target>Eguneratuta</target>
       </trans-unit>
       <trans-unit id="l9KZflr" resname="Deleted">
         <source>Deleted</source>
-        <target>~Ezabatu da</target>
+        <target>Ezabatuta</target>
       </trans-unit>
       <trans-unit id="mZXDU4R" resname="Your file is ready">
         <source>Your file is ready</source>
-        <target>~Zure fitxategia prest dago</target>
+        <target>Zure fitxategia prest dago</target>
       </trans-unit>
       <trans-unit id=".EmYZIu" resname="View">
         <source>View</source>
@@ -6639,35 +6639,35 @@
       </trans-unit>
       <trans-unit id="V6IIhvU" resname="Show hidden">
         <source>Show hidden</source>
-        <target>~Ezkutatuak erakutsi</target>
+        <target>Ezkutukoak erakutsi</target>
       </trans-unit>
       <trans-unit id="rvsQbge" resname="Do you want to unzip the file?">
         <source>Do you want to unzip the file?</source>
-        <target>~Fitxategia zipatu nahi duzu?</target>
+        <target>Fitxategia deskonprimitu nahi duzu?</target>
       </trans-unit>
       <trans-unit id="6edviCT" resname="Upload without unzip">
         <source>Upload without unzip</source>
-        <target>~Ezazu zipatu gabe igo</target>
+        <target>Igo deskonprimitu gabe</target>
       </trans-unit>
       <trans-unit id="JkzYTYq" resname="Unzip here">
         <source>Unzip here</source>
-        <target>~Zipatu hemen</target>
+        <target>Hemen deskonprimatu</target>
       </trans-unit>
       <trans-unit id="vtDPEYM" resname="Unzip in subfolder ...">
         <source>Unzip in subfolder ...</source>
-        <target>~Azpifolder batean zipatu ...</target>
+        <target>Deskonprimatu azpikarpeta batean...</target>
       </trans-unit>
       <trans-unit id="J1nmXNj" resname="Unzip in subfolder">
         <source>Unzip in subfolder</source>
-        <target>~Azpifolder batean zipatu</target>
+        <target>Deskonprimatu azpikarpeta batean</target>
       </trans-unit>
       <trans-unit id="SYe8ltT" resname="There was a problem creating the archive">
         <source>There was a problem creating the archive</source>
-        <target>~Arazo bat egon da artxiboa sortzean</target>
+        <target>Artxiboa sortzean arazo bat egon da</target>
       </trans-unit>
       <trans-unit id="ZI2xkAH" resname="File type not allowed or size over limit">
         <source>File type not allowed or size over limit</source>
-        <target>~Fitxategi mota ez da onartzen edo tamaina muga gainditzen du</target>
+        <target>Fitxategi mota hau ez da onartzen edo tamaina muga gainditzen du</target>
       </trans-unit>
       <trans-unit id="4cXccyZ" resname="Effects (accordion, tabs, pagination...)">
         <source>Effects (accordion, tabs, pagination...)</source>
@@ -6715,7 +6715,7 @@
       </trans-unit>
       <trans-unit id="sc56aDT" resname="System Font">
         <source>System Font</source>
-        <target>~Sistema Letra</target>
+        <target>Sistemaren letra-tipoa</target>
       </trans-unit>
       <trans-unit id="tdeuQuE" resname="Acronym or abbreviation">
         <source>Acronym or abbreviation</source>
@@ -6723,15 +6723,15 @@
       </trans-unit>
       <trans-unit id="cWR3mIb" resname="Anchor...">
         <source>Anchor...</source>
-        <target>~Aldea...</target>
+        <target>Aingura...</target>
       </trans-unit>
       <trans-unit id="xl8xPSn" resname="Special character...">
         <source>Special character...</source>
-        <target>~Karaktere berezia...</target>
+        <target>Karaktere berezia...</target>
       </trans-unit>
       <trans-unit id="MB1XMjB" resname="Insert template...">
         <source>Insert template...</source>
-        <target>~Txertatu txantilona...</target>
+        <target>Txertatu txantilona...</target>
       </trans-unit>
       <trans-unit id="uRHympl" resname="Insert/Edit Attributes">
         <source>Insert/Edit Attributes</source>
