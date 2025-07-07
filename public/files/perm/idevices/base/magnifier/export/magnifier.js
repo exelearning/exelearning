@@ -10,7 +10,6 @@ var $magnifier = {
     },
 
     transformObject: function (data, ideviceId) {
-        console.log('transformObject', data)
         this.isInExe = eXe.app.isInExe();
         this.idevicePath = this.isInExe
             ? eXe.app.getIdeviceInstalledExportPath("magnifier")
@@ -30,7 +29,7 @@ var $magnifier = {
         const isDefaultImage = data.isDefaultImage;
         const image = isDefaultImage == "0" ? imageResource : defaultImage;
 
-        const sdata = {
+        return {
             id: id,
             typeGame: 'magnifier',
             textTextarea,
@@ -47,8 +46,6 @@ var $magnifier = {
             ideviceId: id
         };
 
-        console.log('sdata', sdata)
-        return sdata
     },
 
     getImageName: function (imgPath) {
@@ -116,7 +113,6 @@ var $magnifier = {
 
 
     createInterfaceMagnifier: function (data) {
-        console.log('createInterfaceMagnifier', data)
         const instance = data.ideviceId
         let flexDir = '', alignItems = '', textAlign = 'left'
         switch (data.align) {
