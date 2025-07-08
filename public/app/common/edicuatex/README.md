@@ -1,85 +1,87 @@
-# Editor de ecuaciones $\LaTeX$ online
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/jjdeharo/edicuatex/blob/main/README_es.md)
 
-## Descripción
+# Online $\LaTeX$ Equation Editor
 
-Este proyecto es una herramienta gratuita pensada para que docentes y estudiantes puedan crear y editar fórmulas matemáticas fácilmente, sin necesidad de conocer a fondo el lenguaje LaTeX. Permite generar materiales educativos con notación matemática clara y profesional. Se puede usar con programas que admiten LaTeX, como eXeLearning, Moodle, Overleaf, etc.
+## Description
 
-El programa funciona tanto de forma **independiente** como **integrado en eXeLearning**. Cuando se detecta que se abre desde eXe, aparece el botón verde para insertar la fórmula directamente. Si se abre de forma autónoma (por ejemplo, en un navegador), este botón no aparece.
+This project is a free tool designed to help teachers and students create and edit mathematical formulas easily, without needing in-depth knowledge of LaTeX. It allows you to generate educational materials with clear, professional mathematical notation. It can be used with programs that support LaTeX, such as eXeLearning, Moodle, Overleaf, etc.
 
----
-
-## 1. `index.html` → Editor visual de fórmulas LaTeX
-
-### Funcionalidades principales
-
-- Escribir fórmulas con un menú visual de botones y categorías personalizables.
-- Ver la fórmula en tiempo real gracias a MathJax.
-- Copiar el código LaTeX listo para usar, con o sin delimitadores.
-- Exportar la fórmula como imagen PNG.
-- Buscar por nombre o código (ej: `raíz`, `\int`...).
-- Acceso rápido a fórmulas usadas recientemente.
-- Asistente con IA para generar fórmulas a partir de una descripción.
-- Gestión de **múltiples menús** desde archivos locales, URLs externas o GitHub.
-- Carga automática de menús definidos en `menus.json`, con descripciones visibles.
-
-### Cómo usarlo
-
-1. Selecciona una fórmula o escribe código manualmente.
-2. Visualiza el resultado.
-3. Copia el código, descárgalo como imagen o insértalo directamente en eXeLearning.
+The program works both as a **standalone** application and **integrated into eXeLearning**. When it detects it was opened from eXe (via a plugin for TinyMCE), a button appears to insert the formula directly. If opened standalone (e.g., in a browser), this button does not appear.
 
 ---
 
-## 2. `editor_menu.html` → Editor visual de menús de fórmulas
+## 1. `index.html` → Visual LaTeX Formula Editor
 
-Este archivo permite crear o modificar colecciones de botones con fórmulas LaTeX organizadas por categorías.
+### Main Features
 
-### Funcionalidades principales
+- Write formulas using a visual menu with customizable buttons and categories.
+- Preview the formula in real time thanks to MathJax.
+- Copy the LaTeX code ready to use, with or without delimiters.
+- Export the formula as a PNG image.
+- Search by name or code (e.g., `square root`, `\int`...).
+- Quick access to recently used formulas.
+- AI assistant to generate formulas from a description.
+- Support for **multiple menus** from local files, external URLs, or GitHub.
+- Automatically loads menus defined in `menus/menus.json`, with visible descriptions.
 
-- Crear, editar y organizar menús de fórmulas sin escribir JSON manualmente.
-- Usar arrastrar y soltar para reorganizar los botones.
-- Asistente con IA para generar elementos, categorías o archivos completos.
-- Exportar los menús en formato JSON para integrarlos en `index.html`.
-- Cargar archivos `.json` desde tu ordenador, portapapeles o URLs externas (como GitHub Raw).
+### How to Use
+
+1. Select a formula or write code manually.
+2. Preview the result.
+3. Copy the code, download it as an image, or insert it directly into eXeLearning.
 
 ---
 
-## Menús de fórmulas (`.json`)
+## 2. `menus/editor.html` → Visual Menu Editor for Formulas
 
-Los menús definen botones organizados en categorías con fórmulas LaTeX. Se pueden cargar desde `index.html` o crear con `editor_menu.html`.
+This file allows you to create or modify collections of buttons with LaTeX formulas organized by category.
 
-El menú base por defecto es `base.json`, cargado automáticamente al abrir el editor. Puedes añadir más desde la ventana "Gestionar menús".
+### Main Features
 
-### Manifest `menus.json`
+- Create, edit, and organize formula menus without manually writing JSON.
+- Use drag and drop to rearrange buttons.
+- AI assistant to generate elements, categories, or entire files.
+- Export menus in JSON format for use in `index.html`.
+- Load `.json` files from your computer, clipboard, or external URLs (like GitHub Raw).
 
-El archivo `menus.json` actúa como índice de los menús disponibles para el editor. Contiene un array llamado `menus`, donde cada elemento especifica:
+---
 
-- `file`: nombre del archivo `.json` que contiene las categorías y fórmulas.
-- `description`: texto que describe el contenido del menú (aparece en la interfaz).
+## Formula Menus (`.json`)
 
-Ejemplo:
+Menus define buttons organized in categories with LaTeX formulas. They can be loaded from `index.html` or created with `menus/editor.html`.
+
+The default base menu is `menus/base.json`, which loads automatically when the editor opens. You can add more from the "Manage Menus" window.
+
+### Manifest `menus/menus.json`
+
+The `menus/menus.json` file acts as an index of the available menus for the editor. It contains an array called `menus`, where each element specifies:
+
+- `file`: name of the `.json` file containing the categories and formulas.
+- `description`: text describing the menu's content (shown in the interface).
+
+Example:
 
 ```json
 {
   "menus": [
-    { "file": "base.json",       "description": "Símbolos básicos" },
-    { "file": "entornos.json",   "description": "Entornos matemáticos" },
-    { "file": "estadistica.json","description": "Estadística" },
-    { "file": "fisica.json",     "description": "Física" },
-    { "file": "geometria.json",  "description": "Geometría" }
+    { "file": "base.json",       "description": "Basic Symbols" },
+    { "file": "entornos.json",   "description": "Mathematical Environments" },
+    { "file": "estadistica.json","description": "Statistics" },
+    { "file": "fisica.json",     "description": "Physics" },
+    { "file": "geometria.json",  "description": "Geometry" }
   ]
 }
 ```
 
 ---
 
-## Estructura de un archivo de menú
+## Structure of a Menu File
 
 ```json
 {
   "categorias": [
     {
-      "nombre": "Álgebra",
+      "nombre": "Algebra",
       "id": "algebra",
       "grid_template_columns": "repeat(auto-fit, minmax(80px, 1fr))",
       "isCollapsed": false,
@@ -88,11 +90,11 @@ Ejemplo:
           "type": "button",
           "latex": "\\frac{a}{b}",
           "display": "\\frac{a}{b}",
-          "title": "Fracción"
+          "title": "Fraction"
         },
         {
           "type": "custom_matrix",
-          "title": "Matriz personalizada"
+          "title": "Custom Matrix"
         }
       ]
     }
@@ -102,11 +104,11 @@ Ejemplo:
 
 ---
 
-## Licencia
+## License
 
-Este proyecto tiene licencia Creative Commons BY-SA. Puedes usarlo, modificarlo y compartirlo libremente, citando al autor y manteniendo la misma licencia.
+This project is licensed under Creative Commons BY-SA. You can use, modify, and share it freely, citing the author and keeping the same license.
 
 ---
 
-**Autor**: Juan José de Haro  
+**Author**: Juan José de Haro  
 [https://bilateria.org](https://bilateria.org)
