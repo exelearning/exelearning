@@ -27,6 +27,10 @@ body {
     color: var(--text-color);
 }
 
+a {
+    color: var(--text-color);
+}
+
 .exelearning body {
     background: #efeff1;
 }

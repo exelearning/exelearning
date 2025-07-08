@@ -18,7 +18,21 @@ if (isInExe) {
     const savedLang = localStorage.getItem('userLanguage');
     const browserLang = navigator.language.split('-')[0];
     const supportedLangs = ['en', 'es', 'ca'];
-    const defaultLang = savedLang || (supportedLangs.includes(browserLang) ? browserLang : 'en');
+    function getLangParam() {
+        var result = "",
+            tmp = [];
+        location.search
+            .substr(1)
+            .split("&")
+            .forEach(function (item) {
+              tmp = item.split("=");
+              if (tmp[0] === 'lang') result = decodeURIComponent(tmp[1]);
+            });
+        return result;
+    }
+    let defaultLang = savedLang || (supportedLangs.includes(browserLang) ? browserLang : 'en');
+    const urlLang = getLangParam();
+    if (urlLang != "") defaultLang = urlLang;
     document.documentElement.lang = defaultLang;
 }
 // Redefine _ function once the DOM is loaded and $i18n is available
@@ -41,6 +55,9 @@ document.addEventListener("DOMContentLoaded", function() {
     // After defining _, update all texts
     if (!isInExe) {
         setupLanguageSelector();
+    } else {
+        const editorLink = document.getElementById('menu-editor-link');
+        if (editorLink) editorLink.href = editorLink.href + '?lang=' + document.documentElement.lang;
     }
     updateAllDynamicTexts();
     addFooter(); // Ensure footer is translated on load
