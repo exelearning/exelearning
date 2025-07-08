@@ -6,6 +6,7 @@ $i18n['eXe'] = {
     'Educational Applications Laboratory': _('Educational Applications Laboratory'),
     'Application created by Juan José de Haro': _('Application created by Juan José de Haro'),
     // === INDEX.HTML - MAIN HEADER & FOOTERSEARCH & TOOLBAR ===
+    'Menus': _('Menus'),
     'Search by description or code (e.g.: fraction, \\int)...': _('Search by description or code (e.g.: fraction, \\int)...'),
     'Clear search': _('Clear search'),
     'Customize menu': _('Customize menu'),

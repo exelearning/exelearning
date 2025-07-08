@@ -140,7 +140,7 @@ body {
     color: var(--dark-gray);
 }
 
-#settings-btn, #maximize-btn {
+#settings-btn, #maximize-btn, #menu-toggler-btn {
     background: none;
     border: none;
     font-size: 1.5rem;
@@ -154,6 +154,10 @@ body {
 #settings-btn:hover, #maximize-btn:hover {
     color: var(--primary-color);
     transform: rotate(45deg);
+}
+
+#menu-toggler-btn:hover {
+    color: var(--primary-color);
 }
 
 #maximize-btn:hover {
@@ -197,7 +201,7 @@ body {
     border-bottom-color: var(--primary-color);
 }
 
-.toolbar-wrapper {
+#toolbar-wrapper {
     padding: 20px;
     background: var(--white);
 }

@@ -79,6 +79,7 @@ async function initializeLatexEditor() {
     const toolbar = document.getElementById('toolbar');
     const searchInput = document.getElementById('search-input');
     const clearSearchBtn = document.getElementById('clear-search-btn');
+    const menuTogglerBtn = document.getElementById('menu-toggler-btn');
     const settingsBtn = document.getElementById('settings-btn');
     // Modals
     const settingsModal = document.getElementById('settings-modal');
@@ -669,6 +670,18 @@ async function initializeLatexEditor() {
         window.close();
     });
     viewImageButton.addEventListener('click', handleViewImage);
+    menuTogglerBtn.addEventListener('click', function(){
+        const tabs = document.getElementById('tabs-container');
+        const toolbars = document.getElementById('toolbar-wrapper');
+        if (!tabs || !toolbars) return;
+        if (tabs.style.display == 'none') {
+            tabs.style.display = 'block';
+            toolbars.style.display = 'block';
+        } else {
+            tabs.style.display = 'none';
+            toolbars.style.display = 'none';
+        }
+    });
     settingsBtn.addEventListener('click', () => settingsModal.classList.add('active'));
     closeSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('active'));
     

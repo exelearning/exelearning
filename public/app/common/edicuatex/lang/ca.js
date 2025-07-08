@@ -6,6 +6,7 @@ $i18n['ca'] = {
     'Educational Applications Laboratory': 'Laboratori d\'Aplicacions Educatives',
     'Application created by Juan José de Haro': 'Aplicació creada per Juan José de Haro',
     // === INDEX.HTML - MAIN HEADER & FOOTERSEARCH & TOOLBAR ===
+    'Menus': 'Menús',
     'Search by description or code (e.g.: fraction, \\int)...': 'Cerca per descripció o codi (ex: fracció, \\int)...',
     'Clear search': 'Neteja la cerca',
     'Customize menu': 'Personalitza el menú',
