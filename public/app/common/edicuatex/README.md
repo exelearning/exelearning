@@ -1,4 +1,4 @@
-[![es](https://img.shields.io/badge/lang-es-yellow.svg)](https://github.com/jjdeharo/edicuatex/blob/main/README_es.md)
+[![es](https://img.shields.io/badge/lang-es-yellow.svg)](README_es.md)
 
 # Online $\LaTeX$ Equation Editor
 
