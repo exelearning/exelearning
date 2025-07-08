@@ -78,7 +78,9 @@ window.MathJax = {
 };
 document.addEventListener("DOMContentLoaded", function() {
     var url = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js";
-    if (isInExe) url = "../exe_math/tex-mml-svg.js";
+    if (isInExe) {
+        url = parent.tinymce.activeEditor.settings.edicuatex_mathjax_url;
+    }
     var s;
         s = document.createElement("script");
         s['async'] = "";

@@ -15,7 +15,6 @@ var $exeTinyMCE = {
         'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exeaudio abcmusic | codemagic | fullscreen',
     browser_spellcheck: true,
 
-    path_to_folder: '/libs/tinymce_5/js/tinymce/',
     menubar: 'edit insert format table tools',
     menu: {
         edit: {
@@ -41,7 +40,8 @@ var $exeTinyMCE = {
     },
     contextmenu: 'exelink | inserttable | cell row column deletetable',
     language: 'all', // We set all so we can use eXe's i18n mechanism in all.js,
-    edicuatex_url: 'app/common/edicuatex/index.html',
+    edicuatex_url: '/app/common/edicuatex/index.html',
+    edicuatex_mathjax_url: '/app/common/exe_math/tex-mml-svg.js',
     templates: [
         {
             title: '2 ' + 'columns' + ' 50% 50%',
@@ -106,6 +106,15 @@ var $exeTinyMCE = {
     ],
     table_default_styles: {
         width: '100%',
+    },
+
+    getAssetURL: function (url) {
+        let basePath =
+            eXeLearning.symfony.baseURL +
+            eXeLearning.symfony.basePath +
+            '/assets/' +
+            eXeLearning.version;
+        return basePath + url;
     },
 
     // Get classes from base.css and content.css
@@ -229,10 +238,11 @@ var $exeTinyMCE = {
             table_default_styles: this.table_default_styles,
             table_class_list: this.getAvailableClasses(),
             rel_list: this.rel_list,
-            edicuatex_url: this.edicuatex_url,
 
-            // Base URL
-            path_to_folder: this.path_to_folder,
+            // Math plugin
+            edicuatex_url: this.getAssetURL(this.edicuatex_url),
+            edicuatex_mathjax_url: this.getAssetURL(this.edicuatex_mathjax_url),
+
             // Images
             image_advtab: true,
             image_title: this.image_title,
