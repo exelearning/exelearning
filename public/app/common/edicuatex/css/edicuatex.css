@@ -151,17 +151,26 @@ body {
     flex-shrink: 0;
 }
 
+#maximize-btn {
+    margin-top: -3px;
+}
+
 #settings-btn:hover, #maximize-btn:hover {
     color: var(--primary-color);
     transform: rotate(45deg);
 }
 
+#menu-toggler-btn {
+    transform: scale(.9);
+}
+
 #menu-toggler-btn:hover {
     color: var(--primary-color);
+    transform: scale(1);
 }
 
 #maximize-btn:hover {
-     transform: scale(1.2);
+     transform: scale(1.1);
 }
 
 .search-results-view .tabs-container {
