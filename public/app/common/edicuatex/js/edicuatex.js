@@ -1,6 +1,5 @@
 // Global placeholder for the translation function
 let _ = str => str;
-import DOMPurify from 'dompurify';
 
 // --- Language & UI Update Functions ---
 function setupLanguageSelector() {
@@ -445,8 +444,7 @@ async function initializeLatexEditor() {
     }
     
     function updatePreview() {
-        const sanitizedInput = DOMPurify.sanitize(latexInput.value.trim());
-        preview.innerHTML = sanitizedInput === "" ? "" : `$$${sanitizedInput}$$`;
+        preview.innerHTML = latexInput.value.trim() === "" ? "" : `$$${latexInput.value.trim()}$$`;
         MathJax.typesetPromise([preview]).catch(() => { preview.innerHTML = `<span style="color:red;">${_('Syntax error')}</span>`; });
     }
 
