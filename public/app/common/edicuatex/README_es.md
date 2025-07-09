@@ -112,3 +112,20 @@ Este proyecto tiene licencia Creative Commons BY-SA. Puedes usarlo, modificarlo 
 
 **Autor**: Juan José de Haro  
 [https://bilateria.org](https://bilateria.org)
+
+---
+
+## Librerías de terceros
+
+EdiCuaTeX incluye DOMPurify, una librería para "sanitizar" código y evitar ataques XSS.
+
+Detalles de DOMPurify:
+
+Copyright 2025 Dr.-Ing. Mario Heiderich, Cure53
+
+DOMPurify es software libre y se puede distribuir y modificar según los términos de cualquiera de las siguientes licencias:
+
+a) Apache License Version 2.0, o
+b) Mozilla Public License Version 2.0
+
+Para más información, visita https://github.com/cure53/DOMPurify

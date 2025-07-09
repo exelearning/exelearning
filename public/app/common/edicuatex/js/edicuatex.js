@@ -444,7 +444,8 @@ async function initializeLatexEditor() {
     }
     
     function updatePreview() {
-        preview.innerHTML = latexInput.value.trim() === "" ? "" : `$$${latexInput.value.trim()}$$`;
+        const sanitizedInput = DOMPurify.sanitize(latexInput.value.trim());
+        preview.innerHTML = sanitizedInput === "" ? "" : `$$${sanitizedInput}$$`;
         MathJax.typesetPromise([preview]).catch(() => { preview.innerHTML = `<span style="color:red;">${_('Syntax error')}</span>`; });
     }
 

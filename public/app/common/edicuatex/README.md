@@ -112,3 +112,21 @@ This project is licensed under Creative Commons BY-SA. You can use, modify, and 
 
 **Author**: Juan José de Haro  
 [https://bilateria.org](https://bilateria.org)
+
+---
+
+## Third-party libraries
+
+EdiCuaTeX includes DOMPurify, a DOM-only XSS sanitizer for HTML, MathML and SVG.
+
+DOMPurify details:
+
+Copyright 2025 Dr.-Ing. Mario Heiderich, Cure53
+
+DOMPurify is free software; you can redistribute it and/or modify it under the
+terms of either:
+
+a) the Apache License Version 2.0, or
+b) the Mozilla Public License Version 2.0
+
+See https://github.com/cure53/DOMPurify for more details.
