@@ -1,0 +1,10 @@
+{
+  "menus": [
+    { "file": "base.json",        "description": "Basic symbols"             },
+    { "file": "biology.json",      "description": "Biology"                },
+    { "file": "statistics.json", "description": "Statistics"                },
+    { "file": "physics.json",      "description": "Physics"                   },
+    { "file": "chemistry.json",      "description": "Chemistry"                },
+    { "file": "geometry.json",   "description": "Geometry"                  }
+  ]
+}
