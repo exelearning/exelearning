@@ -1,4 +1,4 @@
-[![en](https://img.shields.io/badge/lang-en-red.svg)](README.md)
+[English version](README.md)
 
 # Editor de ecuaciones $\LaTeX$ online
 
