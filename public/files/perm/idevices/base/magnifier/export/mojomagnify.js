@@ -26,7 +26,7 @@ var MojoMagnify = (function () {
         const rect = el.getBoundingClientRect();
         return {
             x: e.clientX - rect.left + window.scrollX,
-            y: e.clientY - rect.top  + window.scrollY
+            y: e.clientY - rect.top + window.scrollY
         };
     };
 
@@ -35,30 +35,30 @@ var MojoMagnify = (function () {
         if (!zoomImg) return;
 
         const zoom = img.__mojoMagnifyZoomer;
-        const maskWidth  = zoom.offsetWidth;
+        const maskWidth = zoom.offsetWidth;
         const maskHeight = zoom.offsetHeight;
-        const w = img.offsetWidth  || img.naturalWidth;
+        const w = img.offsetWidth || img.naturalWidth;
         const h = img.offsetHeight || img.naturalHeight;
 
         const left = pos.x - maskWidth / 2;
-        const top  = pos.y - maskHeight / 2;
+        const top = pos.y - maskHeight / 2;
         zoom.style.left = `${left}px`;
-        zoom.style.top  = `${top}px`;
+        zoom.style.top = `${top}px`;
 
 
         const zoomFactor = img.__mojoMagnifyZoomFactor;
-        const zoomWidth  = w * zoomFactor;
+        const zoomWidth = w * zoomFactor;
         const zoomHeight = h * zoomFactor;
-        zoomImg.style.width  = `${zoomWidth}px`;
+        zoomImg.style.width = `${zoomWidth}px`;
         zoomImg.style.height = `${zoomHeight}px`;
 
 
-        const ratioX = zoomWidth  / w;
+        const ratioX = zoomWidth / w;
         const ratioY = zoomHeight / h;
         const zx = -Math.round(x * ratioX) + maskWidth / 2;
         const zy = -Math.round(y * ratioY) + maskHeight / 2;
         zoomImg.style.left = `${zx}px`;
-        zoomImg.style.top  = `${zy}px`;
+        zoomImg.style.top = `${zy}px`;
     };
 
     const makeMagnifiable = (img, zoomSrc, opt = {}, zSize = 100, zZoom = 1) => {
@@ -83,7 +83,7 @@ var MojoMagnify = (function () {
             return;
         }
 
-        const w = img.offsetWidth  || img.naturalWidth;
+        const w = img.offsetWidth || img.naturalWidth;
         const h = img.offsetHeight || img.naturalHeight;
         const wrapper = dc('div');
         img.parentNode.replaceChild(wrapper, img);
@@ -94,17 +94,28 @@ var MojoMagnify = (function () {
 
         const overlay = dc('div');
         Object.assign(overlay.style, {
-            position: 'absolute', top: 0, left: 0,
-            width: `${w}px`, height: `${h}px`, overflow: 'hidden', display: 'none'
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: `${w}px`,
+            height: `${h}px`,
+            overflow: 'hidden',
+            display: 'none',
+            pointerEvents: 'none',
+            zIndex: 10
         });
         wrapper.append(overlay);
 
         const zoom = dc('div'); zoom.className = 'zoomglass';
         Object.assign(zoom.style, {
-            position: 'absolute', overflow: 'hidden', width: `${lensSize}px`, height: `${lensSize}px`, left: '-9999px'
+            position: 'absolute',
+            overflow: 'hidden',
+            width: `${lensSize}px`,
+            height: `${lensSize}px`,
+            left: '-9999px'
         });
         overlay.append(zoom);
-
+        
         const zoomImg = dc('img');
         Object.assign(zoomImg.style, {
             position: 'absolute', maxWidth: 'none', maxHeight: 'none'
@@ -114,8 +125,8 @@ var MojoMagnify = (function () {
         const border = dc('div'); border.className = 'mojomagnify_border';
         zoom.append(border);
 
-        img.__mojoMagnifyImage   = zoomImg;
-        img.__mojoMagnifyZoomer  = zoom;
+        img.__mojoMagnifyImage = zoomImg;
+        img.__mojoMagnifyZoomer = zoom;
         img.__mojoMagnifyOverlay = overlay;
 
 
@@ -124,11 +135,11 @@ var MojoMagnify = (function () {
 
 
         const selectZoom = dc('select');
-        const zOpts = [1,1.5,2,2.5,3,4,6];
+        const zOpts = [1, 1.5, 2, 2.5, 3, 4, 6];
         if (!zOpts.includes(zoomFactor)) zOpts.push(zoomFactor);
-        zOpts.sort((a,b)=>a-b).forEach(v=>{
-            const o = dc('option'); o.value=v; o.textContent=`x${v}`;
-            if (v===zoomFactor) o.selected=true;
+        zOpts.sort((a, b) => a - b).forEach(v => {
+            const o = dc('option'); o.value = v; o.textContent = `x${v}`;
+            if (v === zoomFactor) o.selected = true;
             selectZoom.append(o);
         });
         selectZoom.style = dfstyle;
@@ -136,25 +147,25 @@ var MojoMagnify = (function () {
             const newFactor = parseFloat(selectZoom.value);
             img.__mojoMagnifyZoomFactor = newFactor;
             img.setAttribute('data-zoom', selectZoom.value);
-            zoomImg.style.width  = `${w * newFactor}px`;
+            zoomImg.style.width = `${w * newFactor}px`;
             zoomImg.style.height = `${h * newFactor}px`;
         };
 
 
         const selectSize = dc('select');
-        const sOpts = [50,100,150,200,250,300,400];
+        const sOpts = [50, 100, 150, 200, 250, 300, 400];
         if (!sOpts.includes(lensSize)) sOpts.push(lensSize);
-        sOpts.sort((a,b)=>a-b).forEach(v=>{
-            const o = dc('option'); o.value=v; o.textContent=`${v}`;
-            if (v===lensSize) o.selected=true;
+        sOpts.sort((a, b) => a - b).forEach(v => {
+            const o = dc('option'); o.value = v; o.textContent = `${v}`;
+            if (v === lensSize) o.selected = true;
             selectSize.append(o);
         });
         selectSize.style = dfstyle;
         selectSize.onchange = () => {
-            const sz = parseInt(selectSize.value,10);
+            const sz = parseInt(selectSize.value, 10);
             zoom.style.width = `${sz}px`;
-            zoom.style.height= `${sz}px`;
-            zoom.style.borderRadius = `${sz/2}px`;
+            zoom.style.height = `${sz}px`;
+            zoom.style.borderRadius = `${sz / 2}px`;
             img.setAttribute('data-size', sz);
         };
 
@@ -164,23 +175,23 @@ var MojoMagnify = (function () {
 
 
         let last = 0;
-        addEvent(wrapper, 'mousemove', e => {
+        addEvent(img, 'mousemove', e => {
             const now = Date.now();
             if (now - last < 50) return;
             last = now;
             overlay.style.display = 'block';
-            const pos = getEventMousePos(wrapper, e);
+            const pos = getEventMousePos(img, e);
             setZoomPos(img, pos.x, pos.y, pos);
         });
-        addEvent(wrapper, 'mouseleave', ()=> overlay.style.display='none');
+        addEvent(img, 'mouseleave', () => overlay.style.display = 'none');
 
-        setTimeout(()=> zoomImg.src = zoomSrc, 1);
+        setTimeout(() => zoomImg.src = zoomSrc, 1);
     };
 
     const init = () => {
         document.querySelectorAll('img[data-magnifysrc]').forEach(img => {
             const zoomSrc = img.getAttribute('data-magnifysrc');
-            const opt = { full: img.getAttribute('data-magnifyfull')==='true' };
+            const opt = { full: img.getAttribute('data-magnifyfull') === 'true' };
             makeMagnifiable(img, zoomSrc, opt,
                 parseFloat(img.getAttribute('data-size')),
                 parseFloat(img.getAttribute('data-zoom'))

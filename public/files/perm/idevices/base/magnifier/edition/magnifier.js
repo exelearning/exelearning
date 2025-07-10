@@ -100,10 +100,12 @@ var $exeDevice = {
                         <label for="mnfLensSizeSelect" class="col-auto col-form-label">${_('Magnifier Size')}:</label>
                         <div class="col-auto">
                             <select class="form-select" id="mnfLensSizeSelect">
-                                <option value="1">${c_('Pequeña')}</option>
-                                <option value="2" selected>${c_('Mediana')}</option>
-                                <option value="3">${c_('Grande')}</option>
-                                <option value="4">${c_('Extra Grande')}</option>
+                                <option value="1">${c_('50')}</option>
+                                <option value="2" selected>${c_('100')}</option>
+                                <option value="3">${c_('150')}</option>
+                                <option value="4">${c_('200')}</option>
+                                <option value="5">${c_('250')}</option>
+                                <option value="6">${c_('300')}</option>
                             </select>
                         </div>
                     </div>
