@@ -14,7 +14,7 @@ class User extends BaseEntity implements UserInterface, PasswordAuthenticatedUse
     #[ORM\Column(type: 'string', length: 180, unique: true, nullable: true)]
     private ?string $externalIdentifier = null; // sub (OIDC) or uid (CAS)
 
-    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    #[ORM\Column(type: 'string', length: 255, nullable: true, unique: true)]
     private ?string $apiToken = null;
 
     #[ORM\Column(name: 'email', type: 'string', length: 180, unique: true)]
