@@ -59,7 +59,7 @@ export default class ModalAssistant extends Modal {
             }
             tabsContainer.append(this.generateExeFormTab(tabHtmlStringKey, i));
             bodyContent.append(
-                this.generateExeFormContent(contentStringKey, i),
+                this.generateExeFormContent(contentStringKey, i)
             );
         }
 

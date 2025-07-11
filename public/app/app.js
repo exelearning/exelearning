@@ -72,16 +72,16 @@ class App {
      */
     parseExelearningSymfonyData() {
         window.eXeLearning.user = JSON.parse(
-            window.eXeLearning.user.replace(/&quot;/g, '"'),
+            window.eXeLearning.user.replace(/&quot;/g, '"')
         );
         window.eXeLearning.config = JSON.parse(
-            window.eXeLearning.config.replace(/&quot;/g, '"'),
+            window.eXeLearning.config.replace(/&quot;/g, '"')
         );
         window.eXeLearning.symfony = JSON.parse(
-            window.eXeLearning.symfony.replace(/&quot;/g, '"'),
+            window.eXeLearning.symfony.replace(/&quot;/g, '"')
         );
         window.eXeLearning.mercure = JSON.parse(
-            window.eXeLearning.mercure.replace(/&quot;/g, '"'),
+            window.eXeLearning.mercure.replace(/&quot;/g, '"')
         );
 
         const urlRequest = new URL(window.location.href);
@@ -102,7 +102,7 @@ class App {
                     window.eXeLearning.symfony[property] =
                         window.eXeLearning.symfony[property].replace(
                             'http://',
-                            'https://',
+                            'https://'
                         );
                 }
             });
@@ -114,7 +114,7 @@ class App {
                 window.eXeLearning.mercure.url =
                     window.eXeLearning.mercure.url.replace(
                         'http://',
-                        'https://',
+                        'https://'
                     );
             }
         }
@@ -287,7 +287,7 @@ class App {
         }
 
         let msg = _(
-            'eXeLearning %s is a development version. It is not for production use.',
+            'eXeLearning %s is a development version. It is not for production use.'
         );
 
         // Disable offline versions after DEMO_EXPIRATION_DATE
@@ -305,23 +305,23 @@ class App {
                     if (date.length == 8) {
                         if (date >= expires) {
                             msg = _(
-                                'eXeLearning %s has expired! Please download the latest version.',
+                                'eXeLearning %s has expired! Please download the latest version.'
                             );
                             msg = msg.replace(
                                 'eXeLearning %s',
                                 '<strong>eXeLearning ' +
                                     eXeLearning.version +
-                                    '</strong>',
+                                    '</strong>'
                             );
                             $('body').html(
                                 '<div id="load-screen-main" class="expired"><p class="alert alert-warning">' +
                                     msg +
-                                    '</p></div>',
+                                    '</p></div>'
                             );
                             return;
                         } else {
                             msg = _(
-                                'This is just a demo version. Not for real projects. Days before it expires: %s',
+                                'This is just a demo version. Not for real projects. Days before it expires: %s'
                             );
 
                             var expiresObj = expires.toString();
@@ -346,7 +346,7 @@ class App {
 
                             msg = msg.replace(
                                 '%s',
-                                '<strong>' + diff + '</strong>',
+                                '<strong>' + diff + '</strong>'
                             );
                         }
                     }
@@ -396,7 +396,7 @@ class App {
         $('#eXeLearningNavbar > ul').append(
             '<li class="nav-item"><a class="nav-link text-danger" href="#" id="eXeToDoWarning" hreflang="es"><i class="auto-icon" aria-hidden="true">warning</i>' +
                 _('Warning') +
-                '</a></li>',
+                '</a></li>'
         );
         $('#eXeToDoWarning').on('click', function () {
             let msg = `

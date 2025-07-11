@@ -301,7 +301,7 @@ var $exeTinyMCE = {
                 let base64 = `data:${blobInfo.blob().type};base64,${blobInfo.base64()}`;
                 let response = await eXe.app.uploadFile(
                     base64,
-                    blobInfo.filename(),
+                    blobInfo.filename()
                 );
                 if (response && response.savedPath && response.savedFilename) {
                     let fullPath = `${response.savedPath}${response.savedFilename}`;
@@ -529,7 +529,7 @@ var $exeTinyMCEToggler = {
                 id +
                 '\')">' +
                 c +
-                '</div>',
+                '</div>'
         );
         e.before(v).addClass('sr-av'); // If we use e.hide() TinyMCE won't be properly displayed
     },
@@ -590,7 +590,7 @@ var $exeTinyMCEToggler = {
                     id +
                     '\',false);$(this).remove();return false" class="exe-editor-toggler visible-editor">' +
                     _('Editor') +
-                    '</a>',
+                    '</a>'
             );
             f.css('margin-right', '55px').after(l);
         } else {

@@ -7,13 +7,13 @@ export default class ModalSessionLogout extends Modal {
         let titleDefault;
         super(manager, id, titleDefault, false);
         this.saveSessionButton = this.modalElement.querySelector(
-            'button.session-logout-save.btn.btn-primary',
+            'button.session-logout-save.btn.btn-primary'
         );
         this.notSaveSessionButton = this.modalElement.querySelector(
-            'button.session-logout-without-save.btn.btn-primary',
+            'button.session-logout-without-save.btn.btn-primary'
         );
         this.cancelButton = this.modalElement.querySelector(
-            'button.close.btn.btn-secondary',
+            'button.close.btn.btn-secondary'
         );
         // Modal footer content element
         this.modalFooterContent =
@@ -23,7 +23,7 @@ export default class ModalSessionLogout extends Modal {
         if (!this.offlineInstallation) {
             this.realTimeEventNotifier = new RealTimeEventNotifier(
                 eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey,
+                eXeLearning.mercure.jwtSecretKey
             );
         }
     }
@@ -57,10 +57,10 @@ export default class ModalSessionLogout extends Modal {
 
         this.modalFooterContent.innerHTML = '';
         this.modalFooterContent.appendChild(
-            this.setSaveSessionButton(saveSessionButton, data),
+            this.setSaveSessionButton(saveSessionButton, data)
         );
         this.modalFooterContent.appendChild(
-            this.setNotSaveSessionButton(notSaveSessionButton, data),
+            this.setNotSaveSessionButton(notSaveSessionButton, data)
         );
         this.modalFooterContent.appendChild(cancelButton);
     }
@@ -123,11 +123,11 @@ export default class ModalSessionLogout extends Modal {
                 if (data.localOdeFile) {
                     eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
                         data.odeFileName,
-                        data.odeFilePath,
+                        data.odeFilePath
                     );
                 } else {
                     eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
-                        data.id,
+                        data.id
                     );
                 }
                 this.close();
@@ -158,11 +158,11 @@ export default class ModalSessionLogout extends Modal {
                     if (data.localOdeFile) {
                         eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
                             data.odeFileName,
-                            data.odeFilePath,
+                            data.odeFilePath
                         );
                     } else {
                         eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
-                            data.id,
+                            data.id
                         );
                     }
                 } else {
@@ -170,11 +170,11 @@ export default class ModalSessionLogout extends Modal {
                 }
             } else {
                 let errorTextMessage = _(
-                    'An error occurred while saving the file: ${response.responseMessage}',
+                    'An error occurred while saving the file: ${response.responseMessage}'
                 );
                 errorTextMessage = errorTextMessage.replace(
                     '${response.responseMessage}',
-                    response.responseMessage,
+                    response.responseMessage
                 );
                 eXeLearning.app.modals.alert.show({
                     title: _('Error saving'),

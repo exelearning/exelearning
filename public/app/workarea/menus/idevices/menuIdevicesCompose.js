@@ -14,7 +14,7 @@ export default class MenuIdevicesCompose {
         this.idevicesList = ideviceList;
         this.idevicesInstalled = this.idevicesList.installed;
         this.menuIdevices = document.querySelector(
-            '#menu_idevices #list_menu_idevices',
+            '#menu_idevices #list_menu_idevices'
         );
     }
 
@@ -49,7 +49,7 @@ export default class MenuIdevicesCompose {
         // Generate elements
         this.orderedCategories = this.categoriesFirst.concat(
             this.categoriesExtra,
-            this.categoriesLast,
+            this.categoriesLast
         );
         this.orderedCategories.forEach((category) => {
             if (
@@ -58,7 +58,7 @@ export default class MenuIdevicesCompose {
             ) {
                 this.createDivCategoryIdevices(
                     category,
-                    this.categoriesIdevices[category],
+                    this.categoriesIdevices[category]
                 );
             }
         });

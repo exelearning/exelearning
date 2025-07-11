@@ -8,10 +8,10 @@ export default class ModalOdeUsedFiles extends Modal {
         this.confirmButtonDefaultText = _('End');
         this.cancelButtonDefaultText = _('Cancel');
         this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary',
+            'button.btn.btn-primary'
         );
         this.cancelButton = this.modalElement.querySelector(
-            'button.close.btn.btn-secondary',
+            'button.close.btn.btn-secondary'
         );
     }
 
@@ -149,7 +149,7 @@ export default class ModalOdeUsedFiles extends Modal {
                 var csv =
                     eXeLearning.app.api.app.menus.navbar.utilities.json2Csv(
                         data['usedFiles'],
-                        headerTitles,
+                        headerTitles
                     );
                 var downloadLink = document.createElement('a');
                 var blob = new Blob(['\ufeff', csv]);

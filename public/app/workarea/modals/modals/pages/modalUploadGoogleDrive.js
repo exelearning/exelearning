@@ -8,10 +8,10 @@ export default class ModalUploadtodrive extends Modal {
         this.confirmButtonDefaultText = _('Upload');
         this.cancelButtonDefaultText = _('Cancel');
         this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary',
+            'button.btn.btn-primary'
         );
         this.cancelButton = this.modalElement.querySelector(
-            'button.close.btn.btn-secondary',
+            'button.close.btn.btn-secondary'
         );
     }
 
@@ -53,7 +53,7 @@ export default class ModalUploadtodrive extends Modal {
     makeElementBodyInfo() {
         let element = document.createElement('p');
         element.innerHTML = _(
-            'Select the Google Drive directory where the project will be uploaded:',
+            'Select the Google Drive directory where the project will be uploaded:'
         );
         return element;
     }
@@ -74,7 +74,7 @@ export default class ModalUploadtodrive extends Modal {
         selectList.appendChild(option);
         // Sort the array of directories
         files.files.sort((a, b) =>
-            a.name > b.name ? 1 : b.name > a.name ? -1 : 0,
+            a.name > b.name ? 1 : b.name > a.name ? -1 : 0
         );
         // All directorys of root
         files.files.forEach((folder) => {
@@ -94,7 +94,7 @@ export default class ModalUploadtodrive extends Modal {
         let odeId = eXeLearning.app.project.odeId;
         let odeVersion = eXeLearning.app.project.odeVersion;
         let folderSelected = this.modalElementBody.querySelector(
-            'select#drive-folders option:checked',
+            'select#drive-folders option:checked'
         );
         let folderId = folderSelected.value;
         let params = {

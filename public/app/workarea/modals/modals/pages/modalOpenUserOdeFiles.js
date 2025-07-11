@@ -7,13 +7,13 @@ export default class modalOpenUserOdeFiles extends Modal {
         super(manager, id, titleDefault, false);
         // Modal body content element
         this.modalElementBodyContent = this.modalElementBody.querySelector(
-            '.modal-body-content',
+            '.modal-body-content'
         );
         // Modal footer content element
         this.modalFooterContent =
             this.modalElement.querySelector('.modal-footer');
         this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary',
+            'button.btn.btn-primary'
         );
         // Ode files
         this.odeFiles = [];
@@ -82,8 +82,8 @@ export default class modalOpenUserOdeFiles extends Modal {
                 this.makeFilterTable(
                     element,
                     '.ode-file-title',
-                    _('Search saved projects...'),
-                ),
+                    _('Search saved projects...')
+                )
             );
 
             element.append(this.makeElementTableOdeFiles(data));
@@ -111,7 +111,7 @@ export default class modalOpenUserOdeFiles extends Modal {
             (response) => {
                 // Hide ode files with repeated odeId except last version
                 this.tableTrMinorVersionOcult(response);
-            },
+            }
         );
     }
 
@@ -177,7 +177,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 table,
                 thColumns[thCount],
                 thColumnsTypes[thCount],
-                thCount,
+                thCount
             );
             tableTr.appendChild(row);
         }
@@ -263,7 +263,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 this.odeFiles = this.odeFiles.filter(
                     function (value, index, arr) {
                         return value !== odeFile.id;
-                    },
+                    }
                 );
                 this.removeDeleteButtonFooter(this.odeFiles);
             }
@@ -401,7 +401,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         let deleteButton = document.createElement('div');
         deleteButton.setAttribute(
             'class',
-            'exe-icon open-user-ode-file-action open-user-ode-file-action-delete',
+            'exe-icon open-user-ode-file-action open-user-ode-file-action-delete'
         );
         deleteButton.setAttribute('title', _('Delete'));
         deleteButton.innerHTML = 'delete_forever';
@@ -410,7 +410,7 @@ export default class modalOpenUserOdeFiles extends Modal {
             eXeLearning.app.modals.confirm.show({
                 title: _('Delete project'),
                 body: _(
-                    'Do you want to delete the project (elp)? This cannot be undone.',
+                    'Do you want to delete the project (elp)? This cannot be undone.'
                 ),
                 confirmButtonText: _('Delete'),
                 cancelButtonText: _('Cancel'),
@@ -447,7 +447,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         logoOdeFile.setAttribute('class', 'exe-logo content');
         logoOdeFile.setAttribute(
             'src',
-            'style/workarea/images/exelearning.png',
+            'style/workarea/images/exelearning.png'
         );
 
         return logoOdeFile;
@@ -497,17 +497,17 @@ export default class modalOpenUserOdeFiles extends Modal {
         if (percentage > 85) {
             progressBar.setAttribute(
                 'class',
-                'progress-bar progress-bar-striped bg-danger',
+                'progress-bar progress-bar-striped bg-danger'
             );
         } else if (percentage > 50) {
             progressBar.setAttribute(
                 'class',
-                'progress-bar progress-bar-striped bg-warning',
+                'progress-bar progress-bar-striped bg-warning'
             );
         } else {
             progressBar.setAttribute(
                 'class',
-                'progress-bar progress-bar-striped bg-success',
+                'progress-bar progress-bar-striped bg-success'
             );
         }
         progressBar.setAttribute('role', 'progressbar');
@@ -529,7 +529,7 @@ export default class modalOpenUserOdeFiles extends Modal {
      */
     openSelectedOdeFile() {
         var selected = this.modalElementBody.querySelector(
-            '.ode-file-row.selected',
+            '.ode-file-row.selected'
         );
         var odeFileName = null;
         if (selected != null) {
@@ -673,7 +673,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
             let uploadOdeFile = this.modalElementBody.querySelector(
-                '.local-ode-file-upload-input',
+                '.local-ode-file-upload-input'
             );
             let odeFile = uploadOdeFile.files[0];
             this.largeFilesUpload(odeFile);
@@ -694,19 +694,19 @@ export default class modalOpenUserOdeFiles extends Modal {
         // Multiple elp upload
         let inputMultipleUpload = document.createElement('input');
         inputMultipleUpload.classList.add(
-            'multiple-local-ode-file-upload-input',
+            'multiple-local-ode-file-upload-input'
         );
         inputMultipleUpload.setAttribute('type', 'file');
         inputMultipleUpload.setAttribute('multiple', 'multiple');
         inputMultipleUpload.setAttribute(
             'name',
-            'multiple-local-ode-file-upload',
+            'multiple-local-ode-file-upload'
         );
         inputMultipleUpload.setAttribute('accept', '.elp,.zip');
         inputMultipleUpload.classList.add('hidden');
         inputMultipleUpload.addEventListener('change', (e) => {
             let uploadOdeFiles = this.modalElement.querySelector(
-                '.multiple-local-ode-file-upload-input',
+                '.multiple-local-ode-file-upload-input'
             );
             let odeFiles = uploadOdeFiles.files;
             let response = this.uploadOdeFilesToServer(odeFiles);
@@ -751,7 +751,7 @@ export default class modalOpenUserOdeFiles extends Modal {
     async largeFilesUpload(
         odeFile,
         isImportIdevices = false,
-        isImportProperties = false,
+        isImportProperties = false
     ) {
         let response = [];
         let odeFileName = odeFile.name;
@@ -808,7 +808,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                     'root',
                     null,
                     null,
-                    'EDIT',
+                    'EDIT'
                 );
                 // Load properties
                 this.openLocalXmlPropertiesFile(odeFileName, odeFilePath);
@@ -816,7 +816,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 this.openLocalElpFile(
                     odeFileName,
                     odeFilePath,
-                    isImportIdevices,
+                    isImportIdevices
                 );
             }
         } else {
@@ -842,7 +842,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         let response;
         let selectedNavId =
             eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'nav-id',
+                'nav-id'
             );
         let odeParams = {
             odeSessionId: eXeLearning.app.project.odeSession,
@@ -868,7 +868,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 response.odeBlockId,
                 null,
                 'ADD',
-                null,
+                null
             );
             // Load project properties
             eXeLearning.app.project.properties.apiLoadProperties();
@@ -895,7 +895,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         let response;
         let selectedNavId =
             eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
-                'nav-id',
+                'nav-id'
             );
         let odeParams = {
             odeSessionId: eXeLearning.app.project.odeSession,
@@ -933,7 +933,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                     response.odeBlockId,
                     null,
                     'ADD',
-                    null,
+                    null
                 );
                 // Update user nav structure
                 eXeLearning.app.project.updateUserPage(selectedNavId);
@@ -957,7 +957,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                         } else if (response['leaveEmptySession']) {
                             this.openUserLocalOdeFilesWithOpenSession(
                                 odeFileName,
-                                odeFilePath,
+                                odeFilePath
                             );
                         }
                     });
@@ -1015,7 +1015,7 @@ export default class modalOpenUserOdeFiles extends Modal {
             let odeFileName = file.name;
             let odeFileNameExtensionPosition = odeFileName.lastIndexOf('.');
             let odeFileNameExtension = odeFileName.substring(
-                odeFileNameExtensionPosition,
+                odeFileNameExtensionPosition
             );
             if (
                 !odeFileNameExtension.includes('.elp') &&
@@ -1076,7 +1076,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 selectedPageId,
                 null,
                 null,
-                'RELOAD_NAV_MAP',
+                'RELOAD_NAV_MAP'
             );
         } else {
             // Open eXe alert modal
@@ -1143,7 +1143,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         if (response.theme && response.themeDir) {
             if (
                 Object.keys(eXeLearning.app.themes.list.installed).includes(
-                    response.theme,
+                    response.theme
                 )
             ) {
                 // Select theme
@@ -1186,12 +1186,12 @@ export default class modalOpenUserOdeFiles extends Modal {
                         ) {
                             // Load themes
                             eXeLearning.app.project.app.themes.list.loadThemes(
-                                responseTheme.themes.themes,
+                                responseTheme.themes.themes
                             );
                             // Select theme
                             eXeLearning.app.project.app.themes.selectTheme(
                                 response.theme,
-                                true,
+                                true
                             );
                         }
                     });
@@ -1312,7 +1312,7 @@ export default class modalOpenUserOdeFiles extends Modal {
             let showOdeFilesButton = this.makeShowOtherVersionsButtton(
                 element,
                 odeFilesByOdeId,
-                elementOdeId,
+                elementOdeId
             );
 
             // Event select ode file
@@ -1344,7 +1344,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 let odeVersionName = showOdeFiles[item][i].versionName;
                 let odeId = showOdeFiles[item][i].odeId;
                 let tableShowOdeFile = this.modalElement.querySelector(
-                    `[ode-id="${odeId}"][version-name="${odeVersionName}"]`,
+                    `[ode-id="${odeId}"][version-name="${odeVersionName}"]`
                 );
                 tableShowOdeFile.classList.remove('subversion');
                 tableShowOdeFile.classList.add('principal-version');
@@ -1363,7 +1363,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         let showOdeFilesButton = document.createElement('div');
         showOdeFilesButton.setAttribute(
             'class',
-            'exe-icon open-user-ode-file-action open-user-ode-file-action-show-ode-files',
+            'exe-icon open-user-ode-file-action open-user-ode-file-action-show-ode-files'
         );
         showOdeFilesButton.setAttribute('title', _('Show other versions'));
         showOdeFilesButton.innerHTML = 'add_circle';
@@ -1374,7 +1374,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 showOdeFilesButton,
                 element,
                 odeFilesByOdeId,
-                elementOdeId,
+                elementOdeId
             );
         });
 
@@ -1392,7 +1392,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         showOdeFilesButton,
         element,
         odeFilesByOdeId,
-        elementOdeId,
+        elementOdeId
     ) {
         var rows = this.modalElement.querySelectorAll(`.subversion-show`);
         if (rows.length > 0) {
@@ -1422,11 +1422,11 @@ export default class modalOpenUserOdeFiles extends Modal {
             if (showOdeFilesArray) {
                 for (var i = showOdeFilesArray.length - 1; i > 0; i--) {
                     let odeFileElement = this.makeRowTableOdeFilesElement(
-                        showOdeFilesArray[i],
+                        showOdeFilesArray[i]
                     );
                     let siblingElement = element.parentNode.insertBefore(
                         odeFileElement,
-                        element.nextSibling,
+                        element.nextSibling
                     );
                     siblingElement.classList.add('principal-version');
                     siblingElement.classList.add('subversion-show');

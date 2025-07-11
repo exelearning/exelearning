@@ -1,7 +1,7 @@
 export default class PreviewButton {
     constructor() {
         this.previewMenuHeadButton = document.querySelector(
-            '#head-bottom-preview',
+            '#head-bottom-preview'
         );
     }
 

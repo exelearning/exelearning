@@ -1,7 +1,7 @@
 export default class PropertiesProjectButton {
     constructor() {
         this.propertiesMenuHeadButton = document.querySelector(
-            '#head-top-project-properties-button',
+            '#head-top-project-properties-button'
         );
     }
 

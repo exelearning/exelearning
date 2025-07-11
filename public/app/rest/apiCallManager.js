@@ -563,14 +563,14 @@ export default class ApiCallManager {
         downloadResponse['url'] = url.replace('{odeSessionId}', odeSessionId);
         downloadResponse['url'] = downloadResponse['url'].replace(
             '{odeBlockId}',
-            odeBlockId,
+            odeBlockId
         );
         downloadResponse['url'] = downloadResponse['url'].replace(
             '{odeIdeviceId}',
-            odeIdeviceId,
+            odeIdeviceId
         );
         downloadResponse['response'] = await this.func.getText(
-            downloadResponse['url'],
+            downloadResponse['url']
         );
 
         return downloadResponse;

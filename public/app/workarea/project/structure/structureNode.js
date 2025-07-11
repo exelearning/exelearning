@@ -15,8 +15,8 @@ export default class StructureNode {
      */
     properties = JSON.parse(
         JSON.stringify(
-            eXeLearning.app.api.parameters.odeNavStructureSyncPropertiesConfig,
-        ),
+            eXeLearning.app.api.parameters.odeNavStructureSyncPropertiesConfig
+        )
     );
 
     /**
@@ -66,7 +66,7 @@ export default class StructureNode {
             // skip if missing
             if (!properties[key]) {
                 console.warn(
-                    `Missing property '${key}' in odeNavStructureSyncProperties`,
+                    `Missing property '${key}' in odeNavStructureSyncProperties`
                 );
                 continue;
             }
@@ -106,7 +106,7 @@ export default class StructureNode {
                 params.odePageId,
                 null,
                 null,
-                'ADD',
+                'ADD'
             );
             // Send operation log to bbdd
             let additionalData = {
@@ -117,14 +117,14 @@ export default class StructureNode {
                 null,
                 null,
                 'ADD_PAGE',
-                additionalData,
+                additionalData
             );
             // Other nodes that have been modifications
             if (response.odeNavStructureSyncs) {
                 // Update order of pages
                 this.structure.updateNodesStructure(
                     response.odeNavStructureSyncs,
-                    ['order'],
+                    ['order']
                 );
             }
         } else {
@@ -152,7 +152,7 @@ export default class StructureNode {
                 response.odeNavStructureSync.pageId,
                 null,
                 null,
-                'ADD',
+                'ADD'
             );
             // Send operation log to bbdd
             let additionalData = { navId: response.odeNavStructureSync.id };
@@ -160,7 +160,7 @@ export default class StructureNode {
                 response.odeNavStructureSync.pageId,
                 response.odeNavStructureSync.pageId,
                 'CLONE_PAGE',
-                additionalData,
+                additionalData
             );
         } else {
             eXeLearning.app.modals.alert.show({
@@ -196,13 +196,13 @@ export default class StructureNode {
                 this.pageId,
                 null,
                 null,
-                'EDIT',
+                'EDIT'
             );
         } else {
             eXeLearning.app.modals.alert.show({
                 title: _('Structure node error'),
                 body: _(
-                    'An error occurred while updating the node in database',
+                    'An error occurred while updating the node in database'
                 ),
                 contentId: 'error',
             });
@@ -228,7 +228,7 @@ export default class StructureNode {
                 this.pageId,
                 null,
                 null,
-                'DELETE',
+                'DELETE'
             );
             // Send ode operation log to bbdd
             let additionalData = {};
@@ -236,7 +236,7 @@ export default class StructureNode {
                 this.pageId,
                 this.pageId,
                 'REMOVE_PAGE',
-                additionalData,
+                additionalData
             );
         } else {
             eXeLearning.app.modals.alert.show({
@@ -273,7 +273,7 @@ export default class StructureNode {
                 eXeLearning.app.modals.alert.show({
                     title: _('Structure node error'),
                     body: _(
-                        'An error occurred while saving the node in database',
+                        'An error occurred while saving the node in database'
                     ),
                     contentId: 'error',
                 });
@@ -303,7 +303,7 @@ export default class StructureNode {
                 eXeLearning.app.modals.alert.show({
                     title: _('Structure node error'),
                     body: _(
-                        'An error occurred while saving the node in database',
+                        'An error occurred while saving the node in database'
                     ),
                     contentId: 'error',
                 });
@@ -339,7 +339,7 @@ export default class StructureNode {
                 eXeLearning.app.modals.alert.show({
                     title: _('Structure node error'),
                     body: _(
-                        "An error occurred while saving node's properties in database",
+                        "An error occurred while saving node's properties in database"
                     ),
                     contentId: 'error',
                 });
@@ -422,7 +422,7 @@ export default class StructureNode {
      */
     getElement() {
         return this.structure.menuStructureCompose.menuNav.querySelector(
-            `.nav-element[nav-id="${this.id}"]`,
+            `.nav-element[nav-id="${this.id}"]`
         );
     }
 

@@ -8,10 +8,10 @@ export default class ModalConfirm extends Modal {
         this.confirmButtonDefaultText = _('Yes');
         this.cancelButtonDefaultText = _('No');
         this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary',
+            'button.btn.btn-primary'
         );
         this.cancelButton = this.modalElement.querySelector(
-            'button.cancel.btn.btn-secondary',
+            'button.cancel.btn.btn-secondary'
         );
     }
 
@@ -68,9 +68,7 @@ export default class ModalConfirm extends Modal {
                 // Focus first input text
                 setTimeout(() => {
                     this.focusTextInput(
-                        this.modalElementBody.querySelector(
-                            'input[type="text"',
-                        ),
+                        this.modalElementBody.querySelector('input[type="text"')
                     );
                 }, this.timeMax);
             } else if (focusCancelButton) {

@@ -5,7 +5,7 @@ export default class NavbarFile {
         this.newButton = this.menu.navbar.querySelector('#navbar-button-new');
         this.saveButton = this.menu.navbar.querySelector('#navbar-button-save');
         this.saveButtonAs = this.menu.navbar.querySelector(
-            '#navbar-button-save-as',
+            '#navbar-button-save-as'
         );
         /*
         Temporally disabled:
@@ -17,43 +17,43 @@ export default class NavbarFile {
         );
         */
         this.uploadPlatformButton = this.menu.navbar.querySelector(
-            '#navbar-button-uploadtoplatform',
+            '#navbar-button-uploadtoplatform'
         );
         this.openUserOdeFilesButton = this.menu.navbar.querySelector(
-            '#navbar-button-openuserodefiles',
+            '#navbar-button-openuserodefiles'
         );
         this.recentProjectsButton = this.menu.navbar.querySelector(
-            '#navbar-button-dropdown-recent-projects',
+            '#navbar-button-dropdown-recent-projects'
         );
         this.downloadProjectButton = this.menu.navbar.querySelector(
-            '#navbar-button-download-project',
+            '#navbar-button-download-project'
         );
         this.exportHTML5Button = this.menu.navbar.querySelector(
-            '#navbar-button-export-html5',
+            '#navbar-button-export-html5'
         );
         this.exportHTML5SPButton = this.menu.navbar.querySelector(
-            '#navbar-button-export-html5-sp',
+            '#navbar-button-export-html5-sp'
         );
         this.exportSCORM12Button = this.menu.navbar.querySelector(
-            '#navbar-button-export-scorm12',
+            '#navbar-button-export-scorm12'
         );
         this.exportSCORM2004Button = this.menu.navbar.querySelector(
-            '#navbar-button-export-scorm2004',
+            '#navbar-button-export-scorm2004'
         );
         this.exportIMSButton = this.menu.navbar.querySelector(
-            '#navbar-button-export-ims',
+            '#navbar-button-export-ims'
         );
         this.exportEPUB3Button = this.menu.navbar.querySelector(
-            '#navbar-button-export-epub3',
+            '#navbar-button-export-epub3'
         );
         this.exportXmlPropertiesButton = this.menu.navbar.querySelector(
-            '#navbar-button-export-xml-properties',
+            '#navbar-button-export-xml-properties'
         );
         this.importXmlPropertiesButton = this.menu.navbar.querySelector(
-            '#navbar-button-import-xml-properties',
+            '#navbar-button-import-xml-properties'
         );
         this.leftPanelsTogglerButton = this.menu.navbar.querySelector(
-            '#exe-panels-toggler',
+            '#exe-panels-toggler'
         );
     }
 
@@ -419,7 +419,7 @@ export default class NavbarFile {
         } else {
             eXeLearning.app.project.showModalSaveError(response);
             toast.toastBody.innerHTML = _(
-                'An error occurred while saving the project.',
+                'An error occurred while saving the project.'
             );
             toast.toastBody.classList.add('error');
         }
@@ -442,7 +442,7 @@ export default class NavbarFile {
             focusFirstInputText: true,
             confirmExec: () => {
                 let modalInputText = document.querySelector(
-                    '.modal-confirm .properties-title-input',
+                    '.modal-confirm .properties-title-input'
                 );
                 let modalInputTextValue = modalInputText.value;
                 this.saveAs(modalInputTextValue);
@@ -540,7 +540,7 @@ export default class NavbarFile {
         let windowLoginGoogleDrive = window.open(
             urlGoogleDrive.url,
             'drive',
-            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0',
+            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0'
         );
     }
 
@@ -600,7 +600,7 @@ export default class NavbarFile {
         let windowLoginDropbox = window.open(
             urlDropbox.url,
             'dropbox',
-            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0',
+            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0'
         );
     }
 
@@ -622,7 +622,7 @@ export default class NavbarFile {
 
         response =
             await eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload(
-                data,
+                data
             );
 
         if (response.responseMessage == 'OK') {
@@ -646,7 +646,7 @@ export default class NavbarFile {
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
             let uploadOdeFile = document.querySelector(
-                '.local-ode-file-upload-input',
+                '.local-ode-file-upload-input'
             );
             let odeFile = uploadOdeFile.files[0];
 
@@ -699,7 +699,7 @@ export default class NavbarFile {
      */
     showMostRecentProjectsEvent() {
         let recentProjectsDropdownList = this.menu.navbar.querySelector(
-            '#navbar-dropdown-menu-recent-projects',
+            '#navbar-dropdown-menu-recent-projects'
         );
         eXeLearning.app.api.getRecentUserOdeFiles().then((response) => {
             let recentProjectsList = this.makeRecentProjecList(response);
@@ -738,7 +738,7 @@ export default class NavbarFile {
                         .then((response) => {
                             if (response['leaveEmptySession']) {
                                 eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
-                                    odeFile.fileName,
+                                    odeFile.fileName
                                 );
                             } else {
                                 let data = {
@@ -779,17 +779,17 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'elp',
+            'elp'
         );
         if (response['responseMessage'] == 'OK') {
             this.downloadLink(
                 response['urlZipFile'],
-                response['exportProjectName'],
+                response['exportProjectName']
             );
             toast.toastBody.innerHTML = _('File generated.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while generating the file.',
+                'An error occurred while generating the file.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -824,17 +824,17 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'html5',
+            'html5'
         );
         if (response['responseMessage'] == 'OK') {
             this.downloadLink(
                 response['urlZipFile'],
-                response['exportProjectName'],
+                response['exportProjectName']
             );
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -869,17 +869,17 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'html5-sp',
+            'html5-sp'
         );
         if (response['responseMessage'] == 'OK') {
             this.downloadLink(
                 response['urlZipFile'],
-                response['exportProjectName'],
+                response['exportProjectName']
             );
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -914,17 +914,17 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'scorm12',
+            'scorm12'
         );
         if (response['responseMessage'] == 'OK') {
             this.downloadLink(
                 response['urlZipFile'],
-                response['exportProjectName'],
+                response['exportProjectName']
             );
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -959,17 +959,17 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'scorm2004',
+            'scorm2004'
         );
         if (response['responseMessage'] == 'OK') {
             this.downloadLink(
                 response['urlZipFile'],
-                response['exportProjectName'],
+                response['exportProjectName']
             );
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -1004,17 +1004,17 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'ims',
+            'ims'
         );
         if (response['responseMessage'] == 'OK') {
             this.downloadLink(
                 response['urlZipFile'],
-                response['exportProjectName'],
+                response['exportProjectName']
             );
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -1049,17 +1049,17 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'epub3',
+            'epub3'
         );
         if (response['responseMessage'] == 'OK') {
             this.downloadLink(
                 response['urlZipFile'],
-                response['exportProjectName'],
+                response['exportProjectName']
             );
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -1094,19 +1094,19 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'properties',
+            'properties'
         );
         if (response['responseMessage'] == 'OK') {
             this.downloadLink(
                 response['urlZipFile'],
-                response['exportProjectName'],
+                response['exportProjectName']
             );
             toast.toastBody.innerHTML = _(
-                'The project properties have been exported.',
+                'The project properties have been exported.'
             );
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -1140,7 +1140,7 @@ export default class NavbarFile {
         inputUpload.classList.add('hidden');
         inputUpload.addEventListener('change', (e) => {
             let uploadOdeFile = document.querySelector(
-                '.local-xml-properties-upload-input',
+                '.local-xml-properties-upload-input'
             );
             let odeFile = uploadOdeFile.files[0];
 
@@ -1152,7 +1152,7 @@ export default class NavbarFile {
             eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                 odeFile,
                 false,
-                true,
+                true
             );
         });
         this.menu.navbar.append(inputUpload);
@@ -1197,7 +1197,7 @@ export default class NavbarFile {
         let response = await eXeLearning.app.api.getOdeConcurrentUsers(
             params.odeId,
             params.odeVersionId,
-            params.odeSessionId,
+            params.odeSessionId
         );
         let numberOfCurrentUsers = response.currentUsers.length;
         if (numberOfCurrentUsers == 1) {

@@ -29,7 +29,7 @@ export default class RealTimeEventNotifier {
             .map(
                 (b, i) =>
                     (i === 4 || i === 6 || i === 8 || i === 10 ? '-' : '') +
-                    b.toString(16).padStart(2, '0'),
+                    b.toString(16).padStart(2, '0')
             )
             .join('');
     }
@@ -107,7 +107,7 @@ export default class RealTimeEventNotifier {
             this.retryCount = 0;
         } else {
             console.info(
-                `Unneeded call to resetRetryCount(). Actual is (${this.retryCount})`,
+                `Unneeded call to resetRetryCount(). Actual is (${this.retryCount})`
             );
         }
     }
@@ -119,7 +119,7 @@ export default class RealTimeEventNotifier {
         let toastData = {
             title: _('Connection lost'),
             body: _(
-                'Please refresh the page to try to reconnect to the server...',
+                'Please refresh the page to try to reconnect to the server...'
             ),
             icon: 'warning',
         };

@@ -7,20 +7,20 @@ export default class ModalStyleManager extends Modal {
         super(manager, id, titleDefault, false);
         // Modal body content element
         this.modalElementBodyContent = this.modalElementBody.querySelector(
-            '.modal-body-content',
+            '.modal-body-content'
         );
         // Modal footer
         this.modalFooter = this.modalElement.querySelector('.modal-footer');
         // Modal buttons
         this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary',
+            'button.btn.btn-primary'
         );
         this.cancelButton = this.modalElement.querySelector(
-            'button.close.btn.btn-secondary',
+            'button.close.btn.btn-secondary'
         );
         // Modal alert element
         this.modalElementAlert = this.modalElementBody.querySelector(
-            '.alert.alert-danger',
+            '.alert.alert-danger'
         );
         this.modalElementAlertText =
             this.modalElementBody.querySelector('.text');
@@ -41,15 +41,13 @@ export default class ModalStyleManager extends Modal {
         this.titleDefault = _('Styles');
         // Parameters of a theme that we will show in the information
         this.paramsInfo = JSON.parse(
-            JSON.stringify(
-                eXeLearning.app.api.parameters.themeInfoFieldsConfig,
-            ),
+            JSON.stringify(eXeLearning.app.api.parameters.themeInfoFieldsConfig)
         );
         // Parameters of a theme that we can edit
         this.paramsEdit = JSON.parse(
             JSON.stringify(
-                eXeLearning.app.api.parameters.themeEditionFieldsConfig,
-            ),
+                eXeLearning.app.api.parameters.themeEditionFieldsConfig
+            )
         );
         // Installed themes
         if (themes) this.themes = themes;
@@ -70,7 +68,7 @@ export default class ModalStyleManager extends Modal {
             this.setCloseExec(() => {
                 this.themes.manager.selectTheme(
                     this.themeSelectedPrevId,
-                    false,
+                    false
                 );
             });
             this.addBehaviourExeTabs();
@@ -92,14 +90,14 @@ export default class ModalStyleManager extends Modal {
                 // Edit theme files
                 await this.editTheme(
                     this.themeEdition.dirName,
-                    formFieldsValues,
+                    formFieldsValues
                 );
                 // Reload the theme if you have the edited theme selected
                 if (this.themeEdition.id == this.themes.manager.selected.id) {
                     await this.themes.manager.selectTheme(
                         this.themeSelectedId,
                         true,
-                        true,
+                        true
                     );
                 }
             } else {
@@ -122,7 +120,7 @@ export default class ModalStyleManager extends Modal {
                     selectedPageId,
                     null,
                     null,
-                    'RELOAD_NAV_MAP',
+                    'RELOAD_NAV_MAP'
                 );
             }, 250);
         }
@@ -134,7 +132,7 @@ export default class ModalStyleManager extends Modal {
     getFormEditThemeValues() {
         var valueFields = { data: {} };
         let fields = this.modalElementBodyContent.querySelectorAll(
-            '.theme-edit-value-field',
+            '.theme-edit-value-field'
         );
         fields.forEach((field) => {
             let id = field.getAttribute('field');
@@ -339,19 +337,19 @@ export default class ModalStyleManager extends Modal {
             themesListContainer.append(
                 this.makeElementTableThemes(
                     this.themesBase,
-                    defaultThemesTabData,
-                ),
+                    defaultThemesTabData
+                )
             );
             themesListContainer.append(
-                this.makeElementTableThemes(this.themesUser, userThemesTabData),
+                this.makeElementTableThemes(this.themesUser, userThemesTabData)
             );
         } else {
             // Only show base themes
             themesListContainer.append(
                 this.makeElementTableThemes(
                     this.themesBase,
-                    defaultThemesTabData,
-                ),
+                    defaultThemesTabData
+                )
             );
             themesListContainer.classList.add('no-tabs');
         }
@@ -395,14 +393,14 @@ export default class ModalStyleManager extends Modal {
             });
             this.modalElementBodyContent.innerHTML = '';
             this.modalElementBodyContent.append(
-                this.makeElementEditTheme(this.themeEdition),
+                this.makeElementEditTheme(this.themeEdition)
             );
             this.addBehaviourExeTabs();
             this.modalElementBodyContent
                 .querySelector('.exe-form-tabs li a')
                 .click();
             this.focusTextInput(
-                this.modalElementBodyContent.querySelector('input'),
+                this.modalElementBodyContent.querySelector('input')
             );
             this.generateButtonBack();
             this.hideCancelButtonText();
@@ -587,14 +585,14 @@ export default class ModalStyleManager extends Modal {
             this.themeEdition = theme;
             this.modalElementBodyContent.innerHTML = '';
             this.modalElementBodyContent.append(
-                this.makeElementEditTheme(theme),
+                this.makeElementEditTheme(theme)
             );
             this.addBehaviourExeTabs();
             this.modalElementBodyContent
                 .querySelector('.exe-form-tabs li a')
                 .click();
             this.focusTextInput(
-                this.modalElementBodyContent.querySelector('input'),
+                this.modalElementBodyContent.querySelector('input')
             );
             this.generateButtonBack();
             this.hideCancelButtonText();
@@ -674,7 +672,7 @@ export default class ModalStyleManager extends Modal {
         actionInfoTd.addEventListener('click', (event) => {
             this.modalElementBodyContent.innerHTML = '';
             this.modalElementBodyContent.append(
-                this.makeElementInfoTheme(theme),
+                this.makeElementInfoTheme(theme)
             );
             this.generateButtonBack();
             this.hideConfirmButtonText();
@@ -721,8 +719,8 @@ export default class ModalStyleManager extends Modal {
                     this.makeElementInfoThemeTableRow(
                         param,
                         theme[param],
-                        config,
-                    ),
+                        config
+                    )
                 );
             }
         }
@@ -741,7 +739,7 @@ export default class ModalStyleManager extends Modal {
         rowTableInfo.classList.add('row-table-info-theme');
         rowTableInfo.append(this.makeElementInfoThemeTableRowKey(key, config));
         rowTableInfo.append(
-            this.makeElementInfoThemeTableRowValue(value, config),
+            this.makeElementInfoThemeTableRowValue(value, config)
         );
 
         return rowTableInfo;
@@ -846,7 +844,7 @@ export default class ModalStyleManager extends Modal {
         for (let [param, config] of Object.entries(this.paramsEdit)) {
             let value = theme[param] ? theme[param] : '';
             tableEditThemeForm.append(
-                this.makeElementEditThemeTableRow(param, value, config),
+                this.makeElementEditThemeTableRow(param, value, config)
             );
         }
         // Add event enter to inputs
@@ -874,7 +872,7 @@ export default class ModalStyleManager extends Modal {
         rowTableEdit.setAttribute('category', config.tabId);
         rowTableEdit.append(this.makeElementEditThemeTableRowKey(key, config));
         rowTableEdit.append(
-            this.makeElementEditThemeTableRowValue(key, value, config),
+            this.makeElementEditThemeTableRowValue(key, value, config)
         );
 
         return rowTableEdit;
@@ -890,7 +888,7 @@ export default class ModalStyleManager extends Modal {
         rowTdKeyTableEdit.classList.add('theme-edit-key');
         rowTdKeyTableEdit.setAttribute(
             'for',
-            `${this.themeEdition.id}-${key}-field`,
+            `${this.themeEdition.id}-${key}-field`
         );
         rowTdKeyTableEdit.innerHTML = `${config.title}:`;
 
@@ -990,7 +988,7 @@ export default class ModalStyleManager extends Modal {
         if (value)
             imgElement.setAttribute(
                 'src',
-                `${eXeLearning.symfony.basePath}${value}?v=${Date.now()}`,
+                `${eXeLearning.symfony.basePath}${value}?v=${Date.now()}`
             );
         // - Input
         let inputFileElement = document.createElement('input');
@@ -1171,7 +1169,7 @@ export default class ModalStyleManager extends Modal {
                 // Show alert
                 this.showElementAlert(
                     _('Failed to install the new style'),
-                    response,
+                    response
                 );
             }
         });
