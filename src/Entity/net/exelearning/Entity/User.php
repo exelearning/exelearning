@@ -14,6 +14,9 @@ class User extends BaseEntity implements UserInterface, PasswordAuthenticatedUse
     #[ORM\Column(type: 'string', length: 180, unique: true, nullable: true)]
     private ?string $externalIdentifier = null; // sub (OIDC) or uid (CAS)
 
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $apiToken = null;
+
     #[ORM\Column(name: 'email', type: 'string', length: 180, unique: true)]
     private string $email;
 
@@ -37,6 +40,18 @@ class User extends BaseEntity implements UserInterface, PasswordAuthenticatedUse
     public function setExternalIdentifier(string $externalIdentifier): self
     {
         $this->externalIdentifier = $externalIdentifier;
+
+        return $this;
+    }
+
+    public function getApiToken(): ?string
+    {
+        return $this->apiToken;
+    }
+
+    public function setApiToken(?string $apiToken): self
+    {
+        $this->apiToken = $apiToken;
 
         return $this;
     }
