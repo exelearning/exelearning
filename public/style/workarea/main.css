@@ -5782,3 +5782,79 @@ body > .tooltip{
     color: #2b2b48;
     border-bottom: none;
   }
+
+/* Another user is editing a resource */
+.user-editing-overlay {
+    align-items: center;
+    background-color: rgba(0, 0, 0, .85);
+    border-radius: var(--radius);
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+.user-editing-message {
+    background-color: var(--dark-exe-color-06);
+    color: white;
+    max-height: 90%;
+    max-width: 90%;
+    padding: 15px;
+    text-align: center;
+    width: 90%;
+}
+
+.user-editing-description {
+    margin: 0 0 2px 0;
+}
+
+.user-editing-email {
+    display: block;
+    word-break: break-word;
+}
+
+.user-editing-time,
+.user-editing-unlock-info {
+    opacity: .9;
+}
+
+.user-editing-countdown {
+    margin: 8px 0;
+    color: #ffcc00;
+}
+
+.user-editing-unlock-btn {
+    background-color: var(--bg-dark-gray);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: none;
+    font-size: 0.9em;
+    padding: 6px 12px;
+    transition: all 0.2s;
+    margin: 0 auto;
+}
+
+.user-editing-message,
+.user-editing-unlock-btn {
+    border-radius: var(--radius);
+}
+
+.user-editing-unlock-btn:hover {
+    background-color: var(--main-background-color);
+    color: var(--bg-dark-gray);
+    transform: scale(1.02);
+}
+
+.user-editing-time,
+.user-editing-email,
+.user-editing-countdown,
+.user-editing-unlock-info {
+    font-size: 1em;
+    font-weight: bold;
+    margin: 3px;
+}

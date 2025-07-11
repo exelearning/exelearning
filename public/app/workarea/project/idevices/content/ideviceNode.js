@@ -54,6 +54,13 @@ export default class IdeviceNode {
                 eXeLearning.mercure.jwtSecretKey,
             );
         }
+
+        this.timeIdeviceEditing = null;
+
+        this.inactivityCleanup = null;
+        this.inactivityTimer = null; // To save the timer directly
+
+        document.addEventListener("DOMContentLoaded", this.checkIdeviceIsEditing());
     }
 
     /**
@@ -281,7 +288,6 @@ export default class IdeviceNode {
                 this.addBehaviourSaveIdeviceButton();
                 this.addBehaviourUndoIdeviceButton();
                 this.addBehaviourDeleteIdeviceButton();
-                this.addNoTranslateForGoogle();
                 // Check links (disabled) this.addBehaviouCheckBrokenLinksIdeviceButton();
                 break;
             case 'export':
@@ -318,7 +324,6 @@ export default class IdeviceNode {
                 this.addBehaviouCloneIdeviceButton();
                 this.addBehaviourMoveToPageIdeviceButton();
                 this.addBehaviourExportIdeviceButton();
-                this.addNoTranslateForGoogle();
                 // Check links (disabled) this.addBehaviouCheckBrokenLinksIdeviceButton();
                 break;
         }
@@ -348,31 +353,222 @@ export default class IdeviceNode {
     }
 
     /*********************************
-     * BUTTONS EVENTS */
+            BUTTONS EVENTS
+     *********************************/
+    /**
+     * Tracks inactivity in a DOM element
+     * @param {string} elementId - ID of element to monitor
+     * @param {number} timeoutSeconds - Seconds of inactivity to wait
+     * @param {function} callback - Function to execute after inactivity
+     * @returns {function} Cleanup function to stop tracking
+     */
+    inactivityInElement(elementId, timeoutSeconds, callback) {
+        // Debug
+        console.log(`Setting up inactivity tracker for ${elementId}`);
+
+        // Debug
+        if (!elementId) {
+            console.error('Element ID is undefined');
+            return () => {};
+        }
+
+        // Cancel any existing timer first
+        if (this.inactivityTimer) {
+            clearTimeout(this.inactivityTimer);
+            this.inactivityTimer = null;
+        }
+
+        const element = document.getElementById(elementId);
+    
+        if (!element) {
+            console.log(`Element with ID ${elementId} not found`);
+            return () => {};
+        }
+
+        // Reset the inactivity timer
+        const resetTimer = () => {
+            if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+            this.inactivityTimer = setTimeout(() => {
+                const now = new Date();
+                const odeElementSave = document.getElementById('saveIdevice' + elementId);
+
+                console.log(`[${now.toLocaleTimeString()}] Lock time expired:`, {
+                    elementId: elementId,
+                    timeout: `${timeoutSeconds} seconds`,
+                    action: 'FORCE_UNLOCK'
+                });
+                if (odeElementSave) {
+                    callback();
+                }
+            }, timeoutSeconds * 1000);
+        };
+
+        // Events that will reset the timer
+        const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+        events.forEach(event => {
+            element.addEventListener(event, resetTimer);
+        });
+
+        // Start tracking
+        resetTimer();
+
+        // Return cleanup function
+        return () => {
+            if (this.inactivityTimer) {
+                clearTimeout(this.inactivityTimer);
+                this.inactivityTimer = null;
+                console.log('cleanup');
+            }
+            events.forEach(event => {
+                element.removeEventListener(event, resetTimer);
+            });
+        };
+    }
 
     /**
-     *
+     * Updates the resource lock status with the specified parameters
+     * @param {Object} params - Configuration object
+     * @param {boolean} [params.odeSessionId=false] - Session ID (default: false)
+     * @param {string|null} [params.odeNavStructureSyncId=null] - Navigation sync ID (default: null) 
+     * @param {string} params.ideviceId - The ID of the iDevice element
+     * @param {string} params.blockId - The ID of the containing block
+     * @param {string} params.actionType - Action type ('EDIT_BLOCK', 'FORCE_UNLOCK', etc.)
+     * @param {string} [params.destinationPageId=''] - Destination page ID (default: empty string)
+     * @example
+     * // Minimal usage
+     * updateResourceLockStatus({
+     *   ideviceId: 'idevice123',
+     *   blockId: 'block456', 
+     *   actionType: 'FORCE_UNLOCK'
+     * });
+     * 
+     * // Full usage
+     * updateResourceLockStatus({
+     *   odeSessionId: true,
+     *   odeNavStructureSyncId: 'nav789',
+     *   ideviceId: 'idevice123',
+     *   blockId: 'block456',
+     *   actionType: 'EDIT_BLOCK',
+     *   destinationPageId: 'page101'
+     * });
+     */
+    updateResourceLockStatus({
+        odeSessionId = false, 
+        odeNavStructureSyncId = null, 
+        ideviceId, 
+        blockId, 
+        actionType, 
+        destinationPageId = ''
+    } = {}) {
+        eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
+            odeSessionId,
+            odeNavStructureSyncId,
+            blockId,
+            ideviceId,
+            actionType,
+            destinationPageId,
+            this.timeIdeviceEditing
+        );
+    }
+
+    /**
+     * Configures the inactivity tracker with proper cleanup
      */
     addBehaviourSaveIdeviceButton() {
-        this.ideviceButtons
-            .querySelector('#saveIdevice' + this.odeIdeviceId)
+        const element = document.getElementById(this.odeIdeviceId);
+        
+        const handleTimeout = () => {
+            this.updateResourceLockStatus({
+                ideviceId: this.odeIdeviceId,
+                blockId: this.blockId, 
+                actionType: 'FORCE_UNLOCK'
+            });
+        };
+
+        const setupInactivityTracker = (timeout) => {
+            // Clean previous tracker if exists
+            if (this.inactivityCleanup) {
+                this.inactivityCleanup();
+            }
+            
+            // Setup new tracker
+            this.inactivityCleanup = this.inactivityInElement(
+                this.odeIdeviceId,
+                timeout,
+                handleTimeout
+            );
+        };
+
+        // Initialize with API timeout or fallback
+        const initializeTracker = () => {
+            try {
+                eXeLearning.app.api.getResourceLockTimeout()
+                    .then(timeout => {
+                        console.log('Lock timeout:', timeout);
+                        setupInactivityTracker(timeout);
+                    })
+                    .catch(error => {
+                        console.error('Timeout API error:', error);
+                        setupInactivityTracker(900000); // 15 min fallback
+                    });
+            } catch (error) {
+                console.error('Error:', error);
+                setupInactivityTracker(900000); // 15 min fallback
+            }
+        };
+
+        // Save button handler
+        this.ideviceButtons.querySelector('#saveIdevice' + this.odeIdeviceId)
             .addEventListener('click', (e) => {
                 if (e.target.disabled) return;
+                
                 this.toogleIdeviceButtonsState(true);
-                // Save and desactivate component flag
                 this.save(true);
-                // Create the "Add Text" button
                 this.createAddTextBtn();
-                // Activate update flag
-                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
-                    false,
-                    null,
-                    this.blockId,
-                    this.odeIdeviceId,
-                    'EDIT',
-                    null,
-                );
+                
+                this.updateResourceLockStatus({
+                    ideviceId: this.odeIdeviceId,
+                    blockId: this.blockId,
+                    actionType: 'EDIT_BLOCK'
+                });
+                
+                // Reset inactivity timer on save
+                setupInactivityTracker(900000); // Reuse current timeout or fallback
             });
+
+        // Initial setup
+        initializeTracker();
+    }
+
+    /**
+     * Cleanup resources when needed
+     */
+    cleanupInactivityTracker() {
+        // Debug
+        console.log('Attempting to clean up timer');
+
+        if (this.inactivityCleanup) {
+            console.log('Cleaning up inactivity timer');
+            this.inactivityCleanup();
+            this.inactivityCleanup = null;
+        } else {
+            console.log('No inactivityCleanup function to call');
+        }
+
+        // Clear the timer directly
+        if (this.inactivityTimer) {
+            console.log('Clearing inactivity timer directly');
+            clearTimeout(this.inactivityTimer);
+            this.inactivityTimer = null;
+        }
+    }
+
+    checkIdeviceIsEditing() {
+        this.updateResourceLockStatus({
+            ideviceId: this.odeIdeviceId,
+            blockId: this.blockId, 
+            actionType: 'LOADING'
+        });
     }
 
     /**
@@ -415,6 +611,7 @@ export default class IdeviceNode {
      *
      */
     addBehaviourEditionIdeviceButton() {
+        this.timeIdeviceEditing = new Date().getTime();
         this.ideviceButtons
             .querySelector('#editIdevice' + this.odeIdeviceId)
             .addEventListener('click', (e) => {
@@ -427,6 +624,8 @@ export default class IdeviceNode {
                         this.odeNavStructureSyncId,
                         this.blockId,
                         this.odeIdeviceId,
+                        null,
+                        this.timeIdeviceEditing
                     )
                     .then((response) => {
                         if (response.responseMessage !== 'OK') {
@@ -457,6 +656,7 @@ export default class IdeviceNode {
      *
      */
     addBehaviourEditionIdeviceDoubleClick() {
+        this.timeIdeviceEditing = new Date().getTime();
         this.ideviceBody.addEventListener('dblclick', (element) => {
             if (this.mode == 'export') {
                 eXeLearning.app.project
@@ -465,6 +665,8 @@ export default class IdeviceNode {
                         this.odeNavStructureSyncId,
                         this.blockId,
                         this.odeIdeviceId,
+                        null,
+                        this.timeIdeviceEditing
                     )
                     .then((response) => {
                         if (response.responseMessage !== 'OK') {
@@ -514,6 +716,7 @@ export default class IdeviceNode {
                         this.blockId,
                         this.odeIdeviceId,
                         true,
+                        null
                     )
                     .then((response) => {
                         if (response.responseMessage !== 'OK') {
@@ -572,6 +775,9 @@ export default class IdeviceNode {
                     body: _('Discard all changes?'),
                     confirmButtonText: _('Yes'),
                     confirmExec: () => {
+                        // Clear the inactivity timer
+                        this.cleanupInactivityTracker();
+
                         // Create the "Add Text" button
                         this.createAddTextBtn();
                         eXeLearning.app.project.changeUserFlagOnEdit(
@@ -866,13 +1072,6 @@ export default class IdeviceNode {
                         }
                     });
             });
-    }
-
-    /**
-     *
-     */
-    addNoTranslateForGoogle() {
-        $('.auto-icon', this.ideviceButtons).addClass('notranslate');
     }
 
     /**
@@ -2142,7 +2341,7 @@ export default class IdeviceNode {
                     eXeLearning.app.modals.confirm.show({
                         title: _('Remove Block'),
                         body: _(
-                            'iDevice deleted. Now the box is empty. Delete the box too?',
+                            'When deleting the idevice the block has been left empty. Do you want to delete it too?',
                         ),
                         confirmButtonText: _('Yes'),
                         confirmExec: () => {
