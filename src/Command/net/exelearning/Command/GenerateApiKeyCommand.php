@@ -47,26 +47,28 @@ class GenerateApiKeyCommand extends Command
 
         $userRepository = $this->entityManager->getRepository(User::class);
         /** @var User|null $user */
-        $user = $userRepository->findOneBy(['userId' => $userId]); # Adjusted to find by userId as per CreateUserCommand example context
+        $user = $userRepository->findOneBy(['userId' => $userId]); // Adjusted to find by userId as per CreateUserCommand example context
 
         if (!$user) {
             // Try finding by email if userId was actually an email
             $user = $userRepository->findOneBy(['email' => $userId]);
             if (!$user) {
-                 // Try finding by database ID if userId was an integer id
+                // Try finding by database ID if userId was an integer id
                 if (ctype_digit($userId)) {
-                    $user = $userRepository->find((int)$userId);
+                    $user = $userRepository->find((int) $userId);
                 }
             }
         }
 
         if (!$user) {
             $io->error(sprintf('User with ID/email "%s" not found.', $userId));
+
             return Command::FAILURE;
         }
 
         if ($user->getApiToken() && !$overwrite) {
             $io->error('User already has an API token. Use --overwrite to replace it.');
+
             return Command::FAILURE;
         }
 
