@@ -1,9 +1,0 @@
-@font-face {
-    	font-family: 'STIXFrakturRegular';
-    	font-style:normal;
-      	
-	src: url('STIXFraktur.eot');
-  	src: local('?'),
-         url('STIXFraktur.woff') format('woff'), url('STIXFraktur.ttf') format('truetype'), url('STIXFraktur.svg') format('svg'); 
-}
-

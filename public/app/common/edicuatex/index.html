@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>EdiCuaTeX - LaTeX Equation Editor</title>
+    <!-- Load translation tools and MathJax -->
+    <script src="js/edicuatex-tools.js"></script>
+    <!-- Default language (en) -->
+    <script src="lang/en.js"></script>
+    <!-- Available translations (they will be used instead of en or eXe's if possible) -->
+    <script src="lang/es.js"></script>
+    <script src="lang/ca.js"></script>
+    <!-- EdiCuaTeX CSS file -->
+    <link rel="stylesheet" href="css/edicuatex.css">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 data-i18n-key="EdiCuaTeX - LaTeX Equation Editor">EdiCuaTeX - LaTeX Equation Editor</h1>
+            <p data-i18n-key="Create mathematical formulas visually, copy them or download them as images.">Create mathematical formulas visually, copy them or download them as images.</p>
+            <div class="language-selector" id="language-selector">
+                <button class="lang-btn" data-lang="en" id="lang-en">EN</button>
+                <button class="lang-btn" data-lang="es" id="lang-es">ES</button>
+                <button class="lang-btn" data-lang="ca" id="lang-ca">CA</button>
+            </div>
+        </header>
+        <div class="tabs-section" id="tabs-section">
+            <div class="search-wrapper">
+                <button id="menu-toggler-btn" title="Menus" data-i18n-title="Menus">☰</button>
+                <div class="search-input-container">
+                    <input autocomplete="off" id="search-input" placeholder="Search by description or code (e.g.: fraction, \int)..." type="search" data-i18n-placeholder="Search by description or code (e.g.: fraction, \int)...">
+                    <button id="clear-search-btn" title="Clear search" data-i18n-title="Clear search">×</button>
+                </div>
+                <button id="settings-btn" title="Customize menu" data-i18n-title="Customize menu">⚙️</button>
+                <button id="maximize-btn" title="Fullscreen" data-i18n-title="Fullscreen">🗖</button>
+            </div>
+            <div class="tabs-container" id="tabs-container"></div>
+            <div id="toolbar-wrapper">
+                <div id="toolbar"></div>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="panel">
+                <div class="panel-title-container">
+                    <h2 data-i18n-key="LaTeX Code">LaTeX Code</h2>
+                    <button class="btn btn-sm" id="ask-ai-btn" title="Ask AI for formula" data-i18n-title="Ask AI for formula">✨ <span data-i18n-key="AI Assistant">AI Assistant</span></button>
+                </div>
+                <textarea id="latex-input" placeholder="Write your code here... \frac{a}{b}" spellcheck="false" data-i18n-placeholder="Write your code here... \frac{a}{b}"></textarea>
+                <div class="copy-options-container">
+                    <label for="delimiter-selector" data-i18n-key="Formula delimiters:">Formula delimiters:</label>
+                    <select class="mathjax_ignore" id="delimiter-selector">
+                        <option selected="" value="none" data-i18n-key="No delimiter">No delimiter</option>
+                        <option value="parentheses">\(...\)</option>
+                        <option value="brackets">\[...\]</option>
+                        <option value="double_dollar">$$...$$</option>
+                        <option value="single_dollar">$...$</option>
+                    </select>
+                </div>
+                <div class="panel-actions">
+                    <button class="btn btn-success" id="insert-button" data-i18n-key="Insert">Insert</button>
+                    <button class="btn btn-primary" id="copy-button" data-i18n-key="Copy">Copy</button>
+                    <button class="btn btn-secondary" id="clear-button" data-i18n-key="Delete">Delete</button>
+                </div>
+                <div class="copy-feedback" id="copy-code-feedback"></div>
+            </div>
+            <div class="panel">
+                <div class="panel-title-container">
+                    <h2 data-i18n-key="Preview">Preview</h2>
+                </div>
+                <div class="preview-container">
+                    <div id="preview"></div>
+                </div>
+                <div class="panel-actions">
+                    <button class="btn btn-success" id="view-image-button" data-i18n-key="View image">View image</button>
+                </div>
+                <div class="copy-feedback" id="copy-image-feedback"></div>
+            </div>
+        </div>
+    </div>
+    <footer class="footer" id="page-footer"></footer>
+    <div class="modal-overlay" id="image-modal">
+        <div class="modal-content">
+            <div id="modal-message"></div>
+            <div class="modal-buttons" id="modal-buttons"></div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-content">
+            <h2 data-i18n-key="Manage menus">Manage menus</h2>
+            <p style="text-align:center; margin-bottom: 12px;">
+                <span data-i18n-key="You can edit your own menus with the">You can edit your own menus with the</span>
+                <a href="menus/editor.html" target="_blank" rel="noopener noreferrer" data-i18n-key="Menu Editor" id="menu-editor-link">Menu Editor</a>.
+            </p>
+            <div class="modal-body">
+                <h3 data-i18n-key="Available menus">Available menus</h3>
+                <ul class="menu-list" id="available-menus-list">
+                    <li data-i18n-key="Loading...">Loading...</li>
+                </ul>
+                <div class="modal-buttons" style="justify-content: flex-end; margin-top: 10px;">
+                    <button class="btn btn-sm btn-secondary" id="reload-menus-list-btn" style="display:none;" data-i18n-key="Reload list">Reload list</button>
+                </div>
+                <h3 data-i18n-key="Custom load">Custom load</h3>
+                <div class="form-group">
+                    <label for="url-input" data-i18n-key="Load menu from external URL">Load menu from external URL</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input id="url-input" placeholder="https://example.com/base.json" type="url" style="flex-grow: 1;">
+                        <button class="btn btn-success btn-sm" id="load-url-btn" data-i18n-key="Load">Load</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="file-input" data-i18n-key="Load menu from local file">Load menu from local file</label>
+                    <input accept=".json,application/json" id="file-input" type="file">
+                </div>
+                <div id="modal-feedback" style="margin-bottom: 15px;"></div>
+                <div class="modal-buttons" style="flex-wrap: wrap;">
+                    <button class="btn btn-secondary" id="clear-cache-btn" data-i18n-key="Clear cache and reload">Clear cache and reload</button>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" id="close-settings-btn" data-i18n-key="Close">Close</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="ai-modal">
+        <div class="modal-content">
+            <h2 data-i18n-key="AI Formula Assistant">AI Formula Assistant</h2>
+            <div class="modal-body">
+                <p style="text-align: center; margin-bottom: 20px;" data-i18n-key="Describe the formula or mathematical expression you need. The assistant will generate an instruction (prompt) for you to use in an AI model like ChatGPT.">Describe the formula or mathematical expression you need. The assistant will generate an instruction (prompt) for you to use in an AI model like ChatGPT.</p>
+                <div class="form-group">
+                    <label for="ai-user-prompt" data-i18n-key="Describe your formula:">1. Describe your formula:</label>
+                    <textarea id="ai-user-prompt" placeholder="E.g.: Quadratic equation with a=1, b=14 and c=-4" rows="3" data-i18n-placeholder="E.g.: Quadratic equation with a=1, b=14 and c=-4"></textarea>
+                </div>
+                <div class="modal-buttons" style="margin-top: 0; margin-bottom: 20px;">
+                    <button class="btn btn-secondary" id="generate-ai-prompt-btn" data-i18n-key="Generate AI instruction">2. Generate AI instruction</button>
+                </div>
+                <div class="form-group">
+                    <label for="ai-generated-prompt" data-i18n-key="Generated instruction:">3. Generated instruction:</label>
+                    <textarea id="ai-generated-prompt" placeholder="The AI instruction will appear here..." readonly="" rows="4" data-i18n-placeholder="The AI instruction will appear here..."></textarea>
+                </div>
+                <div class="copy-feedback" id="ai-feedback" style="height: auto; margin-bottom: 15px; margin-top: -10px;"></div>
+            </div>
+            <div class="modal-buttons">
+                <a class="btn btn-primary" href="#" id="open-chatgpt-btn" style="display: none;" target="_blank" data-i18n-key="Open in ChatGPT">Open in ChatGPT</a>
+                <button class="btn btn-success" id="copy-ai-prompt-btn" style="display: none;" data-i18n-key="Copy for another AI">Copy for another AI</button>
+                <button class="btn btn-secondary" id="close-ai-modal-btn" data-i18n-key="Close">Close</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="alert-modal">
+        <div class="modal-content">
+            <h2 id="alert-modal-title" style="text-align: center;"></h2>
+            <div id="alert-modal-message" style="font-size: 1rem; line-height: 1.5;"></div>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" id="alert-modal-close-btn" data-i18n-key="Understood">Understood</button>
+            </div>
+        </div>
+    </div>
+    <script src="js/DOMPurify/purify.min.js"></script>
+    <script src="js/edicuatex.js"></script>
+</body>
+</html>

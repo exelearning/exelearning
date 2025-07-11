@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LaTeX Formula Visual Editor</title>
+    
+    <!-- Load translation tools and MathJax -->
+    <script src="../js/edicuatex-tools.js"></script>
+    <!-- Default language (en) -->
+    <script src="../lang/en.js"></script>
+    <!-- Available translations (they will be used instead of en or eXe's if possible) -->
+    <script src="../lang/es.js"></script>
+    <script src="../lang/ca.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    
+    <!-- EdiCuaTeX Menu Editor CSS file -->
+    <link rel="stylesheet" href="editor.css">
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <header class="bg-white shadow-md p-4 sticky top-0 z-20 space-y-3">
+        <div class="flex flex-wrap justify-between items-center gap-y-2">
+            <h1 class="text-2xl font-bold text-gray-700">LaTeX Formula Editor</h1>
+            <div class="flex items-center space-x-2 flex-wrap gap-y-2">
+                <button id="ai-creator-btn" class="bg-cyan-500 text-white px-4 py-2 rounded-lg shadow hover:bg-cyan-600 transition">✨ Create with AI</button>
+                <button id="paste-btn" class="bg-yellow-500 text-white px-4 py-2 rounded-lg shadow hover:bg-yellow-600 transition">Paste</button>
+                <button id="copy-btn" class="bg-teal-500 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-600 transition">Copy JSON</button>
+                <button id="export-btn" class="bg-purple-500 text-white px-4 py-2 rounded-lg shadow hover:bg-purple-600 transition">Export JSON</button>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2 border-b border-gray-200">
+            <div id="tabs-container" class="flex items-center space-x-1">
+                </div>
+            <button id="add-tab-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-1 px-3 rounded-full">+</button>
+        </div>
+         <div class="flex items-center space-x-2">
+            <select id="category-navigator" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <option value="">Go to category...</option>
+            </select>
+            <button id="toggle-all-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-300 transition flex-shrink-0">Collapse/Expand</button>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+        <div id="editor-container" class="bg-white p-4 rounded-lg shadow-inner overflow-auto h-[calc(100vh-255px)]"></div>
+        <div id="preview-container" class="bg-white p-4 rounded-lg shadow-inner overflow-auto h-[calc(100vh-255px)]"></div>
+    </main>
+    
+    <footer class="text-center py-4 bg-gray-100 text-gray-600 text-sm">
+        <p><a href="https://labia.tiddlyhost.com" target="_blank" class="hover:text-blue-600">Educational Applications Laboratory</a> - <a href="https://bilateria.org" target="_blank" class="hover:text-blue-600">Application by Juan José de Haro</a></p>
+        <p class="mt-1"><a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" class="hover:text-blue-600">Creative Commons BY-SA License</a></p>
+            <p class="mt-1">v4.30</p>
+    </footer>
+
+    <div id="modal-container">
+        <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 z-30 flex justify-center items-center hidden"><div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md"><h2 id="modal-title" class="text-2xl font-bold mb-4"></h2><form id="modal-form"></form><div class="mt-6 flex justify-end space-x-3"><button id="modal-cancel" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition">Cancel</button><button id="modal-save" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">Save</button></div></div></div>
+        <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center hidden"><div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm"><h2 id="confirm-title" class="text-xl font-bold mb-4"></h2><p id="confirm-message"></p><div class="mt-6 flex justify-end space-x-3"><button id="confirm-cancel" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition">Cancel</button><button id="confirm-delete" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">Delete</button></div></div></div>
+        <div id="paste-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center hidden"><div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg"><h2 class="text-2xl font-bold mb-4">Paste JSON content</h2><div class="space-y-4"><textarea id="paste-textarea" rows="8" class="w-full border-gray-300 rounded-md font-mono text-sm" placeholder="Paste the JSON code here..."></textarea><div><label class="block text-sm font-medium text-gray-700">Type of content to paste:</label><select id="paste-type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"><option value="full">Full JSON (in new tab)</option><option value="category">Category (in current tab)</option><option value="element">Element(s) (in current tab)</option></select></div><div id="paste-category-selector-div" class="hidden"><label class="block text-sm font-medium text-gray-700">Add element(s) to category:</label><select id="paste-category-selector" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select></div></div><div class="mt-6 flex justify-end space-x-3"><button id="paste-cancel" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition">Cancel</button><button id="paste-add" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition">Add Content</button></div></div></div>
+        <div id="ai-creator-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden"><div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]"><h2 class="text-2xl font-bold mb-4 flex-shrink-0">AI Creation Wizard</h2><div class="overflow-y-auto -mx-6 px-6"><div class="space-y-4"><div><label for="ai-choice" class="block text-sm font-medium text-gray-700">1. What do you want to create?</label><select id="ai-choice" name="ai-choice" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"><option value="full_json">Full JSON file</option><option value="category">A single category</option><option value="multiple_elements">Multiple elements</option></select></div><div id="ai-inputs-container" class="mt-4"></div></div><div class="mt-6"><h3 class="text-base font-medium text-gray-900">2. Generate and use the prompt</h3><p class="text-sm text-gray-600 mt-1">Follow the steps to generate a prompt and get the JSON code from your preferred AI.</p><textarea id="ai-prompt-output" rows="5" class="w-full border-gray-300 rounded-md font-mono text-xs mt-2 bg-gray-50" readonly placeholder="The generated prompt will appear here..."></textarea><div class="mt-2 space-y-2"><button id="ai-generate-prompt-btn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">1. Generate Prompt</button><div class="grid grid-cols-1 sm:grid-cols-2 gap-2"><button id="ai-launch-chatgpt-btn" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition disabled:bg-green-300 disabled:cursor-not-allowed" disabled>2. Launch in ChatGPT</button><button id="ai-copy-prompt-btn" class="w-full bg-gray-500 text-white px-4 py-2 rounded-lg shadow hover:bg-gray-600 transition disabled:bg-gray-300 disabled:cursor-not-allowed" disabled>2a. Copy (other AI)</button></div></div></div><div class="mt-6"><h3 class="text-base font-medium text-gray-900">3. Paste the result into the editor</h3><p id="ai-paste-instructions" class="text-sm text-gray-600 mt-1">Once you have the code, close this window and use the <strong class="text-yellow-600">"Paste"</strong> button on the top bar to add your new creation.</p></div></div><div class="mt-auto pt-6 flex-shrink-0 flex justify-end"><button id="ai-creator-close-btn" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition">Close</button></div></div></div>
+        <div id="add-tab-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4 hidden"><div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-lg"><div class="flex justify-between items-center"><h2 class="text-2xl font-bold mb-4">Add formula set</h2><button id="clear-cache-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg shadow hover:bg-red-600 transition">Clear cache</button></div><div class="space-y-4"><h3 class="text-lg font-medium text-gray-900">Available menus</h3><div id="github-files-list" class="space-y-2 max-h-60 overflow-y-auto">Loading list...</div><hr class="my-4"><h3 class="text-lg font-medium text-gray-900">Other sources</h3><div class="flex items-center space-x-2"><input type="url" id="custom-url-input" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" placeholder="Paste a JSON URL..."><button id="custom-url-load-btn" class="bg-indigo-500 text-white px-3 py-2 rounded-lg shadow-sm hover:bg-indigo-600 transition flex-shrink-0">Load</button></div><div class="mt-2"><label for="custom-file-input" class="w-full cursor-pointer bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600 transition text-center block">Open local file...</label><input type="file" id="custom-file-input" class="hidden" accept=".json"></div></div><div class="mt-6 flex justify-end"><button id="add-tab-close-btn" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-400 transition">Close</button></div></div></div>
+    </div>
+
+    <script type="module" src="editor.js"></script>
+</body>
+</html>
