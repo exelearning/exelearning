@@ -449,6 +449,12 @@
 
 ## Client-side libraries
 
+*   Files: /public/app/common/edicuatex/\* (except js/DOMPurify/*)
+    *   Copyright: Juan José de Haro
+    *   License: CC-BY-SA-4.0
+*   Files: /public/app/common/edicuatex/js/DOMPurify\*
+    *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
+    *   License: Apache License 2.0 / Mozilla Public License Version 2.0
 *   File: /public/app/common/exe\_atools/exe\_atools.js
     *   exe\_atools.js includes a modified version of Drog.js v1.2.1, with written permission of his author.
     *   Drog.js author: Emanuel Rojas Vásquez
@@ -481,21 +487,6 @@
 *   Files: public/app/common/fix\_webm\_duration/\*
     *   Copyright: 2018 Yury Sitnikov
     *   License: MIT
-*   Files: /public/app/common/fMath/\*
-    *   Copyright: Ionel Alexandru
-    *   License: Apache License 2.0
-*   Files: /public/app/common/fMath/fonts/asana/\*
-    *   Copyright: Frédéric Wang
-    *   License: SIL Open Font License
-*   Files: /public/app/common/fMath/fonts/dejavu/\*
-    *   Copyright: Bitstream, Inc.
-    *   License: Public Domain
-*   Files: /public/app/common/fMath/fonts/sazanami/\*
-    *   Copyright: Wada Laboratory, the University of Tokyo / Electronic Font Open Laboratory
-    *   License: Described in /public/app/common/fMath/fonts/sazanami/sazanami-gothic-license.txt
-*   Files: /public/app/common/fMath/fonts/stix/\*
-    *   Copyright: STI Pub Companies
-    *   License: SIL Open Font License
 *   Files: /public/app/common/mindmaps/\*
     *   Copyright: David Richard
     *   License: AGPL V3 (included in eXeLearning with the developer's consent)

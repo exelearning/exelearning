@@ -168,6 +168,14 @@ create-user: check-docker check-env upd
 	read -p "Enter username: " username; \
 	docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
 
+# Generate API key for a user (Usage: make generate-api-key USER_ID=123 [OVERWRITE=1])
+generate-api-key: check-docker check-env upd
+	@if [ -z "$(USER_ID)" ]; then \
+		echo "❌ USER_ID is required. Usage: make generate-api-key USER_ID=123 [OVERWRITE=1]"; \
+		exit 1; \
+	fi
+	docker compose exec exelearning composer --no-cache generate-api-key -- $(USER_ID) $(if $(OVERWRITE),--overwrite,)
+
 # Update Composer dependencies
 update: check-docker check-env upd
 	docker compose exec exelearning composer update --no-cache --with-all-dependencies
