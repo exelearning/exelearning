@@ -22,15 +22,15 @@ export default class MenuStructureCompose {
         for (let [i, element] of Object.entries(this.data)) {
             if (element.parent) {
                 let parentElement = this.menuNavList.querySelector(
-                    `.nav-element[nav-id="${element.parent}"]`,
+                    `.nav-element[nav-id="${element.parent}"]`
                 );
                 let parentChildrenContainer = parentElement.querySelector(
-                    `.nav-element-children-container`,
+                    `.nav-element-children-container`
                 );
                 parentElement.setAttribute('is-parent', true);
                 this.makeNodeStructureContentNode(
                     parentChildrenContainer,
-                    element,
+                    element
                 );
             } else {
                 this.makeNodeStructureContentNode(this.menuNavList, element);
@@ -156,7 +156,7 @@ export default class MenuStructureCompose {
         if (node.properties.visibility.value != '') {
             nodeElement.setAttribute(
                 'export-view',
-                node.properties.visibility.value,
+                node.properties.visibility.value
             );
         }
     }

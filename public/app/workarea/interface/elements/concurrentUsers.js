@@ -2,7 +2,7 @@ export default class ConcurrentUsers {
     constructor(app) {
         this.maxUsersShow = 5;
         this.concurrentUsersElement = document.querySelector(
-            '#exe-concurrent-users',
+            '#exe-concurrent-users'
         );
         this.currentUsersJson = null;
         this.currentUsers = null;
@@ -28,14 +28,14 @@ export default class ConcurrentUsers {
             await this.addEventClickButtonMore();
             // Update user info modal only if it's open
             let bodyConcurrentUsers = document.querySelector(
-                'div.exe-concurrent-users',
+                'div.exe-concurrent-users'
             );
             if (bodyConcurrentUsers) {
                 bodyConcurrentUsers.innerHTML = '';
                 this.getConcurrentUsersElementsList().forEach(
                     (concurrentUserElement) => {
                         bodyConcurrentUsers.append(concurrentUserElement);
-                    },
+                    }
                 );
             }
         }
@@ -74,7 +74,7 @@ export default class ConcurrentUsers {
         this.currentUsersJson = await eXeLearning.app.api.getOdeConcurrentUsers(
             odeId,
             odeVersion,
-            odeSession,
+            odeSession
         );
         this.currentUsers = this.currentUsersJson.currentUsers;
     }
@@ -85,21 +85,21 @@ export default class ConcurrentUsers {
      */
     addConcurrentUsersToElement() {
         const titleElement = this.concurrentUsersElement.querySelector(
-            '#title-exe-concurrent-users',
+            '#title-exe-concurrent-users'
         );
         const numUsers = this.currentUsers ? this.currentUsers.length : 1;
         titleElement.textContent = `${_('Users online')} (${numUsers})`;
         this.getConcurrentUsersElementsList().forEach(
             (concurrentUserElement) => {
                 this.concurrentUsersElement.append(concurrentUserElement);
-            },
+            }
         );
         if (this.currentUsers) {
             const numUsers = this.currentUsers.length;
             this.concurrentUsersElement.setAttribute('num', numUsers);
             this.concurrentUsersElement.setAttribute(
                 'show-more-button',
-                numUsers > 1,
+                numUsers > 1
             );
         }
     }
@@ -146,7 +146,7 @@ export default class ConcurrentUsers {
      */
     addEventClickButtonMore() {
         let buttonMore = this.concurrentUsersElement.querySelector(
-            '#button-more-exe-concurrent-users',
+            '#button-more-exe-concurrent-users'
         );
         if (this.currentUsers.length > 1) {
             buttonMore.style.display = 'block';
@@ -177,7 +177,7 @@ export default class ConcurrentUsers {
         this.getConcurrentUsersElementsList().forEach(
             (concurrentUserElement) => {
                 bodyConcurrentUsers.append(concurrentUserElement);
-            },
+            }
         );
 
         return bodyConcurrentUsers.outerHTML;

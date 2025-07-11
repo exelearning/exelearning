@@ -8,10 +8,10 @@ export default class Toast {
         this.defaultBody = '';
         if (!element) this.toastElement = document.getElementById(this.id);
         this.toastIcon = this.toastElement.querySelector(
-            '.toast-header > .toast-icon',
+            '.toast-header > .toast-icon'
         );
         this.toastTitle = this.toastElement.querySelector(
-            '.toast-header > .toast-title',
+            '.toast-header > .toast-title'
         );
         this.toastBody = this.toastElement.querySelector('.toast-body');
         this.toast = new bootstrap.Toast(this.toastElement, {});

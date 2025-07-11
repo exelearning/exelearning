@@ -3,22 +3,22 @@ export default class NavbarFile {
         this.menu = menu;
         this.button = this.menu.navbar.querySelector('#dropdownUtilities');
         this.preferencesButton = document.querySelector(
-            '#navbar-button-preferences',
+            '#navbar-button-preferences'
         );
         this.ideviceManagerButton = this.menu.navbar.querySelector(
-            '#navbar-button-idevice-manager',
+            '#navbar-button-idevice-manager'
         );
         this.brokenLinksButton = this.menu.navbar.querySelector(
-            '#navbar-button-odebrokenlinks',
+            '#navbar-button-odebrokenlinks'
         );
         this.filemanagerButton = this.menu.navbar.querySelector(
-            '#navbar-button-filemanager',
+            '#navbar-button-filemanager'
         );
         this.usedFilesButton = this.menu.navbar.querySelector(
-            '#navbar-button-odeusedfiles',
+            '#navbar-button-odeusedfiles'
         );
         this.previewButton = this.menu.navbar.querySelector(
-            '#navbar-button-preview',
+            '#navbar-button-preview'
         );
     }
 
@@ -170,7 +170,7 @@ export default class NavbarFile {
             if (response.responseMessage == 'OK' && response.brokenLinks) {
                 // Show eXe OdeBrokenList modal
                 eXeLearning.app.modals.odebrokenlinks.show(
-                    response.brokenLinks,
+                    response.brokenLinks
                 );
             } else {
                 // Open eXe alert modal
@@ -315,7 +315,7 @@ export default class NavbarFile {
             }, 100);
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while generating the preview.',
+                'An error occurred while generating the preview.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({

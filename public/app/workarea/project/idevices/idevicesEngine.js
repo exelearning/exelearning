@@ -11,11 +11,11 @@ export default class IdevicesEngine {
         this.project = project;
         this.workareaElement = document.querySelector('#main #workarea');
         this.nodeContainerElement = this.workareaElement.querySelector(
-            '#node-content-container',
+            '#node-content-container'
         );
         this.nodeContentLoadScreenElement =
             this.nodeContainerElement.querySelector(
-                '#load-screen-node-content',
+                '#load-screen-node-content'
             );
         this.nodeContentElement =
             this.nodeContainerElement.querySelector('#node-content');
@@ -44,7 +44,7 @@ export default class IdevicesEngine {
             this.project.app.menus.menuIdevices.menuIdevices;
         this.menuIdevicesDraggableElements =
             this.menuIdevicesElement.querySelectorAll(
-                '.idevice_item.draggable',
+                '.idevice_item.draggable'
             );
         // Set mode to node-content
         this.updateMode();
@@ -79,7 +79,7 @@ export default class IdevicesEngine {
         // Check if current page is document root
         if (
             this.project.app.project.structure.nodeSelected.getAttribute(
-                'nav-id',
+                'nav-id'
             ) == 'root'
         )
             return false;
@@ -97,7 +97,7 @@ export default class IdevicesEngine {
             } else {
                 container.insertBefore(
                     this.draggedElement,
-                    afterElement.parentNode,
+                    afterElement.parentNode
                 );
             }
         } else {
@@ -210,11 +210,11 @@ export default class IdevicesEngine {
                         if (container.id != block.blockId) {
                             if (
                                 block.blockContent.classList.contains(
-                                    'component-inside',
+                                    'component-inside'
                                 )
                             ) {
                                 block.blockContent.classList.remove(
-                                    'component-inside',
+                                    'component-inside'
                                 );
                             }
                         }
@@ -341,7 +341,7 @@ export default class IdevicesEngine {
             let ideviceData = { odeIdeviceTypeName: this.draggedElement.id };
             let ideviceNode = await this.createIdeviceInContent(
                 ideviceData,
-                container,
+                container
             );
         }
         // Remove dragged element
@@ -365,7 +365,7 @@ export default class IdevicesEngine {
             event.stopPropagation();
             this.clearSelection();
             let ideviceNode = this.getIdeviceById(
-                element.getAttribute('idevice-id'),
+                element.getAttribute('idevice-id')
             );
             let ideviceContent = ideviceNode.ideviceContent;
             if (!ideviceContent) return;
@@ -412,7 +412,7 @@ export default class IdevicesEngine {
                 this.structureMenuList =
                     this.project.app.menus.menuStructure.menuStructureCompose.menuNavList;
                 let menuPageDownIdevice = this.structureMenuList.querySelector(
-                    '.idevice-content-over',
+                    '.idevice-content-over'
                 );
                 // Drop into Menu Structure Page
                 if (menuPageDownIdevice) {
@@ -436,7 +436,7 @@ export default class IdevicesEngine {
         let destinationOdePageId =
             pageNodeElement.parentNode.getAttribute('page-id');
         let ideviceNode = this.getIdeviceById(
-            this.draggedElement.getAttribute('idevice-id'),
+            this.draggedElement.getAttribute('idevice-id')
         );
         let ideviceNodePreviousPageId = ideviceNode.odeNavStructureSyncId;
         let ideviceNodeBlockId = ideviceNode.blockId;
@@ -460,7 +460,7 @@ export default class IdevicesEngine {
                     null,
                     ideviceNode.odeIdeviceId,
                     'MOVE_TO_PAGE',
-                    destinationOdePageId,
+                    destinationOdePageId
                 );
                 // Send operation log action to bbdd
                 let additionalData = {
@@ -474,7 +474,7 @@ export default class IdevicesEngine {
                     blockNodePreviousOdePageId,
                     destinationOdePageId,
                     'MOVE_IDEVICE_TO',
-                    additionalData,
+                    additionalData
                 );
             });
         }
@@ -494,7 +494,7 @@ export default class IdevicesEngine {
      */
     dragEndIdeviceOutOffContainer() {
         let ideviceNode = this.getIdeviceById(
-            this.draggedElement.getAttribute('idevice-id'),
+            this.draggedElement.getAttribute('idevice-id')
         );
         // Remove dragged element
         this.resetDragElement(true);
@@ -523,14 +523,14 @@ export default class IdevicesEngine {
         // Check if current page is document root
         if (
             this.project.app.project.structure.nodeSelected.getAttribute(
-                'nav-id',
+                'nav-id'
             ) == 'root'
         )
             return false;
         // Check if container is valid for element
         if (this.isDragableInside(this.draggedElement, container)) {
             let ideviceNode = this.getIdeviceById(
-                this.draggedElement.getAttribute('idevice-id'),
+                this.draggedElement.getAttribute('idevice-id')
             );
             if (ideviceNode) {
                 let ideviceNodePreviousBlockId = ideviceNode.blockId;
@@ -541,7 +541,7 @@ export default class IdevicesEngine {
                 if (!this.getIdeviceById(ideviceNode.odeIdeviceId)) {
                     this.addIdeviceToComponentsList(
                         ideviceNode,
-                        ideviceNode.blockId,
+                        ideviceNode.blockId
                     );
                 }
                 // Remove dragging class
@@ -569,13 +569,13 @@ export default class IdevicesEngine {
                     };
                     let ideviceNodePageId =
                         this.project.app.project.structure.nodeSelected.getAttribute(
-                            'page-id',
+                            'page-id'
                         );
                     eXeLearning.app.project.sendOdeOperationLog(
                         ideviceNodePageId,
                         ideviceNodePageId,
                         'MOVE_IDEVICE_ON',
-                        additionalData,
+                        additionalData
                     );
                 });
             }
@@ -624,18 +624,18 @@ export default class IdevicesEngine {
                                     // Move box-head out of box
                                     this.nodeContentElement.insertBefore(
                                         element,
-                                        blockContent,
+                                        blockContent
                                     );
                                     this.nodeContentElement.insertBefore(
                                         blockContent,
-                                        element,
+                                        element
                                     );
                                     // Add class dragging
                                     blockContent.classList.add('dragging');
                                     // Toggle off block content
                                     if (
                                         !blockContent.classList.contains(
-                                            'hidden-idevices',
+                                            'hidden-idevices'
                                         )
                                     ) {
                                         if (this.draggedElement)
@@ -663,7 +663,7 @@ export default class IdevicesEngine {
                 this.structureMenuList =
                     this.project.app.menus.menuStructure.menuStructureCompose.menuNavList;
                 let menuPageDownBlock = this.structureMenuList.querySelector(
-                    '.block-content-over',
+                    '.block-content-over'
                 );
                 // Drop into Menu Structure Page
                 if (menuPageDownBlock) {
@@ -690,7 +690,7 @@ export default class IdevicesEngine {
         let destinationOdePageId =
             pageNodeElement.parentNode.getAttribute('page-id');
         let blockNode = this.getBlockById(
-            this.draggedElement.getAttribute('block-id'),
+            this.draggedElement.getAttribute('block-id')
         );
         let blockNodePreviousPageId = blockNode.odeNavStructureSyncId;
         let blockNodePreviousOdePageId = blockNode.pageId;
@@ -708,7 +708,7 @@ export default class IdevicesEngine {
                     blockNode.blockId,
                     null,
                     'MOVE_TO_PAGE',
-                    destinationOdePageId,
+                    destinationOdePageId
                 );
                 // Send operation log action to bbdd
                 let additionalData = {
@@ -721,7 +721,7 @@ export default class IdevicesEngine {
                     blockNodePreviousOdePageId,
                     destinationOdePageId,
                     'MOVE_BLOCK_TO',
-                    additionalData,
+                    additionalData
                 );
             });
         }
@@ -738,7 +738,7 @@ export default class IdevicesEngine {
      */
     dragEndBlockOutOffContainer() {
         let blockNode = this.getBlockById(
-            this.draggedElement.getAttribute('block-id'),
+            this.draggedElement.getAttribute('block-id')
         );
         if (blockNode) {
             // Move box-head inside of block position
@@ -780,7 +780,7 @@ export default class IdevicesEngine {
         // Check if container is valid for element
         if (this.isDragableInside(this.draggedElement, container)) {
             let blockNode = this.getBlockById(
-                this.draggedElement.getAttribute('block-id'),
+                this.draggedElement.getAttribute('block-id')
             );
             let previousOrder = blockNode.order;
             let blockNodePageId = blockNode.pageId;
@@ -791,7 +791,7 @@ export default class IdevicesEngine {
                 ) {
                     this.nodeContentElement.insertBefore(
                         blockNode.blockContent,
-                        blockNode.headElement,
+                        blockNode.headElement
                     );
                     blockNode.blockContent.prepend(blockNode.headElement);
                 }
@@ -823,7 +823,7 @@ export default class IdevicesEngine {
                         blockNodePageId,
                         blockNodePageId,
                         'MOVE_BLOCK_ON',
-                        additionalData,
+                        additionalData
                     );
                 });
             }
@@ -879,7 +879,7 @@ export default class IdevicesEngine {
                 let dropListContainer = [];
                 if (container.getAttribute('drop')) {
                     dropListContainer = JSON.parse(
-                        container.getAttribute('drop'),
+                        container.getAttribute('drop')
                     );
                 }
                 // Only if the attribute is equal is the element allowed to be dropped in the container
@@ -908,7 +908,7 @@ export default class IdevicesEngine {
                     return closest;
                 }
             },
-            { offset: Number.NEGATIVE_INFINITY },
+            { offset: Number.NEGATIVE_INFINITY }
         ).element;
     }
 
@@ -927,7 +927,7 @@ export default class IdevicesEngine {
                     let ideviceData = { odeIdeviceTypeName: element.id };
                     let ideviceNode = await this.createIdeviceInContent(
                         ideviceData,
-                        this.nodeContentElement,
+                        this.nodeContentElement
                     );
                     // Send operation log action to bbdd
                     let additionalData = {};
@@ -935,7 +935,7 @@ export default class IdevicesEngine {
                         null,
                         ideviceNode.blockId,
                         'ADD_IDEVICE',
-                        additionalData,
+                        additionalData
                     );
                     this.clickIdeviceMenuEnabled = false;
                     setTimeout(() => {
@@ -965,7 +965,7 @@ export default class IdevicesEngine {
                     cloneBlockNode.blockContent.classList.remove('moving');
                 },
                 this.movingClassDuration * 2 +
-                    5 * this.components.idevices.length,
+                    5 * this.components.idevices.length
             );
         }
     }
@@ -985,12 +985,12 @@ export default class IdevicesEngine {
         // Create and append new idevice in block
         let cloneIdeviceNode = await this.createIdeviceInContent(
             cloneIdeviceData,
-            blockContent,
+            blockContent
         );
         // Move
         blockContent.insertBefore(
             cloneIdeviceNode.ideviceContent,
-            originalIdevice.ideviceContent.nextSibling,
+            originalIdevice.ideviceContent.nextSibling
         );
         // Move screen view to clone idevice
         cloneIdeviceNode.resetWindowHash();
@@ -1027,7 +1027,7 @@ export default class IdevicesEngine {
             eXeLearning.app.modals.alert.show({
                 title: _('Info'),
                 body: _(
-                    'You are currently editing another iDevice. Please close it before continuing',
+                    'You are currently editing another iDevice. Please close it before continuing'
                 ),
             });
             return false;
@@ -1063,7 +1063,7 @@ export default class IdevicesEngine {
         if (ideviceNode.ideviceContent) {
             // Regenerate the idevice buttons
             ideviceNode.ideviceContent.append(
-                ideviceNode.makeIdeviceButtonsElement(),
+                ideviceNode.makeIdeviceButtonsElement()
             );
             ideviceNodeContent = ideviceNode.ideviceContent;
         } else {
@@ -1083,7 +1083,7 @@ export default class IdevicesEngine {
             // Insert block into node content
             container.insertBefore(
                 ideviceBlockNodeContent,
-                this.draggedElement,
+                this.draggedElement
             );
         } else {
             // Add only the idevice
@@ -1104,10 +1104,10 @@ export default class IdevicesEngine {
             eXeLearning.app.project.changeUserFlagOnEdit(
                 true,
                 this.project.app.project.structure.nodeSelected.getAttribute(
-                    'nav-id',
+                    'nav-id'
                 ),
                 ideviceNode.blockId,
-                ideviceNode.ideviceContent.id,
+                ideviceNode.ideviceContent.id
             );
             ideviceNode.goWindowToIdevice();
         }
@@ -1148,7 +1148,7 @@ export default class IdevicesEngine {
         // We check if the idevice is valid
         appendNewIdeviceSuccess = await this.appendNewIdeviceProcess(
             ideviceNode,
-            ideviceOnEdit,
+            ideviceOnEdit
         );
         // We check if the idevice could be correctly added to the content
         if (appendNewIdeviceSuccess) {
@@ -1230,7 +1230,7 @@ export default class IdevicesEngine {
         // Save idevices, clean node content and load components
         let loadedComponents = await this.cleanNodeAndLoadPage(
             loadScreen,
-            pageElement,
+            pageElement
         );
         return loadedComponents;
     }
@@ -1253,7 +1253,7 @@ export default class IdevicesEngine {
             if (this.project.app.project.structure.nodeSelected) {
                 idNode =
                     this.project.app.project.structure.nodeSelected.getAttribute(
-                        'nav-id',
+                        'nav-id'
                     );
             } else {
                 idNode = false;
@@ -1265,7 +1265,7 @@ export default class IdevicesEngine {
         loadedComponents = await this.loadingComponentsProcess(
             saveIdevicesOk,
             pageElement,
-            loadScreen,
+            loadScreen
         );
         // Load page theme template
         this.loadThemePageTemplate(idNode);
@@ -1297,7 +1297,7 @@ export default class IdevicesEngine {
                 templatePageContainerElement = themeTemplatePage;
                 templatePageContentElement =
                     templatePageContainerElement.querySelector(
-                        `.${templatePageClass}`,
+                        `.${templatePageClass}`
                     );
                 templatePageContentElement.append(this.nodeContentElement);
                 this.nodeContainerElement.append(templatePageContainerElement);
@@ -1320,7 +1320,7 @@ export default class IdevicesEngine {
             this.nodeContainerElement.append(this.nodeContentElement);
             let templatePageContainerElement =
                 this.nodeContainerElement.querySelector(
-                    `.${templatePageContainerClass}`,
+                    `.${templatePageContainerClass}`
                 );
             if (templatePageContainerElement)
                 templatePageContainerElement.remove();
@@ -1333,7 +1333,7 @@ export default class IdevicesEngine {
      */
     resetThemePageTemplate() {
         let pageContentTemplate = this.workareaElement.querySelector(
-            '.page-content-template',
+            '.page-content-template'
         );
         if (pageContentTemplate) {
             this.workareaElement.append(this.nodeContentElement);
@@ -1359,7 +1359,7 @@ export default class IdevicesEngine {
                 if (this.project.app.project.structure.nodeSelected) {
                     idNode =
                         this.project.app.project.structure.nodeSelected.getAttribute(
-                            'nav-id',
+                            'nav-id'
                         );
                 } else {
                     idNode = false;
@@ -1450,12 +1450,12 @@ export default class IdevicesEngine {
                         this.setNodeContentHeader();
                         // Set page title
                         this.setNodeContentPageTitle(
-                            data.odeNavStructureSyncProperties,
+                            data.odeNavStructureSyncProperties
                         );
                         // Resolve
                         resolve(true);
                     },
-                    100 + 10 * this.components.idevices.length,
+                    100 + 10 * this.components.idevices.length
                 );
             });
             return promise;
@@ -1469,7 +1469,7 @@ export default class IdevicesEngine {
      */
     setNodeContentHeader() {
         let headerElement = this.nodeContainerElement.querySelector(
-            '#header-node-content',
+            '#header-node-content'
         );
         headerElement.innerHTML = '';
         if (headerElement) {
@@ -1500,7 +1500,7 @@ export default class IdevicesEngine {
      */
     setNodeContentPageTitle(properties) {
         let pageTitleElement = this.nodeContainerElement.querySelector(
-            '#page-title-node-content',
+            '#page-title-node-content'
         );
         if (pageTitleElement) {
             if (
@@ -1529,7 +1529,7 @@ export default class IdevicesEngine {
      */
     removeNodeContentHeader() {
         let headerElement = this.nodeContainerElement.querySelector(
-            '#header-node-content',
+            '#header-node-content'
         );
         headerElement.innerHTML = '';
         headerElement.classList.add('hidden');
@@ -1541,7 +1541,7 @@ export default class IdevicesEngine {
      */
     removeNodeContentPageTitle() {
         let pageTitleElement = this.nodeContainerElement.querySelector(
-            '#page-title-node-content',
+            '#page-title-node-content'
         );
         pageTitleElement.innerHTML = '';
         pageTitleElement.classList.add('hidden');
@@ -1561,7 +1561,7 @@ export default class IdevicesEngine {
      */
     removeNodeContentFormProperties() {
         let formProperties = this.nodeContentElement.querySelector(
-            '#properties-node-content-form',
+            '#properties-node-content-form'
         );
         if (formProperties) formProperties.remove();
     }
@@ -1586,7 +1586,7 @@ export default class IdevicesEngine {
                 idevice.mode = 'export';
                 let ideviceNode = await this.createIdeviceInContent(
                     idevice,
-                    blockContent,
+                    blockContent
                 );
             });
         });
@@ -1778,7 +1778,7 @@ export default class IdevicesEngine {
         this.components.idevices = this.components.idevices.filter(
             (idevice, index, arr) => {
                 return idevice.id != id;
-            },
+            }
         );
     }
 
@@ -1793,7 +1793,7 @@ export default class IdevicesEngine {
         this.components.blocks = this.components.blocks.filter(
             (block, index, arr) => {
                 return block.id != id;
-            },
+            }
         );
     }
 
@@ -1823,7 +1823,7 @@ export default class IdevicesEngine {
                             eXeLearning.app.modals.confirm.show({
                                 title: _('Delete box'),
                                 body: _(
-                                    'The box is empty. Do you want to delete it?',
+                                    'The box is empty. Do you want to delete it?'
                                 ),
                                 confirmButtonText: _('Yes'),
                                 confirmExec: () => {
@@ -1974,7 +1974,7 @@ export default class IdevicesEngine {
         if (eXeNodeLinks.length > 0) {
             let pages = eXeLearning.app.project.structure.data;
             let buttonsPages = document.querySelectorAll(
-                'span.nav-element-text',
+                'span.nav-element-text'
             );
 
             eXeNodeLinks.forEach((link) => {

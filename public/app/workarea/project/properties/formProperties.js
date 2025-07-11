@@ -9,7 +9,7 @@ export default class FormProperties {
         this.propertiesCategoryKey = 'properties';
         this.cataloguingCategoryKey = 'cataloguing';
         this.nodeContent = document.querySelector(
-            '#main #workarea #node-content',
+            '#main #workarea #node-content'
         );
         // Add behaviour to body to hide helps dialogs
         this.addBehaviourBodyToHideHelpDialogs();
@@ -32,7 +32,7 @@ export default class FormProperties {
         // Focus first input text
         setTimeout(() => {
             this.focusTextInput(
-                this.nodeContent.querySelector('input[type="text"'),
+                this.nodeContent.querySelector('input[type="text"')
             );
         }, 500);
     }
@@ -48,7 +48,7 @@ export default class FormProperties {
         this.metadataPropertiesBase = Object.assign(
             {},
             this.properties.properties,
-            this.properties.cataloguing,
+            this.properties.cataloguing
         );
         // Check advanced mode
         if (
@@ -60,7 +60,7 @@ export default class FormProperties {
         } else {
             // - Get "always-visible" properties
             for (let [key, property] of Object.entries(
-                this.metadataPropertiesBase,
+                this.metadataPropertiesBase
             )) {
                 if (property.alwaysVisible)
                     this.metadataProperties[key] = property;
@@ -75,7 +75,7 @@ export default class FormProperties {
      */
     setBodyElement(bodyElement) {
         this.propertiesFormElement = this.nodeContent.querySelector(
-            '#properties-node-content-form',
+            '#properties-node-content-form'
         );
         if (this.propertiesFormElement) {
             this.propertiesFormElement.innerHTML = bodyElement.innerHTML;
@@ -85,7 +85,7 @@ export default class FormProperties {
         }
         // Select first category
         let firstCategory = this.nodeContent.querySelector(
-            '.exe-form-tabs a.exe-tab',
+            '.exe-form-tabs a.exe-tab'
         );
         if (firstCategory) firstCategory.click();
     }
@@ -164,7 +164,7 @@ export default class FormProperties {
                 dictSearchParentGroup[data.parent] = {};
                 let parentGroupElement = this.getGroupElement(
                     dictSearchParentGroup,
-                    table,
+                    table
                 );
                 if (parentGroupElement) {
                     parentGroupElement.append(groupElement);
@@ -295,7 +295,7 @@ export default class FormProperties {
                 key,
                 property,
                 groupElement,
-                table,
+                table
             );
             if (!propertyRow) continue;
             // If there is a group we put the row inside
@@ -307,13 +307,13 @@ export default class FormProperties {
                     groupChildren.forEach((groupChildrenElement) => {
                         if (
                             !groupChildrenElement.querySelector(
-                                '.property-row',
+                                '.property-row'
                             ) &&
                             !inserted
                         ) {
                             groupElement.insertBefore(
                                 propertyRow,
-                                groupChildrenElement,
+                                groupChildrenElement
                             );
                             inserted = true;
                         }
@@ -345,12 +345,12 @@ export default class FormProperties {
             let element;
             if (property.multipleId) {
                 let elementsMultiples = this.nodeContent.querySelectorAll(
-                    `.property-value[property="${property.multipleId}"]`,
+                    `.property-value[property="${property.multipleId}"]`
                 );
                 element = elementsMultiples[property.multipleIndex - 1];
             } else {
                 element = this.nodeContent.querySelector(
-                    `.property-value[property="${key}"]`,
+                    `.property-value[property="${key}"]`
                 );
             }
             if (!element) continue;
@@ -360,7 +360,7 @@ export default class FormProperties {
                     break;
                 case 'select':
                     let select = element.querySelector(
-                        `option[value="${property.value}"]`,
+                        `option[value="${property.value}"]`
                     );
                     if (select) select.setAttribute('selected', 'selected');
                     break;
@@ -406,7 +406,7 @@ export default class FormProperties {
             this.categories.forEach((categoryPar) => {
                 let categoryElement = this.makeCategoryTabElement(
                     categoryPar[0],
-                    categoryPar[1],
+                    categoryPar[1]
                 );
                 categoriesElement.append(categoryElement);
             });
@@ -531,13 +531,13 @@ export default class FormProperties {
         propertyRow.setAttribute('group', groupElement.id);
         propertyRow.setAttribute(
             'duplicate',
-            property.duplicate ? property.duplicate : false,
+            property.duplicate ? property.duplicate : false
         );
         // Multiple property classes
         if (property.multipleId) {
             propertyRow.classList.add('copied-row');
             let lastRowElement = groupElement.querySelector(
-                '.property-row:last-child',
+                '.property-row:last-child'
             );
             if (lastRowElement) {
                 if (
@@ -552,14 +552,14 @@ export default class FormProperties {
         // Label property
         let propertyTitle = this.makeRowElementLabel(
             propertyIdGenerated,
-            property,
+            property
         );
         if (property.multipleId) propertyTitle.classList.add('copied');
         // Value property
         let propertyValue = this.makeRowValueElement(
             propertyIdGenerated,
             propertyId,
-            property,
+            property
         );
         if (property.multipleId) propertyValue.classList.add('copied');
         // Help
@@ -567,7 +567,7 @@ export default class FormProperties {
         // Actions add/delete
         let actionsContainer = this.makeRowActionsElement(
             property,
-            propertyRow,
+            propertyRow
         );
         if (actionsContainer && property.multipleId)
             actionsContainer.setAttribute('original', false);
@@ -653,7 +653,7 @@ export default class FormProperties {
             id,
             name,
             property,
-            valueElement,
+            valueElement
         );
 
         return valueElement;
@@ -675,11 +675,11 @@ export default class FormProperties {
         valueElement.setAttribute('type', property.type);
         valueElement.setAttribute(
             'category',
-            property.category ? Object.keys(property.category)[0] : '',
+            property.category ? Object.keys(property.category)[0] : ''
         );
         valueElement.setAttribute(
             'group',
-            property.groups ? Object.keys(property.groups).pop() : '',
+            property.groups ? Object.keys(property.groups).pop() : ''
         );
         valueElement.setAttribute('data-type', property.type);
         // Value element class
@@ -712,7 +712,7 @@ export default class FormProperties {
                         break;
                 }
                 this.propertiesFormElement.querySelector(
-                    `#${property.onchange} input`,
+                    `#${property.onchange} input`
                 ).value = value;
             });
         }
@@ -758,7 +758,7 @@ export default class FormProperties {
             // Actions container
             actionsContainer = document.createElement('div');
             actionsContainer.classList.add(
-                'actions-duplicate-properties-container',
+                'actions-duplicate-properties-container'
             );
             actionsContainer.setAttribute('duplicate', property.duplicate);
             actionsContainer.setAttribute('original', 'true');
@@ -772,7 +772,7 @@ export default class FormProperties {
                 actionAdd,
                 property.duplicate,
                 property,
-                row,
+                row
             );
             actionsContainer.append(actionAdd);
             // Action delete
@@ -785,7 +785,7 @@ export default class FormProperties {
                 actionDelete,
                 property.duplicate,
                 property,
-                row,
+                row
             );
             actionsContainer.append(actionDelete);
         }
@@ -825,14 +825,14 @@ export default class FormProperties {
                         if (actionsContainer && prevElement) {
                             let showRemoveButton =
                                 prevElement.classList.contains(
-                                    'property-row',
+                                    'property-row'
                                 ) ||
                                 cloneRowElement.classList.contains(
-                                    'first-copied-row',
+                                    'first-copied-row'
                                 );
                             actionsContainer.setAttribute(
                                 'original',
-                                !showRemoveButton,
+                                !showRemoveButton
                             );
                         }
                     });
@@ -858,7 +858,7 @@ export default class FormProperties {
             let isOriginal =
                 button.parentNode.getAttribute('original') == 'true';
             let propertiesRows = container.querySelectorAll(
-                `.property-value[property="${propertyId}"]`,
+                `.property-value[property="${propertyId}"]`
             );
             let nPropertiesRows = propertiesRows ? propertiesRows.length : 0;
             if (nPropertiesRows > 1 && !isOriginal) {
@@ -919,7 +919,7 @@ export default class FormProperties {
                     let cloneChild = this.cloneRowElement(
                         child,
                         propertyBase,
-                        -1,
+                        -1
                     );
                     cloneRow.append(cloneChild);
                     child.remove();
@@ -960,7 +960,7 @@ export default class FormProperties {
         // Add clone attribute group
         childrenValue.setAttribute(
             'groupCopied',
-            Object.keys(propertyBase.groups).pop(),
+            Object.keys(propertyBase.groups).pop()
         );
         // Clear value
         childrenValue.value = '';
@@ -979,7 +979,7 @@ export default class FormProperties {
         });
         // Add events to action buttons
         let actionsContainer = cloneRow.querySelector(
-            '.actions-duplicate-properties-container',
+            '.actions-duplicate-properties-container'
         );
         if (actionsContainer) {
             let nDuplicate = actionsContainer.getAttribute('duplicate');
@@ -990,13 +990,13 @@ export default class FormProperties {
                 buttonAdd,
                 nDuplicate,
                 property,
-                cloneRow,
+                cloneRow
             );
             this.addEventClickToActionDeleteButton(
                 buttonDelete,
                 nDuplicate,
                 property,
-                cloneRow,
+                cloneRow
             );
         }
 
@@ -1038,7 +1038,7 @@ export default class FormProperties {
             // Save properties in database
             this.saveProperties(propertiesDict, false).then((response) => {
                 this.properties.project.app.locale.loadContentTranslationsStrings(
-                    propertiesDict.pp_lang,
+                    propertiesDict.pp_lang
                 );
                 // eXeLearning.app.modals.alert.show({
                 //     title: _('Project properties'),
@@ -1086,7 +1086,7 @@ export default class FormProperties {
                     property,
                     propertyKeyBase,
                     propertiesGroupNum,
-                    propertiesDict,
+                    propertiesDict
                 );
             } else {
                 // If the property is not a copy we send the id of the property as is
@@ -1111,7 +1111,7 @@ export default class FormProperties {
         property,
         propertyKeyBase,
         propertiesGroupNum,
-        propertiesDict,
+        propertiesDict
     ) {
         let propertyKeyPrefixGroup = propertyValue.getAttribute('group');
         let propertyKeyPrefixGroupCopied =
@@ -1129,7 +1129,7 @@ export default class FormProperties {
                     : '';
                 let groupSuffix = propertyKeyBase.replace(
                     propertyKeyPrefixGroup,
-                    '',
+                    ''
                 );
                 let propertyKeyPrototipe =
                     propertyKey + groupDiff + numStringSuffix + groupSuffix;
@@ -1189,7 +1189,7 @@ export default class FormProperties {
     async saveProperties(propertiesDict, inherit) {
         let response = await this.properties.apiSaveProperties(
             propertiesDict,
-            inherit,
+            inherit
         );
         return response;
     }
@@ -1323,7 +1323,7 @@ export default class FormProperties {
     insertAfter(referenceNode, newNode) {
         referenceNode.parentNode.insertBefore(
             newNode,
-            referenceNode.nextSibling,
+            referenceNode.nextSibling
         );
     }
 }

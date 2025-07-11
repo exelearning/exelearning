@@ -4,25 +4,25 @@ export default class NavbarFile {
         // Menu elements
         this.button = this.menu.navbar.querySelector('#dropdownHelp');
         this.assistantButton = this.menu.navbar.querySelector(
-            '#navbar-button-assistant',
+            '#navbar-button-assistant'
         );
         this.tutorialButton = this.menu.navbar.querySelector(
-            '#navbar-button-exe-tutorial',
+            '#navbar-button-exe-tutorial'
         );
         this.releaseNotesButton = this.menu.navbar.querySelector(
-            '#navbar-button-release-notes',
+            '#navbar-button-release-notes'
         );
         this.legalNotesButton = this.menu.navbar.querySelector(
-            '#navbar-button-legal-notes',
+            '#navbar-button-legal-notes'
         );
         this.exeWebButton = this.menu.navbar.querySelector(
-            '#navbar-button-exe-web',
+            '#navbar-button-exe-web'
         );
         this.reportBugButton = this.menu.navbar.querySelector(
-            '#navbar-button-report-bug',
+            '#navbar-button-report-bug'
         );
         this.aboutButton = this.menu.navbar.querySelector(
-            '#navbar-button-about-exe',
+            '#navbar-button-about-exe'
         );
     }
 

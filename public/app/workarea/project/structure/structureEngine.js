@@ -8,7 +8,7 @@ export default class structureEngine {
         this.dataGroupByParent = null;
         this.nodeSelected = null;
         this.nodeContainer = document.querySelector(
-            '#main > #workarea > #node-content',
+            '#main > #workarea > #node-content'
         );
         this.movingNode = false;
     }
@@ -40,7 +40,7 @@ export default class structureEngine {
         let odeSession = this.project.odeSession;
         let response = await this.project.app.api.getOdeStructure(
             odeVersion,
-            odeSession,
+            odeSession
         );
         let dataJson = response.structure ? response.structure : [];
         return dataJson;
@@ -204,7 +204,7 @@ export default class structureEngine {
                     processedData[searchedParent].children.push(node);
                     // Sort children
                     processedData[searchedParent].children.sort(
-                        this.compareNodesSort,
+                        this.compareNodesSort
                     );
                     // Add id to future check
                     parentsToCheck.push(node.id);
@@ -223,7 +223,7 @@ export default class structureEngine {
         let indexOrder = [0];
         this.setIndexToChildrenNodesRecursive(
             this.dataGroupByParent[mainParent].children,
-            indexOrder,
+            indexOrder
         );
     }
 
@@ -350,7 +350,7 @@ export default class structureEngine {
                     let parentNode = this.getNode(node.parent);
                     await node.apiUpdateParent(
                         parentNode.parent,
-                        parentNode.order + 1,
+                        parentNode.order + 1
                     );
                     moved = true;
                 }
@@ -360,7 +360,7 @@ export default class structureEngine {
                 if (prevSibling) {
                     await node.apiUpdateParent(
                         siblings[node.order - 2].id,
-                        siblings.length + 1,
+                        siblings.length + 1
                     );
                     moved = true;
                 }
@@ -371,7 +371,7 @@ export default class structureEngine {
             node.pageId,
             null,
             null,
-            'RELOAD_NAV_MAP',
+            'RELOAD_NAV_MAP'
         );
         // Check that isn't undo
         if (!isUndoMove) {
@@ -386,7 +386,7 @@ export default class structureEngine {
                 node.pageId,
                 node.pageId,
                 'MOVE_PAGE',
-                additionalData,
+                additionalData
             );
         }
         return moved;
@@ -416,7 +416,7 @@ export default class structureEngine {
             .querySelector(`[nav-id="${nodeMov.id}"]`)
             .getAttribute('order');
         let nodeMovElementParent = document.querySelector(
-            `[nav-id="${nodeMov.id}"]`,
+            `[nav-id="${nodeMov.id}"]`
         ).parentElement;
         let nodeMovBeforeElementId = 'root';
         if (nodeMovElementOrder != 'root' && nodeMov.parent !== 'root') {
@@ -451,7 +451,7 @@ export default class structureEngine {
             else {
                 await nodeMov.apiUpdateParent(
                     nodeBase.parent,
-                    nodeBase.order + 1,
+                    nodeBase.order + 1
                 );
             }
             eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
@@ -459,7 +459,7 @@ export default class structureEngine {
                 nodeBase.pageId,
                 null,
                 null,
-                'RELOAD_NAV_MAP',
+                'RELOAD_NAV_MAP'
             );
             if (!isUndoMove) {
                 // Send operation log action to bbdd
@@ -476,7 +476,7 @@ export default class structureEngine {
                     nodeBase.pageId,
                     nodeBase.pageId,
                     'MOVE_PAGE',
-                    additionalData,
+                    additionalData
                 );
             }
             // Reload data
@@ -551,7 +551,7 @@ export default class structureEngine {
         let cloneNodeData = await this.getNode(id).clone();
         let cloneNode = new StructureNode(
             this,
-            cloneNodeData.odeNavStructureSync,
+            cloneNodeData.odeNavStructureSync
         );
         this.data.push(cloneNode);
         return cloneNode;
@@ -767,7 +767,7 @@ export default class structureEngine {
             ancestors.push(node.parent);
             while (ancestors[ancestors.length - 1]) {
                 let lastAncestor = this.getNode(
-                    ancestors[ancestors.length - 1],
+                    ancestors[ancestors.length - 1]
                 );
                 ancestors.push(lastAncestor.parent);
             }
@@ -783,7 +783,7 @@ export default class structureEngine {
         this.nodesOrderByView = [];
         let pagesElements =
             this.menuStructureCompose.menuNavList.querySelectorAll(
-                '.nav-element',
+                '.nav-element'
             );
         pagesElements.forEach((pageElement) => {
             let pageNode = this.getNode(pageElement.getAttribute('nav-id'));
@@ -815,7 +815,7 @@ export default class structureEngine {
      */
     getNodeElement(id) {
         return this.menuStructureCompose.menuNav.querySelector(
-            `.nav-element[nav-id="${id}"]`,
+            `.nav-element[nav-id="${id}"]`
         );
     }
 
@@ -857,7 +857,7 @@ export default class structureEngine {
     getSelectedNode() {
         if (this.menuStructureBehaviour.nodeSelected) {
             return this.getNode(
-                this.menuStructureBehaviour.nodeSelected.getAttribute('nav-id'),
+                this.menuStructureBehaviour.nodeSelected.getAttribute('nav-id')
             );
         } else {
             return false;

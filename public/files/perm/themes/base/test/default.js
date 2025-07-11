@@ -47,7 +47,7 @@ var myTheme = {
             } else {
                 $('body').toggleClass('siteNav-off');
                 myTheme.params(
-                    $('body').hasClass('siteNav-off') ? 'add' : 'remove',
+                    $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
         });

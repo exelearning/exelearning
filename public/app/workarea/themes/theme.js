@@ -103,13 +103,13 @@ export default class Theme {
         if (eXeLearning.app.project.structure.nodeSelected) {
             if (
                 eXeLearning.app.project.structure.nodeSelected.getAttribute(
-                    'nav-id',
+                    'nav-id'
                 ) != 'root' &&
                 isSync == false
             ) {
                 await eXeLearning.app.project.idevices.cleanNodeAndLoadPage(
                     true,
-                    null,
+                    null
                 );
             }
         }
@@ -126,7 +126,7 @@ export default class Theme {
         for (let i = 0; i < this.cssFiles.length; i++) {
             let pathCss = this.path + this.cssFiles[i];
             await this.loadStyleByInsertingIt(
-                this.getResourceServicePath(pathCss),
+                this.getResourceServicePath(pathCss)
             );
         }
     }
@@ -165,7 +165,7 @@ export default class Theme {
         nodePageElement.classList.add(this.templatePageContainerClass);
         nodePageElement.innerHTML = this.templatePage.replace(
             '{page-content}',
-            `<div class='${this.templatePageClass}'></div>`,
+            `<div class='${this.templatePageClass}'></div>`
         );
         return nodePageElement;
     }

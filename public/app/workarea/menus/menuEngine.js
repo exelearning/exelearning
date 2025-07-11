@@ -21,19 +21,19 @@ export default class MenuEngine {
         this.headBottom = document.querySelector('#main > #head > .bottom');
         this.workarea = document.querySelector('#main > #workarea');
         this.nodeContainer = document.querySelector(
-            '#main > #workarea > #node-content-container',
+            '#main > #workarea > #node-content-container'
         );
         this.menus = document.querySelectorAll('#main > #workarea > .menu');
         this.menuLabels = document.querySelectorAll(
-            '#main > #workarea > .menu > .menu_content > .label',
+            '#main > #workarea > .menu > .menu_content > .label'
         );
         this.menuNav = document.querySelector('#main > #workarea > #menu_nav');
         this.menuIdevices = document.querySelector(
-            '#main > #workarea > #menu_idevices',
+            '#main > #workarea > #menu_idevices'
         );
         this.buttonMenuHeadNav = document.querySelector('#button_menu_nav');
         this.buttonMenuHeadIdevices = document.querySelector(
-            '#button_menu_idevices',
+            '#button_menu_idevices'
         );
         this.sideMenusIds = [this.menuNav.id, this.menuIdevices.id];
         this.relationSizeMenus = {};
@@ -295,11 +295,11 @@ export default class MenuEngine {
         let actualWidth = parent.style.width.slice(0, -2);
         let maxHeight = Math.max(
             this.getWorkareaHeight() / 2,
-            this.menuHeightBaseTop,
+            this.menuHeightBaseTop
         );
         let maxWidth = Math.max(
             this.getWorkareaWidth() / 2,
-            this.menuWidthBaseSide,
+            this.menuWidthBaseSide
         );
         parent.style.maxHeight = maxHeight + 'px';
         parent.style.maxWidth = maxWidth + 'px';
@@ -368,11 +368,11 @@ export default class MenuEngine {
     setMenuPositionAttribute(element) {
         let vw = Math.max(
             document.documentElement.clientWidth || 0,
-            window.innerWidth || 0,
+            window.innerWidth || 0
         );
         let vh = Math.max(
             document.documentElement.clientHeight || 0,
-            window.innerHeight || 0,
+            window.innerHeight || 0
         );
         let rect = element.getBoundingClientRect();
         let newPosAttribute = 'free';
@@ -475,7 +475,7 @@ export default class MenuEngine {
                                 workareaHeight -
                                     (this.menuHeightBaseTop +
                                         this.separationHeight * 3),
-                                this.menuHeightBaseTop,
+                                this.menuHeightBaseTop
                             ) + 'px';
                     }
                 } else if (
@@ -523,7 +523,7 @@ export default class MenuEngine {
                             workareaWidth -
                                 (this.menuWidthBaseSide +
                                     this.separationWidth * 2),
-                            this.menuWidthBaseSide,
+                            this.menuWidthBaseSide
                         ) + 'px';
                 } else if (
                     otherMenu.getAttribute('pos') == 'left' ||
