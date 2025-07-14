@@ -1,0 +1,126 @@
+#caseStudyForm .idevice-description {
+    border-bottom: 1px solid #a7a7a7;
+    margin-bottom: 15px;
+}
+
+#caseStudyForm .exe-field {
+    font-weight: bold;
+    padding: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+#caseStudyForm .exe-field label.form-label {
+    color: rgb(0, 0, 0);
+}
+
+#caseStudyForm .exe-field label.form-label {
+    color: rgb(0, 0, 0);
+}
+
+#caseStudyForm .exe-field.form-check {
+    margin-top: 10px;
+    margin-left: 40px;
+}
+
+#caseStudyForm .exe-range-field label {
+    width: 100%;
+}
+
+#caseStudyForm .exe-range-field input {
+    max-width: 450px;
+}
+
+#caseStudyForm .exe-range-field span.value-number {
+    position: relative;
+    top: -8px;
+    margin-left: 5px;
+}
+
+#caseStudyForm .exe-datalist-field input {
+    max-width: 450px;
+}
+
+#caseStudyForm .exe-datalist-field input {
+    max-width: 450px;
+}
+
+#caseStudyForm .form-floating input {
+    max-width: 450px;
+    height: 30px;
+}
+
+#caseStudyForm .idevice-element-in-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-left: auto;
+}
+
+#caseStudyForm fieldset .exe-text-legend {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: auto;
+}
+
+#caseStudyForm legend a {
+    text-decoration: none !important;
+    color: var(--dark-exe-color);
+    font-weight: bold;
+    transition: var(--tr-02);
+    width: 100%;
+}
+
+#caseStudyForm .exe-button {
+    height: 16px;
+    font-size: 14px;
+    color: var(--dark-exe-color);
+    margin-left: var(--margin-m);
+    border: 2px solid var(--verde-cl);
+    border-radius: 5px;
+    padding: 2px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: auto;
+    margin-inline: 5px;
+    cursor: pointer;
+}
+
+#caseStudyForm .exe-button:hover {
+    color: var(--light-exe-color);
+    background-color: var(--dark-exe-color);
+    border-color: var(--dark-exe-color);
+}
+
+#caseStudyForm .exe-button.exe-button-remove {
+    position: absolute;
+    top: 0px;
+    right: -26px;
+    height: 40px;
+}
+
+#caseStudyForm .exe-button.exe-button-remove.exe-button-remove-fs-open {
+    right: -22px;
+}
+
+#caseStudyForm .exe-button.exe-button-remove:hover {
+    color: var(--light-exe-color);
+    background-color: var(--remove);
+    border-color: var(--remove);
+}
+
+#caseStudyForm .exe-parent {
+    position: relative;
+}
+
+#caseStudyForm .grid-container {
+    display: grid;
+    column-gap: 20px;
+    grid-template-columns: repeat(2, minmax(200px, 1fr));
+}
+
+#caseStudyForm .grid-container input {
+    width: calc(100% - var(--margin-l));
+}
