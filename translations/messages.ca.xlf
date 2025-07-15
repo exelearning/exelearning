@@ -931,7 +931,7 @@
       </trans-unit>
       <trans-unit id="8FwYgt8" resname="Unsaved project">
         <source>Unsaved project</source>
-        <target>~Desat fa un dia#Desat fa un dia</target>
+        <target>~Projecte no desat</target>
       </trans-unit>
       <trans-unit id="4Ys2ifD" resname="Saved one day ago">
         <source>Saved one day ago</source>
