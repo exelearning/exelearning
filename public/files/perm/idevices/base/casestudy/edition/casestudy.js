@@ -71,7 +71,7 @@ var $exeDevice = {
                         <textarea id="textStoryTextarea" class="form-control exe-html-editor" rows="5" aria-hidden="true"></textarea>
                     </div>
                 </fieldset>
-                <fieldset id="textActivities" class="exe-advanced exe-fieldset exe-fieldset-closed mb-4  rounded">
+                <fieldset id="textActivities" class="exe-advanced exe-fieldset exe-fieldset-open mb-4 rounded">
                     <legend class="exe-text-legend h6 mb-3">
                         <a href="#" class="text-decoration-none">${_("Activities")}</a>
                     </legend>
@@ -168,11 +168,14 @@ var $exeDevice = {
         $('#cseActivities').on('click', '.CSE-DeleteActivity', function () {
             const $activities = $('#cseActivities .CSE-Activity');
             if ($activities.length > 1) {
-                $(this).closest('.CSE-Activity').remove();
+                eXe.app.confirm(_("Attention"), _('Do you want to delete this activity?'), () => {
+                    $(this).closest('.CSE-Activity').remove();
+                });
             } else {
                 eXe.app.alert(_('The case study must have at least one activity'));
             }
         });
+
     },
     loadPreviousValues: function () {
         const data = this.idevicePreviousData;
