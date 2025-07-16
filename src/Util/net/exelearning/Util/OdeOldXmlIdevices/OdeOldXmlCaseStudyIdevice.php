@@ -7,6 +7,7 @@ use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Util\net\exelearning\Util\UrlUtil;
 use App\Util\net\exelearning\Util\Util;
+use Symfony\Component\Translation\Translator;
 
 /**
  * OdeOldXmlCaseStudyIdevice.
@@ -22,9 +23,11 @@ class OdeOldXmlCaseStudyIdevice
         'textInfoParticipantsTextInput' => 'Grouping:',
         'history' => '',
         'activities' => [],
+        'title' => ''
     ];
 
-    public static function oldElpCaseStudyStructure($odeSessionId, $odePageId, $caseStudyNodes, $generatedIds, $xpathNamespace)
+
+     public static function oldElpCaseStudyStructure($odeSessionId, $odePageId, $caseStudyNodes, $generatedIds, $xpathNamespace)
     {
         $result['odeComponentsSync'] = [];
         $result['srcRoutes'] = [];
@@ -128,7 +131,8 @@ class OdeOldXmlCaseStudyIdevice
                 "f:dictionary/f:string[@value='_title']"
                 .'/following-sibling::f:unicode[1]/@value'
             );
-            $subPag->setBlockName(!empty($titleNode) ? (string) $titleNode[0] : '');
+            $title = !empty($titleNode) ? (string) $titleNode[0] : '';
+            $subPag->setBlockName($title);
             $subPag->setOdePagStructureSyncOrder(1);
             $subPag->loadOdePagStructureSyncPropertiesFromConfig();
 
@@ -144,6 +148,8 @@ class OdeOldXmlCaseStudyIdevice
             $jsonProps['ideviceId'] = $odeIdeviceId;
             $jsonProps['history'] = $history;
             $jsonProps['activities'] = $activities;
+            $jsonProps['title'] = $title;
+
 
             $comp->setJsonProperties(json_encode($jsonProps));
             $comp->loadOdeComponentsSyncPropertiesFromConfig();

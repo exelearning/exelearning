@@ -199,6 +199,11 @@ var $exeDevice = {
             $container.append($activity);
         });
 
+        const $title = $('#' + $exeDevice.id).closest('article').find('header h1.box-title');
+        if (data.title && data.title == 'Case Study' && $title.text() == 'Case Study') {
+            $title.text(_('Case study'))
+        }
+        
         $exeTinyMCE.init("multiple-visible", ".exe-html-editor");
     },
 

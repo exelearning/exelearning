@@ -27,6 +27,7 @@ var $casestudy = {
     msgs: {
         msgNoImage: 'Sin imagen',
         msgFeedback: 'Mostrar retroalimentación',
+        msgCaseStudy: 'Caso práctico',
     },
 
     init: function () {
@@ -40,6 +41,10 @@ var $casestudy = {
 
     renderBehaviour: function (data, accesibility, ideviceId) {
         data.msgs = typeof data.msgs == "undefined" ? $casestudy.msgs : data.msgs
+        const $title = $('#' + data.ideviceId).closest('article').find('header h1.box-title');
+        if (data.title && data.title == 'Case Study' && $title.text() == 'Case Study') {
+            $title.text(data.msgs.msgCaseStudy)
+        }
         this.addEvents(data);
     },
 
