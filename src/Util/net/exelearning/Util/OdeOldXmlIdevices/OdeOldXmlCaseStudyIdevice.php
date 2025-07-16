@@ -7,7 +7,6 @@ use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Util\net\exelearning\Util\UrlUtil;
 use App\Util\net\exelearning\Util\Util;
-use Symfony\Component\Translation\Translator;
 
 /**
  * OdeOldXmlCaseStudyIdevice.
@@ -23,11 +22,10 @@ class OdeOldXmlCaseStudyIdevice
         'textInfoParticipantsTextInput' => 'Grouping:',
         'history' => '',
         'activities' => [],
-        'title' => ''
+        'title' => '',
     ];
 
-
-     public static function oldElpCaseStudyStructure($odeSessionId, $odePageId, $caseStudyNodes, $generatedIds, $xpathNamespace)
+    public static function oldElpCaseStudyStructure($odeSessionId, $odePageId, $caseStudyNodes, $generatedIds, $xpathNamespace)
     {
         $result['odeComponentsSync'] = [];
         $result['srcRoutes'] = [];
@@ -149,7 +147,6 @@ class OdeOldXmlCaseStudyIdevice
             $jsonProps['history'] = $history;
             $jsonProps['activities'] = $activities;
             $jsonProps['title'] = $title;
-
 
             $comp->setJsonProperties(json_encode($jsonProps));
             $comp->loadOdeComponentsSyncPropertiesFromConfig();
