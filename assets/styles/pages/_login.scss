@@ -1,0 +1,50 @@
+body.login-page {
+    background-image: url('../../images/login_background.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    overflow: auto;
+    #login-tpl {
+        .card {
+            border-radius: 8px
+        }
+        .logo {
+            max-height: 35px;
+        }
+        .lead {
+            font-size: 1.8em
+        }
+        .btn-dark {
+            background-color: var(--corporative-color);
+            border: none;
+            font-size: 15px;
+        }
+        #exe-version {
+            position: absolute;
+            bottom: -35px;
+            right: -35px;
+        }
+        .form-floating {
+            > .form-control {
+                border-radius: var(--radius);
+                border: 1px solid var(--input-borders);
+                padding: 8px 12px;
+                background-color: #fff;
+                font-size: 16px;
+                &:focus {
+                    box-shadow: 0 0 0 0.1rem rgba(13,110,253, 0.2);
+                    ~ label {
+                        padding-top: 10px;
+                        font-size: 13px;
+                    }
+                }
+                &:not(:placeholder-shown) {
+                    ~ label {
+                        opacity: 0;
+                        visibility: hidden;
+                    }
+                }
+            }
+        }
+    }
+}

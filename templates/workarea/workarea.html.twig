@@ -55,28 +55,44 @@
     <script class="exe" type="module" src="{{ asset('app/app.js') }}"></script>
 {% endblock %}
 
+{% block id %}main{% endblock %}
 {% block body %}
-    <div id="main">
-        <div id="load-screen-main" class="load-screen loading"><span>eXeLearning {{ constant('App\\Constants::APP_VERSION' )}}</span></div>
-        <div id="head">
-            {% include 'workarea/menus/menuHeadTop.html.twig' %}
-            {% include 'workarea/menus/menuHeadBottom.html.twig' %}
-        </div>
-        <div id="workarea">
-            {% include 'workarea/menus/menuStructure.html.twig' %}
-            {% include 'workarea/menus/menuIdevices.html.twig' %}
-            <div id="node-content-container" class="exe-content js">
-                <div id="load-screen-node-content" class="load-screen hide"></div>
-                <div id="node-content" class="content" drop='["idevice","box"]'>
-                    <header>
-                        <div id="header-node-content" class="header"></div>
-                        <h1 id="page-title-node-content" class="page-title"></h1>
-                    </header>
+    <div id="load-screen-main" class="load-screen loading position-fixed top-0 start-0 w-100 h-100 align-items-center justify-content-center bg-white" style="z-index: 1050;">
+        <span>eXeLearning {{ constant('App\\Constants::APP_VERSION') }}</span>
+    </div>
+    <div id="workarea" class="container-fluid d-flex flex-nowrap">
+        <aside class="asideleft bg-white col-md-4 col-lg-3 bg-light vh-100">
+            <div class="content-info">
+                <div id="exe-logo">
+                    <img src="style/workarea/images/exelearning.png" class="exe-logo content" alt="eXeLearning">
+                </div>
+                <div id="exe-title">
+                    <h2 class="exe-title content">...</h2>
                 </div>
             </div>
-        </div>
+            <div class="accordion" id="menus_content">
+                {% include 'workarea/menus/menuStructure.html.twig' %}
+                {% include 'workarea/menus/menuIdevices.html.twig' %}
+            </div>
+        </aside>
+        <main>
+            <header id="head">
+                <nav class="navbar bg-transparent">
+                    {% include 'workarea/menus/menuHeadTop.html.twig' %}
+                    {% include 'workarea/menus/menuHeadBottom.html.twig' %}
+                </nav>
+            </header>
+            <section id="node-content-container" class="exe-content js flex-grow-1 bg-light d-flex flex-column">
+                <div id="load-screen-node-content" class="load-screen hide"></div>
+                <div id="node-content" class="content" drop='["idevice","box"]'>
+                    <div>
+                        <div id="header-node-content" class="header"></div>
+                        <h1 id="page-title-node-content" class="page-title"></h1>
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
-
     {# Modals #}
     <div class="modals-container">
         {% include 'workarea/modals/generic/modalAlert.html.twig' %}

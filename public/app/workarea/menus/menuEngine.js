@@ -15,21 +15,21 @@ export default class MenuEngine {
         this.zIndexMenuDrag = 999;
         this.menuClassLong = 'long';
         this.menuClassThick = 'thick';
-        this.main = document.querySelector('body > #main');
-        this.head = document.querySelector('#main > #head');
-        this.headTop = document.querySelector('#main > #head > .top');
-        this.headBottom = document.querySelector('#main > #head > .bottom');
-        this.workarea = document.querySelector('#main > #workarea');
+        this.main = document.querySelector('body#main');
+        this.head = document.querySelector('#main #head');
+        this.headTop = document.querySelector('#main #head .top');
+        this.headBottom = document.querySelector('#main #head .bottom');
+        this.workarea = document.querySelector('#main #workarea');
         this.nodeContainer = document.querySelector(
-            '#main > #workarea > #node-content-container'
+            '#main #workarea #node-content-container'
         );
-        this.menus = document.querySelectorAll('#main > #workarea > .menu');
+        this.menus = document.querySelectorAll('#main #workarea .menu');
         this.menuLabels = document.querySelectorAll(
-            '#main > #workarea > .menu > .menu_content > .label'
+            '#main #workarea .menu .menu_content .label'
         );
-        this.menuNav = document.querySelector('#main > #workarea > #menu_nav');
+        this.menuNav = document.querySelector('#main #workarea #menu_nav');
         this.menuIdevices = document.querySelector(
-            '#main > #workarea > #menu_idevices'
+            '#main #workarea #menu_idevices'
         );
         this.buttonMenuHeadNav = document.querySelector('#button_menu_nav');
         this.buttonMenuHeadIdevices = document.querySelector(
@@ -46,12 +46,12 @@ export default class MenuEngine {
      *
      */
     behaviour() {
-        this.addEventsHeadButtonMenus();
-        this.interactMenus();
+        //this.addEventsHeadButtonMenus();
+        //this.interactMenus();
         this.addButtonsToMenuLabels();
-        this.addEventResize();
+        //this.addEventResize();
         this.setDefaultZindex();
-        this.addaptPosAndSizes();
+        //this.addaptPosAndSizes();
     }
 
     /**
@@ -254,11 +254,11 @@ export default class MenuEngine {
             }
         }
         // Addapt menus max/min sizes
-        this.addaptMenusSizes(false);
+        //this.addaptMenusSizes(false);
         // Adapt menus position top/left
-        this.addaptMenusPosition();
+        //this.addaptMenusPosition();
         // Addapt node container
-        this.addaptNodeContainer();
+        //this.addaptNodeContainer();
         this.setClassRelationMenu();
     }
 
@@ -345,9 +345,9 @@ export default class MenuEngine {
         this.nodeContainer.setAttribute('dragging-pos', '');
         if (parent.getAttribute('pos') == 'free') {
             // Adapt size of menus and node container
-            this.addaptMenusPosition();
-            this.addaptMenusSizes();
-            this.addaptNodeContainer();
+            //this.addaptMenusPosition();
+            //this.addaptMenusSizes();
+            //this.addaptNodeContainer();
             parent.style.minHeight = this.menuHeightBaseTop + 'px';
             parent.style.minWidth = this.menuWidthBaseSide + 'px';
             parent.style.maxHeight = '';
@@ -391,9 +391,9 @@ export default class MenuEngine {
      *
      */
     addaptMenus() {
-        this.addaptMenusSizesByBase();
-        this.addaptMenusSizes();
-        this.addaptMenusPosition();
+        //this.addaptMenusSizesByBase();
+        //this.addaptMenusSizes();
+        //this.addaptMenusPosition();
     }
 
     addaptMenusSizesByBase() {
@@ -693,8 +693,8 @@ export default class MenuEngine {
      *
      */
     addaptPosAndSizes() {
-        this.addaptMenus();
-        this.addaptNodeContainer();
+        //this.addaptMenus();
+        //this.addaptNodeContainer();
     }
 
     /**
@@ -759,13 +759,13 @@ export default class MenuEngine {
             menu.classList.remove('hidden');
             menu.classList.remove('minimized');
             this.resetMenu(menu, 'left');
-            this.addaptMenus();
-            this.addaptNodeContainer();
+            //this.addaptMenus();
+            //this.addaptNodeContainer();
         } else {
             menu.classList.add('hidden');
             this.resetMenu(menu, 'free');
         }
-        this.addaptPosAndSizes();
+        //this.addaptPosAndSizes();
     }
 
     /**
@@ -841,7 +841,7 @@ export default class MenuEngine {
      */
     addButtonsToMenuLabels() {
         this.addButtonsMinToMenuLabels();
-        this.addButtonsCloseToMenuLabels();
+        //this.addButtonsCloseToMenuLabels();
     }
 
     /**
@@ -884,14 +884,14 @@ export default class MenuEngine {
                 }
             }
             // Addapt menus max/min sizes
-            this.addaptMenusSizes(false);
+            //this.addaptMenusSizes(false);
             // Remove max height of other menu
             otherMenu.style.maxHeight = '';
             menu.style.maxHeight = '';
             // Adapt menus position top/left
-            this.addaptMenusPosition();
+            //this.addaptMenusPosition();
             // Addapt node container
-            this.addaptNodeContainer();
+            //this.addaptNodeContainer();
         }
     }
 

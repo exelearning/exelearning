@@ -1,0 +1,8 @@
+services:
+  scss-watcher:
+    image: node:20-alpine
+    container_name: scss-watcher
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -c "npm install sass && npx sass --watch assets/styles/main.scss:public/style/workarea/main.css"

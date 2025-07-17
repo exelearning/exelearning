@@ -1,0 +1,45 @@
+.asideleft {
+    padding: 20px;
+    background: white;
+    box-shadow: 0 0 3px 0 rgba(0, 0, 0, 0.20);
+    transition:
+            width var(--sidebar),
+            padding var(--sidebar);
+    width: 25%;
+    max-width: 350px;
+    max-height: 100vh;
+    overflow: auto;
+    .content-info,
+    #exe-logo,
+    #exe-title,
+    #menu_nav,
+    #menu_idevices {
+        transition: opacity var(--sidebar), visibility var(--sidebar);
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+    .main-menu {
+        transition: width var(--sidebar);
+        width: 100%;
+    }
+    .content-info {
+        margin-bottom: 20px;
+        #exe-logo {
+            margin-bottom: 16px;
+            img {
+                height: 50px;
+                width: auto;
+            }
+        }
+        #exe-title {
+            h2 {
+                font-size: 16px;
+                font-weight: 600;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+    }
+}

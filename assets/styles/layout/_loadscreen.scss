@@ -1,0 +1,58 @@
+#load-screen-main {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 100vw;
+    z-index: 99999;
+    opacity: 1;
+    background-color: #fff;
+    background-image: url(images/exelearning.png);
+    background-size: 200px;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: calc(50vw - 100px) 25vh;
+    &.expired {
+        padding: 0 40px;
+
+        .alert {
+            text-align: center;
+            max-width: 700px;
+            margin: calc(25vh + 205px) auto 0 auto;
+        }
+    }
+    &.hide {
+        display: none;
+    }
+    &.hiding {
+        opacity: 0;
+        transition: var(--tr-04);
+    }
+    &.loading {
+        span {
+            display: block;
+            text-align: center;
+            position: absolute;
+            left: 50%;
+            width: 360px;
+            margin-left: -180px;
+            top: calc(25vh + 205px);
+            opacity: .8;
+        }
+        &:after {
+            content: "";
+            width: 40px;
+            height: 40px;
+            background-image: url(images/load-spinner.svg);
+            background-size: cover;
+            display: block;
+            position: absolute;
+            left: calc(50vw - 20px);
+            top: calc(25vh + 250px);
+        }
+    }
+    span {
+        display: none;
+        white-space: nowrap;
+    }
+}

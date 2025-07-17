@@ -1,14 +1,16 @@
-<div id="menu_nav" class="menu long" size="long" pos="left" iddrag="menu">
-    <div id="menu_nav_content" class="menu_content">
-        <div id="label_menu_nav" class="label title-label showmin">
-            <div class="exe-icon" aria-hidden="true">vertical_split</div>
-            <h2>{{ "Structure" | trans }}</h2>
-        </div>
+<div id="menu_nav" class="menu long accordion-item" size="long" pos="left" iddrag="menu">
+    <h2 class="accordion-header" id="menu_nav_header">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#menu_nav_content" aria-expanded="true" aria-controls="menu_nav_content">
+            {{ "Structure" | trans }}
+            <button class="button_nav_action action_add" title="{{ "New page" | trans }}">
+                <span class="exe-icon" aria-hidden="true">add</span><span class="visually-hidden">{{ "New page" | trans }}</span>
+            </button>
+        </button>
+    </h2>
+    <div id="menu_nav_content" class="menu_content accordion-collapse collapse show" aria-labelledby="menu_nav_header">
         <div id="nav_actions">
             <div class="buttons_action_container_left">
-                <button class="button_nav_action action_add" title="{{ "New page" | trans }}">
-                    <span class="exe-icon" aria-hidden="true">add</span><span class="visually-hidden">{{ "New page" | trans }}</span>
-                </button>
+
                 <button class="button_nav_action action_properties" title="{{ "Page properties" | trans }}">
                     <span class="exe-icon" aria-hidden="true">settings</span><span class="visually-hidden">{{ "Page properties" | trans }}</span>
                 </button>

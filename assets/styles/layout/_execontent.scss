@@ -1,0 +1,215 @@
+.exe-content {
+    padding: 20px;
+    .box {
+        border-radius: var(--radius);
+        opacity: 1;
+        transition: var(--tr-04);
+        min-height: 40px !important;
+        &.loading {
+            opacity: 0;
+        }
+        input {
+            &.box-title {
+                text-align: left;
+                font-weight: bold;
+                font-size: var(--h2-fs);
+                padding-left: var(--margin-s);
+            }
+        }
+    }
+
+    .box[mode='export'] {
+        &:hover {
+            box-shadow: var(--menu-shadow);
+        }
+        .box-head {
+            cursor: move;
+        }
+    }
+    .box[mode="edition"] {
+        .box_actions,
+        .box-toggle {
+            visibility: hidden;
+        }
+    }
+    .box.dragging {
+        border: 0;
+        transform: scale(.95);
+        opacity: 0.3;
+        transition: none;
+        height: 10px;
+        min-height: 10px;
+    }
+    .box-head {
+        display: flex;
+        justify-content: left;
+        align-items: center;
+        margin-bottom: var(--margin-m);
+        max-width: 100%;
+        > {
+            .exe-icon.box-icon {
+                color: var(--dark-exe-color);
+            }
+
+            h3 {
+                min-height: 24px;
+            }
+
+            .exe-icon.box-icon:empty {
+                min-width: 20px;
+            }
+
+            h3:empty {
+                width: 200px;
+                min-height: 21px;
+                margin-bottom: 3px;
+                border-radius: var(--radius);
+            }
+        }
+
+        :is(.box-icon, .exe-icon) {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .exe-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 30px;
+            border: 0;
+            background: none;
+            font-family: var(--icons-ff);
+            img {
+                width: auto;
+                height: 30px;
+            }
+            &.box-icon {
+                &:hover {
+                    img {
+                        background: none;
+                    }
+                }
+            }
+            &:not(.box-icon):hover {
+                background-color: var(--dark-exe-color);
+                color: white;
+                transition: var(--tr-02);
+            }
+            &:hover {
+                color: var(--dark-exe-color-text);
+                transition: var(--tr-02);
+                img {
+                    background-color: var(--dragging-exe-color);
+                    border-radius: var(--radius);
+                    transition: var(--tr-02);
+                }
+            }
+        }
+        .box_actions.idevice-element-in-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-left: auto;
+
+            .exe-icon {
+                border: 1px solid var(--dark-exe-color);
+            }
+        }
+        .box-title:empty {
+            min-width: 50%;
+            min-height: 24px;
+        }
+        &.dragging {
+            margin: 0 var(--margin-m);
+            margin-top: var(--margin-din-l);
+            margin-bottom: 5px;
+            border-radius: var(--radius);
+            border: 1px solid var(--dark-exe-color);
+            opacity: 0.8;
+            transition: none !important;
+        }
+        &.box-head {
+            .dragging-start {
+                border-radius: var(--radius);
+                border: 1px solid var(--dark-exe-color);
+                background-color: var(--dark-exe-color-04);
+                opacity: 0.8;
+                transition: none !important;
+            }
+        }
+        &.dragging {
+            &.out {
+                opacity: 0.3;
+            }
+            &.dragging-start {
+                opacity: 0.5 !important;
+            }
+            .box_actions,
+            .box-toggle {
+                opacity: 0;
+            }
+        }
+        &.dragging-start {
+            .box_actions,
+            .box-toggle {
+                opacity: 0;
+            }
+        }
+        .box-icon {
+            &:hover {
+                cursor: pointer;
+                .box-icon-value[type="img"] {
+                    padding: 2px;
+                }
+            }
+            &.exe-no-icon {
+                color: var(--icon-bg-gray);
+                opacity: 0.5;
+            }
+            &:not(.exe-no-icon) {
+                .box-icon-value {
+                    background-repeat: no-repeat;
+                    background-size: contain;
+                }
+            }
+            .box-icon-value[type="img"] {
+                transition: padding 0.1s ease-in;
+                padding: 0;
+            }
+        }
+        .button-remove-box {
+            .exe-icon {
+                &:hover {
+                    background-color: var(--remove);
+                    border: 1px solid var(--remove);
+                }
+            }
+        }
+        h3 {
+            &.box-title {
+                text-align: left;
+                font-weight: bold;
+                font-size: var(--h2-fs);
+                padding: var(--margin-m);
+                position: relative;
+            }
+            &.box-title {
+                &:hover {
+                    cursor: pointer;
+                }
+            }
+        }
+    }
+
+    .hidden-idevices .box-head {
+        margin-bottom: 0;
+        border-bottom: 0;
+    }
+    .exe-actions-menu button {
+        .auto-icon {
+            color: #666;
+            font-size: var(--h4-fs);
+        }
+    }
+}

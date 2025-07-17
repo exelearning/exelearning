@@ -17,7 +17,7 @@
         {% endblock %}
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
-    <body>
+    <body class="{% block class %}{% endblock %}" id="{% block id %}{% endblock %}">
         {% block body %}{% endblock %}
         <script src="{{ asset('app/workarea/custom.js') }}"></script>
     </body>

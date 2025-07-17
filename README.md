@@ -86,6 +86,12 @@ This will start all services and make the app available at `http://localhost:808
 
 More development tools, options, and real-time collaboration info are documented in the `doc/` folder.
 
+In development mode, a SCSS watcher is implemented which compiles any style automatically. If you want to avoid this behaviour and start the project in development mode without this watcher, the command to execute is the following:
+
+```bash
+docker compose --no-override up
+```
+
 ## Project Structure
 
 The application follows the standard Symfony project structure, with some specific folders for managing iDevices and educational resources.
