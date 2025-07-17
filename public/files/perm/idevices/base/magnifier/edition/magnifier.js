@@ -162,7 +162,7 @@ var $exeDevice = {
     loadImageWithFallback: function (data) {
         $('#mnfPreviewImage').off('error')
             .on('error', function () {
-                $(this).off('error')    // evita bucles si la fallback falla también
+                $(this).off('error')
                     .attr('src', $exeDevice.defaultImage);
                 data.isDefaultImage = "0"
                 $('#mnfFileInput').val('');
@@ -230,9 +230,17 @@ var $exeDevice = {
             html = tinyMCE.get('instructions').getContent();
         }
 
-        html = html.replace(/`/g, '\\`');
+        function escapeForTemplateLiteral(str) {
+            return str
+                .replace(/\\/g, '\\\\')
+                .replace(/`/g, '\\`')
+                .replace(/\$\{/g, '\\${')
+                .replace(/(\r?\n)/g, '\\n');
+        }
 
-        const textTextarea = `\n${html}\n`;
+        const escapedHtml = escapeForTemplateLiteral(html);
+        const textTextarea = `${escapedHtml}`;
+
         return {
             id,
             typeGame: 'magnifier',
@@ -248,7 +256,6 @@ var $exeDevice = {
             glassSize,
             ideviceId: id,
         };
-
-
     },
+
 };
