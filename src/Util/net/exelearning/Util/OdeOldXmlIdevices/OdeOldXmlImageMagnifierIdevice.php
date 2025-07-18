@@ -135,6 +135,15 @@ class OdeOldXmlImageMagnifierIdevice
                 $lupaGlobals[$key] = isset($node[0]) ? (string) $node[0]['value'] : '';
             }
 
+            // Extraer el valor de 'float' del XML
+            $floatValue = '';
+            $floatNodes = $galleryImageNode->xpath(
+                "f:dictionary/f:string[@value='float']/following-sibling::f:unicode[1]"
+            );
+            if (isset($floatNodes[0])) {
+                $floatValue = (string) $floatNodes[0]['value'];
+            }
+
             $filenames = [];
 
             if (!empty($imageResource)) {
@@ -241,6 +250,7 @@ class OdeOldXmlImageMagnifierIdevice
                 'imageResource' => $sessionPath.$odeIdeviceId.Constants::SLASH.$imageResource,
                 'isDefaultImage' => $isDefaultImage,
                 'message' => $message,
+                'align' => $floatValue,
             ];
             $jsonProperties += $lupaGlobals;
 
