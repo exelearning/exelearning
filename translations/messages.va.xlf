@@ -11513,30 +11513,6 @@
         <source>Magnifier Size</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="30S8WKI" resname="50">
-        <source>50</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="rq7UaEk" resname="100">
-        <source>100</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="MfTcxFX" resname="150">
-        <source>150</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="NaMxTLR" resname="200">
-        <source>200</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="R7ma_xD" resname="250">
-        <source>250</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="XFM4tVa" resname="300">
-        <source>300</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="_iRtiV6" resname="Free response">
         <source>Free response</source>
         <target>~Resposta lliure</target>
