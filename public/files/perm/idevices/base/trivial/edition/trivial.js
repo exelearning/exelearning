@@ -880,7 +880,7 @@ var $exeDevice = {
                                         <input class="TRVLE-TypeSelect" id="trivialTypeWord" type="radio" name="tvltypeselect" value="2"/>
                                         <label for="trivialTypeWord">${_("Word")}</label>
                                         <input class="TRVLE-TypeSelect" id="trivialTypeOpen" type="radio" name="tvltypeselect" value="3"/>
-                                        <label for="trivialTypeOpen">${_("Open")}</label>
+                                        <label for="trivialTypeOpen">${_("Free response")}</label>
                                     </div>
                                     <span>${_("Multimedia Type")}:</span>
                                     <div class="TRVLE-EInputMedias">
@@ -1634,6 +1634,9 @@ var $exeDevice = {
             p.solution = "";
             p.solutionQuestion = $('#trivialESolutionWord').val();
         }
+        if (p.typeSelect == 3) {
+            p.solutionQuestion = 'open';            
+        } 
         if (p.typeSelect == 1 && p.solution.length != p.numberOptions) {
             message = msgs.msgTypeChoose;
         } else if (p.quextion.length == 0) {
@@ -1658,8 +1661,6 @@ var $exeDevice = {
             message = msgs.msgSilentPoint;
         } else if (p.typeSelect == 2 && p.solutionQuestion.trim().length == 0) {
             message = $exeDevice.msgs.msgProvideSolution;
-        } else if (p.typeSelect == 3 && p.solutionQuestion.trim().length == 0) {
-            p.solutionQuestion = 'open'
         } else if (p.typeSelect >= 2 && p.quextion.trim().length == 0) {
             message = $exeDevice.msgs.msgEProvideWord;
         }

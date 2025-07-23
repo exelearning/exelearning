@@ -54,7 +54,7 @@ var $eXeTrivial = {
     mScorm: null,
     version: 3,
 
-    init: function () {        
+    init: function () {
         $exeDevices.iDevice.gamification.initGame(this, 'TriviExt', 'trivial', 'trivial-IDevice');
     },
 
@@ -192,8 +192,6 @@ var $eXeTrivial = {
         }
         return game;
     },
-
-
 
     testPositions: function (instance) {
         const mOptions = $eXeTrivial.options[instance],
@@ -633,6 +631,7 @@ var $eXeTrivial = {
         $eXeTrivial.initialScore = (((mOptions.gamers[0].casilla + 1) * 10) / mOptions.numeroCasillas).toFixed(2);
         mOptions.gameStarted = false;
         mOptions.activePlayer = 0;
+        mOptions.gameOver = false
 
         for (let i = 0; i < mOptions.numeroJugadores; i++) {
             mOptions.gamers[i].casilla = mOptions.pT.length - 1;
@@ -1700,7 +1699,7 @@ var $eXeTrivial = {
             mOptions.kh = $('#trivialTablero-' + instance).height() / 668;
             $eXeTrivial.rebootGame(instance);
             $('#trivialMessageModal-' + instance).hide();
-            $eXeTrivial.loadGameBoard(instance);
+
         });
 
         $('#trivialMessageCancelar-' + instance).on('click touchstart', function (e) {
@@ -2287,6 +2286,7 @@ var $eXeTrivial = {
             $('#trivialEText-' + instance).html(text);
             $('#trivialCover-' + instance).hide();
             $('#trivialEText-' + instance).show();
+
             $eXeTrivial.showMessage(0, '', instance);
         } else if (mQuextion.type === 2) {
             let idVideo = $exeDevices.iDevice.gamification.media.getIDYoutube(mQuextion.url),
@@ -2323,6 +2323,11 @@ var $eXeTrivial = {
             $('#trivialEdAnswer-' + instance).prop('disabled', false);
             $('#trivialEdAnswer-' + instance).focus();
             $('#trivialEdAnswer-' + instance).val('');
+            if (mQuextion.typeSelect == 3) {
+                $('#trivialDivModeBoard-' + instance).css('display', 'flex');
+                $('#trivialDivResponder-' + instance).hide();
+                $('#trivialEPhrase-' + instance).hide();
+            }
         }
 
         if (q.audio.length > 4 && q.type != 2) {
@@ -2347,6 +2352,7 @@ var $eXeTrivial = {
         const mOptions = $eXeTrivial.options[instance],
             active = mOptions.activesQuestions[mOptions.activeTema],
             quextion = mOptions.temas[mOptions.activeTema][active];
+
         let message = "",
             solution = quextion.solution,
             answer = mOptions.respuesta.toUpperCase(),
@@ -2429,13 +2435,14 @@ var $eXeTrivial = {
             message = $eXeTrivial.getRetroFeedMessages(false, instance);
         }
 
-        if (mOptions.showSolution) {
+        if (mOptions.showSolution && quextion.typeSelect !== 3) {
             if (quextion.typeSelect < 2) {
                 $eXeTrivial.drawSolution(instance);
             } else {
                 $eXeTrivial.drawPhrase(quextion.solutionQuestion, quextion.quextion, 100, type, false, instance, true, quextion.typeSelect)
             }
         }
+
 
         $exeDevices.iDevice.gamification.media.stopVideo(instance);
         $eXeTrivial.showMessage(type, message, instance);
