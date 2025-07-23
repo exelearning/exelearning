@@ -15,6 +15,7 @@
 
 ### Fixed
 
+- File Manager: Mixed content errors under HTTPS
 - Licenses: Revised attributions for third-party libraries
 - Localization: String extraction issues
 

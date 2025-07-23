@@ -30,15 +30,35 @@ class Vuejs implements ViewInterface
                         <meta name=viewport content="width=device-width,initial-scale=1">
                         <meta name="robots" content="noindex,nofollow">
                         <title>'.$title.'</title>
-                        <link href="'.$public_path.'css/app.css?'.@filemtime($public_dir.'/css/app.css').'" rel=stylesheet>
-                        <link href="'.$public_path.'css/chunk-vendors.css?'.@filemtime($public_dir.'/css/chunk-vendors.css').'" rel=stylesheet>
                       </head>
                       <body>
-                        <noscript><strong>Please enable JavaScript to continue.</strong></noscript>
                         <div id=app></div>
-                        <script src="'.$public_path.'js/app.js?'.@filemtime($public_dir.'/js/app.js').'"></script>
-                        <script src="'.$public_path.'js/chunk-vendors.js?'.@filemtime($public_dir.'/js/chunk-vendors.js').'"></script>
                       </body>
+                      <script>
+                        function loadFile(url) {
+                          var s;
+                          var base = "'.$public_path.'";
+                          if (top && typeof(top.eXeLearning) == "object") {
+                            if (top.window.location.href.indexOf("https://")==0 && base.indexOf("http://")==0) {
+                              base = base.replace("http://", "https://");
+                            }
+                            base = base.replace("/libs/", "/assets/" + top.eXeLearning.version + "/libs/");
+                            if (url.split(".").pop() == "css") {
+                              s = document.createElement("link");
+                              s.rel = "stylesheet";
+                              s.href = base + url;
+                            } else {
+                              s = document.createElement("script");
+                              s.src = base + url;
+                            }
+                            document.getElementsByTagName("head")[0].appendChild(s);
+                          }
+                        }
+                        loadFile("css/app.css");
+                        loadFile("css/chunk-vendors.css");
+                        loadFile("js/app.js");
+                        loadFile("js/chunk-vendors.js");
+                      </script>
                     </html>
         ';
 
