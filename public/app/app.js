@@ -389,7 +389,7 @@ class App {
                     <ul>
                         <li class="exe-offline">Solo deja descargar proyectos, no guardar y exportar. Estamos en ello...</li>
                         <li class="exe-offline">De momento guarda en un directorio temporal, no puedes elegir dónde.</li>
-                        <li>Solo hay un estilo y no puedes instalar más.</li>
+                        <li>Solo hay un estilo.</li>
                         <li>No hay editor de estilos.</li>
                         <li>Falta Archivo - Imprimir.</li>
                         <li>No se puede exportar o importar una página.</li>

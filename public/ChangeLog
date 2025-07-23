@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## v3.0.0-beta4 – 2025-07-23
+
+### Added
+
+- Case Study iDevice
+- Magnifier iDevice
+- iDevice Manager enabled
+- Style Manager enabled
+- New LaTeX Equation Editor: EdiCuaTeX
+- Console commands for generating and managing API tokens for users
+- Full translation: Spanish (es)
+- Updated translations: Catalan (ca), Basque (eu), Galician (gl), Valencian (va), Esperanto (eo)
+
+### Fixed
+
+- File Manager: Mixed content errors under HTTPS
+- Licenses: Revised attributions for third-party libraries
+- Localization: String extraction issues
+
+### Upgraded
+
+- Electron: 36.3.2 → 37.1.0
+
+### Removed
+
+- Previous JavaScript Equation Editor: FMath
+- Unused fonts
+
+---
+
 ## v3.0.0-beta3 - 2025-06-30
 
 ### Added
