@@ -2129,10 +2129,6 @@
         <source>Paste question</source>
         <target>Apegar qüestió</target>
       </trans-unit>
-      <trans-unit id="fPdQ29G" resname="Before after">
-        <source>Before after</source>
-        <target>Abans després</target>
-      </trans-unit>
       <trans-unit id="xI18KU9" resname="Cool! The information you were looking for">
         <source>Cool! The information you were looking for</source>
         <target>Molt bé! La informació que estaves buscant</target>
@@ -11355,10 +11351,6 @@
       </trans-unit>
       <trans-unit id="NTWmm7D" resname="An error occurred while generating the preview.">
         <source>An error occurred while generating the preview.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="maoG0wF" resname="">
-        <source></source>
         <target></target>
       </trans-unit>
       <trans-unit id="4YXoX88" resname="Do you want to delete the project (elp)? This cannot be undone.">
