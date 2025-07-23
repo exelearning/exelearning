@@ -16,6 +16,7 @@
 ### Fixed
 
 - File Manager: Mixed content errors under HTTPS
+- TriviExt iDevice: Open-ended response questions always marked as correct
 - Licenses: Revised attributions for third-party libraries
 - Localization: String extraction issues
 
