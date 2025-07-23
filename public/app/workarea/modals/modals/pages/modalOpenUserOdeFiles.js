@@ -154,7 +154,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         table.append(tableThead);
         // Table titles element
         let thColumns = [
-            _(''),
+            '',
             _('Title'),
             _('Version'),
             _('Size'),
