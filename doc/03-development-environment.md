@@ -248,6 +248,13 @@ The Docker container includes Xdebug preconfigured for Visual Studio Code:
 5. Start the debugger in VS Code
 6. Access the application from your browser
 
+It is highly recommended to keep a local copy of the vendor directory to improve the debugging experience.
+You can obtain this copy by running:
+
+```
+make pull-vendor
+```
+
 ## Troubleshooting
 
 ### Permission Issues
