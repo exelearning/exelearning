@@ -23,8 +23,6 @@ services:
       - ./composer.lock:/app/composer.lock
       - mnt-data:/mnt/data:rw # Mount the volume for persistent data
       - ./e2e_screenshots:/tmp/e2e_screenshots
-      # - ./vendor:/app/vendor # WARNING: Uncomment only when you need to debug vendor libraries from the host.
-                               # Do NOT leave this enabled during normal development.
     environment:
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
