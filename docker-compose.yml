@@ -10,7 +10,7 @@ services:
       - .env # Overrides what is defined in .env
     ports:
       - ${APP_PORT}:8080 # Maps the host's $APP_PORT to the container's port 8080
-      - 9003:9003 # Port for Xdebug
+      # - 9003:9003 # Port for Xdebug, you don't need to map this port, because is the container who connects to the host xdebug
     restart: unless-stopped # Restart the container unless it is stopped manually
     volumes:
       - ./src:/app/src
@@ -23,6 +23,8 @@ services:
       - ./composer.lock:/app/composer.lock
       - mnt-data:/mnt/data:rw # Mount the volume for persistent data
       - ./e2e_screenshots:/tmp/e2e_screenshots
+      # - ./vendor:/app/vendor # WARNING: Uncomment only when you need to debug vendor libraries from the host.
+                               # Do NOT leave this enabled during normal development.
     environment:
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
