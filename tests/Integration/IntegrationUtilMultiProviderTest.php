@@ -144,7 +144,7 @@ final class IntegrationUtilMultiProviderTest extends TestCase
 
         self::assertNotNull($params);
         self::assertSame(Constants::EXPORT_TYPE_SCORM12, $params['exportType']);
-        self::assertStringContains('set_ode.php', $params['platformIntegrationUrl']);
+        self::assertStringContainsString('set_ode.php', $params['platformIntegrationUrl']);
     }
 
     public function testGetPlatformIntegrationParamsWithInvalidProvider(): void
@@ -180,6 +180,10 @@ final class IntegrationUtilMultiProviderTest extends TestCase
 
     public function testBackwardsCompatibilityMethod(): void
     {
+        $payload = [
+            'pkgtype' => 'webzip',
+            'returnurl' => 'https://moodle.example.com/mod/exeweb/view.php?id=7'
+        ];
 
         $jwt = self::createJwt($payload);
         $params = $this->util->getParamsMoodleIntegration($jwt, 'get');
@@ -238,7 +242,7 @@ final class IntegrationUtilMultiProviderTest extends TestCase
 
         if ($expectedPath) {
             self::assertNotNull($params);
-            self::assertStringContains($expectedPath, $params['platformIntegrationUrl']);
+            self::assertStringContainsString($expectedPath, $params['platformIntegrationUrl']);
         } else {
             self::assertArrayNotHasKey('platformIntegrationUrl', $params ?? []);
         }
