@@ -38,7 +38,7 @@ class ProviderConfigurationService
             'valid' => empty($errors),
             'errors' => $errors,
             'provider_count' => count($providerIds),
-            'providers' => []
+            'providers' => [],
         ];
 
         // Check each provider individually
@@ -47,7 +47,7 @@ class ProviderConfigurationService
             $providerCheck = [
                 'id' => $providerId,
                 'url' => $providerUrl,
-                'url_reachable' => $this->checkUrlReachability($providerUrl)
+                'url_reachable' => $this->checkUrlReachability($providerUrl),
             ];
 
             $result['providers'][] = $providerCheck;
@@ -61,11 +61,11 @@ class ProviderConfigurationService
         // Log validation results
         if ($result['valid']) {
             $this->logger->info('Provider configuration validation passed', [
-                'provider_count' => $result['provider_count']
+                'provider_count' => $result['provider_count'],
             ]);
         } else {
             $this->logger->warning('Provider configuration validation failed', [
-                'errors' => $result['errors']
+                'errors' => $result['errors'],
             ]);
         }
 
@@ -84,7 +84,7 @@ class ProviderConfigurationService
         return [
             'total_providers' => count($providerIds),
             'provider_ids' => $providerIds,
-            'configuration_valid' => empty($this->integrationUtil->validateProviderConfiguration())
+            'configuration_valid' => empty($this->integrationUtil->validateProviderConfiguration()),
         ];
     }
 
@@ -98,6 +98,7 @@ class ProviderConfigurationService
     public function isProviderConfigured(string $providerId): bool
     {
         $providerIds = $this->integrationUtil->getProviderIds();
+
         return in_array($providerId, $providerIds, true);
     }
 
@@ -114,13 +115,13 @@ class ProviderConfigurationService
         if (empty($providerIds)) {
             $recommendations[] = [
                 'type' => 'warning',
-                'message' => 'No providers configured. Add PROVIDER_URLS, PROVIDER_TOKENS, ' .
-                            'and PROVIDER_IDS to environment.'
+                'message' => 'No providers configured. Add PROVIDER_URLS, PROVIDER_TOKENS, '.
+                            'and PROVIDER_IDS to environment.',
             ];
-        } elseif (count($providerIds) === 1) {
+        } elseif (1 === count($providerIds)) {
             $recommendations[] = [
                 'type' => 'info',
-                'message' => 'Single provider configured. Consider adding backup providers for redundancy.'
+                'message' => 'Single provider configured. Consider adding backup providers for redundancy.',
             ];
         }
 
@@ -130,7 +131,7 @@ class ProviderConfigurationService
             if ($url && !str_starts_with($url, 'https://')) {
                 $recommendations[] = [
                     'type' => 'security',
-                    'message' => "Provider {$providerId} uses HTTP instead of HTTPS. Consider upgrading for security."
+                    'message' => "Provider {$providerId} uses HTTP instead of HTTPS. Consider upgrading for security.",
                 ];
             }
         }

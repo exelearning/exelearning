@@ -60,7 +60,7 @@ class ValidateProvidersCommand extends Command
                 $rows[] = [
                     $provider['id'],
                     $provider['url'] ?: 'Not configured',
-                    $provider['url_reachable'] ? '✓' : '✗'
+                    $provider['url_reachable'] ? '✓' : '✗',
                 ];
             }
 
@@ -73,7 +73,7 @@ class ValidateProvidersCommand extends Command
         } else {
             $io->error('Provider configuration has issues:');
             foreach ($validation['errors'] as $error) {
-                $io->writeln('  • ' . $error);
+                $io->writeln('  • '.$error);
             }
         }
 
@@ -85,7 +85,7 @@ class ValidateProvidersCommand extends Command
                     'warning' => 'yellow',
                     'security' => 'red',
                     'info' => 'blue',
-                    default => 'white'
+                    default => 'white',
                 };
 
                 $io->writeln(sprintf(

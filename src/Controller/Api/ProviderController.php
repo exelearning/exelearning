@@ -24,7 +24,7 @@ class ProviderController extends AbstractController
 
     public function __construct(
         ProviderConfigurationService $providerConfigService,
-        IntegrationUtil $integrationUtil
+        IntegrationUtil $integrationUtil,
     ) {
         $this->providerConfigService = $providerConfigService;
         $this->integrationUtil = $integrationUtil;
@@ -43,7 +43,7 @@ class ProviderController extends AbstractController
         return $this->json([
             'validation' => $validation,
             'statistics' => $statistics,
-            'recommendations' => $recommendations
+            'recommendations' => $recommendations,
         ]);
     }
 
@@ -68,7 +68,7 @@ class ProviderController extends AbstractController
 
         if (!isset($data['provider_id']) || !isset($data['payload'])) {
             return $this->json([
-                'error' => 'Missing required fields: provider_id and payload'
+                'error' => 'Missing required fields: provider_id and payload',
             ], 400);
         }
 
@@ -78,7 +78,7 @@ class ProviderController extends AbstractController
         // Validate provider exists
         if (!$this->providerConfigService->isProviderConfigured($providerId)) {
             return $this->json([
-                'error' => "Provider not configured: {$providerId}"
+                'error' => "Provider not configured: {$providerId}",
             ], 404);
         }
 
@@ -86,14 +86,14 @@ class ProviderController extends AbstractController
 
         if (!$jwt) {
             return $this->json([
-                'error' => 'Failed to generate JWT token'
+                'error' => 'Failed to generate JWT token',
             ], 500);
         }
 
         return $this->json([
             'jwt' => $jwt,
             'provider_id' => $providerId,
-            'expires_in' => 3600 // 1 hour
+            'expires_in' => 3600, // 1 hour
         ]);
     }
 
@@ -107,7 +107,7 @@ class ProviderController extends AbstractController
 
         if (!isset($data['jwt'])) {
             return $this->json([
-                'error' => 'Missing required field: jwt'
+                'error' => 'Missing required field: jwt',
             ], 400);
         }
 
@@ -118,13 +118,13 @@ class ProviderController extends AbstractController
 
         if (!$decoded) {
             return $this->json([
-                'error' => 'Invalid or expired JWT token'
+                'error' => 'Invalid or expired JWT token',
             ], 400);
         }
 
         return $this->json([
             'payload' => $decoded,
-            'valid' => true
+            'valid' => true,
         ]);
     }
 
@@ -138,7 +138,7 @@ class ProviderController extends AbstractController
 
         if (!isset($data['jwt']) || !isset($data['operation'])) {
             return $this->json([
-                'error' => 'Missing required fields: jwt and operation'
+                'error' => 'Missing required fields: jwt and operation',
             ], 400);
         }
 
@@ -149,13 +149,13 @@ class ProviderController extends AbstractController
 
         if (!$params) {
             return $this->json([
-                'error' => 'Failed to process integration parameters'
+                'error' => 'Failed to process integration parameters',
             ], 400);
         }
 
         return $this->json([
             'params' => $params,
-            'operation' => $operation
+            'operation' => $operation,
         ]);
     }
 
@@ -172,13 +172,13 @@ class ProviderController extends AbstractController
             $providers[] = [
                 'id' => $providerId,
                 'url' => $this->integrationUtil->getProviderUrl($providerId),
-                'configured' => $this->providerConfigService->isProviderConfigured($providerId)
+                'configured' => $this->providerConfigService->isProviderConfigured($providerId),
             ];
         }
 
         return $this->json([
             'providers' => $providers,
-            'count' => count($providers)
+            'count' => count($providers),
         ]);
     }
 }

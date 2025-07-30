@@ -58,7 +58,7 @@ class IntegrationUtil
     /**
      * Decode a JSON Web Token using the appropriate provider token.
      *
-     * @param string $jwtToken The JWT token to decode
+     * @param string      $jwtToken   The JWT token to decode
      * @param string|null $providerId Optional provider ID for token validation
      *
      * @return array|null Decoded payload or null on failure
@@ -73,9 +73,9 @@ class IntegrationUtil
 
             return $decoded;
         } catch (\Throwable $e) {
-            $this->logger->error('JWT decode error: ' . $e->getMessage(), [
+            $this->logger->error('JWT decode error: '.$e->getMessage(), [
                 'provider_id' => $providerId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return null;
@@ -85,7 +85,7 @@ class IntegrationUtil
     /**
      * Generate a JWT token for a specific provider.
      *
-     * @param array $payload The payload to encode
+     * @param array  $payload    The payload to encode
      * @param string $providerId The provider ID to use for token generation
      *
      * @return string|null The generated JWT token or null on failure
@@ -96,6 +96,7 @@ class IntegrationUtil
             $token = $this->getProviderToken($providerId);
             if (!$token) {
                 $this->logger->error("Provider token not found for ID: {$providerId}");
+
                 return null;
             }
 
@@ -103,14 +104,14 @@ class IntegrationUtil
             $payload = array_merge($payload, [
                 'iat' => time(),
                 'exp' => time() + 3600, // 1 hour expiration
-                'provider_id' => $providerId
+                'provider_id' => $providerId,
             ]);
 
             return JWT::encode($payload, $token, Settings::JWT_SECRET_HASH);
         } catch (\Throwable $e) {
-            $this->logger->error('JWT generation error: ' . $e->getMessage(), [
+            $this->logger->error('JWT generation error: '.$e->getMessage(), [
                 'provider_id' => $providerId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return null;
@@ -120,7 +121,7 @@ class IntegrationUtil
     /**
      * Process platform integration parameters in a generic way.
      *
-     * @param string $jwtToken The JWT token containing integration parameters
+     * @param string $jwtToken  The JWT token containing integration parameters
      * @param string $operation The operation type ('set' or 'get')
      *
      * @return array|null Integration parameters or null on failure
@@ -138,6 +139,7 @@ class IntegrationUtil
         // Validate provider if specified (only for new format with provider_id)
         if ($providerId && !empty($this->providerIds) && !$this->isValidProvider($providerId)) {
             $this->logger->warning("Invalid provider ID in JWT: {$providerId}");
+
             return null;
         }
 
@@ -152,6 +154,7 @@ class IntegrationUtil
         // Validate return URL against allowed providers (only if providers are configured)
         if (!empty($this->providerUrls) && !$this->isAllowedUrl($returnUrl)) {
             $this->logger->warning("Return URL not in allowed providers: {$returnUrl}");
+
             return null;
         }
 
@@ -184,7 +187,7 @@ class IntegrationUtil
                 $exportParams['platformIntegrationUrl'] = $this->buildIntegrationUrl(
                     $returnUrl,
                     ['/mod/exescorm', '/course/section'],
-                    '/mod/exescorm/' . $op . 'et_ode.php'
+                    '/mod/exescorm/'.$op.'et_ode.php'
                 );
                 $exportParams['exportType'] = Constants::EXPORT_TYPE_SCORM12;
                 break;
@@ -193,7 +196,7 @@ class IntegrationUtil
                 $exportParams['platformIntegrationUrl'] = $this->buildIntegrationUrl(
                     $returnUrl,
                     ['/mod/exeweb', '/course/section'],
-                    '/mod/exeweb/' . $op . 'et_ode.php'
+                    '/mod/exeweb/'.$op.'et_ode.php'
                 );
                 $exportParams['exportType'] = Constants::EXPORT_TYPE_HTML5;
                 break;
@@ -213,7 +216,8 @@ class IntegrationUtil
         foreach ($patterns as $pattern) {
             if (str_contains($returnUrl, $pattern)) {
                 $baseUrl = strstr($returnUrl, $pattern, true);
-                return $baseUrl . $endpoint;
+
+                return $baseUrl.$endpoint;
             }
         }
 
@@ -256,7 +260,7 @@ class IntegrationUtil
         }
 
         $index = array_search($providerId, $this->providerIds, true);
-        if ($index === false) {
+        if (false === $index) {
             return null;
         }
 
@@ -269,7 +273,7 @@ class IntegrationUtil
     public function getProviderUrl(string $providerId): ?string
     {
         $index = array_search($providerId, $this->providerIds, true);
-        if ($index === false) {
+        if (false === $index) {
             return null;
         }
 
@@ -301,7 +305,7 @@ class IntegrationUtil
 
         // Check for duplicate IDs
         if (count($this->providerIds) !== count(array_unique($this->providerIds))) {
-            $errors[] = "Duplicate provider IDs found";
+            $errors[] = 'Duplicate provider IDs found';
         }
 
         return $errors;
@@ -325,7 +329,8 @@ class IntegrationUtil
         if (isset($payload['provider']['name'])) {
             // Convert provider name to a normalized ID
             $providerName = strtolower($payload['provider']['name']);
-            return $providerName . '_legacy';
+
+            return $providerName.'_legacy';
         }
 
         // No provider information found
