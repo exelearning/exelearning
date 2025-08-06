@@ -87,7 +87,7 @@ COPY --from=dunglas/mercure:latest /usr/bin/caddy /usr/bin/mercure
 COPY --from=dunglas/mercure:latest /etc/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=dunglas/mercure:latest /etc/caddy/dev.Caddyfile /etc/caddy/dev.Caddyfile
 
-# Creaty symbolic link to the php84 binary
+# Create symbolic link to the php84 binary
 RUN ln -sf /usr/bin/php84 /usr/local/bin/php
 
 # Set up Mercure service
