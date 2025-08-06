@@ -28,7 +28,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           extensions: sodium, fileinfo, zip, mbstring
 
       # TODO: Temporary disabled because we must have an account in snapcraft.io,
@@ -77,18 +77,15 @@ jobs:
       - name: Remove unnecessary PHP versions (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          rm -f vendor/nativephp/php-bin/bin/linux/x64/php-8.1.zip
-          rm -f vendor/nativephp/php-bin/bin/linux/x64/php-8.2.zip
+          rm -f vendor/nativephp/php-bin/bin/linux/x64/php-8.3.zip
           rm -rf vendor/nativephp/php-bin/bin/mac
           rm -rf vendor/nativephp/php-bin/bin/win
 
       - name: Remove unnecessary PHP versions (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          rm -f vendor/nativephp/php-bin/bin/mac/arm64/php-8.1.zip
-          rm -f vendor/nativephp/php-bin/bin/mac/arm64/php-8.2.zip
-          rm -f vendor/nativephp/php-bin/bin/mac/x86/php-8.1.zip
-          rm -f vendor/nativephp/php-bin/bin/mac/x86/php-8.2.zip
+          rm -f vendor/nativephp/php-bin/bin/mac/arm64/php-8.3.zip
+          rm -f vendor/nativephp/php-bin/bin/mac/x86/php-8.3.zip
           rm -rf vendor/nativephp/php-bin/bin/linux
           rm -rf vendor/nativephp/php-bin/bin/win
 
@@ -96,8 +93,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
-          rm -f vendor/nativephp/php-bin/bin/win/x64/php-8.1.zip
-          rm -f vendor/nativephp/php-bin/bin/win/x64/php-8.2.zip
+          rm -f vendor/nativephp/php-bin/bin/win/x64/php-8.3.zip
           rm -rf vendor/nativephp/php-bin/bin/mac
           rm -rf vendor/nativephp/php-bin/bin/linux          
 

@@ -27,7 +27,7 @@ PUBLISH_ARG := $(if $(PUBLISH),--publish $(PUBLISH),)
 EXPAND_PATH = $(subst ~,$(HOME),$(1))
 
 # Enable debug if DEBUG or ACTIONS_STEP_DEBUG is set (e.g., in GitHub Actions re-run with debug logging)
-DEBUG_FLAG := $(if $(filter 1 true yes,$(DEBUG) $(ACTIONS_STEP_DEBUG)) ,--debug,)
+DEBUG_FLAG := $(if $(filter 1 true yes,$(DEBUG) $(ACTIONS_STEP_DEBUG)) ,--debug --display-deprecations,)
 
 # Check if Docker is running
 check-docker:

@@ -91,7 +91,7 @@ echo "Test database successfully configured.\n";
 //     vendor/bin/phpunit --debug
 //
 // If --debug is not used, this block will not run, but deprecations may still be reported in summary.
-// Tip: You can also enable this manually with `DEBUG_ERRORS=1` if needed.
+// Tip: You can also enable this manually with `DEBUG=1` if needed.
 
 $debug = in_array('--debug', $_SERVER['argv'] ?? [], true);
 
