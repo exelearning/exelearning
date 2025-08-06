@@ -2,7 +2,7 @@
     "type": "project",
     "license": "GPL-3",
     "require": {
-        "php": ">=8.3",
+        "php": ">=8.4",
         "ext-ctype": "*",
         "doctrine/doctrine-bundle": "^2.0",
         "doctrine/doctrine-migrations-bundle": "^3.0",
