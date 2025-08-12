@@ -42,7 +42,7 @@
         "dama/doctrine-test-bundle": "^8.2",
         "friendsofphp/php-cs-fixer": "^3.0",
         "phpunit/phpunit": "*",
-        "rector/rector": "^1.2",
+        "rector/rector": "^2.1",
         "symfony/browser-kit": "^7.3",
         "symfony/css-selector": "^7.3",
         "symfony/debug-bundle": "^7.3",
