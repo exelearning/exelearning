@@ -16,6 +16,24 @@ export default class ApiCallManager {
      */
     async loadApiParameters() {
         this.parameters = await this.getApiParameters();
+
+        // Defensive: handle network/auth failures gracefully
+        if (
+            !this.parameters ||
+            typeof this.parameters !== 'object' ||
+            !this.parameters.routes ||
+            typeof this.parameters.routes !== 'object'
+        ) {
+            // Help diagnose the root cause without crashing the app
+            console.error(
+                'Failed to load API parameters from',
+                this.apiUrlParameters,
+                '→ received:',
+                this.parameters
+            );
+            throw new Error('API parameters could not be loaded');
+        }
+
         for (var [key, data] of Object.entries(this.parameters.routes)) {
             this.endpoints[key] = {};
             this.endpoints[key].path = this.apiUrlBase + data.path;

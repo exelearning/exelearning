@@ -458,7 +458,7 @@ class FilemanagerMethodController extends DefaultApiController
             return $e;
         }
 
-        $streamedResponse->setCallback(function () use ($file) {
+        $streamedResponse->setCallback(function () use ($file): void {
             set_time_limit(0);
             if ($file['stream']) {
                 while (!feof($file['stream'])) {

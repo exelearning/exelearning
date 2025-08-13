@@ -64,7 +64,7 @@ class LoginTest extends ExelearningE2EBase
             'email'    => $email,
             'password' => $password,
         ]);
-        
+
         // Wait for and verify redirection
         // $client->waitFor('.workspace-header', 5);
         // $this->assertStringEndsWith('/workarea', $client->getCurrentURL());
