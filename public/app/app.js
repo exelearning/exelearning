@@ -39,44 +39,30 @@ class App {
      *
      */
     async init() {
-        try {
-            // Compose and initialized toasts
-            this.initializedToasts();
-            // Compose and initialized modals
-            this.initializedModals();
-            // Load api routes
-            await this.loadApiParameters();
-            // Load locale strings
-            await this.loadLocale();
-            // Load idevices installed
-            await this.loadIdevicesInstalled();
-            // Load themes installed
-            await this.loadThemesInstalled();
-            // Load user data
-            await this.loadUser();
-            // Show LOPDGDD modal if necessary and load project data
-            await this.showModalLopd();
-            // "Not for production use" warning
-            await this.showProvisionalDemoWarning();
-            // To do warning (remove this as soon as possible)
-            await this.showProvisionalToDoWarning();
-            // Add the notranslate class to some elements
-            await this.addNoTranslateForGoogle();
-            // Execute the custom JavaScript code
-            await this.runCustomJavaScriptCode();
-        } catch (e) {
-            console.error('App initialization failed:', e);
-            // Surface a clear error message to the user
-            if (this?.modals?.alert) {
-                this.modals.alert.show({
-                    title: _('Connection error'),
-                    body: _(
-                        'Could not load application configuration. Please ensure you are logged in and accessing via HTTPS, then reload the page.'
-                    ),
-                    contentId: 'error',
-                });
-            }
-        }
+        // Compose and initialized toasts
+        this.initializedToasts();
+        // Compose and initialized modals
+        this.initializedModals();
+        // Load api routes
+        await this.loadApiParameters();
+        // Load locale strings
+        await this.loadLocale();
+        // Load idevices installed
+        await this.loadIdevicesInstalled();
+        // Load themes installed
+        await this.loadThemesInstalled();
+        // Load user data
+        await this.loadUser();
+        // Show LOPDGDD modal if necessary and load project data
+        await this.showModalLopd();
+        // "Not for production use" warning
+        await this.showProvisionalDemoWarning();
+        // To do warning (remove this as soon as possible)
+        await this.showProvisionalToDoWarning();
+        // Add the notranslate class to some elements
+        await this.addNoTranslateForGoogle();
+        // Execute the custom JavaScript code
+        await this.runCustomJavaScriptCode();
     }
 
     /**
