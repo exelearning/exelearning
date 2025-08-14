@@ -70,7 +70,7 @@ echo -e "${GREEN}Running migrations{NC}"
 php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --all-or-nothing
 
 # Fails the script if 'users' isn't there
-assert_users_table_exists   
+assert_users_table_exists
 
 # Create test user using environment variables
 echo -e "${GREEN}Creating test user${NC}"

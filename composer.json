@@ -10,8 +10,6 @@
         "doctrine/doctrine-migrations-bundle": "^3.4",
         "doctrine/orm": "^3.5",
         "firebase/php-jwt": "^6.11",
-        "league/flysystem": "^3.0",
-        "league/flysystem-ziparchive": "^3.0",
         "liip/imagine-bundle": "^2.13",
         "symfony/asset": "^7.3",
         "symfony/console": "^7.3",
