@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\net\exelearning\Service\FilemanagerService\Storage;
@@ -42,6 +43,7 @@ class Filesystem
         if (is_dir($abs)) {
             return true;
         }
+
         return @mkdir($abs, 0775, true);
     }
 
@@ -60,26 +62,29 @@ class Filesystem
 
         $dir = \dirname($abs);
         if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
-            throw new \RuntimeException('Cannot create directory: ' . $dir);
+            throw new \RuntimeException('Cannot create directory: '.$dir);
         }
 
         $fh = @fopen($abs, 'wb');
         if (!is_resource($fh)) {
-            throw new \RuntimeException('Cannot create file: ' . $abs);
+            throw new \RuntimeException('Cannot create file: '.$abs);
         }
         fclose($fh);
+
         return true;
     }
 
     public function fileExists(string $path)
     {
         $path = $this->applyPathPrefix($path);
+
         return file_exists($this->absPath($path));
     }
 
     public function isDir(string $path)
     {
         $path = $this->applyPathPrefix($path);
+
         return is_dir($this->absPath($path));
     }
 
@@ -97,7 +102,7 @@ class Filesystem
 
         $dir = \dirname($dstAbs);
         if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
-            throw new \RuntimeException('Cannot create directory: ' . $dir);
+            throw new \RuntimeException('Cannot create directory: '.$dir);
         }
 
         return @copy($srcAbs, $dstAbs);
@@ -136,15 +141,15 @@ class Filesystem
 
             if ($item->isDir()) {
                 if (!is_dir($target) && !@mkdir($target, 0775, true)) {
-                    throw new \RuntimeException('Cannot create directory: ' . $target);
+                    throw new \RuntimeException('Cannot create directory: '.$target);
                 }
             } else {
                 $dir = \dirname($target);
                 if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
-                    throw new \RuntimeException('Cannot create directory: ' . $dir);
+                    throw new \RuntimeException('Cannot create directory: '.$dir);
                 }
                 if (!@copy($item->getPathname(), $target)) {
-                    throw new \RuntimeException('Cannot copy file to: ' . $target);
+                    throw new \RuntimeException('Cannot copy file to: '.$target);
                 }
             }
         }
@@ -165,6 +170,7 @@ class Filesystem
         foreach ($it as $fileinfo) {
             $fileinfo->isDir() ? @rmdir($fileinfo->getPathname()) : @unlink($fileinfo->getPathname());
         }
+
         return @rmdir($abs);
     }
 
@@ -174,6 +180,7 @@ class Filesystem
         if (is_file($abs)) {
             return @unlink($abs);
         }
+
         return true;
     }
 
@@ -191,7 +198,7 @@ class Filesystem
         $abs = $this->absPath($this->applyPathPrefix($path));
         $fh = @fopen($abs, 'rb');
         if (!is_resource($fh)) {
-            throw new \RuntimeException('Cannot open stream for: ' . $abs);
+            throw new \RuntimeException('Cannot open stream for: '.$abs);
         }
 
         return [
@@ -215,7 +222,7 @@ class Filesystem
 
         $dir = \dirname($toAbs);
         if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
-            throw new \RuntimeException('Cannot create directory: ' . $dir);
+            throw new \RuntimeException('Cannot create directory: '.$dir);
         }
 
         return @rename($fromAbs, $toAbs);
@@ -235,7 +242,7 @@ class Filesystem
 
         $dir = \dirname($toAbs);
         if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
-            throw new \RuntimeException('Cannot create directory: ' . $dir);
+            throw new \RuntimeException('Cannot create directory: '.$dir);
         }
 
         return @rename($fromAbs, $toAbs);
@@ -259,7 +266,7 @@ class Filesystem
         $abs = $this->absPath($destination);
         $dir = \dirname($abs);
         if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
-            throw new \RuntimeException('Cannot create directory: ' . $dir);
+            throw new \RuntimeException('Cannot create directory: '.$dir);
         }
 
         if (!is_resource($resource)) {
@@ -268,7 +275,7 @@ class Filesystem
 
         $out = @fopen($abs, 'wb');
         if (!is_resource($out)) {
-            throw new \RuntimeException('Cannot open destination for writing: ' . $abs);
+            throw new \RuntimeException('Cannot open destination for writing: '.$abs);
         }
 
         stream_copy_to_stream($resource, $out);
@@ -315,6 +322,7 @@ class Filesystem
             if (!$recursive && $this->addSeparators($path) !== $this->separator) {
                 $collection->addFile('back', $this->getParent($path), '..', 0, 0);
             }
+
             return $collection;
         }
 
@@ -360,19 +368,19 @@ class Filesystem
     private function absPath(string $virtualPath): string
     {
         $root = rtrim($this->sessionPath ?? '', DIRECTORY_SEPARATOR);
-        if ($root === '') {
+        if ('' === $root) {
             throw new \LogicException('Session path is not set.');
         }
         // Normalize to OS separators
         $virtualPath = ltrim($virtualPath, $this->separator);
-        $path = $root . DIRECTORY_SEPARATOR . str_replace($this->separator, DIRECTORY_SEPARATOR, $virtualPath);
+        $path = $root.DIRECTORY_SEPARATOR.str_replace($this->separator, DIRECTORY_SEPARATOR, $virtualPath);
 
         // Prevent path traversal above the root
         $normalized = $this->normalizeAbsolutePath($path);
         $normalizedRoot = $this->normalizeAbsolutePath($root);
 
-        if (strpos($normalized, $normalizedRoot) !== 0) {
-            throw new \RuntimeException('Path traversal detected: ' . $virtualPath);
+        if (0 !== strpos($normalized, $normalizedRoot)) {
+            throw new \RuntimeException('Path traversal detected: '.$virtualPath);
         }
 
         return $normalized;
@@ -385,20 +393,21 @@ class Filesystem
     {
         $parts = [];
         foreach (explode(DIRECTORY_SEPARATOR, $abs) as $seg) {
-            if ($seg === '' || $seg === '.') {
+            if ('' === $seg || '.' === $seg) {
                 continue;
             }
-            if ($seg === '..') {
+            if ('..' === $seg) {
                 array_pop($parts);
                 continue;
             }
             $parts[] = $seg;
         }
         $prefix = DIRECTORY_SEPARATOR;
-        if (preg_match('~^[A-Za-z]:\\\\~', $abs) === 1) { // Windows drive
+        if (1 === preg_match('~^[A-Za-z]:\\\\~', $abs)) { // Windows drive
             $prefix = '';
         }
-        return $prefix . implode(DIRECTORY_SEPARATOR, $parts);
+
+        return $prefix.implode(DIRECTORY_SEPARATOR, $parts);
     }
 
     protected function upcountCallback($matches)
@@ -406,7 +415,7 @@ class Filesystem
         $index = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
         $ext = isset($matches[2]) ? $matches[2] : '';
 
-        return '_' . $index . $ext;
+        return '_'.$index.$ext;
     }
 
     protected function upcountName($name)
@@ -422,9 +431,9 @@ class Filesystem
     private function applyPathPrefix(string $path): string
     {
         if (
-            $path === '..'
-            || strpos($path, '..' . $this->separator) !== false
-            || strpos($path, $this->separator . '..') !== false
+            '..' === $path
+            || false !== strpos($path, '..'.$this->separator)
+            || false !== strpos($path, $this->separator.'..')
         ) {
             $path = $this->separator;
         }
@@ -434,10 +443,10 @@ class Filesystem
 
     private function stripPathPrefix(string $path): string
     {
-        $path = $this->separator . ltrim($path, $this->separator);
+        $path = $this->separator.ltrim($path, $this->separator);
 
         if (substr($path, 0, strlen($this->getPathPrefix())) == $this->getPathPrefix()) {
-            $path = $this->separator . substr($path, strlen($this->getPathPrefix()));
+            $path = $this->separator.substr($path, strlen($this->getPathPrefix()));
         }
 
         return $path;
@@ -449,7 +458,7 @@ class Filesystem
             return $this->separator;
         }
 
-        return $this->separator . trim($dir, $this->separator) . $this->separator;
+        return $this->separator.trim($dir, $this->separator).$this->separator;
     }
 
     private function joinPaths(string $path1, string $path2): string
@@ -458,7 +467,7 @@ class Filesystem
             return $this->addSeparators($path1);
         }
 
-        return $this->addSeparators($path1) . ltrim($path2, $this->separator);
+        return $this->addSeparators($path1).ltrim($path2, $this->separator);
     }
 
     private function getParent(string $dir): string
@@ -470,7 +479,7 @@ class Filesystem
         $tmp = explode($this->separator, trim($dir, $this->separator));
         array_pop($tmp);
 
-        return $this->separator . trim(implode($this->separator, $tmp), $this->separator);
+        return $this->separator.trim(implode($this->separator, $tmp), $this->separator);
     }
 
     private function getBaseName(string $path): string
@@ -494,6 +503,7 @@ class Filesystem
             return false;
         }
         $it = new \FilesystemIterator($abs, \FilesystemIterator::SKIP_DOTS);
+
         return $it->valid();
     }
 }

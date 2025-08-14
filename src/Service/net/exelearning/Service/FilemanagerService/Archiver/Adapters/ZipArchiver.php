@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Service\net\exelearning\Service\FilemanagerService\Archiver\Adapters;
@@ -39,18 +40,18 @@ class ZipArchiver implements ArchiverInterface
     /**
      * Create a new archive on tmpfs and prepare it for adding entries.
      *
-     * @return string Unique identifier (the tmpfs filename of the zip).
+     * @return string unique identifier (the tmpfs filename of the zip)
      */
     public function createArchive(Storage $storage): string
     {
         // Give the tmp file a .zip suffix so some tools recognize it if needed.
-        $this->uniqid = uniqid(prefix: 'zip_', more_entropy: true) . '.zip';
+        $this->uniqid = uniqid(prefix: 'zip_', more_entropy: true).'.zip';
         $zipPath = $this->tmpfs->getFileLocation($this->uniqid);
 
         $zip = new \ZipArchive();
         $opened = $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
-        if ($opened !== true) {
-            throw new \RuntimeException('Cannot create ZIP at ' . $zipPath . ' (code ' . $opened . ')');
+        if (true !== $opened) {
+            throw new \RuntimeException('Cannot create ZIP at '.$zipPath.' (code '.$opened.')');
         }
 
         $this->zip = $zip;
@@ -69,22 +70,22 @@ class ZipArchiver implements ArchiverInterface
 
         // Normalize path for zip
         $base = trim($path, '/');
-        if ($base !== '') {
+        if ('' !== $base) {
             // Ensure the base directory exists inside the zip
             $this->zip->addEmptyDir($base);
         }
 
         $content = $this->storage->getDirectoryCollection($path, true);
         foreach ($content->all() as $item) {
-            if ($item['type'] === 'dir') {
+            if ('dir' === $item['type']) {
                 $dirPath = trim($item['path'], '/');
-                if ($dirPath !== '') {
+                if ('' !== $dirPath) {
                     $this->zip->addEmptyDir($dirPath);
                 }
                 continue;
             }
 
-            if ($item['type'] === 'file') {
+            if ('file' === $item['type']) {
                 $this->addFileFromStorage($item['path']);
             }
         }
@@ -101,7 +102,7 @@ class ZipArchiver implements ArchiverInterface
         // Read as stream from Storage
         $file = $this->storage->readStream($path);
         if (!isset($file['stream']) || !is_resource($file['stream'])) {
-            throw new \RuntimeException('Storage did not return a valid stream for ' . $path);
+            throw new \RuntimeException('Storage did not return a valid stream for '.$path);
         }
 
         // Persist the stream to a tmpfs file to pass a file path to ZipArchive::addFile
@@ -113,7 +114,7 @@ class ZipArchiver implements ArchiverInterface
             if (is_resource($file['stream'])) {
                 fclose($file['stream']);
             }
-            throw new \RuntimeException('Cannot open tmp path for writing: ' . $tmpPath);
+            throw new \RuntimeException('Cannot open tmp path for writing: '.$tmpPath);
         }
 
         stream_copy_to_stream($file['stream'], $out);
@@ -123,9 +124,9 @@ class ZipArchiver implements ArchiverInterface
         // Path inside the zip must not start with a leading slash
         $zipInnerPath = ltrim($path, '/');
         $ok = $this->zip->addFile($tmpPath, $zipInnerPath);
-        if ($ok === false) {
+        if (false === $ok) {
             $this->tmpfs->remove($tmpId);
-            throw new \RuntimeException('Failed to add file to archive: ' . $zipInnerPath);
+            throw new \RuntimeException('Failed to add file to archive: '.$zipInnerPath);
         }
 
         $this->tmpFiles[] = $tmpId;
@@ -138,25 +139,25 @@ class ZipArchiver implements ArchiverInterface
     public function uncompress(string $source, string $destination, Storage $storage): void
     {
         // Buffer remote zip to tmpfs
-        $name = uniqid(prefix: 'unz_', more_entropy: true) . '.zip';
+        $name = uniqid(prefix: 'unz_', more_entropy: true).'.zip';
         $remote = $storage->readStream($source);
         if (!isset($remote['stream']) || !is_resource($remote['stream'])) {
-            throw new \RuntimeException('Storage did not return a valid stream for ' . $source);
+            throw new \RuntimeException('Storage did not return a valid stream for '.$source);
         }
         $this->tmpfs->write($name, $remote['stream']); // write() is expected to consume and close the stream
 
         $zipPath = $this->tmpfs->getFileLocation($name);
         $zip = new \ZipArchive();
         $opened = $zip->open($zipPath);
-        if ($opened !== true) {
+        if (true !== $opened) {
             $this->tmpfs->remove($name);
-            throw new \RuntimeException('Cannot open ZIP for uncompress: ' . $zipPath . ' (code ' . $opened . ')');
+            throw new \RuntimeException('Cannot open ZIP for uncompress: '.$zipPath.' (code '.$opened.')');
         }
 
         // Iterate all entries; create dirs and stream file contents out
-        for ($i = 0; $i < $zip->numFiles; $i++) {
+        for ($i = 0; $i < $zip->numFiles; ++$i) {
             $entryName = $zip->getNameIndex($i);
-            if ($entryName === false) {
+            if (false === $entryName) {
                 continue;
             }
 
@@ -178,11 +179,11 @@ class ZipArchiver implements ArchiverInterface
             $dirname = trim(dirname($entryName), '.');
             $basename = basename($entryName);
 
-            if ($dirname !== '' && $dirname !== '/') {
+            if ('' !== $dirname && '/' !== $dirname) {
                 $storage->createDir($destination, $dirname);
             }
             $storage->store(
-                rtrim($destination, '/') . '/' . ltrim($dirname, '/'),
+                rtrim($destination, '/').'/'.ltrim($dirname, '/'),
                 $basename,
                 $stream
             );
@@ -224,7 +225,7 @@ class ZipArchiver implements ArchiverInterface
         // Read the zip from tmpfs and push it to Storage
         $file = $this->tmpfs->readStream($this->uniqid);
         if (!isset($file['stream']) || !is_resource($file['stream'])) {
-            throw new \RuntimeException('Could not read the temporary zip stream: ' . $this->uniqid);
+            throw new \RuntimeException('Could not read the temporary zip stream: '.$this->uniqid);
         }
 
         $this->storage->store($destination, $name, $file['stream']);
