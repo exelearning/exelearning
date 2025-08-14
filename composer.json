@@ -103,5 +103,10 @@
         "db-schema-update": "Run the migrations to update the database schema.",
         "cache-clear": "Clear the Symfony cache.",
         "assets-install": "Install the public assets."
+    },
+    "extra": {
+        "symfony": {
+            "docker": false
+        }
     }
 }
