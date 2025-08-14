@@ -129,20 +129,43 @@ class ZipArchiver implements ArchiverInterface
 /**
  * Adapter to add files to the location.
  */
-class ZipAdapter extends ZipArchiveAdapter
+class ZipAdapter
 {
+    private ZipArchiveAdapter $adapter;
+
+    public function __construct(string $zipFilePath)
+    {
+        $this->adapter = new ZipArchiveAdapter($zipFilePath);
+    }
+
+    public function getAdapter(): ZipArchiveAdapter
+    {
+        return $this->adapter;
+    }
+
     /**
-     * add in the location and returns path and content.
+     * Add in the location and returns path and content.
      *
      * @return array
      */
-    public function write($path, $contents, Flyconfig $config)
+    public function write(string $path, string $contents, Flyconfig $config)
     {
-        $location = $this->applyPathPrefix($path);
-        // using addFile instead of addFromString
-        // is more memory efficient
-        $this->archive->addFile($contents, $location);
+        $location = $this->adapter->applyPathPrefix($path);
+
+        // using addFile instead of addFromString is more memory efficient
+        $archive = (new \ReflectionClass($this->adapter))
+            ->getProperty('archive');
+        $archive->setAccessible(true);
+        $archiveInstance = $archive->getValue($this->adapter);
+
+        $archiveInstance->addFile($contents, $location);
 
         return compact('path', 'contents');
+    }
+
+    // Métodos wrapper para lo que uses en ZipArchiver
+    public function __call($name, $arguments)
+    {
+        return $this->adapter->$name(...$arguments);
     }
 }
