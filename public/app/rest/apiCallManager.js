@@ -3,11 +3,19 @@ import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
 export default class ApiCallManager {
     constructor(app) {
         this.app = app;
-        this.apiUrlBase = `${app.eXeLearning.symfony.baseURL}`;
+        // this.apiUrlBase = `${app.eXeLearning.symfony.baseURL}`;
+        // this.apiUrlBasePath = `${app.eXeLearning.symfony.basePath}`;
+        // this.apiUrlParameters = `${this.apiUrlBase}${this.apiUrlBasePath}/api/parameter-management/parameters/data/list`;
+        // this.func = new ApiCallBaseFunctions();
+        // this.endpoints = {};
+
+        const origin = new URL(window.location.href).origin; // respeta https si la página es https
+        this.apiUrlBase = origin; // fuerza a usar el mismo origen del front
         this.apiUrlBasePath = `${app.eXeLearning.symfony.basePath}`;
         this.apiUrlParameters = `${this.apiUrlBase}${this.apiUrlBasePath}/api/parameter-management/parameters/data/list`;
         this.func = new ApiCallBaseFunctions();
         this.endpoints = {};
+
     }
 
     /**
