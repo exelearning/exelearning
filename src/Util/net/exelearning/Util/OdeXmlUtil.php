@@ -518,19 +518,25 @@ class OdeXmlUtil
     }
 
     /**
-     * Prepares text to be added to xml.
+     * Encode string for XML text nodes in UTF-8.
      *
-     * @param string $text
+     * @param string|null $text
      *
-     * @return string
+     * @return string|null
      */
     private static function prepareText($text)
     {
-        if (is_null($text)) {
+        if (null === $text) {
             return null;
         }
 
-        return htmlspecialchars($text);
+        // Normalize input to UTF-8 if it comes in Latin-1 or other legacy encodings.
+        if (!mb_detect_encoding($text, 'UTF-8', true)) {
+            $text = mb_convert_encoding($text, 'UTF-8', 'auto');
+        }
+
+        // Escape for XML (not HTML), keep quotes, substitute invalid sequences.
+        return htmlspecialchars($text, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false);
     }
 
     /**
