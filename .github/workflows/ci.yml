@@ -33,7 +33,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            exelearning/exelearning
+            ${{ github.repository }}
             ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=tag
