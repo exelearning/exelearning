@@ -530,12 +530,18 @@ class OdeXmlUtil
             return null;
         }
 
-        // Normalize input to UTF-8 if it comes in Latin-1 or other legacy encodings.
-        if (!mb_detect_encoding($text, 'UTF-8', true)) {
-            $text = mb_convert_encoding($text, 'UTF-8', 'auto');
+        // Normalize to UTF-8 if needed.
+        if (!mb_check_encoding($text, 'UTF-8')) {
+            // Try common Western encodings explicitly.
+            $enc = mb_detect_encoding($text, ['Windows-1252', 'ISO-8859-1', 'ISO-8859-15'], true);
+            if (false === $enc) {
+                // Fallback to Windows-1252 (superset of ISO-8859-1).
+                $enc = 'Windows-1252';
+            }
+            $text = mb_convert_encoding($text, 'UTF-8', $enc);
         }
 
-        // Escape for XML (not HTML), keep quotes, substitute invalid sequences.
+        // Escape for XML (not HTML); keep quotes; substitute any remaining invalid code points.
         return htmlspecialchars($text, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false);
     }
 
