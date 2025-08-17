@@ -872,7 +872,7 @@ class ExportXmlUtil
         $lang = $odeProperties['pp_lang'] ? $odeProperties['pp_lang']->getValue() : 'es';
 
         $html = '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="'.$lang.'" lang="'.$lang.'">';
-        $html .= "<head><title>{$title}</title></head>";
+        $html .= "<head><title>{$title}</title><meta charset=\"UTF-8\"></head>";
         $html .= '<body><nav epub:type="toc" id="toc"><ol>';
 
         $visiblesPages = [];
@@ -1114,8 +1114,8 @@ class ExportXmlUtil
         $head = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><head></head>');
 
         // Meta: charset (see DOMDocument in Export*Service.php)
-        // $metaCharset = $head->addChild('meta');
-        // $metaCharset->addAttribute('charset', 'utf-8');
+        $metaCharset = $head->addChild('meta');
+        $metaCharset->addAttribute('charset', 'utf-8');
 
         // Meta: generator
         $metaGenerator = $head->addChild('meta');
