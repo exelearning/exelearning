@@ -165,12 +165,11 @@ class ExportHTML5Service implements ExportServiceInterface
             $dom->appendChild($importedNode);
 
             // Write the file as real HTML5
-            $dom->saveHTMLFile($pageFile);
-
-            // Añade el doctype al principio del HTML5: <!DOCTYPE html>
-            $pageFileNewText = '<!DOCTYPE html>'.PHP_EOL.file_get_contents($pageFile);
-
-            file_put_contents($pageFile, $pageFileNewText);
+            // Use saveHTML() to get the string, then prepend the HTML5 doctype.
+            // This is more efficient than saveHTMLFile() followed by file_get_contents()/file_put_contents().
+            // It ensures the final file is written in one go with the correct doctype and content.
+            $htmlContent = $dom->saveHTML($dom->documentElement);
+            file_put_contents($pageFile, "<!DOCTYPE html>\n".$htmlContent);
 
             // Insert idevices html view
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {

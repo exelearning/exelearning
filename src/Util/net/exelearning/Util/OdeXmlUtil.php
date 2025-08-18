@@ -555,6 +555,15 @@ class OdeXmlUtil
      */
     public static function readOdeXml($odeSessionId, $elpContentFileContent)
     {
+        // This prevents mojibake issues when the input file content is not properly encoded,
+        // which can happen on different operating systems (e.g., Windows default).
+        if ($elpContentFileContent && !mb_check_encoding($elpContentFileContent, 'UTF-8')) {
+            $enc = mb_detect_encoding($elpContentFileContent, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true);
+            if ($enc) {
+                $elpContentFileContent = mb_convert_encoding($elpContentFileContent, 'UTF-8', $enc);
+            }
+        }
+
         // Initialize response arrays
         $odeResponse = [];
         $odeResponse['userPreferences'] = [];

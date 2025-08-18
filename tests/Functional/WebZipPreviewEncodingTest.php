@@ -10,15 +10,21 @@ use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
 
 /**
- * Executes elp:export (HTML5) against the .elp fixture and validates the
- * *generated* pages:
+ * Uses elp:export (HTML5) to produce a site and validates every generated page:
  *  - files are valid UTF-8,
  *  - no mojibake ("Ã.") in raw HTML,
  *  - <head> has a UTF-8 charset meta,
- *  - some <p> contains the real "Prueba Ú".
+ *  - at least one page renders the full extended Spanish character set.
  */
 class WebZipPreviewEncodingTest extends KernelTestCase
 {
+    /** Extended set expected to appear literally in rendered text nodes. */
+    private const EXTENDED_SAMPLE_CHARS = [
+        'á','é','í','ó','ú','ü',
+        'Á','É','Í','Ó','Ú','Ü',
+        'ñ','Ñ','¡','¿','&','>','<'
+    ];
+
     private Filesystem $fs;
     private CommandTester $tester;
     private string $outDir;
@@ -37,39 +43,38 @@ class WebZipPreviewEncodingTest extends KernelTestCase
     }
 
     /** @test */
-    public function test_generated_html_is_utf8_has_charset_meta_and_no_mojibake_and_shows_prueba_U(): void
+    public function test_generated_html_is_utf8_no_mojibake_has_meta_and_renders_extended_chars(): void
     {
-        // Arrange
-        $inputElp = realpath(__DIR__ . '/../Fixtures/encoding_test.elp');
-        if (!$inputElp) {
+        $input = realpath(__DIR__ . '/../Fixtures/encoding_test.elp');
+        if (!$input) {
             $this->markTestSkipped('Missing fixture: encoding_test.elp');
         }
 
         $this->outDir = sys_get_temp_dir() . '/elp_export_html5_' . uniqid('', true);
         $this->fs->mkdir($this->outDir);
 
-        // Act: run the generic export (HTML5)
+        // Run generic export (HTML5)
         $this->tester->execute([
             'command' => 'elp:export',
-            'input'   => $inputElp,
+            'input'   => $input,
             'output'  => $this->outDir,
             'format'  => 'html5',
             '--debug' => true,
         ]);
 
-        // Assert command and output
         $this->assertSame(0, $this->tester->getStatusCode(), $this->tester->getDisplay());
         $this->assertDirectoryExists($this->outDir, 'Output directory missing');
 
         $htmlFiles = $this->findHtmlFiles($this->outDir);
-        $this->assertNotEmpty($htmlFiles, 'No generated HTML files found.');
+        $this->assertNotEmpty($htmlFiles, 'No generated HTML files found');
 
         $foundPrueba = false;
+        $foundAllExtended = false;
 
         foreach ($htmlFiles as $file) {
             $rel = ltrim(str_replace($this->outDir . DIRECTORY_SEPARATOR, '', $file), DIRECTORY_SEPARATOR);
 
-            // Skip obvious assets/templates
+            // Skip assets/templates we don’t want to validate here
             if (preg_match('#^(idevices|libs|theme|content/css)/#i', $rel)) {
                 continue;
             }
@@ -77,34 +82,51 @@ class WebZipPreviewEncodingTest extends KernelTestCase
             $html = file_get_contents($file);
             $this->assertNotFalse($html, "Unable to read $rel");
 
-            // Raw bytes must be UTF-8
+            // Raw UTF-8 and no mojibake
             $this->assertTrue(mb_check_encoding($html, 'UTF-8'), "Not valid UTF-8: $rel");
+            $this->assertFalse((bool) preg_match('/Ã./u', $html), "Mojibake found in raw HTML: $rel");
 
-            // No typical mojibake pattern
-            $this->assertFalse((bool) preg_match('/Ã./u', $html), "Found mojibake in raw HTML: $rel");
-
-            // <head> contains a UTF-8 charset meta
+            // <head> must declare UTF-8
             $this->assertHeadHasUtf8Meta($html, $rel);
 
-            // Parse and check rendered text
+            // DOM check for “Prueba Ú”
             $dom = new \DOMDocument('1.0', 'UTF-8');
             @$dom->loadHTML('<?xml encoding="UTF-8" ?>' . $html);
             $xp = new \DOMXPath($dom);
 
-            foreach ($xp->query('//p[contains(normalize-space(.), "Prueba")]') as $p) {
+            foreach ($xp->query('//p') as $p) {
                 $text = trim($p->textContent);
-                $this->assertStringNotContainsString('Ã', $text, "Mojibake inside <p> of $rel");
-                if (str_contains($text, 'Prueba Ú')) {
+
+                // Paragraphs should not contain mojibake either
+                $this->assertStringNotContainsString('Ã', $text, "Mojibake inside paragraph text: $rel");
+
+                if (!$foundPrueba && str_contains($text, 'Prueba Ú')) {
                     $foundPrueba = true;
-                    break 2;
                 }
+
+                // Try to satisfy the full extended sample with any single paragraph
+                if (!$foundAllExtended && $this->containsAll($text, self::EXTENDED_SAMPLE_CHARS)) {
+                    $foundAllExtended = true;
+                }
+
+                if ($foundPrueba && $foundAllExtended) {
+                    break;
+                }
+            }
+
+            if ($foundPrueba && $foundAllExtended) {
+                break;
             }
         }
 
-        $this->assertTrue($foundPrueba, 'Expected to find a <p> with “Prueba Ú” in the generated site.');
+        $this->assertTrue($foundPrueba, 'Expected a paragraph with “Prueba Ú” in the generated site.');
+        $this->assertTrue(
+            $foundAllExtended,
+            'Expected at least one paragraph to contain all of: ' . implode(' ', self::EXTENDED_SAMPLE_CHARS)
+        );
     }
 
-    /** Assert that <head> has a UTF-8 charset meta (charset attr or http-equiv). */
+    /** Assert that <head> has a UTF-8 charset meta (charset attribute or http-equiv). */
     private function assertHeadHasUtf8Meta(string $html, string $label): void
     {
         $dom = new \DOMDocument('1.0', 'UTF-8');
@@ -121,21 +143,30 @@ class WebZipPreviewEncodingTest extends KernelTestCase
         $this->assertTrue($has, "Missing UTF-8 charset meta in <head> of $label");
     }
 
-    /** @return array<string> */
+    /** Return all .html/.xhtml files under a directory (recursive). */
     private function findHtmlFiles(string $dir): array
     {
         $rii = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir));
         $files = [];
-        foreach ($rii as $file) {
-            if ($file->isDir()) {
-                continue;
-            }
-            $path = $file->getPathname();
-            if (preg_match('/\.x?html?$/i', $path)) {
-                $files[] = $path;
+        foreach ($rii as $f) {
+            if ($f->isDir()) continue;
+            $p = $f->getPathname();
+            if (preg_match('/\.x?html?$/i', $p)) {
+                $files[] = $p;
             }
         }
         return $files;
+    }
+
+    /** True if $haystack contains every token in $needles. */
+    private function containsAll(string $haystack, array $needles): bool
+    {
+        foreach ($needles as $n) {
+            if (!str_contains($haystack, $n)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     protected function tearDown(): void
