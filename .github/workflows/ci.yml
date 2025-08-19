@@ -162,7 +162,7 @@ jobs:
           category: hadolint-dockerfile
 
       - name: Docker Hub Description
-        if: github.repository == 'exelearning/exelearning' && startsWith(github.ref, 'refs/tags/') && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_PASSWORD != ''
+        if: github.repository == 'exelearning/exelearning' && startsWith(github.ref, 'refs/tags/')
         uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
