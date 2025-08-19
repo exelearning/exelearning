@@ -60,7 +60,7 @@ class DatabaseTestCommand extends Command
         ]);
 
         try {
-            // Verificar si la conexión está establecida
+            // Check if the connection is established
             if ($this->connection->isConnected() || $this->connection->getNativeConnection()) {
                 $output->writeln('<info>Database connection successful!</info>');
 
