@@ -135,7 +135,7 @@ class OdeOldXmlImageMagnifierIdevice
                 $lupaGlobals[$key] = isset($node[0]) ? (string) $node[0]['value'] : '';
             }
 
-            // Extraer el valor de 'float' del XML
+            // Extract the value of 'float' from the XML
             $floatValue = '';
             $floatNodes = $galleryImageNode->xpath(
                 "f:dictionary/f:string[@value='float']/following-sibling::f:unicode[1]"

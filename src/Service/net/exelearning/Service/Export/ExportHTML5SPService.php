@@ -221,7 +221,7 @@ class ExportHTML5SPService implements ExportServiceInterface
         foreach ($domFather->childNodes as $node) {
             if ('section' === $node->nodeName) {
                 continue;
-            } // No mover el nuevo nodo
+            } // Do not move the new node
             if (XML_ELEMENT_NODE === $node->nodeType) {
                 if ($cont < 2) {
                     $nodesToMove[] = $node;

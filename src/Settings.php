@@ -108,7 +108,7 @@ class Settings
         'el' => 'Ελληνικά', // Greek
         'en' => 'English',
         'eo' => 'Esperanto',
-        'es' => 'Español', // Español, Spanish
+        'es' => 'Español', // Spanish
         'et' => 'Eesti', // Estonian
         'eu' => 'Euskara', // Basque
         'fa' => 'فارسی', // Farsi, Persian
@@ -135,7 +135,7 @@ class Settings
         'ru' => 'Русский', // Russian
         'sk' => 'Slovenčina, slovenský jazyk', // Jazyk - Slovak
         'sl' => 'Slovenščina', // Slovene
-        'sr' => 'Српски / srpski', // Srpski, serbio
+        'sr' => 'Српски / srpski', // Srpski, Serbian
         'sv' => 'Svenska', // Swedish
         'th' => 'ไทย', // Thai
         'tl' => 'Wikang Tagalog, ᜏᜒᜃᜅ᜔ ᜆᜄᜎᜓᜄ᜔', // Tagalog
