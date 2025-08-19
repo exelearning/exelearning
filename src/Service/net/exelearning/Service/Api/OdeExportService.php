@@ -133,7 +133,7 @@ class OdeExportService implements OdeExportServiceInterface
         // Get ode pages
         $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
         $odeNavStructureSyncs = $odeNavStructureSyncRepo->findByOdeSessionId($odeSessionId);
-        // TODO NO NECESARIO porque siempre va a tener una página ******************
+        // TODO NOT NECESSARY because it will always have a page ******************
         if (empty($odeNavStructureSyncs)) {
             $error = $this->translator->trans('Please create at least one page before exporting.');
             $responseData['responseMessage'] = $error;
@@ -148,7 +148,7 @@ class OdeExportService implements OdeExportServiceInterface
         $odeProperties = $this->odeService->getOdePropertiesFromDatabase($odeSessionId, $user);
 
         // Get user preferences
-        // TODO siguiente instrucción se ejecuta al inicio del método
+        // TODO next instruction is executed at the beginning of the method
         $dbUserPreferences = $this->userHelper->getUserPreferencesFromDatabase($user);
         $userPreferencesDtos = [];
         foreach ($dbUserPreferences as $userPreference) {
@@ -568,7 +568,7 @@ class OdeExportService implements OdeExportServiceInterface
         // COPY FILES
         // ///////////////////////////////////////////////////
 
-        // TODO VER QUé HACE PORQUE NO COPIA NADA en export ELP ****************
+        // TODO SEE WHAT IT DOES BECAUSE IT DOESN'T COPY ANYTHING in ELP export ****************
         // Copy project schema files
         $this->copySchemaFilesToExportDir($exportDirPath, $exportType);
 
@@ -579,16 +579,16 @@ class OdeExportService implements OdeExportServiceInterface
             $newExportDirName = Constants::EXPORT_DIR_CONTENT_BY_EXPORT[$exportType];
             $newExportDirPath = self::createDirInExportDir($exportDirPath, $newExportDirName);
         }
-        // TODO VER QUé HACE PORQUE NO COPIA NADA en export ELP ****************
+        // TODO SEE WHAT IT DOES BECAUSE IT DOESN'T COPY ANYTHING in ELP export ****************
         // Copy project common files
         $this->copyCommonFilesToExportDir($newExportDirPath, $exportType);
 
-        // vamos a crear un método que analice recursivamente odeNavStructureSyncs y que copie los archivos de las librerías que se deben de incluir en el proyecto
-        // debe de buscar en cada idevice si tiene una algún efecto incluido. El método retornará todos un array con todos los efectos que encuentre.
+        // we are going to create a method that recursively analyzes odeNavStructureSyncs and copies the library files that should be included in the project
+        // it should search in each idevice if it has any effect included. The method will return an array with all the effects it finds.
         list($librariesToCopy, $librariesFileToCopy) = ExportXmlUtil::getPathForLibrariesInIdevices($odeNavStructureSyncs, $odeProperties);
 
-        // copia todos los libs, jquery, bootstrap
-        // Copy project base files to export --> Aquí vamos a copiar los obligatorios
+        // copy all libs, jquery, bootstrap
+        // Copy project base files to export --> Here we are going to copy the mandatory ones
         $this->copyBaseFilesToExportDir($newExportDirPath, $exportType, $resourcesPrefix, $isPreview, $librariesToCopy);
 
         // Copy ode files
@@ -605,7 +605,7 @@ class OdeExportService implements OdeExportServiceInterface
             Constants::PERMANENT_SAVE_CONTENT_CSS_DIRNAME.DIRECTORY_SEPARATOR.
             Constants::WORKAREA_STYLE_BASE_CSS_FILENAME;
         $this->replaceUrlsBaseCssFile($baseCssPath, $resourcesPrefix, $isPreview);
-        // array con todos las rutas de las librerías
+        // array with all the library paths
         // Get links to files (previously copied files)
         $libsResourcesPath = $this->getFilesLoadedPath($exportType, $librariesFileToCopy);
 

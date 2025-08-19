@@ -441,7 +441,7 @@ class ExportXmlUtil
 
             if (in_array($exportType, [Constants::EXPORT_TYPE_SCORM12, Constants::EXPORT_TYPE_SCORM2004])) {
                 // The next code is an example of how to add a namespace to the attribute
-                // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Ejemplo de URI de namespace
+                // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Namespace URI example
                 // $resource->addAttribute('scormtype', 'sco', $adlcp_ns);
                 $resource->addAttribute('adlcp:adlcp:scormtype', 'sco');
             }
@@ -548,12 +548,12 @@ class ExportXmlUtil
             }
         }
 
-        // TODO, a parte del anterior hay mas directorios "raros"
+        // TODO, besides the previous one, there are more "weird" directories
 
-        // ¿Dónde podemos crear directorios?
-        // Hay que procesar los HTML de los idevices y mirar los que hagan referencia a custom/ porque son los del file manager
-        // TODO ver quee mas hay que meter como lo del file manger y de libs hay que quitar los que están en los idevices
-        // TODO deberíamos añadir los archivos de math que se cargan solos? en commun resourse?
+        // Where can we create directories?
+        // We need to process the iDevices' HTML and look for references to custom/ because they are from the file manager
+        // TODO see what else needs to be added, like the file manager stuff, and remove the libs that are in the iDevices
+        // TODO should we add the math files that load by themselves? in common resource?
     }
 
     /**
@@ -632,7 +632,7 @@ class ExportXmlUtil
         $dateTime = $date->addChild('dateTime', $formatted);
         $dateTime->addAttribute('uniqueElementName', 'dateTime');
         $description = $date->addChild('description');
-        // TODO cambiar la frase al idioma del ODE
+        // TODO change the phrase to the ODE's language
         $descriptionString = $description->addChild('string', 'Fecha de creación de los metadatos');
         $descriptionString->addAttribute('language', $langValue);
 
@@ -657,7 +657,7 @@ class ExportXmlUtil
 
         $description = $date->addChild('description');
 
-        // TODO cambiar la frase al idioma del ODE
+        // TODO change the phrase to the ODE's language
         $string = $description->addChild('string', 'Fecha de creación de los metadatos');
         $string->addAttribute('language', $langValue);
 
@@ -2485,7 +2485,7 @@ class ExportXmlUtil
         $filesToCopy = [];
         $libsToSearch = [
             // the following library may not be mandatory
-            // [constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',"clas=xxxx"], //lleva SCORM y parece obligatorio para exportación web
+            // [constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',"clas=xxxx"], // it has SCORM and seems mandatory for web export
             [$commonPath.'exe_effects', 'class', 'exe-fx', ['/exe_effects/exe_effects.js', '/exe_effects/exe_effects.css']],
             [$commonPath.'exe_games', 'class', 'exe-game', ['/exe_games/exe_games.js', '/exe_games/exe_games.css']],
             [$commonPath.'exe_highlighter', 'class', 'highlighted-code', ['/exe_highlighter/exe_highlighter.js', '/exe_highlighter/exe_highlighter.css']],
@@ -2627,7 +2627,7 @@ class ExportXmlUtil
 
         // TODO issue 315
         // if ('true' == $odeProperties['pp_addSearchBox']->getValue()) {
-        //    Aquí añadimos los ficheros de búsqueda
+        //    Here we add the search files
         // }
 
         return [$librariesToCopy, $filesToCopy];
