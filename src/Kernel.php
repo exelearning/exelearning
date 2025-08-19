@@ -13,31 +13,31 @@ class Kernel extends BaseKernel
 {
     use MicroKernelTrait;
 
-    // Sobrescribir el directorio de caché usando la variable de entorno CACHE_DIR
+    // Override the cache directory using the CACHE_DIR environment variable
     public function getCacheDir(): string
     {
-        // Verificar si la variable CACHE_DIR existe y no está vacía
+        // Check if the CACHE_DIR variable exists and is not empty
         $cacheDir = !empty($_ENV['CACHE_DIR']) ? $_ENV['CACHE_DIR'] : parent::getCacheDir();
 
-        // Verificar si el directorio existe, si no, crearlo
+        // Check if the directory exists, if not, create it
         $filesystem = new Filesystem();
         if (!$filesystem->exists($cacheDir)) {
-            $filesystem->mkdir($cacheDir, 0755); // Crear el directorio con permisos adecuados
+            $filesystem->mkdir($cacheDir, 0755); // Create the directory with appropriate permissions
         }
 
         return $cacheDir;
     }
 
-    // Sobrescribir el directorio de logs usando la variable de entorno LOG_DIR
+    // Override the log directory using the LOG_DIR environment variable
     public function getLogDir(): string
     {
-        // Verificar si la variable LOG_DIR existe y no está vacía
+        // Check if the LOG_DIR variable exists and is not empty
         $logDir = !empty($_ENV['LOG_DIR']) ? $_ENV['LOG_DIR'] : parent::getLogDir();
 
-        // Verificar si el directorio existe, si no, crearlo
+        // Check if the directory exists, if not, create it
         $filesystem = new Filesystem();
         if (!$filesystem->exists($logDir)) {
-            $filesystem->mkdir($logDir, 0755); // Crear el directorio con permisos adecuados
+            $filesystem->mkdir($logDir, 0755); // Create the directory with appropriate permissions
         }
 
         return $logDir;
@@ -47,7 +47,7 @@ class Kernel extends BaseKernel
     {
         parent::initializeContainer();
 
-        // Asegurarse de que el contenedor esté disponible para SettingsUtil
+        // Make sure the container is available for SettingsUtil
         SettingsUtil::setContainer($this->getContainer());
     }
 }

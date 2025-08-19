@@ -7,7 +7,7 @@ use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Mime\MimeTypes;
-use Symfony\Component\Translation\Loader\XliffFileLoader; // Agrega esta línea
+use Symfony\Component\Translation\Loader\XliffFileLoader; // Add this line
 
 /**
  * FileUtil.
