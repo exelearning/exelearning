@@ -21,7 +21,7 @@ class FilesDirService implements FilesDirServiceInterface
     ) {
         $this->fileHelper = $fileHelper;
         $this->filesDir = $this->fileHelper->getFilesDir();
-        $this->checkFile = $this->filesDir.Constants::FILE_CHECKED_FILENAME.Constants::FILE_CHECKED_VERSION;
+        $this->checkFile = $this->filesDir.Constants::FILE_CHECKED_FILENAME.'-'.Constants::APP_VERSION;
         $this->translator = $translator;
     }
 
@@ -107,6 +107,7 @@ class FilesDirService implements FilesDirServiceInterface
 
         try {
             FileUtil::removeDir($this->fileHelper->getIdevicesBaseDir());
+            FileUtil::removeDir($this->fileHelper->getThemesBaseDir());
             $copied = FileUtil::copyDir(
                 $this->fileHelper->getSymfonyFilesDir(),
                 $this->fileHelper->getFilesDir()
