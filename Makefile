@@ -219,6 +219,9 @@ test-local: check-env
 	APP_SECRET=TestSecretKey \
 	composer --no-cache phpunit-unit
 
+update-licenses: check-env
+	composer --no-cache update-licenses
+
 # Generate a new migration class from changes in mapping information and compy them to the ./migrations local folder
 migration: check-docker check-env upd
 	docker compose exec exelearning php bin/console make:migration

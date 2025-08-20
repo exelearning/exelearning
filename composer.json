@@ -90,7 +90,8 @@
         "phpunit-e2e": "vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=always --testsuite e2e",
         "phpunit-e2e-realtime": "vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=always --testsuite e2e-realtime",
         "translations:extract": "php bin/console app:translations:extract",
-        "cache-clear": "php bin/console cache:clear"
+        "cache-clear": "php bin/console cache:clear",
+        "update-licenses": "php bin/update-licenses.php"
     },
     "scripts-descriptions": {
         "php-cs-checker": "Run PHP-CS-Fixer to check coding style issues.",
