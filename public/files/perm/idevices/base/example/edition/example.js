@@ -83,7 +83,7 @@ var $exeDevice = {
     this.color = this.ideviceBody.querySelector(`#${this.colorId}`).value;
     this.switch = this.ideviceBody.querySelector(`#${this.switchId}`).checked;
     this.radio = this.ideviceBody.querySelector(`input[name="${this.radioId}"]:checked`).id;
-    // Check if the values ​​are valid
+    // Check if the values are valid
     if (this.checkFormValues()) {
       return this.getDataJson();
     } else {
@@ -109,14 +109,14 @@ var $exeDevice = {
     html += `</div>`;
     // [eXeLearning] - Set html to eXe idevice body
     this.ideviceBody.innerHTML = html;
-    // Load the previous values ​​of the idevice data from eXe
+    // Load the previous values of the idevice data from eXe
     this.loadPreviousValues();
     // Set behaviour to elements of form
     this.setBehaviour();
   },
 
   /**
-   * Check if the form values ​​are correct
+   * Check if the form values are correct
    *
    * @returns {Boolean}
    */
@@ -356,7 +356,6 @@ var $exeDevice = {
   },
 
   /**
-   * Switch
    * Function to create HTML switch
    *
    * @param {String} id
