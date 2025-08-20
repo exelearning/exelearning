@@ -526,7 +526,7 @@ class ExportXmlUtil
         $resource->addAttribute('type', 'webcontent');
         if (in_array($exportType, [Constants::EXPORT_TYPE_SCORM12, Constants::EXPORT_TYPE_SCORM2004])) {
             // The next code is an example of how to add a namespace to the attribute
-            // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Ejemplo de URI de namespace
+            // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Example of namespace URI
             // $resource->addAttribute('scormtype', 'sco', $adlcp_ns);
             $resource->addAttribute('adlcp:adlcp:scormtype', 'asset');
         }
