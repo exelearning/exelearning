@@ -5,11 +5,19 @@
 *   Framework: Symfony
     *   Copyright: Fabien Potencier
     *   Lisense: MIT
-
+*   Dependency Manager: composer
+    *   Copyright: Nils Adermann, Jordi Boggiano
+    *   License: MIT
 <composer_packages>
 
 ## Client-side libraries
 
+*   Files: /public/app/common/edicuatex/\* (except js/DOMPurify/*)
+    *   Copyright: Juan José de Haro
+    *   License: CC-BY-SA-4.0
+*   Files: /public/app/common/edicuatex/js/DOMPurify\*
+    *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
+    *   License: Apache License 2.0 / Mozilla Public License Version 2.0
 *   File: /public/app/common/exe\_atools/exe\_atools.js
     *   exe\_atools.js includes a modified version of Drog.js v1.2.1, with written permission of his author.
     *   Drog.js author: Emanuel Rojas Vásquez
@@ -42,33 +50,27 @@
 *   Files: public/app/common/fix\_webm\_duration/\*
     *   Copyright: 2018 Yury Sitnikov
     *   License: MIT
-*   Files: /public/app/common/fMath/\*
-    *   Copyright: Ionel Alexandru
-    *   License: Apache License 2.0
-*   Files: /public/app/common/fMath/fonts/asana/\*
-    *   Copyright: Frédéric Wang
-    *   License: SIL Open Font License
-*   Files: /public/app/common/fMath/fonts/dejavu/\*
-    *   Copyright: Bitstream, Inc.
-    *   License: Public Domain
-*   Files: /public/app/common/fMath/fonts/sazanami/\*
-    *   Copyright: Wada Laboratory, the University of Tokyo / Electronic Font Open Laboratory
-    *   License: Described in /public/app/common/fMath/fonts/sazanami/sazanami-gothic-license.txt
-*   Files: /public/app/common/fMath/fonts/stix/\*
-    *   Copyright: STI Pub Companies
-    *   License: SIL Open Font License
 *   Files: /public/app/common/mindmaps/\*
     *   Copyright: David Richard
     *   License: AGPL V3 (included in eXeLearning with the developer's consent)
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
+*   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/fonts/\*
+    *   Copyright: The Open Sans Project Authors. Designed by Steve Matteson
+    *   License: SIL Open Font License version 1.1
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/images/\*
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
 *   Files: /public/files/perm/idevices/base/scrambled-list/export/scrambled-list.js and /public/files/perm/idevices/base/interactive-video/export/interactive-video.js
     *   HTML5 Sortable jQuery Plugin copyright: Ali Farhadi (maintained by Alexandru Badiu and Lukas Oppermann)
     *   License: MIT
+*   Files: /public/files/perm/idevices/base/magnifier/export/mojomagnify.js
+    *   Copyright: Jacob Seidelin and other contributors
+    *   License: MIT
+*   Files: /public/files/workarea/icons/\*
+    *   Copyright: Google (Material Design)
+    *   License: Apache License 2.0
 *   Files: /public/libs/abcjs/\*
     *   Copyright: Paul Rosen and Gregory Dyke, under the GNU GPL v3 license.
     *   License: MIT
@@ -108,4 +110,12 @@
 *   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/FileSaver.min.js
     *   Copyright: Eli Grey
     *   License: MIT
-*   Files: /public/libs/tinymc
+*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
+    *   Copyright: John Resig
+    *   License: MIT
+*   Files: /public/style/workarea/fonts/\Catamaran*
+    *   Copyright: The Catamaran Authors. Designed by Pria Ravichandran
+    *   License: SIL Open Font License version 1.1
+*   Files: /public/style/workarea/fonts/\Inter*
+    *   Copyright: The Inter Project Authors. Designed by Rasmus Andersson
+    *   License: SIL Open Font License version 1.1
