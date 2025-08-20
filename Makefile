@@ -440,6 +440,7 @@ help:
 	@echo "Other:"
 	@echo ""
 	@echo "  help                  - Display this help with available commands"
+	@echo "  update-licenses       - Update the Legal notes (Third Libraries) reading the composer/installed.json file"
 	@echo ""
 
 # Set help as the default goal if no target is specified
