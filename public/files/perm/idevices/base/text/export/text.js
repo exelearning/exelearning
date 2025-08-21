@@ -139,9 +139,15 @@ var $text = {
             .forEach(el => {
                 const attr = el.hasAttribute('src') ? 'src' : 'href';
                 const val = el.getAttribute(attr).trim();
+                console.log(attr, val);
+
                 if (/^\/?files\//.test(val)) {
                     const filename = val.split('/').pop() || '';
-                    el.setAttribute(attr, dir + filename);
+                    if (val.indexOf('file_manager') === -1) {
+                        el.setAttribute(attr, dir + filename);
+                    } else {
+                        el.setAttribute(attr, 'custom/' + filename);
+                    }
                 }
             });
         return doc.body.innerHTML;

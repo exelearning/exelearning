@@ -109,7 +109,11 @@ var $magnifier = {
                 const val = el.getAttribute(attr).trim();
                 if (/^\/?files\//.test(val)) {
                     const filename = val.split('/').pop() || '';
-                    el.setAttribute(attr, dir + filename);
+                    if (val.indexOf('file_manager') === -1) {
+                        el.setAttribute(attr, dir + filename);
+                    } else {
+                        el.setAttribute(attr, 'custom/' + filename);
+                    }
                 }
             });
         return doc.body.innerHTML;

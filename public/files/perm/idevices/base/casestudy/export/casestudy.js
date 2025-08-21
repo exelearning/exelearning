@@ -92,7 +92,11 @@ var $casestudy = {
                     const u = new URL(val, window.location.origin);
                     if (/^\/?files\//.test(u.pathname)) {
                         const filename = u.pathname.split('/').pop() || '';
-                        el.setAttribute(attr, basePath + filename);
+                        if (u.pathname.indexOf('file_manager') === -1) {
+                            el.setAttribute(attr, basePath + filename);
+                        } else {
+                            el.setAttribute(attr, 'custom/' + filename);
+                        }
                     }
                 } catch {
                     // 
