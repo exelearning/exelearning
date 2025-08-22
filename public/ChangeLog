@@ -4,16 +4,16 @@
 
 ### Added
 
+- New Security Improvements: Disabled directory listing and prevented execution of uploaded scripts
 - New Automate Workflows
 - New Make commands for developers
-- New Security Improvements: Disable directory listing and avoid uploaded scripts execution
 
 ### Fixed
 
-- Improved XDebug handling for developers
-- Improved provider support to work with LMS and other platforms
-- Update iDevices and styles when a new version is installed
+- Improved provider support for LMS and other platforms
+- Update iDevices and styles when installing a new version
 - Download source file iDevice presentation issues
+- Improved XDebug handling for developers
 
 ### Upgraded
 
