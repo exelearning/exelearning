@@ -292,7 +292,7 @@ class ExportXmlUtil
         $titleValue = isset($titleElement) ? $titleElement->getValue() : 'eXe-p-'.$odeId;
         $titleString = $title->addChild('lom:lom:string', $titleValue);
 
-        $titleLang = $odeProperties['pp_lang']; // todo -> title lang property
+        $titleLang = $odeProperties['pp_lang'];
         $titleLang = isset($titleLang) ? $titleLang->getValue() : Settings::DEFAULT_LOCALE;
         $titleString->addAttribute('language', $titleLang);
 
@@ -547,13 +547,6 @@ class ExportXmlUtil
                 }
             }
         }
-
-        // TODO, besides the previous one, there are more "weird" directories
-
-        // Where can we create directories?
-        // We need to process the iDevices' HTML and look for references to custom/ because they are from the file manager
-        // TODO see what else needs to be added, like the file manager stuff, and remove the libs that are in the iDevices
-        // TODO should we add the math files that load by themselves? in common resource?
     }
 
     /**
@@ -1222,7 +1215,7 @@ class ExportXmlUtil
                 $domHead->documentElement->appendChild($import);
             }
 
-            // TODO simplexml load the DOM but introduce scaping characters
+            // TODO simplexml load the DOM but introduce scaping characters?
             $head = simplexml_import_dom($domHead);
         }
 
@@ -2625,7 +2618,7 @@ class ExportXmlUtil
             ];
         }
 
-        // TODO issue 315
+        // TODO issue 315 (exelearning-web)
         // if ('true' == $odeProperties['pp_addSearchBox']->getValue()) {
         //    Here we add the search files
         // }
