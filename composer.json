@@ -85,7 +85,7 @@
         "db-schema-update": "php bin/console doctrine:schema:update --complete --force",
         "create-user": "php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail",
         "generate-api-key": "php bin/console app:generate-api-key",
-        "php-cs-checker": "php -d memory_limit=1G -d xdebug.mode=off vendor/bin/php-cs-fixer fix --dry-run --diff src --config=.php-cs-fixer.dist.php --using-cache=no",
+        "php-cs-checker": "php -n -d memory_limit=1G -d date.timezone=UTC -d xdebug.mode=off vendor/bin/php-cs-fixer fix --dry-run --diff src --config=.php-cs-fixer.dist.php --using-cache=no",
         "php-cs-fixer": "php -d memory_limit=1G -d xdebug.mode=off vendor/bin/php-cs-fixer fix src --config=.php-cs-fixer.dist.php --using-cache=no",
         "js-lint": "yarn lint",
         "js-fix": "yarn lint:fix",
