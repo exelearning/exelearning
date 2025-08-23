@@ -43,7 +43,12 @@
 
         <!-- ###+ doctrine/doctrine-bundle ### -->
         <env name="DATABASE_URL" value="sqlite:///:memory:"/>
+        <env name="APP_ONLINE_MODE" value="1"/>
+        <env name="API_JWT_SECRET" value="test_secret"/>
+        <env name="API_JWT_ISSUER" value="exelearning"/>
+        <env name="API_JWT_AUDIENCE" value="clients"/>
         <!-- ###- doctrine/doctrine-bundle ### -->
+
   </php>
 
     <extensions>
