@@ -30,6 +30,7 @@
     *   Copyright: Guilherme Blanco, Roman Borschel, Benjamin Eberlei, Jonathan Wage
     *   License: MIT
 *   Package: doctrine/deprecations
+    *   Copyright: (c) 2020-2021 Doctrine Project
     *   License: MIT
 *   Package: doctrine/doctrine-bundle
     *   Copyright: Fabien Potencier, Benjamin Eberlei, Symfony Community, Doctrine Project
@@ -101,6 +102,7 @@
     *   Copyright: Jordi Boggiano
     *   License: MIT
 *   Package: myclabs/deep-copy
+    *   Copyright: (c) 2013 My C-Sense
     *   License: MIT
 *   Package: nikic/php-parser
     *   Copyright: Nikita Popov
@@ -112,8 +114,10 @@
     *   Copyright: Arne Blankerts, Sebastian Heuer, Sebastian Bergmann
     *   License: BSD-3-Clause
 *   Package: php-webdriver/webdriver
+    *   Copyright: (c) 2004-2020 Facebook
     *   License: MIT
 *   Package: phpstan/phpstan
+    *   Copyright: (c) 2016 Ondřej Mirtes
     *   License: MIT
 *   Package: phpunit/php-code-coverage
     *   Copyright: Sebastian Bergmann
@@ -173,6 +177,7 @@
     *   Copyright: Christian Lück, Cees-Jan Kiewiet, Jan Sorgalla, Chris Boden
     *   License: MIT
 *   Package: rector/rector
+    *   Copyright: (c) 2017-present Tomáš Votruba (
     *   License: MIT
 *   Package: sebastian/cli-parser
     *   Copyright: Sebastian Bergmann
@@ -214,6 +219,7 @@
     *   Copyright: Sebastian Bergmann
     *   License: BSD-3-Clause
 *   Package: staabm/side-effects-detector
+    *   Copyright: (c) 2021 Markus Staab
     *   License: MIT
 *   Package: symfony/asset
     *   Copyright: Fabien Potencier, Symfony Community
