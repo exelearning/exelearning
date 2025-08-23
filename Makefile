@@ -436,8 +436,62 @@ help:
 	@echo ""
 	@echo "Other:"
 	@echo ""
+	@echo "  seed-admin            - Create/promote an admin and print a JWT (usage: make seed-admin [EMAIL=user@exelearning.net])"
+	@echo "  seed-user             - Create a regular user and print a JWT (usage: make seed-user [EMAIL=user2@exelearning.net])"
+	@echo "  smoke-api-v2          - Quick smoke test for /api/v2/users with a fresh admin JWT"
 	@echo "  help                  - Display this help with available commands"
 	@echo ""
 
 # Set help as the default goal if no target is specified
 .DEFAULT_GOAL := help
+
+# Create or promote an admin user and print a JWT token for API testing
+seed-admin: check-docker check-env upd
+	@EMAIL=$(if $(EMAIL),$(EMAIL),user@exelearning.net); \
+	PASSWORD=$(if $(PASSWORD),$(PASSWORD),1234); \
+	USERNAME=$(if $(USERNAME),$(USERNAME),admin); \
+	echo "Ensuring user '$$EMAIL' exists..."; \
+	docker compose exec exelearning php bin/console app:create-user "$$EMAIL" "$$PASSWORD" "$$USERNAME" --no-fail >/dev/null || true; \
+	echo "Promoting user to ROLE_ADMIN..."; \
+	docker compose exec exelearning php bin/console app:user:promote "$$EMAIL" ROLE_ADMIN >/dev/null; \
+	echo "Generating JWT (1h)..."; \
+	TOKEN=$$(docker compose exec -T exelearning php -d detect_unicode=0 bin/console app:jwt:generate "$$EMAIL" --ttl=3600 | tail -n 1); \
+	echo ""; \
+	echo "Use this token in Authorization header:"; \
+	echo "Bearer $$TOKEN"; \
+	echo ""; \
+	echo "Example:"; \
+		echo "  curl -H 'Authorization: Bearer $$TOKEN' http://localhost:8080/api/v2/users";
+
+# Create a regular user and print a JWT token for API testing
+seed-user: check-docker check-env upd
+	@EMAIL=$(if $(EMAIL),$(EMAIL),user2@exelearning.net); \
+	PASSWORD=$(if $(PASSWORD),$(PASSWORD),1234); \
+	USERNAME=$(if $(USERNAME),$(USERNAME),user2); \
+	echo "Ensuring user '$$EMAIL' exists..."; \
+	docker compose exec exelearning php bin/console app:create-user "$$EMAIL" "$$PASSWORD" "$$USERNAME" --no-fail >/dev/null || true; \
+	echo "Generating JWT (1h)..."; \
+	TOKEN=$$(docker compose exec -T exelearning php -d detect_unicode=0 bin/console app:jwt:generate "$$EMAIL" --ttl=3600 | tail -n 1); \
+	echo ""; \
+	echo "Use this token in Authorization header:"; \
+	echo "Bearer $$TOKEN"; \
+	echo ""; \
+	echo "Example:"; \
+	echo "  curl -H 'Authorization: Bearer $$TOKEN' http://localhost:8080/api/v2/projects/p1/nodes";
+
+# Quick smoke test for API v2 users endpoint (admin JWT)
+smoke-api-v2: check-docker check-env upd
+	@EMAIL=$(if $(EMAIL),$(EMAIL),admin@example.com); \
+	PASSWORD=$(if $(PASSWORD),$(PASSWORD),secret); \
+	USERNAME=$(if $(USERNAME),$(USERNAME),admin); \
+	echo "[smoke] Ensuring admin user '$$EMAIL' exists and has ROLE_ADMIN..."; \
+	docker compose exec exelearning php bin/console app:create-user "$$EMAIL" "$$PASSWORD" "$$USERNAME" --no-fail >/dev/null || true; \
+	docker compose exec exelearning php bin/console app:user:promote "$$EMAIL" ROLE_ADMIN >/dev/null; \
+	echo "[smoke] Generating JWT..."; \
+	TOKEN=$$(docker compose exec -T exelearning php -d detect_unicode=0 bin/console app:jwt:generate "$$EMAIL" --ttl=600 | tail -n 1); \
+	echo "[smoke] Requesting /api/v2/users with Bearer token"; \
+	STATUS=$$(docker compose exec -T exelearning sh -lc "curl -s -o /tmp/smoke_out.txt -w '%{http_code}' -H 'Authorization: Bearer $$TOKEN' -H 'Accept: application/json' http://localhost:8080/api/v2/users"); \
+	echo "HTTP $$STATUS"; \
+	docker compose exec -T exelearning sh -lc "head -c 500 /tmp/smoke_out.txt || true"; \
+	echo ""; \
+	if [ "$$STATUS" != "200" ]; then echo "❌ Smoke test failed"; exit 1; else echo "✅ Smoke test OK"; fi
