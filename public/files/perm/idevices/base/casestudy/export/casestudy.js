@@ -45,6 +45,9 @@ var $casestudy = {
         if (data.title && data.title == 'Case Study' && $title.text() == 'Case Study') {
             $title.text(data.msgs.msgCaseStudy)
         }
+        $exeDevices.iDevice.gamification.math.updateLatex(
+            '.exe-casestudy-container',
+        );
         this.addEvents(data);
     },
 
@@ -82,6 +85,10 @@ var $casestudy = {
             ? `content/resources/${idRes}/`
             : `../content/resources/${idRes}/`;
 
+        const custom = document.documentElement.id === 'exe-index'
+            ? 'custom/'
+            : '../custom/';
+
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
         doc.querySelectorAll('img[src], video[src], audio[src], a[href], source[src]')
@@ -95,7 +102,7 @@ var $casestudy = {
                         if (u.pathname.indexOf('file_manager') === -1) {
                             el.setAttribute(attr, basePath + filename);
                         } else {
-                            el.setAttribute(attr, 'custom/' + filename);
+                            el.setAttribute(attr, custom + filename);
                         }
                     }
                 } catch {

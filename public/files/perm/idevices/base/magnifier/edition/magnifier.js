@@ -231,13 +231,11 @@ var $exeDevice = {
         }
 
         function escapeForTemplateLiteral(str) {
-            return str
-                .replace(/\\/g, '\\\\')
+            if (str == null) return '';
+            return String(str)
                 .replace(/`/g, '\\`')
-                .replace(/\$\{/g, '\\${')
-                .replace(/(\r?\n)/g, '\\n');
+                .replace(/\$\{/g, '\\${');
         }
-
         const escapedHtml = escapeForTemplateLiteral(html);
         const textTextarea = `${escapedHtml}`;
 

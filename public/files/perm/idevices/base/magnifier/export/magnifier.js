@@ -72,6 +72,7 @@ var $magnifier = {
             const cb = '$magnifier.addEvents(' + JSON.stringify(ldata) + ');';
             $exe.loadScript(ldata.idevicePath + 'mojomagnify.js', cb);
         }
+
     },
 
     changeDirectory(data) {
@@ -98,6 +99,9 @@ var $magnifier = {
         const dir = $('html').is('#exe-index')
             ? 'content/resources/' + $node.attr('id-resource') + '/'
             : '../content/resources/' + $node.attr('id-resource') + '/';
+        const custom = $('html').is('#exe-index')
+            ? 'custom/'
+            : '../custom/';
 
 
 
@@ -112,7 +116,7 @@ var $magnifier = {
                     if (val.indexOf('file_manager') === -1) {
                         el.setAttribute(attr, dir + filename);
                     } else {
-                        el.setAttribute(attr, 'custom/' + filename);
+                        el.setAttribute(attr, custom + filename);
                     }
                 }
             });
@@ -218,6 +222,9 @@ var $magnifier = {
 
         setTimeout(function () {
             MojoMagnify.init();
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.exe-magnifier-container',
+            );
         }, 500)
     },
 

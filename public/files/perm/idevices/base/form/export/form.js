@@ -287,6 +287,39 @@ var $form = {
         $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
     },
 
+    replaceResourceDirectoryPaths(data, htmlString) {
+
+        const $node = $('#' + data.ideviceId);
+        const isInExe = eXe.app.isInExe();
+
+        if (isInExe || $node.length == 0) return htmlString;
+
+        let dir = $('html').is('#exe-index')
+            ? 'content/resources/' + $node.first().attr('id-resource')
+            : '../content/resources/' + $node.first().attr('id-resource');
+        const custom = $('html').is('#exe-index')
+            ? 'custom/'
+            : '../custom/';
+        if (!dir.endsWith('/')) dir += '/';
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        doc.querySelectorAll('img[src], video[src], audio[src], a[href]')
+            .forEach(el => {
+                const attr = el.hasAttribute('src') ? 'src' : 'href';
+                const val = el.getAttribute(attr).trim();
+
+                if (/^\/?files\//.test(val)) {
+                    const filename = val.split('/').pop() || '';
+                    if (val.indexOf('file_manager') === -1) {
+                        el.setAttribute(attr, dir + filename);
+                    } else {
+                        el.setAttribute(attr, custom + filename);
+                    }
+                }
+            });
+        return doc.body.innerHTML;
+    },
+
     addEventsSlideShow: function (data) {
         const mOptions = data;
         const instance = data.id;
@@ -783,6 +816,7 @@ var $form = {
      * @returns
      */
     getProcessTextDropdownQuestion(baseText, otherWordsText, data) {
+        baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         let regexReplace = /(<u>).*?(<\/u>)/;
         let regexElement = /(?<=<u>).*?(?=<\/u>)/;
         let regexElementsAll = /(?<=<u>).*?(?=<\/u>)/g;
@@ -849,6 +883,7 @@ var $form = {
      * @returns {String}
      */
     getProcessTextFillQuestion(baseText, checkCapitalization, strictQualification, data) {
+        baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         const regexReplace = /(<u>).*?(<\/u>)/;
         const regexElement = /(?<=<u>).*?(?=<\/u>)/;
 
@@ -886,7 +921,9 @@ var $form = {
      * @returns {String}
      */
 
+
     getProcessTextSelectionQuestion(baseText, optionType, answer, data) {
+        baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         let id = this.generateRandomId();
         let stringTitle;
         optionType === "radio" ? stringTitle = data.msgs.msgSingleSelectionHelp : stringTitle = data.msgs.msgMultipleSelectionHelp;
@@ -924,6 +961,7 @@ var $form = {
      * @returns {String}
      */
     getProcessTextTrueFalseQuestion(baseText, answer, data) {
+        baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         let id = this.generateRandomId();
         let htmlTrueFalse = `<div title="${data.msgs.msgTrueFalseHelp}">`;
         htmlTrueFalse += baseText.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi, '');

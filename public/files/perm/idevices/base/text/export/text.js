@@ -26,6 +26,7 @@ var $text = {
     renderView(data, accessibility, template) {
         const hmltdata = $text.getHTMLView(data)
         return template.replace("{content}", hmltdata);
+
     },
 
     getHTMLView(data, pathMedia) {
@@ -104,6 +105,12 @@ var $text = {
 
             const newHtml = this.getHTMLView(data, pathMedia);
             if (newHtml) $node.html(newHtml);
+            const hasLatex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(
+                $node.html(),
+            );
+            if (hasLatex) {
+                $exeDevices.iDevice.gamification.math.updateLatex('.exe-text-activity');    
+            }
         }
 
         const $btn = $(`#${data.ideviceId} input.feedbacktooglebutton`);
@@ -132,6 +139,9 @@ var $text = {
     replaceResourceDirectoryPaths(newDir, htmlString) {
         let dir = newDir.trim();
         if (!dir.endsWith('/')) dir += '/';
+        const custom = $('html').is('#exe-index')
+            ? 'custom/'
+            : '../custom/';
 
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
@@ -139,14 +149,13 @@ var $text = {
             .forEach(el => {
                 const attr = el.hasAttribute('src') ? 'src' : 'href';
                 const val = el.getAttribute(attr).trim();
-                console.log(attr, val);
 
                 if (/^\/?files\//.test(val)) {
                     const filename = val.split('/').pop() || '';
                     if (val.indexOf('file_manager') === -1) {
                         el.setAttribute(attr, dir + filename);
                     } else {
-                        el.setAttribute(attr, 'custom/' + filename);
+                        el.setAttribute(attr, custom + filename);
                     }
                 }
             });
