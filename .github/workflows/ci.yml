@@ -65,6 +65,21 @@ jobs:
       - name: Build Docker Image
         run: make build
 
+      - name: Debug PHP-CS-Fixer
+        run: |
+          docker compose exec -T exelearning sh -lc '
+            set -e
+            php -v
+            php --ini
+            php -r "echo \"memory_limit=\".ini_get(\"memory_limit\").PHP_EOL;"
+            vendor/bin/php-cs-fixer --version
+            # Ejecuta con poca cháchara de progreso y máxima verbosidad
+            PHP_CS_FIXER_FUTURE_MODE=1 \
+            php -n -d extension=tokenizer -d memory_limit=512M -d date.timezone=UTC -d xdebug.mode=off \
+              vendor/bin/php-cs-fixer check -vvv --show-progress=none --using-cache=no --config=.php-cs-fixer.dist.php src
+          '
+
+
       - name: PHP Lint
         run: make lint-php
 
