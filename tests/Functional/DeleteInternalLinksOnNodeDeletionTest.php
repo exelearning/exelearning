@@ -49,7 +49,7 @@ class DeleteInternalLinksOnNodeDeletionTest extends KernelTestCase
         $sessionId = $check['odeSessionId'];
         $this->assertNotEmpty($sessionId, 'No session id returned after import');
 
-        // Locate the nodes: "Inicio" and "Extinción del contrato"
+        // Locate the nodes: "Inicio" and "Tema 1"
         $navRepo = $em->getRepository(OdeNavStructureSync::class);
         $navs = $navRepo->getNavStructure($sessionId);
 
@@ -59,13 +59,13 @@ class DeleteInternalLinksOnNodeDeletionTest extends KernelTestCase
             if ($n->getPageName() === 'Inicio') {
                 $inicio = $n;
             }
-            if ($n->getPageName() === 'Extinción del contrato') {
+            if ($n->getPageName() === 'Tema 1') {
                 $toDelete = $n;
             }
         }
 
         $this->assertNotNull($inicio, 'Inicio page not found in imported ELP');
-        $this->assertNotNull($toDelete, 'Extinción del contrato page not found in imported ELP');
+        $this->assertNotNull($toDelete, 'Tema 1 page not found in imported ELP');
 
         $deletedPageId = (int) $toDelete->getOdePageId();
         $this->assertGreaterThan(0, $deletedPageId, 'Invalid odePageId for page to delete');
