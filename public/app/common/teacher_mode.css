@@ -1,0 +1,23 @@
+/* Teacher Mode default styles */
+html:not(.mode-teacher) .teacher-only { display: none !important; }
+
+/* Toggle button basic style (kept minimal to avoid clashing with themes) */
+.teacher-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  line-height: 1;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+}
+.teacher-mode-toggle[aria-pressed="true"] {
+  background: #f4f6ff;
+  border-color: #7386ff;
+}
+.teacher-mode-toggle-label { font-size: 0.9em; }

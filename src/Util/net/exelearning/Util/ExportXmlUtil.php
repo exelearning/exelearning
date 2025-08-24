@@ -1474,7 +1474,11 @@ class ExportXmlUtil
         // Page
         $page = $exe->addChild('main', ' ');
         $page->addAttribute('id', $odeNavStructureSync->getOdePageId());
-        $page->addAttribute('class', 'page');
+        $pageClass = 'page';
+        if (isset($pagePropertiesDict['visibilityType']) && 'teacher' === $pagePropertiesDict['visibilityType']) {
+            $pageClass .= ' teacher-only';
+        }
+        $page->addAttribute('class', $pageClass);
 
         /* To review
         if ($exportDynamicPage) {
@@ -1989,6 +1993,23 @@ class ExportXmlUtil
             $pageTitle->addAttribute('class', 'page-title');
         }
 
+        // Teacher mode toggle button
+        $teacherToggleTitle = $translator->trans('Teacher mode');
+        $studentLabel = $translator->trans('Student mode');
+        $teacherLabel = $translator->trans('Teacher mode');
+        $teacherToggle = $pageHeader->addChild('button', ' ');
+        $teacherToggle->addAttribute('id', 'teacher-mode-toggle');
+        $teacherToggle->addAttribute('class', 'teacher-mode-toggle');
+        $teacherToggle->addAttribute('type', 'button');
+        $teacherToggle->addAttribute('aria-pressed', 'false');
+        $teacherToggle->addAttribute('title', $teacherToggleTitle);
+        $teacherToggle->addAttribute('data-label-student', $studentLabel);
+        $teacherToggle->addAttribute('data-label-teacher', $teacherLabel);
+        $teacherToggle->addAttribute('data-title-off', $studentLabel);
+        $teacherToggle->addAttribute('data-title-on', $teacherLabel);
+        $teacherToggleSpan = $teacherToggle->addChild('span', $teacherToggleTitle);
+        $teacherToggleSpan->addAttribute('class', 'teacher-mode-toggle-label');
+
         return $pageHeaderMain;
     }
 
@@ -2168,6 +2189,13 @@ class ExportXmlUtil
 
         if (isset($blockPropertiesDict['minimized']) && 'true' == $blockPropertiesDict['minimized']) {
             $class .= ' minimized';
+        }
+
+        if (
+            isset($blockPropertiesDict['visibilityType'])
+            && 'teacher' === $blockPropertiesDict['visibilityType']
+        ) {
+            $class .= ' teacher-only';
         }
 
         if (isset($blockPropertiesDict['cssClass'])) {
@@ -2356,6 +2384,13 @@ class ExportXmlUtil
         if (!$odeComponentsSync->getHtmlView()) {
             $class .= ' db-no-data';
         }
+        if (
+            isset($idevicePropertiesDict['visibilityType'])
+            && 'teacher' === $idevicePropertiesDict['visibilityType']
+        ) {
+            $class .= ' teacher-only';
+        }
+
         if (isset($idevicePropertiesDict['cssClass'])) {
             $class .= ' '.$idevicePropertiesDict['cssClass'];
         }
@@ -2565,6 +2600,8 @@ class ExportXmlUtil
                 '/common_i18n.js',
                 '/common.js',
                 '/exe_export.js',
+                '/teacher_mode.js',
+                '/teacher_mode.css',
                 '/bootstrap/bootstrap.bundle.min.js',
                 '/bootstrap/bootstrap.min.css',
             ];

@@ -214,6 +214,17 @@ class Properties
             'category' => null,
             'heritable' => true,
         ],
+        'visibilityType' => [
+            'title' => self::TRANS_PREFIX.'Visibility type',
+            'value' => 'all',
+            'type' => 'select',
+            'options' => [
+                'all' => self::TRANS_PREFIX.'Visible to all',
+                'teacher' => self::TRANS_PREFIX.'Teacher only',
+            ],
+            'category' => null,
+            'heritable' => true,
+        ],
         'identifier' => [
             'title' => self::TRANS_PREFIX.'ID',
             'type' => 'text',
@@ -238,6 +249,17 @@ class Properties
             'title' => self::TRANS_PREFIX.'Visible in export',
             'value' => 'true',
             'type' => 'checkbox',
+            'category' => null,
+            'heritable' => true,
+        ],
+        'visibilityType' => [
+            'title' => self::TRANS_PREFIX.'Visibility type',
+            'value' => 'all',
+            'type' => 'select',
+            'options' => [
+                'all' => self::TRANS_PREFIX.'Visible to all',
+                'teacher' => self::TRANS_PREFIX.'Teacher only',
+            ],
             'category' => null,
             'heritable' => true,
         ],
@@ -304,6 +326,17 @@ class Properties
             'title' => self::TRANS_PREFIX.'Visible in export',
             'value' => 'true',
             'type' => 'checkbox',
+            'category' => self::TRANS_PREFIX.'General',
+            'heritable' => true,
+        ],
+        'visibilityType' => [
+            'title' => self::TRANS_PREFIX.'Visibility type',
+            'value' => 'all',
+            'type' => 'select',
+            'options' => [
+                'all' => self::TRANS_PREFIX.'Visible to all',
+                'teacher' => self::TRANS_PREFIX.'Teacher only',
+            ],
             'category' => self::TRANS_PREFIX.'General',
             'heritable' => true,
         ],

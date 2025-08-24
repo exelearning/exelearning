@@ -877,6 +877,8 @@ class OdeExportService implements OdeExportServiceInterface
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common_i18n.js',
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common.js',
+            Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'teacher_mode.js',
+            Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'teacher_mode.css',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'jquery',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'bootstrap',
         ];
@@ -1019,6 +1021,8 @@ class OdeExportService implements OdeExportServiceInterface
             '/common_i18n.js',
             '/common.js',
             '/exe_export.js',
+            '/teacher_mode.js',
+            '/teacher_mode.css',
             '/bootstrap/bootstrap.bundle.min.js',
             '/bootstrap/bootstrap.min.css',
         ];
