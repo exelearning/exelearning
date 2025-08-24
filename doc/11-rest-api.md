@@ -45,6 +45,92 @@ curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
 
 ---
 
+## Access Model (Visibility)
+
+- Unprivileged (`ROLE_USER`):
+  - `GET /users`: returns only the current user (exactly one entry).
+  - `GET /projects`: returns only projects owned by the current user.
+  - `GET /projects/{projectId}`: 403 if the project is not owned by the user.
+
+- Admin (`ROLE_ADMIN`):
+  - `GET /users`: returns all users; supports filters (see below).
+  - `GET /projects`: returns all projects; supports filters (see below).
+
+Notes:
+- All requests require `Authorization: Bearer <JWT>`.
+- For JWT-based auth where the security user is not a Doctrine entity, the system matches by email.
+
+---
+
+## Projects — Listing, Filters, Owner Fields
+
+Endpoint: `GET /projects`
+
+- Always includes owner information: `owner_id` and `owner_email`.
+- Sorted by `updatedAt.timestamp` (desc).
+
+Supported filters (query params):
+- `id`: exact match by project id.
+- `title`: exact match by title.
+- `title_like`: case-insensitive substring in title.
+- `updated_after`: `updatedAt.timestamp` strictly greater than the value.
+- `updated_before`: `updatedAt.timestamp` strictly less than the value.
+- `search`: case-insensitive substring in `id`, `title`, or `fileName`.
+- `owner_id` (admin only): exact match by owner userId.
+- `owner_email` (admin only): exact match by owner email.
+
+Example:
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
+  'http://localhost:8080/api/v2/projects?title_like=tutorial&updated_after=1700000000'
+```
+
+Single project: `GET /projects/{projectId}`
+
+- Includes `owner_id` and `owner_email` in the response.
+- Non-admins get 403 if not the owner.
+
+---
+
+## Users — Listing, Filters, and Lookups
+
+List: `GET /users`
+
+- Unprivileged: returns only the current user (1 element).
+- Admin: returns all users. Filters supported:
+  - `email` (exact)
+  - `role` (partial; e.g., `ROLE_ADMIN`)
+  - `search` (partial in `email` or `userId`)
+
+Get by numeric id: `GET /users/{id}`
+
+- Access: admin or the owner (the same user).
+
+Lookups (convenience):
+- `GET /users/by-email/{email}`
+- `GET /users/by-userid/{userId}`
+
+Both endpoints:
+- Access: admin or the owner.
+- Tip: URL-encode the email when using `/by-email/...`.
+
+Examples:
+```bash
+# Admin listing with filter
+curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
+  'http://localhost:8080/api/v2/users?search=@example.com'
+
+# Lookup by userId
+curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
+  http://localhost:8080/api/v2/users/by-userid/user2
+
+# Lookup by email (URL-encoded)
+curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
+  'http://localhost:8080/api/v2/users/by-email/user%40exelearning.net'
+```
+
+---
+
 ## Minimal cURL examples
 
 List projects:

@@ -3,6 +3,7 @@
 namespace App\Controller\Api\Project;
 
 use App\Entity\net\exelearning\Entity\OdeFiles;
+use App\Entity\net\exelearning\Entity\User;
 use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Service\Project\ProjectPropertiesBuilder;
 use Doctrine\ORM\EntityManagerInterface;
@@ -36,7 +37,24 @@ class GetProjectAction extends AbstractController
             }
 
             $username = $this->userHelper->getLoggedUserName($this->getUser());
+            // Non-admins cannot access others' projects
+            if (!$this->isGranted('ROLE_ADMIN') && $last->getUser() !== $username) {
+                return $this->json([
+                    'title' => 'Forbidden',
+                    'detail' => 'You do not have access to this project',
+                    'type' => '/errors/403',
+                ], 403);
+            }
             $properties = $this->propsBuilder->build($projectId, $username);
+
+            // Resolve owner info
+            $ownerEmail = (string) $last->getUser();
+            $ownerId = null;
+            if ('' !== $ownerEmail) {
+                $userRepo = $this->em->getRepository(User::class);
+                $owner = $userRepo->findOneBy(['email' => $ownerEmail]);
+                $ownerId = $owner?->getUserId();
+            }
 
             $payload = [
                 'id' => $projectId,
@@ -48,6 +66,8 @@ class GetProjectAction extends AbstractController
                 'size' => (string) $last->getSize(),
                 'isManualSave' => (bool) $last->getIsManualSave(),
                 'updatedAt' => ['timestamp' => $last->getUpdatedAt()?->getTimestamp()],
+                'owner_id' => $ownerId,
+                'owner_email' => $ownerEmail,
                 'properties' => $properties,
             ];
 

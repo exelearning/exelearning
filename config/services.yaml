@@ -166,6 +166,12 @@ services:
         autoconfigure: true
         tags: ['doctrine.repository_service']
 
+    # Restrict /api/v2/users collection for non-admins
+    # Run AFTER built-in filters so we can neutralize them for non-admins
+    App\Doctrine\Extension\UserCollectionExtension:
+        tags:
+            - { name: 'api_platform.doctrine.orm.query_extension.collection', priority: -999999 }
+
 
     decorating_translator:
         class:     App\Translation\net\exelearning\Translation\Translator

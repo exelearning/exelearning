@@ -2,6 +2,9 @@
 
 namespace App\Entity\net\exelearning\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
@@ -10,6 +13,8 @@ use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\OpenApi\Model as OpenApiModel;
+use App\ApiFilter\UserRoleFilter;
+use App\ApiFilter\UserSearchFilter;
 use App\Constants;
 use App\Controller\Api\User\BlockUserAction;
 use App\Controller\Api\User\UpdateQuotaAction;
@@ -25,28 +30,34 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ApiResource(
     operations: [
         new GetCollection(
-            security: 'is_granted("ROLE_ADMIN")',
-            normalizationContext: ['groups' => ['user:read']]
+            security: 'is_granted("ROLE_USER")',
+            normalizationContext: ['groups' => ['user:read']],
+            openapi: new OpenApiModel\Operation(
+                summary: 'List users',
+                description: 'Admins see all users and can filter by email, role, or userId. Non-admins only see their own user profile; filters have no effect for non-admins.'
+            )
         ),
         new Post(
             security: 'is_granted("ROLE_ADMIN")',
             denormalizationContext: ['groups' => ['user:write']]
         ),
         new Get(
+            security: 'is_granted("ROLE_ADMIN") or object.getId() == user.getId() or object.getEmail() == user.getUserIdentifier()',
+            securityMessage: 'Only admins or the owner can view this user.',
             normalizationContext: ['groups' => ['user:read']]
         ),
         new Put(
-            security: 'is_granted("ROLE_ADMIN") or object == user',
+            security: 'is_granted("ROLE_ADMIN") or object.getId() == user.getId()',
             securityMessage: 'Only admins or the owner can update the user.',
-            securityPostDenormalize: 'is_granted("ROLE_ADMIN") or (object == user and object.getRoles() == previous_object.getRoles())',
+            securityPostDenormalize: 'is_granted("ROLE_ADMIN") or (object.getId() == user.getId() and object.getRoles() == previous_object.getRoles())',
             securityPostDenormalizeMessage: 'Only admins can change roles.',
             denormalizationContext: ['groups' => ['user:write']],
             normalizationContext: ['groups' => ['user:read']]
         ),
         new Patch(
-            security: 'is_granted("ROLE_ADMIN") or object == user',
+            security: 'is_granted("ROLE_ADMIN") or object.getId() == user.getId()',
             securityMessage: 'Only admins or the owner can patch the user.',
-            securityPostDenormalize: 'is_granted("ROLE_ADMIN") or (object == user and object.getRoles() == previous_object.getRoles())',
+            securityPostDenormalize: 'is_granted("ROLE_ADMIN") or (object.getId() == user.getId() and object.getRoles() == previous_object.getRoles())',
             securityPostDenormalizeMessage: 'Only admins can change roles.',
             denormalizationContext: ['groups' => ['user:write']],
             normalizationContext: ['groups' => ['user:read']]
@@ -98,8 +109,21 @@ use Symfony\Component\Serializer\Annotation\Groups;
     normalizationContext: ['groups' => ['user:read']],
     denormalizationContext: ['groups' => ['user:write']]
 )]
+#[ApiFilter(SearchFilter::class, properties: [
+    'email' => 'partial',
+    'userId' => 'partial',
+])]
+#[ApiFilter(UserRoleFilter::class)]
+#[ApiFilter(UserSearchFilter::class)]
 class User extends BaseEntity implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    #[Groups(['user:read'])]
+    #[ApiProperty(readable: true, writable: false)]
+    public function getId(): ?int
+    {
+        return parent::getId();
+    }
+
     #[Groups(['user:read'])]
     #[ORM\Column(type: 'string', length: 180, unique: true, nullable: true)]
     private ?string $externalIdentifier = null; // sub (OIDC) or uid (CAS)

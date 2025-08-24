@@ -69,6 +69,25 @@ class UsersApiTest extends WebTestCase
         static::ensureKernelShutdown();
     }
 
+    /**
+     * Extract users array from ApiPlatform response supporting plain-array or hydra format.
+     *
+     * @param array $payload decoded JSON
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function extractUsers(array $payload): array
+    {
+        if ($payload === [] || (isset($payload[0]) && is_array($payload[0]) && array_key_exists('email', $payload[0]))) {
+            return $payload;
+        }
+        if (isset($payload['hydra:member']) && is_array($payload['hydra:member'])) {
+            return $payload['hydra:member'];
+        }
+
+        return $payload;
+    }
+
     private function loginClient(\Symfony\Bundle\FrameworkBundle\KernelBrowser $client, string $email, string $password): void
     {
         $client->request('POST', '/login_check', [
@@ -105,11 +124,68 @@ class UsersApiTest extends WebTestCase
         $this->assertIsArray($data);
     }
 
-    public function testListUsersAsRegularForbidden(): void
+    public function testListUsersAsRegularOnlySelf(): void
     {
         $client = static::createClient();
         $this->loginClient($client, $this->userEmail, $this->userPassword);
+        // Base assertion only on user created by this test; tolerate extra DB data
+        $client->request('GET', '/api/v2/users?email='.urlencode($this->userEmail), server: [ 'HTTP_ACCEPT' => 'application/json' ]);
+        $this->assertStatus($client, 200);
+        $raw = json_decode($client->getResponse()->getContent(), true);
+        $data = $this->extractUsers($raw);
+        $this->assertCount(1, $data, 'Regular users must see only themselves');
+        $this->assertSame($this->userEmail, $data[0]['email']);
+    }
+
+    public function testListSizesAdminVsRegular(): void
+    {
+        $client = static::createClient();
+
+        // Regular: should see exactly 1 (self) without filters
+        $this->loginClient($client, $this->userEmail, $this->userPassword);
         $client->request('GET', '/api/v2/users', server: [ 'HTTP_ACCEPT' => 'application/json' ]);
+        $this->assertStatus($client, 200);
+        $raw = json_decode($client->getResponse()->getContent(), true);
+        $regularList = is_array($raw) ? $raw : [];
+        $this->assertCount(1, $regularList, 'Regular must see exactly 1 user (self) without filters');
+
+        // Admin: should see many (>= 2) without filters
+        static::ensureKernelShutdown();
+        $client = static::createClient();
+        $this->loginClient($client, $this->adminEmail, $this->adminPassword);
+        $client->request('GET', '/api/v2/users', server: [ 'HTTP_ACCEPT' => 'application/json' ]);
+        $this->assertStatus($client, 200);
+        $raw = json_decode($client->getResponse()->getContent(), true);
+        $adminList = is_array($raw) ? $raw : [];
+        $this->assertGreaterThanOrEqual(2, count($adminList), 'Admin must see 2 or more users');
+    }
+
+    public function testGetUserByUserIdAndByEmail(): void
+    {
+        $client = static::createClient();
+        // Admin can fetch by userId and by email
+        $this->loginClient($client, $this->adminEmail, $this->adminPassword);
+        $client->request('GET', '/api/v2/users/by-userid/'.$this->userUserId, server: [ 'HTTP_ACCEPT' => 'application/json' ]);
+        $this->assertStatus($client, 200);
+        $data = json_decode($client->getResponse()->getContent(), true);
+        $this->assertSame($this->userEmail, $data['email'] ?? null);
+
+        $client->request('GET', '/api/v2/users/by-email/'.urlencode($this->userEmail), server: [ 'HTTP_ACCEPT' => 'application/json' ]);
+        $this->assertStatus($client, 200);
+        $data2 = json_decode($client->getResponse()->getContent(), true);
+        $this->assertSame($this->userUserId, $data2['userId'] ?? null);
+
+        // Regular can fetch own record via both endpoints, but not others
+        static::ensureKernelShutdown();
+        $client = static::createClient();
+        $this->loginClient($client, $this->userEmail, $this->userPassword);
+        $client->request('GET', '/api/v2/users/by-userid/'.$this->userUserId, server: [ 'HTTP_ACCEPT' => 'application/json' ]);
+        $this->assertStatus($client, 200);
+        $client->request('GET', '/api/v2/users/by-email/'.urlencode($this->userEmail), server: [ 'HTTP_ACCEPT' => 'application/json' ]);
+        $this->assertStatus($client, 200);
+        $client->request('GET', '/api/v2/users/by-userid/'.$this->otherUserUserId, server: [ 'HTTP_ACCEPT' => 'application/json' ]);
+        $this->assertStatus($client, 403);
+        $client->request('GET', '/api/v2/users/by-email/'.urlencode($this->otherUserEmail), server: [ 'HTTP_ACCEPT' => 'application/json' ]);
         $this->assertStatus($client, 403);
     }
 
@@ -119,7 +195,9 @@ class UsersApiTest extends WebTestCase
         $this->loginClient($client, $this->userEmail, $this->userPassword);
         $client->request('GET', '/api/v2/users/'.$this->userId, server: [ 'HTTP_ACCEPT' => 'application/json' ]);
         $this->assertStatus($client, 200);
-        $this->assertStringContainsString($this->userEmail, $client->getResponse()->getContent());
+        $content = $client->getResponse()->getContent();
+        $this->assertStringContainsString($this->userEmail, $content);
+        $this->assertStringContainsString('"id":', $content);
     }
 
     public function testPatchOwnEmailAsOwner(): void
@@ -227,6 +305,25 @@ class UsersApiTest extends WebTestCase
         // DELETE
         $client->request('DELETE', '/api/v2/users/'.$this->userUserId.'/preferences/locale', server: [ 'HTTP_ACCEPT' => 'application/json' ]);
         $this->assertStatus($client, 204);
+    }
+
+    public function testOwnerCanManageOwnPreferencesNumericId(): void
+    {
+        $client = static::createClient();
+        $this->loginClient($client, $this->userEmail, $this->userPassword);
+
+        // PUT preference using numeric id
+        $client->request('PUT', '/api/v2/users/'.$this->userId.'/preferences/locale', [], [], [
+            'HTTP_ACCEPT' => 'application/json',
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode(['value' => 'en', 'description' => 'Language via numeric id']));
+        $this->assertStatus($client, 200);
+
+        // GET list using numeric id
+        $client->request('GET', '/api/v2/users/'.$this->userId.'/preferences', server: [ 'HTTP_ACCEPT' => 'application/json' ]);
+        $this->assertStatus($client, 200);
+        $list = json_decode($client->getResponse()->getContent(), true);
+        $this->assertNotEmpty($list);
     }
 
     public function testRegularCannotAccessOthersPreferences(): void

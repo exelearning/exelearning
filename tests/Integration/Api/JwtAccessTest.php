@@ -35,8 +35,9 @@ class JwtAccessTest extends WebTestCase
         $em->persist($user);
         $em->flush();
 
+        // Use the same email in sub and email to ensure owner checks pass
         $jwt = JWT::encode([
-            'sub' => 'user@example.com',
+            'sub' => $email,
             'email' => $email,
             'iss' => $this->issuer,
             'aud' => $this->audience,

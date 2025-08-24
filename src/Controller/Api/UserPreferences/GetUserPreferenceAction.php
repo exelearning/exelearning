@@ -18,17 +18,34 @@ class GetUserPreferenceAction extends AbstractController
     {
         $current = $this->getUser();
         $isAdmin = $this->isGranted('ROLE_ADMIN');
-        if (!$isAdmin && method_exists($current, 'getUserId') && $current->getUserId() !== $userId) {
-            return $this->json(['error' => 'Forbidden'], 403);
+
+        $targetUser = null;
+        if (ctype_digit($userId)) {
+            $targetUser = $this->em->getRepository(\App\Entity\net\exelearning\Entity\User::class)->find((int) $userId);
+            if (!$targetUser) {
+                return $this->json(['error' => 'Not found'], 404);
+            }
+        } else {
+            $targetUser = $this->em->getRepository(\App\Entity\net\exelearning\Entity\User::class)->findOneBy(['userId' => $userId]);
+            if (!$targetUser) {
+                return $this->json(['error' => 'Not found'], 404);
+            }
+        }
+
+        if (!$isAdmin && $current && method_exists($current, 'getId')) {
+            if (!$targetUser || $current->getId() !== $targetUser->getId()) {
+                return $this->json(['error' => 'Forbidden'], 403);
+            }
         }
 
         $repo = $this->em->getRepository(UserPreferences::class);
-        $pref = $repo->findOneBy(['userId' => $userId, 'key' => $key]);
+        $pref = $repo->findOneBy(['userId' => (string) $targetUser->getId(), 'key' => $key]);
         if (!$pref) {
             return $this->json(['error' => 'Not found'], 404);
         }
 
         return $this->json([
+            'id' => $pref->getId(),
             'userId' => $pref->getUserId(),
             'key' => $pref->getKey(),
             'value' => $pref->getValue(),
