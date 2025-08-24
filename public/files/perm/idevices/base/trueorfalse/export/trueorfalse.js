@@ -31,9 +31,35 @@ var $trueorfalse = {
 
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
         const htmlContent = $trueorfalse.createInterfaceTrueOrFalse(ldata);
+        
         const html = template.replace('{content}', htmlContent);
+        $exeDevices.iDevice.gamification.math.updateLatex(
+            '.exe-trueorfalse-container',
+        );
 
         return html;
+    },
+
+    extractMediaElements: function (items) {
+        if (!Array.isArray(items)) return '';
+
+        const mediaRegex = /<(img|audio|video)[^>]*>/gi;
+        let mediaElements = [];
+
+        for (const rawItem of items) {
+            const item = rawItem || {}; 
+            const question = item.question ?? '';
+            const feedback = item.feedback ?? '';
+            const suggestion = item.suggestion ?? '';
+            const baseText = item.baseText ?? '';
+
+            const combined = `${question} ${feedback} ${suggestion} ${baseText}`;
+            const matches = combined.match(mediaRegex);
+            if (matches) mediaElements.push(...matches);
+        }
+
+        const uniqueMedia = [...new Set(mediaElements)];
+        return `<div id="questionsMedia" style="display:none">${uniqueMedia.join('')}</div>`;
     },
 
     renderBehaviour(data, accesibility, ideviceId) {
@@ -153,6 +179,44 @@ var $trueorfalse = {
         return data;
     },
 
+    replaceDirPath(htmlString, ideviceId) {
+        const node = document.getElementById(ideviceId);
+        if (!node || eXe.app.isInExe() || !htmlString) return htmlString;
+
+        const idRes = node.getAttribute('id-resource') || '';
+        if (!idRes) return htmlString;
+
+        const basePath = document.documentElement.id === 'exe-index'
+            ? `content/resources/${idRes}/`
+            : `../content/resources/${idRes}/`;
+
+        const custom = document.documentElement.id === 'exe-index'
+            ? 'custom/'
+            : '../custom/';
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        doc.querySelectorAll('img[src], video[src], audio[src], a[href], source[src]')
+            .forEach(el => {
+                const attr = el.hasAttribute('src') ? 'src' : 'href';
+                let val = el.getAttribute(attr).trim();
+                try {
+                    const u = new URL(val, window.location.origin);
+                    if (/^\/?files\//.test(u.pathname)) {
+                        const filename = u.pathname.split('/').pop() || '';
+                        if (u.pathname.indexOf('file_manager') === -1) {
+                            el.setAttribute(attr, basePath + filename);
+                        } else {
+                            el.setAttribute(attr, custom + filename);
+                        }
+                    }
+                } catch {
+                    // 
+                }
+            });
+
+        return doc.body.innerHTML;
+    },
 
     loadSCORM_API_wrapper: function (data) {
         let parsedData = (typeof data === 'string') ? JSON.parse(data) : data;
@@ -266,6 +330,7 @@ var $trueorfalse = {
             </div>
         </div>
         <div class="TOFP-After">${mOptions.eXeIdeviceTextAfter}</div>
+        ${$trueorfalse.extractMediaElements(data.questionsGame)}
         `;
         return html;
     },
@@ -291,13 +356,13 @@ var $trueorfalse = {
             .map(
                 (question, index) => `
             <div class="TOFP-QuestionDiv ${index % 2 ? 'TOFP-QuestionDivBlack' : ''} " data-number="${index}">
-               <div class="TOFP-Question">${question.question}</div> 
+               <div class="TOFP-Question">${$trueorfalse.replaceDirPath(question.question, instance)}</div> 
                <a href="#" class="TOFP-ShowSuggestion ${!question.suggestion.trim() ? 'TOFP-EHidden' : ''}">
                     <img src="${mOptions.idevicePath}tofshowsuggestion.png" alt="${msgs.msgSuggestion}" class="TOFP-SuggestionIcon">
                     <span>${msgs.msgSuggestion}</span>
                 </a>
                 <div class="TOFP-Suggestion TOFP-EHidden">
-                    ${question.suggestion}                    
+                    ${$trueorfalse.replaceDirPath(question.suggestion, instance)}                    
                 </div>         
                 <p class="TOFP-Answers">
                     <label>
@@ -309,7 +374,7 @@ var $trueorfalse = {
                 </p>
                <div class="TOFP-Feedback TOFP-EHidden">
                     <strong><span class="TOFP-SolutionMessage"></span></strong>
-                    ${question.feedback}
+                    ${$trueorfalse.replaceDirPath(question.feedback, instance)}
                 </div>            
             </div>
         `,
@@ -344,19 +409,19 @@ var $trueorfalse = {
                 const index = slideIdx * itemsPerSlide + idx;
                 return `
           <div class="TOFP-QuestionDiv" data-number="${index}">
-            <div class="TOFP-Question">${question.question}</div>
+            <div class="TOFP-Question">${$trueorfalse.replaceDirPath(question.question, instance)}</div>
             <a href="#" class="TOFP-ShowSuggestion ${!question.suggestion.trim() ? 'TOFP-EHidden' : ''}">
               <img src="${mOptions.idevicePath}tofshowsuggestion.png" alt="${msgs.msgSuggestion}" class="TOFP-SuggestionIcon">
               <span>${msgs.msgSuggestion}</span>
             </a>
-            <div class="TOFP-Suggestion TOFP-EHidden">${question.suggestion}</div>
+            <div class="TOFP-Suggestion TOFP-EHidden">${$trueorfalse.replaceDirPath(question.suggestion, instance)}</div>
             <p class="TOFP-Answers">
               <label><input class="TOFP-Answer" type="radio" name="tofanswer-${instance}-${index}" value="1"> ${msgs.msgTrue}</label>
               <label><input class="TOFP-Answer" type="radio" name="tofanswer-${instance}-${index}" value="0"> ${msgs.msgFalse}</label>
             </p>
             <div class="TOFP-Feedback TOFP-EHidden">
               <strong><span class="TOFP-SolutionMessage"></span></strong>
-              ${question.feedback}
+              ${$trueorfalse.replaceDirPath(question.feedback, instance)}
             </div>
           </div>`;
             }).join('');
