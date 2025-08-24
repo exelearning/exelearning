@@ -31,7 +31,7 @@ var $trueorfalse = {
 
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
         const htmlContent = $trueorfalse.createInterfaceTrueOrFalse(ldata);
-        
+
         const html = template.replace('{content}', htmlContent);
         $exeDevices.iDevice.gamification.math.updateLatex(
             '.exe-trueorfalse-container',
@@ -40,14 +40,14 @@ var $trueorfalse = {
         return html;
     },
 
-    extractMediaElements: function (items) {
+    extractMediaElements1: function (items) {
         if (!Array.isArray(items)) return '';
 
         const mediaRegex = /<(img|audio|video)[^>]*>/gi;
         let mediaElements = [];
 
         for (const rawItem of items) {
-            const item = rawItem || {}; 
+            const item = rawItem || {};
             const question = item.question ?? '';
             const feedback = item.feedback ?? '';
             const suggestion = item.suggestion ?? '';
@@ -59,8 +59,25 @@ var $trueorfalse = {
         }
 
         const uniqueMedia = [...new Set(mediaElements)];
-        return `<div id="questionsMedia" style="display:none">${uniqueMedia.join('')}</div>`;
+        return `<div class="questionsMedia" style="display:none">${uniqueMedia.join('')}</div>`;
     },
+
+
+    extractMediaElements: function (items) {
+        if (!Array.isArray(items)) return ''
+
+        const tmp = document.createElement('div')
+        const set = new Set()
+
+        for (const { question = '', feedback = '', suggestion = '', baseText = '' } of items) {
+            tmp.innerHTML = `${question} ${feedback} ${suggestion} ${baseText}`
+            tmp.querySelectorAll('img, audio, video').forEach(el => set.add(el.outerHTML))
+            tmp.innerHTML = '' // limpiar por si el GC tarda
+        }
+
+        return `<div class="questionsMedia" style="display:none">${[...set].join('')}</div>`
+    },
+
 
     renderBehaviour(data, accesibility, ideviceId) {
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
@@ -84,9 +101,20 @@ var $trueorfalse = {
             $exeDevices.iDevice.gamification.scorm.registerActivity(ldata)
         }
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMainContainer-' + ldata.id,
-        );
+
+        const dataString = JSON.stringify(ldata)
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '#tofPMainContainer-' + ldata.id,
+            );
+        }
 
         $trueorfalse.addEvents(ldata);
     },

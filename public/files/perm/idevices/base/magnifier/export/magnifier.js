@@ -72,6 +72,18 @@ var $magnifier = {
             const cb = '$magnifier.addEvents(' + JSON.stringify(ldata) + ');';
             $exe.loadScript(ldata.idevicePath + 'mojomagnify.js', cb);
         }
+        const dataString = JSON.stringify(ldata)
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex('.exe-magnifier-container');
+        }
+        
 
     },
 

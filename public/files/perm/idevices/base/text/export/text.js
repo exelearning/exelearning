@@ -133,7 +133,20 @@ var $text = {
                 btn.val(btn.attr('data-text-b'));
                 feedbackEl.fadeIn(() => { $text.working = false; });
             }
+            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+
         });
+        const dataString = JSON.stringify(data)
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+        }
     },
 
     replaceResourceDirectoryPaths(newDir, htmlString) {

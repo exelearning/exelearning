@@ -45,9 +45,20 @@ var $casestudy = {
         if (data.title && data.title == 'Case Study' && $title.text() == 'Case Study') {
             $title.text(data.msgs.msgCaseStudy)
         }
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.exe-casestudy-container',
-        );
+
+        const dataString = JSON.stringify(data)
+        var hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.exe-casestudy-container',
+            );
+        }
         this.addEvents(data);
     },
 
@@ -155,7 +166,10 @@ var $casestudy = {
             .on('click', '.CSP-FeedbackBtn', function () {
                 const $activityDiv = $(this).closest('.CSP-ActivityDiv');
                 const $fb = $activityDiv.find('.CSP-FeedbackText');
-                $fb.slideToggle(200);
+                $fb.slideToggle(200,function(){
+                    $exeDevices.iDevice.gamification.math.updateLatex('.CSP-FeedbackText');
+                });
+
             });
     },
 

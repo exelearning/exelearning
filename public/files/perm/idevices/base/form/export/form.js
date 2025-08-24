@@ -128,7 +128,10 @@ var $form = {
                     </div>
                 </div>
                 <div class="form-instructions">${ldata.eXeIdeviceTextAfter}</div>
-            </div>`;
+            </div>
+            ${$form.extractMediaElements(ldata.questionsData)}
+            
+            `;
 
         return template.replace("{content}", htmlContent);
     },
@@ -284,8 +287,39 @@ var $form = {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(ldata, this.isInExe);
         }
 
-        $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+        const dataString = JSON.stringify(ldata)
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+        }
     },
+
+
+
+    extractMediaElements: function (items) {
+        if (!Array.isArray(items)) return ''
+
+        const tmp = document.createElement('div')
+        const set = new Set()
+
+        for (const { baseText = '' } of items) {
+            tmp.innerHTML = baseText
+
+            tmp.querySelectorAll('img').forEach(el => set.add(el.outerHTML))
+            tmp.querySelectorAll('audio, video').forEach(el => set.add(el.outerHTML))
+
+            tmp.innerHTML = ''
+        }
+
+        return `<div class="questionsMedia" style="display:none">${[...set].join('')}</div>`
+    },
+
 
     replaceResourceDirectoryPaths(data, htmlString) {
 
@@ -320,10 +354,31 @@ var $form = {
         return doc.body.innerHTML;
     },
 
+
     addEventsSlideShow: function (data) {
         const mOptions = data;
         const instance = data.id;
         mOptions.current = 0;
+        function clearPreviousMathInWrapper(wrapperEl) {
+            if (!wrapperEl || typeof MathJax === 'undefined') return;
+
+            try {
+                if (typeof MathJax.typesetClear === 'function') {
+                    MathJax.typesetClear([wrapperEl]);
+                    return;
+                }
+            } catch (e) {
+                // 
+            }
+            try {
+
+                wrapperEl.querySelectorAll('mjx-container').forEach(function (n) { n.remove(); });
+                wrapperEl.querySelectorAll('span.MathJax, div.MathJax').forEach(function (n) { n.remove(); });
+            } catch (e) {
+                // 
+            }
+        }
+
         if (mOptions.showSlider) {
             const $slideshow = $('#frmMainContainer-' + instance).find('.FRMP-SlideshowContainer');
             const $wrapper = $slideshow.find('.FRMP-SlideshowWrapper');
@@ -337,6 +392,7 @@ var $form = {
                 $wrapper.css('height', firstHeight);
                 $slideshow.css('height', firstHeight + $slideshow.find('.FRMP-SlideshowControls').outerHeight(true));
                 $slides.css({ position: 'absolute', top: 0, left: 0, width: '100%' }).hide().eq(0).show();
+
                 function goTo(index, direction) {
                     const nextIndex = (index + total) % total;
                     const $currentSlide = $slides.eq(mOptions.current);
@@ -371,21 +427,34 @@ var $form = {
                     }
 
                     mOptions.current = nextIndex;
-                    $slideshow.find(`#frmSlideNumber-${instance}`).text((mOptions.current + 1) + '/' + total);
+                    $slideshow.find('#frmSlideNumber-' + instance).text((mOptions.current + 1) + '/' + total);
+                    clearPreviousMathInWrapper($wrapper.get(0));
+
+                    setTimeout(function () {
+                        if ($exeDevices?.iDevice?.gamification?.math?.updateLatex)
+                            $exeDevices.iDevice.gamification.math.updateLatex('.FRMP-SlideshowWrapper');
+                    }, 1000);
                 }
 
-                $slideshow.find(`#frmNext-${instance}`).on('click', function (e) {
+                $slideshow.find('#frmNext-' + instance).on('click', function (e) {
                     e.preventDefault();
                     goTo(mOptions.current + 1, 'next');
                 });
-                $slideshow.find(`#frmPrev-${instance}`).on('click', function (e) {
+                $slideshow.find('#frmPrev-' + instance).on('click', function (e) {
                     e.preventDefault();
                     goTo(mOptions.current - 1, 'prev');
                 });
+            } else if (total === 1) {
+                clearPreviousMathInWrapper($wrapper.get(0));
+                setTimeout(function () {
+                    if ($exeDevices?.iDevice?.gamification?.math?.updateLatex)
+                        $exeDevices.iDevice.gamification.math.updateLatex('.FRMP-SlideshowWrapper');
+                }, 1000);
             }
         }
-
     },
+
+
 
     initScormData: function (ldata) {
         $form.mScorm = window.scorm;
@@ -1414,7 +1483,7 @@ var $form = {
     initSCORM: function (ldata) {
         let parsedData = (typeof ldata === 'string') ? JSON.parse(ldata) : ldata;
         $form.mScorm = scorm;
-        if ($form.mScorm.init()); {
+        if ($form.mScorm.init()) {
             $form.initScormData(parsedData);
         }
     },
