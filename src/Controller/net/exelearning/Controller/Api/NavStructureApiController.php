@@ -495,19 +495,23 @@ class NavStructureApiController extends DefaultApiController
             if (!empty($odeNavStructureSync)) {
                 $anyError = false;
 
+                // Get OdeNavStructureSync to delete
+                $odeNavStructureSyncsToDelete = $this->getOdeNavStructureSyncsToDelete($odeNavStructureSync);
+
+                // Collect pageIds to clean cross-references before deletion (keep full string IDs, may be alphanumeric)
                 $deletedPageIds = [];
-                foreach ($nodesToDeleteEntities as $nodeEntity) {
-                    if (null !== $nodeEntity->getOdePageId()) {
-                        $deletedPageIds[] = (int) $nodeEntity->getOdePageId();
+                foreach ($odeNavStructureSyncsToDelete as $nodeEntity) {
+                    $pageId = $nodeEntity->getOdePageId();
+                    if (null !== $pageId && '' !== $pageId) {
+                        $deletedPageIds[] = (string) $pageId;
                     }
                 }
+                // Ensure unique list of IDs
+                $deletedPageIds = array_values(array_unique($deletedPageIds));
 
                 if (!empty($deletedPageIds)) {
                     $this->cleanCrossReferencesForDeletedNodes($deletedPageIds, $odeNavStructureSync->getOdeSessionId());
                 }
-
-                // Get OdeNavStructureSync to delete
-                $odeNavStructureSyncsToDelete = $this->getOdeNavStructureSyncsToDelete($odeNavStructureSync);
 
                 foreach ($odeNavStructureSyncsToDelete as $odeNavStructureSync) {
                     foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
@@ -944,50 +948,27 @@ class NavStructureApiController extends DefaultApiController
     }
 
     /**
-     * Processes an HTML string to clean exe-links pointing to a specific page.
+     * Processes an HTML string and removes <a> tags whose href exactly matches a target exe-node href,
+     * preserving only the inner text (strips any nested markup inside the link as plain text).
      */
-    private function processAndCleanHtmlInternalLinks(string $htmlContent, string $targetHref): string|false
+    private function processAndCleanHtmlInternalLinks(string $htmlContent, string $targetHref): string
     {
-        if (empty($htmlContent)) {
+        if ('' === $htmlContent || !str_contains($htmlContent, $targetHref)) {
             return $htmlContent;
         }
 
-        if (!str_contains($htmlContent, $targetHref)) {
-            return $htmlContent;
-        }
+        // Replace anchors whose href equals the target (case-insensitive on attribute/whitespace, exact value match)
+        $pattern = '~<a\b([^>]*?)href\s*=\s*([\"\'])\s*(exe-node:[^\"\']+)\s*\2([^>]*)>(.*?)</a>~is';
 
-        $dom = new \DOMDocument();
-        if (!@$dom->loadHTML($htmlContent, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NOERROR | LIBXML_NOWARNING)) {
-            return false;
-        }
-
-        $xpath = new \DOMXPath($dom);
-        $nodesToModify = $xpath->query("//a[contains(@href, '{$targetHref}')]");
-        $modified = false;
-
-        if ($nodesToModify->length > 0) {
-            for ($i = $nodesToModify->length - 1; $i >= 0; --$i) {
-                $node = $nodesToModify->item($i);
-
-                if ($node && $node->parentNode) {
-                    $linkText = $node->nodeValue;
-                    $textNode = $dom->createTextNode($linkText);
-                    $node->parentNode->replaceChild($textNode, $node);
-                    $modified = true;
-                }
-            }
-        }
-
-        if ($modified) {
-            $newHtmlContent = $dom->saveHTML();
-            if (false === $newHtmlContent) {
-                return false;
+        $callback = function (array $m) use ($targetHref): string {
+            if ($m[3] === $targetHref) {
+                return strip_tags($m[5]);
             }
 
-            return $newHtmlContent;
-        } else {
-            return $htmlContent;
-        }
+            return $m[0];
+        };
+
+        return preg_replace_callback($pattern, $callback, $htmlContent) ?? $htmlContent;
     }
 
     /**
@@ -1007,11 +988,7 @@ class NavStructureApiController extends DefaultApiController
                 // Loop through each targetHref to apply cleaning
                 foreach ($targetHrefs as $singleTargetHref) {
                     $tempContent = $this->processAndCleanHtmlInternalLinks($updatedContentForField, $singleTargetHref);
-                    if (false === $tempContent) {
-                        // Revert to original for this field if error
-                        $updatedContentForField = $currentContent;
-                        break;
-                    } elseif ($tempContent !== $updatedContentForField) {
+                    if ($tempContent !== $updatedContentForField) {
                         $updatedContentForField = $tempContent;
                         $modifiedGlobalFlag = true;
                     }
@@ -1050,11 +1027,7 @@ class NavStructureApiController extends DefaultApiController
                 // Loop through each targetHref to apply cleaning
                 foreach ($targetHrefs as $singleTargetHref) {
                     $tempNewHtmlView = $this->processAndCleanHtmlInternalLinks($newHtmlView, $singleTargetHref);
-                    if (false === $tempNewHtmlView) {
-                        $newHtmlView = $currentHtmlView;
-                        $htmlViewModified = false;
-                        continue 2;
-                    } elseif ($tempNewHtmlView !== $newHtmlView) {
+                    if ($tempNewHtmlView !== $newHtmlView) {
                         $newHtmlView = $tempNewHtmlView;
                         $htmlViewModified = true;
                     }
