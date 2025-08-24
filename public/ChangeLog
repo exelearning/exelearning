@@ -7,7 +7,6 @@
 - New Security Improvements: Disabled directory listing and prevented execution of uploaded scripts
 - New Automate Workflows
 - New Make commands for developers
-- REST API (experimental): Users and projects, JWT authentication and admin tools
 
 ### Fixed
 
