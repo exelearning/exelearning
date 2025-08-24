@@ -49,10 +49,7 @@ class TreeMoveReorderTest extends WebTestCase
         $projectId = $project['id'];
 
         // Create parent and two children (pages)
-        $client->request('POST', "/api/v2/projects/$projectId/pages", [], [], $auth, json_encode(['title' => 'Parent']));
-     
-
-        
+        $client->request('POST', "/api/v2/projects/$projectId/pages", [], [], $auth, json_encode(['title' => 'Parent']));        
         $this->assertSame(201, $client->getResponse()->getStatusCode(), $client->getResponse()->getContent());
         $parent = json_decode($client->getResponse()->getContent(), true);
 

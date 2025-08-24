@@ -69,7 +69,27 @@ up: check-docker check-env
 
 # Start Docker containers in background mode (daemon)
 upd: check-docker check-env
-	docker compose up --detach --remove-orphans
+	@RUNNING=$$(docker compose ps -q exelearning | xargs docker inspect -f '{{.State.Running}}' 2>/dev/null | grep true || true); \
+	if [ "$$RUNNING" = "true" ]; then \
+		echo "🔄 Container 'exelearning' already running, skipping wait."; \
+	else \
+		echo "🚀 Starting containers..."; \
+		docker compose up -d --remove-orphans; \
+		echo "⏳ Waiting for 'exelearning' container to be healthy..."; \
+		for i in $$(seq 1 30); do \
+			STATUS=$$(docker inspect -f '{{.State.Health.Status}}' $$(docker compose ps -q exelearning) 2>/dev/null || echo "starting"); \
+			if [ "$$STATUS" = "healthy" ]; then \
+				echo "✅ exelearning is healthy."; \
+				break; \
+			fi; \
+			if [ $$i -eq 30 ]; then \
+				echo "⚠️ Timed out waiting for 'exelearning' health check"; \
+			else \
+				sleep 1; \
+			fi; \
+		done; \
+	fi
+
 
 # Stop and remove Docker containers
 down: check-docker check-env
@@ -166,17 +186,49 @@ create-user: check-docker check-env upd
 	@read -p "Enter email: " email; \
 	read -p "Enter password: " password; \
 	read -p "Enter username: " username; \
-	docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
+	@docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
 
-# Promote an existing user to ROLE_ADMIN
+# Grant an arbitrary role to a user
+# Usage: make grant-role EMAIL=user@example.com ROLE=ROLE_MANAGER
+grant-role: check-docker check-env upd
+	@if [ -z "$(EMAIL)" ] || [ -z "$(ROLE)" ]; then \
+		echo "❌ EMAIL and ROLE are required. Usage: make grant-role EMAIL=user@example.com ROLE=ROLE_X"; \
+		exit 1; \
+	fi
+	@echo "Granting '$(ROLE)' to '$(EMAIL)'..."; \
+	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --add="$(ROLE)" >/dev/null; \
+	echo "✅ '$(EMAIL)' now has '$(ROLE)'"
+
+# Revoke an arbitrary role from a user
+# Usage: make revoke-role EMAIL=user@example.com ROLE=ROLE_MANAGER
+revoke-role: check-docker check-env upd
+	@if [ -z "$(EMAIL)" ] || [ -z "$(ROLE)" ]; then \
+		echo "❌ EMAIL and ROLE are required. Usage: make revoke-role EMAIL=user@example.com ROLE=ROLE_X"; \
+		exit 1; \
+	fi
+	@echo "Revoking '$(ROLE)' from '$(EMAIL)'..."; \
+	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --remove="$(ROLE)" >/dev/null; \
+	echo "✅ '$(ROLE)' revoked from '$(EMAIL)'"
+
+# Keep the old convenience target for admins (uses the unified command under the hood)
 promote-admin: check-docker check-env upd
 	@if [ -z "$(EMAIL)" ]; then \
 		echo "❌ EMAIL is required. Usage: make promote-admin EMAIL=user@example.com"; \
 		exit 1; \
 	fi
-	echo "Granting ROLE_ADMIN to '$$EMAIL'..."; \
-	docker compose exec exelearning php bin/console app:user:promote "$$EMAIL" ROLE_ADMIN >/dev/null; \
-	echo "✅ '$$EMAIL' is now ROLE_ADMIN"
+	@echo "Granting ROLE_ADMIN to '$(EMAIL)'..."; \
+	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --add=ROLE_ADMIN >/dev/null; \
+	echo "✅ '$(EMAIL)' is now ROLE_ADMIN"
+
+# New convenience target to remove admin
+demote-admin: check-docker check-env upd
+	@if [ -z "$(EMAIL)" ]; then \
+		echo "❌ EMAIL is required. Usage: make demote-admin EMAIL=user@example.com"; \
+		exit 1; \
+	fi
+	@echo "Revoking ROLE_ADMIN from '$(EMAIL)'..."; \
+	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --remove=ROLE_ADMIN >/dev/null; \
+	echo "✅ ROLE_ADMIN revoked from '$(EMAIL)'"
 
 # Generate API key for a user (Usage: make generate-api-key USER_ID=123 [OVERWRITE=1])
 generate-api-key: check-docker check-env upd
@@ -184,7 +236,7 @@ generate-api-key: check-docker check-env upd
 		echo "❌ USER_ID is required. Usage: make generate-api-key USER_ID=123 [OVERWRITE=1]"; \
 		exit 1; \
 	fi
-	docker compose exec exelearning composer --no-cache generate-api-key -- $(USER_ID) $(if $(OVERWRITE),--overwrite,)
+	@docker compose exec exelearning composer --no-cache generate-api-key -- $(USER_ID) $(if $(OVERWRITE),--overwrite,)
 
 # Generate a JWT for any user (prints nicely with context)
 # Usage: make generate-jwt EMAIL=user@example.com [TTL=3600]
@@ -460,10 +512,15 @@ help:
 	@echo "Data:"
 	@echo ""
 	@echo "  create-user           - Ask for data and create user in Symonfy"
-	@echo "  promote-admin         - Grant ROLE_ADMIN for a user"
-	@echo "                          Usage: make promote-admin EMAIL=user@exelearning.net"
+	@echo "  grant-role            - Grant a role to a user (ROLE required)"
+	@echo "                           Usage: make grant-role EMAIL=user@exelearning.net ROLE=ROLE_X"
+	@echo "  revoke-role           - Revoke a role from a user (ROLE required)"
+	@echo "                           Usage: make revoke-role EMAIL=user@exelearning.net ROLE=ROLE_X"
+	@echo "  promote-admin         - Grant ROLE_ADMIN to a user"
+	@echo "                           Usage: make promote-admin EMAIL=user@exelearning.net"
+	@echo "  demote-admin          - Revoke ROLE_ADMIN from a user"
 	@echo "  generate-jwt          - Generate a JWT for a user"
-	@echo "                          Usage: make generate-jwt EMAIL=user@exelearning.net [TTL=3600]"
+	@echo "                           Usage: make generate-jwt EMAIL=user@exelearning.net [TTL=3600]"
 	@echo "  smoke-api-v2          - Quick smoke test for /api/v2/users (uses admin JWT)"
 	@echo "  make-migration        - Generate a new Symfony migration (make:migration)"
 	@echo "  migrate               - Run pending Symfony migrations (doctrine:migrations:migrate)"

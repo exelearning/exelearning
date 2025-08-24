@@ -68,9 +68,6 @@ class DocumentStructureTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
             'HTTP_ACCEPT' => 'application/json',
         ], json_encode(['title' => 'Chapter 1']));
-
-
-
         $this->assertSame(201, $client->getResponse()->getStatusCode(), $client->getResponse()->getContent());
         $created = json_decode($client->getResponse()->getContent(), true);
 
