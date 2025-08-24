@@ -33,7 +33,7 @@ export default class IdeviceBlockNode {
         if (!this.offlineInstallation) {
             this.realTimeEventNotifier = new RealTimeEventNotifier(
                 eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey,
+                eXeLearning.mercure.jwtSecretKey
             );
         }
     }
@@ -48,8 +48,8 @@ export default class IdeviceBlockNode {
      */
     properties = JSON.parse(
         JSON.stringify(
-            eXeLearning.app.api.parameters.odePagStructureSyncPropertiesConfig,
-        ),
+            eXeLearning.app.api.parameters.odePagStructureSyncPropertiesConfig
+        )
     );
 
     /**
@@ -129,7 +129,7 @@ export default class IdeviceBlockNode {
             // Remove attributes
             while (this.blockContent.attributes.length > 0) {
                 this.blockContent.removeAttribute(
-                    this.blockContent.attributes[0].name,
+                    this.blockContent.attributes[0].name
                 );
             }
             this.toggleElement.removeAttribute('disabled');
@@ -167,14 +167,14 @@ export default class IdeviceBlockNode {
         if (this.properties.identifier.value != '') {
             this.blockContent.setAttribute(
                 'identifier',
-                this.properties.identifier.value,
+                this.properties.identifier.value
             );
         }
         // visibility
         if (this.properties.visibility.value == 'true') {
             this.blockContent.setAttribute(
                 'export-view',
-                this.properties.visibility.value,
+                this.properties.visibility.value
             );
         }
         // css classes
@@ -418,7 +418,7 @@ export default class IdeviceBlockNode {
                         });
                     }
                 });
-            },
+            }
         );
     }
 
@@ -431,7 +431,7 @@ export default class IdeviceBlockNode {
             .querySelector('#dropdownMenuButton' + this.blockId)
             .addEventListener('click', (element) => {
                 var btn = document.getElementById(
-                    'dropdownMenuButton' + this.blockId,
+                    'dropdownMenuButton' + this.blockId
                 );
                 var e = document.getElementById(this.blockId);
                 if (btn && e) {
@@ -486,7 +486,7 @@ export default class IdeviceBlockNode {
                                             // Move element
                                             this.engine.nodeContentElement.insertBefore(
                                                 this.blockContent,
-                                                previousBlock,
+                                                previousBlock
                                             );
                                             // Send operation log action to bbdd
                                             let additionalData = {
@@ -497,7 +497,7 @@ export default class IdeviceBlockNode {
                                                 this.pageId,
                                                 this.pageId,
                                                 'MOVE_BLOCK_ON',
-                                                additionalData,
+                                                additionalData
                                             );
                                         }
                                     });
@@ -549,7 +549,7 @@ export default class IdeviceBlockNode {
                                             // Move element
                                             this.engine.nodeContentElement.insertBefore(
                                                 this.blockContent,
-                                                nextBlock.nextSibling,
+                                                nextBlock.nextSibling
                                             );
                                             // Send operation log action to bbdd
                                             let additionalData = {
@@ -560,7 +560,7 @@ export default class IdeviceBlockNode {
                                                 this.pageId,
                                                 this.pageId,
                                                 'MOVE_BLOCK_ON',
-                                                additionalData,
+                                                additionalData
                                             );
                                         }
                                     });
@@ -596,7 +596,7 @@ export default class IdeviceBlockNode {
                             eXeLearning.app.modals.confirm.show({
                                 title: _('Delete box'),
                                 body: _(
-                                    'Delete the box and all its iDevices? This cannot be undone.',
+                                    'Delete the box and all its iDevices? This cannot be undone.'
                                 ),
                                 confirmButtonText: _('Yes'),
                                 confirmExec: () => {
@@ -615,7 +615,7 @@ export default class IdeviceBlockNode {
     addBehaviourButtonPropertiesBlock() {
         this.blockButtons
             .querySelector(
-                '#dropdownBlockMore-button-properties' + this.blockId,
+                '#dropdownBlockMore-button-properties' + this.blockId
             )
             .addEventListener('click', (element) => {
                 eXeLearning.app.project
@@ -683,24 +683,24 @@ export default class IdeviceBlockNode {
                                 confirmExec: () => {
                                     let select =
                                         eXeLearning.app.modals.confirm.modalElementBody.querySelector(
-                                            '.select-move-to-page',
+                                            '.select-move-to-page'
                                         );
                                     let selectPage = select.item(
-                                        select.selectedIndex,
+                                        select.selectedIndex
                                     );
                                     let newPageId =
                                         selectPage.getAttribute('value');
                                     // Get odePageId
                                     let workareaElement =
                                         document.querySelector(
-                                            '#main #workarea',
+                                            '#main #workarea'
                                         );
                                     let menuNav =
                                         workareaElement.querySelector(
-                                            '#menu_nav_content',
+                                            '#menu_nav_content'
                                         );
                                     let pageElement = menuNav.querySelector(
-                                        `[nav-id="${newPageId}"]`,
+                                        `[nav-id="${newPageId}"]`
                                     );
                                     let odePageId =
                                         pageElement.getAttribute('page-id');
@@ -720,7 +720,7 @@ export default class IdeviceBlockNode {
                                             this.blockId,
                                             null,
                                             'MOVE_TO_PAGE',
-                                            odePageId,
+                                            odePageId
                                         );
                                         // Send operation log action to bbdd
                                         let additionalData = {
@@ -733,7 +733,7 @@ export default class IdeviceBlockNode {
                                             previousOdePageId,
                                             odePageId,
                                             'MOVE_BLOCK_TO',
-                                            additionalData,
+                                            additionalData
                                         );
                                     }
                                 },
@@ -774,7 +774,7 @@ export default class IdeviceBlockNode {
      */
     addBehaviourToggleBlockButton() {
         this.toggleElement = this.blockButtons.querySelector(
-            '#toggleBox' + this.blockId,
+            '#toggleBox' + this.blockId
         );
 
         // Add event
@@ -796,7 +796,7 @@ export default class IdeviceBlockNode {
      */
     addTooltips() {
         $('button.btn-action-menu', this.blockButtons).addClass(
-            'exe-app-tooltip',
+            'exe-app-tooltip'
         );
         eXeLearning.app.common.initTooltips(this.blockButtons);
     }
@@ -846,7 +846,7 @@ export default class IdeviceBlockNode {
         let response = await eXeLearning.app.api.getOdeIdevicesDownload(
             odeSessionId,
             odeBlockId,
-            null,
+            null
         );
         if (response['response'].includes('responseMessage')) {
             // Response to show always on 3
@@ -902,7 +902,7 @@ export default class IdeviceBlockNode {
         let textElement = document.createElement('p');
         let selectElement = document.createElement('select');
         textElement.innerHTML = _(
-            'Select the page you want to move the block to. This will be at the end of it.',
+            'Select the page you want to move the block to. This will be at the end of it.'
         );
         textElement.classList.add('text-info-move-to-page');
         selectElement.classList.add('select-move-to-page');
@@ -950,7 +950,7 @@ export default class IdeviceBlockNode {
     saveIconAction() {
         let modalBody = eXeLearning.app.modals.confirm.modalElementBody;
         let iconElement = modalBody.querySelector(
-            '.option-block-icon[selected="true"]',
+            '.option-block-icon[selected="true"]'
         );
         // Get icon value
         let iconValue = '';
@@ -976,7 +976,7 @@ export default class IdeviceBlockNode {
         modalBody.appendChild(this.makeEmptyIcon());
         // Add icons
         for (let [id, icon] of Object.entries(
-            eXeLearning.app.themes.getThemeIcons(),
+            eXeLearning.app.themes.getThemeIcons()
         )) {
             let iconElement = document.createElement('div');
             iconElement.classList.add('exe-icon');
@@ -1028,7 +1028,7 @@ export default class IdeviceBlockNode {
     addBehaviourToModalChangeIconBody() {
         let modalBody = eXeLearning.app.modals.confirm.modalElementBody;
         let iconsElements = modalBody.querySelectorAll(
-            '#change-block-icon-modal-content .option-block-icon',
+            '#change-block-icon-modal-content .option-block-icon'
         );
         iconsElements.forEach((icon) => {
             // One click to select
@@ -1205,7 +1205,7 @@ export default class IdeviceBlockNode {
                     response.odePagStructureSync.blockId,
                     null,
                     'EDIT',
-                    null,
+                    null
                 );
             });
         }
@@ -1229,7 +1229,7 @@ export default class IdeviceBlockNode {
                     response.odePagStructureSync.blockId,
                     null,
                     'EDIT',
-                    null,
+                    null
                 );
             });
         }
@@ -1267,11 +1267,11 @@ export default class IdeviceBlockNode {
                     response.odePagStructureSync.odeComponentsSyncs.forEach(
                         (ideviceData) => {
                             let idevice = this.engine.getIdeviceById(
-                                ideviceData.odeIdeviceId,
+                                ideviceData.odeIdeviceId
                             );
                             idevice.setProperties(this.properties, true);
                             idevice.makeIdeviceContentNode(false);
-                        },
+                        }
                     );
                 }
                 // Synchronize current users
@@ -1281,13 +1281,13 @@ export default class IdeviceBlockNode {
                     response.odePagStructureSync.blockId,
                     null,
                     'EDIT',
-                    null,
+                    null
                 );
             } else {
                 eXeLearning.app.modals.alert.show({
                     title: _('Block error'),
                     body: _(
-                        "An error occurred while saving block's properties in database",
+                        "An error occurred while saving block's properties in database"
                     ),
                     contentId: 'error',
                 });
@@ -1313,7 +1313,7 @@ export default class IdeviceBlockNode {
         // Error saving block in database
         else {
             let defaultModalMessage = _(
-                'An error occurred while update component in database',
+                'An error occurred while update component in database'
             );
             this.showModalMessageErrorDatabase(response, defaultModalMessage);
         }
@@ -1346,13 +1346,13 @@ export default class IdeviceBlockNode {
                 this.blockId,
                 null,
                 'MOVE_ON_PAGE',
-                null,
+                null
             );
         }
         // Error saving block in database
         else {
             let defaultModalMessage = _(
-                'An error occurred while update component in database',
+                'An error occurred while update component in database'
             );
             this.showModalMessageErrorDatabase(response, defaultModalMessage);
         }
@@ -1369,12 +1369,12 @@ export default class IdeviceBlockNode {
         let response = await this.apiSendDataService(
             'postCloneBlock',
             params,
-            true,
+            true
         );
         if (response.responseMessage == 'OK') {
             await this.engine.cloneBlockInContent(
                 this,
-                response.odePagStructureSync,
+                response.odePagStructureSync
             );
             eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
                 false,
@@ -1382,7 +1382,7 @@ export default class IdeviceBlockNode {
                 response.odePagStructureSync.blockId,
                 null,
                 'ADD',
-                null,
+                null
             );
             let additionalData = {
                 blockId: response.odePagStructureSync.blockId,
@@ -1391,17 +1391,17 @@ export default class IdeviceBlockNode {
                 response.odePagStructureSync.pageId,
                 response.odePagStructureSync.pageId,
                 'CLONE_BLOCK',
-                additionalData,
+                additionalData
             );
             eXeLearning.app.modals.alert.show({
                 title: _('Information'),
                 body: _(
-                    'Identical contents in the same page might cause errors. Edit the new one or move it to another page.',
+                    'Identical contents in the same page might cause errors. Edit the new one or move it to another page.'
                 ),
             });
         } else {
             let defaultErrorMessage = _(
-                'An error occurred while clone component in database',
+                'An error occurred while clone component in database'
             );
             this.showModalMessageErrorDatabase(response, defaultErrorMessage);
         }
@@ -1421,7 +1421,7 @@ export default class IdeviceBlockNode {
                     // Update the order of other blocks
                     this.engine.updateComponentsBlocks(
                         response.odePagStructureSyncs,
-                        ['order'],
+                        ['order']
                     );
                     // this.sendPublishedNotification();
                 }
@@ -1429,11 +1429,11 @@ export default class IdeviceBlockNode {
             // Error saving block in database
             else {
                 let defaultModalMessage = _(
-                    'An error occurred while removing the component from the database',
+                    'An error occurred while removing the component from the database'
                 );
                 this.showModalMessageErrorDatabase(
                     response,
-                    defaultModalMessage,
+                    defaultModalMessage
                 );
             }
         });
@@ -1449,7 +1449,7 @@ export default class IdeviceBlockNode {
         let data = this.generateDataObject(params);
         let response = await eXeLearning.app.api[service].call(
             eXeLearning.app.api,
-            data,
+            data
         );
         if (response && response.responseMessage == 'OK') {
             // All blocks that have been modified
@@ -1457,7 +1457,7 @@ export default class IdeviceBlockNode {
                 // Update the order of other components if necessary
                 this.engine.updateComponentsBlocks(
                     response.odePagStructureSyncs,
-                    ['order'],
+                    ['order']
                 );
             }
             return response;
@@ -1553,7 +1553,7 @@ export default class IdeviceBlockNode {
                 this.blockId,
                 null,
                 'DELETE',
-                null,
+                null
             );
             let additionalData = {
                 blockId: this.blockId,
@@ -1562,7 +1562,7 @@ export default class IdeviceBlockNode {
                 this.pageId,
                 this.pageId,
                 'REMOVE_BLOCK',
-                additionalData,
+                additionalData
             );
             this.apiDeleteBlock();
         }
@@ -1699,7 +1699,7 @@ export default class IdeviceBlockNode {
                 eXeLearning.app.project.odeSession,
                 {
                     name: 'new-content-published',
-                },
+                }
             );
         }
     }

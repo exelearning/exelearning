@@ -50,7 +50,7 @@ export default class MenuStructureBehaviour {
      */
     addEventNavElementOnclick() {
         var navLabelElements = this.menuNav.querySelectorAll(
-            `.nav-element > .nav-element-text`,
+            `.nav-element > .nav-element-text`
         );
         navLabelElements.forEach((element) => {
             element.addEventListener('click', (event) => {
@@ -73,7 +73,7 @@ export default class MenuStructureBehaviour {
      */
     addEventNavElementOnDbclick() {
         var navLabelElements = this.menuNav.querySelectorAll(
-            `.nav-element:not([nav-id="root"]) > .nav-element-text`,
+            `.nav-element:not([nav-id="root"]) > .nav-element-text`
         );
         navLabelElements.forEach((element) => {
             element.addEventListener('dblclick', (event) => {
@@ -89,7 +89,7 @@ export default class MenuStructureBehaviour {
      */
     addEventNavElementIconOnclick() {
         var navIconsElements = this.menuNav.querySelectorAll(
-            `.nav-element > .exe-icon`,
+            `.nav-element > .exe-icon`
         );
         navIconsElements.forEach((element) => {
             element.addEventListener('click', (event) => {
@@ -97,7 +97,7 @@ export default class MenuStructureBehaviour {
                 event.stopPropagation();
                 let navElement = element.parentElement;
                 let node = this.structureEngine.getNode(
-                    navElement.getAttribute('nav-id'),
+                    navElement.getAttribute('nav-id')
                 );
                 if (navElement.classList.contains('toggle-on')) {
                     navElement.classList.remove('toggle-on');
@@ -177,7 +177,7 @@ export default class MenuStructureBehaviour {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     await this.structureEngine.cloneNodeAndReload(
-                        this.nodeSelected.getAttribute('nav-id'),
+                        this.nodeSelected.getAttribute('nav-id')
                     );
                     this.showModalRenameNode();
                 }
@@ -197,7 +197,7 @@ export default class MenuStructureBehaviour {
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
             let uploadOdeFile = document.querySelector(
-                '.local-ode-file-upload-input',
+                '.local-ode-file-upload-input'
             );
             let odeFile = uploadOdeFile.files[0];
 
@@ -208,7 +208,7 @@ export default class MenuStructureBehaviour {
 
             eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                 odeFile,
-                true,
+                true
             );
         });
         this.menuNav.append(inputUpload);
@@ -252,14 +252,14 @@ export default class MenuStructureBehaviour {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     let selectedNav = this.menuNav.querySelector(
-                        '#main .toggle-on .selected',
+                        '#main .toggle-on .selected'
                     );
                     let pageId = selectedNav.getAttribute('page-id');
                     this.getOdePageBrokenLinksEvent(pageId).then((response) => {
                         if (!response.responseMessage) {
                             // Show eXe OdeBrokenList modal
                             eXeLearning.app.modals.odebrokenlinks.show(
-                                response,
+                                response
                             );
                         } else {
                             // Open eXe alert modal
@@ -283,7 +283,7 @@ export default class MenuStructureBehaviour {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodePrev(
-                        this.nodeSelected.getAttribute('nav-id'),
+                        this.nodeSelected.getAttribute('nav-id')
                     );
                 }
             });
@@ -299,7 +299,7 @@ export default class MenuStructureBehaviour {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodeNext(
-                        this.nodeSelected.getAttribute('nav-id'),
+                        this.nodeSelected.getAttribute('nav-id')
                     );
                 }
             });
@@ -315,7 +315,7 @@ export default class MenuStructureBehaviour {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodeUp(
-                        this.nodeSelected.getAttribute('nav-id'),
+                        this.nodeSelected.getAttribute('nav-id')
                     );
                 }
             });
@@ -331,7 +331,7 @@ export default class MenuStructureBehaviour {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodeDown(
-                        this.nodeSelected.getAttribute('nav-id'),
+                        this.nodeSelected.getAttribute('nav-id')
                     );
                 }
             });
@@ -362,7 +362,7 @@ export default class MenuStructureBehaviour {
             confirmExec: () => {
                 let title =
                     modalConfirm.modalElement.querySelector(
-                        '#input-new-node',
+                        '#input-new-node'
                     ).value;
                 if (!title || !title.replaceAll(' ', '')) title = _('New page');
                 this.structureEngine.createNodeAndReload(parentNodeId, title);
@@ -382,7 +382,7 @@ export default class MenuStructureBehaviour {
      */
     showModalRenameNode() {
         let node = this.structureEngine.getNode(
-            this.nodeSelected.getAttribute('nav-id'),
+            this.nodeSelected.getAttribute('nav-id')
         );
         let bodyText = _('New name');
         let bodyInput = `<input id="input-rename-node" class="exe-input" type='text' value='${node.pageName}' >`;
@@ -397,7 +397,7 @@ export default class MenuStructureBehaviour {
             confirmExec: () => {
                 let newTitle =
                     eXeLearning.app.modals.confirm.modalElement.querySelector(
-                        '#input-rename-node',
+                        '#input-rename-node'
                     ).value;
                 this.structureEngine.renameNodeAndReload(node.id, newTitle);
             },
@@ -416,19 +416,19 @@ export default class MenuStructureBehaviour {
      */
     showModalPropertiesNode() {
         let node = this.structureEngine.getNode(
-            this.nodeSelected.getAttribute('nav-id'),
+            this.nodeSelected.getAttribute('nav-id')
         );
         node.showModalProperties();
 
         const observer = new MutationObserver((mutations, obs) => {
             const checkbox = document.querySelector(
-                '.property-value[property="editableInPage"]',
+                '.property-value[property="editableInPage"]'
             );
             const input = document.querySelector(
-                '.property-value[property="titlePage"]',
+                '.property-value[property="titlePage"]'
             );
             const titleInput = document.querySelector(
-                '.property-value[property="titleNode"]',
+                '.property-value[property="titleNode"]'
             );
             const titlePageWrapper = document.querySelector('#titlePage');
 
@@ -473,7 +473,7 @@ export default class MenuStructureBehaviour {
             confirmButtonText: _('Yes'),
             confirmExec: () => {
                 this.structureEngine.removeNodeCompleteAndReload(
-                    this.nodeSelected.getAttribute('nav-id'),
+                    this.nodeSelected.getAttribute('nav-id')
                 );
             },
         });
@@ -491,7 +491,7 @@ export default class MenuStructureBehaviour {
             confirmButtonText: _('Yes'),
             confirmExec: () => {
                 this.structureEngine.cloneNodeAndReload(
-                    this.nodeSelected.getAttribute('nav-id'),
+                    this.nodeSelected.getAttribute('nav-id')
                 );
             },
         });
@@ -506,7 +506,7 @@ export default class MenuStructureBehaviour {
      */
     addDragAndDropFunctionalityToNavElements() {
         var navLabelElements = this.menuNav.querySelectorAll(
-            `.nav-element:not([nav-id="root"]) > .nav-element-text`,
+            `.nav-element:not([nav-id="root"]) > .nav-element-text`
         );
         navLabelElements.forEach((element) => {
             this.addDragAndDropFunctionalityToNode(element);
@@ -592,7 +592,7 @@ export default class MenuStructureBehaviour {
             event.stopPropagation();
             if (this.nodeDrag) {
                 let nodeBase = this.menuNav.querySelector(
-                    '.nav-element > .nav-element-text.drag-over',
+                    '.nav-element > .nav-element-text.drag-over'
                 );
                 if (nodeBase) {
                     let nodeBaseId =
@@ -673,7 +673,7 @@ export default class MenuStructureBehaviour {
                 let loadPageProcessOk =
                     await eXeLearning.app.project.idevices.loadApiIdevicesInPage(
                         true,
-                        element,
+                        element
                     );
                 if (loadPageProcessOk) {
                     this.deselectNodes();
@@ -714,7 +714,7 @@ export default class MenuStructureBehaviour {
             .removeAttribute('node-selected');
         if (this.nodeSelected) {
             let node = this.structureEngine.getNode(
-                this.nodeSelected.getAttribute('nav-id'),
+                this.nodeSelected.getAttribute('nav-id')
             );
             document
                 .querySelector('#node-content')
@@ -737,7 +737,7 @@ export default class MenuStructureBehaviour {
         // Create the button in the right place
         let txt = _('Add Text');
         let bgImage = $('#list_menu_idevices #text .idevice_icon').css(
-            'background-image',
+            'background-image'
         );
         var addTextBtn = `
             <div class="text-center" id="eXeAddContentBtnWrapper">
@@ -766,42 +766,42 @@ export default class MenuStructureBehaviour {
         this.disableActionButtons();
         if (this.nodeSelected) {
             let node = this.structureEngine.getNode(
-                this.nodeSelected.getAttribute('nav-id'),
+                this.nodeSelected.getAttribute('nav-id')
             );
             if (node.id == 'root') {
                 // Enabled only "New node" button
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_add',
+                    '.button_nav_action.action_add'
                 ).disabled = false;
             } else {
                 // Enabled all buttons
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_add',
+                    '.button_nav_action.action_add'
                 ).disabled = false;
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_properties',
+                    '.button_nav_action.action_properties'
                 ).disabled = false;
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_delete',
+                    '.button_nav_action.action_delete'
                 ).disabled = false;
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_clone',
+                    '.button_nav_action.action_clone'
                 ).disabled = false;
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_import_idevices',
+                    '.button_nav_action.action_import_idevices'
                 ).disabled = false;
                 //this.menuNav.querySelector(".button_nav_action.action_check_broken_links").disabled = false;
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_move_prev',
+                    '.button_nav_action.action_move_prev'
                 ).disabled = false;
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_move_next',
+                    '.button_nav_action.action_move_next'
                 ).disabled = false;
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_move_up',
+                    '.button_nav_action.action_move_up'
                 ).disabled = false;
                 this.menuNav.querySelector(
-                    '.button_nav_action.action_move_down',
+                    '.button_nav_action.action_move_down'
                 ).disabled = false;
             }
         }

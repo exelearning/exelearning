@@ -17,12 +17,12 @@ export default class ProjectProperties {
         //  Properties - Package [base]
         this.propertiesConfig = JSON.parse(
             JSON.stringify(
-                eXeLearning.app.api.parameters.odeProjectSyncPropertiesConfig,
-            ),
+                eXeLearning.app.api.parameters.odeProjectSyncPropertiesConfig
+            )
         );
         this.properties = {};
         for (let [category, properties] of Object.entries(
-            this.propertiesConfig,
+            this.propertiesConfig
         )) {
             for (let [key, property] of Object.entries(properties)) {
                 this.properties[key] = property;
@@ -31,12 +31,12 @@ export default class ProjectProperties {
         // Properties - Cataloguing [lom/lom-es]
         this.cataloguingConfig = JSON.parse(
             JSON.stringify(
-                eXeLearning.app.api.parameters.odeProjectSyncCataloguingConfig,
-            ),
+                eXeLearning.app.api.parameters.odeProjectSyncCataloguingConfig
+            )
         );
         this.cataloguing = {};
         for (let [category, properties] of Object.entries(
-            this.cataloguingConfig,
+            this.cataloguingConfig
         )) {
             for (let [key, property] of Object.entries(properties)) {
                 this.cataloguing[key] = property;
@@ -83,8 +83,8 @@ export default class ProjectProperties {
                     // Multiple properties
                     this.cataloguing[key] = JSON.parse(
                         JSON.stringify(
-                            this.cataloguing[properties[key].multipleId],
-                        ),
+                            this.cataloguing[properties[key].multipleId]
+                        )
                     );
                     this.cataloguing[key].value = newValue;
                     this.cataloguing[key].multipleId =
@@ -157,7 +157,7 @@ export default class ProjectProperties {
             'root',
             null,
             null,
-            'EDIT',
+            'EDIT'
         );
 
         return response;

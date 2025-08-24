@@ -1,7 +1,7 @@
 export default class LogoutButton {
     constructor() {
         this.logoutMenuHeadButton = document.querySelector(
-            '#head-bottom-logout-button',
+            '#head-bottom-logout-button'
         );
     }
 

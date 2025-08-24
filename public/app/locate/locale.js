@@ -104,7 +104,7 @@ export default class Locale {
             ) {
                 return this.strings.translations[stringConcIdevice].replace(
                     /\\"/g,
-                    '"',
+                    '"'
                 );
             }
         }

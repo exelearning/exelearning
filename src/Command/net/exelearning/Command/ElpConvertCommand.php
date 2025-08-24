@@ -201,9 +201,9 @@ class ElpConvertCommand extends Command
         // Export the processed file
         $exportResult = $this->odeExportService->export(
             $user,                  // UserInterface
-            $user,                  // dbUser (el mismo en este caso)
+            $user,                  // dbUser (the same in this case)
             $checkResult['odeSessionId'],
-            false,                  // baseUrl (false porque no es un preview)
+            false,                  // baseUrl (false because it is not a preview)
             Constants::EXPORT_TYPE_ELP,
             false,                  // preview
             false                   // isIntegration

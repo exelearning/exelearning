@@ -221,7 +221,7 @@ class ExportHTML5SPService implements ExportServiceInterface
         foreach ($domFather->childNodes as $node) {
             if ('section' === $node->nodeName) {
                 continue;
-            } // No mover el nuevo nodo
+            } // Do not move the new node
             if (XML_ELEMENT_NODE === $node->nodeType) {
                 if ($cont < 2) {
                     $nodesToMove[] = $node;
@@ -294,7 +294,7 @@ class ExportHTML5SPService implements ExportServiceInterface
         // Write the file as real HTML5
         $dom->saveHTMLFile($pageFile);
 
-        // Añade el doctype al principio del HTML5: <!DOCTYPE html>
+        // Add the doctype to the beginning of the HTML5: <!DOCTYPE html>
         $pageFileNewText = '<!DOCTYPE html>'.PHP_EOL.file_get_contents($pageFile);
 
         file_put_contents($pageFile, $pageFileNewText);

@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # Install Node.js and npm
       - name: Set up Node.js
@@ -28,7 +28,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           extensions: sodium, fileinfo, zip, mbstring
 
       # TODO: Temporary disabled because we must have an account in snapcraft.io,
@@ -77,18 +77,15 @@ jobs:
       - name: Remove unnecessary PHP versions (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          rm -f vendor/nativephp/php-bin/bin/linux/x64/php-8.1.zip
-          rm -f vendor/nativephp/php-bin/bin/linux/x64/php-8.2.zip
+          rm -f vendor/nativephp/php-bin/bin/linux/x64/php-8.3.zip
           rm -rf vendor/nativephp/php-bin/bin/mac
           rm -rf vendor/nativephp/php-bin/bin/win
 
       - name: Remove unnecessary PHP versions (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          rm -f vendor/nativephp/php-bin/bin/mac/arm64/php-8.1.zip
-          rm -f vendor/nativephp/php-bin/bin/mac/arm64/php-8.2.zip
-          rm -f vendor/nativephp/php-bin/bin/mac/x86/php-8.1.zip
-          rm -f vendor/nativephp/php-bin/bin/mac/x86/php-8.2.zip
+          rm -f vendor/nativephp/php-bin/bin/mac/arm64/php-8.3.zip
+          rm -f vendor/nativephp/php-bin/bin/mac/x86/php-8.3.zip
           rm -rf vendor/nativephp/php-bin/bin/linux
           rm -rf vendor/nativephp/php-bin/bin/win
 
@@ -96,8 +93,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: bash
         run: |
-          rm -f vendor/nativephp/php-bin/bin/win/x64/php-8.1.zip
-          rm -f vendor/nativephp/php-bin/bin/win/x64/php-8.2.zip
+          rm -f vendor/nativephp/php-bin/bin/win/x64/php-8.3.zip
           rm -rf vendor/nativephp/php-bin/bin/mac
           rm -rf vendor/nativephp/php-bin/bin/linux          
 
@@ -111,9 +107,7 @@ jobs:
       - name: Package application using Makefile
         env:
           # GitHub Releases API token for electron-builder
-          # TO-DO Change for this other lines when release the code in the exelearning/exelearning repo
-          # GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.EXELEARNING_GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WIN_CSC_LINK: ./windows-cert.pfx
           WIN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
 
@@ -124,6 +118,7 @@ jobs:
 
       - name: VirusTotal Scan
         uses: crazy-max/ghaction-virustotal@v4
+        continue-on-error: true
         with:
           vt_api_key: ${{ secrets.VT_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}

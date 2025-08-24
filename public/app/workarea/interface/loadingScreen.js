@@ -1,7 +1,7 @@
 export default class LoadingScreen {
     constructor() {
         this.loadingScreenNode = document.querySelector(
-            '#main > #load-screen-main',
+            '#main > #load-screen-main'
         );
         this.hideTime = 1000;
     }

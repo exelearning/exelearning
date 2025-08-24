@@ -1,7 +1,7 @@
 export default class ShareProjectButton {
     constructor() {
         this.shareMenuHeadButton = document.querySelector(
-            '#head-top-share-button',
+            '#head-top-share-button'
         );
     }
 

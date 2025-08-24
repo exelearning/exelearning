@@ -226,7 +226,7 @@ class ExportIMSService implements ExportServiceInterface
             // Write the file as real HTML5
             $dom->saveHTMLFile($pageFile);
 
-            // Añade el doctype al principio del HTML5: <!DOCTYPE html>
+            // Add the doctype to the beginning of the HTML5: <!DOCTYPE html>
             $pageFileNewText = '<!DOCTYPE html>'.PHP_EOL.file_get_contents($pageFile);
 
             file_put_contents($pageFile, $pageFileNewText);

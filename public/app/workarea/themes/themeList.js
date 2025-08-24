@@ -130,7 +130,7 @@ export default class ThemeList {
         if (this.manager.selected.id == id) {
             await this.manager.selectTheme(
                 eXeLearning.config.defaultTheme,
-                true,
+                true
             );
         }
         delete this.installed[id];

@@ -6,7 +6,12 @@ set -eo pipefail
 
 # Colors for messages
 GREEN='\033[0;32m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
+
+# Log functions
+log()  { printf "%b%s%b\n" "${GREEN}" "$1" "${NC}"; }
+err()  { printf "%b%s%b\n" "${RED}"   "$1" "${NC}" 1>&2; }
 
 # Function to check the availability of a database
 check_db_availability() {
@@ -20,6 +25,24 @@ check_db_availability() {
     done
     echo -e "${GREEN}\n\nGreat, $db_host is ready!${NC}"
 }
+
+# Assert that a required table exists (works with SQLite/MySQL/MariaDB/PostgreSQL)
+assert_users_table_exists() {
+    : "${REQUIRED_TABLE:=users}"
+    : "${GREEN:=}"; : "${RED:=}"; : "${NC:=}"
+
+    # If the table exists, this SELECT succeeds even if it's empty.
+    if php bin/console dbal:run-sql "SELECT 1 FROM ${REQUIRED_TABLE} LIMIT 1" >/dev/null 2>&1; then
+        printf "%bTable '%s' exists and is accessible.%b\n" "$GREEN" "$REQUIRED_TABLE" "$NC"
+        return 0
+    fi
+
+    printf "%bTable '%s' not found or not accessible. Aborting.%b\n" "$RED" "$REQUIRED_TABLE" "$NC"
+    exit 1
+}
+
+
+# --- Main ---
 
 # If DB_HOST is set, check the availability of the database
 if [ -n "$DB_HOST" ]; then
@@ -38,12 +61,16 @@ if [ -n "$BASE_PATH" ] && [ -f "/etc/nginx/server-conf.d/subdir.conf.template" ]
     envsubst '\$BASE_PATH' < /etc/nginx/server-conf.d/subdir.conf.template > /etc/nginx/server-conf.d/subdir.conf
 fi
 
-# Update the database schema
-echo -e "${GREEN}Creating database tables${NC}"
+# Update schema (kept for compatibility, but migrations are preferred)
+echo -e "${GREEN}Creating/updating database tables (schema:update)${NC}"
 php bin/console doctrine:schema:update --force
 
+# Run migrations
 echo -e "${GREEN}Running migrations{NC}"
-php bin/console doctrine:migrations:migrate --no-interaction || echo "No migrations found, skipping..."
+php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --all-or-nothing
+
+# Fails the script if 'users' isn't there
+assert_users_table_exists
 
 # Create test user using environment variables
 echo -e "${GREEN}Creating test user${NC}"

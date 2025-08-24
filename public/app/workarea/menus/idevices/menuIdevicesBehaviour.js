@@ -59,7 +59,7 @@ export default class MenuIdevicesBehaviour {
                         category.classList.add('off');
                     });
                     let lastOpen = parent.parent.menuIdevices.querySelector(
-                        '.idevice_category.last-open',
+                        '.idevice_category.last-open'
                     );
                     if (lastOpen) {
                         lastOpen.classList.remove('off');

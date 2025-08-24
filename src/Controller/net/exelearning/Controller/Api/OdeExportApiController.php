@@ -147,6 +147,14 @@ class OdeExportApiController extends DefaultApiController
 
         // Build the file path using DIRECTORY_SEPARATOR for cross-platform compatibility
         $filePath = implode(DIRECTORY_SEPARATOR, [$filesDir, $year, $month, $day, $random, $subdir, $file]);
+
+        // Helper: relative path from base
+        $relative = $filePath;
+        // Truncate if too long
+        if (strlen($relative) > 50) {
+            $relative = '…'.substr($relative, -47);
+        }
+
         // Check if the file exists before attempting to serve it
         if (!file_exists($filePath)) {
             // Quick and Dirty hack: if we can't find the file in the folder, sometimes is on tmp folder...
@@ -154,8 +162,13 @@ class OdeExportApiController extends DefaultApiController
             // Check if the file exists before attempting to serve it
             if (!file_exists($filePath)) {
                 // Throw a 404 Not Found exception if the file is not found
-                throw $this->createNotFoundException(sprintf('The file "%s" does not exist at the specified path.', $filePath));
+                throw $this->createNotFoundException(sprintf('The file "%s" does not exist at the specified path.', $relative));
             }
+        }
+
+        // If path is a directory, immediately 404
+        if (is_dir($filePath)) {
+            throw $this->createNotFoundException(sprintf('Attempt to access directory: %s', $relative));
         }
 
         return new Response(file_get_contents($filePath), 200, [

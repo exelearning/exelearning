@@ -1,0 +1,126 @@
+.MNF-MainContainer a:link,
+.MNF-MainContainer a:link,
+.MNF-MainContainer a:visited,
+.MNF-MainContainer a:focus {
+    border: 0;
+    border-bottom: none;
+    border-width: 0;
+    outline: none;
+    outline-width: 0;
+    text-decoration: none !important;
+}
+
+
+.MNF-MainContainer {
+    font-size: 1em;
+    width: 100%;
+}
+
+.MNF-instructions {
+    margin-bottom: 1em;
+}
+
+
+.ImageMagnifierIdevice select {
+    margin-top: 0.5em;
+}
+
+.MNF-FullLinkImage {
+    right: 0;
+    top: 0;
+    position: absolute;
+    z-index: 20;
+    display: block;
+    height: 1.7em;
+    width: 1.7em;
+
+}
+
+.MNF-FullImage {
+    background-image: url(exezoomf.png);
+    background-size: 100% 100%;
+    height: 1.7em;
+    width: 1.7em;
+}
+
+.MNF-Activo {
+    cursor: pointer;
+    -webkit-transition: transform 0.3s, -webkit-filter 0.3s;
+    transition: transform 0.3s, filter 0.3s;
+    -webkit-filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+
+.MNF-Activo:hover {
+    -moz-transform: scale(1.1);
+    -ms-transform: scale(1.1);
+    -o-transform: scale(1.1);
+    -webkit-transform: scale(1.1);
+    transform: scale(1.1);
+    -webkit-filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+
+.MNF-image-wrapper {
+    position: relative
+}
+
+.ImageMagnifierIdevice {
+    position: relative;
+    display: inline-block;
+}
+
+.ImageMagnifierIdevice .image-thumbnail {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    cursor: none;
+}
+
+.mojomagnify_border {
+    width: var(--mojo-glass-size, 150px) !important;
+    height: var(--mojo-glass-size, 150px) !important;
+    border-radius: 50% !important;
+    clip-path: circle(50% at 50% 50%) !important;
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border: 2px solid rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+}
+
+
+.mojomagnify_border::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50% !important;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+
+
+.selectzoomglass,
+.selectsizeglass {
+    margin: 0 .5em;
+    padding: .2em .4em;
+    font-size: .9em;
+    border-radius: 4px;
+    background: #fff;
+    vertical-align: middle;
+}
+
+.zoomglass {
+    background: #f9f9f9;
+    padding: .3em;
+    border: 2px solid #ccc;
+    cursor: none;
+    box-shadow: 5px 5px 10px #333333;
+    border-radius: 50%;
+}

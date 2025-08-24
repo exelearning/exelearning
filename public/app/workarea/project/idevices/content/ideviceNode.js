@@ -17,7 +17,7 @@ export default class IdeviceNode {
             : '';
         // Idevice type data class
         this.idevice = eXeLearning.app.idevices.getIdeviceInstalled(
-            this.odeIdeviceTypeName,
+            this.odeIdeviceTypeName
         );
         // Set api params
         this.setParams(data);
@@ -41,7 +41,7 @@ export default class IdeviceNode {
         this.interval = 100;
         // Number of loops
         this.checkDeviceLoadNumMax = Math.round(
-            this.engine.clientCallWaitingTime / this.interval,
+            this.engine.clientCallWaitingTime / this.interval
         );
         // Check if is valid
         this.checkIsValid();
@@ -51,7 +51,7 @@ export default class IdeviceNode {
         if (!this.offlineInstallation) {
             this.realTimeEventNotifier = new RealTimeEventNotifier(
                 eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey,
+                eXeLearning.mercure.jwtSecretKey
             );
         }
     }
@@ -61,8 +61,8 @@ export default class IdeviceNode {
      */
     properties = JSON.parse(
         JSON.stringify(
-            eXeLearning.app.api.parameters.odeComponentsSyncPropertiesConfig,
-        ),
+            eXeLearning.app.api.parameters.odeComponentsSyncPropertiesConfig
+        )
     );
 
     /**
@@ -146,12 +146,12 @@ export default class IdeviceNode {
         } else {
             // Remove classes
             this.ideviceContent.classList.remove(
-                ...this.ideviceContent.classList,
+                ...this.ideviceContent.classList
             );
             // Remove attributes
             while (this.ideviceContent.attributes.length > 0) {
                 this.ideviceContent.removeAttribute(
-                    this.ideviceContent.attributes[0].name,
+                    this.ideviceContent.attributes[0].name
                 );
             }
         }
@@ -189,14 +189,14 @@ export default class IdeviceNode {
         if (this.properties.identifier.value != '') {
             this.ideviceContent.setAttribute(
                 'identifier',
-                this.properties.identifier.value,
+                this.properties.identifier.value
             );
         }
         // visibility
         if (this.properties.visibility.value != '') {
             this.ideviceContent.setAttribute(
                 'export-view',
-                this.properties.visibility.value,
+                this.properties.visibility.value
             );
         }
         // css class
@@ -370,7 +370,7 @@ export default class IdeviceNode {
                     this.blockId,
                     this.odeIdeviceId,
                     'EDIT',
-                    null,
+                    null
                 );
             });
     }
@@ -426,7 +426,7 @@ export default class IdeviceNode {
                         true,
                         this.odeNavStructureSyncId,
                         this.blockId,
-                        this.odeIdeviceId,
+                        this.odeIdeviceId
                     )
                     .then((response) => {
                         if (response.responseMessage !== 'OK') {
@@ -445,7 +445,7 @@ export default class IdeviceNode {
                                 this.block.pageId,
                                 this.block.pageId,
                                 'EDIT_IDEVICE',
-                                additionalData,
+                                additionalData
                             );
                             this.edition();
                         }
@@ -464,7 +464,7 @@ export default class IdeviceNode {
                         true,
                         this.odeNavStructureSyncId,
                         this.blockId,
-                        this.odeIdeviceId,
+                        this.odeIdeviceId
                     )
                     .then((response) => {
                         if (response.responseMessage !== 'OK') {
@@ -483,7 +483,7 @@ export default class IdeviceNode {
                                 this.block.pageId,
                                 this.block.pageId,
                                 'EDIT_IDEVICE',
-                                additionalData,
+                                additionalData
                             );
                             this.edition();
                             this.clearSelection();
@@ -513,7 +513,7 @@ export default class IdeviceNode {
                         this.odeNavStructureSyncId,
                         this.blockId,
                         this.odeIdeviceId,
-                        true,
+                        true
                     )
                     .then((response) => {
                         if (response.responseMessage !== 'OK') {
@@ -526,7 +526,7 @@ export default class IdeviceNode {
                             eXeLearning.app.modals.confirm.show({
                                 title: _('Delete iDevice'),
                                 body: _(
-                                    'Delete iDevice? This cannot be undone.',
+                                    'Delete iDevice? This cannot be undone.'
                                 ),
                                 confirmButtonText: _('Yes'),
                                 confirmExec: () => {
@@ -537,7 +537,7 @@ export default class IdeviceNode {
                                             this.blockId,
                                             this.odeIdeviceId,
                                             'DELETE',
-                                            null,
+                                            null
                                         )
                                         .then((response) => {
                                             // Send operation log action to bbdd
@@ -549,7 +549,7 @@ export default class IdeviceNode {
                                                 this.block.pageId,
                                                 this.block.pageId,
                                                 'REMOVE_IDEVICE',
-                                                additionalData,
+                                                additionalData
                                             );
                                             this.remove(true);
                                         });
@@ -578,7 +578,7 @@ export default class IdeviceNode {
                             false,
                             this.odeNavStructureSyncId,
                             this.blockId,
-                            this.odeIdeviceId,
+                            this.odeIdeviceId
                         );
                         let idevicesExceptionsList = [];
                         this.engine.components.idevices.forEach((idevice) => {
@@ -639,7 +639,7 @@ export default class IdeviceNode {
                             // Not move the idevice if it is already moving
                             if (
                                 !this.ideviceContent.classList.contains(
-                                    'moving',
+                                    'moving'
                                 )
                             ) {
                                 // Check if there is an idevice in the previous position
@@ -656,7 +656,7 @@ export default class IdeviceNode {
                                             // Move element
                                             this.block.blockContent.insertBefore(
                                                 this.ideviceContent,
-                                                previousIdevice,
+                                                previousIdevice
                                             );
                                             // Send operation log action to bbdd
                                             let additionalData = {
@@ -669,7 +669,7 @@ export default class IdeviceNode {
                                                 this.block.pageId,
                                                 this.block.pageId,
                                                 'MOVE_IDEVICE_ON',
-                                                additionalData,
+                                                additionalData
                                             );
                                         }
                                     });
@@ -704,7 +704,7 @@ export default class IdeviceNode {
                             // Not move the idevice if it is already moving
                             if (
                                 !this.ideviceContent.classList.contains(
-                                    'moving',
+                                    'moving'
                                 )
                             ) {
                                 // Check if there is an idevice in the previous position
@@ -720,7 +720,7 @@ export default class IdeviceNode {
                                             // Move element
                                             this.block.blockContent.insertBefore(
                                                 this.ideviceContent,
-                                                nextIdevice.nextSibling,
+                                                nextIdevice.nextSibling
                                             );
                                             // Send operation log action to bbdd
                                             let additionalData = {
@@ -733,7 +733,7 @@ export default class IdeviceNode {
                                                 this.block.pageId,
                                                 this.block.pageId,
                                                 'MOVE_IDEVICE_ON',
-                                                additionalData,
+                                                additionalData
                                             );
                                         }
                                     });
@@ -776,24 +776,24 @@ export default class IdeviceNode {
                                 confirmExec: () => {
                                     let select =
                                         eXeLearning.app.modals.confirm.modalElementBody.querySelector(
-                                            '.select-move-to-page',
+                                            '.select-move-to-page'
                                         );
                                     let selectPage = select.item(
-                                        select.selectedIndex,
+                                        select.selectedIndex
                                     );
                                     let newPageId =
                                         selectPage.getAttribute('value');
                                     // Get odePageId
                                     let workareaElement =
                                         document.querySelector(
-                                            '#main #workarea',
+                                            '#main #workarea'
                                         );
                                     let menuNav =
                                         workareaElement.querySelector(
-                                            '#menu_nav_content',
+                                            '#menu_nav_content'
                                         );
                                     let pageElement = menuNav.querySelector(
-                                        `[nav-id="${newPageId}"]`,
+                                        `[nav-id="${newPageId}"]`
                                     );
                                     let odePageId =
                                         pageElement.getAttribute('page-id');
@@ -816,7 +816,7 @@ export default class IdeviceNode {
                                             null,
                                             this.odeIdeviceId,
                                             'MOVE_TO_PAGE',
-                                            odePageId,
+                                            odePageId
                                         );
                                         // Send operation log action to bbdd
                                         let additionalData = {
@@ -830,7 +830,7 @@ export default class IdeviceNode {
                                             previousOdePageId,
                                             odePageId,
                                             'MOVE_IDEVICE_TO',
-                                            additionalData,
+                                            additionalData
                                         );
                                     }
                                 },
@@ -861,7 +861,7 @@ export default class IdeviceNode {
                         } else {
                             this.downloadIdeviceSelected(
                                 this.blockId,
-                                this.odeIdeviceId,
+                                this.odeIdeviceId
                             );
                         }
                     });
@@ -880,7 +880,7 @@ export default class IdeviceNode {
      */
     addTooltips() {
         $('button.btn-action-menu', this.ideviceButtons).addClass(
-            'exe-app-tooltip',
+            'exe-app-tooltip'
         );
         eXeLearning.app.common.initTooltips(this.ideviceButtons);
     }
@@ -926,7 +926,7 @@ export default class IdeviceNode {
         let response = await eXeLearning.app.api.getOdeIdevicesDownload(
             odeSessionId,
             odeBlockId,
-            odeIdeviceId,
+            odeIdeviceId
         );
         if (response['response'].includes('responseMessage')) {
             // Response to show always on 3
@@ -953,7 +953,7 @@ export default class IdeviceNode {
         let textElement = document.createElement('p');
         let selectElement = document.createElement('select');
         textElement.innerHTML = _(
-            'Select the page you want to move the idevice to. This will be at the end of it.',
+            'Select the page you want to move the idevice to. This will be at the end of it.'
         );
         textElement.classList.add('text-info-move-to-page');
         selectElement.classList.add('select-move-to-page');
@@ -1222,14 +1222,14 @@ export default class IdeviceNode {
                 this.jsonProperties,
                 this.accesibility,
                 htmlTemplate,
-                this.odeIdeviceId,
+                this.odeIdeviceId
             );
             this.ideviceBody.innerHTML = this.exportHtmlView();
             // Idevice export function 2: renderBehaviour
             this.exportObject.renderBehaviour(
                 this.jsonProperties,
                 this.accesibility,
-                this.odeIdeviceId,
+                this.odeIdeviceId
             );
             // Idevice export function 3: init
             this.exportObject.init(this.jsonProperties, this.accesibility);
@@ -1309,18 +1309,18 @@ export default class IdeviceNode {
         let response = await this.apiSendDataService(
             'putSaveIdevice',
             params,
-            true,
+            true
         );
         if (response.responseMessage == 'OK') {
             // Set properties of idevice
             this.setProperties(
-                response.odeComponentsSync.odeComponentsSyncProperties,
+                response.odeComponentsSync.odeComponentsSyncProperties
             );
             // Creating a new idevice also generates a new box
             if (response.newOdePagStructureSync) {
                 // Set properties of block
                 this.block.setProperties(
-                    response.odePagStructureSync.odePagStructureSyncProperties,
+                    response.odePagStructureSync.odePagStructureSyncProperties
                 );
                 // Send box order
                 this.block.apiUpdateOrder(true).then((response) => {});
@@ -1330,7 +1330,7 @@ export default class IdeviceNode {
         else {
             this.toogleIdeviceButtonsState(false);
             let defaultErrorMessage = _(
-                'An error occurred while save component in database',
+                'An error occurred while save component in database'
             );
             this.showModalMessageErrorDatabase(response, defaultErrorMessage);
         }
@@ -1369,13 +1369,13 @@ export default class IdeviceNode {
                         this.blockId,
                         this.odeIdeviceId,
                         'EDIT',
-                        null,
+                        null
                     );
                 } else {
                     eXeLearning.app.modals.alert.show({
                         title: _('iDevice error'),
                         body: _(
-                            "An error occurred while saving idevice's properties in database",
+                            "An error occurred while saving idevice's properties in database"
                         ),
                         contentId: 'error',
                     });
@@ -1403,7 +1403,7 @@ export default class IdeviceNode {
             let response = await this.apiSendDataService(
                 'putSaveHtmlView',
                 params,
-                false,
+                false
             );
             return response;
         } else {
@@ -1430,7 +1430,7 @@ export default class IdeviceNode {
             let response = await this.apiSendDataService(
                 'putSaveIdevice',
                 params,
-                false,
+                false
             );
             return response;
         } else {
@@ -1478,7 +1478,7 @@ export default class IdeviceNode {
         let response = await this.apiSendDataService(
             'putSaveIdevice',
             params,
-            true,
+            true
         );
         if (response.responseMessage == 'OK') {
             // Update list of components to assign the idevices to their respective blocks
@@ -1488,7 +1488,7 @@ export default class IdeviceNode {
         else {
             this.toogleIdeviceButtonsState(false);
             let defaultErrorMessage = _(
-                'An error occurred while update component in database',
+                'An error occurred while update component in database'
             );
             this.showModalMessageErrorDatabase(response, defaultErrorMessage);
         }
@@ -1530,7 +1530,7 @@ export default class IdeviceNode {
         let response = await this.apiSendDataService(
             'putSaveIdevice',
             params,
-            true,
+            true
         );
         if (response.responseMessage == 'OK') {
             // Remove idevice view
@@ -1542,7 +1542,7 @@ export default class IdeviceNode {
         else {
             this.toogleIdeviceButtonsState(false);
             let defaultErrorMessage = _(
-                'An error occurred while update component in database',
+                'An error occurred while update component in database'
             );
             this.showModalMessageErrorDatabase(response, defaultErrorMessage);
         }
@@ -1559,7 +1559,7 @@ export default class IdeviceNode {
         let response = await this.apiSendDataService(
             'putReorderIdevice',
             params,
-            true,
+            true
         );
         if (response.responseMessage == 'OK') {
             // Activate Update flag to the others current users
@@ -1569,7 +1569,7 @@ export default class IdeviceNode {
                 null,
                 this.odeIdeviceId,
                 'MOVE_ON_PAGE',
-                null,
+                null
             );
             // Update the order of other components if necessary
             this.engine.updateComponentsIdevices(response.odeComponentsSyncs, [
@@ -1584,7 +1584,7 @@ export default class IdeviceNode {
         else {
             this.toogleIdeviceButtonsState(false);
             let defaultErrorMessage = _(
-                'An error occurred while update component in database',
+                'An error occurred while update component in database'
             );
             this.showModalMessageErrorDatabase(response, defaultErrorMessage);
         }
@@ -1601,12 +1601,12 @@ export default class IdeviceNode {
         let response = await this.apiSendDataService(
             'postCloneIdevice',
             params,
-            true,
+            true
         );
         if (response.responseMessage == 'OK') {
             await this.engine.cloneIdeviceInContent(
                 this,
-                response.odeComponentsSync,
+                response.odeComponentsSync
             );
             // Activate Update flag to the others current users
             eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
@@ -1615,7 +1615,7 @@ export default class IdeviceNode {
                 this.blockId,
                 response.odeComponentsSync.odeIdeviceId,
                 'ADD',
-                null,
+                null
             );
             // Send operation log action to bbdd
             let additionalData = {
@@ -1626,17 +1626,17 @@ export default class IdeviceNode {
                 this.block.pageId,
                 this.block.pageId,
                 'CLONE_IDEVICE',
-                additionalData,
+                additionalData
             );
             eXeLearning.app.modals.alert.show({
                 title: _('Information'),
                 body: _(
-                    'Identical contents in the same page might cause errors. Edit the new one or move it to another page.',
+                    'Identical contents in the same page might cause errors. Edit the new one or move it to another page.'
                 ),
             });
         } else {
             let defaultErrorMessage = _(
-                'An error occurred while clone component in database',
+                'An error occurred while clone component in database'
             );
             this.showModalMessageErrorDatabase(response, defaultErrorMessage);
         }
@@ -1655,7 +1655,7 @@ export default class IdeviceNode {
                     // update the order of other idevices
                     this.engine.updateComponentsIdevices(
                         response.odeComponentsSyncs,
-                        ['order'],
+                        ['order']
                     );
                     // this.sendPublishedNotification();
                 }
@@ -1665,11 +1665,11 @@ export default class IdeviceNode {
             // Error saving idevice in database
             else {
                 let defaultErrorMessage = _(
-                    'An error occurred while removing the component from the database',
+                    'An error occurred while removing the component from the database'
                 );
                 this.showModalMessageErrorDatabase(
                     response,
-                    defaultErrorMessage,
+                    defaultErrorMessage
                 );
             }
         });
@@ -1740,7 +1740,7 @@ export default class IdeviceNode {
      */
     async apiGetComponentHtmlTemplate() {
         let response = await eXeLearning.app.api.getComponentHtmlTemplate(
-            this.id,
+            this.id
         );
         return response.htmlTemplate;
     }
@@ -1757,7 +1757,7 @@ export default class IdeviceNode {
         let data = this.generateDataObject(params);
         let response = await eXeLearning.app.api[service].call(
             eXeLearning.app.api,
-            data,
+            data
         );
         if (response && response.responseMessage == 'OK') {
             // New idevice
@@ -1765,7 +1765,7 @@ export default class IdeviceNode {
                 this.updateParam('id', response.odeComponentsSync.id);
                 this.updateParam(
                     'odeNavStructureSyncId',
-                    response.odePagStructureSync.odeNavStructureSyncId,
+                    response.odePagStructureSync.odeNavStructureSyncId
                 );
                 this.updateParam('pageId', response.odeComponentsSync.pageId);
             }
@@ -1774,11 +1774,11 @@ export default class IdeviceNode {
                 this.block.updateParam('id', response.odePagStructureSyncId);
                 this.block.updateParam(
                     'odeNavStructureSyncId',
-                    response.odePagStructureSync.odeNavStructureSyncId,
+                    response.odePagStructureSync.odeNavStructureSyncId
                 );
                 this.block.updateParam(
                     'pageId',
-                    response.odePagStructureSync.pageId,
+                    response.odePagStructureSync.pageId
                 );
             }
             // Add idevice to block idevices
@@ -1790,7 +1790,7 @@ export default class IdeviceNode {
                 // update the order of other idevices
                 this.engine.updateComponentsIdevices(
                     response.odeComponentsSyncs,
-                    ['order'],
+                    ['order']
                 );
             }
             // All Blocks that have been modified
@@ -1798,7 +1798,7 @@ export default class IdeviceNode {
                 // update the order of other idevices
                 this.engine.updateComponentsBlocks(
                     response.odeComponentsSyncs,
-                    ['order'],
+                    ['order']
                 );
             }
             return response;
@@ -2037,7 +2037,7 @@ export default class IdeviceNode {
             false,
             this.odeNavStructureSyncId,
             this.blockId,
-            this.odeIdeviceId,
+            this.odeIdeviceId
         );
         if (saveOk) {
             // this.sendPublishedNotification();
@@ -2054,7 +2054,7 @@ export default class IdeviceNode {
                 // Load plugins
                 setTimeout(
                     () => this.loadLegacyExeFunctionalitiesExport(),
-                    100,
+                    100
                 );
             }
             this.engine.unsetIdeviceActive();
@@ -2090,7 +2090,7 @@ export default class IdeviceNode {
             eXeLearning.app.modals.alert.show({
                 title: _('Not allowed'),
                 body: _(
-                    'You cannot edit another idevice until you save the current one',
+                    'You cannot edit another idevice until you save the current one'
                 ),
             });
         }
@@ -2142,7 +2142,7 @@ export default class IdeviceNode {
                     eXeLearning.app.modals.confirm.show({
                         title: _('Remove Block'),
                         body: _(
-                            'iDevice deleted. Now the box is empty. Delete the box too?',
+                            'iDevice deleted. Now the box is empty. Delete the box too?'
                         ),
                         confirmButtonText: _('Yes'),
                         confirmExec: () => {
@@ -2213,7 +2213,7 @@ export default class IdeviceNode {
         $exeDevice.init(
             this.ideviceBody,
             this.getSavedData(),
-            this.getPathEdition(),
+            this.getPathEdition()
         );
         // Init tinymce editors
         $exeTinyMCE.init('multiple-visible', '.exe-html-editor');
@@ -2594,7 +2594,7 @@ export default class IdeviceNode {
                 eXeLearning.app.project.odeSession,
                 {
                     name: 'new-content-published',
-                },
+                }
             );
         }
     }

@@ -9,7 +9,7 @@
 
 var $exeDevice = {
     name: 'beforeafter',
-    title: _('Before after', 'Before after'),
+    title: _('Before/After'),
     msgs: {},
     classIdevice: 'beforeafter',
     active: 0,

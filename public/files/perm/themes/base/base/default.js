@@ -47,7 +47,7 @@ var myTheme = {
             } else {
                 $('body').toggleClass('siteNav-off');
                 myTheme.params(
-                    $('body').hasClass('siteNav-off') ? 'add' : 'remove',
+                    $('body').hasClass('siteNav-off') ? 'add' : 'remove'
                 );
             }
         });
@@ -77,8 +77,8 @@ var myTheme = {
         $('#siteNav a').each(function (i) {
             var t = $(this).text().trim();
             if (
-                t.indexOf('- ') == 0 &&
-                t.indexOf(' -') == t.length - 2 &&
+                t.startsWith('- ') &&
+                t.endsWith(' -') &&
                 $('li', this).length == 0
             ) {
                 t = t.substring(2);

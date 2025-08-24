@@ -2129,10 +2129,6 @@
         <source>Paste question</source>
         <target>Pegar pregunta</target>
       </trans-unit>
-      <trans-unit id="fPdQ29G" resname="Before after">
-        <source>Before after</source>
-        <target>Antes y después</target>
-      </trans-unit>
       <trans-unit id="xI18KU9" resname="Cool! The information you were looking for">
         <source>Cool! The information you were looking for</source>
         <target>¡Genial! La información que estaba buscando</target>
@@ -8596,6 +8592,2930 @@
       <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
         <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
         <target>iDevice eliminado. Ahora la caja está vacía. ¿Eliminar también la caja?</target>
+      </trans-unit>
+      <trans-unit id="wmZAGDi" resname="EdiCuaTeX - LaTeX Equation Editor">
+        <source>EdiCuaTeX - LaTeX Equation Editor</source>
+        <target>EdiCuaTeX - Editor de Ecuaciones LaTeX</target>
+      </trans-unit>
+      <trans-unit id="3xt7SvG" resname="Educational Applications Laboratory">
+        <source>Educational Applications Laboratory</source>
+        <target>Laboratorio de Aplicaciones Educativas</target>
+      </trans-unit>
+      <trans-unit id="oTIGqj3" resname="Application created by Juan José de Haro">
+        <source>Application created by Juan José de Haro</source>
+        <target>Aplicación creada por Juan José de Haro</target>
+      </trans-unit>
+      <trans-unit id="BSDT0ZB" resname="Could not get code from parent dialog:">
+        <source>Could not get code from parent dialog:</source>
+        <target>No se pudo obtener el código del diálogo padre:</target>
+      </trans-unit>
+      <trans-unit id="7WKfC9x" resname="Recent">
+        <source>Recent</source>
+        <target>Recientes</target>
+      </trans-unit>
+      <trans-unit id="vMqqN1e" resname="Error loading menu">
+        <source>Error loading menu</source>
+        <target>Error cargando el menú</target>
+      </trans-unit>
+      <trans-unit id="24mHwai" resname="Could not load">
+        <source>Could not load</source>
+        <target>No se pudo cargar</target>
+      </trans-unit>
+      <trans-unit id="GdRFNpn" resname="No menus found.">
+        <source>No menus found.</source>
+        <target>No se encontraron menús.</target>
+      </trans-unit>
+      <trans-unit id="uKMbnxc" resname="Please describe the formula you need.">
+        <source>Please describe the formula you need.</source>
+        <target>Por favor, describe la fórmula que necesitas.</target>
+      </trans-unit>
+      <trans-unit id="qe79.N0" resname="Instruction generated. You can now use the buttons.">
+        <source>Instruction generated. You can now use the buttons.</source>
+        <target>Instrucción generada. Ya puedes usar los botones.</target>
+      </trans-unit>
+      <trans-unit id="yISxAqv" resname="Instruction copied to clipboard!">
+        <source>Instruction copied to clipboard!</source>
+        <target>¡Instrucción copiada al portapapeles!</target>
+      </trans-unit>
+      <trans-unit id="GyXTAnB" resname="Syntax error">
+        <source>Syntax error</source>
+        <target>Error de sintaxis</target>
+      </trans-unit>
+      <trans-unit id="QriYn5V" resname="No formula to capture.">
+        <source>No formula to capture.</source>
+        <target>No hay fórmula para capturar.</target>
+      </trans-unit>
+      <trans-unit id="UDuhSdh" resname="Understood">
+        <source>Understood</source>
+        <target>Entendido</target>
+      </trans-unit>
+      <trans-unit id="deMwCrv" resname="Right-click on the image to save or copy it.">
+        <source>Right-click on the image to save or copy it.</source>
+        <target>Haz clic derecho en la imagen para guardarla o copiarla.</target>
+      </trans-unit>
+      <trans-unit id="dGGvksN" resname="Matrix">
+        <source>Matrix</source>
+        <target>Matriz</target>
+      </trans-unit>
+      <trans-unit id="dZ9tZ_N" resname="Rows:">
+        <source>Rows:</source>
+        <target>Filas:</target>
+      </trans-unit>
+      <trans-unit id="SQExvxB" resname="Columns:">
+        <source>Columns:</source>
+        <target>Columnas:</target>
+      </trans-unit>
+      <trans-unit id="jVQDWug" resname="Fill:">
+        <source>Fill:</source>
+        <target>Relleno:</target>
+      </trans-unit>
+      <trans-unit id="4hCqAe1" resname="Subscripts (a, b...)">
+        <source>Subscripts (a, b...)</source>
+        <target>Subíndices (a, b...)</target>
+      </trans-unit>
+      <trans-unit id="QlFX6Ax" resname="Zeros (0)">
+        <source>Zeros (0)</source>
+        <target>Ceros (0)</target>
+      </trans-unit>
+      <trans-unit id="E2ebkdm" resname="Ones (1)">
+        <source>Ones (1)</source>
+        <target>Unos (1)</target>
+      </trans-unit>
+      <trans-unit id="PCJDjjs" resname="Variables (a, b, c...)">
+        <source>Variables (a, b, c...)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Nt4kRU_" resname="Numbers (1, 2, 3...)">
+        <source>Numbers (1, 2, 3...)</source>
+        <target>Números (1, 2, 3...)</target>
+      </trans-unit>
+      <trans-unit id="GOOaLG1" resname="Empty ({})">
+        <source>Empty ({})</source>
+        <target>Vacío ({})</target>
+      </trans-unit>
+      <trans-unit id="u6GaqYo" resname="No recent symbols yet.">
+        <source>No recent symbols yet.</source>
+        <target>Aún no hay símbolos recientes.</target>
+      </trans-unit>
+      <trans-unit id="MXDrDSY" resname="Clear recent">
+        <source>Clear recent</source>
+        <target>Limpiar recientes</target>
+      </trans-unit>
+      <trans-unit id="8K208zw" resname="Code copied!">
+        <source>Code copied!</source>
+        <target>¡Código copiado!</target>
+      </trans-unit>
+      <trans-unit id="AMjB8_c" resname="Please enter a URL.">
+        <source>Please enter a URL.</source>
+        <target>Por favor, introduce una URL.</target>
+      </trans-unit>
+      <trans-unit id="LeiwOch" resname="Menu loaded successfully.">
+        <source>Menu loaded successfully.</source>
+        <target>Menú cargado correctamente.</target>
+      </trans-unit>
+      <trans-unit id="Mkowaaq" resname="Error parsing local JSON:">
+        <source>Error parsing local JSON:</source>
+        <target>Error al procesar el JSON local:</target>
+      </trans-unit>
+      <trans-unit id="GzoPdJq" resname="The file is not a valid JSON">
+        <source>The file is not a valid JSON</source>
+        <target>El archivo no es un JSON válido</target>
+      </trans-unit>
+      <trans-unit id="QyFcmOR" resname="Create mathematical formulas visually, copy them or download them as images.">
+        <source>Create mathematical formulas visually, copy them or download them as images.</source>
+        <target>Crea fórmulas matemáticas visualmente, cópialas o descárgalas como imágenes.</target>
+      </trans-unit>
+      <trans-unit id="IRuda2t" resname="Menus">
+        <source>Menus</source>
+        <target>Menús</target>
+      </trans-unit>
+      <trans-unit id="jblMiRZ" resname="Search by description or code (e.g.: fraction, \\int)...">
+        <source>Search by description or code (e.g.: fraction, \\int)...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="eYy3DEw" resname="Clear search">
+        <source>Clear search</source>
+        <target>Limpiar búsqueda</target>
+      </trans-unit>
+      <trans-unit id="uiShOBA" resname="Customize menu">
+        <source>Customize menu</source>
+        <target>Personalizar menú</target>
+      </trans-unit>
+      <trans-unit id="3cWWP_q" resname="Fullscreen">
+        <source>Fullscreen</source>
+        <target>Pantalla completa</target>
+      </trans-unit>
+      <trans-unit id="weTJGRH" resname="LaTeX Code">
+        <source>LaTeX Code</source>
+        <target>Código LaTeX</target>
+      </trans-unit>
+      <trans-unit id="AYvg4zT" resname="Ask AI for formula">
+        <source>Ask AI for formula</source>
+        <target>Pedir fórmula a la IA</target>
+      </trans-unit>
+      <trans-unit id="ie6UTcw" resname="AI Assistant">
+        <source>AI Assistant</source>
+        <target>Asistente IA</target>
+      </trans-unit>
+      <trans-unit id="U8JrXZY" resname="Write your code here... \\frac{a}{b}">
+        <source>Write your code here... \\frac{a}{b}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bz.sjt6" resname="Formula delimiters:">
+        <source>Formula delimiters:</source>
+        <target>Delimitadores de fórmula:</target>
+      </trans-unit>
+      <trans-unit id="u91ifT9" resname="No delimiter">
+        <source>No delimiter</source>
+        <target>Sin delimitador</target>
+      </trans-unit>
+      <trans-unit id="mwu5n4u" resname="View image">
+        <source>View image</source>
+        <target>Ver imagen</target>
+      </trans-unit>
+      <trans-unit id="sYw60iz" resname="Manage menus">
+        <source>Manage menus</source>
+        <target>Gestionar menús</target>
+      </trans-unit>
+      <trans-unit id="YVdoHba" resname="You can edit your own menus with the">
+        <source>You can edit your own menus with the</source>
+        <target>Puedes editar tus propios menús con el</target>
+      </trans-unit>
+      <trans-unit id="DN1N6fV" resname="Menu Editor">
+        <source>Menu Editor</source>
+        <target>Editor de menús</target>
+      </trans-unit>
+      <trans-unit id="E8uiMCP" resname="Available menus">
+        <source>Available menus</source>
+        <target>Menús disponibles</target>
+      </trans-unit>
+      <trans-unit id="gzEusjk" resname="Loading...">
+        <source>Loading...</source>
+        <target>Cargando...</target>
+      </trans-unit>
+      <trans-unit id="H75dm_N" resname="Reload list">
+        <source>Reload list</source>
+        <target>Recargar lista</target>
+      </trans-unit>
+      <trans-unit id="GD9uOOs" resname="Custom load">
+        <source>Custom load</source>
+        <target>Carga personalizada</target>
+      </trans-unit>
+      <trans-unit id="aB0Gjed" resname="Load menu from external URL">
+        <source>Load menu from external URL</source>
+        <target>Cargar menú desde URL externa</target>
+      </trans-unit>
+      <trans-unit id="RGbJeyQ" resname="Load menu from local file">
+        <source>Load menu from local file</source>
+        <target>Cargar menú desde archivo local</target>
+      </trans-unit>
+      <trans-unit id="CVeOHu9" resname="Clear cache and reload">
+        <source>Clear cache and reload</source>
+        <target>Limpiar caché y recargar</target>
+      </trans-unit>
+      <trans-unit id="B3_jWNy" resname="AI Formula Assistant">
+        <source>AI Formula Assistant</source>
+        <target>Asistente de Fórmulas IA</target>
+      </trans-unit>
+      <trans-unit id="nRaDP9U" resname="Describe the formula or mathematical expression you need. The assistant will generate an instruction (prompt) for you to use in an AI model like ChatGPT.">
+        <source>Describe the formula or mathematical expression you need. The assistant will generate an instruction (prompt) for you to use in an AI model like ChatGPT.</source>
+        <target>Describe la fórmula o expresión matemática que necesitas. El asistente generará una instrucción (prompt) para que la uses en un modelo de IA como ChatGPT.</target>
+      </trans-unit>
+      <trans-unit id="RR5AZBI" resname="1. Describe your formula:">
+        <source>1. Describe your formula:</source>
+        <target>1. Describe tu fórmula:</target>
+      </trans-unit>
+      <trans-unit id="0qrTpGz" resname="E.g.: Quadratic equation with a=1, b=14 and c=-4">
+        <source>E.g.: Quadratic equation with a=1, b=14 and c=-4</source>
+        <target>Ej: Ecuación de segundo grado con a=1, b=14 y c=-4</target>
+      </trans-unit>
+      <trans-unit id="SPizCpE" resname="2. Generate AI instruction">
+        <source>2. Generate AI instruction</source>
+        <target>2. Generar instrucción para IA</target>
+      </trans-unit>
+      <trans-unit id="EaRuhiD" resname="3. Generated instruction:">
+        <source>3. Generated instruction:</source>
+        <target>3. Instrucción generada:</target>
+      </trans-unit>
+      <trans-unit id="P2JV64B" resname="The AI instruction will appear here...">
+        <source>The AI instruction will appear here...</source>
+        <target>La instrucción para la IA aparecerá aquí...</target>
+      </trans-unit>
+      <trans-unit id="X8KDLs5" resname="Open in ChatGPT">
+        <source>Open in ChatGPT</source>
+        <target>Abrir en ChatGPT</target>
+      </trans-unit>
+      <trans-unit id="LL0goME" resname="Copy for another AI">
+        <source>Copy for another AI</source>
+        <target>Copiar para otra IA</target>
+      </trans-unit>
+      <trans-unit id="dvAM.ko" resname="Vars (a, b, c...)">
+        <source>Vars (a, b, c...)</source>
+        <target>Variables (a, b, c...)</target>
+      </trans-unit>
+      <trans-unit id="rWM97hF" resname="Basic">
+        <source>Basic</source>
+        <target>Básico</target>
+      </trans-unit>
+      <trans-unit id="p6sV2wl" resname="Fraction">
+        <source>Fraction</source>
+        <target>Fracción</target>
+      </trans-unit>
+      <trans-unit id="Yt5TsU4" resname="Small fraction">
+        <source>Small fraction</source>
+        <target>Fracción pequeña</target>
+      </trans-unit>
+      <trans-unit id="ZIt9uEE" resname="Large fraction">
+        <source>Large fraction</source>
+        <target>Fracción grande</target>
+      </trans-unit>
+      <trans-unit id="PAm0OR3" resname="Nested fraction">
+        <source>Nested fraction</source>
+        <target>Fracción anidada</target>
+      </trans-unit>
+      <trans-unit id="JJcOnQK" resname="Infinity">
+        <source>Infinity</source>
+        <target>Infinito</target>
+      </trans-unit>
+      <trans-unit id="sWdKIT2" resname="Lowercase Greek letter alpha">
+        <source>Lowercase Greek letter alpha</source>
+        <target>Letra griega alpha minúscula</target>
+      </trans-unit>
+      <trans-unit id="51tXdBL" resname="Lowercase Greek letter beta">
+        <source>Lowercase Greek letter beta</source>
+        <target>Letra griega beta minúscula</target>
+      </trans-unit>
+      <trans-unit id="80Kr391" resname="Lowercase Greek letter pi">
+        <source>Lowercase Greek letter pi</source>
+        <target>Letra griega pi minúscula</target>
+      </trans-unit>
+      <trans-unit id="gOAT7NB" resname="\\text{Display}">
+        <source>\\text{Display}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="npAv28I" resname="Display mode">
+        <source>Display mode</source>
+        <target>Modo display</target>
+      </trans-unit>
+      <trans-unit id="8.bnJvh" resname="Parentheses">
+        <source>Parentheses</source>
+        <target>Paréntesis</target>
+      </trans-unit>
+      <trans-unit id="hB_.jxS" resname="\\text{text}">
+        <source>\\text{text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="TEJoYtI" resname="Delimiters">
+        <source>Delimiters</source>
+        <target>Delimitadores</target>
+      </trans-unit>
+      <trans-unit id="1Iql3OZ" resname="Square brackets">
+        <source>Square brackets</source>
+        <target>Corchetes</target>
+      </trans-unit>
+      <trans-unit id="T7evgVP" resname="Curly braces">
+        <source>Curly braces</source>
+        <target>Llaves</target>
+      </trans-unit>
+      <trans-unit id="0zze4jf" resname="Norm">
+        <source>Norm</source>
+        <target>Norma</target>
+      </trans-unit>
+      <trans-unit id="iYn1Wmo" resname="Floor function">
+        <source>Floor function</source>
+        <target>Parte entera</target>
+      </trans-unit>
+      <trans-unit id="hhIKD3K" resname="Ceiling function">
+        <source>Ceiling function</source>
+        <target>Techo</target>
+      </trans-unit>
+      <trans-unit id="DiYvbWw" resname="Absolute value">
+        <source>Absolute value</source>
+        <target>Valor absoluto</target>
+      </trans-unit>
+      <trans-unit id="4.bzzOJ" resname="Angle">
+        <source>Angle</source>
+        <target>Ángulo</target>
+      </trans-unit>
+      <trans-unit id="QtIdflD" resname="Underbrace">
+        <source>Underbrace</source>
+        <target>Llave inferior</target>
+      </trans-unit>
+      <trans-unit id="zzmaDnW" resname="Overbrace">
+        <source>Overbrace</source>
+        <target>Llave superior</target>
+      </trans-unit>
+      <trans-unit id="_HMf.Je" resname="Operators and relations">
+        <source>Operators and relations</source>
+        <target>Operadores y relaciones</target>
+      </trans-unit>
+      <trans-unit id="EI7S36L" resname="Approximately equal">
+        <source>Approximately equal</source>
+        <target>Aproximadamente igual</target>
+      </trans-unit>
+      <trans-unit id="2t8SD_O" resname="Approximate">
+        <source>Approximate</source>
+        <target>Aproximado</target>
+      </trans-unit>
+      <trans-unit id="JJHU27u" resname="Asymptotically equal">
+        <source>Asymptotically equal</source>
+        <target>Asintóticamente igual</target>
+      </trans-unit>
+      <trans-unit id="0t4ArND" resname="Asterisk">
+        <source>Asterisk</source>
+        <target>Asterisco</target>
+      </trans-unit>
+      <trans-unit id="OzYR6vO" resname="Bowtie">
+        <source>Bowtie</source>
+        <target>Bowtie</target>
+      </trans-unit>
+      <trans-unit id="a9_R80T" resname="Circled quotient">
+        <source>Circled quotient</source>
+        <target>Cociente en círculo</target>
+      </trans-unit>
+      <trans-unit id="64_DmYX" resname="Composition">
+        <source>Composition</source>
+        <target>Composición</target>
+      </trans-unit>
+      <trans-unit id="gpAROnt" resname="Congruent">
+        <source>Congruent</source>
+        <target>Congruente</target>
+      </trans-unit>
+      <trans-unit id="poD4d98" resname="Reduced Planck constant">
+        <source>Reduced Planck constant</source>
+        <target>Constante de Planck reducida</target>
+      </trans-unit>
+      <trans-unit id="9DoIqgi" resname="Large circle">
+        <source>Large circle</source>
+        <target>Círculo grande</target>
+      </trans-unit>
+      <trans-unit id="BRiw3dy" resname="Difference">
+        <source>Difference</source>
+        <target>Diferencia</target>
+      </trans-unit>
+      <trans-unit id="BBgv1KF" resname="Not equal">
+        <source>Not equal</source>
+        <target>Distinto</target>
+      </trans-unit>
+      <trans-unit id="CpA2lkU" resname="Equivalent">
+        <source>Equivalent</source>
+        <target>Equivalente</target>
+      </trans-unit>
+      <trans-unit id="uFvEWvW" resname="Dotless i">
+        <source>Dotless i</source>
+        <target>i sin punto</target>
+      </trans-unit>
+      <trans-unit id="cJyYeVF" resname="Intersection">
+        <source>Intersection</source>
+        <target>Intersección</target>
+      </trans-unit>
+      <trans-unit id="xSyAuIM" resname="Dotless j">
+        <source>Dotless j</source>
+        <target>j sin punto</target>
+      </trans-unit>
+      <trans-unit id="jKfrBDM" resname="Greater than or equal to">
+        <source>Greater than or equal to</source>
+        <target>Mayor o igual</target>
+      </trans-unit>
+      <trans-unit id="CbLDCyz" resname="Greater than">
+        <source>Greater than</source>
+        <target>Mayor que</target>
+      </trans-unit>
+      <trans-unit id="jTjhCem" resname="Less than or equal to">
+        <source>Less than or equal to</source>
+        <target>Menor o igual</target>
+      </trans-unit>
+      <trans-unit id="ybPoOJO" resname="Less than">
+        <source>Less than</source>
+        <target>Menor que</target>
+      </trans-unit>
+      <trans-unit id="_0FY_tn" resname="Plus-minus">
+        <source>Plus-minus</source>
+        <target>Más/menos</target>
+      </trans-unit>
+      <trans-unit id="MRBxrPT" resname="Nabla">
+        <source>Nabla</source>
+        <target>Nabla</target>
+      </trans-unit>
+      <trans-unit id="csnCY8d" resname="Not congruent">
+        <source>Not congruent</source>
+        <target>No congruente</target>
+      </trans-unit>
+      <trans-unit id="YIwUjH5" resname="Not equivalent">
+        <source>Not equivalent</source>
+        <target>No equivalente</target>
+      </trans-unit>
+      <trans-unit id="6La.4wl" resname="Not greater than or equal to (slant)">
+        <source>Not greater than or equal to (slant)</source>
+        <target>No mayor o igual (slant)</target>
+      </trans-unit>
+      <trans-unit id="k6nFPM9" resname="Not greater than or equal to">
+        <source>Not greater than or equal to</source>
+        <target>No mayor o igual que</target>
+      </trans-unit>
+      <trans-unit id="tCtYe9Q" resname="Not greater than">
+        <source>Not greater than</source>
+        <target>No mayor que</target>
+      </trans-unit>
+      <trans-unit id="vLPclOx" resname="Not less than or equal to (slant)">
+        <source>Not less than or equal to (slant)</source>
+        <target>No menor o igual (slant)</target>
+      </trans-unit>
+      <trans-unit id="cB0naaj" resname="Not less than or equal to">
+        <source>Not less than or equal to</source>
+        <target>No menor o igual que</target>
+      </trans-unit>
+      <trans-unit id="abaxgwf" resname="Not less than">
+        <source>Not less than</source>
+        <target>No menor que</target>
+      </trans-unit>
+      <trans-unit id="bbb9Uia" resname="Not an element of">
+        <source>Not an element of</source>
+        <target>No pertenece</target>
+      </trans-unit>
+      <trans-unit id="pTfkjNb" resname="Does not precede">
+        <source>Does not precede</source>
+        <target>No precede</target>
+      </trans-unit>
+      <trans-unit id="eoJ59O1" resname="Not similar">
+        <source>Not similar</source>
+        <target>No similar</target>
+      </trans-unit>
+      <trans-unit id="bF3rrNu" resname="Not a subset or equal">
+        <source>Not a subset or equal</source>
+        <target>No subconjunto o igual</target>
+      </trans-unit>
+      <trans-unit id="neOeJAp" resname="Does not succeed">
+        <source>Does not succeed</source>
+        <target>No sucede</target>
+      </trans-unit>
+      <trans-unit id="b2devf0" resname="Parallel">
+        <source>Parallel</source>
+        <target>Paralelo</target>
+      </trans-unit>
+      <trans-unit id="J5R97yC" resname="Imaginary part">
+        <source>Imaginary part</source>
+        <target>Parte imaginaria</target>
+      </trans-unit>
+      <trans-unit id="OFe9tEx" resname="Real part">
+        <source>Real part</source>
+        <target>Parte real</target>
+      </trans-unit>
+      <trans-unit id="Y6qvsPu" resname="Perpendicular">
+        <source>Perpendicular</source>
+        <target>Perpendicular</target>
+      </trans-unit>
+      <trans-unit id="jMRFspU" resname="Element of">
+        <source>Element of</source>
+        <target>Pertenece</target>
+      </trans-unit>
+      <trans-unit id="QHuLMDG" resname="Star product">
+        <source>Star product</source>
+        <target>Producto estrella</target>
+      </trans-unit>
+      <trans-unit id="OoHfC3t" resname="Dot product">
+        <source>Dot product</source>
+        <target>Producto punto</target>
+      </trans-unit>
+      <trans-unit id="vEEvQlf" resname="Tensor product">
+        <source>Tensor product</source>
+        <target>Producto tensorial</target>
+      </trans-unit>
+      <trans-unit id="8jc64cW" resname="Proportional to">
+        <source>Proportional to</source>
+        <target>Proporcional</target>
+      </trans-unit>
+      <trans-unit id="WAAnqIj" resname="Bullet">
+        <source>Bullet</source>
+        <target>Punto grueso</target>
+      </trans-unit>
+      <trans-unit id="U0btdzJ" resname="Diagonal dots">
+        <source>Diagonal dots</source>
+        <target>Puntos diagonales</target>
+      </trans-unit>
+      <trans-unit id="Gr_FqoK" resname="Horizontal dots">
+        <source>Horizontal dots</source>
+        <target>Puntos horizontales</target>
+      </trans-unit>
+      <trans-unit id="YQ1mJG6" resname="Vertical dots">
+        <source>Vertical dots</source>
+        <target>Puntos verticales</target>
+      </trans-unit>
+      <trans-unit id="5b434BV" resname="Circled minus">
+        <source>Circled minus</source>
+        <target>Resta en círculo</target>
+      </trans-unit>
+      <trans-unit id=".dFeNVT" resname="Satisfies (models)">
+        <source>Satisfies (models)</source>
+        <target>Satisface (models)</target>
+      </trans-unit>
+      <trans-unit id="gfuNm1T" resname="Is deduced (vdash)">
+        <source>Is deduced (vdash)</source>
+        <target>Se deduce (vdash)</target>
+      </trans-unit>
+      <trans-unit id="p0qt6tZ" resname="Similar">
+        <source>Similar</source>
+        <target>Similar</target>
+      </trans-unit>
+      <trans-unit id="zCobXxz" resname="Subset">
+        <source>Subset</source>
+        <target>Subconjunto</target>
+      </trans-unit>
+      <trans-unit id="s0LjZaq" resname="Subset or equal">
+        <source>Subset or equal</source>
+        <target>Subconjunto o igual</target>
+      </trans-unit>
+      <trans-unit id="9raBswJ" resname="Proper subset">
+        <source>Proper subset</source>
+        <target>Subconjunto propio</target>
+      </trans-unit>
+      <trans-unit id="lDECSLP" resname="Direct sum">
+        <source>Direct sum</source>
+        <target>Suma directa</target>
+      </trans-unit>
+      <trans-unit id="JCtvJyu" resname="Superset">
+        <source>Superset</source>
+        <target>Superconjunto</target>
+      </trans-unit>
+      <trans-unit id="pVZQ.I6" resname="Superset or equal">
+        <source>Superset or equal</source>
+        <target>Superconjunto o igual</target>
+      </trans-unit>
+      <trans-unit id="p2fL7kT" resname="Small right triangle">
+        <source>Small right triangle</source>
+        <target>Triángulo derecho pequeño</target>
+      </trans-unit>
+      <trans-unit id="S579Rh." resname="Large triangle">
+        <source>Large triangle</source>
+        <target>Triángulo grande</target>
+      </trans-unit>
+      <trans-unit id="d8.c0Ph" resname="Large inverted triangle">
+        <source>Large inverted triangle</source>
+        <target>Triángulo invertido grande</target>
+      </trans-unit>
+      <trans-unit id="GKDCwnE" resname="Small left triangle">
+        <source>Small left triangle</source>
+        <target>Triángulo izquierdo pequeño</target>
+      </trans-unit>
+      <trans-unit id="OdWyh_F" resname="Union">
+        <source>Union</source>
+        <target>Unión</target>
+      </trans-unit>
+      <trans-unit id="aPCXwTR" resname="Measured angle">
+        <source>Measured angle</source>
+        <target>Ángulo medido</target>
+      </trans-unit>
+      <trans-unit id="bE8ERWC" resname="Sets">
+        <source>Sets</source>
+        <target>Conjuntos</target>
+      </trans-unit>
+      <trans-unit id="apd8EII" resname="Complex numbers">
+        <source>Complex numbers</source>
+        <target>Complejos</target>
+      </trans-unit>
+      <trans-unit id="8BAw2YB" resname="Empty set">
+        <source>Empty set</source>
+        <target>Conjunto vacío</target>
+      </trans-unit>
+      <trans-unit id="4eXzNrk" resname="Integers">
+        <source>Integers</source>
+        <target>Enteros</target>
+      </trans-unit>
+      <trans-unit id="4G_kgk9" resname="Natural numbers">
+        <source>Natural numbers</source>
+        <target>Naturales</target>
+      </trans-unit>
+      <trans-unit id="8TmClYf" resname="Rational numbers">
+        <source>Rational numbers</source>
+        <target>Racionales</target>
+      </trans-unit>
+      <trans-unit id="sszl1rE" resname="Real numbers">
+        <source>Real numbers</source>
+        <target>Reales</target>
+      </trans-unit>
+      <trans-unit id="H_iI8sY" resname="Logic">
+        <source>Logic</source>
+        <target>Lógica</target>
+      </trans-unit>
+      <trans-unit id="6mRFOJi" resname="Conjunction">
+        <source>Conjunction</source>
+        <target>Conjunción</target>
+      </trans-unit>
+      <trans-unit id="PqzUq3E" resname="Disjunction">
+        <source>Disjunction</source>
+        <target>Disyunción</target>
+      </trans-unit>
+      <trans-unit id="ZjgoXTu" resname="Equivalence">
+        <source>Equivalence</source>
+        <target>Equivalencia</target>
+      </trans-unit>
+      <trans-unit id="bmCTC9Z" resname="Exists">
+        <source>Exists</source>
+        <target>Existe</target>
+      </trans-unit>
+      <trans-unit id="VcIN6G5" resname="Implication">
+        <source>Implication</source>
+        <target>Implicación</target>
+      </trans-unit>
+      <trans-unit id="tQNbhAe" resname="Negation">
+        <source>Negation</source>
+        <target>Negación</target>
+      </trans-unit>
+      <trans-unit id="0Bi3hvk" resname="Does not exist">
+        <source>Does not exist</source>
+        <target>No existe</target>
+      </trans-unit>
+      <trans-unit id="rkU3C7A" resname="Not for all">
+        <source>Not for all</source>
+        <target>No para todo</target>
+      </trans-unit>
+      <trans-unit id="08Axn.g" resname="For all">
+        <source>For all</source>
+        <target>Para todo</target>
+      </trans-unit>
+      <trans-unit id="QBRfNKG" resname="Functions">
+        <source>Functions</source>
+        <target>Funciones</target>
+      </trans-unit>
+      <trans-unit id="4qXw4iO" resname="Cosecant">
+        <source>Cosecant</source>
+        <target>Cosecante</target>
+      </trans-unit>
+      <trans-unit id="f_24PgK" resname="Cosine">
+        <source>Cosine</source>
+        <target>Coseno</target>
+      </trans-unit>
+      <trans-unit id="977lpps" resname="Cotangent">
+        <source>Cotangent</source>
+        <target>Cotangente</target>
+      </trans-unit>
+      <trans-unit id="BMLOadY" resname="Exponential">
+        <source>Exponential</source>
+        <target>Exponencial</target>
+      </trans-unit>
+      <trans-unit id="3bArSP6" resname="Logarithm">
+        <source>Logarithm</source>
+        <target>Logaritmo</target>
+      </trans-unit>
+      <trans-unit id="2aZGSBw" resname="Natural logarithm">
+        <source>Natural logarithm</source>
+        <target>Logaritmo natural</target>
+      </trans-unit>
+      <trans-unit id="v5ycRIL" resname="Square root">
+        <source>Square root</source>
+        <target>Raíz cuadrada</target>
+      </trans-unit>
+      <trans-unit id="4ghVVNO" resname="Nth root">
+        <source>Nth root</source>
+        <target>Raíz n-ésima</target>
+      </trans-unit>
+      <trans-unit id="7w4Di5j" resname="Secant">
+        <source>Secant</source>
+        <target>Secante</target>
+      </trans-unit>
+      <trans-unit id="F2SJ9iL" resname="Sine">
+        <source>Sine</source>
+        <target>Seno</target>
+      </trans-unit>
+      <trans-unit id="e20Vd86" resname="Tangent">
+        <source>Tangent</source>
+        <target>Tangente</target>
+      </trans-unit>
+      <trans-unit id="HZdwGu2" resname="Calculus">
+        <source>Calculus</source>
+        <target>Cálculo</target>
+      </trans-unit>
+      <trans-unit id="8yKuIDl" resname="Large coproduct">
+        <source>Large coproduct</source>
+        <target>Coproducto grande</target>
+      </trans-unit>
+      <trans-unit id="tosUq9F" resname="Derivative">
+        <source>Derivative</source>
+        <target>Derivada</target>
+      </trans-unit>
+      <trans-unit id="GWFRx0M" resname="Partial derivative">
+        <source>Partial derivative</source>
+        <target>Derivada parcial</target>
+      </trans-unit>
+      <trans-unit id="4CO1kPU" resname="Definite integral">
+        <source>Definite integral</source>
+        <target>Integral definida</target>
+      </trans-unit>
+      <trans-unit id="3Ax0IO6" resname="Double integral">
+        <source>Double integral</source>
+        <target>Integral doble</target>
+      </trans-unit>
+      <trans-unit id="Jr4TBzV" resname="Indefinite integral">
+        <source>Indefinite integral</source>
+        <target>Integral indefinida</target>
+      </trans-unit>
+      <trans-unit id="1Pp0bl." resname="Triple integral">
+        <source>Triple integral</source>
+        <target>Integral triple</target>
+      </trans-unit>
+      <trans-unit id="mP2oqw0" resname="Limit">
+        <source>Limit</source>
+        <target>Límite</target>
+      </trans-unit>
+      <trans-unit id="jjkUyDB" resname="Large logical product">
+        <source>Large logical product</source>
+        <target>Producto lógico grande</target>
+      </trans-unit>
+      <trans-unit id="XEsTcQz" resname="Large tensor product">
+        <source>Large tensor product</source>
+        <target>Producto tensorial grande</target>
+      </trans-unit>
+      <trans-unit id="SKPq7WJ" resname="Product">
+        <source>Product</source>
+        <target>Productorio</target>
+      </trans-unit>
+      <trans-unit id="yTyeCqe" resname="Large direct sum">
+        <source>Large direct sum</source>
+        <target>Suma directa grande</target>
+      </trans-unit>
+      <trans-unit id="4BAotc9" resname="Large logical sum">
+        <source>Large logical sum</source>
+        <target>Suma lógica grande</target>
+      </trans-unit>
+      <trans-unit id="ZgomIcF" resname="Summation">
+        <source>Summation</source>
+        <target>Sumatorio</target>
+      </trans-unit>
+      <trans-unit id="GL7oE7j" resname="Large disjoint union">
+        <source>Large disjoint union</source>
+        <target>Unión disjunta grande</target>
+      </trans-unit>
+      <trans-unit id="Xa1CHji" resname="Right-left harpoons">
+        <source>Right-left harpoons</source>
+        <target>Arpones derecha‑izquierda</target>
+      </trans-unit>
+      <trans-unit id="gcF1pNI" resname="Left-right harpoons">
+        <source>Left-right harpoons</source>
+        <target>Arpones izquierda‑derecha</target>
+      </trans-unit>
+      <trans-unit id="maHhFvm" resname="Right harpoon down">
+        <source>Right harpoon down</source>
+        <target>Arpón derecho abajo</target>
+      </trans-unit>
+      <trans-unit id="Rglg8kr" resname="Right harpoon up">
+        <source>Right harpoon up</source>
+        <target>Arpón derecho arriba</target>
+      </trans-unit>
+      <trans-unit id="Ndl9_n9" resname="Left harpoon down">
+        <source>Left harpoon down</source>
+        <target>Arpón izquierdo abajo</target>
+      </trans-unit>
+      <trans-unit id="JE49rzP" resname="Left harpoon up">
+        <source>Left harpoon up</source>
+        <target>Arpón izquierdo arriba</target>
+      </trans-unit>
+      <trans-unit id="K1Prp5v" resname="Double arrow">
+        <source>Double arrow</source>
+        <target>Doble flecha</target>
+      </trans-unit>
+      <trans-unit id="UoIDZfr" resname="Long equivalence">
+        <source>Long equivalence</source>
+        <target>Equivalencia larga</target>
+      </trans-unit>
+      <trans-unit id="okBpgji" resname="Down arrow">
+        <source>Down arrow</source>
+        <target>Flecha abajo</target>
+      </trans-unit>
+      <trans-unit id="V6Dm6uX" resname="Up arrow">
+        <source>Up arrow</source>
+        <target>Flecha arriba</target>
+      </trans-unit>
+      <trans-unit id="2xUlg0C" resname="Right loop arrow">
+        <source>Right loop arrow</source>
+        <target>Flecha bucle derecha</target>
+      </trans-unit>
+      <trans-unit id="f6KOQNs" resname="Right circular arrow">
+        <source>Right circular arrow</source>
+        <target>Flecha circular derecha</target>
+      </trans-unit>
+      <trans-unit id="1cgD7N9" resname="Arrow with text below">
+        <source>Arrow with text below</source>
+        <target>Flecha con texto abajo</target>
+      </trans-unit>
+      <trans-unit id="5XjCsBj" resname="\\underset{\\text{text}}{\\xrightarrow{}}">
+        <source>\\underset{\\text{text}}{\\xrightarrow{}}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rtCVSEI" resname="Arrow with text above">
+        <source>Arrow with text above</source>
+        <target>Flecha con texto arriba</target>
+      </trans-unit>
+      <trans-unit id="ddEOSq2" resname="\\xrightarrow{\\text{text}}">
+        <source>\\xrightarrow{\\text{text}}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2xsg9dy" resname="Arrow with text above and below">
+        <source>Arrow with text above and below</source>
+        <target>Flecha con texto arriba y abajo</target>
+      </trans-unit>
+      <trans-unit id="Cv1DNLs" resname="\\xrightarrow[\\text{below}]{\\text{above}}">
+        <source>\\xrightarrow[\\text{below}]{\\text{above}}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fkj1H3d" resname="Right curve arrow">
+        <source>Right curve arrow</source>
+        <target>Flecha curva derecha</target>
+      </trans-unit>
+      <trans-unit id="ghYfksM" resname="Left curve arrow">
+        <source>Left curve arrow</source>
+        <target>Flecha curva izquierda</target>
+      </trans-unit>
+      <trans-unit id="OSmpSwj" resname="Right arrow">
+        <source>Right arrow</source>
+        <target>Flecha derecha</target>
+      </trans-unit>
+      <trans-unit id="CDES.6M" resname="Right arrow with tail">
+        <source>Right arrow with tail</source>
+        <target>Flecha derecha con cola</target>
+      </trans-unit>
+      <trans-unit id="9FPEQH2" resname="Double down arrow">
+        <source>Double down arrow</source>
+        <target>Flecha doble abajo</target>
+      </trans-unit>
+      <trans-unit id="xlsET7u" resname="Double up arrow">
+        <source>Double up arrow</source>
+        <target>Flecha doble arriba</target>
+      </trans-unit>
+      <trans-unit id="yoaHldo" resname="Double vertical arrow">
+        <source>Double vertical arrow</source>
+        <target>Flecha doble vertical</target>
+      </trans-unit>
+      <trans-unit id="WEYcQUx" resname="Left arrow">
+        <source>Left arrow</source>
+        <target>Flecha izquierda</target>
+      </trans-unit>
+      <trans-unit id="9zggaxq" resname="Left arrow (gets)">
+        <source>Left arrow (gets)</source>
+        <target>Flecha izquierda (gets)</target>
+      </trans-unit>
+      <trans-unit id=".Jp_O9K" resname="Long arrow">
+        <source>Long arrow</source>
+        <target>Flecha larga</target>
+      </trans-unit>
+      <trans-unit id="UA7JlpH" resname="Long double arrow">
+        <source>Long double arrow</source>
+        <target>Flecha larga doble</target>
+      </trans-unit>
+      <trans-unit id="Sn28UKM" resname="Long left arrow">
+        <source>Long left arrow</source>
+        <target>Flecha larga izquierda</target>
+      </trans-unit>
+      <trans-unit id="jPW2wyM" resname="Northeast arrow">
+        <source>Northeast arrow</source>
+        <target>Flecha noreste</target>
+      </trans-unit>
+      <trans-unit id="k1bApHV" resname="Northwest arrow">
+        <source>Northwest arrow</source>
+        <target>Flecha noroeste</target>
+      </trans-unit>
+      <trans-unit id="qNp__o7" resname="Wiggly right arrow">
+        <source>Wiggly right arrow</source>
+        <target>Flecha ondulada derecha</target>
+      </trans-unit>
+      <trans-unit id="lkkmVGo" resname="Southeast arrow">
+        <source>Southeast arrow</source>
+        <target>Flecha sureste</target>
+      </trans-unit>
+      <trans-unit id="uBaayuf" resname="Southwest arrow">
+        <source>Southwest arrow</source>
+        <target>Flecha suroeste</target>
+      </trans-unit>
+      <trans-unit id="EG4om2D" resname="Vector arrow">
+        <source>Vector arrow</source>
+        <target>Flecha vector</target>
+      </trans-unit>
+      <trans-unit id="KXK8RKN" resname="Double up arrows">
+        <source>Double up arrows</source>
+        <target>Flechas dobles arriba</target>
+      </trans-unit>
+      <trans-unit id="YAv_HJC" resname="Double right arrows">
+        <source>Double right arrows</source>
+        <target>Flechas dobles derecha</target>
+      </trans-unit>
+      <trans-unit id="FFbwCDG" resname="Implies">
+        <source>Implies</source>
+        <target>Implica</target>
+      </trans-unit>
+      <trans-unit id="d9955iR" resname="Reverse implies">
+        <source>Reverse implies</source>
+        <target>Implica inversa</target>
+      </trans-unit>
+      <trans-unit id="yjheIGP" resname="Long implies">
+        <source>Long implies</source>
+        <target>Implica larga</target>
+      </trans-unit>
+      <trans-unit id="P0qDWYI" resname="Injection">
+        <source>Injection</source>
+        <target>Inyección</target>
+      </trans-unit>
+      <trans-unit id="_JShhBV" resname="Long mapping">
+        <source>Long mapping</source>
+        <target>Mapeo largo</target>
+      </trans-unit>
+      <trans-unit id="HAJ4vVG" resname="Mapsto">
+        <source>Mapsto</source>
+        <target>Mapsto</target>
+      </trans-unit>
+      <trans-unit id="ShJlzWG" resname="Not implies right">
+        <source>Not implies right</source>
+        <target>No implica derecha</target>
+      </trans-unit>
+      <trans-unit id="VFADSQc" resname="Not implies left">
+        <source>Not implies left</source>
+        <target>No implica izquierda</target>
+      </trans-unit>
+      <trans-unit id="8wTneYj" resname="Vector">
+        <source>Vector</source>
+        <target>Vector</target>
+      </trans-unit>
+      <trans-unit id="FYKYcbP" resname="Matrices">
+        <source>Matrices</source>
+        <target>Matrices</target>
+      </trans-unit>
+      <trans-unit id="3GgwCo9" resname="2x2 determinant">
+        <source>2x2 determinant</source>
+        <target>Determinante 2x2</target>
+      </trans-unit>
+      <trans-unit id="Dxi8FII" resname="2x2 matrix">
+        <source>2x2 matrix</source>
+        <target>Matriz 2x2</target>
+      </trans-unit>
+      <trans-unit id="mZlwn9N" resname="2x2 matrix with brackets">
+        <source>2x2 matrix with brackets</source>
+        <target>Matriz 2x2 corchetes</target>
+      </trans-unit>
+      <trans-unit id="v6_miUM" resname="3x3 matrix">
+        <source>3x3 matrix</source>
+        <target>Matriz 3x3</target>
+      </trans-unit>
+      <trans-unit id="ReICqF0" resname="Systems">
+        <source>Systems</source>
+        <target>Sistemas</target>
+      </trans-unit>
+      <trans-unit id="JA0wraK" resname="System of 3 equations with array">
+        <source>System of 3 equations with array</source>
+        <target>Sistema 3 ecuaciones con array</target>
+      </trans-unit>
+      <trans-unit id="xfdx9Ua" resname="System with array">
+        <source>System with array</source>
+        <target>Sistema con array</target>
+      </trans-unit>
+      <trans-unit id="MkSc4Hv" resname="Decorations">
+        <source>Decorations</source>
+        <target>Decoraciones</target>
+      </trans-unit>
+      <trans-unit id="Jvv1d6U" resname="Bar">
+        <source>Bar</source>
+        <target>Barra</target>
+      </trans-unit>
+      <trans-unit id="YTg6AgY" resname="Double dot">
+        <source>Double dot</source>
+        <target>Doble punto</target>
+      </trans-unit>
+      <trans-unit id="U98wkKb" resname="Dot">
+        <source>Dot</source>
+        <target>Punto</target>
+      </trans-unit>
+      <trans-unit id="Gsf3ntf" resname="Overline">
+        <source>Overline</source>
+        <target>Sobrebarra</target>
+      </trans-unit>
+      <trans-unit id="6wJb8b6" resname="Hat">
+        <source>Hat</source>
+        <target>Sombrero</target>
+      </trans-unit>
+      <trans-unit id="pXdkmeH" resname="Wide hat">
+        <source>Wide hat</source>
+        <target>Sombrero amplio</target>
+      </trans-unit>
+      <trans-unit id="waOdF6U" resname="Tilde">
+        <source>Tilde</source>
+        <target>Virgulilla</target>
+      </trans-unit>
+      <trans-unit id="cPxBcId" resname="Annotations">
+        <source>Annotations</source>
+        <target>Anotaciones</target>
+      </trans-unit>
+      <trans-unit id="O_DHQ3p" resname="Insert text">
+        <source>Insert text</source>
+        <target>Insertar texto</target>
+      </trans-unit>
+      <trans-unit id="2OG93.D" resname="Cross out with X">
+        <source>Cross out with X</source>
+        <target>Tachar con X</target>
+      </trans-unit>
+      <trans-unit id="S6xrJt." resname="Cross out">
+        <source>Cross out</source>
+        <target>Tachar en cruz</target>
+      </trans-unit>
+      <trans-unit id="n4.QYz1" resname="Cancel term">
+        <source>Cancel term</source>
+        <target>Tachar término</target>
+      </trans-unit>
+      <trans-unit id="7sZuzMj" resname="Cancel and annotate">
+        <source>Cancel and annotate</source>
+        <target>Tachar y anotar</target>
+      </trans-unit>
+      <trans-unit id="nLp5oym" resname="Text below">
+        <source>Text below</source>
+        <target>Texto debajo</target>
+      </trans-unit>
+      <trans-unit id="ivFn3H2" resname="Text above">
+        <source>Text above</source>
+        <target>Texto encima</target>
+      </trans-unit>
+      <trans-unit id="ZKgEbfK" resname="Text formatting">
+        <source>Text formatting</source>
+        <target>Formato de texto</target>
+      </trans-unit>
+      <trans-unit id="knVPcTG" resname="Tiny text">
+        <source>Tiny text</source>
+        <target>Texto muy pequeño</target>
+      </trans-unit>
+      <trans-unit id="VtzckdX" resname="\\tiny{Text}">
+        <source>\\tiny{Text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u4Mz8gs" resname="Script size text">
+        <source>Script size text</source>
+        <target>Texto script size</target>
+      </trans-unit>
+      <trans-unit id="xb1J0Me" resname="\\scriptsize{Text}">
+        <source>\\scriptsize{Text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="KPMHiIf" resname="Small text">
+        <source>Small text</source>
+        <target>Texto pequeño</target>
+      </trans-unit>
+      <trans-unit id="EemY5ul" resname="\\small{Text}">
+        <source>\\small{Text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6WOADdb" resname="Normal size text">
+        <source>Normal size text</source>
+        <target>Texto normal</target>
+      </trans-unit>
+      <trans-unit id="l9LlduX" resname="\\normalsize{Text}">
+        <source>\\normalsize{Text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="A4PW2eq" resname="Large text">
+        <source>Large text</source>
+        <target>Texto grande</target>
+      </trans-unit>
+      <trans-unit id="uwXAnP1" resname="\\large{Text}">
+        <source>\\large{Text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="B3vnaJp" resname="Larger text">
+        <source>Larger text</source>
+        <target>Texto más grande</target>
+      </trans-unit>
+      <trans-unit id="CzZRl0W" resname="\\Large{Text}">
+        <source>\\Large{Text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f5RgnTP" resname="Very large text">
+        <source>Very large text</source>
+        <target>Texto muy grande</target>
+      </trans-unit>
+      <trans-unit id="83uOJQ2" resname="\\LARGE{Text}">
+        <source>\\LARGE{Text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="U33cqMv" resname="Huge text">
+        <source>Huge text</source>
+        <target>Texto enorme</target>
+      </trans-unit>
+      <trans-unit id="90C0T3C" resname="\\huge{Text}">
+        <source>\\huge{Text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="TRj6FQx" resname="Huger text">
+        <source>Huger text</source>
+        <target>Texto más enorme</target>
+      </trans-unit>
+      <trans-unit id="tBdFWTt" resname="\\Huge{Text}">
+        <source>\\Huge{Text}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cn6n9qo" resname="Blackboard bold">
+        <source>Blackboard bold</source>
+        <target>Blackboard bold</target>
+      </trans-unit>
+      <trans-unit id="_jCqQRd" resname="Math bold">
+        <source>Math bold</source>
+        <target>Negrita matemática</target>
+      </trans-unit>
+      <trans-unit id="Zp97vqw" resname="\\mathbf{\\text{bold m}}">
+        <source>\\mathbf{\\text{bold m}}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="D3SztgJ" resname="Calligraphic">
+        <source>Calligraphic</source>
+        <target>Caligráfico</target>
+      </trans-unit>
+      <trans-unit id="WoeHzkK" resname="Gothic">
+        <source>Gothic</source>
+        <target>Gótico</target>
+      </trans-unit>
+      <trans-unit id="aNBK_Ip" resname="Math italic">
+        <source>Math italic</source>
+        <target>Cursiva matemática</target>
+      </trans-unit>
+      <trans-unit id="ARjgnqD" resname="\\mathit{italic}">
+        <source>\\mathit{italic}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fXrbOjv" resname="Upright (math roman)">
+        <source>Upright (math roman)</source>
+        <target>Recto (math roman)</target>
+      </trans-unit>
+      <trans-unit id="NVWvY_o" resname="\\mathrm{upright}">
+        <source>\\mathrm{upright}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="O_wl2LD" resname="Typographic bold">
+        <source>Typographic bold</source>
+        <target>Negrita tipográfica</target>
+      </trans-unit>
+      <trans-unit id="6.07ZqG" resname="\\textbf{bold t}">
+        <source>\\textbf{bold t}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="KbnSS0Y" resname="\\textit{italic}">
+        <source>\\textit{italic}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tPzgyNe" resname="Monospace">
+        <source>Monospace</source>
+        <target>Monoespaciado</target>
+      </trans-unit>
+      <trans-unit id="euV4Ueq" resname="\\texttt{monospace}">
+        <source>\\texttt{monospace}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="anN2Yt5" resname="Plain text">
+        <source>Plain text</source>
+        <target>Texto plano</target>
+      </trans-unit>
+      <trans-unit id="rPtyjFe" resname="Lowercase alpha">
+        <source>Lowercase alpha</source>
+        <target>Alfa minúscula</target>
+      </trans-unit>
+      <trans-unit id="T03I8.Y" resname="Lowercase beta">
+        <source>Lowercase beta</source>
+        <target>Beta minúscula</target>
+      </trans-unit>
+      <trans-unit id="JR9q_Sr" resname="Lowercase chi">
+        <source>Lowercase chi</source>
+        <target>Chi minúscula</target>
+      </trans-unit>
+      <trans-unit id="a5xbnpw" resname="Uppercase Delta">
+        <source>Uppercase Delta</source>
+        <target>Delta mayúscula</target>
+      </trans-unit>
+      <trans-unit id="DwY.vMs" resname="Lowercase delta">
+        <source>Lowercase delta</source>
+        <target>Delta minúscula</target>
+      </trans-unit>
+      <trans-unit id="ai.cpc_" resname="Lowercase eta">
+        <source>Lowercase eta</source>
+        <target>Eta minúscula</target>
+      </trans-unit>
+      <trans-unit id="n6gJpFO" resname="Uppercase Gamma">
+        <source>Uppercase Gamma</source>
+        <target>Gamma mayúscula</target>
+      </trans-unit>
+      <trans-unit id="D8xfSDt" resname="Lowercase gamma">
+        <source>Lowercase gamma</source>
+        <target>Gamma minúscula</target>
+      </trans-unit>
+      <trans-unit id="EConhKv" resname="Lowercase iota">
+        <source>Lowercase iota</source>
+        <target>Iota minúscula</target>
+      </trans-unit>
+      <trans-unit id="QmCZd5i" resname="Lowercase kappa">
+        <source>Lowercase kappa</source>
+        <target>Kappa minúscula</target>
+      </trans-unit>
+      <trans-unit id="Tq470p5" resname="Uppercase Lambda">
+        <source>Uppercase Lambda</source>
+        <target>Lambda mayúscula</target>
+      </trans-unit>
+      <trans-unit id="Fb4T8Tx" resname="Lowercase lambda">
+        <source>Lowercase lambda</source>
+        <target>Lambda minúscula</target>
+      </trans-unit>
+      <trans-unit id="30TPgv3" resname="Lowercase mu">
+        <source>Lowercase mu</source>
+        <target>Mu minúscula</target>
+      </trans-unit>
+      <trans-unit id="qw6NKUy" resname="Lowercase nu">
+        <source>Lowercase nu</source>
+        <target>Nu minúscula</target>
+      </trans-unit>
+      <trans-unit id="7CsTeI2" resname="Uppercase Omega">
+        <source>Uppercase Omega</source>
+        <target>Omega mayúscula</target>
+      </trans-unit>
+      <trans-unit id="OCcCD4i" resname="Lowercase omega">
+        <source>Lowercase omega</source>
+        <target>Omega minúscula</target>
+      </trans-unit>
+      <trans-unit id="AN4cJ2_" resname="Uppercase Phi">
+        <source>Uppercase Phi</source>
+        <target>Phi mayúscula</target>
+      </trans-unit>
+      <trans-unit id="1zgfmrp" resname="Lowercase phi">
+        <source>Lowercase phi</source>
+        <target>Phi minúscula</target>
+      </trans-unit>
+      <trans-unit id=".NH5UNB" resname="Phi variant">
+        <source>Phi variant</source>
+        <target>Phi variante</target>
+      </trans-unit>
+      <trans-unit id="iLmP1Xv" resname="Uppercase Pi">
+        <source>Uppercase Pi</source>
+        <target>Pi mayúscula</target>
+      </trans-unit>
+      <trans-unit id="t72hhYR" resname="Pi variant">
+        <source>Pi variant</source>
+        <target>Pi variante</target>
+      </trans-unit>
+      <trans-unit id="tuLP8.v" resname="Uppercase Psi">
+        <source>Uppercase Psi</source>
+        <target>Psi mayúscula</target>
+      </trans-unit>
+      <trans-unit id="6eb0cLP" resname="Lowercase psi">
+        <source>Lowercase psi</source>
+        <target>Psi minúscula</target>
+      </trans-unit>
+      <trans-unit id="OV8JEXY" resname="Lowercase rho">
+        <source>Lowercase rho</source>
+        <target>Rho minúscula</target>
+      </trans-unit>
+      <trans-unit id="4EotDdl" resname="Rho variant">
+        <source>Rho variant</source>
+        <target>Rho variante</target>
+      </trans-unit>
+      <trans-unit id="D6RKpIP" resname="Final sigma">
+        <source>Final sigma</source>
+        <target>Sigma final</target>
+      </trans-unit>
+      <trans-unit id="pXdGI_9" resname="Uppercase Sigma">
+        <source>Uppercase Sigma</source>
+        <target>Sigma mayúscula</target>
+      </trans-unit>
+      <trans-unit id="z_YrGeR" resname="Lowercase sigma">
+        <source>Lowercase sigma</source>
+        <target>Sigma minúscula</target>
+      </trans-unit>
+      <trans-unit id="QP5TX.p" resname="Lowercase tau">
+        <source>Lowercase tau</source>
+        <target>Tau minúscula</target>
+      </trans-unit>
+      <trans-unit id="roX4Mmz" resname="Uppercase Theta">
+        <source>Uppercase Theta</source>
+        <target>Theta mayúscula</target>
+      </trans-unit>
+      <trans-unit id="WViWY8L" resname="Lowercase theta">
+        <source>Lowercase theta</source>
+        <target>Theta minúscula</target>
+      </trans-unit>
+      <trans-unit id="XCHYVHl" resname="Theta variant">
+        <source>Theta variant</source>
+        <target>Theta variante</target>
+      </trans-unit>
+      <trans-unit id="N790Gax" resname="Uppercase Upsilon">
+        <source>Uppercase Upsilon</source>
+        <target>Upsilon mayúscula</target>
+      </trans-unit>
+      <trans-unit id="g6oVkE0" resname="Lowercase upsilon">
+        <source>Lowercase upsilon</source>
+        <target>Upsilon minúscula</target>
+      </trans-unit>
+      <trans-unit id="7H4oilT" resname="Uppercase Xi">
+        <source>Uppercase Xi</source>
+        <target>Xi mayúscula</target>
+      </trans-unit>
+      <trans-unit id="Ix2KPDp" resname="Lowercase xi">
+        <source>Lowercase xi</source>
+        <target>Xi minúscula</target>
+      </trans-unit>
+      <trans-unit id="LjdB4QT" resname="Lowercase zeta">
+        <source>Lowercase zeta</source>
+        <target>Zeta minúscula</target>
+      </trans-unit>
+      <trans-unit id="wHATkt6" resname="Lowercase epsilon">
+        <source>Lowercase epsilon</source>
+        <target>Épsilon minúscula</target>
+      </trans-unit>
+      <trans-unit id="_jaEeiL" resname="Epsilon variant">
+        <source>Epsilon variant</source>
+        <target>Épsilon variante</target>
+      </trans-unit>
+      <trans-unit id="EotzUE." resname="\\underbrace{a+b+c}_{&#9;ext{group}}">
+        <source>\\underbrace{a+b+c}_{	ext{group}}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4k9xpph" resname="\\overbrace{a+b+c}^{&#9;ext{group}}">
+        <source>\\overbrace{a+b+c}^{	ext{group}}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Olp1Qyu" resname="pH and acid-base balance">
+        <source>pH and acid-base balance</source>
+        <target>pH y equilibrio ácido-base</target>
+      </trans-unit>
+      <trans-unit id="65agbBi" resname="pH">
+        <source>pH</source>
+        <target>pH</target>
+      </trans-unit>
+      <trans-unit id="gVOLhjP" resname="Henderson–Hasselbalch">
+        <source>Henderson–Hasselbalch</source>
+        <target>Henderson–Hasselbalch</target>
+      </trans-unit>
+      <trans-unit id="vT5jmcB" resname="Enzyme kinetics">
+        <source>Enzyme kinetics</source>
+        <target>Cinética enzimática</target>
+      </trans-unit>
+      <trans-unit id="Xgaz.T." resname="Michaelis–Menten">
+        <source>Michaelis–Menten</source>
+        <target>Michaelis–Menten</target>
+      </trans-unit>
+      <trans-unit id="jMJl01Y" resname="Lineweaver–Burk">
+        <source>Lineweaver–Burk</source>
+        <target>Lineweaver–Burk</target>
+      </trans-unit>
+      <trans-unit id="ftw9jxc" resname="Population genetics">
+        <source>Population genetics</source>
+        <target>Genética de poblaciones</target>
+      </trans-unit>
+      <trans-unit id="n8HPDdj" resname="Allele frequency">
+        <source>Allele frequency</source>
+        <target>Frecuencia alélica</target>
+      </trans-unit>
+      <trans-unit id="p21gufE" resname="Hardy–Weinberg">
+        <source>Hardy–Weinberg</source>
+        <target>Hardy–Weinberg</target>
+      </trans-unit>
+      <trans-unit id="DaZC4V8" resname="Population dynamics">
+        <source>Population dynamics</source>
+        <target>Dinámica de poblaciones</target>
+      </trans-unit>
+      <trans-unit id="QTccM29" resname="Exponential growth">
+        <source>Exponential growth</source>
+        <target>Crecimiento exponencial</target>
+      </trans-unit>
+      <trans-unit id="IcXrBUh" resname="Logistic growth">
+        <source>Logistic growth</source>
+        <target>Crecimiento logístico</target>
+      </trans-unit>
+      <trans-unit id="MXTlMS." resname="Transport and diffusion">
+        <source>Transport and diffusion</source>
+        <target>Transporte y difusión</target>
+      </trans-unit>
+      <trans-unit id="GUc3XmL" resname="Fick\'s Law">
+        <source>Fick\'s Law</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dGkKELF" resname="Nernst equation">
+        <source>Nernst equation</source>
+        <target>Ecuación de Nernst</target>
+      </trans-unit>
+      <trans-unit id="dMDqJKm" resname="Osmotic pressure">
+        <source>Osmotic pressure</source>
+        <target>Presión osmótica</target>
+      </trans-unit>
+      <trans-unit id="WEoCJ32" resname="Central tendency measures">
+        <source>Central tendency measures</source>
+        <target>Medidas de centralización</target>
+      </trans-unit>
+      <trans-unit id="mjXLrrj" resname="Arithmetic mean">
+        <source>Arithmetic mean</source>
+        <target>Media aritmética</target>
+      </trans-unit>
+      <trans-unit id="1qcvN9E" resname="Weighted mean">
+        <source>Weighted mean</source>
+        <target>Media ponderada</target>
+      </trans-unit>
+      <trans-unit id="K5U9CjB" resname="Geometric mean">
+        <source>Geometric mean</source>
+        <target>Media geométrica</target>
+      </trans-unit>
+      <trans-unit id="SzGRWfn" resname="Harmonic mean">
+        <source>Harmonic mean</source>
+        <target>Media armónica</target>
+      </trans-unit>
+      <trans-unit id="xRSa1OT" resname="Quadratic mean">
+        <source>Quadratic mean</source>
+        <target>Media cuadrática</target>
+      </trans-unit>
+      <trans-unit id="wypXydW" resname="\\overline{x}_{\\text{quad}} = \\sqrt{\\frac{\\sum x_i^2}{n}}">
+        <source>\\overline{x}_{\\text{quad}} = \\sqrt{\\frac{\\sum x_i^2}{n}}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="GS4nryp" resname="Median">
+        <source>Median</source>
+        <target>Mediana</target>
+      </trans-unit>
+      <trans-unit id="X3g9CS_" resname="k-th percentile">
+        <source>k-th percentile</source>
+        <target>Percentil k-ésimo</target>
+      </trans-unit>
+      <trans-unit id="L6Stj0U" resname="Dispersion measures">
+        <source>Dispersion measures</source>
+        <target>Medidas de dispersión</target>
+      </trans-unit>
+      <trans-unit id="Bqh7l0G" resname="Range">
+        <source>Range</source>
+        <target>Rango</target>
+      </trans-unit>
+      <trans-unit id="bOZKd9O" resname="Interquartile range">
+        <source>Interquartile range</source>
+        <target>Rango intercuartílico</target>
+      </trans-unit>
+      <trans-unit id="9NfNc4_" resname="Coefficient of variation">
+        <source>Coefficient of variation</source>
+        <target>Coeficiente de variación</target>
+      </trans-unit>
+      <trans-unit id="HkEgavk" resname="Population variance">
+        <source>Population variance</source>
+        <target>Varianza poblacional</target>
+      </trans-unit>
+      <trans-unit id="7tYWWLJ" resname="Sample variance">
+        <source>Sample variance</source>
+        <target>Varianza muestral</target>
+      </trans-unit>
+      <trans-unit id="8uWRpVt" resname="Population standard deviation">
+        <source>Population standard deviation</source>
+        <target>Desviación típica poblacional</target>
+      </trans-unit>
+      <trans-unit id="diAKso2" resname="Sample standard deviation">
+        <source>Sample standard deviation</source>
+        <target>Desviación típica muestral</target>
+      </trans-unit>
+      <trans-unit id="llRGJLb" resname="Mean absolute deviation">
+        <source>Mean absolute deviation</source>
+        <target>Desviación media absoluta</target>
+      </trans-unit>
+      <trans-unit id="no1gXa2" resname="Semi-interquartile range">
+        <source>Semi-interquartile range</source>
+        <target>Semirrango intercuartílico</target>
+      </trans-unit>
+      <trans-unit id="DmF3vIJ" resname="Standard score (population z-score)">
+        <source>Standard score (population z-score)</source>
+        <target>Valor tipificado (z-score poblacional)</target>
+      </trans-unit>
+      <trans-unit id="CJQRsMA" resname="Standard score (sample z-score)">
+        <source>Standard score (sample z-score)</source>
+        <target>Valor tipificado (z-score muestral)</target>
+      </trans-unit>
+      <trans-unit id="IbP1f.z" resname="Population kurtosis">
+        <source>Population kurtosis</source>
+        <target>Curtosis poblacional</target>
+      </trans-unit>
+      <trans-unit id="0BCa34H" resname="\\text{Kurtosis}_{\\text{pop}} = \\frac{\\sum (x_i - \\overline{x})^4}{n\\sigma^4}">
+        <source>\\text{Kurtosis}_{\\text{pop}} = \\frac{\\sum (x_i - \\overline{x})^4}{n\\sigma^4}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="KVdJyzv" resname="Sample kurtosis">
+        <source>Sample kurtosis</source>
+        <target>Curtosis muestral</target>
+      </trans-unit>
+      <trans-unit id="6R4_Jnn" resname="\\text{Kurtosis}_{\\text{samp}} = \\frac{\\sum (x_i - \\overline{x})^4}{(n - 1)s^4}">
+        <source>\\text{Kurtosis}_{\\text{samp}} = \\frac{\\sum (x_i - \\overline{x})^4}{(n - 1)s^4}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="M2qx70T" resname="Frequencies">
+        <source>Frequencies</source>
+        <target>Frecuencias</target>
+      </trans-unit>
+      <trans-unit id="wsy3AnY" resname="Relative frequency">
+        <source>Relative frequency</source>
+        <target>Frecuencia relativa</target>
+      </trans-unit>
+      <trans-unit id="926tIW3" resname="Cumulative frequency">
+        <source>Cumulative frequency</source>
+        <target>Frecuencia acumulada</target>
+      </trans-unit>
+      <trans-unit id="dmx74.T" resname="Cumulative absolute frequency">
+        <source>Cumulative absolute frequency</source>
+        <target>Frecuencia absoluta acumulada</target>
+      </trans-unit>
+      <trans-unit id="0SbijM8" resname="Intervals">
+        <source>Intervals</source>
+        <target>Intervalos</target>
+      </trans-unit>
+      <trans-unit id="FG1WYkC" resname="Class mark">
+        <source>Class mark</source>
+        <target>Marca de clase</target>
+      </trans-unit>
+      <trans-unit id="oXm.58e" resname="Class width">
+        <source>Class width</source>
+        <target>Amplitud de clase</target>
+      </trans-unit>
+      <trans-unit id="yVihj0k" resname="Median in intervals">
+        <source>Median in intervals</source>
+        <target>Mediana en intervalos</target>
+      </trans-unit>
+      <trans-unit id="V1zKl96" resname="Mode in intervals">
+        <source>Mode in intervals</source>
+        <target>Moda en intervalos</target>
+      </trans-unit>
+      <trans-unit id="Zg1Jdth" resname="Moments and generating functions">
+        <source>Moments and generating functions</source>
+        <target>Momentos y generadoras</target>
+      </trans-unit>
+      <trans-unit id="68ac37M" resname="Discrete expectation">
+        <source>Discrete expectation</source>
+        <target>Esperanza discreta</target>
+      </trans-unit>
+      <trans-unit id="ZqkFc.g" resname="Continuous expectation">
+        <source>Continuous expectation</source>
+        <target>Esperanza continua</target>
+      </trans-unit>
+      <trans-unit id="RuVUK4R" resname="Variance (moments)">
+        <source>Variance (moments)</source>
+        <target>Varianza (momentos)</target>
+      </trans-unit>
+      <trans-unit id="HeZKxW6" resname="Moment-generating function">
+        <source>Moment-generating function</source>
+        <target>Generadora de momentos</target>
+      </trans-unit>
+      <trans-unit id="LW6su3S" resname="Probability distributions">
+        <source>Probability distributions</source>
+        <target>Distribuciones de probabilidad</target>
+      </trans-unit>
+      <trans-unit id="pvv5WDL" resname="Binomial">
+        <source>Binomial</source>
+        <target>Binomial</target>
+      </trans-unit>
+      <trans-unit id="7U9NoKL" resname="Poisson">
+        <source>Poisson</source>
+        <target>Poisson</target>
+      </trans-unit>
+      <trans-unit id="qpzJnCs" resname="Standard normal distribution">
+        <source>Standard normal distribution</source>
+        <target>Distribución normal estándar</target>
+      </trans-unit>
+      <trans-unit id="m1Ztwtv" resname="Student\'s t-distribution">
+        <source>Student\'s t-distribution</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wVMC9z_" resname="Chi-squared distribution">
+        <source>Chi-squared distribution</source>
+        <target>Distribución chi-cuadrado</target>
+      </trans-unit>
+      <trans-unit id="5cXp7Wy" resname="Fisher\'s F-distribution">
+        <source>Fisher\'s F-distribution</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="MRreuZs" resname="Correlation coefficients">
+        <source>Correlation coefficients</source>
+        <target>Coeficientes de correlación</target>
+      </trans-unit>
+      <trans-unit id="Aqmrx8N" resname="Population covariance">
+        <source>Population covariance</source>
+        <target>Covarianza poblacional</target>
+      </trans-unit>
+      <trans-unit id="03wKnJ7" resname="Sample covariance">
+        <source>Sample covariance</source>
+        <target>Covarianza muestral</target>
+      </trans-unit>
+      <trans-unit id="veaUocs" resname="Pearson">
+        <source>Pearson</source>
+        <target>Pearson</target>
+      </trans-unit>
+      <trans-unit id="uEvZPs_" resname="Pearson\'s t-test">
+        <source>Pearson\'s t-test</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="yGn1Vxe" resname="Spearman">
+        <source>Spearman</source>
+        <target>Spearman</target>
+      </trans-unit>
+      <trans-unit id="OnstoaE" resname="Kendall\'s Tau">
+        <source>Kendall\'s Tau</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ofsPM_X" resname="Phi coefficient">
+        <source>Phi coefficient</source>
+        <target>Coeficiente phi</target>
+      </trans-unit>
+      <trans-unit id="jNt7j4q" resname="Regression">
+        <source>Regression</source>
+        <target>Regresión</target>
+      </trans-unit>
+      <trans-unit id="4fnZlYp" resname="Regression line">
+        <source>Regression line</source>
+        <target>Recta de regresión</target>
+      </trans-unit>
+      <trans-unit id="HTyInDr" resname="Slope">
+        <source>Slope</source>
+        <target>Pendiente</target>
+      </trans-unit>
+      <trans-unit id="ZbtERgq" resname="Intercept">
+        <source>Intercept</source>
+        <target>Ordenada al origen</target>
+      </trans-unit>
+      <trans-unit id=".O6TrQt" resname="Correlation coefficient">
+        <source>Correlation coefficient</source>
+        <target>Coeficiente de correlación</target>
+      </trans-unit>
+      <trans-unit id="6BM_YaI" resname="Coefficient of determination">
+        <source>Coefficient of determination</source>
+        <target>Coeficiente de determinación</target>
+      </trans-unit>
+      <trans-unit id="IP_vB9R" resname="Adjusted R^2">
+        <source>Adjusted R^2</source>
+        <target>R^2 ajustado</target>
+      </trans-unit>
+      <trans-unit id="ZCpj9F1" resname="Standard error of the estimate">
+        <source>Standard error of the estimate</source>
+        <target>Error estándar de la estimación</target>
+      </trans-unit>
+      <trans-unit id="0oBLMH4" resname="Prediction interval">
+        <source>Prediction interval</source>
+        <target>Intervalo de predicción</target>
+      </trans-unit>
+      <trans-unit id="aOiihng" resname="Statistical inference">
+        <source>Statistical inference</source>
+        <target>Inferencia estadística</target>
+      </trans-unit>
+      <trans-unit id="Cs0ewQN" resname="z-statistic">
+        <source>z-statistic</source>
+        <target>Estadístico z</target>
+      </trans-unit>
+      <trans-unit id="DLbn2YL" resname="t-statistic">
+        <source>t-statistic</source>
+        <target>Estadístico t</target>
+      </trans-unit>
+      <trans-unit id="qq6De8u" resname="Standard error with z">
+        <source>Standard error with z</source>
+        <target>Error estándar con z</target>
+      </trans-unit>
+      <trans-unit id="7L9KTKK" resname="Standard error with t">
+        <source>Standard error with t</source>
+        <target>Error estándar con t</target>
+      </trans-unit>
+      <trans-unit id="hDM3Y.8" resname="Interval with population standard deviation">
+        <source>Interval with population standard deviation</source>
+        <target>Intervalo con desviación estándar poblacional</target>
+      </trans-unit>
+      <trans-unit id="DvgFGH3" resname="Interval with sample deviation">
+        <source>Interval with sample deviation</source>
+        <target>Intervalo con desviación muestral</target>
+      </trans-unit>
+      <trans-unit id="1yuaqgS" resname="Sample size (mean)">
+        <source>Sample size (mean)</source>
+        <target>Tamaño muestra (media)</target>
+      </trans-unit>
+      <trans-unit id="uGSbpdt" resname="Sample size (proportion)">
+        <source>Sample size (proportion)</source>
+        <target>Tamaño muestra (proporción)</target>
+      </trans-unit>
+      <trans-unit id="JlwYM8z" resname="Proportion estimation">
+        <source>Proportion estimation</source>
+        <target>Estimación de proporciones</target>
+      </trans-unit>
+      <trans-unit id=".__sE54" resname="Standard error of proportion">
+        <source>Standard error of proportion</source>
+        <target>Error estándar de proporción</target>
+      </trans-unit>
+      <trans-unit id="GGNm9hl" resname="CI for proportion">
+        <source>CI for proportion</source>
+        <target>IC para proporción</target>
+      </trans-unit>
+      <trans-unit id="QPXKzOy" resname="Hypothesis testing">
+        <source>Hypothesis testing</source>
+        <target>Pruebas de hipótesis</target>
+      </trans-unit>
+      <trans-unit id="MCQD5MW" resname="z for proportions">
+        <source>z for proportions</source>
+        <target>z para proporciones</target>
+      </trans-unit>
+      <trans-unit id="pxfnTD." resname="z for difference of proportions">
+        <source>z for difference of proportions</source>
+        <target>z diferencia proporciones</target>
+      </trans-unit>
+      <trans-unit id="la4Hqia" resname="One-sample t-test">
+        <source>One-sample t-test</source>
+        <target>t de una muestra</target>
+      </trans-unit>
+      <trans-unit id="L6dl5WM" resname="Independent two-sample t-test">
+        <source>Independent two-sample t-test</source>
+        <target>t dos medias indep</target>
+      </trans-unit>
+      <trans-unit id="VN88VGF" resname="Pooled variance">
+        <source>Pooled variance</source>
+        <target>Varianza agrupada</target>
+      </trans-unit>
+      <trans-unit id="ltrApOj" resname="Paired t-test">
+        <source>Paired t-test</source>
+        <target>t apareada</target>
+      </trans-unit>
+      <trans-unit id="9BLu.Fk" resname="Chi-squared">
+        <source>Chi-squared</source>
+        <target>Chi-cuadrado</target>
+      </trans-unit>
+      <trans-unit id="ISm6UE." resname="ANOVA">
+        <source>ANOVA</source>
+        <target>ANOVA</target>
+      </trans-unit>
+      <trans-unit id="XYXz9Tl" resname="SS between groups">
+        <source>SS between groups</source>
+        <target>SS entre grupos</target>
+      </trans-unit>
+      <trans-unit id="EbDuDA0" resname="SS within groups">
+        <source>SS within groups</source>
+        <target>SS dentro de grupos</target>
+      </trans-unit>
+      <trans-unit id="kMsi1zL" resname="F-statistic (ANOVA)">
+        <source>F-statistic (ANOVA)</source>
+        <target>Estadístico F (ANOVA)</target>
+      </trans-unit>
+      <trans-unit id="4Dzj951" resname="Association and contingency">
+        <source>Association and contingency</source>
+        <target>Asociación y contingencia</target>
+      </trans-unit>
+      <trans-unit id="3Ic92qD" resname="Contingency coef">
+        <source>Contingency coef</source>
+        <target>Coef contigencia</target>
+      </trans-unit>
+      <trans-unit id="uXYBtiH" resname="Cramer\'s V">
+        <source>Cramer\'s V</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mpVp63_" resname="Inequalities">
+        <source>Inequalities</source>
+        <target>Desigualdades</target>
+      </trans-unit>
+      <trans-unit id="SSI5U.g" resname="Chebyshev">
+        <source>Chebyshev</source>
+        <target>Chebyshev</target>
+      </trans-unit>
+      <trans-unit id="rLWISmN" resname="Kinematics">
+        <source>Kinematics</source>
+        <target>Cinemática</target>
+      </trans-unit>
+      <trans-unit id="BHRD.GQ" resname="Average velocity">
+        <source>Average velocity</source>
+        <target>Velocidad media</target>
+      </trans-unit>
+      <trans-unit id="3bFq872" resname="Average acceleration">
+        <source>Average acceleration</source>
+        <target>Aceleración media</target>
+      </trans-unit>
+      <trans-unit id="HuOQm.E" resname="Uniform motion">
+        <source>Uniform motion</source>
+        <target>MRU</target>
+      </trans-unit>
+      <trans-unit id="teRz3k6" resname="Position with constant acceleration">
+        <source>Position with constant acceleration</source>
+        <target>Posición con aceleración constante</target>
+      </trans-unit>
+      <trans-unit id="aFSsbYZ" resname="Velocity with constant acceleration">
+        <source>Velocity with constant acceleration</source>
+        <target>Velocidad con aceleración constante</target>
+      </trans-unit>
+      <trans-unit id="NopKOHk" resname="Velocity without time">
+        <source>Velocity without time</source>
+        <target>Velocidad sin tiempo</target>
+      </trans-unit>
+      <trans-unit id="Ezxekfn" resname="Dynamics">
+        <source>Dynamics</source>
+        <target>Dinámica</target>
+      </trans-unit>
+      <trans-unit id="0e4VnHD" resname="Newton\'s second law">
+        <source>Newton\'s second law</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nOSecV3" resname="Linear momentum">
+        <source>Linear momentum</source>
+        <target>Momento lineal</target>
+      </trans-unit>
+      <trans-unit id="4ra6VKT" resname="Force and impulse">
+        <source>Force and impulse</source>
+        <target>Fuerza e impulso</target>
+      </trans-unit>
+      <trans-unit id="MyOWufX" resname="Work">
+        <source>Work</source>
+        <target>Trabajo</target>
+      </trans-unit>
+      <trans-unit id="nssc6Ar" resname="Power">
+        <source>Power</source>
+        <target>Potencia</target>
+      </trans-unit>
+      <trans-unit id="XHgfNbG" resname="Energy and Work">
+        <source>Energy and Work</source>
+        <target>Energía y trabajo</target>
+      </trans-unit>
+      <trans-unit id="NqB0xjJ" resname="Kinetic energy">
+        <source>Kinetic energy</source>
+        <target>Energía cinética</target>
+      </trans-unit>
+      <trans-unit id="eFKEvy_" resname="Gravitational potential energy">
+        <source>Gravitational potential energy</source>
+        <target>Energía potencial gravitatoria</target>
+      </trans-unit>
+      <trans-unit id="OydQpv8" resname="Mechanical energy">
+        <source>Mechanical energy</source>
+        <target>Energía mecánica</target>
+      </trans-unit>
+      <trans-unit id="TEwhpOT" resname="Work-energy theorem">
+        <source>Work-energy theorem</source>
+        <target>Teorema trabajo-energía</target>
+      </trans-unit>
+      <trans-unit id="Ku5M5V9" resname="Electric power">
+        <source>Electric power</source>
+        <target>Potencia eléctrica</target>
+      </trans-unit>
+      <trans-unit id="auacBe." resname="Gravitation">
+        <source>Gravitation</source>
+        <target>Gravitación</target>
+      </trans-unit>
+      <trans-unit id="dZjdSLz" resname="Law of universal gravitation">
+        <source>Law of universal gravitation</source>
+        <target>Ley de gravitación universal</target>
+      </trans-unit>
+      <trans-unit id="xk0jrSA" resname="Gravitational field">
+        <source>Gravitational field</source>
+        <target>Campo gravitatorio</target>
+      </trans-unit>
+      <trans-unit id="L9Mydsa" resname="Orbital velocity">
+        <source>Orbital velocity</source>
+        <target>Velocidad orbital</target>
+      </trans-unit>
+      <trans-unit id="O5.Pd0L" resname="Waves and Oscillations">
+        <source>Waves and Oscillations</source>
+        <target>Ondas y Oscilaciones</target>
+      </trans-unit>
+      <trans-unit id="fGhHSFh" resname="Wave speed">
+        <source>Wave speed</source>
+        <target>Velocidad de onda</target>
+      </trans-unit>
+      <trans-unit id=".JfJF1w" resname="Period">
+        <source>Period</source>
+        <target>Periodo</target>
+      </trans-unit>
+      <trans-unit id="hmTgQuL" resname="Frequency">
+        <source>Frequency</source>
+        <target>Frecuencia</target>
+      </trans-unit>
+      <trans-unit id="S_bsq80" resname="Hooke\'s law">
+        <source>Hooke\'s law</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bPEXqWV" resname="SHM Period">
+        <source>SHM Period</source>
+        <target>Período MAS</target>
+      </trans-unit>
+      <trans-unit id="CY42PFV" resname="Simple harmonic motion">
+        <source>Simple harmonic motion</source>
+        <target>Movimiento armónico simple</target>
+      </trans-unit>
+      <trans-unit id="hWbOeHF" resname="Electricity and Magnetism">
+        <source>Electricity and Magnetism</source>
+        <target>Electricidad y Magnetismo</target>
+      </trans-unit>
+      <trans-unit id="NEfWVxU" resname="Ohm\'s law">
+        <source>Ohm\'s law</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="krzPnaF" resname="Resistors in series">
+        <source>Resistors in series</source>
+        <target>Resistencias en serie</target>
+      </trans-unit>
+      <trans-unit id="pP0d2zi" resname="Resistors in parallel">
+        <source>Resistors in parallel</source>
+        <target>Resistencias en paralelo</target>
+      </trans-unit>
+      <trans-unit id="SZQWXTO" resname="Capacitance">
+        <source>Capacitance</source>
+        <target>Capacitancia</target>
+      </trans-unit>
+      <trans-unit id="IMAe1IQ" resname="Energy in capacitor">
+        <source>Energy in capacitor</source>
+        <target>Energía en condensador</target>
+      </trans-unit>
+      <trans-unit id="NPe3GJJ" resname="Lorentz force">
+        <source>Lorentz force</source>
+        <target>Fuerza de Lorentz</target>
+      </trans-unit>
+      <trans-unit id="bX0KY3r" resname="Magnetic flux">
+        <source>Magnetic flux</source>
+        <target>Flujo magnético</target>
+      </trans-unit>
+      <trans-unit id="nXmzmVw" resname="Faraday\'s law">
+        <source>Faraday\'s law</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6zh8ZQi" resname="Optics">
+        <source>Optics</source>
+        <target>Óptica</target>
+      </trans-unit>
+      <trans-unit id="5eLIb5E" resname="Snell\'s law">
+        <source>Snell\'s law</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zJO50eb" resname="Thin lens equation">
+        <source>Thin lens equation</source>
+        <target>Lentes delgadas</target>
+      </trans-unit>
+      <trans-unit id="0C0Dgfq" resname="Lateral magnification">
+        <source>Lateral magnification</source>
+        <target>Aumento lateral</target>
+      </trans-unit>
+      <trans-unit id="E7aIzqe" resname="Law of reflection">
+        <source>Law of reflection</source>
+        <target>Reflexión</target>
+      </trans-unit>
+      <trans-unit id="K8GR5PI" resname="Fluids">
+        <source>Fluids</source>
+        <target>Fluidos</target>
+      </trans-unit>
+      <trans-unit id="uYqYMdn" resname="Pressure">
+        <source>Pressure</source>
+        <target>Presión</target>
+      </trans-unit>
+      <trans-unit id="n9r_fFv" resname="Hydrostatic pressure">
+        <source>Hydrostatic pressure</source>
+        <target>Presión hidrostática</target>
+      </trans-unit>
+      <trans-unit id="fguek3O" resname="Continuity equation">
+        <source>Continuity equation</source>
+        <target>Ecuación de continuidad</target>
+      </trans-unit>
+      <trans-unit id="YXkma8N" resname="Bernoulli\'s equation">
+        <source>Bernoulli\'s equation</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rhuOmDb" resname="P + \\tfrac12 \\rho v^2 + \\rho g h = \\text{constant}">
+        <source>P + \\tfrac12 \\rho v^2 + \\rho g h = \\text{constant}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="CUfw.JS" resname="Thermodynamics">
+        <source>Thermodynamics</source>
+        <target>Termodinámica</target>
+      </trans-unit>
+      <trans-unit id="Xq2fpcN" resname="Ideal gas law">
+        <source>Ideal gas law</source>
+        <target>Gas ideal</target>
+      </trans-unit>
+      <trans-unit id="P6E_sIA" resname="Sensible heat">
+        <source>Sensible heat</source>
+        <target>Calor sensible</target>
+      </trans-unit>
+      <trans-unit id="qDHjVoA" resname="Latent heat">
+        <source>Latent heat</source>
+        <target>Calor latente</target>
+      </trans-unit>
+      <trans-unit id="Xg4liL9" resname="First law of thermodynamics">
+        <source>First law of thermodynamics</source>
+        <target>Primer principio</target>
+      </trans-unit>
+      <trans-unit id="L7GsYd2" resname="Entropy">
+        <source>Entropy</source>
+        <target>Entropía</target>
+      </trans-unit>
+      <trans-unit id="AqCmD31" resname="Perimeters and lengths">
+        <source>Perimeters and lengths</source>
+        <target>Perímetros y longitudes</target>
+      </trans-unit>
+      <trans-unit id="OqiINW0" resname="Perimeter of a square">
+        <source>Perimeter of a square</source>
+        <target>Perímetro del cuadrado</target>
+      </trans-unit>
+      <trans-unit id="8_9QNW3" resname="Perimeter of a rectangle">
+        <source>Perimeter of a rectangle</source>
+        <target>Perímetro del rectángulo</target>
+      </trans-unit>
+      <trans-unit id="Aho8Rv_" resname="Perimeter of a triangle">
+        <source>Perimeter of a triangle</source>
+        <target>Perímetro del triángulo</target>
+      </trans-unit>
+      <trans-unit id="pZHLMNt" resname="Perimeter of a regular polygon">
+        <source>Perimeter of a regular polygon</source>
+        <target>Perímetro del polígono regular</target>
+      </trans-unit>
+      <trans-unit id="f.iebdH" resname="Circumference perimeter">
+        <source>Circumference perimeter</source>
+        <target>Perímetro de la circunferencia</target>
+      </trans-unit>
+      <trans-unit id="GNGVtLs" resname="Arc length (radians)">
+        <source>Arc length (radians)</source>
+        <target>Longitud de arco (radianes)</target>
+      </trans-unit>
+      <trans-unit id="UqsZi2z" resname="Arc length (degrees)">
+        <source>Arc length (degrees)</source>
+        <target>Longitud de arco (grados)</target>
+      </trans-unit>
+      <trans-unit id="g27YRiB" resname="Right triangle perimeter">
+        <source>Right triangle perimeter</source>
+        <target>Perímetro triángulo rectángulo</target>
+      </trans-unit>
+      <trans-unit id="A85Ag8r" resname="Areas of plane figures">
+        <source>Areas of plane figures</source>
+        <target>Áreas de figuras planas</target>
+      </trans-unit>
+      <trans-unit id="bXKIzez" resname="Area of a rectangle">
+        <source>Area of a rectangle</source>
+        <target>Área del rectángulo</target>
+      </trans-unit>
+      <trans-unit id="6niW289" resname="Area of a triangle">
+        <source>Area of a triangle</source>
+        <target>Área del triángulo</target>
+      </trans-unit>
+      <trans-unit id="BH6Jydc" resname="Area of a square">
+        <source>Area of a square</source>
+        <target>Área del cuadrado</target>
+      </trans-unit>
+      <trans-unit id="VUaGjfi" resname="Area of a circle">
+        <source>Area of a circle</source>
+        <target>Área del círculo</target>
+      </trans-unit>
+      <trans-unit id="DA.G6FW" resname="Area of a trapezoid">
+        <source>Area of a trapezoid</source>
+        <target>Área del trapecio</target>
+      </trans-unit>
+      <trans-unit id="MbrcwpW" resname="Area of a parallelogram">
+        <source>Area of a parallelogram</source>
+        <target>Área del paralelogramo</target>
+      </trans-unit>
+      <trans-unit id="Qfu9E1d" resname="Area of a rhombus">
+        <source>Area of a rhombus</source>
+        <target>Área del rombo</target>
+      </trans-unit>
+      <trans-unit id="smrH1Nk" resname="Area of an ellipse">
+        <source>Area of an ellipse</source>
+        <target>Área de la elipse</target>
+      </trans-unit>
+      <trans-unit id="0FiE8xW" resname="Area of a triangle (with trigonometry)">
+        <source>Area of a triangle (with trigonometry)</source>
+        <target>Área de un triángulo (con trigonometría)</target>
+      </trans-unit>
+      <trans-unit id="kEdw8OF" resname="Area of a circular sector">
+        <source>Area of a circular sector</source>
+        <target>Área del sector circular</target>
+      </trans-unit>
+      <trans-unit id="E9G_Nsz" resname="Volumes of solids">
+        <source>Volumes of solids</source>
+        <target>Volúmenes de cuerpos</target>
+      </trans-unit>
+      <trans-unit id="lHgIzC_" resname="Volume of a cube">
+        <source>Volume of a cube</source>
+        <target>Volumen del cubo</target>
+      </trans-unit>
+      <trans-unit id="9HROMKE" resname="Volume of a prism">
+        <source>Volume of a prism</source>
+        <target>Volumen del prisma</target>
+      </trans-unit>
+      <trans-unit id="KTwAnxL" resname="Volume of a cylinder">
+        <source>Volume of a cylinder</source>
+        <target>Volumen del cilindro</target>
+      </trans-unit>
+      <trans-unit id="65xboUs" resname="Volume of a cone">
+        <source>Volume of a cone</source>
+        <target>Volumen del cono</target>
+      </trans-unit>
+      <trans-unit id="aS0F2_p" resname="Volume of a sphere">
+        <source>Volume of a sphere</source>
+        <target>Volumen de la esfera</target>
+      </trans-unit>
+      <trans-unit id="m.TmDGp" resname="Volume of a pyramid">
+        <source>Volume of a pyramid</source>
+        <target>Volumen de la pirámide</target>
+      </trans-unit>
+      <trans-unit id="AbIvIj_" resname="Surface areas of solids">
+        <source>Surface areas of solids</source>
+        <target>Áreas de superficies de cuerpos</target>
+      </trans-unit>
+      <trans-unit id="6iSZp5k" resname="Lateral area of a cylinder">
+        <source>Lateral area of a cylinder</source>
+        <target>Área lateral del cilindro</target>
+      </trans-unit>
+      <trans-unit id="AwODqeZ" resname="Total area of a cylinder">
+        <source>Total area of a cylinder</source>
+        <target>Área total del cilindro</target>
+      </trans-unit>
+      <trans-unit id="BB06wQ." resname="Lateral area of a cone">
+        <source>Lateral area of a cone</source>
+        <target>Área lateral del cono</target>
+      </trans-unit>
+      <trans-unit id="IHEcT83" resname="Total area of a cone">
+        <source>Total area of a cone</source>
+        <target>Área total del cono</target>
+      </trans-unit>
+      <trans-unit id="5M4wkou" resname="Surface area of a sphere">
+        <source>Surface area of a sphere</source>
+        <target>Área de la esfera</target>
+      </trans-unit>
+      <trans-unit id="ZDaHwWJ" resname="Total area of a cube">
+        <source>Total area of a cube</source>
+        <target>Área total del cubo</target>
+      </trans-unit>
+      <trans-unit id="XE.aqQ1" resname="Trigonometry and Coordinates">
+        <source>Trigonometry and Coordinates</source>
+        <target>Trigonometría y Coordenadas</target>
+      </trans-unit>
+      <trans-unit id="OY6lLyX" resname="Pythagorean theorem">
+        <source>Pythagorean theorem</source>
+        <target>Teorema de Pitágoras</target>
+      </trans-unit>
+      <trans-unit id="Boz9iqG" resname="Law of sines">
+        <source>Law of sines</source>
+        <target>Ley de senos</target>
+      </trans-unit>
+      <trans-unit id="pav9WDc" resname="Law of cosines">
+        <source>Law of cosines</source>
+        <target>Ley de cosenos</target>
+      </trans-unit>
+      <trans-unit id="K8KgOgu" resname="Equation of a line">
+        <source>Equation of a line</source>
+        <target>Ecuación de la recta</target>
+      </trans-unit>
+      <trans-unit id="A4b5Zw0" resname="Distance between two points">
+        <source>Distance between two points</source>
+        <target>Distancia entre dos puntos</target>
+      </trans-unit>
+      <trans-unit id="ovudQLv" resname="Midpoint">
+        <source>Midpoint</source>
+        <target>Punto medio</target>
+      </trans-unit>
+      <trans-unit id="ibzTMV7" resname="Equation of a circle">
+        <source>Equation of a circle</source>
+        <target>Ecuación de la circunferencia</target>
+      </trans-unit>
+      <trans-unit id="pDe6ra8" resname="Chemical symbolic notation">
+        <source>Chemical symbolic notation</source>
+        <target>Notación simbólica química</target>
+      </trans-unit>
+      <trans-unit id="tU5KVc7" resname="Element with atomic and mass number">
+        <source>Element with atomic and mass number</source>
+        <target>Elemento con número atómico y másico</target>
+      </trans-unit>
+      <trans-unit id="7YJolaq" resname="Chemical formula (mhchem package)">
+        <source>Chemical formula (mhchem package)</source>
+        <target>Fórmula química (paquete mhchem)</target>
+      </trans-unit>
+      <trans-unit id="JH9NPDB" resname="Reaction arrow">
+        <source>Reaction arrow</source>
+        <target>Flecha de reacción</target>
+      </trans-unit>
+      <trans-unit id="9NFsJLa" resname="Reverse reaction arrow">
+        <source>Reverse reaction arrow</source>
+        <target>Flecha de reacción inversa</target>
+      </trans-unit>
+      <trans-unit id="mtCq69k" resname="Reversible reaction">
+        <source>Reversible reaction</source>
+        <target>Reacción reversible</target>
+      </trans-unit>
+      <trans-unit id="aiAsp20" resname="Example of chemical reaction">
+        <source>Example of chemical reaction</source>
+        <target>Ejemplo de reacción química</target>
+      </trans-unit>
+      <trans-unit id="WSyxOA6" resname="Positive ion">
+        <source>Positive ion</source>
+        <target>Ión positivo</target>
+      </trans-unit>
+      <trans-unit id="Zwfmq1M" resname="Negative ion">
+        <source>Negative ion</source>
+        <target>Ión negativo</target>
+      </trans-unit>
+      <trans-unit id="IwqXK5c" resname="Solid state">
+        <source>Solid state</source>
+        <target>Estado sólido</target>
+      </trans-unit>
+      <trans-unit id="k6I5uRB" resname="Liquid state">
+        <source>Liquid state</source>
+        <target>Estado líquido</target>
+      </trans-unit>
+      <trans-unit id="EtljPQi" resname="Gaseous state">
+        <source>Gaseous state</source>
+        <target>Estado gaseoso</target>
+      </trans-unit>
+      <trans-unit id="PuN5Xnh" resname="Aqueous state">
+        <source>Aqueous state</source>
+        <target>Estado acuoso</target>
+      </trans-unit>
+      <trans-unit id="XP87f.X" resname="Balanced reaction">
+        <source>Balanced reaction</source>
+        <target>Reacción balanceada</target>
+      </trans-unit>
+      <trans-unit id="HiPuTCX" resname="Ideal gases">
+        <source>Ideal gases</source>
+        <target>Gases ideales</target>
+      </trans-unit>
+      <trans-unit id="k2Jr3ux" resname="Ideal gas law equation">
+        <source>Ideal gas law equation</source>
+        <target>Ecuación de estado de gas ideal</target>
+      </trans-unit>
+      <trans-unit id="ZMRDPfD" resname="Density of an ideal gas">
+        <source>Density of an ideal gas</source>
+        <target>Densidad de un gas ideal</target>
+      </trans-unit>
+      <trans-unit id="1VOgvRI" resname="Partial pressure">
+        <source>Partial pressure</source>
+        <target>Presión parcial</target>
+      </trans-unit>
+      <trans-unit id="34KtaK8" resname="Stoichiometry">
+        <source>Stoichiometry</source>
+        <target>Estequiometría</target>
+      </trans-unit>
+      <trans-unit id="Oyqjwit" resname="Amount of substance">
+        <source>Amount of substance</source>
+        <target>Cantidad de sustancia</target>
+      </trans-unit>
+      <trans-unit id="RebpMvz" resname="Mass of substance">
+        <source>Mass of substance</source>
+        <target>Masa de sustancia</target>
+      </trans-unit>
+      <trans-unit id="k9UNtub" resname="Molar concentration">
+        <source>Molar concentration</source>
+        <target>Concentración molar</target>
+      </trans-unit>
+      <trans-unit id="RhCv1CF" resname="Dilution">
+        <source>Dilution</source>
+        <target>Dilución</target>
+      </trans-unit>
+      <trans-unit id="Xxjp7g." resname="Chemical equilibrium">
+        <source>Chemical equilibrium</source>
+        <target>Equilibrio químico</target>
+      </trans-unit>
+      <trans-unit id="iJKSRuS" resname="Equilibrium constant (Kc)">
+        <source>Equilibrium constant (Kc)</source>
+        <target>Constante de equilibrio (Kc)</target>
+      </trans-unit>
+      <trans-unit id="LILvXqv" resname="Equilibrium constant (Kp)">
+        <source>Equilibrium constant (Kp)</source>
+        <target>Constante de equilibrio (Kp)</target>
+      </trans-unit>
+      <trans-unit id="PBF0CMi" resname="Reaction quotient">
+        <source>Reaction quotient</source>
+        <target>Cociente de reacción</target>
+      </trans-unit>
+      <trans-unit id="uEWZs4q" resname="Acid-base">
+        <source>Acid-base</source>
+        <target>Ácido-base</target>
+      </trans-unit>
+      <trans-unit id="tNpAVOo" resname="pOH">
+        <source>pOH</source>
+        <target>pOH</target>
+      </trans-unit>
+      <trans-unit id="amjrth0" resname="pH-pOH relationship">
+        <source>pH-pOH relationship</source>
+        <target>Relación pH-pOH</target>
+      </trans-unit>
+      <trans-unit id="_8k5v1_" resname="Acidity constant">
+        <source>Acidity constant</source>
+        <target>Constante de acidez</target>
+      </trans-unit>
+      <trans-unit id="Mi1fT1Q" resname="pKa">
+        <source>pKa</source>
+        <target>pKa</target>
+      </trans-unit>
+      <trans-unit id="jeaBPag" resname="Thermochemistry">
+        <source>Thermochemistry</source>
+        <target>Termoquímica</target>
+      </trans-unit>
+      <trans-unit id="oYWOJB8" resname="Heat of reaction">
+        <source>Heat of reaction</source>
+        <target>Calor de reacción</target>
+      </trans-unit>
+      <trans-unit id="CdiWBSC" resname="Gibbs free energy">
+        <source>Gibbs free energy</source>
+        <target>Energía libre de Gibbs</target>
+      </trans-unit>
+      <trans-unit id="bzYL2EB" resname="Constants">
+        <source>Constants</source>
+        <target>Constantes</target>
+      </trans-unit>
+      <trans-unit id="jCRXf_X" resname="Avogadro\'s number">
+        <source>Avogadro\'s number</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mGez35A" resname="Gas constant">
+        <source>Gas constant</source>
+        <target>Constante de los gases</target>
+      </trans-unit>
+      <trans-unit id="uf_UAIq" resname="Boltzmann constant">
+        <source>Boltzmann constant</source>
+        <target>Constante de Boltzmann</target>
+      </trans-unit>
+      <trans-unit id="UsAUFIg" resname="Basic symbols">
+        <source>Basic symbols</source>
+        <target>Símbolos básicos</target>
+      </trans-unit>
+      <trans-unit id="VDu2g6x" resname="Statistics">
+        <source>Statistics</source>
+        <target>Estadística</target>
+      </trans-unit>
+      <trans-unit id="DS9SmDT" resname="Physics">
+        <source>Physics</source>
+        <target>Física</target>
+      </trans-unit>
+      <trans-unit id="qN4_Ce0" resname="Geometry">
+        <source>Geometry</source>
+        <target>Geometría</target>
+      </trans-unit>
+      <trans-unit id="kEux0ZS" resname="LaTeX Formula Visual Editor">
+        <source>LaTeX Formula Visual Editor</source>
+        <target>Editor Visual de Fórmulas LaTeX</target>
+      </trans-unit>
+      <trans-unit id="6Y5EmRo" resname="LaTeX Formula Editor">
+        <source>LaTeX Formula Editor</source>
+        <target>Editor de Fórmulas LaTeX</target>
+      </trans-unit>
+      <trans-unit id="Jbx224G" resname="✨ Create with AI">
+        <source>✨ Create with AI</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5_ETqJi" resname="Copy JSON">
+        <source>Copy JSON</source>
+        <target>Copiar JSON</target>
+      </trans-unit>
+      <trans-unit id="zhC7KYj" resname="Export JSON">
+        <source>Export JSON</source>
+        <target>Exportar JSON</target>
+      </trans-unit>
+      <trans-unit id="YhNZ.Nz" resname="Go to category...">
+        <source>Go to category...</source>
+        <target>Ir a categoría...</target>
+      </trans-unit>
+      <trans-unit id="MwHiujQ" resname="Collapse/Expand">
+        <source>Collapse/Expand</source>
+        <target>Plegar/Desplegar</target>
+      </trans-unit>
+      <trans-unit id="m0h23vj" resname="Application by Juan José de Haro">
+        <source>Application by Juan José de Haro</source>
+        <target>Aplicación hecha por Juan José de Haro</target>
+      </trans-unit>
+      <trans-unit id="kJw2kGt" resname="Creative Commons BY-SA License">
+        <source>Creative Commons BY-SA License</source>
+        <target>Licencia Creative Commons BY-SA</target>
+      </trans-unit>
+      <trans-unit id="P7N703x" resname="Paste JSON content">
+        <source>Paste JSON content</source>
+        <target>Pegar contenido JSON</target>
+      </trans-unit>
+      <trans-unit id="pnLNy5q" resname="Paste the JSON code here...">
+        <source>Paste the JSON code here...</source>
+        <target>Pega aquí el código JSON...</target>
+      </trans-unit>
+      <trans-unit id="6Aaaywp" resname="Type of content to paste:">
+        <source>Type of content to paste:</source>
+        <target>Tipo de contenido a pegar:</target>
+      </trans-unit>
+      <trans-unit id="Ej1pm.C" resname="Full JSON (in new tab)">
+        <source>Full JSON (in new tab)</source>
+        <target>JSON Completo (en nueva pestaña)</target>
+      </trans-unit>
+      <trans-unit id="eh6TIM4" resname="Category (in current tab)">
+        <source>Category (in current tab)</source>
+        <target>Categoría (en pestaña actual)</target>
+      </trans-unit>
+      <trans-unit id="GL5YG3U" resname="Element(s) (in current tab)">
+        <source>Element(s) (in current tab)</source>
+        <target>Elemento(s) (en pestaña actual)</target>
+      </trans-unit>
+      <trans-unit id="7MOqLbM" resname="Add element(s) to category:">
+        <source>Add element(s) to category:</source>
+        <target>Añadir elemento(s) a la categoría:</target>
+      </trans-unit>
+      <trans-unit id="CbQ10zo" resname="Add Content">
+        <source>Add Content</source>
+        <target>Añadir Contenido</target>
+      </trans-unit>
+      <trans-unit id="HZtC59z" resname="AI Creation Wizard">
+        <source>AI Creation Wizard</source>
+        <target>Asistente de Creación con IA</target>
+      </trans-unit>
+      <trans-unit id="LTHBJwJ" resname="1. What do you want to create?">
+        <source>1. What do you want to create?</source>
+        <target>1. ¿Qué quieres crear?</target>
+      </trans-unit>
+      <trans-unit id="t6deruw" resname="Full JSON file">
+        <source>Full JSON file</source>
+        <target>Archivo JSON completo</target>
+      </trans-unit>
+      <trans-unit id="h1JgnMe" resname="A single category">
+        <source>A single category</source>
+        <target>Una sola categoría</target>
+      </trans-unit>
+      <trans-unit id="V7TO7pz" resname="Multiple elements">
+        <source>Multiple elements</source>
+        <target>Varios elementos</target>
+      </trans-unit>
+      <trans-unit id="a0Sms.p" resname="2. Generate and use the prompt">
+        <source>2. Generate and use the prompt</source>
+        <target>2. Genera y usa el prompt</target>
+      </trans-unit>
+      <trans-unit id="jKiYAgQ" resname="Follow the steps to generate a prompt and get the JSON code from your preferred AI.">
+        <source>Follow the steps to generate a prompt and get the JSON code from your preferred AI.</source>
+        <target>Sigue los pasos para generar un prompt y obtener el código JSON de la IA que prefieras.</target>
+      </trans-unit>
+      <trans-unit id="HUg4ypV" resname="The generated prompt will appear here...">
+        <source>The generated prompt will appear here...</source>
+        <target>Aquí aparecerá el prompt generado...</target>
+      </trans-unit>
+      <trans-unit id="ME62tP7" resname="1. Generate Prompt">
+        <source>1. Generate Prompt</source>
+        <target>1. Generar Prompt</target>
+      </trans-unit>
+      <trans-unit id="t4Y7vhN" resname="2. Launch in ChatGPT">
+        <source>2. Launch in ChatGPT</source>
+        <target>2. Lanzar en ChatGPT</target>
+      </trans-unit>
+      <trans-unit id="owzhu6J" resname="2a. Copy (other AI)">
+        <source>2a. Copy (other AI)</source>
+        <target>2a. Copiar (otra IA)</target>
+      </trans-unit>
+      <trans-unit id="NrH8O8T" resname="3. Paste the result into the editor">
+        <source>3. Paste the result into the editor</source>
+        <target>3. Pega el resultado en el editor</target>
+      </trans-unit>
+      <trans-unit id="4ISToky" resname="Once you have the code, close this window and use the">
+        <source>Once you have the code, close this window and use the</source>
+        <target>Una vez tengas el código, cierra esta ventana y usa el botón</target>
+      </trans-unit>
+      <trans-unit id="WzOdU6k" resname="button on the top bar to add your new creation.">
+        <source>button on the top bar to add your new creation.</source>
+        <target>de la barra superior para añadir tu nueva creación.</target>
+      </trans-unit>
+      <trans-unit id="H1Pdq23" resname="Add formula set">
+        <source>Add formula set</source>
+        <target>Añadir conjunto de fórmulas</target>
+      </trans-unit>
+      <trans-unit id="c1ml4fV" resname="Clear cache">
+        <source>Clear cache</source>
+        <target>Limpiar caché</target>
+      </trans-unit>
+      <trans-unit id="3s5o98B" resname="Loading list...">
+        <source>Loading list...</source>
+        <target>Cargando lista...</target>
+      </trans-unit>
+      <trans-unit id="17WkMQd" resname="Other sources">
+        <source>Other sources</source>
+        <target>Otras fuentes</target>
+      </trans-unit>
+      <trans-unit id="kq9GQkE" resname="Paste a JSON URL...">
+        <source>Paste a JSON URL...</source>
+        <target>Pegar URL de un JSON...</target>
+      </trans-unit>
+      <trans-unit id="v9IDBKP" resname="Open local file...">
+        <source>Open local file...</source>
+        <target>Abrir archivo local...</target>
+      </trans-unit>
+      <trans-unit id="N_rSZNB" resname="Add or load a formula set.">
+        <source>Add or load a formula set.</source>
+        <target>Añade o carga un conjunto de fórmulas.</target>
+      </trans-unit>
+      <trans-unit id="y8oZnQ1" resname="Edit category">
+        <source>Edit category</source>
+        <target>Editar categoría</target>
+      </trans-unit>
+      <trans-unit id="kzNsK0I" resname="Delete category">
+        <source>Delete category</source>
+        <target>Eliminar categoría</target>
+      </trans-unit>
+      <trans-unit id="_6ig_J7" resname="Add element">
+        <source>Add element</source>
+        <target>Añadir elemento</target>
+      </trans-unit>
+      <trans-unit id="4e.Ukrc" resname="Element">
+        <source>Element</source>
+        <target>Elemento</target>
+      </trans-unit>
+      <trans-unit id="EAFBgeF" resname="Edit element">
+        <source>Edit element</source>
+        <target>Editar elemento</target>
+      </trans-unit>
+      <trans-unit id="NR9IBAq" resname="Delete element">
+        <source>Delete element</source>
+        <target>Eliminar elemento</target>
+      </trans-unit>
+      <trans-unit id="HBaY8d1" resname="The preview will appear here.">
+        <source>The preview will appear here.</source>
+        <target>Aquí aparecerá la vista previa.</target>
+      </trans-unit>
+      <trans-unit id="KYnJqPO" resname="Could not load the file for &quot;{name}&quot;.">
+        <source>Could not load the file for "{name}".</source>
+        <target>No se pudo cargar el archivo para "{name}".</target>
+      </trans-unit>
+      <trans-unit id="bk0kTAy" resname="All browser data has been cleared.">
+        <source>All browser data has been cleared.</source>
+        <target>Se han borrado todos los datos del navegador.</target>
+      </trans-unit>
+      <trans-unit id="ywSABzT" resname="Please enter a valid URL.">
+        <source>Please enter a valid URL.</source>
+        <target>Por favor, introduce una URL válida.</target>
+      </trans-unit>
+      <trans-unit id="2mSnUB6" resname="Custom URL">
+        <source>Custom URL</source>
+        <target>URL Personalizada</target>
+      </trans-unit>
+      <trans-unit id="yxnTqdy" resname="The JSON file does not have the expected format.">
+        <source>The JSON file does not have the expected format.</source>
+        <target>El archivo JSON no tiene el formato esperado.</target>
+      </trans-unit>
+      <trans-unit id="jq51kLA" resname="Error processing the JSON file.">
+        <source>Error processing the JSON file.</source>
+        <target>Error al procesar el archivo JSON.</target>
+      </trans-unit>
+      <trans-unit id="lWnelGB" resname="There is nothing to copy.">
+        <source>There is nothing to copy.</source>
+        <target>No hay nada que copiar.</target>
+      </trans-unit>
+      <trans-unit id="nTSRyxj" resname="Copied!">
+        <source>Copied!</source>
+        <target>¡Copiado!</target>
+      </trans-unit>
+      <trans-unit id="QJSAxuR" resname="There is nothing to export.">
+        <source>There is nothing to export.</source>
+        <target>No hay nada que exportar.</target>
+      </trans-unit>
+      <trans-unit id="uBZB_tp" resname="The text area is empty.">
+        <source>The text area is empty.</source>
+        <target>El área de texto está vacía.</target>
+      </trans-unit>
+      <trans-unit id="kpceGkk" resname="Pasted">
+        <source>Pasted</source>
+        <target>Pegado</target>
+      </trans-unit>
+      <trans-unit id="MGL18xY" resname="Invalid full JSON.">
+        <source>Invalid full JSON.</source>
+        <target>JSON completo inválido.</target>
+      </trans-unit>
+      <trans-unit id="FZiW7rE" resname="Invalid category JSON.">
+        <source>Invalid category JSON.</source>
+        <target>JSON de categoría inválido.</target>
+      </trans-unit>
+      <trans-unit id="yCPWAZ." resname="Select a category.">
+        <source>Select a category.</source>
+        <target>Selecciona una categoría.</target>
+      </trans-unit>
+      <trans-unit id="IdniqcW" resname="The format of the element or list of elements is invalid. Make sure they are valid JSON objects separated by commas.">
+        <source>The format of the element or list of elements is invalid. Make sure they are valid JSON objects separated by commas.</source>
+        <target>El formato del elemento o de la lista de elementos es inválido. Asegúrate de que son objetos JSON válidos separados por comas.</target>
+      </trans-unit>
+      <trans-unit id="epdjTC7" resname="No valid elements found in the pasted text.">
+        <source>No valid elements found in the pasted text.</source>
+        <target>Ningún elemento válido encontrado en el texto pegado.</target>
+      </trans-unit>
+      <trans-unit id="PfM4T5v" resname="Error processing JSON: ">
+        <source>Error processing JSON: </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_._yuBi" resname="Please enter a topic.">
+        <source>Please enter a topic.</source>
+        <target>Por favor, introduce un tema.</target>
+      </trans-unit>
+      <trans-unit id="9kJWMw7" resname="None.">
+        <source>None.</source>
+        <target>Ninguna.</target>
+      </trans-unit>
+      <trans-unit id="dfaCCTV" resname="Could not copy the prompt.">
+        <source>Could not copy the prompt.</source>
+        <target>No se pudo copiar el prompt.</target>
+      </trans-unit>
+      <trans-unit id="D8tDuEE" resname="Edit Category">
+        <source>Edit Category</source>
+        <target>Editar Categoría</target>
+      </trans-unit>
+      <trans-unit id="DkcHXDT" resname="Are you sure?">
+        <source>Are you sure?</source>
+        <target>¿Seguro?</target>
+      </trans-unit>
+      <trans-unit id="LVKPgIf" resname="Add Element">
+        <source>Add Element</source>
+        <target>Añadir Elemento</target>
+      </trans-unit>
+      <trans-unit id="oIuT5Lt" resname="Edit Element">
+        <source>Edit Element</source>
+        <target>Editar Elemento</target>
+      </trans-unit>
+      <trans-unit id="FwHX503" resname="The name is required.">
+        <source>The name is required.</source>
+        <target>El nombre es obligatorio.</target>
+      </trans-unit>
+      <trans-unit id="pKYTYcI" resname="CSS Grid Template">
+        <source>CSS Grid Template</source>
+        <target>CSS Grid Template</target>
+      </trans-unit>
+      <trans-unit id="YFcBvyL" resname="LaTeX (insert)">
+        <source>LaTeX (insert)</source>
+        <target>LaTeX (insertar)</target>
+      </trans-unit>
+      <trans-unit id="0NTcv5r" resname="LaTeX (display)">
+        <source>LaTeX (display)</source>
+        <target>LaTeX (visualizar)</target>
+      </trans-unit>
+      <trans-unit id="4VQPnZ0" resname="Optional. If left blank, the insert LaTeX will be used.">
+        <source>Optional. If left blank, the insert LaTeX will be used.</source>
+        <target>Opcional. Si se deja en blanco, se usa el de insertar.</target>
+      </trans-unit>
+      <trans-unit id="MacJaqw" resname="Move to another category">
+        <source>Move to another category</source>
+        <target>Mover a otra categoría</target>
+      </trans-unit>
+      <trans-unit id="p7NwjKy" resname="Title and LaTeX are required.">
+        <source>Title and LaTeX are required.</source>
+        <target>Título y LaTeX son obligatorios.</target>
+      </trans-unit>
+      <trans-unit id="U0pR.fg" resname="It is already in this category.">
+        <source>It is already in this category.</source>
+        <target>Ya se encuentra en esta categoría.</target>
+      </trans-unit>
+      <trans-unit id="QmyUM.T" resname="Could not retrieve menus.">
+        <source>Could not retrieve menus.</source>
+        <target>No se pudieron obtener menús.</target>
+      </trans-unit>
+      <trans-unit id="9nNjPjk" resname="Error loading the list.">
+        <source>Error loading the list.</source>
+        <target>Error al cargar la lista.</target>
+      </trans-unit>
+      <trans-unit id="2K3bFkm" resname="Could not load the default base formulas.">
+        <source>Could not load the default base formulas.</source>
+        <target>No se pudieron cargar las fórmulas base por defecto.</target>
+      </trans-unit>
+      <trans-unit id="q4vxgjo" resname="General topic:">
+        <source>General topic:</source>
+        <target>Tema general:</target>
+      </trans-unit>
+      <trans-unit id="rzcSvgD" resname="E.g.: Statistics, Linear Algebra...">
+        <source>E.g.: Statistics, Linear Algebra...</source>
+        <target>Ej: Estadística, Álgebra Lineal...</target>
+      </trans-unit>
+      <trans-unit id="7gggVR6" resname="Additional instructions for the AI (optional):">
+        <source>Additional instructions for the AI (optional):</source>
+        <target>Instrucciones adicionales para la IA (opcional):</target>
+      </trans-unit>
+      <trans-unit id="QL4hapV" resname="E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...">
+        <source>E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...</source>
+        <target>Ej: Crear 3 categorías con 5 fórmulas cada una. O crear 8 elementos sobre...</target>
+      </trans-unit>
+      <trans-unit id="crgTovz" resname="Category topic:">
+        <source>Category topic:</source>
+        <target>Tema de la categoría:</target>
+      </trans-unit>
+      <trans-unit id="Y0uP2GQ" resname="E.g.: Vectors, Organic Chemistry...">
+        <source>E.g.: Vectors, Organic Chemistry...</source>
+        <target>Ej: Vectores, Química Orgánica...</target>
+      </trans-unit>
+      <trans-unit id="rKVEl9D" resname="Topic of the elements:">
+        <source>Topic of the elements:</source>
+        <target>Tema de los elementos:</target>
+      </trans-unit>
+      <trans-unit id="jj._G0X" resname="E.g.: Trigonometric identities">
+        <source>E.g.: Trigonometric identities</source>
+        <target>Ej: Identidades trigonométricas</target>
+      </trans-unit>
+      <trans-unit id="GVu.XTz" resname="No .json files found in the \'docs\' folder.">
+        <source>No .json files found in the \'docs\' folder.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3U32W5O" resname="No .json files found in the 'docs' folder.">
+        <source>No .json files found in the 'docs' folder.</source>
+        <target>No se encontraron archivos .json en la carpeta 'docs'.</target>
+      </trans-unit>
+      <trans-unit id="BuEgklH" resname="Create with AI">
+        <source>Create with AI</source>
+        <target>✨ Crear con IA</target>
+      </trans-unit>
+      <trans-unit id="HYELKV7" resname="Please refresh the page to try to reconnect to the server...">
+        <source>Please refresh the page to try to reconnect to the server...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="CqqAOBm" resname="An error occurred while saving the project.">
+        <source>An error occurred while saving the project.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qOmQIdj" resname="An error occurred while generating the file.">
+        <source>An error occurred while generating the file.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="a.vZ7kn" resname="An error occurred while exporting the project.">
+        <source>An error occurred while exporting the project.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="k8.XhRG" resname="The project properties have been exported.">
+        <source>The project properties have been exported.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="NTWmm7D" resname="An error occurred while generating the preview.">
+        <source>An error occurred while generating the preview.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4YXoX88" resname="Do you want to delete the project (elp)? This cannot be undone.">
+        <source>Do you want to delete the project (elp)? This cannot be undone.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="COSKxUW" resname="An error occurred while saving the file: ${response.responseMessage}">
+        <source>An error occurred while saving the file: ${response.responseMessage}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="JOFdorq" resname="Select the Dropbox directory where the project will be uploaded:">
+        <source>Select the Dropbox directory where the project will be uploaded:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="HMP7DeK" resname="Select the Google Drive directory where the project will be uploaded:">
+        <source>Select the Google Drive directory where the project will be uploaded:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9Mm2eRT" resname="An error occurred while saving block's properties in database">
+        <source>An error occurred while saving block's properties in database</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Jxrmbyu" resname="Delete the box and all its iDevices? This cannot be undone.">
+        <source>Delete the box and all its iDevices? This cannot be undone.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zLfwrs3" resname="Select the page you want to move the block to. This will be at the end of it.">
+        <source>Select the page you want to move the block to. This will be at the end of it.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fEHzCCc" resname="An error occurred while update component in database">
+        <source>An error occurred while update component in database</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wiM7f0K" resname="Identical contents in the same page might cause errors. Edit the new one or move it to another page.">
+        <source>Identical contents in the same page might cause errors. Edit the new one or move it to another page.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3.j2frP" resname="An error occurred while clone component in database">
+        <source>An error occurred while clone component in database</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ECdlxze" resname="An error occurred while removing the component from the database">
+        <source>An error occurred while removing the component from the database</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="G91jVbs" resname="An error occurred while saving idevice's properties in database">
+        <source>An error occurred while saving idevice's properties in database</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="td2MDS0" resname="Select the page you want to move the idevice to. This will be at the end of it.">
+        <source>Select the page you want to move the idevice to. This will be at the end of it.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="aG4weoA" resname="An error occurred while save component in database">
+        <source>An error occurred while save component in database</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wut7ZJN" resname="You cannot edit another idevice until you save the current one">
+        <source>You cannot edit another idevice until you save the current one</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
+        <source>You are currently editing another iDevice. Please close it before continuing</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_qN9nCf" resname="The box is empty. Do you want to delete it?">
+        <source>The box is empty. Do you want to delete it?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="YLhWBv4" resname="Error while saving: ${response.responseMessage}">
+        <source>Error while saving: ${response.responseMessage}</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Wq0rrM1" resname="Your style has changed. Reload the page to apply changes?">
+        <source>Your style has changed. Reload the page to apply changes?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gysLwdg" resname="An error occurred while saving the component.">
+        <source>An error occurred while saving the component.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Ww.bpx3" resname="An error occurred while saving node's properties in database">
+        <source>An error occurred while saving node's properties in database</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zr.mdKw" resname="An error occurred while updating the node in database">
+        <source>An error occurred while updating the node in database</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7yUZmtN" resname="Add activity">
+        <source>Add activity</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="YXVgwWH" resname="Case study">
+        <source>Case study</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mgtLDuZ" resname="Do you want to delete this activity?">
+        <source>Do you want to delete this activity?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="DDWnIrv" resname="The case study must have at least one activity">
+        <source>The case study must have at least one activity</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="DnJYpBC" resname="Complete the story">
+        <source>Complete the story</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ofUWEOP" resname="You must provide the text for each activity">
+        <source>You must provide the text for each activity</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cIWhj7d" resname="Your changes won't be saved until you click on \&quot;Save\&quot;.">
+        <source>Your changes won't be saved until you click on \"Save\".</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="719B6M_" resname="Click on \&quot;Exit\&quot; to finish.">
+        <source>Click on \"Exit\" to finish.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="RLB6gEc" resname="Please check the \&quot;Start\&quot; time">
+        <source>Please check the \"Start\" time</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="FSmyc.T" resname="Please check the \&quot;End\&quot; time">
+        <source>Please check the \"End\" time</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="D_G.38F" resname="Choose the zoom and the magnifier's size. Then move your mouse over the image to see it enlarged.">
+        <source>Choose the zoom and the magnifier's size. Then move your mouse over the image to see it enlarged.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="LhPK3m6" resname="Magnifier">
+        <source>Magnifier</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ToPhWpx" resname="Full screen">
+        <source>Full screen</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="750yEWZ" resname="The image is not available.">
+        <source>The image is not available.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u2oxdiJ" resname="Image width">
+        <source>Image width</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="lfDRlEO" resname="Align">
+        <source>Align</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kpC3CUG" resname="Initial Zoom">
+        <source>Initial Zoom</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nzCIWGK" resname="Magnifier Size">
+        <source>Magnifier Size</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_iRtiV6" resname="Free response">
+        <source>Free response</source>
+        <target>Respuesta libre</target>
       </trans-unit>
     </body>
   </file>

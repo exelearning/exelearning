@@ -18,9 +18,7 @@ export default class UserPreferences {
      */
     async load() {
         this.preferences = JSON.parse(
-            JSON.stringify(
-                eXeLearning.app.api.parameters.userPreferencesConfig,
-            ),
+            JSON.stringify(eXeLearning.app.api.parameters.userPreferencesConfig)
         );
         await this.apiLoadPreferences();
     }
@@ -37,7 +35,7 @@ export default class UserPreferences {
                     this.preferences[key].value = preferences[key].value;
                 } else {
                     this.preferences[key] = JSON.parse(
-                        JSON.stringify(this.preferenceTemplate),
+                        JSON.stringify(this.preferenceTemplate)
                     );
                     this.preferences[key].title = key;
                     this.preferences[key].value = preferences[key].value;
@@ -68,7 +66,7 @@ export default class UserPreferences {
         this.setPreferences(preferences.userPreferences);
         this.manager.reloadMode(preferences.userPreferences.advancedMode.value);
         this.manager.reloadVersionControl(
-            preferences.userPreferences.versionControl.value,
+            preferences.userPreferences.versionControl.value
         );
         this.manager.reloadLang(preferences.userPreferences.locale.value);
     }

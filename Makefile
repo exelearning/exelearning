@@ -27,7 +27,7 @@ PUBLISH_ARG := $(if $(PUBLISH),--publish $(PUBLISH),)
 EXPAND_PATH = $(subst ~,$(HOME),$(1))
 
 # Enable debug if DEBUG or ACTIONS_STEP_DEBUG is set (e.g., in GitHub Actions re-run with debug logging)
-DEBUG_FLAG := $(if $(filter 1 true yes,$(DEBUG) $(ACTIONS_STEP_DEBUG)) ,--debug,)
+DEBUG_FLAG := $(if $(filter 1 true yes,$(DEBUG) $(ACTIONS_STEP_DEBUG)) ,--debug --display-deprecations,)
 
 # Check if Docker is running
 check-docker:
@@ -168,6 +168,14 @@ create-user: check-docker check-env upd
 	read -p "Enter username: " username; \
 	docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
 
+# Generate API key for a user (Usage: make generate-api-key USER_ID=123 [OVERWRITE=1])
+generate-api-key: check-docker check-env upd
+	@if [ -z "$(USER_ID)" ]; then \
+		echo "❌ USER_ID is required. Usage: make generate-api-key USER_ID=123 [OVERWRITE=1]"; \
+		exit 1; \
+	fi
+	docker compose exec exelearning composer --no-cache generate-api-key -- $(USER_ID) $(if $(OVERWRITE),--overwrite,)
+
 # Update Composer dependencies
 update: check-docker check-env upd
 	docker compose exec exelearning composer update --no-cache --with-all-dependencies
@@ -210,6 +218,9 @@ test-local: check-env
 	APP_DEBUG=1 \
 	APP_SECRET=TestSecretKey \
 	composer --no-cache phpunit-unit
+
+update-licenses: check-env
+	composer --no-cache update-licenses
 
 # Generate a new migration class from changes in mapping information and compy them to the ./migrations local folder
 migration: check-docker check-env upd
@@ -352,6 +363,16 @@ endif
 	@echo "Package created successfully with version $(VERSION)"
 	@echo "Installer files available in the dist/ directory"
 
+# Copy the vendor/ directory from the container to the local host
+# Use this when you want to inspect or debug vendor code locally
+pull-vendor: check-docker check-env upd
+	@echo "⚠️  Copying /app/vendor from the container to ./vendor on your machine..."
+	@echo "💡 Use this only when you want to debug vendor libraries locally."
+	@echo "📁 This will overwrite your local ./vendor directory."
+	@docker compose cp exelearning:/app/vendor ./vendor
+	@echo "✅ Done. Local ./vendor directory updated from container."
+
+
 # Display help with available commands
 help:
 	@echo ""
@@ -368,6 +389,7 @@ help:
 	@echo "  up-local              - Run local Symfony server and prepare the environment (unstable)"
 	@echo "  upd                   - Start Docker containers in background mode (daemon)"
 	@echo "  update                - Update Composer dependencies"
+	@echo "  pull-vendor           - Copy vendor/ from container to local ./vendor (for debugging)"
 	@echo ""
 	@echo "Code quality:"
 	@echo ""
@@ -418,6 +440,7 @@ help:
 	@echo "Other:"
 	@echo ""
 	@echo "  help                  - Display this help with available commands"
+	@echo "  update-licenses       - Update the Legal notes (Third Libraries) reading the composer/installed.json file"
 	@echo ""
 
 # Set help as the default goal if no target is specified

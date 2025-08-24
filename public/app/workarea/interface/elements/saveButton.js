@@ -1,7 +1,7 @@
 export default class SaveProjectButton {
     constructor() {
         this.saveMenuHeadButton = document.querySelector(
-            '#head-top-save-button',
+            '#head-top-save-button'
         );
     }
 

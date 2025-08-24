@@ -1,7 +1,7 @@
 export default class OdeTitleMenu {
     constructor() {
         this.odeTitleMenuHeadElement = document.querySelector(
-            '#exe-title > .exe-title.content',
+            '#exe-title > .exe-title.content'
         );
     }
 

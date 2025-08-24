@@ -569,7 +569,7 @@ class FileHelper
     }
 
     /**
-     * Añade un sufijo numérico al nombre del fichero si ya existe en el directorio.
+     * Adds a numeric suffix to the filename if it already exists in the directory.
      */
     public function addFilenameSuffix(string $filename, string $path): string
     {

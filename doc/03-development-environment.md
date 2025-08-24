@@ -244,11 +244,16 @@ The Docker container includes Xdebug preconfigured for Visual Studio Code:
 1. Install the "PHP Debug", "Dev Containers" and "Docker" extensions in VS Code
 2. Ensure `XDEBUG_MODE=debug` is set in your `.env` file
 3. Start the containers with `make up` or `make upd`
-4. In VS Code, go to the Dev Containers section
-5. Connect to the `exelearning` container
-6. Set breakpoints in your code
-7. Start the debugger in VS Code
-8. Access the application from your browser
+4. Set breakpoints in your code
+5. Start the debugger in VS Code
+6. Access the application from your browser
+
+It is highly recommended to keep a local copy of the vendor directory to improve the debugging experience.
+You can obtain this copy by running:
+
+```
+make pull-vendor
+```
 
 ## Troubleshooting
 

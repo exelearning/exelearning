@@ -1,0 +1,266 @@
+{
+  "categorias": [
+    {
+      "nombre": "Perimeters and lengths",
+      "id": "perimetros",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "P = 4l",
+          "display": "P = 4l",
+          "title": "Perimeter of a square"
+        },
+        {
+          "type": "button",
+          "latex": "P = 2(a + b)",
+          "display": "P = 2(a + b)",
+          "title": "Perimeter of a rectangle"
+        },
+        {
+          "type": "button",
+          "latex": "P = a + b + c",
+          "display": "P = a + b + c",
+          "title": "Perimeter of a triangle"
+        },
+        {
+          "type": "button",
+          "latex": "P = n \\cdot l",
+          "display": "P = n · l",
+          "title": "Perimeter of a regular polygon"
+        },
+        {
+          "type": "button",
+          "latex": "P = 2\\pi r",
+          "display": "P = 2πr",
+          "title": "Circumference perimeter"
+        },
+        {
+          "type": "button",
+          "latex": "L = r\\theta",
+          "display": "L = rθ",
+          "title": "Arc length (radians)"
+        },
+        {
+          "type": "button",
+          "latex": "L = \\tfrac{\\theta}{360^\\circ}2\\pi r",
+          "display": "",
+          "title": "Arc length (degrees)"
+        },
+        {
+          "type": "button",
+          "latex": "P = a + b + \\sqrt{a^2 + b^2}",
+          "display": "",
+          "title": "Right triangle perimeter"
+        }
+      ]
+    },
+    {
+      "nombre": "Areas of plane figures",
+      "id": "areas-figuras",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "A = bh",
+          "display": "A = b·h",
+          "title": "Area of a rectangle"
+        },
+        {
+          "type": "button",
+          "latex": "A = \\tfrac{1}{2}bh",
+          "display": "",
+          "title": "Area of a triangle"
+        },
+        {
+          "type": "button",
+          "latex": "A = a^2",
+          "display": "A = a²",
+          "title": "Area of a square"
+        },
+        {
+          "type": "button",
+          "latex": "A = \\pi r^2",
+          "display": "A = πr²",
+          "title": "Area of a circle"
+        },
+        {
+          "type": "button",
+          "latex": "A = \\tfrac{(B + b)h}{2}",
+          "display": "",
+          "title": "Area of a trapezoid"
+        },
+        {
+          "type": "button",
+          "latex": "A = bh",
+          "display": "A = b·h",
+          "title": "Area of a parallelogram"
+        },
+        {
+          "type": "button",
+          "latex": "A = \\tfrac{D d}{2}",
+          "display": "",
+          "title": "Area of a rhombus"
+        },
+        {
+          "type": "button",
+          "latex": "A = \\pi ab",
+          "display": "A = πab",
+          "title": "Area of an ellipse"
+        },
+        {
+          "type": "button",
+          "latex": "A = \\tfrac{1}{2}ab\\sin C",
+          "display": "",
+          "title": "Area of a triangle (with trigonometry)"
+        },
+        {
+          "type": "button",
+          "latex": "A = \\tfrac{\\theta}{360^\\circ}\\pi r^2",
+          "display": "",
+          "title": "Area of a circular sector"
+        }
+      ]
+    },
+    {
+      "nombre": "Volumes of solids",
+      "id": "volumenes",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "V = a^3",
+          "display": "V = a³",
+          "title": "Volume of a cube"
+        },
+        {
+          "type": "button",
+          "latex": "V = A_b h",
+          "display": "V = A_b·h",
+          "title": "Volume of a prism"
+        },
+        {
+          "type": "button",
+          "latex": "V = \\pi r^2 h",
+          "display": "V = πr²h",
+          "title": "Volume of a cylinder"
+        },
+        {
+          "type": "button",
+          "latex": "V = \\tfrac{1}{3}\\pi r^2 h",
+          "display": "",
+          "title": "Volume of a cone"
+        },
+        {
+          "type": "button",
+          "latex": "V = \\tfrac{4}{3}\\pi r^3",
+          "display": "",
+          "title": "Volume of a sphere"
+        },
+        {
+          "type": "button",
+          "latex": "V = \\tfrac{1}{3}A_b h",
+          "display": "",
+          "title": "Volume of a pyramid"
+        }
+      ]
+    },
+    {
+      "nombre": "Surface areas of solids",
+      "id": "areas-superficies",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "A_L = 2\\pi rh",
+          "display": "A_L = 2πrh",
+          "title": "Lateral area of a cylinder"
+        },
+        {
+          "type": "button",
+          "latex": "A_T = 2\\pi r(r + h)",
+          "display": "A_T = 2πr(r+h)",
+          "title": "Total area of a cylinder"
+        },
+        {
+          "type": "button",
+          "latex": "A_L = \\pi rl",
+          "display": "A_L = πrl",
+          "title": "Lateral area of a cone"
+        },
+        {
+          "type": "button",
+          "latex": "A_T = \\pi r(r + l)",
+          "display": "A_T = πr(r+l)",
+          "title": "Total area of a cone"
+        },
+        {
+          "type": "button",
+          "latex": "A = 4\\pi r^2",
+          "display": "A = 4πr²",
+          "title": "Surface area of a sphere"
+        },
+        {
+          "type": "button",
+          "latex": "A_T = 6a^2",
+          "display": "A_T = 6a²",
+          "title": "Total area of a cube"
+        }
+      ]
+    },
+    {
+      "nombre": "Trigonometry and Coordinates",
+      "id": "trigonometria",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "c^2 = a^2 + b^2",
+          "display": "",
+          "title": "Pythagorean theorem"
+        },
+        {
+          "type": "button",
+          "latex": "\\frac{a}{\\sin A} = \\frac{b}{\\sin B}",
+          "display": "",
+          "title": "Law of sines"
+        },
+        {
+          "type": "button",
+          "latex": "c^2 = a^2 + b^2 - 2ab\\cos C",
+          "display": "",
+          "title": "Law of cosines"
+        },
+        {
+          "type": "button",
+          "latex": "y - y_1 = m(x - x_1)",
+          "display": "",
+          "title": "Equation of a line"
+        },
+        {
+          "type": "button",
+          "latex": "d = \\sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}",
+          "display": "",
+          "title": "Distance between two points"
+        },
+        {
+          "type": "button",
+          "latex": "M = \\left (\\tfrac{x_1+x_2}{2},\\tfrac{y_1+y_2}{2}\\right )",
+          "display": "",
+          "title": "Midpoint"
+        },
+        {
+          "type": "button",
+          "latex": "(x - h)^2 + (y - k)^2 = r^2",
+          "display": "",
+          "title": "Equation of a circle"
+        }
+      ]
+    }
+  ]
+}

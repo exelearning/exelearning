@@ -598,7 +598,7 @@ function getPhpBinaryPath() {
   const arch = process.arch;
 
   // Directory where PHP binaries will be unzipped in userData
-  const phpBinaryDir = path.join(app.getPath('userData'), 'php-bin', 'php-8.3');
+  const phpBinaryDir = path.join(app.getPath('userData'), 'php-bin', 'php-8.4');
 
   // Path of the zip file inside vendor
   const phpZipPath = path.join(
@@ -609,7 +609,7 @@ function getPhpBinaryPath() {
     'bin',
     platform === 'win32' ? 'win' : platform === 'darwin' ? 'mac' : 'linux',
     arch === 'arm64' && platform === 'darwin' ? 'arm64' : 'x64',
-    'php-8.3.zip'
+    'php-8.4.zip'
   );
 
   // If the PHP binary is not unzipped, unzip it

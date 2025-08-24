@@ -1,0 +1,494 @@
+{
+  "categorias": [
+    {
+      "nombre": "Central tendency measures",
+      "id": "centralizacion",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "\\overline{x} = \\frac{\\sum x_i}{n}",
+          "title": "Arithmetic mean"
+        },
+        {
+          "type": "button",
+          "latex": "\\overline{x}_p = \\frac{\\sum w_i x_i}{\\sum w_i}",
+          "title": "Weighted mean"
+        },
+        {
+          "type": "button",
+          "latex": "\\overline{x}_g = \\sqrt[n]{\\prod x_i}",
+          "title": "Geometric mean"
+        },
+        {
+          "type": "button",
+          "latex": "\\overline{x}_h = \\frac{n}{\\sum \\frac{1}{x_i}}",
+          "title": "Harmonic mean"
+        },
+        {
+          "type": "button",
+          "latex": "\\overline{x}_{\\text{quad}} = \\sqrt{\\frac{\\sum x_i^2}{n}}",
+          "title": "Quadratic mean"
+        },
+        {
+          "type": "button",
+          "latex": "\\tilde{x}",
+          "display": "\\tilde{x}",
+          "title": "Median"
+        },
+        {
+          "type": "button",
+          "latex": "P_k = \\frac{k(n+1)}{100}",
+          "title": "k-th percentile"
+        }
+      ]
+    },
+    {
+      "nombre": "Dispersion measures",
+      "id": "dispersion",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "R = x_{\\text{max}} - x_{\\text{min}}",
+          "title": "Range"
+        },
+        {
+          "type": "button",
+          "latex": "RI = Q_3 - Q_1",
+          "title": "Interquartile range"
+        },
+        {
+          "type": "button",
+          "latex": "CV = \\frac{\\sigma}{\\overline{x}} \\cdot 100\\%",
+          "title": "Coefficient of variation"
+        },
+        {
+          "type": "button",
+          "latex": "\\sigma^2 = \\frac{\\sum (x_i - \\overline{x})^2}{n}",
+          "title": "Population variance"
+        },
+        {
+          "type": "button",
+          "latex": "s^2 = \\frac{\\sum (x_i - \\overline{x})^2}{n - 1}",
+          "title": "Sample variance"
+        },
+        {
+          "type": "button",
+          "latex": "\\sigma = \\sqrt{\\frac{\\sum (x_i - \\overline{x})^2}{n}}",
+          "title": "Population standard deviation"
+        },
+        {
+          "type": "button",
+          "latex": "s = \\sqrt{\\frac{\\sum (x_i - \\overline{x})^2}{n - 1}}",
+          "title": "Sample standard deviation"
+        },
+        {
+          "type": "button",
+          "latex": "MAD=\\frac{1}{n}\\sum|x_i-\\overline{x}|",
+          "title": "Mean absolute deviation"
+        },
+        {
+          "type": "button",
+          "latex": "QD=\\frac{Q_3-Q_1}{2}",
+          "title": "Semi-interquartile range"
+        },
+        {
+          "type": "button",
+          "latex": "z_i = \\frac{x_i - \\overline{x}}{\\sigma}",
+          "title": "Standard score (population z-score)"
+        },
+        {
+          "type": "button",
+          "latex": "z_i = \\frac{x_i - \\overline{x}}{s}",
+          "title": "Standard score (sample z-score)"
+        },
+        {
+          "type": "button",
+          "latex": "\\text{Kurtosis}_{\\text{pop}} = \\frac{\\sum (x_i - \\overline{x})^4}{n\\sigma^4}",
+          "title": "Population kurtosis"
+        },
+        {
+          "type": "button",
+          "latex": "\\text{Kurtosis}_{\\text{samp}} = \\frac{\\sum (x_i - \\overline{x})^4}{(n - 1)s^4}",
+          "title": "Sample kurtosis"
+        }
+      ]
+    },
+    {
+      "nombre": "Frequencies",
+      "id": "frecuencias",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "f_i = \\frac{n_i}{n}",
+          "title": "Relative frequency"
+        },
+        {
+          "type": "button",
+          "latex": "F_i = \\sum_{j=1}^{i} f_j",
+          "title": "Cumulative frequency"
+        },
+        {
+          "type": "button",
+          "latex": "N_i = \\sum_{j=1}^{i} n_j",
+          "title": "Cumulative absolute frequency"
+        }
+      ]
+    },
+    {
+      "nombre": "Intervals",
+      "id": "intervalos",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "c_i = \\frac{l_i + l_{i+1}}{2}",
+          "title": "Class mark"
+        },
+        {
+          "type": "button",
+          "latex": "A = l_{i+1} - l_i",
+          "title": "Class width"
+        },
+        {
+          "type": "button",
+          "latex": "Me = L + \\frac{\\frac{n}{2} - F}{f} \\cdot A",
+          "title": "Median in intervals"
+        },
+        {
+          "type": "button",
+          "latex": "Mo = L + \\frac{(f_1 - f_0)}{(f_1 - f_0)+(f_1 - f_2)} \\cdot A",
+          "title": "Mode in intervals"
+        }
+      ]
+    },
+    {
+      "nombre": "Moments and generating functions",
+      "id": "momentos",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "E[X]=\\sum x_iP(X=x_i)",
+          "title": "Discrete expectation"
+        },
+        {
+          "type": "button",
+          "latex": "E[X]=\\int x f(x)dx",
+          "title": "Continuous expectation"
+        },
+        {
+          "type": "button",
+          "latex": "Var(X)=E[X^2]-(E[X])^2",
+          "title": "Variance (moments)"
+        },
+        {
+          "type": "button",
+          "latex": "M_X(t)=E[e^{tX}]",
+          "title": "Moment-generating function"
+        }
+      ]
+    },
+    {
+      "nombre": "Probability distributions",
+      "id": "distribuciones",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "P(X=k)=\\binom{n}{k}p^k(1-p)^{n-k}",
+          "title": "Binomial"
+        },
+        {
+          "type": "button",
+          "latex": "P(X=k)=\\frac{\\lambda^k e^{-\\lambda}}{k!}",
+          "title": "Poisson"
+        },
+
+        {
+          "type": "button",
+          "latex": "Z \\sim N(0,1)",
+          "title": "Standard normal distribution"
+        },
+        {
+          "type": "button",
+          "latex": "t_{n-1}",
+          "title": "Student's t-distribution"
+        },
+        {
+          "type": "button",
+          "latex": "\\chi^2_k",
+          "title": "Chi-squared distribution"
+        },
+        {
+          "type": "button",
+          "latex": "F_{k_1,k_2}",
+          "title": "Fisher's F-distribution"
+        }
+      ]
+    },
+    {
+      "nombre": "Correlation coefficients",
+      "id": "coeficientes_correlacion",
+      "grid_template_columns": "repeat(auto-fit, minmax(220px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "\\mathrm{Cov}(X,Y)=\\frac{1}{n}\\sum(x_i-\\overline{x})(y_i-\\overline{y})",
+          "title": "Population covariance"
+        },
+        {
+          "type": "button",
+          "latex": "s_{XY}=\\frac{1}{n-1}\\sum(x_i-\\overline{x})(y_i-\\overline{y})",
+          "title": "Sample covariance"
+        },
+        {
+          "type": "button",
+          "latex": "r=\\frac{\\sum(x_i-\\overline{x})(y_i-\\overline{y})}{\\sqrt{\\sum(x_i-\\overline{x})^2\\sum(y_i-\\overline{y})^2}}",
+          "title": "Pearson"
+        },
+        {
+          "type": "button",
+          "latex": "t=r\\sqrt{\\frac{n-2}{1-r^2}}",
+          "title": "Pearson's t-test"
+        },
+        {
+          "type": "button",
+          "latex": "\\rho=1-\\frac{6\\sum d_i^2}{n(n^2-1)}",
+          "title": "Spearman"
+        },
+        {
+          "type": "button",
+          "latex": "\\tau=\\frac{C-D}{\\tfrac12n(n-1)}",
+          "title": "Kendall's Tau",
+          "display": ""
+        },
+        {
+          "type": "button",
+          "latex": "\\phi=\\sqrt{\\frac{\\chi^2}{n}}",
+          "title": "Phi coefficient"
+        }
+      ]
+    },
+    {
+      "nombre": "Regression",
+      "id": "regresion",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "y = a + bx",
+          "title": "Regression line"
+        },
+        {
+          "type": "button",
+          "latex": "b = \\frac{n\\sum xy - \\sum x \\sum y}{n\\sum x^2 - (\\sum x)^2}",
+          "title": "Slope"
+        },
+        {
+          "type": "button",
+          "latex": "a = \\bar{y} - b\\bar{x}",
+          "title": "Intercept"
+        },
+        {
+          "type": "button",
+          "latex": "r = \\frac{n\\sum xy - \\sum x \\sum y}{\\sqrt{[n\\sum x^2 - (\\sum x)^2][n\\sum y^2 - (\\sum y)^2]}}",
+          "title": "Correlation coefficient"
+        },
+        {
+          "type": "button",
+          "latex": "R^2 = r^2",
+          "title": "Coefficient of determination"
+        },
+        {
+          "type": "button",
+          "latex": "R^2_{adj}=1-(1-R^2)\\frac{n-1}{n-p-1}",
+          "title": "Adjusted R^2"
+        },
+        {
+          "type": "button",
+          "latex": "SE_{est}=\\sqrt{\\frac{\\sum(y_i-\\hat y_i)^2}{n-2}}",
+          "title": "Standard error of the estimate"
+        },
+        {
+          "type": "button",
+          "latex": "\\hat y\\pm t_{n-2}SE_{est}\\sqrt{1+\\frac1n+\\frac{(x_0-\\overline{x})^2}{\\sum(x_i-\\overline{x})^2}}",
+          "title": "Prediction interval"
+        }
+      ]
+    },
+    {
+      "nombre": "Statistical inference",
+      "id": "inferencia",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "z = \\frac{\\bar{x} - \\mu}{\\sigma/\\sqrt{n}}",
+          "title": "z-statistic"
+        },
+        {
+          "type": "button",
+          "latex": "t = \\frac{\\bar{x} - \\mu}{s/\\sqrt{n}}",
+          "title": "t-statistic"
+        },
+        {
+          "type": "button",
+          "latex": "E = z \\cdot \\frac{\\sigma}{\\sqrt{n}}",
+          "title": "Standard error with z"
+        },
+        {
+          "type": "button",
+          "latex": "E = t \\cdot \\frac{s}{\\sqrt{n}}",
+          "title": "Standard error with t"
+        },
+        {
+          "type": "button",
+          "latex": "\\bar{x} \\pm z \\cdot \\frac{\\sigma}{\\sqrt{n}}",
+          "title": "Interval with population standard deviation"
+        },
+        {
+          "type": "button",
+          "latex": "\\bar{x} \\pm t \\cdot \\frac{s}{\\sqrt{n}}",
+          "title": "Interval with sample deviation"
+        },
+        {
+          "type": "button",
+          "latex": "n=\\left(\\frac{z\\,\\sigma}{E}\\right)^2",
+          "title": "Sample size (mean)"
+        },
+        {
+          "type": "button",
+          "latex": "n=\\frac{z^2\\,\\hat p(1-\\hat p)}{E^2}",
+          "title": "Sample size (proportion)"
+        }
+      ]
+    },
+    {
+      "nombre": "Proportion estimation",
+      "id": "proporciones",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "SE(\\hat p)=\\sqrt{\\frac{\\hat p(1-\\hat p)}{n}}",
+          "title": "Standard error of proportion"
+        },
+        {
+          "type": "button",
+          "latex": "\\hat p\\pm z\\sqrt{\\frac{\\hat p(1-\\hat p)}{n}}",
+          "title": "CI for proportion"
+        }
+      ]
+    },
+    {
+      "nombre": "Hypothesis testing",
+      "id": "pruebas_hipotesis",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "z=\\frac{\\hat p-p_0}{\\sqrt{\\frac{p_0(1-p_0)}{n}}}",
+          "title": "z for proportions"
+        },
+        {
+          "type": "button",
+          "latex": "z=\\frac{\\hat p_1-\\hat p_2}{\\sqrt{\\hat p(1-\\hat p)(1/n_1+1/n_2)}}",
+          "title": "z for difference of proportions"
+        },
+        {
+          "type": "button",
+          "latex": "t=\\frac{\\overline{x}-\\mu_0}{s/\\sqrt{n}}",
+          "title": "One-sample t-test"
+        },
+        {
+          "type": "button",
+          "latex": "t=\\frac{\\overline{x}_1-\\overline{x}_2}{\\sqrt{s_p^2(1/n_1+1/n_2)}}",
+          "title": "Independent two-sample t-test"
+        },
+        {
+          "type": "button",
+          "latex": "s_p^2=\\frac{(n_1-1)s_1^2+(n_2-1)s_2^2}{n_1+n_2-2}",
+          "title": "Pooled variance"
+        },
+        {
+          "type": "button",
+          "latex": "t=\\frac{\\overline{d}}{s_d/\\sqrt{n}}",
+          "title": "Paired t-test"
+        },
+        {
+          "type": "button",
+          "latex": "\\chi^2=\\sum\\frac{(O_i-E_i)^2}{E_i}",
+          "title": "Chi-squared"
+        }
+      ]
+    },
+    {
+      "nombre": "ANOVA",
+      "id": "anova",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "SS_B=\\sum_{i=1}^k n_i(\\overline{x}_i-\\overline{x}_g)^2",
+          "title": "SS between groups"
+        },
+        {
+          "type": "button",
+          "latex": "SS_W=\\sum_{i=1}^k\\sum_{j=1}^{n_i}(x_{ij}-\\overline{x}_i)^2",
+          "title": "SS within groups"
+        },
+        {
+          "type": "button",
+          "latex": "F=\\frac{SS_B/(k-1)}{SS_W/(N-k)}",
+          "title": "F-statistic (ANOVA)"
+        }
+      ]
+    },
+    {
+      "nombre": "Association and contingency",
+      "id": "asociacion",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "C=\\sqrt{\\frac{\\chi^2}{n+\\chi^2}}",
+          "title": "Contingency coef"
+        },
+        {
+          "type": "button",
+          "latex": "V=\\sqrt{\\frac{\\chi^2}{n\\min(r-1,c-1)}}",
+          "title": "Cramer's V"
+        }
+      ]
+    },
+    {
+      "nombre": "Inequalities",
+      "id": "desigualdades",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": true,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "P(|X-\\mu|\\ge k\\sigma)\\le 1/k^2",
+          "title": "Chebyshev"
+        }
+      ]
+    }
+  ]
+}
