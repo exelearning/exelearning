@@ -233,6 +233,7 @@ var $exeDevice = {
         function escapeForTemplateLiteral(str) {
             if (str == null) return '';
             return String(str)
+                .replace(/\\(?!(?:[a-tv-zA-TV-Z]|[()\[\]\\{}%_#&^~]))/g, '\\\\')
                 .replace(/`/g, '\\`')
                 .replace(/\$\{/g, '\\${');
         }
