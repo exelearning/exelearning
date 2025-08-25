@@ -226,19 +226,9 @@ var $exeDevice = {
             defaultImage = $exeDevice.idevicePath + 'hood.jpg';
 
         let html = '';
-        if (tinyMCE.get('instructions')) {
-            html = tinyMCE.get('instructions').getContent();
-        }
+        if (tinyMCE.get('instructions')) html = tinyMCE.get('instructions').getContent();
 
-        function escapeForTemplateLiteral(str) {
-            if (str == null) return '';
-            return String(str)
-                .replace(/\\(?!(?:[a-tv-zA-TV-Z]|[()\[\]\\{}%_#&^~]))/g, '\\\\')
-                .replace(/`/g, '\\`')
-                .replace(/\$\{/g, '\\${');
-        }
-        const escapedHtml = escapeForTemplateLiteral(html);
-        const textTextarea = `${escapedHtml}`;
+        const textTextarea = html; 
 
         return {
             id,
@@ -255,6 +245,6 @@ var $exeDevice = {
             glassSize,
             ideviceId: id,
         };
-    },
+    }
 
 };
