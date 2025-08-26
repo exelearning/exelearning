@@ -1215,6 +1215,8 @@ export default class IdevicesEngine {
                 idevice.ideviceContent.setAttribute('loading', false);
             });
         }, 500);
+        // Enable internal links
+        this.enableInternalLinks();
     }
 
     /**
