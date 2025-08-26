@@ -219,6 +219,9 @@ test-local: check-env
 	APP_SECRET=TestSecretKey \
 	composer --no-cache phpunit-unit
 
+update-licenses: check-env
+	composer --no-cache update-licenses
+
 # Generate a new migration class from changes in mapping information and compy them to the ./migrations local folder
 migration: check-docker check-env upd
 	docker compose exec exelearning php bin/console make:migration
@@ -437,6 +440,7 @@ help:
 	@echo "Other:"
 	@echo ""
 	@echo "  help                  - Display this help with available commands"
+	@echo "  update-licenses       - Update the Legal notes (Third Libraries) reading the composer/installed.json file"
 	@echo ""
 
 # Set help as the default goal if no target is specified
