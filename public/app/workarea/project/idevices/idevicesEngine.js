@@ -1989,7 +1989,10 @@ export default class IdevicesEngine {
                 });
 
                 buttonsPages.forEach((button) => {
-                    if (button.innerText.includes(pageName)) {
+                    if (
+                        button.className == 'nav-element-text' &&
+                        button.innerText == pageName
+                    ) {
                         pageElement = button;
                     }
                 });
