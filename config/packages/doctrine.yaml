@@ -1,3 +1,4 @@
+# config/packages/doctrine.yaml
 doctrine:
     dbal:
         driver: '%env(DB_DRIVER)%'
@@ -16,7 +17,6 @@ doctrine:
             enum: string
     orm:
         enable_native_lazy_objects: true
-        auto_generate_proxy_classes: '%kernel.debug%'
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
         quote_strategy: doctrine.orm.quote_strategy.ansi
         auto_mapping: false
@@ -28,4 +28,5 @@ doctrine:
                 prefix: 'App\Entity'
                 alias: App
         report_fields_where_declared: true
-
+        controller_resolver:
+            auto_mapping: false

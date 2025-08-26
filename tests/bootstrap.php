@@ -1,88 +1,13 @@
 <?php
+
 // tests/bootstrap.php
 use Symfony\Component\Dotenv\Dotenv;
-use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Process\Process;
 
 require dirname(__DIR__).'/vendor/autoload.php';
 
-if (file_exists(dirname(__DIR__).'/config/bootstrap.php')) {
-    require dirname(__DIR__).'/config/bootstrap.php';
-} elseif (method_exists(Dotenv::class, 'bootEnv')) {
+if (method_exists(Dotenv::class, 'bootEnv')) {
     (new Dotenv())->bootEnv(dirname(__DIR__).'/.env');
 }
-
-// Ensure we use the test environment
-// $_SERVER['APP_ENV'] = 'test';
-// putenv('APP_ENV=test');
-
-
-// Create a unique temporary filename for the SQLite database
-$dbFile = sys_get_temp_dir() . '/test_' . uniqid() . '.db';
-
-// Path to the var directory
-$varDir = dirname(__DIR__).'/var';
-
-// Clear test cache
-(new Filesystem())->remove($varDir.'/cache/test');
-
-// // Execute commands to prepare the database
-// echo "Setting up the test database...\n";
-
-
-// // Configure the SQLite database connection URL
-// $_SERVER['DATABASE_URL'] = 'sqlite:///' . $dbFile;
-// putenv('DATABASE_URL=sqlite:///' . $dbFile);
-
-// Clear test cache
-$filesystem = new Filesystem();
-$varDir = dirname(__DIR__).'/var';
-$filesystem->remove($varDir.'/cache/test');
-
-// // Register a cleanup function to delete the database file upon completion
-// register_shutdown_function(function() use ($dbFile, $filesystem) {
-//     if ($filesystem->exists($dbFile)) {
-//         $filesystem->remove($dbFile);
-//         echo "Temporary database deleted: $dbFile\n";
-//     }
-// });
-
-// echo "Temporary SQLite database configured: $dbFile\n";
-
-
-// Create the database
-$process = new Process(['php', 'bin/console', 'doctrine:schema:update', '--env=test', '--force']);
-$process->run();
-if (!$process->isSuccessful()) {
-    echo "Error creating the database schema: " . $process->getErrorOutput();
-    exit(1);
-}
-
-// Create test user using environment variables
-// $process = new Process(['php', 'bin/console', 'app:create-user', ${TEST_USER_EMAIL}, "${TEST_USER_PASSWORD}", "${TEST_USER_USERNAME}", "--no-fail"]);
-// $process->run();
-// if (!$process->isSuccessful()) {
-//     echo "Error creating the database schema: " . $process->getErrorOutput();
-//     exit(1);
-// }
-
-// Cache clear
-$process = new Process(['php', 'bin/console', 'cache:clear']);
-$process->run();
-if (!$process->isSuccessful()) {
-    echo "Error creating the database schema: " . $process->getErrorOutput();
-    exit(1);
-}
-
-
-// Assets install
-$process = new Process(['php', 'bin/console', 'assets:install', 'public']);
-$process->run();
-if (!$process->isSuccessful()) {
-    echo "Error creating the database schema: " . $process->getErrorOutput();
-    exit(1);
-}
-echo "Test database successfully configured.\n";
 
 
 // Enable error handler for deprecated warnings when running with --debug

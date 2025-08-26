@@ -1,0 +1,3 @@
+# config/packages/test/dama_doctrine_test.yaml
+dama_doctrine_test:
+    enable_static_connection: true
