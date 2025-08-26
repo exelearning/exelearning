@@ -26,6 +26,7 @@ var $text = {
     renderView(data, accessibility, template) {
         const hmltdata = $text.getHTMLView(data)
         return template.replace("{content}", hmltdata);
+
     },
 
     getHTMLView(data, pathMedia) {
@@ -104,6 +105,12 @@ var $text = {
 
             const newHtml = this.getHTMLView(data, pathMedia);
             if (newHtml) $node.html(newHtml);
+            const hasLatex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(
+                $node.html(),
+            );
+            if (hasLatex) {
+                $exeDevices.iDevice.gamification.math.updateLatex('.exe-text-activity');    
+            }
         }
 
         const $btn = $(`#${data.ideviceId} input.feedbacktooglebutton`);
@@ -126,12 +133,28 @@ var $text = {
                 btn.val(btn.attr('data-text-b'));
                 feedbackEl.fadeIn(() => { $text.working = false; });
             }
+            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+
         });
+        const dataString = JSON.stringify(data)
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+        }
     },
 
     replaceResourceDirectoryPaths(newDir, htmlString) {
         let dir = newDir.trim();
         if (!dir.endsWith('/')) dir += '/';
+        const custom = $('html').is('#exe-index')
+            ? 'custom/'
+            : '../custom/';
 
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
@@ -139,9 +162,14 @@ var $text = {
             .forEach(el => {
                 const attr = el.hasAttribute('src') ? 'src' : 'href';
                 const val = el.getAttribute(attr).trim();
+
                 if (/^\/?files\//.test(val)) {
                     const filename = val.split('/').pop() || '';
-                    el.setAttribute(attr, dir + filename);
+                    if (val.indexOf('file_manager') === -1) {
+                        el.setAttribute(attr, dir + filename);
+                    } else {
+                        el.setAttribute(attr, custom + filename);
+                    }
                 }
             });
         return doc.body.innerHTML;

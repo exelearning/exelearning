@@ -2,7 +2,6 @@
 namespace App\Tests\Functional\Preview;
 
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Filesystem\Filesystem;
 use App\Command\net\exelearning\Command\ElpExportCommand;
@@ -37,8 +36,6 @@ class WebZipPreviewEncodingTest extends KernelTestCase
         $this->fs = new Filesystem();
 
         $command = $c->get(ElpExportCommand::class);
-        $app = new Application();
-        $app->add($command);
         $this->tester = new CommandTester($command);
     }
 
@@ -55,7 +52,6 @@ class WebZipPreviewEncodingTest extends KernelTestCase
 
         // Run generic export (HTML5)
         $this->tester->execute([
-            'command' => 'elp:export',
             'input'   => $input,
             'output'  => $this->outDir,
             'format'  => 'html5',
