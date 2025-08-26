@@ -47,6 +47,8 @@ class OdeNavStructureSync extends BaseEntity
     public function __construct()
     {
         $this->odePagStructureSyncs = new ArrayCollection();
+        // Initialize children collection to avoid uninitialized typed property access
+        $this->odeNavStructureSyncs = new ArrayCollection();
         $this->odeNavStructureSyncProperties = new ArrayCollection();
     }
 
