@@ -104,7 +104,7 @@ var $text = {
                 : '../content/resources/' + $node.first().attr('id-resource');
 
             const newHtml = this.getHTMLView(data, pathMedia);
-            if (newHtml) $node.html(newHtml);
+            // if (newHtml) $node.html(newHtml); // To review (see #207)
             const hasLatex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(
                 $node.html(),
             );
