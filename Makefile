@@ -87,8 +87,8 @@ lint: lint-php lint-js
 fix: fix-php fix-js
 
 # Check PHP code style with PHP-CS-Fixer
-lint-php: check-docker check-env upd
-	docker compose exec exelearning composer --no-cache php-cs-checker
+lint-php: check-docker check-env
+	docker compose run --rm --no-deps --entrypoint "" exelearning composer --no-cache php-cs-checker
 
 # Automatically fix PHP code style with PHP-CS-Fixer
 fix-php: check-docker check-env upd
@@ -119,41 +119,39 @@ test: check-docker check-env
 	@echo "Stopping test environment..."
 	@docker compose --profile e2e down > /dev/null 2>&1
 
-
 # Run just unit tests with PHPUnit
 test-unit: check-docker check-env
-	@echo "Starting unit test environment..."
-	@docker compose up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
-	@docker compose exec exelearning composer --no-cache phpunit-unit
+	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
+	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit
 
 # Run unit tests in parallel using "paratest"
 test-unit-parallel: check-docker check-env
-	@echo "Starting unit test environment..."
-	@docker compose up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
-	@docker compose exec exelearning composer --no-cache phpunit-unit-parallel
+	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
+	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit-parallel
 
 # Run just e2e tests with PHPUnit
 test-e2e: check-docker check-env
 	@echo "Starting e2e test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
-	@docker compose exec exelearning composer --no-cache phpunit-e2e
+	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e
 
 # Run just e2e-realtime tests with PHPUnit
 test-e2e-realtime: check-docker check-env
 	@echo "Starting e2e test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
-	@docker compose exec exelearning composer --no-cache phpunit-e2e-realtime
+	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e-realtime
 
 # Open a shell inside the exelearning container ready for running phpunit
 test-shell:
-	docker compose --profile e2e up -d --quiet-pull	
+	@echo "Starting e2e test environment..."
+	@docker compose --profile e2e up -d --quiet-pull
 	@echo "\033[33mRun a specific test with 'composer phpunit <test path>'. Example: composer phpunit tests/Command/CreateUserCommandTest.php\033[0m"	
 	docker compose exec exelearning sh
-	docker compose --profile e2e down
+	@docker compose --profile e2e down
 
 # Open a shell inside the exelearning container
 shell: check-docker check-env upd
