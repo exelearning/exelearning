@@ -10,6 +10,7 @@ use App\Service\net\exelearning\Service\Api\OdeExportServiceInterface;
 use App\Service\net\exelearning\Service\Api\OdeServiceInterface;
 use App\Service\net\exelearning\Service\FilesDir\FilesDirServiceInterface;
 use App\Util\net\exelearning\Util\FileUtil;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -17,6 +18,8 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
+use Symfony\Component\Filesystem\Filesystem;
 
 #[AsCommand(
     name: 'elp:export',
@@ -32,6 +35,7 @@ class ElpExportCommand extends Command
         private FileHelper $fileHelper,
         private FilesDirServiceInterface $filesDirService,
         private UserRepository $userRepository,
+        private EntityManagerInterface $entityManager,
     ) {
         parent::__construct();
     }
@@ -118,7 +122,8 @@ class ElpExportCommand extends Command
             $io->section("Exporting to format: $format");
         }
 
-        $user = $this->getUser();
+        // Create ephemeral user (random) for this execution
+        $user = $this->createEphemeralUser();
         $this->filesDirService->checkFilesDir();
         $sessionId = $this->generateSessionId();
         $this->createSessionDirectories($user, $sessionId, $debug, $io);
@@ -141,6 +146,8 @@ class ElpExportCommand extends Command
         if ('OK' !== $checkResult['responseMessage']) {
             $io->error('Invalid ELP file: '.$checkResult['responseMessage']);
             $this->cleanupSession($sessionDir);
+            // Remove ephemeral user
+            $this->removeEphemeralUser($user);
             if ($tempFile) {
                 unlink($tempFile);
             }
@@ -168,8 +175,15 @@ class ElpExportCommand extends Command
         );
 
         if ('OK' !== $exportResult['responseMessage']) {
+            // Close ODE session for this ephemeral user
+            try {
+                $this->odeService->closeOdeSession($checkResult['odeSessionId'] ?? null, 0, $user);
+            } catch (\Throwable $e) {
+                // swallow cleanup errors
+            }
             $io->error('Export failed: '.$exportResult['responseMessage']);
             $this->cleanupSession($sessionDir);
+            $this->removeEphemeralUser($user);
             if ($tempFile) {
                 unlink($tempFile);
             }
@@ -178,7 +192,23 @@ class ElpExportCommand extends Command
         }
 
         $exportDirPath = $this->fileHelper->getOdeSessionUserTmpExportDir($checkResult['odeSessionId'], $user);
-        $this->copyDirectory($exportDirPath, $outputDir);
+
+        $filesystem = new Filesystem();
+        try {
+            // mirror() is the optimized way to copy a complete directory.
+            $filesystem->mirror($exportDirPath, $outputDir);
+        } catch (IOExceptionInterface $e) {
+            $io->error('Failed to copy export result to output directory: '.$e->getMessage());
+
+            return Command::FAILURE;
+        }
+
+        // Close ODE session and cleanup
+        try {
+            $this->odeService->closeOdeSession($checkResult['odeSessionId'] ?? null, 0, $user);
+        } catch (\Throwable $e) {
+            // swallow cleanup errors
+        }
         $this->cleanupSession($sessionDir);
 
         if ($tempFile) {
@@ -187,17 +217,40 @@ class ElpExportCommand extends Command
 
         $io->success("Exported successfully to $outputDir");
 
+        // Remove ephemeral user
+        $this->removeEphemeralUser($user);
+
         return Command::SUCCESS;
     }
 
-    private function getUser(): User
+    private function createEphemeralUser(): User
     {
-        $user = $this->userRepository->find(1);
-        if (!$user) {
-            throw new \RuntimeException('User with ID 1 not found.');
-        }
+        $user = new User();
+        // Random deterministic fields
+        $email = sprintf('tmp+%s@local', bin2hex(random_bytes(6)));
+        $userId = bin2hex(random_bytes(20)); // 40 hex chars
+        $password = bin2hex(random_bytes(12));
+
+        $user->setEmail($email);
+        $user->setUserId($userId);
+        $user->setPassword($password);
+        $user->setIsLopdAccepted(true);
+
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
 
         return $user;
+    }
+
+    private function removeEphemeralUser(User $user): void
+    {
+        try {
+            $managed = $this->entityManager->contains($user) ? $user : $this->entityManager->merge($user);
+            $this->entityManager->remove($managed);
+            $this->entityManager->flush();
+        } catch (\Throwable $e) {
+            // No-op if already removed or DB cleanup fails in tests
+        }
     }
 
     private function generateSessionId(): string
@@ -229,31 +282,6 @@ class ElpExportCommand extends Command
     {
         if (file_exists($sessionDir)) {
             FileUtil::removeDir($sessionDir);
-        }
-    }
-
-    private function copyDirectory(string $sourceDir, string $destDir): void
-    {
-        $sourceDir = rtrim($sourceDir, '/').'/';
-        $destDir = rtrim($destDir, '/').'/';
-
-        if (!file_exists($destDir)) {
-            mkdir($destDir, 0755, true);
-        }
-
-        foreach (scandir($sourceDir) as $item) {
-            if (in_array($item, ['.', '..'], true)) {
-                continue;
-            }
-
-            $src = $sourceDir.$item;
-            $dst = $destDir.$item;
-
-            if (is_dir($src)) {
-                $this->copyDirectory($src, $dst);
-            } else {
-                copy($src, $dst);
-            }
         }
     }
 }

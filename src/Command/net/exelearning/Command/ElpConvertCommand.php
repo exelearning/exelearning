@@ -10,6 +10,7 @@ use App\Service\net\exelearning\Service\Api\OdeExportServiceInterface;
 use App\Service\net\exelearning\Service\Api\OdeServiceInterface;
 use App\Service\net\exelearning\Service\FilesDir\FilesDirServiceInterface;
 use App\Util\net\exelearning\Util\FileUtil;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -37,6 +38,7 @@ class ElpConvertCommand extends Command
     private FileHelper $fileHelper;
     private FilesDirServiceInterface $filesDirService;
     private UserRepository $userRepository;
+    private EntityManagerInterface $entityManager;
 
     /**
      * Constructor with dependency injection.
@@ -47,12 +49,14 @@ class ElpConvertCommand extends Command
         FileHelper $fileHelper,
         FilesDirServiceInterface $filesDirService,
         UserRepository $userRepository,
+        EntityManagerInterface $entityManager,
     ) {
         $this->odeService = $odeService;
         $this->odeExportService = $odeExportService;
         $this->fileHelper = $fileHelper;
         $this->filesDirService = $filesDirService;
         $this->userRepository = $userRepository;
+        $this->entityManager = $entityManager;
 
         parent::__construct();
     }
@@ -125,8 +129,8 @@ class ElpConvertCommand extends Command
             $io->text("Output file: $outputPath");
         }
 
-        // Create a mock user for the conversion process
-        $user = $this->getUser();
+        // Always create an ephemeral user for the conversion process
+        $user = $this->createEphemeralUser();
 
         // Generate FILES_DIR directory structure. IMPORTANT, because usually this is created on login WTF!
         $this->filesDirService->checkFilesDir();
@@ -170,6 +174,8 @@ class ElpConvertCommand extends Command
         if ('OK' !== $checkResult['responseMessage']) {
             $io->error('Invalid ELP file: '.$checkResult['responseMessage']);
             $this->cleanupSession($sessionDir);
+            // Remove ephemeral user
+            $this->removeEphemeralUser($user);
             if ($tempFile) {
                 unlink($tempFile);
             }
@@ -210,8 +216,14 @@ class ElpConvertCommand extends Command
         );
 
         if ('OK' !== $exportResult['responseMessage']) {
+            // Close ODE session before cleanup
+            try {
+                $this->odeService->closeOdeSession($checkResult['odeSessionId'] ?? null, 0, $user);
+            } catch (\Throwable $e) {
+            }
             $io->error('Export failed: '.$exportResult['responseMessage']);
             $this->cleanupSession($sessionDir);
+            $this->removeEphemeralUser($user);
             if ($tempFile) {
                 unlink($tempFile);
             }
@@ -228,7 +240,11 @@ class ElpConvertCommand extends Command
             $io->text('Exported file copied to output path');
         }
 
-        // Clean up the session
+        // Close ODE session and clean up the session
+        try {
+            $this->odeService->closeOdeSession($checkResult['odeSessionId'] ?? null, 0, $user);
+        } catch (\Throwable $e) {
+        }
         $this->cleanupSession($sessionDir);
 
         // Clean up temporary file if used
@@ -241,24 +257,39 @@ class ElpConvertCommand extends Command
 
         $io->success("ELP file successfully converted and saved to: $outputPath");
 
+        // Remove ephemeral user
+        $this->removeEphemeralUser($user);
+
         return Command::SUCCESS;
     }
 
-    /**
-     * Get a mock user for the conversion process.
-     *
-     * Since the command runs without a real user context, we need to get
-     * a mock user to satisfy the requirements of the OdeService methods.
-     */
-    private function getUser(): User
+    private function createEphemeralUser(): User
     {
-        $user = $this->userRepository->find(1);
+        $user = new User();
+        $email = sprintf('tmp+%s@local', bin2hex(random_bytes(6)));
+        $userId = bin2hex(random_bytes(20));
+        $password = bin2hex(random_bytes(12));
 
-        if (!$user) {
-            throw new \RuntimeException('User with userId 1 not found.');
-        }
+        $user->setEmail($email);
+        $user->setUserId($userId);
+        $user->setPassword($password);
+        $user->setIsLopdAccepted(true);
+
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
 
         return $user;
+    }
+
+    private function removeEphemeralUser(User $user): void
+    {
+        try {
+            $managed = $this->entityManager->contains($user) ? $user : $this->entityManager->merge($user);
+            $this->entityManager->remove($managed);
+            $this->entityManager->flush();
+        } catch (\Throwable $e) {
+            // ignore if already removed
+        }
     }
 
     /**
