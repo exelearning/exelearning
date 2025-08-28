@@ -26,9 +26,6 @@ PUBLISH_ARG := $(if $(PUBLISH),--publish $(PUBLISH),)
 # Use subst for multiplatform ~ expand
 EXPAND_PATH = $(subst ~,$(HOME),$(1))
 
-# Enable debug if DEBUG or ACTIONS_STEP_DEBUG is set (e.g., in GitHub Actions re-run with debug logging)
-DEBUG_FLAG := $(if $(filter 1 true yes,$(DEBUG) $(ACTIONS_STEP_DEBUG)) ,--debug --display-deprecations,)
-
 # Check if Docker is running
 check-docker:
 ifeq ($(SYSTEM_OS),windows)
@@ -115,9 +112,9 @@ test: check-docker check-env
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit $(if $(TEST),test: $(TEST) $(EXTRA),suite: all)"
 	@if [ -n "$(TEST)" ]; then \
-		docker compose exec exelearning vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always $(TEST) $(EXTRA) -- $(DEBUG_FLAG); \
+		docker compose exec exelearning vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always $(TEST) $(EXTRA); \
 	else \
-		docker compose exec exelearning composer --no-cache phpunit -- $(DEBUG_FLAG); \
+		docker compose exec exelearning composer --no-cache phpunit; \
 	fi
 	@echo "Stopping test environment..."
 	@docker compose --profile e2e down > /dev/null 2>&1
@@ -128,23 +125,28 @@ test-unit: check-docker check-env
 	@echo "Starting unit test environment..."
 	@docker compose up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
-	@docker compose exec exelearning composer --no-cache phpunit-unit -- $(DEBUG_FLAG)
-	@echo "Stopping test environment..."
-	@docker compose --profile e2e down > /dev/null 2>&1
+	@docker compose exec exelearning composer --no-cache phpunit-unit
+
+# Run unit tests in parallel using "paratest"
+test-unit-parallel: check-docker check-env
+	@echo "Starting unit test environment..."
+	@docker compose up -d --quiet-pull
+	@echo "Running PHPUnit tests..."
+	@docker compose exec exelearning composer --no-cache phpunit-unit-parallel
 
 # Run just e2e tests with PHPUnit
 test-e2e: check-docker check-env
 	@echo "Starting e2e test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
-	@docker compose exec exelearning composer --no-cache phpunit-e2e -- $(DEBUG_FLAG)
+	@docker compose exec exelearning composer --no-cache phpunit-e2e
 
 # Run just e2e-realtime tests with PHPUnit
 test-e2e-realtime: check-docker check-env
 	@echo "Starting e2e test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
-	@docker compose exec exelearning composer --no-cache phpunit-e2e-realtime -- $(DEBUG_FLAG)
+	@docker compose exec exelearning composer --no-cache phpunit-e2e-realtime
 
 # Open a shell inside the exelearning container ready for running phpunit
 test-shell:
@@ -211,12 +213,15 @@ test-local: check-env
 	@echo "\033[31mWarning: Running tests in local environment may cause unexpected behavior. Use at your own risk.\033[0m"
 	@TMPDIR=$$(mktemp -d /tmp/exe-test-XXXXXX) && \
 	echo "Using temporary directory: $$TMPDIR" && \
-	DB_DRIVER=pdo_sqlite \
-	DB_PATH="$$TMPDIR/exelearning.db" \
-	FILES_DIR="$$TMPDIR/" \
-	APP_ENV=dev \
-	APP_DEBUG=1 \
-	APP_SECRET=TestSecretKey \
+	export DB_DRIVER=pdo_sqlite && \
+	export DB_PATH=":memory:" && \
+	export FILES_DIR="$$TMPDIR/" && \
+	export APP_ENV=test && \
+	export APP_DEBUG=1 && \
+	export APP_SECRET=TestSecretKey && \
+	composer db-schema-update && \
+	php bin/console doctrine:schema:update --force && \
+	php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --all-or-nothing && \
 	composer --no-cache phpunit-unit
 
 update-licenses: check-env
@@ -427,6 +432,7 @@ help:
 	@echo "  test-e2e-realtime     - Run e2e-realtime tests with PHPUnit (chrome)"
 	@echo "  test-shell            - Open a shell inside the exelearning container (and the chrome container)"
 	@echo "  test-local            - Run unit tests in local environment (no Docker, SQLite tmp DB)"
+	@echo "  test-unit-parallel    - Run unit tests in parallel using paratest"
 	@echo ""
 	@echo "Packaging:"
 	@echo ""

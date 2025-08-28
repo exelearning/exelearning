@@ -50,7 +50,6 @@ You can customize the deployment by setting these environment variables:
 - `APP_PORT`: Port to access the application (default: 8080)
 - `APP_SECRET`: Secret key for Symfony (required for production)
 - `TEST_USER_EMAIL`, `TEST_USER_USERNAME`, `TEST_USER_PASSWORD`: Credentials for the first test user
-- `TEST_USER2_EMAIL`, `TEST_USER2_USERNAME`, `TEST_USER2_PASSWORD`: Credentials for the second test user
 - `MERCURE_JWT_SECRET_KEY`: Secret key for Mercure real-time updates
 
 ### Database-Specific Variables
