@@ -292,6 +292,15 @@ class ExportEPUB3Service implements ExportServiceInterface
                 }
             }
 
+            // Convert SimpleXMLElement to DOMDocument
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+            $dom->formatOutput = true;
+            $importedNode = $dom->importNode(
+                dom_import_simplexml($pageExportHTML),
+                true // deep copy
+            );
+            $dom->appendChild($importedNode);
+
             // Update data-idevice-json-data attributes in the DOM using the processed clones
             $xpath = new \DOMXPath($dom);
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
