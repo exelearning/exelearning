@@ -2,7 +2,6 @@
 namespace App\Tests\Functional\Command;
 
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Filesystem\Filesystem;
 use App\Command\net\exelearning\Command\ElpExportHtml5Command;
@@ -29,9 +28,6 @@ class ElpExportEncodingTest extends KernelTestCase
         $this->fs = new Filesystem();
 
         $command = $c->get(ElpExportHtml5Command::class);
-        $app = new Application();
-        $app->add($command);
-
         $this->tester = new CommandTester($command);
     }
 

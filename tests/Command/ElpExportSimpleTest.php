@@ -4,7 +4,6 @@ namespace App\Tests\Command;
 
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\DomCrawler\Crawler;
-use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Filesystem\Filesystem;
 use App\Command\net\exelearning\Command\ElpExportHtml5Command;
@@ -22,8 +21,6 @@ class ElpExportSimpleTest extends KernelTestCase
 
         $this->filesystem = new Filesystem();
         $command = $container->get(ElpExportHtml5Command::class);
-        $application = new Application();
-        $application->add($command);
         $this->commandTester = new CommandTester($command);
     }
 
@@ -99,7 +96,7 @@ class ElpExportSimpleTest extends KernelTestCase
         );
         $this->assertStringContainsString(
             '¿Qué es eXeLearning?',
-            $crawler->filter('main h1')->text(),
+            $crawler->filter('main .page-title')->text(),
             'Main heading does not match root node title.'
         );
         $this->assertGreaterThan(
