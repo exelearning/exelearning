@@ -424,7 +424,7 @@ class OdeComponentsSync extends BaseEntity
 
         if (null !== $this->jsonProperties) {
             $decoded = json_decode($this->jsonProperties, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            if (JSON_ERROR_NONE === json_last_error() && is_array($decoded)) {
                 $walker = function (&$node) use (&$walker, $pagesFileData, $prefixPageNodeLink, $exportType, $isIndex) {
                     if (is_array($node)) {
                         foreach ($node as &$v) {
