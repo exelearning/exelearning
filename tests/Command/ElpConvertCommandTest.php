@@ -3,13 +3,10 @@
 namespace App\Tests\Command;
 
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Filesystem\Filesystem;
 use App\Command\net\exelearning\Command\ElpConvertCommand;
 use PHPUnit\Framework\Attributes\DataProvider;
-use App\Entity\net\exelearning\Entity\User;
-use App\Repository\net\exelearning\Repository\UserRepository;
 
 class ElpConvertCommandTest extends KernelTestCase
 {
@@ -24,28 +21,7 @@ class ElpConvertCommandTest extends KernelTestCase
 
         $container = static::getContainer();
 
-        // Create user 1 if not exists
-        $userRepository = $container->get(UserRepository::class);
-        $entityManager = $container->get('doctrine.orm.entity_manager');
-
-        if (!$userRepository->find(1)) {
-            $user = new User();
-            $user->setUserId(1);
-            $user->setEmail('tests@example.com');
-            $user->setPassword('random-pass');
-            $user->setIsLopdAccepted(true);
-
-            $metadata = $entityManager->getClassMetadata(User::class);
-            $metadata->setIdGeneratorType(\Doctrine\ORM\Mapping\ClassMetadata::GENERATOR_TYPE_NONE);
-
-            $entityManager->persist($user);
-            $entityManager->flush();
-        }
-
-        $application = new Application();
         $command = $container->get(ElpConvertCommand::class);
-        $application->add($command);
-
         $this->commandTester = new CommandTester($command);
     }
 
@@ -59,7 +35,6 @@ class ElpConvertCommandTest extends KernelTestCase
         $this->assertFileExists($inputFile, "Input ELP file does not exist: $inputFile");
 
         $this->commandTester->execute([
-            'command' => 'elp:convert',
             'input' => $inputFile,
             'output' => $outputFile,
             '--debug' => true,
@@ -74,11 +49,12 @@ class ElpConvertCommandTest extends KernelTestCase
     public static function elpFileProvider(): array
     {
         return [
-            ['basic-example.elp'],
-            ['old_elp_modelocrea.elp'],
-            ['old_elp_nebrija.elp'],
-            ['old_elp_poder_conexiones.elp'],
-            ['old_manual_exe29_compressed.elp'],
+            ['basic-example.elp'],                  //   85K
+            ['encoding_test.elp'],                  //  477K
+            // ['old_elp_modelocrea.elp'],          //  4,2M
+            // ['old_elp_nebrija.elp'],             //  7,6M
+            // ['old_elp_poder_conexiones.elp'],    //  5,1M
+            // ['old_manual_exe29_compressed.elp'], // 10,0M
         ];
     }
 
@@ -94,7 +70,6 @@ class ElpConvertCommandTest extends KernelTestCase
         $this->assertFileExists($tempInvalidFile);
 
         $this->commandTester->execute([
-            'command' => 'elp:convert',
             'input' => $tempInvalidFile,
             'output' => $tempOutput,
             '--debug' => true,

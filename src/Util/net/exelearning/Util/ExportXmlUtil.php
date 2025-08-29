@@ -1975,18 +1975,35 @@ class ExportXmlUtil
             self::appendSimpleXml($pageHeader, $pageNumber);
         }
 
+        // Package title
+        $packageTitleValue = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : '';
+        if (Constants::EXPORT_TYPE_HTML5_SP == $exportType) {
+            $packageTitleValue = '';
+        } // The single page export has its own package title
+        if ('' != $packageTitleValue) {
+            $packageTitle = $pageHeader->addChild('h1', $packageTitleValue);
+            $packageTitle->addAttribute('class', 'package-title');
+        }
+
         // Page title
+        $pageTitleTag = 'h1';
+        if ('' != $packageTitleValue) {
+            $pageTitleTag = 'h2';
+        }
         if ('' != $titlePage) {
             $headerEmpty = false;
-            $pageTitle = $pageHeader->addChild('h1', $titlePage);
+            $pageTitle = $pageHeader->addChild($pageTitleTag, $titlePage);
             $pageTitle->addAttribute('class', 'page-title');
         }
 
         if ($headerEmpty) {
-            $pageHeader->addAttribute('class', 'sr-av');
-            $pageTitle = $pageHeader->addChild('h1', $odeNavStructureSync->getPageName());
+            $pageTitle = $pageHeader->addChild($pageTitleTag, $odeNavStructureSync->getPageName());
             $pageTitle->addAttribute('id', 'page-title-node-content');
-            $pageTitle->addAttribute('class', 'page-title');
+            if ('' == $packageTitleValue) {
+                $pageHeader->addAttribute('class', 'sr-av');
+            } else {
+                $pageTitle->addAttribute('class', 'page-title sr-av');
+            }
         }
 
         return $pageHeaderMain;
