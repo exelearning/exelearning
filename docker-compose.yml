@@ -34,7 +34,7 @@ services:
 
   # The alpine-chromium image includes a browser configured to work with Chromedriver  
   chrome:
-    image: ghcr.io/erseco/alpine-chromium
+    image: ghcr.io/erseco/alpine-chromedriver
     container_name: chrome
     hostname: chrome # Important! To be called from exelearning container
     shm_size: "2gb"
