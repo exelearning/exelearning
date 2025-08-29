@@ -533,3 +533,7 @@ button.toggler:focus {
     .exe-web-site main.page{padding-left: 0;padding-right: 0}
     .exe-web-site main.page{padding-top:1em}
 }
+
+/* Test */
+.exe-content{filter:invert(98%) hue-rotate(180deg)}
+.exe-content :is(iframe,video,img){filter:invert(100%) hue-rotate(180deg)}
