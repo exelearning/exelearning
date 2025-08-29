@@ -123,9 +123,6 @@ abstract class ExelearningE2EBase extends PantherTestCase
                 // Docroot and router for the embedded server (php -S)
                 'webServerDir'      => __DIR__ . '/../../public',
                 'router'            => __DIR__ . '/../../public/router.php',
-                'env'          => [
-                    'FILES_DIR' => $_ENV['FILES_DIR'] ?? '/app/files',
-                ],
                 # IMPORTANT! Never define this var, or phanter will not start internal webserver
                 // 'external_base_uri' => null, 
             ],
@@ -237,16 +234,27 @@ abstract class ExelearningE2EBase extends PantherTestCase
      * Dumps browser console logs (diagnostics).
      *
      * @param Client $client
+     * @param string|null $logFile Optional file path to save logs
      *
      * @return void
      */
-    protected function captureBrowserConsoleLogs(Client $client): void
+    protected function captureBrowserConsoleLogs(Client $client, ?string $logFile = null): void
     {
         $logs = $client->getWebDriver()->manage()->getLog('browser');
+        $lines = [];
+
         foreach ($logs as $entry) {
-            $level = strtoupper($entry['level']);
+            $level   = strtoupper($entry['level']);
             $message = $entry['message'];
+            $time    = date('H:i:s', $entry['timestamp'] / 1000);
+            $line    = sprintf("[%s] [%s] %s", $time, $level, $message);
+            $lines[] = $line;
+
             echo "\n[Browser Console][$level]: $message\n";
+        }
+
+        if ($logFile && !empty($lines)) {
+            file_put_contents($logFile, implode(PHP_EOL, $lines) . PHP_EOL, FILE_APPEND);
         }
     }
 
@@ -269,15 +277,3 @@ abstract class ExelearningE2EBase extends PantherTestCase
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
