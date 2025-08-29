@@ -1418,6 +1418,7 @@ var $exeDevices = {
                                             <div class="d-flex justify-content-end  border-secondary p-2">
                                                <button id="eXeESaveButton"  class="btn btn-success ms-2"/>${_('Save')}</button>
                                                <button id="eXeECopyButton"  class="btn btn-success ms-2"/>${_('Copy')}</button>
+                                               <button id="eXeEOpenChatGPTButton"  class="btn btn-success ms-2"/>${_('Send to AI')}</button>
                                                <button id="eXeEIAButton"  class="btn btn-success ms-2"/>${_('Add questions')}</button>
                                             </div>
                                         </div>
@@ -1627,6 +1628,7 @@ var $exeDevices = {
                     const $tabIA = $('#eXeETabIA');
 
                     const $copyButton = $('#eXeECopyButton');
+                    const $openChatGPTButton = $('#eXeEOpenChatGPTButton');
                     const $saveButton = $('#eXeESaveButton');
                     const $iaButton = $('#eXeEIAButton');
 
@@ -1638,6 +1640,7 @@ var $exeDevices = {
 
                     $textPrompt.show()
                     $copyButton.show();
+                    $openChatGPTButton.show();
 
                     $divEIA.hide();
                     $iaButton.hide()
@@ -1652,6 +1655,7 @@ var $exeDevices = {
                         $textPrompt.hide()
                         $saveButton.show();
                         $copyButton.hide();
+                        $openChatGPTButton.hide();
                         $iaButton.hide();
                     });
 
@@ -1665,6 +1669,7 @@ var $exeDevices = {
                         $textPrompt.show()
                         $saveButton.hide();
                         $copyButton.show();
+                        $openChatGPTButton.show();                         
                         $iaButton.hide();
 
                     });
@@ -1681,7 +1686,20 @@ var $exeDevices = {
 
                         $saveButton.hide();
                         $copyButton.hide();
+                        $openChatGPTButton.hide();
                         $iaButton.hide();
+                    });
+
+                    $openChatGPTButton.on('click', function () {
+                        $tabQuestions.trigger('click');
+                        let prompt = $textPrompt.val();
+                        if (!prompt || !prompt.trim()) {
+                            alert(_('There is no query to send to the assistant.'));
+                            return;
+                        }
+                        const encodedPrompt = encodeURIComponent(prompt.trim());
+                        const url = `https://chat.openai.com/?q=${encodedPrompt}`;
+                        window.open(url, '_blank');
                     });
 
                     $saveButton.on('click', function () {
