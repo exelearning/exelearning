@@ -96,7 +96,7 @@ class ElpExportSimpleTest extends KernelTestCase
         );
         $this->assertStringContainsString(
             '¿Qué es eXeLearning?',
-            $crawler->filter('main h1')->text(),
+            $crawler->filter('main .page-title')->text(),
             'Main heading does not match root node title.'
         );
         $this->assertGreaterThan(
