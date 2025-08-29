@@ -257,7 +257,7 @@ var $exeDevice = {
 
         $exeDevices.iDevice.gamification.scorm.setValues(previousData.isScorm, previousData.textButtonScorm, previousData.repeatActivity, previousData.weighted);
         $exeDevices.iDevice.gamification.common.setLanguageTabValues(previousData.msgs);
-   
+    $exeDevice.updateQuestionsNumber()
     },
 
     /**

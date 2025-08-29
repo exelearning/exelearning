@@ -129,7 +129,7 @@ var $form = {
                 </div>
                 <div class="form-instructions">${ldata.eXeIdeviceTextAfter}</div>
             </div>
-            ${$form.extractMediaElements(ldata.questionsData)}
+            ${$form.extractMediaElements(data.questionsData)}
             
             `;
 

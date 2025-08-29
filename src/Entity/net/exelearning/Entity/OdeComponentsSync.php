@@ -421,6 +421,50 @@ class OdeComponentsSync extends BaseEntity
                 }
             }
         }
+
+        if (null !== $this->jsonProperties) {
+            $decoded = json_decode($this->jsonProperties, true);
+            if (JSON_ERROR_NONE === json_last_error() && is_array($decoded)) {
+                $walker = function (&$node) use (&$walker, $pagesFileData, $prefixPageNodeLink, $exportType, $isIndex) {
+                    if (is_array($node)) {
+                        foreach ($node as &$v) {
+                            $walker($v);
+                        }
+                    } elseif (is_string($node)) {
+                        if (str_contains($node, $prefixPageNodeLink)) {
+                            foreach ($pagesFileData as $key => $data) {
+                                $pageLinkString = $prefixPageNodeLink.$key;
+                                if (str_contains($node, $pageLinkString)) {
+                                    if (Constants::EXPORT_TYPE_HTML5_SP == $exportType) {
+                                        $pageUrl = '#page-content-'.$key;
+                                    } else {
+                                        $pageUrl = !$isIndex ? '..'.Constants::SLASH.$data['fileUrl'] : $data['fileUrl'];
+                                    }
+                                    $node = str_replace($pageLinkString, $pageUrl, $node);
+                                }
+                            }
+                        }
+                    }
+                };
+                $walker($decoded);
+                $this->jsonProperties = json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            } else {
+                // Fallback: raw string replacement on the JSON text
+                if (str_contains($this->jsonProperties, $prefixPageNodeLink)) {
+                    foreach ($pagesFileData as $key => $data) {
+                        $pageLinkString = $prefixPageNodeLink.$key;
+                        if (str_contains($this->jsonProperties, $pageLinkString)) {
+                            if (Constants::EXPORT_TYPE_HTML5_SP == $exportType) {
+                                $pageUrl = '#page-content-'.$key;
+                            } else {
+                                $pageUrl = !$isIndex ? '..'.Constants::SLASH.$data['fileUrl'] : $data['fileUrl'];
+                            }
+                            $this->jsonProperties = str_replace($pageLinkString, $pageUrl, $this->jsonProperties);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
