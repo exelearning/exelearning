@@ -30,9 +30,11 @@ var $trueorfalse = {
     renderView: function (data, accesibility, template, ideviceId) {
 
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
+        const medias = $trueorfalse.extractMediaElements(data.questionsGame);
         const htmlContent = $trueorfalse.createInterfaceTrueOrFalse(ldata);
+        const content = htmlContent + medias
 
-        const html = template.replace('{content}', htmlContent);
+        const html = template.replace('{content}', content);
         $exeDevices.iDevice.gamification.math.updateLatex(
             '.exe-trueorfalse-container',
         );
@@ -40,41 +42,18 @@ var $trueorfalse = {
         return html;
     },
 
-    extractMediaElements1: function (items) {
-        if (!Array.isArray(items)) return '';
-
-        const mediaRegex = /<(img|audio|video)[^>]*>/gi;
-        let mediaElements = [];
-
-        for (const rawItem of items) {
-            const item = rawItem || {};
-            const question = item.question ?? '';
-            const feedback = item.feedback ?? '';
-            const suggestion = item.suggestion ?? '';
-            const baseText = item.baseText ?? '';
-
-            const combined = `${question} ${feedback} ${suggestion} ${baseText}`;
-            const matches = combined.match(mediaRegex);
-            if (matches) mediaElements.push(...matches);
-        }
-
-        const uniqueMedia = [...new Set(mediaElements)];
-        return `<div class="questionsMedia" style="display:none">${uniqueMedia.join('')}</div>`;
-    },
-
 
     extractMediaElements: function (items) {
         if (!Array.isArray(items)) return ''
-
+ 
         const tmp = document.createElement('div')
         const set = new Set()
 
         for (const { question = '', feedback = '', suggestion = '', baseText = '' } of items) {
             tmp.innerHTML = `${question} ${feedback} ${suggestion} ${baseText}`
             tmp.querySelectorAll('img, audio, video').forEach(el => set.add(el.outerHTML))
-            tmp.innerHTML = '' // limpiar por si el GC tarda
+            tmp.innerHTML = '' 
         }
-
         return `<div class="questionsMedia" style="display:none">${[...set].join('')}</div>`
     },
 
@@ -101,9 +80,11 @@ var $trueorfalse = {
             $exeDevices.iDevice.gamification.scorm.registerActivity(ldata)
         }
 
+        $trueorfalse.addEvents(ldata);
 
         const dataString = JSON.stringify(ldata)
         const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
 
         if (!hasLatex) return;
         const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
@@ -116,7 +97,7 @@ var $trueorfalse = {
             );
         }
 
-        $trueorfalse.addEvents(ldata);
+        
     },
 
     initScormData: function (ldata) {
@@ -358,7 +339,6 @@ var $trueorfalse = {
             </div>
         </div>
         <div class="TOFP-After">${mOptions.eXeIdeviceTextAfter}</div>
-        ${$trueorfalse.extractMediaElements(data.questionsGame)}
         `;
         return html;
     },
