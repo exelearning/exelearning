@@ -7,6 +7,7 @@
 - New Security Improvements: Disabled directory listing and prevented execution of uploaded scripts
 - New Automate Workflows
 - New Make commands for developers
+- Question type iDevices: Send prompt to IA button
 
 ### Fixed
 

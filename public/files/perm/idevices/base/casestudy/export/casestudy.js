@@ -45,7 +45,7 @@ var $casestudy = {
         if (data.title && data.title == 'Case Study' && $title.text() == 'Case Study') {
             $title.text(data.msgs.msgCaseStudy)
         }
-
+        this.addEvents(data);
         const dataString = JSON.stringify(data)
         var hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
 
@@ -59,7 +59,7 @@ var $casestudy = {
                 '.exe-casestudy-container',
             );
         }
-        this.addEvents(data);
+        
     },
 
     createInterfaceCaseStudy: function (data) {

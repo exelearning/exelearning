@@ -164,6 +164,29 @@ class ExportHTML5Service implements ExportServiceInterface
             );
             $dom->appendChild($importedNode);
 
+            // Update data-idevice-json-data attributes in the DOM using the processed clones
+            $xpath = new \DOMXPath($dom);
+            foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
+                foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
+                    $ideviceId = $odeComponentsSync->getOdeIdeviceId();
+                    if (!isset($odeComponentsSyncCloneArray[$ideviceId])) {
+                        continue;
+                    }
+                    $odeComponentsSyncClone = $odeComponentsSyncCloneArray[$ideviceId];
+                    $jsonData = $odeComponentsSyncClone->getJsonProperties();
+
+                    $query = "//*[@id='".$ideviceId."']";
+                    $nodes = $xpath->query($query);
+                    if ($nodes && $nodes->length > 0) {
+                        foreach ($nodes as $node) {
+                            if (null !== $jsonData) {
+                                $node->setAttribute('data-idevice-json-data', $jsonData);
+                            }
+                        }
+                    }
+                }
+            }
+
             // Write the file as real HTML5
             // Use saveHTML() to get the string, then prepend the HTML5 doctype.
             // This is more efficient than saveHTMLFile() followed by file_get_contents()/file_put_contents().
