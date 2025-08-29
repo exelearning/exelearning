@@ -32,9 +32,9 @@ services:
         echo "this is a test line 2"
         php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail
 
-  # The Zenika Alpine Chrome image includes a browser configured to work with Chromedriver  
+  # The alpine-chromium image includes a browser configured to work with Chromedriver  
   chrome:
-    image: ghcr.io/zenika/alpine-chrome:with-chromedriver
+    image: ghcr.io/erseco/alpine-chromium
     container_name: chrome
     hostname: chrome # Important! To be called from exelearning container
     shm_size: "2gb"
