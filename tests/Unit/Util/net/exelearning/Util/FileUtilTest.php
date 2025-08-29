@@ -11,10 +11,11 @@ class FileUtilTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->testDir = sys_get_temp_dir() . '/file_util_test';
-        if (!is_dir($this->testDir)) {
-            mkdir($this->testDir, 0777, true);
-        }
+        $this->testDir = sys_get_temp_dir()
+            . '/file_util_test_'
+            . bin2hex(random_bytes(6)); // unique name for each test
+
+        mkdir($this->testDir, 0777, true);
     }
 
     protected function tearDown(): void
