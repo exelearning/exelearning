@@ -13,16 +13,14 @@ services:
       # - 9003:9003 # Port for Xdebug, you don't need to map this port, because is the container who connects to the host xdebug
     restart: unless-stopped # Restart the container unless it is stopped manually
     volumes:
-      ##FORDELETEINCI-START
       - ./src:/app/src
       - ./tests:/app/tests
       - ./public:/app/public
       - ./translations:/app/translations
       - ./templates:/app/templates
-      ##FORDELETEINCI-END
       - ./config:/app/config
       - ./composer.json:/app/composer.json
-      - ./composer.lock:/app/composer.lock      
+      - ./composer.lock:/app/composer.lock
       - mnt-data:/mnt/data:rw # Mount the volume for persistent data
       - ./e2e_screenshots:/tmp/e2e_screenshots
     environment:
@@ -33,14 +31,10 @@ services:
         echo "this is a test line 1"
         echo "this is a test line 2"
         php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail
-        php bin/console app:create-user ${TEST_USER2_EMAIL} ${TEST_USER2_PASSWORD} ${TEST_USER2_USERNAME} --no-fail
 
-    # depends_on:
-    #   - chrome
-
-  # The Zenika Alpine Chrome image includes a browser configured to work with Chromedriver  
+  # The alpine-chromium image includes a browser configured to work with Chromedriver  
   chrome:
-    image: ghcr.io/zenika/alpine-chrome:with-chromedriver
+    image: ghcr.io/erseco/alpine-chromedriver
     container_name: chrome
     hostname: chrome # Important! To be called from exelearning container
     shm_size: "2gb"

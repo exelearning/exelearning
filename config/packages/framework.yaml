@@ -28,9 +28,7 @@ framework:
 
     cache:
         # The path where the cache will be stored.
-        # Read the CACHE_DIR environment variable.
-        # If it does not exist, use the default path '%kernel.project_dir%/var/cache'.
-        directory: '%env(resolve:CACHE_DIR)%'
+        directory: '%app.cache.dir%'
         app: cache.adapter.array      # Use in-memory cache that is not persisted
         system: cache.adapter.array   # Use in-memory cache for the system
     router:
@@ -39,3 +37,5 @@ framework:
     assets:
         base_path: 'assets/%app.version%'  # Base path for assets based on version for avoid cache
 
+parameters:
+    default_cache_dir: '%kernel.project_dir%/var/cache'
