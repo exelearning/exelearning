@@ -3,6 +3,7 @@
 namespace App\Service\net\exelearning\Service\Api;
 
 use App\Constants;
+use App\Entity\net\exelearning\Dto\ThemeDto;
 use App\Entity\net\exelearning\Dto\UserPreferencesDto;
 use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
@@ -162,6 +163,14 @@ class OdeExportService implements OdeExportServiceInterface
         $theme = $this->themeHelper->searchThemeFromThemeDir($themeDir, $dbUser);
         if (!$theme) {
             $theme = $this->themeHelper->searchThemeFromThemeDir(Constants::THEME_DEFAULT, $dbUser);
+        }
+
+        // Defensive fallback if theme not found at all
+        if (!$theme) {
+            $this->logger->warning('Theme not found, using fallback');
+            $theme = new ThemeDto();
+            $theme->setDirName(Constants::THEME_DEFAULT);
+            $theme->setType(Constants::THEME_TYPE_BASE);
         }
 
         // ////////////////////////////////////////
@@ -470,7 +479,7 @@ class OdeExportService implements OdeExportServiceInterface
      * @param OdeNavStructureSync[] $odeNavStructureSyncs
      * @param array                 $odeProperties
      * @param userPreferencesDtos   $userPreferencesDtos
-     * @param themeDto              $theme
+     * @param ThemeDto              $theme
      * @param string                $baseUrl
      * @param string                $exportType
      * @param bool                  $isPreview

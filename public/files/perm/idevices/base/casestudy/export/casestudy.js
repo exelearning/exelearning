@@ -46,6 +46,20 @@ var $casestudy = {
             $title.text(data.msgs.msgCaseStudy)
         }
         this.addEvents(data);
+        const dataString = JSON.stringify(data)
+        var hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.exe-casestudy-container',
+            );
+        }
+        
     },
 
     createInterfaceCaseStudy: function (data) {
@@ -82,6 +96,10 @@ var $casestudy = {
             ? `content/resources/${idRes}/`
             : `../content/resources/${idRes}/`;
 
+        const custom = document.documentElement.id === 'exe-index'
+            ? 'custom/'
+            : '../custom/';
+
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
         doc.querySelectorAll('img[src], video[src], audio[src], a[href], source[src]')
@@ -92,7 +110,11 @@ var $casestudy = {
                     const u = new URL(val, window.location.origin);
                     if (/^\/?files\//.test(u.pathname)) {
                         const filename = u.pathname.split('/').pop() || '';
-                        el.setAttribute(attr, basePath + filename);
+                        if (u.pathname.indexOf('file_manager') === -1) {
+                            el.setAttribute(attr, basePath + filename);
+                        } else {
+                            el.setAttribute(attr, custom + filename);
+                        }
                     }
                 } catch {
                     // 
@@ -144,7 +166,10 @@ var $casestudy = {
             .on('click', '.CSP-FeedbackBtn', function () {
                 const $activityDiv = $(this).closest('.CSP-ActivityDiv');
                 const $fb = $activityDiv.find('.CSP-FeedbackText');
-                $fb.slideToggle(200);
+                $fb.slideToggle(200,function(){
+                    $exeDevices.iDevice.gamification.math.updateLatex('.CSP-FeedbackText');
+                });
+
             });
     },
 

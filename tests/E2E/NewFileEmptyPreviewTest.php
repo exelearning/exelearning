@@ -44,8 +44,17 @@ class NewFileEmptyPreviewTest extends ExelearningE2EBase
         $client->switchTo()->window(end($windowHandles));
 
         // Validate the preview URL format
+        // $this->assertMatchesRegularExpression(
+        //     '/\/files\/tmp\/\d{4}\/\d{2}\/\d{2}\/[a-zA-Z0-9]+\/tmp\/user\/export\/index\.html$/',
+        //     $client->getCurrentURL(),
+        //     'The preview URL does not match the expected pattern'
+        // );
+
         $this->assertMatchesRegularExpression(
-            '/\/files\/tmp\/\d{4}\/\d{2}\/\d{2}\/[a-zA-Z0-9]+\/tmp\/user\/export\/index\.html$/',
+            sprintf(
+                '/\/files\/tmp\/\d{4}\/\d{2}\/\d{2}\/[a-zA-Z0-9]+\/tmp\/%s\/export\/index\.html$/',
+                preg_quote($this->currentUserId, '/')
+            ),
             $client->getCurrentURL(),
             'The preview URL does not match the expected pattern'
         );

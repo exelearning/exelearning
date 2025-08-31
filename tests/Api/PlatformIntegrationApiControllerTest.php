@@ -46,46 +46,35 @@ final class PlatformIntegrationApiControllerTest extends WebTestCase
     public function testSetPlatformNewOdeWithoutSessionIdReturnsError(): void
     {
         $client = self::createClient();
+        $entityManager = static::getContainer()->get('doctrine.orm.entity_manager');
 
-        $container = static::getContainer();
+        // Create an ephemeral user with unique values to avoid collisions
+        $user = new User();
+        $user->setUserId(bin2hex(random_bytes(8)));
+        $user->setEmail(sprintf('test+%s@example.com', bin2hex(random_bytes(6))));
+        $user->setPassword('random-pass');
+        $user->setIsLopdAccepted(true);
 
-        // Ensure test user exists with ID 1
-        $userRepository = $container->get(UserRepository::class);
-        $entityManager = $container->get('doctrine.orm.entity_manager');
-        if (!$userRepository->find(1)) {
-            $user = new User();
-            $user->setUserId("1");
-            $user->setEmail('tests@example.com');
-            $user->setPassword('random-pass');
-            $user->setIsLopdAccepted(true);
+        $entityManager->persist($user);
+        $entityManager->flush();
 
-            $meta = $entityManager->getClassMetadata(User::class);
-            $meta->setIdGeneratorType(\Doctrine\ORM\Mapping\ClassMetadata::GENERATOR_TYPE_NONE);
-
-            $entityManager->persist($user);
-            $entityManager->flush();
-        }
-
-        // Retrieve user by ID (to simulate your current logic)
-        $user = $entityManager->getRepository(User::class)->find(1);
-
-        // Authenticate as the test user (session cookie is set)
+        // Authenticate as the ephemeral user
         $client->loginUser($user);
 
-        // Create a JWT token with required and optional claims
+        // Generate a valid JWT token for the authenticated user
         $jwt = JWT::encode(
             [
-                'user_id' => $user->getId(),
-                'exp' => time() + 3600,
+                'user_id'   => $user->getId(),
+                'exp'       => time() + 3600,
                 'returnurl' => 'http://localhost/dummy',
-                'pkgtype' => 'scorm', // or 'webzip'
-                'cmid' => 0,
+                'pkgtype'   => 'scorm',
+                'cmid'      => 0,
             ],
             $_ENV['APP_SECRET'],
             Settings::JWT_SECRET_HASH
         );
 
-        // Send POST request without `odeSessionId`, expecting error response
+        // Send POST request without odeSessionId, expecting error response
         $client->request(
             'POST',
             '/api/platform/integration/set_platform_new_ode',
@@ -99,4 +88,5 @@ final class PlatformIntegrationApiControllerTest extends WebTestCase
         $payload = json_decode($client->getResponse()->getContent(), true);
         self::assertSame(['responseMessage' => 'error: invalid data'], $payload);
     }
+
 }

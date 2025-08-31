@@ -36,6 +36,11 @@ body.exe-web-site{
     min-height: 0;
 }
 
+.exe-content .package-title{
+    font-size: 1.25rem;
+    font-weight: 300;
+}
+
 .exe-content .page-title{
     color: #438606;
     font-size: 1.7rem;

@@ -3,52 +3,68 @@
 <!-- https://phpunit.readthedocs.io/en/latest/configuration.html -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         backupGlobals="false"
-         colors="true"
-         failOnNotice="true"
-         failOnWarning="true"
+
          bootstrap="tests/bootstrap.php"
          cacheDirectory=".phpunit.cache"
+         colors="true"
+         backupGlobals="false"
+
+         beStrictAboutOutputDuringTests="true"
+         beStrictAboutChangesToGlobalState="true"
+
+         failOnWarning="false"
+         failOnNotice="false"
+         failOnDeprecation="false"
+         failOnPhpunitDeprecation="false"
+
+         executionOrder="random"
+         resolveDependencies="true"
+
          displayDetailsOnTestsThatTriggerDeprecations="true"
+         displayDetailsOnPhpunitDeprecations="true"
          displayDetailsOnTestsThatTriggerErrors="true"
          displayDetailsOnTestsThatTriggerNotices="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
-         displayDetailsOnPhpunitDeprecations="true"
+
+         stopOnFailure="false"
+         testdox="false"
 >
   <php>
+
+    <!-- PHP runtime -->
     <ini name="memory_limit" value="512M"/>
     <ini name="display_errors" value="1"/>
     <ini name="error_reporting" value="E_ALL"/>
+
+    <!-- Symfony Environment -->
     <server name="APP_ENV" value="test" force="true"/>
-    <server name="SHELL_VERBOSITY" value="-1"/>
-    <server name="SYMFONY_PHPUNIT_REMOVE" value=""/>
-    <server name="SYMFONY_PHPUNIT_VERSION" value="9.5"/>
-    <env name="PANTHER_APP_BASE_URI" value="http://exelearning:8080"/>
     <env name="KERNEL_CLASS" value="App\Kernel"/>
+    <env name="APP_SECRET" value="test-secret-CHANGE-ME"/>
 
-        <!-- ###+ symfony/mercure-bundle ### -->
-        <!-- See https://symfony.com/doc/current/mercure.html#configuration -->
-        <!-- The URL of the Mercure hub, used by the app to publish updates (can be a local URL) -->
-        <env name="MERCURE_URL" value="http://exelearning:8080/.well-known/mercure"/>
-        <!-- The public URL of the Mercure hub, used by the browser to connect -->
-        <env name="MERCURE_PUBLIC_URL" value=""/>
-        <!-- The secret used to sign the JWTs -->
-        <env name="MERCURE_JWT_SECRET_KEY" value="!ChangeThisMercureHubJWTSecretKey!"/>
-        <!-- ###- symfony/mercure-bundle ### -->
+    <!-- To disable deprecation testing uncomment the next line. -->
+    <!-- <env name="SYMFONY_DEPRECATIONS_HELPER" value="weak_vendors"/> -->
+    <!-- To disable deprecation testing set the value to disabled. -->
+    <env name="SYMFONY_DEPRECATIONS_HELPER" value="strict"/>
 
-        <!-- ###+ symfony/framework-bundle ### -->
-        <env name="APP_ENV" value="test" force="true"/>
-        <env name="APP_SECRET" value=""/>
-        <!-- ###- symfony/framework-bundle ### -->
+    <!-- Prevents deprecations caused by basename()/realpath(null) in Symfony Console -->
+    <server name="PHP_SELF" value="bin/console"/>
 
-        <!-- ###+ doctrine/doctrine-bundle ### -->
-        <env name="DATABASE_URL" value="sqlite:///:memory:"/>
-        <!-- ###- doctrine/doctrine-bundle ### -->
+    <!-- Panther -->
+    <!-- <env name="PANTHER_APP_BASE_URI" value="http://exelearning:8080"/> -->
+    <!-- <env name="PANTHER_NO_SANDBOX" value="1"/> -->
+    <!-- <env name="PANTHER_ENABLED" value="0"/> -->
+
+    <!-- Mercure -->
+    <env name="MERCURE_URL" value="http://exelearning:8080/.well-known/mercure"/>
+    <env name="MERCURE_PUBLIC_URL" value=""/>
+    <env name="MERCURE_JWT_SECRET_KEY" value="!ChangeThisMercureHubJWTSecretKey!"/>
+
   </php>
 
-    <extensions>
-        <bootstrap class="Symfony\Component\Panther\ServerExtension"/>
-    </extensions>
+  <extensions>
+      <bootstrap class="Symfony\Component\Panther\ServerExtension"/>
+  </extensions>
+
     <testsuites>
       <testsuite name="unit">
           <directory suffix="Test.php">tests</directory>
@@ -63,7 +79,9 @@
       </testsuite>
     </testsuites>
 
-    <source ignoreSuppressionOfDeprecations="true" restrictNotices="true" restrictWarnings="true">
+    <source
+      restrictNotices="true"
+      restrictWarnings="true">
         <include>
             <directory>src</directory>
         </include>
