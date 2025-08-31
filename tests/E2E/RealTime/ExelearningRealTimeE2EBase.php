@@ -15,7 +15,6 @@ use Facebook\WebDriver\WebDriverBy;
  */
 abstract class ExelearningRealTimeE2EBase extends ExelearningE2EBase
 {
-    protected ?Client $mainClient       = null;
     protected ?Client $secondaryClient  = null;
 
     /**
@@ -26,7 +25,7 @@ abstract class ExelearningRealTimeE2EBase extends ExelearningE2EBase
     protected function createRealTimeClients(): void
     {
         // 1) Main client, default user
-        $this->mainClient = $this->login(); // uses self::createTestClient()
+        $this->mainClient = $this->login(); // uses $this->createTestClient()
 
         // 2) Create and log in the secondary client
         //    This is an *isolated* browser that can interact with the main client in real time.
@@ -34,12 +33,7 @@ abstract class ExelearningRealTimeE2EBase extends ExelearningE2EBase
 
         // By default createAdditionalPantherClient() reuses the same "base URI" as the first.
         // If needed, confirm you have the same environment or you can override the trait code.
-
-        // Force different credentials if needed
-        $user2Email = $_ENV['TEST_USER2_EMAIL']     ?? 'second@example.com';
-        $user2Pass  = $_ENV['TEST_USER2_PASSWORD']  ?? 'password2';
-
-        $this->login($this->secondaryClient, $user2Email, $user2Pass);
+        $this->login($this->secondaryClient);
     }
 
     /**
@@ -110,21 +104,23 @@ abstract class ExelearningRealTimeE2EBase extends ExelearningE2EBase
         ));
     }
 
-
     /**
-     * Takes screenshots of both clients at tearDown.
-     *
-     * @return void
+     * Called automatically when a test fails or throws an exception.
      */
-    protected function tearDown(): void
+    protected function onNotSuccessfulTest(\Throwable $t): never
     {
-        parent::tearDown();
+        if ($this->secondaryClient instanceof Client) {
+            try {
+                $this->captureAllWindowsScreenshots($this->secondaryClient, 'secondary_fail');
+            } catch (\Throwable $e) {
+                // Avoid masking the original error if screenshot fails
+                fwrite(STDERR, "[Screenshot failed]: " . $e->getMessage() . "\n");
+            }
+        }
 
-        if ($this->mainClient) {
-            $this->captureAllWindowsScreenshots($this->mainClient, 'main');
-        }
-        if ($this->secondaryClient) {
-            $this->captureAllWindowsScreenshots($this->secondaryClient, 'secondary');
-        }
+        // Re-throw so PHPUnit marks the test as failed
+        parent::onNotSuccessfulTest($t);
     }
+
+
 }

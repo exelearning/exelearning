@@ -76,7 +76,7 @@ class MercureFunctionalTest extends WebTestCase
 
     /**
      * Sends a request to /.well-known/mercure to verify that it responds.
-     * We use topic=test para generar un flujo SSE si está configurado.
+     * We use topic=test to generate an SSE stream if configured.
      */
     public function testMercureWellKnownEndpoint(): void
     {
@@ -87,18 +87,18 @@ class MercureFunctionalTest extends WebTestCase
         $response = $httpClient->request('GET', $mercureUrl, [
             'headers' => [
                 'Authorization' => 'Bearer ' . $jwt,
-                // Normalmente se usa Accept: text/event-stream para SSE
+                // Usually, "Accept: text/event-stream" is used for SSE
                 'Accept' => 'text/event-stream',
             ],
         ]);
 
         $this->assertEquals(200, $response->getStatusCode(), 'Mercure hub did not return a 200 status.');
 
-        // Comprobamos si Content-Type indica un stream de eventos:
+        // We check if Content-Type indicates an event stream:
         $headers = $response->getHeaders();
         $contentType = $headers['content-type'][0] ?? '';
 
-        // Depende de tu configuración, puede que sea exactamente 'text/event-stream' o contenga más info
+        // Depending on your configuration, it might be exactly 'text/event-stream' or contain more info
         $this->assertStringContainsString('text/event-stream', $contentType, 'Header should indicate SSE');
     }
 
