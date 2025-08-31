@@ -73,6 +73,7 @@ class FilesDirService implements FilesDirServiceInterface
     {
         // Compute dynamically to avoid any stale path reference
         $checkPath = $this->fileHelper->getFilesDir().Constants::FILE_CHECKED_FILENAME.'-'.Constants::APP_VERSION;
+
         return file_exists($checkPath);
     }
 
