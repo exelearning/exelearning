@@ -380,19 +380,15 @@ class FileUtil
      */
     public static function removeDir($dirPath)
     {
-        if (true === is_dir($dirPath)) {
-            $files = array_diff(scandir($dirPath), ['.', '..']);
-
-            foreach ($files as $file) {
-                self::removeDir(realpath($dirPath).DIRECTORY_SEPARATOR.$file);
-            }
-
-            return rmdir($dirPath);
-        } elseif (true === is_file($dirPath)) {
-            return unlink($dirPath);
+        // Use Symfony Filesystem for robustness across platforms
+        $filesystem = new Filesystem();
+        try {
+            $filesystem->remove($dirPath);
+        } catch (IOExceptionInterface $exception) {
+            return false;
         }
 
-        return false;
+        return true;
     }
 
     /**
@@ -433,17 +429,16 @@ class FileUtil
      *
      * @return bool
      */
-    public static function copyDir($sourcePath, $destinationPath)
+    public static function copyDir($sourcePath, $destinationPath, array $options = [])
     {
         $filesystem = new Filesystem();
 
         try {
-            // Force overwriting existing files to ensure fresh assets on upgrades
-            // (e.g., themes and iDevices). Do NOT enable 'delete' here to avoid
-            // removing user content that exists only in destination.
-            $filesystem->mirror($sourcePath, $destinationPath, null, [
+            // Ensure overwriting by default; allow caller to pass extra options (e.g., 'delete' => true)
+            $options = array_replace([
                 'override' => true,
-            ]);
+            ], $options);
+            $filesystem->mirror($sourcePath, $destinationPath, null, $options);
         } catch (IOExceptionInterface $exception) {
             return false;
         }
