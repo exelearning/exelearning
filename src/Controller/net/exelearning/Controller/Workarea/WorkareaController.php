@@ -62,7 +62,6 @@ class WorkareaController extends DefaultWorkareaController
     #[Route('/workarea', name: 'workarea')]
     public function workareaAction(Request $request)
     {
-        // die("hola");
         // Get odeSessionId
         $odeSessionId = $request->get('shareCode');
 

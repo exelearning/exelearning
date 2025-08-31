@@ -1215,6 +1215,8 @@ export default class IdevicesEngine {
                 idevice.ideviceContent.setAttribute('loading', false);
             });
         }, 500);
+        // Enable internal links
+        this.enableInternalLinks();
     }
 
     /**
@@ -1989,7 +1991,10 @@ export default class IdevicesEngine {
                 });
 
                 buttonsPages.forEach((button) => {
-                    if (button.innerText.includes(pageName)) {
+                    if (
+                        button.className == 'nav-element-text' &&
+                        button.innerText == pageName
+                    ) {
                         pageElement = button;
                     }
                 });

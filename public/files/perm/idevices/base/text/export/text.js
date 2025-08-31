@@ -26,6 +26,7 @@ var $text = {
     renderView(data, accessibility, template) {
         const hmltdata = $text.getHTMLView(data)
         return template.replace("{content}", hmltdata);
+
     },
 
     getHTMLView(data, pathMedia) {
@@ -89,6 +90,56 @@ var $text = {
         return htmlContent;
     },
 
+    renderHtmlOldIdevice(data, $node) {
+        // Defensive: ensure $node is a jQuery object
+        if (!$node || !$node.length) return;
+
+        if ($node.find('.pbl-task-description').length === 1 && (data[this.durationId] || data[this.participantsId])) {
+            const durationText = data[this.durationTextId];
+            const participantsText = data[this.participantsTextId];
+            const infoContentHTML = this.createInfoHTML(
+                data[this.durationId] === "" ? "" : durationText,
+                data[this.durationId],
+                data[this.participantsId] === "" ? "" : participantsText,
+                data[this.participantsId]
+            );
+
+            const $activity = $node.find('.pbl-task-description');
+            if ($activity.length) {
+                $activity.prepend(infoContentHTML);
+            } else {
+                $node.prepend(infoContentHTML);
+            }
+        }
+
+        let buttonFeedBackText = data[this.feedbackTitleId] || '';
+        let feedBackHtml = data[this.feedbackContentId] || '';
+        const hasFeedbackNode = $node.find('.feedback.js-feedback').length > 0;
+        const hasFeedbackData = !!feedBackHtml;
+
+        // Añadir feedback y botón solo si no existe ya un botón feedback
+        const hasFeedbackButton = $node.find('.feedback-button').length > 0;
+        if (!hasFeedbackNode && hasFeedbackData && !hasFeedbackButton) {
+            const feedbackContentHTML = this.createFeedbackHTML(buttonFeedBackText || this.defaultBtnFeedbackText, feedBackHtml);
+            const $activity = $node.find('.exe-text');
+            if ($activity.length) {
+                $activity.append(feedbackContentHTML);
+            } else {
+                $node.append(feedbackContentHTML);
+            }
+        }
+
+
+        if ($node.find('.clearfix').length === 0) {
+            const $activity = $node.find('.exe-text');
+            if ($activity.length) {
+                $activity.append('<p class="clearfix"></p>');
+            } else {
+                $node.append('<p class="clearfix"></p>');
+            }
+        }
+    },
+
     /**
      * Engine execution order: 2
      * Add behavior and functionalities
@@ -97,16 +148,14 @@ var $text = {
         const $node = $('#' + data.ideviceId);
         const isInExe = eXe.app.isInExe();
 
-        if (!isInExe && $node.length) {
-            let pathMedia = $('html').is('#exe-index')
-                ? 'content/resources/' + $node.first().attr('id-resource')
-                : '../content/resources/' + $node.first().attr('id-resource');
+        // Only render html old idevice
+        if (!isInExe && $node && $node.length === 1 && $node.find('.exe-text-template').length === 0) {
+            const html = $node.html();
+            const newHtml = this.renderHtmlOldIdevice(data, $node);
 
-            const newHtml = this.getHTMLView(data, pathMedia);
-            if (newHtml) $node.html(newHtml);
         }
 
-        const $btn = $(`#${data.ideviceId} input.feedbacktooglebutton`);
+        const $btn = $(`#${data.ideviceId} input.feedbackbutton, #${data.ideviceId} input.feedbacktooglebutton`);
         if ($btn.length !== 1) return;
 
         const [textA, textB = textA] = $btn.val().split('|');
@@ -117,7 +166,7 @@ var $text = {
             if ($text.working) return false;
             $text.working = true;
             const btn = $(this);
-            const feedbackEl = btn.parent().next();
+            const feedbackEl = btn.closest('.feedback-button').next('.feedback');
 
             if (feedbackEl.is(':visible')) {
                 btn.val(btn.attr('data-text-a'));
@@ -126,12 +175,28 @@ var $text = {
                 btn.val(btn.attr('data-text-b'));
                 feedbackEl.fadeIn(() => { $text.working = false; });
             }
+            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+
         });
+        const dataString = JSON.stringify(data)
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+        }
     },
 
     replaceResourceDirectoryPaths(newDir, htmlString) {
         let dir = newDir.trim();
         if (!dir.endsWith('/')) dir += '/';
+        const custom = $('html').is('#exe-index')
+            ? 'custom/'
+            : '../custom/';
 
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
@@ -139,9 +204,14 @@ var $text = {
             .forEach(el => {
                 const attr = el.hasAttribute('src') ? 'src' : 'href';
                 const val = el.getAttribute(attr).trim();
+
                 if (/^\/?files\//.test(val)) {
                     const filename = val.split('/').pop() || '';
-                    el.setAttribute(attr, dir + filename);
+                    if (val.indexOf('file_manager') === -1) {
+                        el.setAttribute(attr, dir + filename);
+                    } else {
+                        el.setAttribute(attr, custom + filename);
+                    }
                 }
             });
         return doc.body.innerHTML;

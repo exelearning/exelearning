@@ -216,6 +216,7 @@ var $exeDevice = {
 
             htmlForm += "</u>";
             formPreview.outerHTML = htmlForm;
+
         }
 
         formPreview = $exeDevice.ideviceBody.querySelector(`#${$exeDevice.formPreviewId}`);
@@ -256,8 +257,7 @@ var $exeDevice = {
 
         $exeDevices.iDevice.gamification.scorm.setValues(previousData.isScorm, previousData.textButtonScorm, previousData.repeatActivity, previousData.weighted);
         $exeDevices.iDevice.gamification.common.setLanguageTabValues(previousData.msgs);
-        $exeDevice.updateQuestionsNumber();
-
+    $exeDevice.updateQuestionsNumber()
     },
 
     /**
@@ -287,6 +287,7 @@ var $exeDevice = {
         this.eXeIdeviceTextAfter = this.getEditorTinyMCEValue("eXeIdeviceTextAfter");
 
         this.questionsData = $exeDevice.getQuestionsData();
+
 
         this[$exeDevice.dropdownPassRateId] = $exeDevice.ideviceBody.querySelector(`[id^="${$exeDevice.dropdownPassRateId}"]`).value;
         this[$exeDevice.checkAddBtnAnswersId] = $exeDevice.ideviceBody.querySelector(`#${$exeDevice.checkAddBtnAnswersId}`).checked;
@@ -1694,6 +1695,7 @@ var $exeDevice = {
             const inEditionTextarea = $exeDevice.ideviceBody.querySelector("#formPreview textarea");
             if (inEditionTextarea) {
                 inEditionTextarea.parentElement.querySelector("#saveQuestion").click();
+
             }
         }
 

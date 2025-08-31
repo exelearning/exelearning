@@ -65,7 +65,7 @@ var $exe = {
         // Disable autocomplete
         $("INPUT.autocomplete-off").attr("autocomplete", "off");
     },
-    
+
     // Math options (MathJax, etc.) - To review (some options might not be needed)
     math: {
         // MathJax script path
@@ -1418,6 +1418,7 @@ var $exeDevices = {
                                             <div class="d-flex justify-content-end  border-secondary p-2">
                                                <button id="eXeESaveButton"  class="btn btn-success ms-2"/>${_('Save')}</button>
                                                <button id="eXeECopyButton"  class="btn btn-success ms-2"/>${_('Copy')}</button>
+                                               <button id="eXeEOpenChatGPTButton"  class="btn btn-success ms-2"/>${_('Send to AI')}</button>
                                                <button id="eXeEIAButton"  class="btn btn-success ms-2"/>${_('Add questions')}</button>
                                             </div>
                                         </div>
@@ -1560,7 +1561,7 @@ var $exeDevices = {
                                 `${c_('Is the Earth round?')}#1#${c_('Think about the horizon.')}#${c_('The Earth is not flat.')}`,
                                 `${c_('Does water boil at 100 degrees Celsius?')}#0##${c_('It depends on the altitude.')}`
                             ],
-                            allowRegex: /^vof#[^\s#].*?#(0|1)#.*?#.*?|[^\s#].*?#(0|1)#.*?#.*?|[01]#[^#]+$/, 
+                            allowRegex: /^vof#[^\s#].*?#(0|1)#.*?#.*?|[^\s#].*?#(0|1)#.*?#.*?|[01]#[^#]+$/,
                         },
                         7: { // form
                             prompt: c_(`Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.`),
@@ -1627,6 +1628,7 @@ var $exeDevices = {
                     const $tabIA = $('#eXeETabIA');
 
                     const $copyButton = $('#eXeECopyButton');
+                    const $openChatGPTButton = $('#eXeEOpenChatGPTButton');
                     const $saveButton = $('#eXeESaveButton');
                     const $iaButton = $('#eXeEIAButton');
 
@@ -1638,6 +1640,7 @@ var $exeDevices = {
 
                     $textPrompt.show()
                     $copyButton.show();
+                    $openChatGPTButton.show();
 
                     $divEIA.hide();
                     $iaButton.hide()
@@ -1652,6 +1655,7 @@ var $exeDevices = {
                         $textPrompt.hide()
                         $saveButton.show();
                         $copyButton.hide();
+                        $openChatGPTButton.hide();
                         $iaButton.hide();
                     });
 
@@ -1665,6 +1669,7 @@ var $exeDevices = {
                         $textPrompt.show()
                         $saveButton.hide();
                         $copyButton.show();
+                        $openChatGPTButton.show();                         
                         $iaButton.hide();
 
                     });
@@ -1681,7 +1686,20 @@ var $exeDevices = {
 
                         $saveButton.hide();
                         $copyButton.hide();
+                        $openChatGPTButton.hide();
                         $iaButton.hide();
+                    });
+
+                    $openChatGPTButton.on('click', function () {
+                        $tabQuestions.trigger('click');
+                        let prompt = $textPrompt.val();
+                        if (!prompt || !prompt.trim()) {
+                            alert(_('There is no query to send to the assistant.'));
+                            return;
+                        }
+                        const encodedPrompt = encodeURIComponent(prompt.trim());
+                        const url = `https://chat.openai.com/?q=${encodedPrompt}`;
+                        window.open(url, '_blank');
                     });
 
                     $saveButton.on('click', function () {
@@ -2223,11 +2241,52 @@ var $exeDevices = {
 
             math: {
                 loadMathJax: function () {
-                    if (!window.MathJax) window.MathJax = $exe.math.engineConfig;
+                    if (!window.MathJax) window.MathJax = $exeDevices.iDevice.gamification.math.engineConfig;
                     const script = document.createElement('script');
-                    script.src = $exe.math.engine;
+                    script.src = $exeDevices.iDevice.gamification.math.engine;
                     script.async = true;
                     document.head.appendChild(script);
+                },
+                engine: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js",
+
+                engineConfig: {
+                    loader: {
+                        load: ['[tex]/ams', '[tex]/amscd', '[tex]/cancel', '[tex]/centernot',
+                            '[tex]/color', '[tex]/colortbl', '[tex]/configmacros', '[tex]/gensymb',
+                            '[tex]/mathtools', '[tex]/mhchem', '[tex]/newcommand', '[tex]/noerrors',
+                            '[tex]/noundefined', '[tex]/physics', '[tex]/textmacros', '[tex]/gensymb',
+                            '[tex]/textcomp', '[tex]/bbox', '[tex]/upgreek', '[tex]/verb'
+                        ]
+                    },
+                    tex: {
+                        inlineMath: [
+                            ["\\(", "\\)"]
+                        ],
+                        displayMath: [
+                            ["\\[", "\\]"]
+                        ],
+                        processEscapes: true,
+                        tags: 'ams',
+                        packages: {
+                            '[+]': ['ams', 'amscd', 'cancel', 'centernot', 'color', 'colortbl',
+                                'configmacros', 'gensymb', 'mathtools', 'mhchem', 'newcommand', 'noerrors',
+                                'noundefined', 'physics', 'textmacros', 'upgreek', 'verb'
+                            ]
+                        },
+                        physics: {
+                            italicdiff: false,
+                            arrowdel: false
+                        },
+                    },
+                    textmacros: {
+                        packages: {
+                            '[+]': ['textcomp', 'bbox']
+                        }
+                    }
+                },
+
+                hasLatex: function (text) {
+                    return /\\\(|\\\[|\\begin\{/.test(text);
                 },
 
                 updateLatex: function (selector) {
@@ -2246,6 +2305,52 @@ var $exeDevices = {
                             }
                         }
                     }, 100);
+                },
+
+                updateLatex: function (target, opts) {
+                    var options = opts || {};
+
+                    function nodesFrom(t) {
+                        if (!t) return [];
+                        if (typeof t === 'string') {
+                            try { return Array.from(document.querySelectorAll(t)); }
+                            catch (e) { console.warn('selector inválido:', t, e); return []; }
+                        }
+                        if (t.nodeType === 1) return [t];
+                        if (typeof t.length === 'number') return Array.from(t);
+                        return [];
+                    }
+
+                    function runV3(nodes) {
+                        if (!nodes.length) return;
+                        var start = (MathJax.startup && MathJax.startup.promise) ? MathJax.startup.promise : Promise.resolve();
+                        return start.then(function () {
+                            if (typeof MathJax.typesetClear === 'function') MathJax.typesetClear(nodes);
+                            return (MathJax.typesetPromise ? MathJax.typesetPromise(nodes) : MathJax.typeset(nodes));
+                        }).catch(function (e) { console.error('MathJax v3 typeset error:', e); });
+                    }
+
+                    function runV2(nodes) {
+                        if (!nodes.length) return;
+                        nodes.forEach(function (n) {
+                            MathJax.Hub.Queue(['Typeset', MathJax.Hub, n]);
+                        });
+                    }
+
+                    function typesetNow() {
+                        var nodes = nodesFrom(target);
+                        if (!nodes.length || typeof MathJax === 'undefined') return;
+
+                        if (MathJax.typesetPromise || MathJax.startup) return runV3(nodes); // v3
+                        if (MathJax.Hub && typeof MathJax.Hub.Queue === 'function') return runV2(nodes); // v2
+                    }
+
+                    if (options.defer) {
+                        // Espera a que termine la animación/visibilidad de la slide
+                        requestAnimationFrame(function () { requestAnimationFrame(typesetNow); });
+                    } else {
+                        typesetNow();
+                    }
                 }
             },
 
