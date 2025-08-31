@@ -115,11 +115,6 @@ RUN composer install --optimize-autoloader --no-interaction --no-progress && \
 # Copy the rest of the source code
 COPY --chown=nobody . .
 
-# Ensure Symfony writable directories are owned by nobody
-USER root
-RUN chown -R nobody:nobody /app/public /app/var
-USER nobody
-
 # Remove the script from /app to avoid duplication
 RUN rm /app/02-configure-symfony.sh
 

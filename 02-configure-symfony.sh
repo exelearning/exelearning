@@ -61,6 +61,10 @@ if [ -n "$BASE_PATH" ] && [ -f "/etc/nginx/server-conf.d/subdir.conf.template" ]
     envsubst '\$BASE_PATH' < /etc/nginx/server-conf.d/subdir.conf.template > /etc/nginx/server-conf.d/subdir.conf
 fi
 
+# Force directory ownership to the 'nobody' user.  
+# This fixes permission issues when using volumes in Docker.
+chown -R nobody:nobody /app/public /app/var
+
 # Update schema (kept for compatibility, but migrations are preferred)
 echo -e "${GREEN}Creating/updating database tables (schema:update)${NC}"
 php bin/console doctrine:schema:update --force
