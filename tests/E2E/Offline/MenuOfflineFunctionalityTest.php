@@ -343,12 +343,15 @@ class MenuOfflineFunctionalityTest extends ExelearningE2EBase
         $this->createNewDocument($client);
 
         // First save should prompt (simulated by electronAPI.save call)
-        $client->waitForVisibility('#head-top-save-button', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('head-top-save-button'))->click();
+        $client->waitForInvisibility('#load-screen-main', 30);
+        $client->waitFor('#head-top-save-button', 10);
+        // Use JS click to avoid transient overlays/hints
+        $client->executeScript("document.querySelector('#head-top-save-button')?.click();");
         $this->waitForMockCall($client, 'save', 1);
 
         // Second save should target the same key (overwrite)
-        $client->getWebDriver()->findElement(WebDriverBy::id('head-top-save-button'))->click();
+        $client->waitForInvisibility('#load-screen-main', 30);
+        $client->executeScript("document.querySelector('#head-top-save-button')?.click();");
         $this->waitForMockCall($client, 'save', 2);
 
         $firstKey = (string) $client->executeScript('return (window.__MockArgsLog && window.__MockArgsLog.save && window.__MockArgsLog.save[0] && window.__MockArgsLog.save[0][1]) || "";');
