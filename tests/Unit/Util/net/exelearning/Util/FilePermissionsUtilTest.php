@@ -12,10 +12,10 @@ class FilePermissionsUtilTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->testDir = sys_get_temp_dir() . '/test_dir';
-        if (!is_dir($this->testDir)) {
-            mkdir($this->testDir, 0777, true);
-        }
+        $this->testDir = sys_get_temp_dir()
+            . '/test_dir_' . bin2hex(random_bytes(6)); // unique name
+        mkdir($this->testDir, 0777, true);
+
         $this->testFile = $this->testDir . '/test_file.txt';
         file_put_contents($this->testFile, 'test');
     }

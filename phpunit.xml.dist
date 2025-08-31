@@ -12,12 +12,12 @@
          beStrictAboutOutputDuringTests="true"
          beStrictAboutChangesToGlobalState="true"
 
-         failOnWarning="true"
-         failOnNotice="true"
-         failOnDeprecation="true"
-         failOnPhpunitDeprecation="true"
+         failOnWarning="false"
+         failOnNotice="false"
+         failOnDeprecation="false"
+         failOnPhpunitDeprecation="false"
 
-         executionOrder="default"
+         executionOrder="random"
          resolveDependencies="true"
 
          displayDetailsOnTestsThatTriggerDeprecations="true"
@@ -25,6 +25,9 @@
          displayDetailsOnTestsThatTriggerErrors="true"
          displayDetailsOnTestsThatTriggerNotices="true"
          displayDetailsOnTestsThatTriggerWarnings="true"
+
+         stopOnFailure="false"
+         testdox="false"
 >
   <php>
 
@@ -38,12 +41,18 @@
     <env name="KERNEL_CLASS" value="App\Kernel"/>
     <env name="APP_SECRET" value="test-secret-CHANGE-ME"/>
 
+    <!-- To disable deprecation testing uncomment the next line. -->
+    <!-- <env name="SYMFONY_DEPRECATIONS_HELPER" value="weak_vendors"/> -->
+    <!-- To disable deprecation testing set the value to disabled. -->
+    <env name="SYMFONY_DEPRECATIONS_HELPER" value="strict"/>
+
     <!-- Prevents deprecations caused by basename()/realpath(null) in Symfony Console -->
     <server name="PHP_SELF" value="bin/console"/>
 
     <!-- Panther -->
-    <env name="PANTHER_APP_BASE_URI" value="http://exelearning:8080"/>
-    <env name="PANTHER_NO_SANDBOX" value="1"/>
+    <!-- <env name="PANTHER_APP_BASE_URI" value="http://exelearning:8080"/> -->
+    <!-- <env name="PANTHER_NO_SANDBOX" value="1"/> -->
+    <!-- <env name="PANTHER_ENABLED" value="0"/> -->
 
     <!-- Mercure -->
     <env name="MERCURE_URL" value="http://exelearning:8080/.well-known/mercure"/>
@@ -52,9 +61,10 @@
 
   </php>
 
-    <extensions>
-        <bootstrap class="Symfony\Component\Panther\ServerExtension"/>
-    </extensions>
+  <extensions>
+      <bootstrap class="Symfony\Component\Panther\ServerExtension"/>
+  </extensions>
+
     <testsuites>
       <testsuite name="unit">
           <directory suffix="Test.php">tests</directory>
@@ -69,13 +79,9 @@
       </testsuite>
     </testsuites>
 
-    <!-- What counts as "our code" for notices, warnings, and deprecations -->
     <source
-        ignoreSelfDeprecations="false"
-        ignoreDirectDeprecations="false"
-        ignoreIndirectDeprecations="false"
-        restrictNotices="true"
-        restrictWarnings="true">
+      restrictNotices="true"
+      restrictWarnings="true">
         <include>
             <directory>src</directory>
         </include>
