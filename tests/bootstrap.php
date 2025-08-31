@@ -3,31 +3,55 @@
 // tests/bootstrap.php
 use Symfony\Component\Dotenv\Dotenv;
 
+// Force CWD to the project root so relative paths are stable
+chdir(\dirname(__DIR__));
+// Standardize permissions of files generated in tests
+umask(0002);
+
+// --- START: Dynamic FILES_DIR for parallel tests ---
+if (isset($_SERVER['APP_ENV']) && 'test' === $_SERVER['APP_ENV']) {
+    // Get a unique token for the test process. Paratest provides TEST_TOKEN.
+    // Fallback to the process ID (pid) for single test runs.
+    $token = getenv('TEST_TOKEN') ?: getmypid();
+    $filesDir = sys_get_temp_dir().'/exelearning_test_files_'.$token;
+
+    // Ensure the directory exists and is writable
+    if (!is_dir($filesDir)) {
+        mkdir($filesDir, 0777, true);
+    }
+
+    // Set the environment variable that Symfony will use to configure the 'filesdir' parameter
+    $_ENV['FILES_DIR'] = $filesDir;
+    putenv('FILES_DIR='.$filesDir);
+
+    // Register a shutdown function to automatically clean up the temporary directory
+    // after the test process finishes.
+    register_shutdown_function(function () use ($filesDir) {
+        if (is_dir($filesDir)) {
+            // Use the application's own utility for recursive directory removal
+            // This requires the autoloader to be available at shutdown.
+            require_once __DIR__.'/../src/Util/net/exelearning/Util/FileUtil.php';
+            \App\Util\net\exelearning\Util\FileUtil::removeDir($filesDir);
+        }
+    });
+}
+// --- END: Dynamic FILES_DIR for parallel tests ---
+
+// Disable Panther Extension only when testsuite is "unit"
+if (getenv('DISABLE_PANTHER_EXT')) {
+    class __NoOpPantherServerExtension implements \PHPUnit\Runner\Extension\Extension {
+        public function bootstrap(
+            \PHPUnit\TextUI\Configuration\Configuration $configuration,
+            \PHPUnit\Runner\Extension\Facade $facade,
+            \PHPUnit\Runner\Extension\ParameterCollection $parameters
+        ): void {}
+    }
+    class_alias(__NoOpPantherServerExtension::class, \Symfony\Component\Panther\ServerExtension::class);
+}
+
+// --- Load the real bootstrap ---
 require dirname(__DIR__).'/vendor/autoload.php';
 
 if (method_exists(Dotenv::class, 'bootEnv')) {
     (new Dotenv())->bootEnv(dirname(__DIR__).'/.env');
-}
-
-
-// Enable error handler for deprecated warnings when running with --debug
-// This will print the full backtrace for E_DEPRECATED notices, useful for finding the exact line.
-// To activate it, run PHPUnit with the --debug flag:
-//     vendor/bin/phpunit --debug
-//
-// If --debug is not used, this block will not run, but deprecations may still be reported in summary.
-// Tip: You can also enable this manually with `DEBUG=1` if needed.
-
-$debug = in_array('--debug', $_SERVER['argv'] ?? [], true);
-
-if ($debug) {
-    $previousErrorHandler = set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-        if ($errno === E_DEPRECATED) {
-            fwrite(STDERR, "\033[33mDeprecated: $errstr in $errfile:$errline\033[0m\n");
-            debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-        }
-        return false;
-    });
-} else {
-    fwrite(STDERR, "\033[33m[DEBUG] Error handler for deprecations not active. Run PHPUnit with --debug to enable detailed backtraces.\033[0m\n");
 }
