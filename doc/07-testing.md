@@ -88,7 +88,6 @@ vendor/bin/phpunit --debug --filter=RealTime
 
 * `APP_ONLINE_MODE`: `1` for online, `0` for offline
 * `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`: Main user
-* `TEST_USER2_EMAIL`, `TEST_USER2_PASSWORD`: Secondary user (for real-time tests)
 * `CAPTURE_SCREENSHOTS`: `true` to capture screenshots automatically on failures
 
 ### E2E Examples
