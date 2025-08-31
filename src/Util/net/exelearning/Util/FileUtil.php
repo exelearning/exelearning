@@ -438,7 +438,12 @@ class FileUtil
         $filesystem = new Filesystem();
 
         try {
-            $filesystem->mirror($sourcePath, $destinationPath);
+            // Force overwriting existing files to ensure fresh assets on upgrades
+            // (e.g., themes and iDevices). Do NOT enable 'delete' here to avoid
+            // removing user content that exists only in destination.
+            $filesystem->mirror($sourcePath, $destinationPath, null, [
+                'override' => true,
+            ]);
         } catch (IOExceptionInterface $exception) {
             return false;
         }
