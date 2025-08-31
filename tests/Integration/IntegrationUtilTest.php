@@ -17,18 +17,49 @@ final class IntegrationUtilTest extends TestCase
 
     private IntegrationUtil $util;
 
+    /** Backups to avoid cross-test pollution */
+    private array $envBackup = [];
+    private array $serverBackup = [];
+
     protected function setUp(): void
     {
-        // Set environment secret required by the JWT logic
+        // Backup superglobals modified by these tests
+        $this->envBackup = $_ENV;
+        $this->serverBackup = $_SERVER;
+
+        // Force clean, deterministic environment for this class
         $_ENV['APP_SECRET'] = self::SECRET;
+        putenv('APP_SECRET='.self::SECRET);
+
+        foreach (['PROVIDER_URLS', 'PROVIDER_TOKENS', 'PROVIDER_IDS'] as $k) {
+            unset($_ENV[$k]);
+            putenv($k); // unset OS env var
+        }
+
+        // Baseline for server vars used by getClientIP()
+        unset($_SERVER['HTTP_X_FORWARDED_FOR']);
+        $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+
+        // Small leeway to avoid edge cases on iat/exp
+        JWT::$leeway = 5;
+
         $this->util = new IntegrationUtil(new NullLogger());
+    }
+
+    protected function tearDown(): void
+    {
+        // Restore superglobals so random order doesn't affect other tests
+        $_ENV = $this->envBackup;
+        $_SERVER = $this->serverBackup;
     }
 
     private static function createJwt(array $payload): string
     {
-        // Add issued-at and expiration to payload and encode
+        // Use a single timestamp to avoid races
+        $now = time();
+
         return JWT::encode(
-            $payload + ['iat' => time(), 'exp' => time() + 3600],
+            $payload + ['iat' => $now, 'exp' => $now + 3600],
             self::SECRET,
             Settings::JWT_SECRET_HASH
         );
@@ -111,6 +142,7 @@ final class IntegrationUtilTest extends TestCase
         $jwt = self::createJwt($payload);
         $params = $this->util->getParamsMoodleIntegration($jwt, 'get');
 
+        self::assertIsArray($params);
         self::assertArrayNotHasKey('platformIntegrationUrl', $params);
         self::assertArrayNotHasKey('exportType', $params);
     }
