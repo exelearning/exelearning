@@ -71,7 +71,10 @@ class FilesDirService implements FilesDirServiceInterface
      */
     public function isChecked()
     {
-        return file_exists($this->checkFile);
+        // Compute dynamically to avoid any stale path reference
+        $checkPath = $this->fileHelper->getFilesDir().Constants::FILE_CHECKED_FILENAME.'-'.Constants::APP_VERSION;
+
+        return file_exists($checkPath);
     }
 
     /**
@@ -81,17 +84,19 @@ class FilesDirService implements FilesDirServiceInterface
      */
     public function addCheck()
     {
-        if (FilePermissionsUtil::isWritable($this->filesDir)) {
+        $filesDir = $this->fileHelper->getFilesDir();
+        if (FilePermissionsUtil::isWritable($filesDir)) {
             // Remove old checked files
-            $files = scandir($this->filesDir);
+            $files = scandir($filesDir);
             foreach ($files as $file) {
-                $filePath = $this->filesDir.DIRECTORY_SEPARATOR.$file;
+                $filePath = $filesDir.DIRECTORY_SEPARATOR.$file;
                 if (is_file($filePath) && 0 === strpos($file, Constants::FILE_CHECKED_FILENAME)) {
                     unlink($filePath);
                 }
             }
             // Add new checked file
-            $file = fopen($this->checkFile, 'w');
+            $checkPath = $filesDir.Constants::FILE_CHECKED_FILENAME.'-'.Constants::APP_VERSION;
+            $file = fopen($checkPath, 'w');
             fclose($file);
         }
     }
@@ -106,11 +111,26 @@ class FilesDirService implements FilesDirServiceInterface
         $copied = false;
 
         try {
+            // Remove base dirs to ensure stale files are cleaned
             FileUtil::removeDir($this->fileHelper->getIdevicesBaseDir());
-            $copied = FileUtil::copyDir(
-                $this->fileHelper->getSymfonyFilesDir(),
-                $this->fileHelper->getFilesDir()
-            );
+            FileUtil::removeDir($this->fileHelper->getThemesBaseDir());
+
+            // Proactively sync base subfolders with delete => true to guarantee
+            // stale files are removed even if removal above is skipped by the FS.
+            $symfonyFilesDir = $this->fileHelper->getSymfonyFilesDir();
+
+            $symfonyIdevicesBase = $symfonyFilesDir.Constants::PERMANENT_CONTENT_STORAGE_DIRECTORY.DIRECTORY_SEPARATOR.
+                Constants::IDEVICES_DIR_NAME.DIRECTORY_SEPARATOR.
+                Constants::IDEVICES_BASE_DIR_NAME;
+            FileUtil::copyDir($symfonyIdevicesBase, $this->fileHelper->getIdevicesBaseDir(), ['delete' => true]);
+
+            $symfonyThemesBase = $symfonyFilesDir.Constants::PERMANENT_CONTENT_STORAGE_DIRECTORY.DIRECTORY_SEPARATOR.
+                Constants::THEMES_DIR_NAME.DIRECTORY_SEPARATOR.
+                Constants::THEMES_BASE_DIR_NAME;
+            FileUtil::copyDir($symfonyThemesBase, $this->fileHelper->getThemesBaseDir(), ['delete' => true]);
+
+            // Then perform a general copy for the rest, preserving user content
+            $copied = FileUtil::copyDir($symfonyFilesDir, $this->fileHelper->getFilesDir());
         } catch (\Exception $e) {
             $copied = false;
         }
