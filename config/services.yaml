@@ -43,6 +43,13 @@ parameters:
 
     security.firewall_name: 'main'
 
+    # Default logs and cache directories
+    logs_default_dir: '%kernel.logs_dir%'
+    cache_default_dir: '%kernel.project_dir%/var/cache'
+
+    # Read the LOG_DIR and CACHE_DIR env vars. If it does not exist, use the defaults.
+    app.logs.dir:  '%env(default:logs_default_dir:LOG_DIR)%'
+    app.cache.dir: '%env(default:cache_default_dir:CACHE_DIR)%'
 
 services:
     Symfony\Component\DependencyInjection\ContainerInterface: '@service_container'
@@ -61,6 +68,7 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
+            - '../src/var/'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
