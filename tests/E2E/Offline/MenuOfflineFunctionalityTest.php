@@ -52,8 +52,8 @@ class MenuOfflineFunctionalityTest extends ExelearningE2EBase
         // Instrument mock calls to be easily asserted from tests
         $client->executeScript(<<<'JS'
             (function(){
-                window.__MockElectronCalls = { openElp:0, readFile:0, save:0, saveAs:0 };
-                window.__MockArgsLog = { openElp:[], readFile:[], save:[], saveAs:[] };
+                window.__MockElectronCalls = { openElp:0, readFile:0, save:0, saveAs:0, exportToFolder:0 };
+                window.__MockArgsLog = { openElp:[], readFile:[], save:[], saveAs:[], exportToFolder:[] };
                 const wrap = (name) => {
                     if (!window.electronAPI || typeof window.electronAPI[name] !== 'function') return;
                     const orig = window.electronAPI[name];
@@ -63,7 +63,7 @@ class MenuOfflineFunctionalityTest extends ExelearningE2EBase
                         return await orig.apply(this, args);
                     };
                 };
-                ['openElp','readFile','save','saveAs'].forEach(wrap);
+                ['openElp','readFile','save','saveAs','exportToFolder'].forEach(wrap);
             })();
         JS);
 
@@ -177,6 +177,45 @@ class MenuOfflineFunctionalityTest extends ExelearningE2EBase
 
         $this->waitForMockCall($client, 'saveAs');
         // Ensure export API was called
+        $exportCalls = (int) $client->executeScript('return (window.__MockApiCalls && window.__MockApiCalls.getOdeExportDownload) || 0;');
+        $this->assertGreaterThanOrEqual(1, $exportCalls);
+    }
+
+    public function testExportHtml5ToFolderOfflineUsesElectronFolderPicker(): void
+    {
+        $client = $this->initOfflineClientWithMock();
+
+        // Open File dropdown and click Export As (offline) -> Export to Folder (Unzipped Website)
+        $client->waitForVisibility('#dropdownFile', 5);
+        $client->getWebDriver()->findElement(\Facebook\WebDriver\WebDriverBy::id('dropdownFile'))->click();
+        $client->getWebDriver()->findElement(\Facebook\WebDriver\WebDriverBy::id('dropdownExportAsOffline'))->click();
+        $client->getWebDriver()->findElement(\Facebook\WebDriver\WebDriverBy::id('navbar-button-exportas-html5-folder'))->click();
+
+        // Should call export API and the Electron folder export helper
+        $this->waitForMockCall($client, 'exportToFolder');
+        $exportCalls = (int) $client->executeScript('return (window.__MockApiCalls && window.__MockApiCalls.getOdeExportDownload) || 0;');
+        $this->assertGreaterThanOrEqual(1, $exportCalls);
+    }
+
+    public function testExportHtml5ToFolderCancelIsHandled(): void
+    {
+        $client = $this->initOfflineClientWithMock();
+
+        // Override exportToFolder to simulate cancel
+        $client->executeScript(<<<'JS'
+            (function(){
+                if (window.electronAPI) {
+                    window.electronAPI.exportToFolder = async function(){ return { ok: false, canceled: true }; };
+                }
+            })();
+        JS);
+
+        $client->waitForVisibility('#dropdownFile', 5);
+        $client->getWebDriver()->findElement(\Facebook\WebDriver\WebDriverBy::id('dropdownFile'))->click();
+        $client->getWebDriver()->findElement(\Facebook\WebDriver\WebDriverBy::id('dropdownExportAsOffline'))->click();
+        $client->getWebDriver()->findElement(\Facebook\WebDriver\WebDriverBy::id('navbar-button-exportas-html5-folder'))->click();
+
+        // If no exception bubbles, the UI handled cancel. Also ensure export API called once.
         $exportCalls = (int) $client->executeScript('return (window.__MockApiCalls && window.__MockApiCalls.getOdeExportDownload) || 0;');
         $this->assertGreaterThanOrEqual(1, $exportCalls);
     }
