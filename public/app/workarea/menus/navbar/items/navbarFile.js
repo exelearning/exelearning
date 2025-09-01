@@ -865,7 +865,9 @@ export default class NavbarFile {
                         type: 'application/octet-stream',
                     });
                     // Derive filename in a cross-platform way (Windows/Mac/Linux)
-                    const filename = (filePath && filePath.split(/[\\\/]/).pop()) || 'project.elp';
+                    const filename =
+                        (filePath && filePath.split(/[\\\/]/).pop()) ||
+                        'project.elp';
                     const file = new File([blob], filename, {
                         type: 'application/octet-stream',
                         lastModified: Date.now(),
