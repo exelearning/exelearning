@@ -808,7 +808,8 @@ export default class NavbarFile {
         inputUpload.classList.add('local-ode-file-upload-input');
         inputUpload.setAttribute('type', 'file');
         inputUpload.setAttribute('name', 'local-ode-file-upload');
-        inputUpload.setAttribute('accept', '.elp');
+        // Allow both .elp and .zip for offline picker fallback
+        inputUpload.setAttribute('accept', '.elp,.zip');
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
             let uploadOdeFile = document.querySelector(
@@ -863,7 +864,8 @@ export default class NavbarFile {
                     const blob = new Blob([bytes], {
                         type: 'application/octet-stream',
                     });
-                    const filename = filePath.split('/').pop() || 'project.elp';
+                    // Derive filename in a cross-platform way (Windows/Mac/Linux)
+                    const filename = (filePath && filePath.split(/[\\\/]/).pop()) || 'project.elp';
                     const file = new File([blob], filename, {
                         type: 'application/octet-stream',
                         lastModified: Date.now(),
