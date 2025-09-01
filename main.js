@@ -765,7 +765,7 @@ ipcMain.handle('app:openElp', async (e) => {
   const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
     title: tOrDefault('open.dialogTitle', defaultLocale === 'es' ? 'Abrir proyecto' : 'Open project'),
     properties: ['openFile'],
-    filters: [{ name: 'eXeLearning project', extensions: ['elp'] }]
+    filters: [{ name: 'eXeLearning project', extensions: ['elp', 'zip'] }]
   });
   if (canceled || !filePaths || !filePaths.length) return null;
   return filePaths[0];
