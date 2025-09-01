@@ -89,12 +89,14 @@
         "phpunit": [
             "@phpunit-unit",
             "@phpunit-e2e",
-            "@phpunit-e2e-realtime"
+            "@phpunit-e2e-realtime",
+            "@phpunit-e2e-offline"
         ],
         "phpunit-unit": "vendor/bin/phpunit --testsuite unit --testdox --no-extensions --colors=always",
         "phpunit-unit-parallel": "DISABLE_PANTHER_EXT=1 vendor/bin/paratest --processes auto --functional --tmp-dir /dev/shm --testsuite unit --colors=always",
         "phpunit-e2e": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e --colors=always",
         "phpunit-e2e-realtime": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e-realtime --colors=always",
+        "phpunit-e2e-offline": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e-offline --colors=always",
         "translations:extract": "php bin/console app:translations:extract",
         "cache-clear": "php bin/console cache:clear",
         "update-licenses": "php bin/update-licenses.php"
