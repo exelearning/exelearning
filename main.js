@@ -113,6 +113,28 @@ let isShuttingDown = false; // Flag to ensure the app only shuts down once
 let customEnv;
 let env;
 
+// ──────────────  Save/Export helpers  ──────────────
+// Returns a known extension (including the leading dot) inferred from a suggested name.
+function inferKnownExt(suggestedName) {
+  try {
+    const ext = (path.extname(suggestedName || '') || '').toLowerCase().replace(/^\./, '');
+    if (!ext) return null;
+    if (ext === 'elp' || ext === 'zip' || ext === 'epub') return `.${ext}`;
+    return null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+// Ensures the filePath has an extension; if missing, appends one inferred from suggestedName.
+function ensureExt(filePath, suggestedName) {
+  if (!filePath) return filePath;
+  const hasExt = !!path.extname(filePath);
+  if (hasExt) return filePath;
+  const inferred = inferKnownExt(suggestedName);
+  return inferred ? (filePath + inferred) : filePath;
+}
+
 // ──────────────  Simple settings (no external deps)  ──────────────
 // Persist user choices under userData/settings.json
 const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
@@ -439,8 +461,15 @@ if (!IS_E2E) {
             event.preventDefault();
             return;
           }
-          targetPath = filePath;
+          targetPath = ensureExt(filePath, suggestedName);
           setSavedPath(projectKey, targetPath);
+        } else {
+          // If remembered path has no extension, append inferred one
+          const fixed = ensureExt(targetPath, suggestedName);
+          if (fixed !== targetPath) {
+            targetPath = fixed;
+            setSavedPath(projectKey, targetPath);
+          }
         }
 
         // Save directly (overwrite without prompting)
@@ -726,8 +755,14 @@ ipcMain.handle('app:save', async (e, { downloadUrl, projectKey, suggestedName })
         buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save')
       });
       if (canceled || !filePath) return false;
-      targetPath = filePath;
+      targetPath = ensureExt(filePath, suggestedName || 'document.elp');
       setSavedPath(key, targetPath);
+    } else {
+      const fixed = ensureExt(targetPath, suggestedName || 'document.elp');
+      if (fixed !== targetPath) {
+        targetPath = fixed;
+        setSavedPath(key, targetPath);
+      }
     }
     return await streamToFile(downloadUrl, targetPath, wc);
   } catch (_e) {
@@ -745,9 +780,10 @@ ipcMain.handle('app:saveAs', async (e, { downloadUrl, projectKey, suggestedName 
     buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save')
   });
   if (canceled || !filePath) return false;
-  setSavedPath(key, filePath);
+  const finalPath = ensureExt(filePath, suggestedName || 'document.elp');
+  setSavedPath(key, finalPath);
   if (typeof downloadUrl === 'string' && downloadUrl && wc) {
-    return await streamToFile(downloadUrl, filePath, wc);
+    return await streamToFile(downloadUrl, finalPath, wc);
   }
   return false;
 });
