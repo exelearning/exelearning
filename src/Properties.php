@@ -214,14 +214,11 @@ class Properties
             'category' => null,
             'heritable' => true,
         ],
-        'visibilityType' => [
-            'title' => self::TRANS_PREFIX.'Visibility type',
-            'value' => 'all',
-            'type' => 'select',
-            'options' => [
-                'all' => self::TRANS_PREFIX.'Visible to all',
-                'teacher' => self::TRANS_PREFIX.'Teacher only',
-            ],
+        // Teacher-only content (export-time visibility)
+        'teacherOnly' => [
+            'title' => self::TRANS_PREFIX.'Teacher only',
+            'value' => 'false',
+            'type' => 'checkbox',
             'category' => null,
             'heritable' => true,
         ],
@@ -252,14 +249,11 @@ class Properties
             'category' => null,
             'heritable' => true,
         ],
-        'visibilityType' => [
-            'title' => self::TRANS_PREFIX.'Visibility type',
-            'value' => 'all',
-            'type' => 'select',
-            'options' => [
-                'all' => self::TRANS_PREFIX.'Visible to all',
-                'teacher' => self::TRANS_PREFIX.'Teacher only',
-            ],
+        // Teacher-only content (export-time visibility)
+        'teacherOnly' => [
+            'title' => self::TRANS_PREFIX.'Teacher only',
+            'value' => 'false',
+            'type' => 'checkbox',
             'category' => null,
             'heritable' => true,
         ],
@@ -329,17 +323,7 @@ class Properties
             'category' => self::TRANS_PREFIX.'General',
             'heritable' => true,
         ],
-        'visibilityType' => [
-            'title' => self::TRANS_PREFIX.'Visibility type',
-            'value' => 'all',
-            'type' => 'select',
-            'options' => [
-                'all' => self::TRANS_PREFIX.'Visible to all',
-                'teacher' => self::TRANS_PREFIX.'Teacher only',
-            ],
-            'category' => self::TRANS_PREFIX.'General',
-            'heritable' => true,
-        ],
+        // Teacher mode is not applicable at page level
         'description' => [
             'title' => self::TRANS_PREFIX.'Description',
             'type' => 'textarea',

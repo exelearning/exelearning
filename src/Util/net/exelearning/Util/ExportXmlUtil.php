@@ -1474,11 +1474,7 @@ class ExportXmlUtil
         // Page
         $page = $exe->addChild('main', ' ');
         $page->addAttribute('id', $odeNavStructureSync->getOdePageId());
-        $pageClass = 'page';
-        if (isset($pagePropertiesDict['visibilityType']) && 'teacher' === $pagePropertiesDict['visibilityType']) {
-            $pageClass .= ' teacher-only';
-        }
-        $page->addAttribute('class', $pageClass);
+        $page->addAttribute('class', 'page');
 
         /* To review
         if ($exportDynamicPage) {
@@ -2191,9 +2187,10 @@ class ExportXmlUtil
             $class .= ' minimized';
         }
 
+        // Teacher-only checkbox on blocks
         if (
-            isset($blockPropertiesDict['visibilityType'])
-            && 'teacher' === $blockPropertiesDict['visibilityType']
+            (isset($blockPropertiesDict['teacherOnly']) && 'true' == $blockPropertiesDict['teacherOnly'])
+            || (isset($blockPropertiesDict['visibilityType']) && 'teacher' === $blockPropertiesDict['visibilityType'])
         ) {
             $class .= ' teacher-only';
         }
@@ -2384,9 +2381,10 @@ class ExportXmlUtil
         if (!$odeComponentsSync->getHtmlView()) {
             $class .= ' db-no-data';
         }
+        // Teacher-only checkbox on iDevices
         if (
-            isset($idevicePropertiesDict['visibilityType'])
-            && 'teacher' === $idevicePropertiesDict['visibilityType']
+            (isset($idevicePropertiesDict['teacherOnly']) && 'true' == $idevicePropertiesDict['teacherOnly'])
+            || (isset($idevicePropertiesDict['visibilityType']) && 'teacher' === $idevicePropertiesDict['visibilityType'])
         ) {
             $class .= ' teacher-only';
         }
