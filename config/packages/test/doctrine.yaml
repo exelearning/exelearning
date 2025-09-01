@@ -1,4 +1,8 @@
+# config/packages/test/doctrine.yaml
 doctrine:
     dbal:
-        # "TEST_TOKEN" is typically set by ParaTest
-        dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+        driver:  'pdo_sqlite'   # Use the SQLite PDO driver for speed and portability
+        memory:  true           # Run the DB entirely **in-memory**; each test gets a fresh,
+                                # empty database that disappears once the process ends.
+                                # No files are created, so parallel processes cannot collide.
+        charset: 'UTF8'         # Ensure UTF-8 text handling inside the temporary in-memory DB

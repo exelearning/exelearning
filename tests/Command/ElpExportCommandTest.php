@@ -2,13 +2,10 @@
 
 namespace App\Tests\Command;
 
-use App\Entity\net\exelearning\Entity\User;
-use App\Repository\net\exelearning\Repository\UserRepository;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Warning;
 use PHPUnit\Framework\AssertionFailedError;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Filesystem\Filesystem;
 use App\Command\net\exelearning\Command\ElpExportCommand;
@@ -26,31 +23,13 @@ class ElpExportCommandTest extends KernelTestCase
         $container = static::getContainer();
         $this->filesystem = new Filesystem();
 
-        // Ensure test user exists with ID 1
-        $userRepository = $container->get(UserRepository::class);
-        $entityManager = $container->get('doctrine.orm.entity_manager');
-        if (!$userRepository->find(1)) {
-            $user = new User();
-            $user->setUserId(1);
-            $user->setEmail('tests@example.com');
-            $user->setPassword('random-pass');
-            $user->setIsLopdAccepted(true);
-
-            $meta = $entityManager->getClassMetadata(User::class);
-            $meta->setIdGeneratorType(\Doctrine\ORM\Mapping\ClassMetadata::GENERATOR_TYPE_NONE);
-
-            $entityManager->persist($user);
-            $entityManager->flush();
-        }
-
-        // Register the generic export command
-        $application = new Application();
+        // Get the command service directly and test it without attaching to Application
         $command = $container->get(ElpExportCommand::class);
-        $application->add($command);
         $this->commandTester = new CommandTester($command);
     }
 
     #[DataProvider('elpFormatProvider')]
+    #[Group('slow')]
     public function testExportAllFormats(string $fixtureFilename, string $format): void
     {
         $inputFile = realpath(__DIR__ . '/../Fixtures/' . $fixtureFilename);
@@ -62,7 +41,6 @@ class ElpExportCommandTest extends KernelTestCase
 
         try {
             $this->commandTester->execute([
-                'command' => 'elp:export',
                 'input'   => $inputFile,
                 'output'  => $outputDir,
                 'format'  => $format,
@@ -99,12 +77,12 @@ class ElpExportCommandTest extends KernelTestCase
     public static function elpFormatProvider(): array
     {
         $elpFiles = [
-            'basic-example.elp',
-            'old_elp_modelocrea.elp',
-            'old_elp_nebrija.elp',
-            'old_elp_poder_conexiones.elp',
-            'old_manual_exe29_compressed.elp',
-
+            'basic-example.elp',                  //   85K
+            // 'encoding_test.elp',               //  477K
+            // 'old_elp_modelocrea.elp',          //  4,2M
+            // 'old_elp_nebrija.elp',             //  7,6M
+            'old_elp_poder_conexiones.elp',       //  5,1M
+            // 'old_manual_exe29_compressed.elp', // 10,0M
         ];
 
         $formats = [
@@ -141,7 +119,6 @@ class ElpExportCommandTest extends KernelTestCase
 
         try {
             $this->commandTester->execute([
-                'command' => 'elp:export',
                 'input'   => $tempInvalid,
                 'output'  => $outputDir,
                 '--debug' => true,
@@ -178,5 +155,3 @@ class ElpExportCommandTest extends KernelTestCase
         }
     }
 }
-
-

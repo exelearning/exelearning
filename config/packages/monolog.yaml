@@ -7,7 +7,7 @@ when@dev:
         handlers:
             main:
                 type: stream
-                path: "%kernel.logs_dir%/%kernel.environment%.log"
+                path: "%app.logs.dir%/%kernel.environment%.log"
                 level: debug
                 channels: ["!event", "!doctrine"]
             # uncomment to get logging in your browser

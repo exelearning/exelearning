@@ -39,6 +39,7 @@
         "twig/twig": "^3.0"
     },
     "require-dev": {
+        "brianium/paratest": "*",
         "dama/doctrine-test-bundle": "^8.2",
         "friendsofphp/php-cs-fixer": "^3.0",
         "phpunit/phpunit": "*",
@@ -78,17 +79,22 @@
             "assets:install %PUBLIC_DIR%": "symfony-cmd"
         },
         "assets-install": "php bin/console assets:install public",
-        "db-schema-update": "php bin/console doctrine:schema:update --complete --force",
+        "db-schema-update": "php bin/console doctrine:schema:update --force",
         "create-user": "php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail",
         "generate-api-key": "php bin/console app:generate-api-key",
         "php-cs-checker": "vendor/bin/php-cs-fixer check src --config=.php-cs-fixer.dist.php --using-cache=no",
         "php-cs-fixer": "vendor/bin/php-cs-fixer fix src --config=.php-cs-fixer.dist.php --using-cache=no",
         "js-lint": "yarn lint",
         "js-fix": "yarn lint:fix",
-        "phpunit": "vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=always",
-        "phpunit-unit": "vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=always --testsuite unit",
-        "phpunit-e2e": "vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=always --testsuite e2e",
-        "phpunit-e2e-realtime": "vendor/bin/phpunit --configuration phpunit.xml.dist --testdox --colors=always --testsuite e2e-realtime",
+        "phpunit": [
+            "@phpunit-unit",
+            "@phpunit-e2e",
+            "@phpunit-e2e-realtime"
+        ],
+        "phpunit-unit": "vendor/bin/phpunit --testsuite unit --testdox --no-extensions --colors=always",
+        "phpunit-unit-parallel": "DISABLE_PANTHER_EXT=1 vendor/bin/paratest --processes auto --functional --tmp-dir /dev/shm --testsuite unit --colors=always",
+        "phpunit-e2e": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e --colors=always",
+        "phpunit-e2e-realtime": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e-realtime --colors=always",
         "translations:extract": "php bin/console app:translations:extract",
         "cache-clear": "php bin/console cache:clear",
         "update-licenses": "php bin/update-licenses.php"
@@ -96,10 +102,11 @@
     "scripts-descriptions": {
         "php-cs-checker": "Run PHP-CS-Fixer to check coding style issues.",
         "php-cs-fixer": "Run PHP-CS-Fixer to automatically fix coding style issues.",
-        "phpunit": "Run PHPUnit to execute ALL tests.",
-        "phpunit-unit": "Run PHPUnit to execute unit tests.",
-        "phpunit-e2e": "Run PHPUnit to execute e2e tests.",
-        "phpunit-e2e-realtime": "Run PHPUnit to execute e2e-realtime tests.",
+        "phpunit": "Run ALL tests with optimal settings for each suite.",
+        "phpunit-unit": "Run unit tests.",
+        "phpunit-e2e": "Run e2e tests with maximum reliability (process isolation).",
+        "phpunit-e2e-realtime": "Run e2e-realtime tests with maximum reliability (process isolation).",
+        "phpunit-unit-parallel": "Run unit tests in parallel using paratest with maximum speed (--functional mode)",
         "db-schema-update": "Run the migrations to update the database schema.",
         "cache-clear": "Clear the Symfony cache.",
         "assets-install": "Install the public assets."

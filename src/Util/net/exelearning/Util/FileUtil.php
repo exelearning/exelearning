@@ -380,58 +380,45 @@ class FileUtil
      */
     public static function removeDir($dirPath)
     {
-        if (true === is_dir($dirPath)) {
-            $files = array_diff(scandir($dirPath), ['.', '..']);
-
-            foreach ($files as $file) {
-                self::removeDir(realpath($dirPath).DIRECTORY_SEPARATOR.$file);
-            }
-
-            return rmdir($dirPath);
-        } elseif (true === is_file($dirPath)) {
-            return unlink($dirPath);
-        }
-
-        return false;
-    }
-
-    /**
-     * Removes the content of directory passed as param.
-     *
-     * @param string $dirPath
-     *
-     * @return bool
-     */
-    public static function removeDirContent($dirPath)
-    {
-        if (true === is_dir($dirPath)) {
-            $files = array_diff(scandir($dirPath), ['.', '..']);
-            foreach ($files as $file) {
-                self::removeDir(realpath($dirPath).DIRECTORY_SEPARATOR.$file);
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Removes the file passed with path.
-     *
-     * @param string $filePath
-     *
-     * @return bool
-     */
-    public static function removeFile($filePath)
-    {
+        // Use Symfony Filesystem for robustness across platforms
         $filesystem = new Filesystem();
-
         try {
-            $filesystem->remove($filePath);
+            $filesystem->remove($dirPath);
         } catch (IOExceptionInterface $exception) {
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * Removes all contents inside a directory without deleting the directory itself.
+     */
+    public static function removeDirContent(string $dirPath): bool
+    {
+        if (!is_dir($dirPath)) {
+            return true;
+        }
+
+        $ok = true;
+        $it = new \FilesystemIterator($dirPath, \FilesystemIterator::SKIP_DOTS);
+        foreach ($it as $item) {
+            $ok = self::removeDir($item->getPathname()) && $ok;
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Removes a file gracefully. Succeeds if the file is already gone.
+     */
+    public static function removeFile(string $filePath): bool
+    {
+        if (!file_exists($filePath)) {
+            return true;
+        }
+
+        return @unlink($filePath);
     }
 
     /**
@@ -442,12 +429,16 @@ class FileUtil
      *
      * @return bool
      */
-    public static function copyDir($sourcePath, $destinationPath)
+    public static function copyDir($sourcePath, $destinationPath, array $options = [])
     {
         $filesystem = new Filesystem();
 
         try {
-            $filesystem->mirror($sourcePath, $destinationPath);
+            // Ensure overwriting by default; allow caller to pass extra options (e.g., 'delete' => true)
+            $options = array_replace([
+                'override' => true,
+            ], $options);
+            $filesystem->mirror($sourcePath, $destinationPath, null, $options);
         } catch (IOExceptionInterface $exception) {
             return false;
         }
@@ -521,30 +512,95 @@ class FileUtil
     }
 
     /**
-     * Creates a zip file with the dir sourcepath.
+     * Create a ZIP from a directory quickly using ZipArchive.
+     * - Stores already-compressed assets (CM_STORE).
+     * - Uses ZSTD for compression in the 'test' environment for speed.
+     * - Uses DEFLATE for other environments for better compatibility.
+     * - Adds empty directories only when they are truly empty.
      *
-     * @param string $sourcePath
-     * @param string $sourcePath
-     *
-     * @return bool
+     * @param string $sourcePath   absolute or relative directory to zip
+     * @param string $outZipPath   destination ZIP filename (will be overwritten)
+     * @param int    $deflateLevel Compression level for DEFLATE (0=default, 1..9). Use 1 in tests.
      */
-    public static function zipDir($sourcePath, $outZipPath)
+    public static function zipDir(string $sourcePath, string $outZipPath, int $deflateLevel = 1): bool
     {
-        $pathInfo = pathinfo($sourcePath);
-        $parentPath = $pathInfo['dirname'];
-        $dirName = $pathInfo['basename'];
+        $zip = new \ZipArchive();
 
-        $z = new \ZipArchive();
-        $z->open($outZipPath, \ZipArchive::CREATE);
-        // $z->addEmptyDir($dirName);
-        if ($sourcePath == $dirName) {
-            self::dirToZip($sourcePath, $z, 0);
-        } else {
-            self::dirToZip($sourcePath, $z, strlen("$sourcePath/"));
+        // Ensure output directory exists
+        $parent = dirname($outZipPath);
+        if (!is_dir($parent) && !mkdir($parent, 0755, true) && !is_dir($parent)) {
+            return false;
         }
-        $z->close();
 
-        return true;
+        $flags = \ZipArchive::CREATE | \ZipArchive::OVERWRITE;
+        if (true !== $zip->open($outZipPath, $flags)) {
+            return false;
+        }
+
+        // Determine compression method based on environment
+        // Use faster ZSTD for tests if available, otherwise default to DEFLATE
+        $compressionMethod = (\defined('ZipArchive::CM_ZSTD') && 'test' === ($_ENV['APP_ENV'] ?? ''))
+            ? \ZipArchive::CM_ZSTD
+            : \ZipArchive::CM_DEFLATE;
+
+        $base = rtrim(realpath($sourcePath) ?: $sourcePath, DIRECTORY_SEPARATOR);
+        $baseLen = strlen($base) + 1;
+
+        // Extensions better stored than deflated
+        $storeExt = [
+            'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif',
+            'mp3', 'wav', 'ogg', 'ogv', 'webm', 'mp4', 'm4a', 'm4v', 'mov',
+            'pdf', 'zip', 'gz', 'bz2', 'xz', '7z', 'rar',
+            'woff', 'woff2', 'ttf', 'otf',
+        ];
+
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($base, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($it as $item) {
+            $path = $item->getPathname();
+            $local = str_replace('\\', '/', substr($path, $baseLen));
+
+            if ($item->isDir()) {
+                // Add only truly empty directories
+                if (!self::dirHasEntries($path)) {
+                    $zip->addEmptyDir($local);
+                }
+                continue;
+            }
+
+            if (!$zip->addFile($path, $local)) {
+                continue; // skip on failure
+            }
+
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+            // 1) STORE already-compressed assets
+            if (in_array($ext, $storeExt, true)) {
+                // Ignore if method unsupported; returns false harmlessly
+                @$zip->setCompressionName($local, \ZipArchive::CM_STORE);
+                continue;
+            }
+
+            // 2) Use the selected compression method
+            if ($deflateLevel > 0) {
+                @$zip->setCompressionName($local, $compressionMethod, $deflateLevel);
+            } else {
+                @$zip->setCompressionName($local, $compressionMethod);
+            }
+        }
+
+        return $zip->close();
+    }
+
+    /** True if directory contains at least one entry (file or subdir). */
+    private static function dirHasEntries(string $dir): bool
+    {
+        $it = new \FilesystemIterator($dir, \FilesystemIterator::SKIP_DOTS);
+
+        return $it->valid();
     }
 
     /**
@@ -575,19 +631,38 @@ class FileUtil
     }
 
     /**
-     * Extract zip into dir.
+     * Extract a ZIP file into a directory.
      *
-     * @param string $zipFile
-     * @param string $dir
+     * @param string $zip_file absolute path to the ZIP file
+     * @param string $dest_dir destination directory (will be created if missing)
      *
-     * @return void
+     * @throws \RuntimeException when the archive cannot be opened or extraction fails
      */
-    public static function extractZipTo($zipFile, $dir)
+    public static function extractZipTo(string $zip_file, string $dest_dir): void
     {
+        if (!is_file($zip_file) || !is_readable($zip_file)) {
+            throw new \RuntimeException('ZIP file is not readable: '.$zip_file);
+        }
+
+        // Call the function to ensure the directory exists, if not, it tries to create it
+        self::ensureDirectoryExists($dest_dir);
+
         $zip = new \ZipArchive();
-        $zip->open($zipFile);
-        $zip->extractTo($dir);
-        $zip->close();
+        // RDONLY avoids unnecessary flags and is sufficient for extraction.
+        $flags = \ZipArchive::RDONLY;
+
+        $open_result = $zip->open($zip_file, $flags);
+        if (true !== $open_result) {
+            throw new \RuntimeException('Failed to open ZIP ('.$open_result.'): '.$zip_file);
+        }
+
+        try {
+            if (!$zip->extractTo($dest_dir)) {
+                throw new \RuntimeException('Extraction failed to: '.$dest_dir);
+            }
+        } finally {
+            $zip->close();
+        }
     }
 
     /**

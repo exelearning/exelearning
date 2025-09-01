@@ -72,6 +72,19 @@ var $magnifier = {
             const cb = '$magnifier.addEvents(' + JSON.stringify(ldata) + ');';
             $exe.loadScript(ldata.idevicePath + 'mojomagnify.js', cb);
         }
+        const dataString = JSON.stringify(ldata)
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex('.exe-magnifier-container');
+        }
+        
+
     },
 
     changeDirectory(data) {
@@ -98,6 +111,9 @@ var $magnifier = {
         const dir = $('html').is('#exe-index')
             ? 'content/resources/' + $node.attr('id-resource') + '/'
             : '../content/resources/' + $node.attr('id-resource') + '/';
+        const custom = $('html').is('#exe-index')
+            ? 'custom/'
+            : '../custom/';
 
 
 
@@ -109,7 +125,11 @@ var $magnifier = {
                 const val = el.getAttribute(attr).trim();
                 if (/^\/?files\//.test(val)) {
                     const filename = val.split('/').pop() || '';
-                    el.setAttribute(attr, dir + filename);
+                    if (val.indexOf('file_manager') === -1) {
+                        el.setAttribute(attr, dir + filename);
+                    } else {
+                        el.setAttribute(attr, custom + filename);
+                    }
                 }
             });
         return doc.body.innerHTML;
@@ -214,6 +234,9 @@ var $magnifier = {
 
         setTimeout(function () {
             MojoMagnify.init();
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.exe-magnifier-container',
+            );
         }, 500)
     },
 
