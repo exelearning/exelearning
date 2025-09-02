@@ -104,5 +104,17 @@ class MenuOnlineFunctionalityTest extends ExelearningE2EBase
         $this->assertGreaterThanOrEqual(1, $exportCalls, 'Export API should be called');
         $this->assertGreaterThanOrEqual(1, $downloadCalls, 'Browser download should be triggered');
     }
-}
 
+
+    public function testExportToFolderOptionNotVisibleOnline(): void
+    {
+        $client = $this->login();
+        $this->injectOnlineStubs($client);
+
+        $client->waitForVisibility('#dropdownFile', 5);
+        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
+        // Ensure the offline-only option is not present
+        $present = (bool) $client->executeScript('return !!document.getElementById("navbar-button-exportas-html5-folder");');
+        $this->assertFalse($present, 'Export to Folder option must not appear online');
+    }
+}

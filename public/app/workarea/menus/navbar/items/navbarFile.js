@@ -48,6 +48,9 @@ export default class NavbarFile {
         this.exportHTML5AsButton = this.menu.navbar.querySelector(
             '#navbar-button-exportas-html5'
         );
+        this.exportHTML5FolderAsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-html5-folder'
+        );
         this.exportHTML5SPButton = this.menu.navbar.querySelector(
             '#navbar-button-export-html5-sp'
         );
@@ -114,6 +117,7 @@ export default class NavbarFile {
         this.setDownloadProjectAsEvent();
         this.setExportHTML5Event();
         this.setExportHTML5AsEvent();
+        this.setExportHTML5FolderAsEvent();
         this.setExportHTML5SPEvent();
         this.setExportHTML5SPAsEvent();
         this.setExportSCORM12Event();
@@ -329,6 +333,17 @@ export default class NavbarFile {
         this.exportHTML5AsButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5AsEvent();
+        });
+    }
+
+    /**
+     * Export Website directly to a folder (offline only)
+     */
+    setExportHTML5FolderAsEvent() {
+        if (!this.exportHTML5FolderAsButton) return;
+        this.exportHTML5FolderAsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportHTML5FolderAsEvent();
         });
     }
 
@@ -1192,6 +1207,86 @@ export default class NavbarFile {
     }
 
     /**
+<<<<<<< HEAD
+     * Export Website to folder (unzipped) — offline Electron only
+     */
+    async exportHTML5FolderAsEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        try {
+            if (
+                !eXeLearning.config.isOfflineInstallation ||
+                !window.electronAPI
+            ) {
+                toast.toastBody.innerHTML = _(
+                    'This option is only available offline.'
+                );
+                toast.toastBody.classList.add('error');
+                setTimeout(() => toast.remove(), 1200);
+                return;
+            }
+            let odeSessionId = eXeLearning.app.project.odeSession;
+            let response = await eXeLearning.app.api.getOdeExportDownload(
+                odeSessionId,
+                'html5'
+            );
+            if (response && response['responseMessage'] === 'OK') {
+                const url = response['urlZipFile'];
+                const suggestedBase = this.normalizeSuggestedName(
+                    response['exportProjectName'],
+                    'export-html5'
+                ).replace(/\.zip$/i, '');
+                const keyBase = window.__currentProjectId || 'default';
+
+                if (typeof window.electronAPI.exportToFolder === 'function') {
+                    const result = await window.electronAPI.exportToFolder(
+                        url,
+                        `${keyBase}:export-html5-folder`,
+                        suggestedBase
+                    );
+                    if (result && result.ok) {
+                        toast.toastBody.innerHTML = _(
+                            'The project has been exported.'
+                        );
+                    } else {
+                        toast.toastBody.innerHTML = _('Export canceled.');
+                    }
+                } else {
+                    // Fallback: download as zip if folder export is not available
+                    this.downloadLink(url, `${suggestedBase}.zip`);
+                    toast.toastBody.innerHTML = _(
+                        'The project has been exported.'
+                    );
+                }
+            } else {
+                toast.toastBody.innerHTML = _(
+                    'An error occurred while exporting the project.'
+                );
+                toast.toastBody.classList.add('error');
+                eXeLearning.app.modals.alert.show({
+                    title: _('Error'),
+                    body:
+                        response && response['responseMessage']
+                            ? response['responseMessage']
+                            : _('Unknown error.'),
+                    contentId: 'error',
+                });
+            }
+        } catch (e) {
+            toast.toastBody.innerHTML = _('Unexpected error.');
+            toast.toastBody.classList.add('error');
+        }
+        setTimeout(() => toast.remove(), 1000);
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+=======
+>>>>>>> c0ba7aea408904076081df962baf800d79424a91
      * Export the ode as HTML5 and download it
      *
      */

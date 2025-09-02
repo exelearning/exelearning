@@ -680,6 +680,46 @@ function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
   });
 }
 
+// Export a ZIP URL to a chosen folder by downloading and unzipping
+ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, suggestedDirName }) => {
+  const senderWindow = BrowserWindow.fromWebContents(e.sender);
+  try {
+    // Pick destination folder
+    const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
+      title: tOrDefault('export.folder.dialogTitle', defaultLocale === 'es' ? 'Exportar a carpeta' : 'Export to folder'),
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (canceled || !filePaths || !filePaths.length) return { ok: false, canceled: true };
+    const destDir = filePaths[0];
+
+    // Download ZIP to a temp path
+    const wc = e && e.sender ? e.sender : (mainWindow ? mainWindow.webContents : null);
+    const tmpZip = path.join(app.getPath('temp'), `exe-export-${Date.now()}.zip`);
+    // Download silently (do not emit download-done for the temp file)
+    const ok = await streamToFile(downloadUrl, tmpZip, null);
+    if (!ok || !fs.existsSync(tmpZip)) {
+      try { fs.existsSync(tmpZip) && fs.unlinkSync(tmpZip); } catch (_e) {}
+      return { ok: false, error: 'download-failed' };
+    }
+
+    // Extract ZIP into chosen folder (overwrite)
+    try {
+      const zip = new AdmZip(tmpZip);
+      zip.extractAllTo(destDir, true);
+    } finally {
+      try { fs.unlinkSync(tmpZip); } catch (_e) {}
+    }
+
+    // Notify renderer with final destination (for toast path)
+    try {
+      if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: true, path: destDir });
+    } catch (_e) {}
+    return { ok: true, dir: destDir };
+  } catch (err) {
+    return { ok: false, error: err && err.message ? err.message : 'unknown' };
+  }
+});
+
 // Every time any window is created, we apply the handler to it
 app.on('browser-window-created', (_event, window) => {
   attachOpenHandler(window);

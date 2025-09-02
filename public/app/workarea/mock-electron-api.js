@@ -31,4 +31,8 @@ window.electronAPI = {
             mtimeMs: Date.now(),
         });
     },
+    exportToFolder: (options) => {
+        console.log('MOCK [exportToFolder] called with:', options);
+        return Promise.resolve({ ok: true, dir: '/fake/export/dir' });
+    },
 };
