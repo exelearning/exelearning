@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   save: (downloadUrl, projectKey, suggestedName) => ipcRenderer.invoke('app:save', { downloadUrl, projectKey, suggestedName }),
   saveAs: (downloadUrl, projectKey, suggestedName) =>
     ipcRenderer.invoke('app:saveAs', { downloadUrl, projectKey, suggestedName }),
+  exportToFolder: (downloadUrl, projectKey, suggestedDirName) =>
+    ipcRenderer.invoke('app:exportToFolder', { downloadUrl, projectKey, suggestedDirName }),
   setSavedPath: (projectKey, filePath) =>
     ipcRenderer.invoke('app:setSavedPath', { projectKey, filePath }),
   openElp: () => ipcRenderer.invoke('app:openElp'),

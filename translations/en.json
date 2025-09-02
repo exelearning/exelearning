@@ -18,5 +18,10 @@
 	},
 	"open": {
 		"dialogTitle": "open.dialogTitle"
+	},
+	"export": {
+		"folder": {
+			"dialogTitle": "export.folder.dialogTitle"
+		}
 	}
 }

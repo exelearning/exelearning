@@ -36,22 +36,25 @@
                             <li><a id="navbar-button-export-epub3" class="dropdown-item" href="#">{{ "ePub3" | trans }}</a></li>
                         </ul>
                     </li>
-                    <li class="exe-offline"><a class="dropdown-item" id="navbar-button-open-offline" href="#">{{ "Open" | trans }}</a></li>
-                    <li class="dropdown-divider exe-offline"></li>
-                    <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-offline" href="#">{{ "Save" | trans }}</a></li>
-                    <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-as-offline" href="#">{{ "Save as" | trans }}</a></li>
-                    <li class="dropdown dropend exe-offline">
-                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Export as..." | trans }}</a>
-                        <ul class="dropdown-menu" aria-labelledby="dropdownExportAsOffline">
-                            <li><a id="navbar-button-exportas-html5" class="dropdown-item" href="#">{{ "Website" | trans }}</a></li>
-                            <li><a id="navbar-button-exportas-html5-sp" class="dropdown-item" href="#">{{ "Single page" | trans }}</a></li>
-                            <li><a id="navbar-button-exportas-scorm12" class="dropdown-item" href="#">{{ "SCORM 1.2" | trans }}</a></li>
-                            <li><a id="navbar-button-exportas-scorm2004" class="dropdown-item exe-advanced" href="#">{{ "SCORM 2004" | trans }}</a></li>
-                            <li><a id="navbar-button-exportas-ims" class="dropdown-item exe-advanced" href="#">{{ "IMS CP" | trans }}</a></li>
-                            <li><a id="navbar-button-exportas-epub3" class="dropdown-item" href="#">{{ "ePub3" | trans }}</a></li>
-                            <li><a id="navbar-button-exportas-xml-properties" class="dropdown-item" href="#">{{ "Metadata (XML)" | trans }}</a></li>
-                        </ul>
-                    </li>
+                    {% if config.isOfflineInstallation %}
+                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-open-offline" href="#">{{ "Open" | trans }}</a></li>
+                        <li class="dropdown-divider exe-offline"></li>
+                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-offline" href="#">{{ "Save" | trans }}</a></li>
+                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-as-offline" href="#">{{ "Save as" | trans }}</a></li>
+                        <li class="dropdown dropend exe-offline">
+                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Export as..." | trans }}</a>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownExportAsOffline">
+                                <li><a id="navbar-button-exportas-html5" class="dropdown-item" href="#">{{ "Website" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-html5-folder" class="dropdown-item" href="#">{{ "Export to Folder (Unzipped Website)" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-html5-sp" class="dropdown-item" href="#">{{ "Single page" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-scorm12" class="dropdown-item" href="#">{{ "SCORM 1.2" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-scorm2004" class="dropdown-item exe-advanced" href="#">{{ "SCORM 2004" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-ims" class="dropdown-item exe-advanced" href="#">{{ "IMS CP" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-epub3" class="dropdown-item" href="#">{{ "ePub3" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-xml-properties" class="dropdown-item" href="#">{{ "Metadata (XML)" | trans }}</a></li>
+                            </ul>
+                        </li>
+                    {% endif %}
                     {#<li class="dropdown dropend exe-advanced">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Upload to" | trans }}</a>
                         <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
