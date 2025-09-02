@@ -319,9 +319,5 @@ class ParameterApiController extends DefaultApiController
         $this->translator->trans('eXeLearning %s is a development version. It is not for production use.');
         $this->translator->trans('This is just a demo version. Not for real projects. Days before it expires: %s');
         $this->translator->trans('eXeLearning %s has expired! Please download the latest version.');
-
-        // TEACHER MODE UI
-        $this->translator->trans('Teacher mode');
-        $this->translator->trans('Student mode');
     }
 }

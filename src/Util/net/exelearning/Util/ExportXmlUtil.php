@@ -1426,6 +1426,7 @@ class ExportXmlUtil
         $odeNavStructureSyncs = null, // export HTML5 need all node structure for navigatation menu
     ) {
         $body = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><body></body>');
+        $body->addChild('script', 'document.body.className+=" js"');
 
         // Page properties
         $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
@@ -1929,6 +1930,7 @@ class ExportXmlUtil
         // Page header
         $pageHeaderMain = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><header-main></header-main>');
         $pageHeader = $pageHeaderMain->addChild('header', ' ');
+        $pageHeader->addAttribute('class', 'page-header');
         $pageHeader->addAttribute('id', 'header-'.$odeNavStructureSync->getOdePageId());
         $headerEmpty = true;
         $titlePage = isset($pagePropertiesDict['titlePage']) ? $pagePropertiesDict['titlePage'] : '';
@@ -2005,23 +2007,6 @@ class ExportXmlUtil
                 $pageTitle->addAttribute('class', 'page-title sr-av');
             }
         }
-
-        // Teacher mode toggle button
-        $teacherToggleTitle = $translator->trans('Teacher mode');
-        $studentLabel = $translator->trans('Student mode');
-        $teacherLabel = $translator->trans('Teacher mode');
-        $teacherToggle = $pageHeader->addChild('button', ' ');
-        $teacherToggle->addAttribute('id', 'teacher-mode-toggle');
-        $teacherToggle->addAttribute('class', 'teacher-mode-toggle');
-        $teacherToggle->addAttribute('type', 'button');
-        $teacherToggle->addAttribute('aria-pressed', 'false');
-        $teacherToggle->addAttribute('title', $teacherToggleTitle);
-        $teacherToggle->addAttribute('data-label-student', $studentLabel);
-        $teacherToggle->addAttribute('data-label-teacher', $teacherLabel);
-        $teacherToggle->addAttribute('data-title-off', $studentLabel);
-        $teacherToggle->addAttribute('data-title-on', $teacherLabel);
-        $teacherToggleSpan = $teacherToggle->addChild('span', $teacherToggleTitle);
-        $teacherToggleSpan->addAttribute('class', 'teacher-mode-toggle-label');
 
         return $pageHeaderMain;
     }
@@ -2615,8 +2600,6 @@ class ExportXmlUtil
                 '/common_i18n.js',
                 '/common.js',
                 '/exe_export.js',
-                '/teacher_mode.js',
-                '/teacher_mode.css',
                 '/bootstrap/bootstrap.bundle.min.js',
                 '/bootstrap/bootstrap.min.css',
             ];
