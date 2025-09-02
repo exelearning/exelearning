@@ -5,6 +5,7 @@ namespace App\Security;
 use App\Entity\net\exelearning\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 use Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
@@ -20,13 +21,30 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
  */
 class MultiTokenHandler implements AccessTokenHandlerInterface
 {
+    private AccessTokenHandlerInterface $casHandler;
+    private OidcUserInfoTokenHandlerCustom $oidcUserInfoHandler;
+    private ?JwtTokenHandler $jwtHandler;
+    private EntityManagerInterface $em;
+    private bool $authCreateUsers;
+    private ?PasswordHasherFactoryInterface $passwordHasherFactory;
+    private ?LoggerInterface $logger;
+
     public function __construct(
-        private AccessTokenHandlerInterface $casHandler,
-        private OidcUserInfoTokenHandlerCustom $oidcUserInfoHandler,
-        private EntityManagerInterface $em,
-        private bool $authCreateUsers,
-        private ?LoggerInterface $logger = null,
+        AccessTokenHandlerInterface $casHandler,
+        OidcUserInfoTokenHandlerCustom $oidcUserInfoHandler,
+        EntityManagerInterface $em,
+        bool $authCreateUsers,
+        ?LoggerInterface $logger = null,
+        ?JwtTokenHandler $jwtHandler = null,
+        ?PasswordHasherFactoryInterface $passwordHasherFactory = null,
     ) {
+        $this->casHandler = $casHandler;
+        $this->oidcUserInfoHandler = $oidcUserInfoHandler;
+        $this->em = $em;
+        $this->authCreateUsers = $authCreateUsers;
+        $this->logger = $logger;
+        $this->jwtHandler = $jwtHandler;
+        $this->passwordHasherFactory = $passwordHasherFactory;
     }
 
     /**
@@ -45,14 +63,47 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
         try {
             // Determine which handler to use based on token format
             if ($this->isCasTicket($accessToken)) {
-                $this->logger->debug('Processing CAS ticket');
+                $this->logger?->debug('Processing CAS ticket');
                 $subBadge = $this->casHandler->getUserBadgeFrom($accessToken);
             } elseif ($this->isJwtToken($accessToken)) {
-                $this->logger->debug('Processing JWT token');
-                $subBadge = $this->oidcUserInfoHandler->getUserBadgeFrom($accessToken);
+                $this->logger?->debug('Processing JWT token');
+                if ($this->jwtHandler) {
+                    try {
+                        // Try local JWT first
+                        $subBadge = $this->jwtHandler->getUserBadgeFrom($accessToken);
+                    } catch (BadCredentialsException $e) {
+                        // Fallback to OIDC userinfo flow
+                        $this->logger?->debug('Local JWT failed; falling back to OIDC userinfo');
+                        $subBadge = $this->oidcUserInfoHandler->getUserBadgeFrom($accessToken);
+                    }
+                } else {
+                    // No local JWT handler configured; use OIDC
+                    $subBadge = $this->oidcUserInfoHandler->getUserBadgeFrom($accessToken);
+                }
             } else {
+                // Optional API Key (UUID) flow: only if password hasher factory is available
+                if ($this->passwordHasherFactory) {
+                    $this->logger?->debug('Trying API key token verification');
+                    $repo = $this->em->getRepository(User::class);
+                    $qb = $repo->createQueryBuilder('u')
+                        ->where('u.apiToken IS NOT NULL');
+                    foreach ($qb->getQuery()->toIterable() as $candidate) {
+                        $hasher = $this->passwordHasherFactory->getPasswordHasher($candidate);
+                        if ($candidate->getApiToken() && $hasher->verify($candidate->getApiToken(), $accessToken)) {
+                            $this->logger?->debug('API key matched user');
+
+                            return new UserBadge(
+                                $candidate->getEmail(),
+                                function (string $identifier) use ($candidate) {
+                                    return $candidate;
+                                },
+                                ['api_key' => true]
+                            );
+                        }
+                    }
+                }
                 $message = 'Invalid token format: neither CAS ticket nor JWT.';
-                $this->logger->error($message);
+                $this->logger?->error($message);
                 throw new BadCredentialsException($message);
             }
 
@@ -60,7 +111,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
 
             if (empty($identifier)) {
                 $message = 'Identifier not found in CAS/OIDC token.';
-                $this->logger->error($message);
+                $this->logger?->error($message);
                 throw new BadCredentialsException($message);
             }
 
@@ -76,7 +127,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
         } catch (\Exception $e) {
             // Log and convert other exceptions to BadCredentialsException
             $message = 'Authentication error: '.$e->getMessage();
-            $this->logger->error($message, ['exception' => $e]);
+            $this->logger?->error($message, ['exception' => $e]);
             throw new BadCredentialsException($message, 0, $e);
         }
     }
@@ -96,7 +147,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
         $claims = $subBadge->getAttributes() ?? [];
 
         // Debug logging
-        $this->logger->debug('Retrieved attributes from token:', is_array($claims) ? $claims : []);
+        $this->logger?->debug('Retrieved attributes from token:', is_array($claims) ? $claims : []);
 
         // Extract email and other important attributes
         $emailFromClaims = $claims['email'] ?? null;
@@ -113,7 +164,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
         // If user creation is disabled, throw an exception
         if (!$this->authCreateUsers) {
             $message = "Authentication successful but user creation disabled. User '$identifier' not found.";
-            $this->logger->error($message);
+            $this->logger?->error($message);
             throw new BadCredentialsException($message);
         }
 
@@ -138,7 +189,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
         // Try to find by external identifier
         $user = $this->em->getRepository(User::class)->findOneBy(['externalIdentifier' => $identifier]);
         if ($user) {
-            $this->logger->debug("Found user by external identifier: $identifier");
+            $this->logger?->debug("Found user by external identifier: $identifier");
 
             return $user;
         }
@@ -147,7 +198,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
         if ($email) {
             $user = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
             if ($user) {
-                $this->logger->debug("Found user by email from claims: $email");
+                $this->logger?->debug("Found user by email from claims: $email");
 
                 return $user;
             }
@@ -157,7 +208,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
         if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
             $user = $this->em->getRepository(User::class)->findOneBy(['email' => $identifier]);
             if ($user) {
-                $this->logger->debug("Found user by identifier as email: $identifier");
+                $this->logger?->debug("Found user by identifier as email: $identifier");
 
                 return $user;
             }
@@ -229,7 +280,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
 
         $user->setIsLopdAccepted(true);
 
-        $this->logger->info("New user created: {$externalIdentifier} with email: {$email}");
+        $this->logger?->info("New user created: {$externalIdentifier} with email: {$email}");
 
         return $user;
     }

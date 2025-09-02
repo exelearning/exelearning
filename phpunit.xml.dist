@@ -59,6 +59,12 @@
     <env name="MERCURE_PUBLIC_URL" value=""/>
     <env name="MERCURE_JWT_SECRET_KEY" value="!ChangeThisMercureHubJWTSecretKey!"/>
 
+    <!-- REST Api -->
+    <env name="API_JWT_SECRET" value="test_secret"/>
+    <env name="API_JWT_ISSUER" value="exelearning"/>
+    <env name="API_JWT_AUDIENCE" value="clients"/>
+    <!-- ###- doctrine/doctrine-bundle ### -->
+
   </php>
 
   <extensions>
