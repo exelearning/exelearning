@@ -1,12 +1,27 @@
 {
-  "updater": {
-    "errorTitle": "Update error",
-    "updateAvailableTitle": "Update available",
-    "updateAvailableMessage": "Version {{version}} is available. Download now?",
-    "download": "Download",
-    "later": "Later",
-    "readyTitle": "Ready to install",
-    "readyMessage": "The update has been downloaded. Restart to install?",
-    "restart": "Restart"
-  }
+	"updater": {
+		"errorTitle": "Update error",
+		"updateAvailableTitle": "Update available",
+		"updateAvailableMessage": "Version {{version}} is available. Download now?",
+		"download": "Download",
+		"later": "Later",
+		"readyTitle": "Ready to install",
+		"readyMessage": "The update has been downloaded. Restart to install?",
+		"restart": "Restart"
+	},
+	"save": {
+		"dialogTitle": "save.dialogTitle",
+		"button": "save.button"
+	},
+	"saveAs": {
+		"dialogTitle": "saveAs.dialogTitle"
+	},
+	"open": {
+		"dialogTitle": "open.dialogTitle"
+	},
+	"export": {
+		"folder": {
+			"dialogTitle": "export.folder.dialogTitle"
+		}
+	}
 }

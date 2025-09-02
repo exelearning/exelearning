@@ -484,6 +484,13 @@ export default class projectManager {
             document
                 .querySelector('#head-top-download-button')
                 .setAttribute('title', 'Save');
+
+            // Expose a stable project key for Electron (per-project save path)
+            try {
+                window.__currentProjectId = this.odeId || 'default';
+            } catch (e) {}
+
+            // Offline Save As is now provided by a dedicated menu item
         } else {
             document
                 .querySelector('body')
