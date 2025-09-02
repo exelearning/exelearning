@@ -1,3 +1,6 @@
+# ⚠️ WARNING: This docker-compose file is mainly intended for development.
+# For production deployments, please use the example docker-compose files
+# provided in doc/deploy/ (examples available for SQLite, MariaDB and PostgreSQL).
 ---
 services:
 
