@@ -10,7 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
- * Console command to validate provider configuration.
+ * Console command to validate the provider configuration.
  *
  * This command allows administrators to validate their multi-provider
  * configuration from the command line.

@@ -158,6 +158,9 @@ protected function tearDown(): void
 
     public function testOpenIdCallbackHandlesValidResponse(): void
     {
+        // Ensure a fresh kernel so we can replace services
+        static::ensureKernelShutdown();
+
         // Mock OpenID provider response
         $mockResponse = new MockResponse(json_encode([
             'access_token' => 'valid-access-token',
@@ -167,7 +170,10 @@ protected function tearDown(): void
         ]));
         $mockHttpClient = new MockHttpClient($mockResponse);
 
-        static::getContainer()->set('http_client', $mockHttpClient);
+        // Re-create the BrowserKit client and then override the service
+        // Note: do NOT call bootKernel() explicitly when using WebTestCase
+        $this->client = static::createClient();
+        static::getContainer()->set(\Symfony\Contracts\HttpClient\HttpClientInterface::class, $mockHttpClient);
 
         // Start session manually
         $session = static::getContainer()->get('session.factory')->createSession();

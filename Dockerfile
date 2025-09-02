@@ -75,6 +75,7 @@ RUN apk add --no-cache \
     mkdir -p /etc/service/mercure && chown nobody:nobody /etc/service/mercure && \
 # Create /app/vendor directory and change ownership to nobody
     mkdir -p /app/vendor && chown -R nobody:nobody /app/vendor && \
+    mkdir -p /app/public && chown -R nobody:nobody /app/public && \
     mkdir -p /app/var/cache /app/var/log && chown -R nobody:nobody /app/var/cache /app/var/log
 
 # nginx configuration for assets, files and iDevices
