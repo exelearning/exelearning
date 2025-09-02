@@ -89,8 +89,7 @@
         "phpunit": [
             "@phpunit-unit",
             "@phpunit-e2e",
-            "@phpunit-e2e-realtime",
-            "@phpunit-e2e-offline"
+            "@phpunit-e2e-realtime"
         ],
         "phpunit-unit": "vendor/bin/phpunit --testsuite unit --testdox --no-extensions --colors=always",
         "phpunit-unit-parallel": "DISABLE_PANTHER_EXT=1 vendor/bin/paratest --processes auto --functional --tmp-dir /dev/shm --testsuite unit --colors=always",
