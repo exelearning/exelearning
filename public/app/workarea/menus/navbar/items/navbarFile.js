@@ -1207,6 +1207,7 @@ export default class NavbarFile {
     }
 
     /**
+<<<<<<< HEAD
      * Export Website to folder (unzipped) — offline Electron only
      */
     async exportHTML5FolderAsEvent() {
@@ -1284,6 +1285,8 @@ export default class NavbarFile {
     }
 
     /**
+=======
+>>>>>>> c0ba7aea408904076081df962baf800d79424a91
      * Export the ode as HTML5 and download it
      *
      */

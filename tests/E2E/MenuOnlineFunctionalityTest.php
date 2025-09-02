@@ -105,6 +105,7 @@ class MenuOnlineFunctionalityTest extends ExelearningE2EBase
         $this->assertGreaterThanOrEqual(1, $downloadCalls, 'Browser download should be triggered');
     }
 
+
     public function testExportToFolderOptionNotVisibleOnline(): void
     {
         $client = $this->login();
