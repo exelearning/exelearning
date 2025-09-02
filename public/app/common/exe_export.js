@@ -32,7 +32,7 @@ $exeExport = {
             } catch (err) {
                 console.error('Error: Failed to initialize Teacher Mode');
             }
-        }, 200);
+        }, 100);
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
     },
 
@@ -50,7 +50,7 @@ $exeExport = {
     initExe: function () {
         window.eXe.app.init();
     },
-
+    
     /**
      * Teacher Mode
      */
@@ -60,9 +60,11 @@ $exeExport = {
             if (typeof(localStorage)!='object') return;
             if ($(".box.teacher-only").length==0) return;
             if (document.getElementById("teacher-mode-toggler")) return;
+            if ($("body").hasClass("exe-epub")) return;
             document.body.classList.add('exe-teacher-mode-toggler');
             var btn = '<div class="form-check form-switch float-right"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+$exe_i18n.teacher_mode+'</label></div>';
-            $("header.page-header").prepend(btn);
+            if ($("body").hasClass("exe-single-page")) $("header.package-header").before(btn);
+            else $("header.page-header").prepend(btn);
             this.toggler = $("#teacher-mode-toggler");
             var enabled = this.isEnabled();
             if (enabled) {
