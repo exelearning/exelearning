@@ -20,7 +20,15 @@ export default class SaveProjectButton {
     addEventClick() {
         this.saveMenuHeadButton.addEventListener('click', (event) => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
-            eXeLearning.app.project.save();
+            // Offline desktop: map Save to persistent ELP save
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                eXeLearning.app.menus.navbar.file.downloadProjectEvent();
+            } else {
+                eXeLearning.app.project.save();
+            }
         });
     }
 }
