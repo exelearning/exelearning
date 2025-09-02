@@ -16,6 +16,7 @@ import MenuManager from './workarea/menus/menuManager.js';
 import ThemesManager from './workarea/themes/themesManager.js';
 import UserManager from './workarea/user/userManager.js';
 import Actions from './common/app_actions.js';
+import Shortcuts from './common/shortcuts.js';
 
 class App {
     constructor(eXeLearning) {
@@ -33,6 +34,7 @@ class App {
         this.menus = new MenuManager(this);
         this.user = new UserManager(this);
         this.actions = new Actions(this);
+        this.shortcuts = new Shortcuts(this);
     }
 
     /**
@@ -63,6 +65,8 @@ class App {
         await this.addNoTranslateForGoogle();
         // Execute the custom JavaScript code
         await this.runCustomJavaScriptCode();
+        // builds the index & binds the listener
+        await this.shortcuts.init();
 
         // Electron: show toast with final saved path
         this.bindElectronDownloadToasts();
