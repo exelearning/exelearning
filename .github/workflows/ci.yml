@@ -80,6 +80,9 @@ jobs:
       - name: PHPUnit E2E RealTime Tests
         run: make test-e2e-realtime
 
+      - name: PHPUnit E2E Offline Tests
+        run: make test-e2e-offline
+
       - name: Generate HTML report
         if: always()
         run: |

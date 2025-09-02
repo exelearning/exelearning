@@ -145,6 +145,21 @@ test-e2e-realtime: check-docker check-env
 	@echo "Running PHPUnit tests..."
 	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e-realtime
 
+# Run E2E tests for the offline (Electron) web content
+test-e2e-offline: check-docker check-env
+	@echo "Starting e2e test environment..."
+	@docker compose --profile e2e up -d --quiet-pull
+	@echo "Running PHPUnit tests..."
+	@docker compose --profile e2e run --rm -e APP_ENV=test -e APP_ONLINE_MODE=0 exelearning composer --no-cache phpunit-e2e-offline
+
+# Test the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
+test-electron: install-php-bin
+	@echo "Running Electron E2E tests with Playwright..."
+	yarn install
+	#yarn test
+	yarn playwright test tests/electron
+	$(MAKE) remove-php-bin
+
 # Open a shell inside the exelearning container ready for running phpunit
 test-shell:
 	@echo "Starting e2e test environment..."
@@ -424,10 +439,11 @@ help:
 	@echo "Testing:"
 	@echo ""
 	@echo "  phpunit               - Run unit tests with PHPUnit"
-	@echo "  test                  - Run ALL tests with PHPUnit"
+	@echo "  test                  - Run ALL tests"
 	@echo "  test-unit             - Run unit tests with PHPUnit"
-	@echo "  test-e2e              - Run e2e tests with PHPUnit (chrome)"
-	@echo "  test-e2e-realtime     - Run e2e-realtime tests with PHPUnit (chrome)"
+	@echo "  test-e2e              - Run e2e tests with Paratest (chrome)"
+	@echo "  test-e2e-realtime     - Run e2e-realtime tests with Paratest (chrome)"
+	@echo "  test-e2e-offline      - Run e2e-offline tests with Paratest (chrome)"
 	@echo "  test-shell            - Open a shell inside the exelearning container (and the chrome container)"
 	@echo "  test-local            - Run unit tests in local environment (no Docker, SQLite tmp DB)"
 	@echo "  test-unit-parallel    - Run unit tests in parallel using paratest"
