@@ -10,7 +10,7 @@
  */
 var $exeDevice = {
     i18n: {
-        category: _('Games'),
+        category: _('Information and presentation'),
         name: _('Map'),
     },
     msgs: {},
@@ -234,7 +234,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Click on the active areas or image icons.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Click on the active areas or image icons.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -461,17 +461,17 @@ var $exeDevice = {
                     ${$exeDevice.getCuestionario()}
                     ${$exeDevice.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 <p class="exe-block-warning exe-block-dismissible">
                     ${_('This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.')}
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
             </div>`;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         tinymce.init({
             selector: '#mapaToolTip',
@@ -1586,7 +1586,7 @@ var $exeDevice = {
                 textAfter = $exeDevice.clearTags(textAfter.html()) || '';
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
 
@@ -2413,7 +2413,7 @@ var $exeDevice = {
             url = $('#mapaURLImageMap').val(),
             authorImage = $('#mapaAuthorImageMap').val(),
             altImage = $('#mapaAltImageMap').val(),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             evaluationG = parseInt($('input[name=mpevaluation]:checked').val()),
             showSolution = $('#mapaEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
@@ -2526,7 +2526,7 @@ var $exeDevice = {
         if (evaluationG == 2 || evaluationG == 3) autoAudio = true;
         points = $exeDevice.clearSavePoints();
 
-        let scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        let scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         let data = {
             typeGame: 'Mapa',
             instructions: instructions,
@@ -3752,7 +3752,7 @@ var $exeDevice = {
 
 
         $exeDevice.localPlayer = document.getElementById('mapaEVideoLocal');
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         
         $(".exe-block-dismissible .exe-block-close").click(function () {
             $(this).parent().fadeOut();
@@ -5188,7 +5188,7 @@ var $exeDevice = {
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
 
         $('#mapaNumOptions').val(game.optionsNumber);
         $('#mapaEShowMinimize').prop('checked', game.showMinimize);
@@ -5217,7 +5217,7 @@ var $exeDevice = {
             game.points[0].alt,
             game.points[0].iconType,
         );
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

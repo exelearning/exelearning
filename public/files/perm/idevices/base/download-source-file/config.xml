@@ -2,7 +2,7 @@
 <idevice>
 	<title>Download source file</title>
 	<css-class>download-source-file</css-class>
-	<category>Other contents</category>
+	<category>Information and presentation</category>
 	 <icon>
 		<name>download-source-file-icon</name>
 		<url>download-source-file-icon.svg</url>

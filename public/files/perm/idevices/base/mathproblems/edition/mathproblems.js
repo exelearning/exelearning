@@ -11,7 +11,7 @@
  */
 var $exeDevice = {
     i18n: {
-        category: _('Games'),
+        category: _('Science'),
         name: _('Math problems'),
     },
     msgs: {},
@@ -124,7 +124,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Solve the following math problems.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following math problems.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -220,16 +220,16 @@ var $exeDevice = {
                             <div class="MTOE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="MTOE-ENumQuestions" id="eCQNumQuestions">1</span>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -682,7 +682,7 @@ var $exeDevice = {
             showSolution = $('#eCQShowSolution').is(':checked'),
             modeBoard = $('#eCQModeBoard').is(':checked'),
             timeShowSolution = parseInt(clear($('#eCQTimeShowSolution').val())),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#eCQHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#eCQPercentajeFB').val())),
             percentajeQuestions = parseInt(
@@ -749,7 +749,7 @@ var $exeDevice = {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             typeGame: 'MathProblems',
             instruccions: instructions,
@@ -1184,7 +1184,7 @@ var $exeDevice = {
 
         $(document).on('input', '#eCQformula', $exeDevice.updateVariables);
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         //eX3 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').click(function () {
@@ -1272,9 +1272,9 @@ var $exeDevice = {
         }
 
         $exeDevice.questions = game.questions;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         $exeDevice.updateQuestionsNumber();
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.scorm.isScorm,
             game.scorm.textButtonScorm,
             game.scorm.repeatActivity,

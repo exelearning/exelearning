@@ -136,7 +136,7 @@ var $exeDevice = {
                 <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
             </p>
             <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Complete the following crossword puzzle.'))}
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following crossword puzzle.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
@@ -309,17 +309,17 @@ var $exeDevice = {
                         </div>
                     </div>
                 </fieldset>
-                ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             </div>
-            ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevices.iDevice.gamification.scorm.getTab()}
-            ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevices.iDevice.gamification.share.getTab(true, 9, true)}
+            ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+            ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 9, true)}
         </div>
     `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('ccgmQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('ccgmQEIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -485,7 +485,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.showQuestion(0);
@@ -664,7 +664,7 @@ var $exeDevice = {
             showSolution = $('#ccgmEShowSolution').is(':checked'),
             hasBack = $('#ccgmBack0').is(':checked'),
             urlBack = $('#ccgmEURLBack').val().trim(),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#ccgmECaseSensitive').is(':checked'),
             feedBack = $('#ccgmEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#ccgmEPercentajeFB').val())),
@@ -674,7 +674,7 @@ var $exeDevice = {
             authorBackImage = $('#ccgmAuthorBack').val(),
             id = $exeDevice.getIdeviceID(),
             wordsGame = $exeDevice.wordsGame,
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
 
@@ -1137,8 +1137,8 @@ var $exeDevice = {
             $exeDevice.updateQuestionsNumber();
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertWords,
         );
@@ -1279,7 +1279,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
@@ -1298,7 +1298,7 @@ var $exeDevice = {
         $('#ccgmAuthorBack').val(game.authorBackImage);
         $('#ccgmEPercentajeQuestions').val(game.percentajeQuestions);
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

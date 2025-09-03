@@ -10,7 +10,7 @@
  */
 var $exeDevice = {
     i18n: {
-        category: _('Other Contents'),
+        category: _('Assessment and tracking'),
         name: _('Checklist'),
     },
     msgs: {},
@@ -57,7 +57,7 @@ var $exeDevice = {
                 <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
             </p>
             <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Complete the checklist ticking the boxes for all finished activities.'))}
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the checklist ticking the boxes for all finished activities.'))}
                 <fieldset class="exe-fieldset">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
@@ -163,13 +163,13 @@ var $exeDevice = {
                         </p>
                     </div>
                 </fieldset>
-                ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             </div>
-            ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
         </div>
       `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('gameQEIdeviceForm');
+       $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
         $('.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points').hide();
 
         $exeDevice.loadPreviousValues();

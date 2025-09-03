@@ -750,7 +750,7 @@ var $exeDevice = {
                         <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                     </p>
                     <div class="exe-form-tab" title="${_('General settings')}">
-                        ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
+                        ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
                         <fieldset class="exe-fieldset exe-fieldset-closed">
                             <legend><a href="#">${_('Options')}</a></legend>
                             <div>
@@ -969,17 +969,17 @@ var $exeDevice = {
                                 </div>
                             </div>
                         </fieldset>
-                        ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                        ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                     </div>
-                    ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                    ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                    ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 </div>
             `;
         this.ideviceBody.innerHTML = html;
         $exeDevice.enableForm();
-        $exeDevices.iDevice.tabs.init('vquextQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('vquextQEIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
     },
 
     initQuestions: function () {
@@ -1077,7 +1077,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -1097,7 +1097,7 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.answersRamdon = game.answersRamdon || false;
         game.percentajeFB =
             typeof game.percentajeFB != 'undefined' ? game.percentajeFB : 100;
@@ -1179,7 +1179,7 @@ var $exeDevice = {
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
         $exeDevice.showSelectOrder(game.customMessages);
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1486,7 +1486,7 @@ var $exeDevice = {
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                     $('#vquextEVIStart').val(),
                 ),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#vquextEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#vquextEPercentajeFB').val())),
             gameMode = parseInt($('input[name=vqxtgamemode]:checked').val()),
@@ -1584,7 +1584,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             asignatura: '',
@@ -1933,7 +1933,7 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').click(function () {

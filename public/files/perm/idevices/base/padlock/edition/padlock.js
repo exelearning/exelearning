@@ -167,16 +167,16 @@ var $exeDevice = {
                         </div>
                     </div>
                 </div>
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
         $('#divCandadoFeebBack').hide();
 
-        $exeDevices.iDevice.tabs.init('candadoIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('candadoIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -208,7 +208,7 @@ var $exeDevice = {
                 .eq(0)
                 .html();
             candadoRetro = $('.candado-retro', wrapper).eq(0).html();
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.typeActive = 0;
@@ -245,7 +245,7 @@ var $exeDevice = {
             if (candadoRetro.length > 0) {
                 $('#candadoEFeedBack').val(candadoRetro);
             }
-            $exeDevices.iDevice.gamification.scorm.setValues(
+            $exeDevicesEdition.iDevice.gamification.scorm.setValues(
                 dataGame.isScorm,
                 dataGame.textButtonScorm,
                 dataGame.repeatActivity,
@@ -361,7 +361,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             candadoTime: $exeDevice.candadoTime,
             candadoSolution: $exeDevice.candadoSolution,

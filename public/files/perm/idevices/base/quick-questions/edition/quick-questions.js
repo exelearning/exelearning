@@ -952,7 +952,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -1211,17 +1211,17 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 2, true)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 2, true)}
             </div>
         `;
         this.ideviceBody.innerHTML = html; //eXe 3.0
-        $exeDevices.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
         tinymce.init({
             selector: '#quextEText',
             height: 200,
@@ -1364,7 +1364,7 @@ var $exeDevice = {
                 $('#quextEFeedBackEditor').val(textFeedBack.html());
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -1390,7 +1390,7 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.answersRamdon = game.answersRamdon || false;
         game.percentajeFB =
             typeof game.percentajeFB !== 'undefined' ? game.percentajeFB : 100;
@@ -1469,7 +1469,7 @@ var $exeDevice = {
             $('#quextEScoreQuestionDiv').show();
         }
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1996,7 +1996,7 @@ var $exeDevice = {
             startVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                 $('#quextEVIStart').val(),
             ),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#quextECustomScore').is(':checked'),
             feedBack = $('#quextEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#quextEPercentajeFB').val())),
@@ -2009,7 +2009,7 @@ var $exeDevice = {
             evaluationID = $('#quextEEvaluationID').val(),
             id = $exeDevice.getIdeviceID(),
             questionsGame = $exeDevice.questionsGame,
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
 
@@ -2563,8 +2563,8 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             2,
             $exeDevice.insertQuestions,
         );

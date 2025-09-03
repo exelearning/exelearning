@@ -157,7 +157,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -201,18 +201,18 @@ var $exeDevice = {
                             ${this.getWords().join('')}
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 1, true)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 1, true)}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('roscoIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('roscoIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         this.loadPreviousValues();
     },
@@ -397,11 +397,11 @@ var $exeDevice = {
             $(this).css('background-color', color);
         });
 
-        $exeDevices.iDevice.gamification.itinerary.setValues(
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
             dataGame.itinerary,
         );
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             dataGame.isScorm,
             dataGame.textButtonScorm,
             dataGame.repeatActivity,
@@ -470,7 +470,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
         }
@@ -892,7 +892,7 @@ var $exeDevice = {
                 parseInt(clear($.trim($('#roscoTimeShowSolution').val()))) || 0,
             durationGame = parseInt(clear($('#roscoDuration').val())) || 0,
             numberTurns = parseInt(clear($('#roscoNumberTurns').val())) || 0,
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#roscoCaseSensitive').is(':checked'),
             evaluation = $('#roscoEEvaluation').is(':checked'),
             evaluationID = $('#roscoEEvaluationID').val(),
@@ -1023,7 +1023,7 @@ var $exeDevice = {
             });
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             typeGame: 'Rosco',
@@ -1493,8 +1493,8 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             1,
             $exeDevice.insertWords,
         );

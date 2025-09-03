@@ -107,7 +107,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -323,15 +323,15 @@ var $exeDevice = {
                     </fieldset>
                     ${$exeDevice.getTextFieldset("after")}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 0, true)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init("relateQIdeviceForm");
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init("relateQIdeviceForm");
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -777,7 +777,7 @@ var $exeDevice = {
                 $("#eXeIdeviceTextAfter").val(textAfter);
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
             $exeDevice.showCard(0);
         }
     },
@@ -858,11 +858,11 @@ var $exeDevice = {
             showMinimize = $('#rclEShowMinimize').is(':checked'),
             showSolution = $('#rclEShowSolution').is(':checked'),
             timeShowSolution = parseInt(clear($('#rclETimeShowSolution').val())),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#rclEPercentajeCards').val())),
             author = $('#rclEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues(),
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#rclETime').val()),
             evaluation = $('#rclEEvaluation').is(':checked'),
@@ -1154,8 +1154,8 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(0, $exeDevice.insertCards);
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(0, $exeDevice.insertCards);
 
 
         //eXe 3.0 Dismissible messages
@@ -1258,7 +1258,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.evaluation = typeof game.evaluation != "undefined" ? game.evaluation : false;
         game.evaluationID = typeof game.evaluationID != "undefined" ? game.evaluationID : '';
         game.weighted = typeof game.weighted !== 'undefined' ? game.weighted : 100;
@@ -1287,7 +1287,7 @@ var $exeDevice = {
         $("#rclEArrowsDiv").show();
 
         $('#rclENumCards').text($exeDevice.cardsGame.length);
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

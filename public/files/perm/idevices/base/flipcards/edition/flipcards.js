@@ -9,7 +9,7 @@
  */
 var $exeDevice = {
     i18n: {
-        category: _('Games'),
+        category: _('Interactive activities'),
         name: _('Memory cards'),
     },
     msgs: {},
@@ -136,7 +136,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Click on the cards to see what they hide.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Click on the cards to see what they hide.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -346,18 +346,18 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 0, true)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('flipcardsQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('flipcardsQEIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -836,7 +836,7 @@ var $exeDevice = {
             if (textAfter.length == 1)
                 $('#eXeIdeviceTextAfter').val(textAfter.html());
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.showCard(0);
@@ -971,13 +971,13 @@ var $exeDevice = {
             timeShowSolution = parseInt(
                 clear($('#flipcardsETimeShowSolution').val()),
             ),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(
                 clear($('#flipcardsEPercentajeCards').val()),
             ),
             author = $('#flipcardsEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues(),
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#flipcardsETime').val()),
             evaluation = $('#flipcardsEEvaluation').is(':checked'),
@@ -1389,8 +1389,8 @@ var $exeDevice = {
             $('#flipcardsEEvaluationHelp').toggle();
             return false;
         });
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertCards,
         );
@@ -1534,7 +1534,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.evaluation =
             typeof game.evaluation != 'undefined' ? game.evaluation : false;
         game.evaluationID =
@@ -1569,7 +1569,7 @@ var $exeDevice = {
             $('#flipcardBackDiv').show();
         }
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

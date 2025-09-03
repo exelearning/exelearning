@@ -11,8 +11,8 @@
 
 var $exeDevice = {
     i18n: {
-        category: _('Games'),
-        name: _('Crossword'),
+        category: _('Science'),
+        name: _('Periodic table'),
     },
     msgs: {},
     classIdevice: 'periodic-table',
@@ -278,7 +278,7 @@ var $exeDevice = {
                 <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
             </p>
             <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Complete the following questions about the periodic table.'))}
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following questions about the periodic table.'))}
                 <fieldset class="exe-fieldset">
                     <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -342,16 +342,16 @@ var $exeDevice = {
                             </div>
                      </div>
                 </fieldset>                
-                ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
             </div>
-            ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevices.iDevice.gamification.scorm.getTab()}
-            ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+            ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
         </div>
     `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('ptQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('ptQEIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -400,7 +400,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
         }
@@ -536,7 +536,7 @@ var $exeDevice = {
             time = $('#ptETime').val(),
             showMinimize = $('#ptEShowMinimize').is(':checked'),
             showSolution = $('#ptEShowSolution').is(':checked'),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#ptEHasFeedBack').is(':checked'),
             percentajeFB = parseInt($('#ptEPercentajeFB').val()),
             evaluation = $('#ptEEvaluation').is(':checked'),
@@ -546,7 +546,7 @@ var $exeDevice = {
             id = $exeDevice.getIdeviceID(),
             types = $exeDevice.checkCheckboxesStatus(),
             groups = $exeDevice.getCheckboxGroupsStates(),
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues(),
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             mode = parseInt($('input[name=ptmode]:checked').val(), 10),
             gameType = parseInt($('input[name=ptgametype]:checked').val(), 10);
 
@@ -674,7 +674,7 @@ var $exeDevice = {
             },
         );
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').on('click', function () {
@@ -685,7 +685,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
@@ -722,7 +722,7 @@ var $exeDevice = {
             $('#ptGameType').show();
         } 
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

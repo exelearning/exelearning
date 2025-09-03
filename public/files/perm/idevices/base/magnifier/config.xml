@@ -2,7 +2,7 @@
 <idevice>
     <title>Magnifier</title>
     <css-class>magnifier</css-class>
-    <category>Other contents</category>
+    <category>Information and presentation</category>
     <icon>
         <name>magnifier-icon</name>
         <url>magnifier-icon.svg</url>

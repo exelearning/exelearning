@@ -11,7 +11,7 @@ var $exeDevice = {
 
   // i18n
   title: _("Rubric"),
-  category_name: _("Other contents"),
+  category_name: _("Assessment and tracking"),
 
   // Editable strings ("Language settings tab")
   // See $rubricsIdevice.ci18n too

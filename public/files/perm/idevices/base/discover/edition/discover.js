@@ -151,7 +151,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Birds of a feather flock together.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Birds of a feather flock together.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -306,17 +306,17 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 0, true)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('descubreQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('descubreQEIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -698,7 +698,7 @@ var $exeDevice = {
             const textFeedBack = $('.descubre-feedback-game', wrapper);
             if (textFeedBack.length == 1)
                 $('#descubreEFeedBackEditor').val(textFeedBack.html());
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.showQuestion(0);
@@ -927,7 +927,7 @@ var $exeDevice = {
             textFeedBack = tinyMCE.get('descubreEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#descubreEShowMinimize').is(':checked'),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#descubreECaseSensitive').is(':checked'),
             feedBack = $('#descubreEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#descubreEPercentajeFB').val())),
@@ -999,7 +999,7 @@ var $exeDevice = {
             return false;
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             typeGame: 'Descubre',
@@ -1501,12 +1501,12 @@ var $exeDevice = {
             $exeDevice.loadImageCard();
         });
 
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertCards,
         );
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         //eX3 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').click(function () {
             $(this).parent().fadeOut();
@@ -1901,7 +1901,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.percentajeFB =
             typeof game.percentajeFB != 'undefined' ? game.percentajeFB : 100;
         game.feedBack =
@@ -1965,7 +1965,7 @@ var $exeDevice = {
         $('#descubreEEvaluationID').val(game.evaluationID);
         $('#descubreEEvaluationID').prop('disabled', !game.evaluation);
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

@@ -101,7 +101,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Slide to reveal the differences between the images.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Slide to reveal the differences between the images.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>                            
@@ -252,14 +252,14 @@ var $exeDevice = {
                     </fieldset>
                     ${$exeDevice.getTextFieldset("after")}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab(true, true, true)}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init("beforeAfterQIdeviceForm");
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init("beforeAfterQIdeviceForm");
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -578,7 +578,7 @@ var $exeDevice = {
                 $("#eXeIdeviceTextAfter").val(textAfter);
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
             $exeDevice.showCard(0);
         }
     },
@@ -656,8 +656,8 @@ var $exeDevice = {
             author = $('#bfafEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
             id = $exeDevice.getIdeviceID(),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             evaluation = $('#bfafEEvaluation').is(':checked'),
             evaluationID = $('#bfafEEvaluationID').val();
 
@@ -784,7 +784,7 @@ var $exeDevice = {
 
 
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         //eXe 3.0 Dismissible messages
         $(".exe-block-dismissible .exe-block-close").click(function () {
             $(this).parent().fadeOut();
@@ -847,7 +847,7 @@ var $exeDevice = {
         game.weighted = typeof game.weighted !== 'undefined' ? game.weighted : 100;
         game.position = typeof game.position !== 'undefined' ? parseInt(game.position) : 50;
         $exeDevice.cardsGame = game.cardsGame;
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -857,7 +857,7 @@ var $exeDevice = {
         $('#bfafEEvaluationID').val(game.evaluationID);
         $('#bfafEEvaluationID').prop('disabled', !game.evaluation);
         $('#bfafEPosition').val(game.position);
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
     },
 
 

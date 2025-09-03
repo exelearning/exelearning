@@ -1133,33 +1133,103 @@ var $exeDevices = {
 
             },
 
-            math: {
+             math: {
                 loadMathJax: function () {
-                    if (!window.MathJax) window.MathJax = $exe.math.engineConfig;
+                    if (!window.MathJax) window.MathJax = $exeDevices.iDevice.gamification.math.engineConfig;
                     const script = document.createElement('script');
-                    script.src = $exe.math.engine;
+                    script.src = $exeDevices.iDevice.gamification.math.engine;
                     script.async = true;
                     document.head.appendChild(script);
                 },
+                engine: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js",
 
-                updateLatex: function (selector) {
-                    setTimeout(() => {
-                        if (typeof MathJax !== "undefined") {
-                            try {
-                                const nodos = document.querySelectorAll(selector);
-                                if (MathJax.Hub && typeof MathJax.Hub.Queue === "function") {
-                                    nodos.forEach(nodo => MathJax.Hub.Queue(["Typeset", MathJax.Hub, nodo]));
-                                } else if (typeof MathJax.typeset === "function") {
-                                    MathJax.typesetClear([...nodos]);
-                                    MathJax.typeset([...nodos]);
-                                }
-                            } catch (error) {
-                                console.log('Error al refrescar MathJax:', error);
-                            }
+                engineConfig: {
+                    loader: {
+                        load: ['[tex]/ams', '[tex]/amscd', '[tex]/cancel', '[tex]/centernot',
+                            '[tex]/color', '[tex]/colortbl', '[tex]/configmacros', '[tex]/gensymb',
+                            '[tex]/mathtools', '[tex]/mhchem', '[tex]/newcommand', '[tex]/noerrors',
+                            '[tex]/noundefined', '[tex]/physics', '[tex]/textmacros', '[tex]/gensymb',
+                            '[tex]/textcomp', '[tex]/bbox', '[tex]/upgreek', '[tex]/verb'
+                        ]
+                    },
+                    tex: {
+                        inlineMath: [
+                            ["\\(", "\\)"]
+                        ],
+                        displayMath: [
+                            ["\\[", "\\]"]
+                        ],
+                        processEscapes: true,
+                        tags: 'ams',
+                        packages: {
+                            '[+]': ['ams', 'amscd', 'cancel', 'centernot', 'color', 'colortbl',
+                                'configmacros', 'gensymb', 'mathtools', 'mhchem', 'newcommand', 'noerrors',
+                                'noundefined', 'physics', 'textmacros', 'upgreek', 'verb'
+                            ]
+                        },
+                        physics: {
+                            italicdiff: false,
+                            arrowdel: false
+                        },
+                    },
+                    textmacros: {
+                        packages: {
+                            '[+]': ['textcomp', 'bbox']
                         }
-                    }, 100);
+                    }
+                },
+
+                hasLatex: function (text) {
+                    return /\\\(|\\\[|\\begin\{/.test(text);
+                },
+
+                updateLatex: function (target, opts) {
+                    var options = opts || {};
+
+                    function nodesFrom(t) {
+                        if (!t) return [];
+                        if (typeof t === 'string') {
+                            try { return Array.from(document.querySelectorAll(t)); }
+                            catch (e) { console.warn('selector inválido:', t, e); return []; }
+                        }
+                        if (t.nodeType === 1) return [t];
+                        if (typeof t.length === 'number') return Array.from(t);
+                        return [];
+                    }
+
+                    function runV3(nodes) {
+                        if (!nodes.length) return;
+                        var start = (MathJax.startup && MathJax.startup.promise) ? MathJax.startup.promise : Promise.resolve();
+                        return start.then(function () {
+                            if (typeof MathJax.typesetClear === 'function') MathJax.typesetClear(nodes);
+                            return (MathJax.typesetPromise ? MathJax.typesetPromise(nodes) : MathJax.typeset(nodes));
+                        }).catch(function (e) { console.error('MathJax v3 typeset error:', e); });
+                    }
+
+                    function runV2(nodes) {
+                        if (!nodes.length) return;
+                        nodes.forEach(function (n) {
+                            MathJax.Hub.Queue(['Typeset', MathJax.Hub, n]);
+                        });
+                    }
+
+                    function typesetNow() {
+                        var nodes = nodesFrom(target);
+                        if (!nodes.length || typeof MathJax === 'undefined') return;
+
+                        if (MathJax.typesetPromise || MathJax.startup) return runV3(nodes); // v3
+                        if (MathJax.Hub && typeof MathJax.Hub.Queue === 'function') return runV2(nodes); // v2
+                    }
+
+                    if (options.defer) {
+                        // Espera a que termine la animación/visibilidad de la slide
+                        requestAnimationFrame(function () { requestAnimationFrame(typesetNow); });
+                    } else {
+                        typesetNow();
+                    }
                 }
             },
+
 
             media: {
                 extractURLGD: function (urlmedia) {

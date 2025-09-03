@@ -137,7 +137,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Solve the following puzzles.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following puzzles.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -281,16 +281,16 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('puzzleIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('puzzleIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
     enableForm: function () {
@@ -507,7 +507,7 @@ var $exeDevice = {
                 $('#puzzleEFeedBackEditor').val(textFeedBack.html());
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.showPuzzle(0, true);
@@ -674,7 +674,7 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#puzzleEShowMinimize').is(':checked'),
             randomPuzzles = $('#puzzleERandomPuzzles').is(':checked'),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#puzzleEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#puzzleEPercentajeFB').val()), 10),
             percentajeQuestions = parseInt(
@@ -694,7 +694,7 @@ var $exeDevice = {
             return false;
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         const data = {
             typeGame: 'Puzzle',
@@ -981,7 +981,7 @@ var $exeDevice = {
             $exeDevice.loadImageDefinition();
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').click(function () {
@@ -1175,7 +1175,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
 
         game.evaluation =
             typeof game.evaluation !== 'undefined' ? game.evaluation : false;
@@ -1193,7 +1193,7 @@ var $exeDevice = {
         $('#puzzleETimeShowSolution').val(game.timeShowSolution);
         $('#puzzleEAuthor').val(game.author);
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

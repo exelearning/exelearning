@@ -9,7 +9,7 @@
  */
 var $exeDevice = {
     i18n: {
-        category: _('Games'),
+        category: _('Assessment and tracking'),
         name: _('Progress report')
     },
     msgs: {

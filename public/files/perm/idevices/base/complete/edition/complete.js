@@ -118,7 +118,7 @@ var $exeDevice = {
                      <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Read the text and complete the missing words.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Read the text and complete the missing words.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -191,17 +191,17 @@ var $exeDevice = {
                             </p>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab(true)}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('completeQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+       $exeDevicesEdition.iDevice.tabs.init('completeQEIdeviceForm');
+       $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -233,7 +233,7 @@ var $exeDevice = {
             if (textFeedBack.length === 1)
                 $('#cmptEFeedBackEditor').val(textFeedBack.html());
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
         }
@@ -250,7 +250,7 @@ var $exeDevice = {
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
 
         $('#cmptEShowMinimize').prop('checked', game.showMinimize);
         $('#cmptEShowSolution').prop('checked', game.showSolution);
@@ -272,7 +272,7 @@ var $exeDevice = {
         $('#cmptEEvaluationID').val(game.evaluationID);
         $('#cmptEEvaluationID').prop('disabled', !game.evaluation);
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -426,7 +426,7 @@ var $exeDevice = {
             estrictCheck = $('#cmptEEstrictCheck').is(':checked'),
             wordsSize = $('#cmptEWordsSize').is(':checked'),
             time = parseInt($('#cmptETime').val(), 10),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#cmptEHasFeedBack').is(':checked'),
             percentajeFB = parseInt($('#cmptEPercentajeFB').val(), 10),
             percentajeError = parseInt($('#cmptEPercentajeError').val(), 10),
@@ -455,7 +455,7 @@ var $exeDevice = {
             return false;
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             typeGame: 'Completa',
             instructions: instructions,
@@ -575,7 +575,7 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').on('click', function () {
