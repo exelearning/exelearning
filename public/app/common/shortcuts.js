@@ -34,10 +34,11 @@ export default class Shortcuts {
     this.renderHints();
     this.ensureHintCssOnce();
     window.addEventListener('keydown', this.boundHandler, { capture: true });
-    this.initElectronListener();
 
-    // keep index fresh on DOM changes
-    observe('#eXeLearningNavbar');
+    window.addEventListener('load', () => {
+      requestAnimationFrame(() => document.getElementById('eXeLearningNavbar')?.focus());
+    });
+
   }
 
   /** Re-index and re-render hints (idempotent) */
@@ -127,110 +128,50 @@ export default class Shortcuts {
   // ------------------------
 
   /** Global keydown handler */
-  onKeyDown(event) {
-    if (this.isTypingTarget(event.target)) return;
-    if (this.isInsideOpenModal(event.target)) return;
+get isOffline() {
+  return (document.body.getAttribute('installation-type') || '').toLowerCase() === 'offline';
+}
 
-    const combo = this.comboFromEvent(event); // e.g., "mod+s"
-    if (!combo) return;
+getComboRemap() {
+  const off = this.isOffline;
+  return {
+    'mod+alt+n'   : 'navbar-button-new',
+    'mod+o'       : off ? 'navbar-button-open-offline'    : 'navbar-button-openuserodefiles',
+    'mod+s'       : off ? 'navbar-button-save-offline'    : 'navbar-button-save',
+    'mod+shift+s' : off ? 'navbar-button-save-as-offline' : 'navbar-button-save-as',
+    'mod+p'       : 'navbar-button-preview',
+  };
+}
 
-    const candidates = this.index.get(combo) || [];
-    let target = this.pickBestCandidate(candidates);
-
-    // Fallback mapping by ID for core actions (robust even if templates miss data-shortcut)
-    if (!target) {
-      const map = this.getComboRemap();
-      const id = map[combo];
-      if (id) {
-        const el = document.getElementById(id);
-        if (el) target = el;
-      }
+resolveTarget(combo) {
+  const id = this.getComboRemap()[combo];
+  if (id) {
+    const el = document.getElementById(id);
+    if (el && !el.hasAttribute('disabled') && el.getAttribute('aria-disabled') !== 'true') {
+      return el;
     }
+  }
+}
 
-    if (!target) return;
+onKeyDown(e) {
 
-    event.preventDefault();
-    event.stopPropagation();
-    target.click();
+  const combo = this.comboFromEvent(e);
+  if (!combo) return;
 
-    // If you prefer to route via an Actions queue, use:
-    // this.app?.actions?.addPendingAction?.({ element: target.id, event: 'click' });
+  // If the target is inside an input/textarea/contenteditable:
+  // - Allow shortcuts that include "mod+" (⌘/Ctrl)
+  // - Block all other keys to avoid interfering with typing
+  if (this.isTypingTarget(e.target) && !combo.startsWith('mod+')) {
+    return;
   }
 
-  /**
-   * Pick best candidate WITHOUT scoring:
-   * 1) Filter to enabled elements.
-   * 2) Prefer items matching installation type (.exe-offline / .exe-online).
-   * 3) Among preferred, pick a visible one if any, else the first.
-   * 4) Otherwise try any visible enabled element, else the first enabled element.
-   */
-  pickBestCandidate(candidates) {
-    if (!candidates || candidates.length === 0) return null;
+  const target = this.resolveTarget(combo);
+  if (!target) return;
 
-    const enabled = candidates.filter(el =>
-      el &&
-      el.getAttribute?.('aria-disabled') !== 'true' &&
-      !el.hasAttribute?.('disabled')
-    );
-
-    const preferred = enabled.filter(el =>
-      this.isOffline ? el.classList.contains('exe-offline')
-                     : el.classList.contains('exe-online')
-    );
-
-    const firstVisible = list => list.find(el => this.isVisible(el)) || null;
-
-    return (
-      firstVisible(preferred) ||
-      preferred[0] ||
-      firstVisible(enabled) ||
-      enabled[0] ||
-      null
-    );
-  }
-
-  /** Electron menu → same flows */
-  initElectronListener() {
-    if (!window.electronAPI || typeof window.electronAPI.onMenuAction !== 'function') return;
-    window.electronAPI.onMenuAction((action) => {
-      const comboMap = {
-        'new'     : 'mod+n',
-        'open'    : 'mod+o',
-        'save'    : 'mod+s',
-        'save-as' : 'mod+shift+s',
-      };
-      const combo = comboMap[action];
-      if (!combo) return;
-
-      const candidates = this.index.get(combo) || [];
-      let target = this.pickBestCandidate(candidates);
-      if (!target) {
-        const id = this.getComboRemap()[combo];
-        if (id) target = document.getElementById(id) || null;
-      }
-      if (target) target.click();
-    });
-  }
-
-  /** Per-combo fallback mapping by ID (uses <body installation-type="offline">) */
-  getComboRemap() {
-    const off = this.isOffline;
-    return {
-      'mod+n'       : 'navbar-button-new',
-      'mod+o'       : off ? 'navbar-button-open-offline'     : 'navbar-button-openuserodefiles',
-      'mod+s'       : off ? 'navbar-button-save-offline'     : 'navbar-button-save',
-      'mod+shift+s' : off ? 'navbar-button-save-as-offline'  : 'navbar-button-save-as',
-    };
-  }
-
-  // ------------------------
-  // Helpers
-  // ------------------------
-
-  /** Body attribute decides online/offline */
-  get isOffline() {
-    return (document.body?.getAttribute('installation-type') || '').toLowerCase() === 'offline';
-  }
+  e.preventDefault();
+  e.stopPropagation();
+  target.click();
+}
 
   /** Normalize declared combos to "mod+shift+s" */
   normalizeCombo(combo) {
@@ -267,24 +208,27 @@ export default class Shortcuts {
   }
 
   /** Create combo from KeyboardEvent (requires at least one modifier) */
-  comboFromEvent(event) {
-    const key = (event.key || '').toLowerCase();
-    if (!key) return null;
+comboFromEvent(e) {
+  const mods = [];
+  if (this.isMac ? e.metaKey : e.ctrlKey) mods.push('mod');
+  if (e.ctrlKey && this.isMac) mods.push('ctrl');
+  if (e.metaKey && !this.isMac) mods.push('meta');
+  if (e.shiftKey) mods.push('shift');
+  if (e.altKey) mods.push('alt');
+  if (!mods.length) return null;
 
-    const parts = [];
-    if (this.isMac ? event.metaKey : event.ctrlKey) parts.push('mod');
-    if (event.ctrlKey && this.isMac) parts.push('ctrl');
-    if (event.metaKey && !this.isMac) parts.push('meta');
-    if (event.shiftKey) parts.push('shift');
-    if (event.altKey) parts.push('alt');
+  let key = '';
+  if (e.code && /^Key[A-Z]$/.test(e.code)) key = e.code.slice(3).toLowerCase();
+  else if (e.code && /^Digit[0-9]$/.test(e.code)) key = e.code.slice(5);
+  else if (e.key && e.key !== 'Dead') key = e.key.toLowerCase();
+  if (!key) return null;
 
-    if (parts.length === 0) return null;
+  const order = ['mod','ctrl','meta','shift','alt'];
+  mods.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+  mods.push(key);
+  return mods.join('+');
+}
 
-    const order = ['mod','ctrl','meta','shift','alt'];
-    parts.sort((a,b) => order.indexOf(a) - order.indexOf(b));
-    parts.push(key);
-    return parts.join('+');
-  }
 
   /** Hint labels: "⌘⇧S" on macOS / "Ctrl+Shift+S" elsewhere */
   humanLabel(combo) {
@@ -322,3 +266,4 @@ export default class Shortcuts {
     return !!(target && target.closest?.('.modal.show'));
   }
 }
+

@@ -65,8 +65,8 @@ class App {
         await this.addNoTranslateForGoogle();
         // Execute the custom JavaScript code
         await this.runCustomJavaScriptCode();
-        // builds the index & binds the listener
-        await this.shortcuts.init();
+        // Compose and initialize shortcuts
+        await this.initializedShortcuts();
 
         // Electron: show toast with final saved path
         this.bindElectronDownloadToasts();
@@ -266,6 +266,13 @@ class App {
         try {
             $eXeLearningCustom.init();
         } catch (e) {}
+    }
+
+    /**
+     * Compose and initialize shortcuts
+     */
+    async initializedShortcuts() {
+        this.shortcuts.init();
     }
 
     /**

@@ -1,5 +1,5 @@
 <nav class="navbar navbar-expand-md navbar-light">
-    <div class="collapse navbar-collapse" id="eXeLearningNavbar">
+    <div class="collapse navbar-collapse" id="eXeLearningNavbar" tabindex="-1">
         <button id="exe-panels-toggler" class="btn me-2 nav-link" title="{{ "Toggle panels" | trans }}" aria-hidden="true">
             <span class="auto-icon">menu</span>
             <span class="visually-hidden">{{ "Toggle panels" | trans }}</span>
@@ -11,8 +11,8 @@
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="dropdownFile">
                     <li><a class="dropdown-item" id="navbar-button-new" href="#"
-     data-shortcut="Mod+E"
-     aria-keyshortcuts="Control+E Meta+E"
+     data-shortcut="Mod+Alt+N"
+     aria-keyshortcuts="Control+Alt+N Meta+Alt+N"
                     >{{ "New" | trans }}</a></li>
                     <li class="exe-online"><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#"
                       data-shortcut="Mod+O"
@@ -103,7 +103,10 @@
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="dropdownUtilities">
                     {# <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ "Preferences" | trans }}</a></li> #}
-                    <li><a class="dropdown-item" id="navbar-button-preview" href="#">{{ "Preview" | trans }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-preview" href="#"
+     data-shortcut="Mod+P"
+     aria-keyshortcuts="Control+P Meta+P"                    
+                    >{{ "Preview" | trans }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-idevice-manager" href="#">{{ "iDevice manager" | trans }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#">{{ "Resources report" | trans }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#">{{ "Link validation" | trans }}</a></li>
