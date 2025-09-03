@@ -6,11 +6,15 @@
     "require": {
         "php": ">=8.4",
         "ext-ctype": "*",
+        "api-platform/doctrine-orm": "^4.1",
+        "api-platform/symfony": "^4.1",
         "doctrine/doctrine-bundle": "^2.15",
         "doctrine/doctrine-migrations-bundle": "^3.4",
         "doctrine/orm": "^3.5",
         "firebase/php-jwt": "^6.11",
         "liip/imagine-bundle": "^2.13",
+        "phpdocumentor/reflection-docblock": "^5.6",
+        "phpstan/phpdoc-parser": "^2.2",
         "symfony/asset": "^7.3",
         "symfony/console": "^7.3",
         "symfony/dotenv": "^7.3",
@@ -95,6 +99,7 @@
         "phpunit-unit-parallel": "DISABLE_PANTHER_EXT=1 vendor/bin/paratest --processes auto --functional --tmp-dir /dev/shm --testsuite unit --colors=always",
         "phpunit-e2e": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e --colors=always",
         "phpunit-e2e-realtime": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e-realtime --colors=always",
+        "phpunit-e2e-offline": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e-offline --colors=always",
         "translations:extract": "php bin/console app:translations:extract",
         "cache-clear": "php bin/console cache:clear",
         "update-licenses": "php bin/update-licenses.php"
@@ -113,7 +118,8 @@
     },
     "extra": {
         "symfony": {
-            "docker": false
+            "docker": false,
+            "allow-contrib": true
         }
     }
 }

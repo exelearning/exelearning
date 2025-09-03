@@ -29,6 +29,10 @@ parameters:
     oidc_client_secret: '%env(OIDC_CLIENT_SECRET)%'
     oidc_scope: 'openid email'
 
+    api_jwt_secret: '%env(string:API_JWT_SECRET)%'
+    api_jwt_issuer: '%env(default::string:API_JWT_ISSUER)%'
+    api_jwt_audience: '%env(default::string:API_JWT_AUDIENCE)%'
+
     filesdir: '%env(FILES_DIR)%'
     google_client_id: '%env(GOOGLE_CLIENT_ID)%'
     google_client_secret: '%env(GOOGLE_CLIENT_SECRET)%'
@@ -67,6 +71,7 @@ services:
         exclude:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
+            - '../src/ApiResource/'
             - '../src/Kernel.php'
             - '../src/var/'
 
@@ -91,8 +96,19 @@ services:
         arguments:
             - 'ticket'
 
+    # Authorization: Bearer <token>
+    security.access_token_extractor.header:
+        class: Symfony\Component\Security\Http\AccessToken\HeaderAccessTokenExtractor
+        arguments: ['Authorization', 'Bearer']
+
+    # Query string ?access_token=...
+    security.access_token_extractor.query_string:
+        class: Symfony\Component\Security\Http\AccessToken\QueryAccessTokenExtractor
+        arguments:
+            - 'access_token'
+
     # We must define here the Cas2Handler to pass the $validationUrl to allow autowire
-    Symfony\Component\Security\Http\AccessToken\Cas\Cas2Handler:
+    'Symfony\Component\Security\Http\AccessToken\Cas\Cas2Handler':
         arguments:
             $validationUrl: '%cas_validate_url%'
 
@@ -111,7 +127,7 @@ services:
     #         $claim: 'sub'
 
     # Remove this on Symfony >=7.3
-    App\Security\OidcUserInfoTokenHandlerCustom:
+    'App\Security\OidcUserInfoTokenHandlerCustom':
         arguments:
             $client: '@http_client'
             $oidcIssuer: '%oidc_issuer%'
@@ -119,11 +135,50 @@ services:
 
 
     # MultiTokenHandler (combines OIDC, CAS, etc.)
-    App\Security\MultiTokenHandler:
+    'App\Security\MultiTokenHandler':
         arguments:
             $casHandler: '@Symfony\Component\Security\Http\AccessToken\Cas\Cas2Handler'
+            $jwtHandler: '@App\Security\JwtTokenHandler'
             $authCreateUsers: '%auth_create_users%'
+            $passwordHasherFactory: '@security.password_hasher_factory'
         tags: ['monolog.logger']
+
+    'App\Security\JwtTokenHandler':
+        arguments:
+            $secretKey: '%api_jwt_secret%'
+            $allowedAlgs: ['HS256']
+            $issuer: '%api_jwt_issuer%'
+            $audience: '%api_jwt_audience%'
+
+    App\Controller\Api\AuthController:
+        arguments:
+            $jwtSecret: '%api_jwt_secret%'
+            $jwtIssuer: '%api_jwt_issuer%'
+            $jwtAudience: '%api_jwt_audience%'
+
+    App\Command\GenerateJwtCommand:
+        arguments:
+            $secret: '%api_jwt_secret%'
+            $issuer: '%api_jwt_issuer%'
+            $audience: '%api_jwt_audience%'
+
+    App\Command\ValidateJwtCommand:
+        arguments:
+            $secret: '%api_jwt_secret%'
+            $issuer: '%api_jwt_issuer%'
+            $audience: '%api_jwt_audience%'
+
+    # Register custom Doctrine repositories as services
+    App\Entity\Project\ProjectPropertyRepository:
+        autowire: true
+        autoconfigure: true
+        tags: ['doctrine.repository_service']
+
+    # Restrict /api/v2/users collection for non-admins
+    # Run AFTER built-in filters so we can neutralize them for non-admins
+    App\Doctrine\Extension\UserCollectionExtension:
+        tags:
+            - { name: 'api_platform.doctrine.orm.query_extension.collection', priority: -999999 }
 
 
     decorating_translator:

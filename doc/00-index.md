@@ -27,6 +27,8 @@ The goal is for the documents and their associated images to be readable with pr
 | [08-internationalization](08-internationalization.md)       | Application translation                                            |
 | [09-real-time](09-real-time.md)                             | Real-time communication and collaborative features                 |
 | [10-customization](10-customization.md)                     | Define your own look and feel and add custom JavaScript code       |
+| [11-rest-api](11-rest-api.md)                     		  | REST API v2 documentation									       |
+
 
 ### Templates
 

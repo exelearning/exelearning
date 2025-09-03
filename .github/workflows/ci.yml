@@ -46,6 +46,10 @@ jobs:
         run: |
           git diff --name-only ${{ github.before }} ${{ github.sha }} | grep -Eq "^.github/workflows/(ci.yml|app.yml)$" && echo "Modifying or deleting ci.yml or app.yml is not allowed" && exit 1 || echo "Everything is fine"
 
+      - name: Remove local docker-compose.yml bind mounts for CI
+        run: |
+          sed -i '/##FORDELETEINCI-START/,/##FORDELETEINCI-END/d' docker-compose.yml
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
@@ -79,6 +83,9 @@ jobs:
 
       - name: PHPUnit E2E RealTime Tests
         run: make test-e2e-realtime
+
+      - name: PHPUnit E2E Offline Tests
+        run: make test-e2e-offline
 
       - name: Generate HTML report
         if: always()
