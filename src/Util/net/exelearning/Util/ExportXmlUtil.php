@@ -1426,6 +1426,7 @@ class ExportXmlUtil
         $odeNavStructureSyncs = null, // export HTML5 need all node structure for navigatation menu
     ) {
         $body = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><body></body>');
+        $body->addChild('script', 'document.body.className+=" js"');
 
         // Page properties
         $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
@@ -1929,6 +1930,7 @@ class ExportXmlUtil
         // Page header
         $pageHeaderMain = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><header-main></header-main>');
         $pageHeader = $pageHeaderMain->addChild('header', ' ');
+        $pageHeader->addAttribute('class', 'page-header');
         $pageHeader->addAttribute('id', 'header-'.$odeNavStructureSync->getOdePageId());
         $headerEmpty = true;
         $titlePage = isset($pagePropertiesDict['titlePage']) ? $pagePropertiesDict['titlePage'] : '';
@@ -2187,6 +2189,14 @@ class ExportXmlUtil
             $class .= ' minimized';
         }
 
+        // Teacher-only checkbox on blocks
+        if (
+            (isset($blockPropertiesDict['teacherOnly']) && 'true' == $blockPropertiesDict['teacherOnly'])
+            || (isset($blockPropertiesDict['visibilityType']) && 'teacher' === $blockPropertiesDict['visibilityType'])
+        ) {
+            $class .= ' teacher-only';
+        }
+
         if (isset($blockPropertiesDict['cssClass'])) {
             $class .= ' '.$blockPropertiesDict['cssClass'];
         }
@@ -2373,6 +2383,14 @@ class ExportXmlUtil
         if (!$odeComponentsSync->getHtmlView()) {
             $class .= ' db-no-data';
         }
+        // Teacher-only checkbox on iDevices
+        if (
+            (isset($idevicePropertiesDict['teacherOnly']) && 'true' == $idevicePropertiesDict['teacherOnly'])
+            || (isset($idevicePropertiesDict['visibilityType']) && 'teacher' === $idevicePropertiesDict['visibilityType'])
+        ) {
+            $class .= ' teacher-only';
+        }
+
         if (isset($idevicePropertiesDict['cssClass'])) {
             $class .= ' '.$idevicePropertiesDict['cssClass'];
         }
