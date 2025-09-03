@@ -47,7 +47,9 @@ services:
       MERCURE_JWT_SECRET_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
       MERCURE_PUBLISHER_JWT_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
       MERCURE_SUBSCRIBER_JWT_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
-      
+
+      API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForMariaDBDeployment}"
+
       # Post-configuration commands
       POST_CONFIGURE_COMMANDS: |
         echo "Setting up eXeLearning with MariaDB..."
