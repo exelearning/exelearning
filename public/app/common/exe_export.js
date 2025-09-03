@@ -58,7 +58,7 @@ $exeExport = {
         STORAGE_KEY : 'exeTeacherMode',
         init : function(){
             if (typeof(localStorage)!='object') return;
-            if ($(".box.teacher-only").length==0) return;
+            if ($(".box.teacher-only").length==0 && $(".idevice_node.teacher-only").length==0) return;
             if (document.getElementById("teacher-mode-toggler")) return;
             if ($("body").hasClass("exe-epub")) return;
             document.body.classList.add('exe-teacher-mode-toggler');
