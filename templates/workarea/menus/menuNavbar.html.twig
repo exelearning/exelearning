@@ -54,8 +54,14 @@
                     aria-keyshortcuts="Control+O Meta+O"
                         >{{ "Open" | trans }}</a></li>
                         <li class="dropdown-divider exe-offline"></li>
-                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-offline" href="#">{{ "Save" | trans }}</a></li>
-                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-as-offline" href="#">{{ "Save as" | trans }}</a></li>
+                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-offline" href="#"
+                            data-shortcut="Mod+S"
+                            aria-keyshortcuts="Control+S Meta+S"
+                        >{{ "Save" | trans }}</a></li>
+                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-as-offline" href="#"
+                            data-shortcut="Mod+Shift+S"
+                            aria-keyshortcuts="Control+Shift+S Meta+Shift+S"
+                        >{{ "Save as" | trans }}</a></li>
                         <li class="dropdown dropend exe-offline">
                             <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Export as..." | trans }}</a>
                             <ul class="dropdown-menu" aria-labelledby="dropdownExportAsOffline">
