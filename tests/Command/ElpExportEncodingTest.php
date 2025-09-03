@@ -35,10 +35,6 @@ class ElpExportEncodingTest extends KernelTestCase
     public function test_index_html_is_utf8_has_charset_meta_and_no_mojibake(): void
     {
         $input = realpath(__DIR__ . '/../Fixtures/encoding_test.elp');
-        if (!$input) {
-            $this->markTestSkipped('Missing fixture: encoding_test.elp');
-        }
-
         $this->outDir = sys_get_temp_dir() . '/elp_export_' . uniqid('', true);
         $this->fs->mkdir($this->outDir);
 

@@ -252,6 +252,9 @@ class ParameterApiController extends DefaultApiController
         // IDEVICE PROPERTIES
         $this->translator->trans('General');
         $this->translator->trans('Visible in export');
+        $this->translator->trans('Visibility type');
+        $this->translator->trans('Visible to all');
+        $this->translator->trans('Teacher only');
         $this->translator->trans('ID');
         $this->translator->trans('CSS Class');
 
@@ -259,6 +262,8 @@ class ParameterApiController extends DefaultApiController
         // $this->translator->trans('Visible in export');
         $this->translator->trans('Allows to minimize/display content');
         $this->translator->trans('Minimized');
+        $this->translator->trans('Visible in export');
+        $this->translator->trans('Visibility type');
         // $this->translator->trans('ID');
         // $this->translator->trans('CSS Class');
 
@@ -269,7 +274,8 @@ class ParameterApiController extends DefaultApiController
         $this->translator->trans('Different title on the page');
 
         $this->translator->trans('Title in page');
-        // $this->translator->trans('Visible in export');
+        $this->translator->trans('Visible in export');
+        $this->translator->trans('Visibility type');
         // $this->translator->trans('Description');
         // $this->translator->trans('Advanced (SEO)');
 

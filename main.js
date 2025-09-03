@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog }  = require('electron');
+const { app, BrowserWindow, dialog, session, ipcMain }  = require('electron');
 const { autoUpdater }                 = require('electron-updater');
 const log                             = require('electron-log');
 const path                            = require('path');
@@ -6,7 +6,8 @@ const i18n                            = require('i18n');
 const { spawn, execFileSync }         = require('child_process');
 const fs                              = require('fs');
 const AdmZip                          = require('adm-zip');
-const http                            = require('http'); // Import the http module to check server availability
+const http                            = require('http'); // Import the http module to check server availability and downloads
+const https                           = require('https');
        
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged
@@ -112,6 +113,78 @@ let isShuttingDown = false; // Flag to ensure the app only shuts down once
 let customEnv;
 let env;
 
+// ──────────────  Save/Export helpers  ──────────────
+// Returns a known extension (including the leading dot) inferred from a suggested name.
+function inferKnownExt(suggestedName) {
+  try {
+    const ext = (path.extname(suggestedName || '') || '').toLowerCase().replace(/^\./, '');
+    if (!ext) return null;
+    if (ext === 'elp' || ext === 'zip' || ext === 'epub') return `.${ext}`;
+    return null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+// Ensures the filePath has an extension; if missing, appends one inferred from suggestedName.
+function ensureExt(filePath, suggestedName) {
+  if (!filePath) return filePath;
+  const hasExt = !!path.extname(filePath);
+  if (hasExt) return filePath;
+  const inferred = inferKnownExt(suggestedName);
+  return inferred ? (filePath + inferred) : filePath;
+}
+
+// ──────────────  Simple settings (no external deps)  ──────────────
+// Persist user choices under userData/settings.json
+const SETTINGS_FILE = () => path.join(app.getPath('userData'), 'settings.json');
+
+function readSettings() {
+  try {
+    const p = SETTINGS_FILE();
+    if (!fs.existsSync(p)) return {};
+    const data = fs.readFileSync(p, 'utf8');
+    return JSON.parse(data || '{}');
+  } catch (_e) {
+    return {};
+  }
+}
+
+function writeSettings(obj) {
+  try {
+    fs.mkdirSync(path.dirname(SETTINGS_FILE()), { recursive: true });
+    fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(obj, null, 2), 'utf8');
+  } catch (_e) {
+    // Best-effort; ignore
+  }
+}
+
+function getSavedPath(key) {
+  const s = readSettings();
+  return (s.savePath && s.savePath[key]) || null;
+}
+
+function setSavedPath(key, filePath) {
+  const s = readSettings();
+  s.savePath = s.savePath || {};
+  s.savePath[key] = filePath;
+  writeSettings(s);
+}
+
+function clearSavedPath(key) {
+  const s = readSettings();
+  if (s.savePath && key in s.savePath) {
+    delete s.savePath[key];
+    writeSettings(s);
+  }
+}
+
+// Map of webContents.id -> next projectKey override for the next download
+const nextDownloadKeyByWC = new Map();
+const nextDownloadNameByWC = new Map();
+// Deduplicate bursts of downloads for the same WC/URL (prevents double pickers)
+const lastDownloadByWC = new Map(); // wcId -> { url: string, time: number }
+
 /**
  * Creates a directory recursively if it does not exist and attempts to set 0o777 permissions.
  * 
@@ -168,31 +241,31 @@ function initializeEnv() {
   const appEnv  = isDev ? 'dev' : 'prod';
 
   // Get the appropriate app data path based on platform
-  customEnv = {
-    APP_ENV: appEnv,
-    APP_DEBUG: isDev ? 1 : 0,
-    EXELEARNING_DEBUG_MODE: isDev.toString(),
-    APP_SECRET: 'CHANGE_THIS_FOR_A_SECRET',
-    APP_PORT: '41309',
-    APP_ONLINE_MODE: 0,
-    APP_AUTH_METHODS: 'none',
-    TEST_USER_EMAIL: 'localuser@exelearning.net',
-    TEST_USER_USERNAME: 'localuser',
-    TEST_USER_PASSWORD: 'RANDOMUNUSEDPASSWORD',
-    TRUSTED_PROXIES: '',
-    MAILER_DSN: 'smtp://localhost',
-    CAS_URL: '',
-    DB_DRIVER: 'pdo_sqlite',
-    DB_CHARSET: 'utf8',
-    DB_PATH: databasePath,
-    DB_SERVER_VERSION: '3.32',
-    FILES_DIR: path.join(appDataPath, 'data'),
-    CACHE_DIR: path.join(appDataPath, 'cache'),
-    LOG_DIR: path.join(appDataPath, 'log'),
-    MERCURE_URL: '',
-  };
+customEnv = {
+  APP_ENV: process.env.APP_ENV || appEnv,
+  APP_DEBUG: process.env.APP_DEBUG ?? (isDev ? 1 : 0),
+  EXELEARNING_DEBUG_MODE: (process.env.EXELEARNING_DEBUG_MODE ?? (isDev ? '1' : '0')).toString(),
+  APP_SECRET: process.env.APP_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
+  APP_PORT: process.env.APP_PORT || '41309',
+  APP_ONLINE_MODE: process.env.APP_ONLINE_MODE ?? 0,
+  APP_AUTH_METHODS: process.env.APP_AUTH_METHODS || 'none',
+  TEST_USER_EMAIL: process.env.TEST_USER_EMAIL || 'localuser@exelearning.net',
+  TEST_USER_USERNAME: process.env.TEST_USER_USERNAME || 'localuser',
+  TEST_USER_PASSWORD: process.env.TEST_USER_PASSWORD || 'RANDOMUNUSEDPASSWORD',
+  TRUSTED_PROXIES: process.env.TRUSTED_PROXIES || '',
+  MAILER_DSN: process.env.MAILER_DSN || 'smtp://localhost',
+  CAS_URL: process.env.CAS_URL || '',
+  DB_DRIVER: process.env.DB_DRIVER || 'pdo_sqlite',
+  DB_CHARSET: process.env.DB_CHARSET || 'utf8',
+  DB_PATH: process.env.DB_PATH || databasePath,
+  DB_SERVER_VERSION: process.env.DB_SERVER_VERSION || '3.32',
+  FILES_DIR: process.env.FILES_DIR || path.join(appDataPath, 'data'),
+  CACHE_DIR: process.env.CACHE_DIR || path.join(appDataPath, 'cache'),
+  LOG_DIR: process.env.LOG_DIR || path.join(appDataPath, 'log'),
+  MERCURE_URL: process.env.MERCURE_URL || '',
+  API_JWT_SECRET: process.env.API_JWT_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
+};
 }
-
 /**
  * Determine if dev mode is enabled.
  * 
@@ -218,7 +291,7 @@ function determineDevMode() {
 }
 
 function combineEnv() {
-  env = Object.assign({}, process.env, customEnv);
+  env = Object.assign({}, customEnv, process.env);
 }
 
 // Handler factory: creates an identical handler for any window
@@ -262,6 +335,8 @@ function attachOpenHandler(win) {
 
 }
 
+const IS_E2E = process.env.E2E_TEST === '1' || process.env.CI === 'true';
+
 function createWindow() {
 
   initializePaths(); // Initialize paths before using them
@@ -271,8 +346,11 @@ function createWindow() {
   // Ensure all required directories exist and try to set permissions
   ensureAllDirectoriesWritable(env);
 
-  // Create the loading window
+// Skip loading window in E2E/CI
+if (!IS_E2E) {
+ // Create the loading window
   createLoadingWindow();
+}
 
   // Check if the database exists and run Symfony commands
   checkAndCreateDatabase();
@@ -298,9 +376,11 @@ function createWindow() {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        preload: path.join(__dirname, 'preload.js'),
       },
       tabbingIdentifier: 'mainGroup',
-      show: false
+      // show: false
+      show: !IS_E2E  // don't actually show in E2E/CI
       // titleBarStyle: 'customButtonsOnHover', // hidden title bar on macOS
     });
     
@@ -308,9 +388,10 @@ function createWindow() {
     mainWindow.setMenuBarVisibility(isDev);
     
     // Maximize the window and open it
-    mainWindow.maximize();
-    mainWindow.show();
-
+    if (!IS_E2E) {
+        mainWindow.maximize();
+        mainWindow.show();
+    }
     // Allow the child windows to be created and ensure proper closing behavior
     mainWindow.webContents.on('did-create-window', (childWindow) => {
       console.log("Child window created");
@@ -331,8 +412,117 @@ function createWindow() {
 
     mainWindow.loadURL(`http://localhost:${customEnv.APP_PORT}`);
 
-    initUpdates(mainWindow);   // Init updater logic
+    // Intercept downloads: first time ask path, then overwrite same path
+    session.defaultSession.on('will-download', async (event, item, webContents) => {
+      try {
+        // Use the filename from the request or our override
+        const wc = webContents && !webContents.isDestroyed?.() ? webContents : (mainWindow ? mainWindow.webContents : null);
+        const wcId = wc && !wc.isDestroyed?.() ? wc.id : null;
+        // Deduplicate same-URL downloads triggered within a short window
+        try {
+          const url = (typeof item.getURL === 'function') ? item.getURL() : undefined;
+          if (wcId && url) {
+            const now = Date.now();
+            const last = lastDownloadByWC.get(wcId);
+            if (last && last.url === url && (now - last.time) < 1500) {
+              // Cancel duplicate download attempt
+              event.preventDefault();
+              return;
+            }
+            lastDownloadByWC.set(wcId, { url, time: now });
+          }
+        } catch (_e) {}
+        const overrideName = wcId ? nextDownloadNameByWC.get(wcId) : null;
+        if (wcId && nextDownloadNameByWC.has(wcId)) nextDownloadNameByWC.delete(wcId);
+        const suggestedName = overrideName || item.getFilename() || 'document.elp';
+        // Determine a safe target WebContents (can be null in some cases)
+        // Allow renderer to define a project key (optional)
+        let projectKey = 'default';
+        if (wcId && nextDownloadKeyByWC.has(wcId)) {
+          projectKey = nextDownloadKeyByWC.get(wcId) || 'default';
+          nextDownloadKeyByWC.delete(wcId);
+        } else if (wc) {
+          try {
+            projectKey = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
+          } catch (_e) {
+            // ignore, fallback to default
+          }
+        }
 
+        let targetPath = getSavedPath(projectKey);
+
+        if (!targetPath) {
+          const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
+          const { filePath, canceled } = await dialog.showSaveDialog(owner, {
+            title: tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project'),
+            defaultPath: suggestedName,
+            buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save')
+          });
+          if (canceled || !filePath) {
+            event.preventDefault();
+            return;
+          }
+          targetPath = ensureExt(filePath, suggestedName);
+          setSavedPath(projectKey, targetPath);
+        } else {
+          // If remembered path has no extension, append inferred one
+          const fixed = ensureExt(targetPath, suggestedName);
+          if (fixed !== targetPath) {
+            targetPath = fixed;
+            setSavedPath(projectKey, targetPath);
+          }
+        }
+
+        // Save directly (overwrite without prompting)
+        item.setSavePath(targetPath);
+
+        // Progress feedback and auto-resume on interruption
+        item.on('updated', (_e, state) => {
+          if (state === 'progressing') {
+            if (wc && !wc.isDestroyed?.()) wc.send('download-progress', {
+              received: item.getReceivedBytes(),
+              total: item.getTotalBytes()
+            });
+          } else if (state === 'interrupted') {
+            try {
+              if (item.canResume()) item.resume();
+            } catch (_err) {}
+          }
+        });
+
+        item.once('done', (_e, state) => {
+          const send = (payload) => {
+            if (wc && !wc.isDestroyed?.()) wc.send('download-done', payload);
+            else if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('download-done', payload);
+          };
+          if (state === 'completed') {
+            send({ ok: true, path: targetPath });
+            return;
+          }
+          if (state === 'interrupted') {
+            try {
+              const total = item.getTotalBytes() || 0;
+              const exists = fs.existsSync(targetPath);
+              const size = exists ? fs.statSync(targetPath).size : 0;
+              if (exists && (total === 0 || size >= total)) {
+                send({ ok: true, path: targetPath });
+                return;
+              }
+            } catch (_err) {}
+          }
+          send({ ok: false, error: state });
+        });
+      } catch (err) {
+        event.preventDefault();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('download-done', { ok: false, error: err.message });
+        }
+      }
+    });
+
+    if (!IS_E2E) {
+      initUpdates(mainWindow);   // Init updater logic
+    }
     // If any event blocks window closing, remove it
     mainWindow.on('close', (e) => {
       // This is to ensure any preventDefault() won't stop the closing
@@ -396,11 +586,147 @@ function waitForServer(callback) {
   checkServer();
 }
 
+/**
+ * Stream a URL to a file path using Node http/https, preserving Electron session cookies.
+ * Sends 'download-progress' and 'download-done' events to the given webContents when available.
+ *
+ * @param {string} downloadUrl
+ * @param {string} targetPath
+ * @param {Electron.WebContents|null} wc
+ * @param {number} [redirects]
+ * @returns {Promise<boolean>}
+ */
+function streamToFile(downloadUrl, targetPath, wc, redirects = 0) {
+  return new Promise(async (resolve) => {
+    try {
+      // Resolve absolute URL (support relative paths from renderer)
+      let baseOrigin = `http://localhost:${(customEnv && customEnv.APP_PORT) ? customEnv.APP_PORT : 80}/`;
+      try {
+        if (wc && !wc.isDestroyed?.()) {
+          const current = wc.getURL && wc.getURL();
+          if (current) baseOrigin = current;
+        }
+      } catch (_e) {}
+      let urlObj;
+      try {
+        urlObj = new URL(downloadUrl);
+      } catch (_e) {
+        urlObj = new URL(downloadUrl, baseOrigin);
+      }
+      const client = urlObj.protocol === 'https:' ? https : http;
+      // Build Cookie header from Electron session
+      let cookieHeader = '';
+      try {
+        const cookieList = await session.defaultSession.cookies.get({ url: `${urlObj.protocol}//${urlObj.host}` });
+        cookieHeader = cookieList.map(c => `${c.name}=${c.value}`).join('; ');
+      } catch (_e) {}
+
+      const request = client.request({
+        protocol: urlObj.protocol,
+        hostname: urlObj.hostname,
+        port: urlObj.port || (urlObj.protocol === 'https:' ? 443 : 80),
+        path: urlObj.pathname + (urlObj.search || ''),
+        method: 'GET',
+        headers: Object.assign({}, cookieHeader ? { 'Cookie': cookieHeader } : {})
+      }, (res) => {
+        // Handle redirects
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          if (redirects > 5) {
+            if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: false, error: 'Too many redirects' });
+            resolve(false);
+            return;
+          }
+          const nextUrl = new URL(res.headers.location, downloadUrl).toString();
+          res.resume(); // drain
+          streamToFile(nextUrl, targetPath, wc, redirects + 1).then(resolve);
+          return;
+        }
+        if (res.statusCode !== 200) {
+          if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: false, error: `HTTP ${res.statusCode}` });
+          resolve(false);
+          return;
+        }
+        const total = parseInt(res.headers['content-length'] || '0', 10) || 0;
+        let received = 0;
+        const out = fs.createWriteStream(targetPath);
+        res.on('data', (chunk) => {
+          received += chunk.length;
+          if (wc && !wc.isDestroyed?.()) wc.send('download-progress', { received, total });
+        });
+        res.on('error', (err) => {
+          try { out.close(); } catch (_e) {}
+          if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: false, error: err.message });
+          resolve(false);
+        });
+        out.on('error', (err) => {
+          try { res.destroy(); } catch (_e) {}
+          if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: false, error: err.message });
+          resolve(false);
+        });
+        out.on('finish', () => {
+          if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: true, path: targetPath });
+          resolve(true);
+        });
+        res.pipe(out);
+      });
+      request.on('error', (err) => {
+        if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: false, error: err.message });
+        resolve(false);
+      });
+      request.end();
+    } catch (err) {
+      if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: false, error: err.message });
+      resolve(false);
+    }
+  });
+}
+
+// Export a ZIP URL to a chosen folder by downloading and unzipping
+ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, suggestedDirName }) => {
+  const senderWindow = BrowserWindow.fromWebContents(e.sender);
+  try {
+    // Pick destination folder
+    const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
+      title: tOrDefault('export.folder.dialogTitle', defaultLocale === 'es' ? 'Exportar a carpeta' : 'Export to folder'),
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (canceled || !filePaths || !filePaths.length) return { ok: false, canceled: true };
+    const destDir = filePaths[0];
+
+    // Download ZIP to a temp path
+    const wc = e && e.sender ? e.sender : (mainWindow ? mainWindow.webContents : null);
+    const tmpZip = path.join(app.getPath('temp'), `exe-export-${Date.now()}.zip`);
+    // Download silently (do not emit download-done for the temp file)
+    const ok = await streamToFile(downloadUrl, tmpZip, null);
+    if (!ok || !fs.existsSync(tmpZip)) {
+      try { fs.existsSync(tmpZip) && fs.unlinkSync(tmpZip); } catch (_e) {}
+      return { ok: false, error: 'download-failed' };
+    }
+
+    // Extract ZIP into chosen folder (overwrite)
+    try {
+      const zip = new AdmZip(tmpZip);
+      zip.extractAllTo(destDir, true);
+    } finally {
+      try { fs.unlinkSync(tmpZip); } catch (_e) {}
+    }
+
+    // Notify renderer with final destination (for toast path)
+    try {
+      if (wc && !wc.isDestroyed?.()) wc.send('download-done', { ok: true, path: destDir });
+    } catch (_e) {}
+    return { ok: true, dir: destDir };
+  } catch (err) {
+    return { ok: false, error: err && err.message ? err.message : 'unknown' };
+  }
+});
+
 // Every time any window is created, we apply the handler to it
 app.on('browser-window-created', (_event, window) => {
   attachOpenHandler(window);
 });
 
+if (IS_E2E) app.disableHardwareAcceleration();
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', function () {
@@ -447,6 +773,90 @@ function handleAppExit() {
 app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
+  }
+});
+
+// IPC for explicit Save / Save As (optional from renderer)
+ipcMain.handle('app:save', async (e, { downloadUrl, projectKey, suggestedName }) => {
+  if (typeof downloadUrl !== 'string' || !downloadUrl) return false;
+  try {
+    const wc = e && e.sender ? e.sender : (mainWindow ? mainWindow.webContents : null);
+    let key = projectKey || 'default';
+    try {
+      if (!projectKey && wc && !wc.isDestroyed?.()) {
+        key = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
+      }
+    } catch (_er) {}
+    let targetPath = getSavedPath(key);
+    if (!targetPath) {
+      const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
+      const { filePath, canceled } = await dialog.showSaveDialog(owner, {
+        title: tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project'),
+        defaultPath: suggestedName || 'document.elp',
+        buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save')
+      });
+      if (canceled || !filePath) return false;
+      targetPath = ensureExt(filePath, suggestedName || 'document.elp');
+      setSavedPath(key, targetPath);
+    } else {
+      const fixed = ensureExt(targetPath, suggestedName || 'document.elp');
+      if (fixed !== targetPath) {
+        targetPath = fixed;
+        setSavedPath(key, targetPath);
+      }
+    }
+    return await streamToFile(downloadUrl, targetPath, wc);
+  } catch (_e) {
+    return false;
+  }
+});
+
+ipcMain.handle('app:saveAs', async (e, { downloadUrl, projectKey, suggestedName }) => {
+  const senderWindow = BrowserWindow.fromWebContents(e.sender);
+  const wc = e && e.sender ? e.sender : (mainWindow ? mainWindow.webContents : null);
+  const key = projectKey || 'default';
+  const { filePath, canceled } = await dialog.showSaveDialog(senderWindow, {
+    title: tOrDefault('saveAs.dialogTitle', defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
+    defaultPath: suggestedName || 'document.elp',
+    buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save')
+  });
+  if (canceled || !filePath) return false;
+  const finalPath = ensureExt(filePath, suggestedName || 'document.elp');
+  setSavedPath(key, finalPath);
+  if (typeof downloadUrl === 'string' && downloadUrl && wc) {
+    return await streamToFile(downloadUrl, finalPath, wc);
+  }
+  return false;
+});
+
+// Explicitly set the remembered save path for a given project key
+ipcMain.handle('app:setSavedPath', async (_e, { projectKey, filePath }) => {
+  if (!projectKey || !filePath) return false;
+  setSavedPath(projectKey, filePath);
+  return true;
+});
+
+// Open system file picker for .elp files (offline open)
+ipcMain.handle('app:openElp', async (e) => {
+  const senderWindow = BrowserWindow.fromWebContents(e.sender);
+  const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
+    title: tOrDefault('open.dialogTitle', defaultLocale === 'es' ? 'Abrir proyecto' : 'Open project'),
+    properties: ['openFile'],
+    filters: [{ name: 'eXeLearning project', extensions: ['elp', 'zip'] }]
+  });
+  if (canceled || !filePaths || !filePaths.length) return null;
+  return filePaths[0];
+});
+
+// Read file contents as base64 for upload (renderer builds a File)
+ipcMain.handle('app:readFile', async (_e, { filePath }) => {
+  try {
+    if (!filePath) return { ok: false, error: 'No path' };
+    const data = fs.readFileSync(filePath);
+    const stat = fs.statSync(filePath);
+    return { ok: true, base64: data.toString('base64'), mtimeMs: stat.mtimeMs };
+  } catch (err) {
+    return { ok: false, error: err.message };
   }
 });
 
@@ -538,7 +948,8 @@ function startPhpServer() {
       phpBinaryPath,
       ['-S', `localhost:${customEnv.APP_PORT}`, '-t', 'public', 'public/router.php'],
       {
-        env: Object.assign({}, process.env, customEnv),
+        // env: Object.assign({}, process.env, customEnv),
+        env, // usa el env ya combinado por combineEnv()
         cwd: basePath,
         windowsHide: true,
       }
@@ -642,4 +1053,14 @@ function getPhpBinaryPath() {
   }
 
   return phpBinaryPathFinal;
+}
+// Helper: translated or default fallback (handles missing/bad translations)
+function tOrDefault(key, fallback) {
+  try {
+    const val = i18n.__(key);
+    if (!val || val === key) return fallback;
+    return val;
+  } catch (_e) {
+    return fallback;
+  }
 }

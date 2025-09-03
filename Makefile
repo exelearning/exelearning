@@ -66,7 +66,27 @@ up: check-docker check-env
 
 # Start Docker containers in background mode (daemon)
 upd: check-docker check-env
-	docker compose up --detach --remove-orphans
+	@RUNNING=$$(docker compose ps -q exelearning | xargs docker inspect -f '{{.State.Running}}' 2>/dev/null | grep true || true); \
+	if [ "$$RUNNING" = "true" ]; then \
+		echo "🔄 Container 'exelearning' already running, skipping wait."; \
+	else \
+		echo "🚀 Starting containers..."; \
+		docker compose up -d --remove-orphans; \
+		echo "⏳ Waiting for 'exelearning' container to be healthy..."; \
+		for i in $$(seq 1 30); do \
+			STATUS=$$(docker inspect -f '{{.State.Health.Status}}' $$(docker compose ps -q exelearning) 2>/dev/null || echo "starting"); \
+			if [ "$$STATUS" = "healthy" ]; then \
+				echo "✅ exelearning is healthy."; \
+				break; \
+			fi; \
+			if [ $$i -eq 30 ]; then \
+				echo "⚠️ Timed out waiting for 'exelearning' health check"; \
+			else \
+				sleep 1; \
+			fi; \
+		done; \
+	fi
+
 
 # Stop and remove Docker containers
 down: check-docker check-env
@@ -145,6 +165,21 @@ test-e2e-realtime: check-docker check-env
 	@echo "Running PHPUnit tests..."
 	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e-realtime
 
+# Run E2E tests for the offline (Electron) web content
+test-e2e-offline: check-docker check-env
+	@echo "Starting e2e test environment..."
+	@docker compose --profile e2e up -d --quiet-pull
+	@echo "Running PHPUnit tests..."
+	@docker compose --profile e2e run --rm -e APP_ENV=test -e APP_ONLINE_MODE=0 exelearning composer --no-cache phpunit-e2e-offline
+
+# Test the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
+test-electron: install-php-bin
+	@echo "Running Electron E2E tests with Playwright..."
+	yarn install
+	#yarn test
+	yarn playwright test tests/electron
+	$(MAKE) remove-php-bin
+
 # Open a shell inside the exelearning container ready for running phpunit
 test-shell:
 	@echo "Starting e2e test environment..."
@@ -166,7 +201,49 @@ create-user: check-docker check-env upd
 	@read -p "Enter email: " email; \
 	read -p "Enter password: " password; \
 	read -p "Enter username: " username; \
-	docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
+	@docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
+
+# Grant an arbitrary role to a user
+# Usage: make grant-role EMAIL=user@example.com ROLE=ROLE_MANAGER
+grant-role: check-docker check-env upd
+	@if [ -z "$(EMAIL)" ] || [ -z "$(ROLE)" ]; then \
+		echo "❌ EMAIL and ROLE are required. Usage: make grant-role EMAIL=user@example.com ROLE=ROLE_X"; \
+		exit 1; \
+	fi
+	@echo "Granting '$(ROLE)' to '$(EMAIL)'..."; \
+	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --add="$(ROLE)" >/dev/null; \
+	echo "✅ '$(EMAIL)' now has '$(ROLE)'"
+
+# Revoke an arbitrary role from a user
+# Usage: make revoke-role EMAIL=user@example.com ROLE=ROLE_MANAGER
+revoke-role: check-docker check-env upd
+	@if [ -z "$(EMAIL)" ] || [ -z "$(ROLE)" ]; then \
+		echo "❌ EMAIL and ROLE are required. Usage: make revoke-role EMAIL=user@example.com ROLE=ROLE_X"; \
+		exit 1; \
+	fi
+	@echo "Revoking '$(ROLE)' from '$(EMAIL)'..."; \
+	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --remove="$(ROLE)" >/dev/null; \
+	echo "✅ '$(ROLE)' revoked from '$(EMAIL)'"
+
+# Keep the old convenience target for admins (uses the unified command under the hood)
+promote-admin: check-docker check-env upd
+	@if [ -z "$(EMAIL)" ]; then \
+		echo "❌ EMAIL is required. Usage: make promote-admin EMAIL=user@example.com"; \
+		exit 1; \
+	fi
+	@echo "Granting ROLE_ADMIN to '$(EMAIL)'..."; \
+	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --add=ROLE_ADMIN >/dev/null; \
+	echo "✅ '$(EMAIL)' is now ROLE_ADMIN"
+
+# New convenience target to remove admin
+demote-admin: check-docker check-env upd
+	@if [ -z "$(EMAIL)" ]; then \
+		echo "❌ EMAIL is required. Usage: make demote-admin EMAIL=user@example.com"; \
+		exit 1; \
+	fi
+	@echo "Revoking ROLE_ADMIN from '$(EMAIL)'..."; \
+	docker compose exec exelearning php bin/console app:user:role "$(EMAIL)" --remove=ROLE_ADMIN >/dev/null; \
+	echo "✅ ROLE_ADMIN revoked from '$(EMAIL)'"
 
 # Generate API key for a user (Usage: make generate-api-key USER_ID=123 [OVERWRITE=1])
 generate-api-key: check-docker check-env upd
@@ -174,7 +251,42 @@ generate-api-key: check-docker check-env upd
 		echo "❌ USER_ID is required. Usage: make generate-api-key USER_ID=123 [OVERWRITE=1]"; \
 		exit 1; \
 	fi
-	docker compose exec exelearning composer --no-cache generate-api-key -- $(USER_ID) $(if $(OVERWRITE),--overwrite,)
+	@docker compose exec exelearning composer --no-cache generate-api-key -- $(USER_ID) $(if $(OVERWRITE),--overwrite,)
+
+# Generate a JWT for any user (prints nicely with context)
+# Usage: make generate-jwt EMAIL=user@example.com [TTL=3600]
+generate-jwt: check-docker check-env upd
+	@if [ -z "$(EMAIL)" ]; then \
+		echo "❌ EMAIL is required. Usage: make generate-jwt EMAIL=user@example.com [TTL=3600]"; \
+		exit 1; \
+	fi
+	@TTL=$(if $(TTL),$(TTL),3600); \
+	TOKEN=$$(docker compose exec -T exelearning php -d detect_unicode=0 bin/console app:jwt:generate "$(EMAIL)" --ttl=$$TTL | tail -n 1); \
+	echo ""; \
+	echo "🔑 Bearer token (valid for $$TTL seconds):"; \
+	echo "Authorization: Bearer $$TOKEN"; \
+	echo ""; \
+	echo "Example:"; \
+	echo "  curl -H 'Authorization: Bearer $$TOKEN' -H 'Accept: application/json' http://localhost:8080/api/v2/projects"; \
+	echo ""
+
+
+# Quick smoke test for API v2 /users (admin JWT)
+smoke-api-v2: check-docker check-env upd
+	@EMAIL=$(if $(EMAIL),$(EMAIL),admin@example.com); \
+	PASSWORD=$(if $(PASSWORD),$(PASSWORD),secret); \
+	USERNAME=$(if $(USERNAME),$(USERNAME),admin); \
+	echo "[smoke] Ensuring admin '$$EMAIL' exists and has ROLE_ADMIN..."; \
+	docker compose exec exelearning php bin/console app:create-user "$$EMAIL" "$$PASSWORD" "$$USERNAME" --no-fail >/dev/null || true; \
+	docker compose exec exelearning php bin/console app:user:promote "$$EMAIL" ROLE_ADMIN >/dev/null; \
+	echo "[smoke] Generating short-lived JWT (10 min)..."; \
+	TOKEN=$$(docker compose exec -T exelearning php -d detect_unicode=0 bin/console app:jwt:generate "$$EMAIL" --ttl=600 | tail -n 1); \
+	echo "[smoke] GET /api/v2/users"; \
+	STATUS=$$(docker compose exec -T exelearning sh -lc "curl -s -o /tmp/smoke_out.txt -w '%{http_code}' -H 'Authorization: Bearer $$TOKEN' -H 'Accept: application/json' http://localhost:8080/api/v2/users"); \
+	echo "HTTP $$STATUS"; \
+	docker compose exec -T exelearning sh -lc "head -c 500 /tmp/smoke_out.txt || true"; \
+	echo ""; \
+	if [ "$$STATUS" != "200" ]; then echo "❌ Smoke test failed"; exit 1; else echo "✅ Smoke test OK"; fi
 
 # Update Composer dependencies
 update: check-docker check-env upd
@@ -418,16 +530,27 @@ help:
 	@echo "Data:"
 	@echo ""
 	@echo "  create-user           - Ask for data and create user in Symonfy"
+	@echo "  grant-role            - Grant a role to a user (ROLE required)"
+	@echo "                           Usage: make grant-role EMAIL=user@exelearning.net ROLE=ROLE_X"
+	@echo "  revoke-role           - Revoke a role from a user (ROLE required)"
+	@echo "                           Usage: make revoke-role EMAIL=user@exelearning.net ROLE=ROLE_X"
+	@echo "  promote-admin         - Grant ROLE_ADMIN to a user"
+	@echo "                           Usage: make promote-admin EMAIL=user@exelearning.net"
+	@echo "  demote-admin          - Revoke ROLE_ADMIN from a user"
+	@echo "  generate-jwt          - Generate a JWT for a user"
+	@echo "                           Usage: make generate-jwt EMAIL=user@exelearning.net [TTL=3600]"
+	@echo "  smoke-api-v2          - Quick smoke test for /api/v2/users (uses admin JWT)"
 	@echo "  make-migration        - Generate a new Symfony migration (make:migration)"
 	@echo "  migrate               - Run pending Symfony migrations (doctrine:migrations:migrate)"
 	@echo ""
 	@echo "Testing:"
 	@echo ""
 	@echo "  phpunit               - Run unit tests with PHPUnit"
-	@echo "  test                  - Run ALL tests with PHPUnit"
+	@echo "  test                  - Run ALL tests"
 	@echo "  test-unit             - Run unit tests with PHPUnit"
-	@echo "  test-e2e              - Run e2e tests with PHPUnit (chrome)"
-	@echo "  test-e2e-realtime     - Run e2e-realtime tests with PHPUnit (chrome)"
+	@echo "  test-e2e              - Run e2e tests with Paratest (chrome)"
+	@echo "  test-e2e-realtime     - Run e2e-realtime tests with Paratest (chrome)"
+	@echo "  test-e2e-offline      - Run e2e-offline tests with Paratest (chrome)"
 	@echo "  test-shell            - Open a shell inside the exelearning container (and the chrome container)"
 	@echo "  test-local            - Run unit tests in local environment (no Docker, SQLite tmp DB)"
 	@echo "  test-unit-parallel    - Run unit tests in parallel using paratest"
@@ -449,3 +572,4 @@ help:
 
 # Set help as the default goal if no target is specified
 .DEFAULT_GOAL := help
+

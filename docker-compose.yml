@@ -1,3 +1,6 @@
+# ⚠️ WARNING: This docker-compose file is mainly intended for development.
+# For production deployments, please use the example docker-compose files
+# provided in doc/deploy/ (examples available for SQLite, MariaDB and PostgreSQL).
 ---
 services:
 
@@ -13,11 +16,13 @@ services:
       # - 9003:9003 # Port for Xdebug, you don't need to map this port, because is the container who connects to the host xdebug
     restart: unless-stopped # Restart the container unless it is stopped manually
     volumes:
+      ##FORDELETEINCI-START
       - ./src:/app/src
       - ./tests:/app/tests
       - ./public:/app/public
       - ./translations:/app/translations
       - ./templates:/app/templates
+      ##FORDELETEINCI-END
       - ./config:/app/config
       - ./composer.json:/app/composer.json
       - ./composer.lock:/app/composer.lock

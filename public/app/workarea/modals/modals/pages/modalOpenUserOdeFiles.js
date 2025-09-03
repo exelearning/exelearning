@@ -921,6 +921,28 @@ export default class modalOpenUserOdeFiles extends Modal {
                 eXeLearning.app.project.odeSession = response.odeSessionId;
                 eXeLearning.app.project.odeVersion = response.odeVersionId;
                 eXeLearning.app.project.odeId = response.odeId;
+                // Ensure Electron saves target under current project key immediately
+                try {
+                    window.__currentProjectId = response.odeId;
+                } catch (_e) {}
+                // Remember the chosen local ELP path (prefer original local path if available)
+                try {
+                    const originalPath = window.__originalElpPath;
+                    if (
+                        window.electronAPI &&
+                        typeof window.electronAPI.setSavedPath === 'function' &&
+                        (originalPath || odeFilePath)
+                    ) {
+                        const key =
+                            response.odeId ||
+                            window.__currentProjectId ||
+                            'default';
+                        window.electronAPI.setSavedPath(
+                            key,
+                            originalPath || odeFilePath
+                        );
+                    }
+                } catch (_e) {}
                 // Load project
                 await eXeLearning.app.project.openLoad();
                 // Check ode theme
@@ -982,6 +1004,28 @@ export default class modalOpenUserOdeFiles extends Modal {
             eXeLearning.app.project.odeSession = response.odeSessionId;
             eXeLearning.app.project.odeVersion = response.odeVersionId;
             eXeLearning.app.project.odeId = response.odeId;
+            // Ensure Electron saves target under current project key immediately
+            try {
+                window.__currentProjectId = response.odeId;
+            } catch (_e) {}
+            // Remember the chosen local ELP path (prefer original local path if available)
+            try {
+                const originalPath = window.__originalElpPath;
+                if (
+                    window.electronAPI &&
+                    typeof window.electronAPI.setSavedPath === 'function' &&
+                    (originalPath || odeFilePath)
+                ) {
+                    const key =
+                        response.odeId ||
+                        window.__currentProjectId ||
+                        'default';
+                    window.electronAPI.setSavedPath(
+                        key,
+                        originalPath || odeFilePath
+                    );
+                }
+            } catch (_e) {}
             // Load project
             await eXeLearning.app.project.openLoad();
             // Check ode theme

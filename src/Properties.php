@@ -214,6 +214,14 @@ class Properties
             'category' => null,
             'heritable' => true,
         ],
+        // Teacher-only content (export-time visibility)
+        'teacherOnly' => [
+            'title' => self::TRANS_PREFIX.'Teacher only',
+            'value' => 'false',
+            'type' => 'checkbox',
+            'category' => null,
+            'heritable' => true,
+        ],
         'identifier' => [
             'title' => self::TRANS_PREFIX.'ID',
             'type' => 'text',
@@ -237,6 +245,14 @@ class Properties
         'visibility' => [
             'title' => self::TRANS_PREFIX.'Visible in export',
             'value' => 'true',
+            'type' => 'checkbox',
+            'category' => null,
+            'heritable' => true,
+        ],
+        // Teacher-only content (export-time visibility)
+        'teacherOnly' => [
+            'title' => self::TRANS_PREFIX.'Teacher only',
+            'value' => 'false',
             'type' => 'checkbox',
             'category' => null,
             'heritable' => true,
@@ -307,6 +323,7 @@ class Properties
             'category' => self::TRANS_PREFIX.'General',
             'heritable' => true,
         ],
+        // Teacher mode is not applicable at page level
         'description' => [
             'title' => self::TRANS_PREFIX.'Description',
             'type' => 'textarea',
