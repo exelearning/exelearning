@@ -26,7 +26,8 @@ export default class NavbarFile {
      *
      */
     setEvents() {
-        this.setTooltips();
+        // TO REVIEW MN
+        //this.setTooltips();
         this.setPreferencesEvent();
         this.setIdeviceManagerEvent();
         this.setFileManagerEvent();

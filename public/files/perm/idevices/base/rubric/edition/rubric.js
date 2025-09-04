@@ -610,7 +610,7 @@ var $exeDevice = {
     html += '</div>'; // / .exe-form-tab (General settings)
 
     // Language tab (i18n)
-    html += $exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n);
+    html += $exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n);
 
     var ed = $("#ri_TableEditor");
     this.editor = ed;
@@ -625,7 +625,7 @@ var $exeDevice = {
     }
 
     // Enable the tabs
-    $exeDevices.iDevice.tabs.init("ri_TableEditor");
+    $exeDevicesEdition.iDevice.tabs.init("ri_TableEditor");
 
     // Buttons (events)
     $("#ri_Reset").click(function () {

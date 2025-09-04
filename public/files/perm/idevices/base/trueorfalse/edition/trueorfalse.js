@@ -84,7 +84,7 @@ var $exeDevice = {
             return data;
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         const questionsData = Array.isArray(data.questionsData)
             ? data.questionsData
             : [];
@@ -326,7 +326,7 @@ var $exeDevice = {
         <div id="trueorfalseIdeviceForm">
             <p class="exe-block-info exe-block-dismissible"">${_('Create interactive True or False quizzes.')} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
             <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Answer all the questions in this quiz.'))}
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Answer all the questions in this quiz.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
@@ -391,19 +391,19 @@ var $exeDevice = {
                              <span class="TOF-ENumQuestions" id="tofENumQuestions">0</span>
                          </div>
                      </div>
-                     ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </fieldset>
              </div>
-             ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-             ${$exeDevices.iDevice.gamification.scorm.getTab(true, true, true)}
-             ${$exeDevices.iDevice.gamification.share.getTab(true, 6, true)}
+             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 6, true)}
 
          </div>
      `;
         this.ideviceBody.innerHTML = html;
 
-        $exeDevices.iDevice.tabs.init('trueorfalseIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('trueorfalseIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         $exeDevice.enable();
     },
@@ -572,7 +572,7 @@ var $exeDevice = {
                 $exeDevice.updateQuestionsNumber();
             });
 
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             6,
             $exeDevice.insertQuestions,
         );
@@ -788,7 +788,7 @@ var $exeDevice = {
             $('#eXeGameInstructions').val(instructions);
             $('#eXeIdeviceTextAfter').val(textAfter);
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -815,7 +815,7 @@ var $exeDevice = {
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         game.showSlider =
             typeof game.showSlider !== 'undefined' ? game.showSlider : false;
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -952,7 +952,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (scorm.isScorm > 0 && !isTest) {
             $exeDevice.showMessage($exeDevice.msgs.msNotScorm);

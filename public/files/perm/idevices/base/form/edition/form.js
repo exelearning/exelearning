@@ -255,8 +255,8 @@ var $exeDevice = {
         let textscorm = previousData.exportScorm && previousData.exportScorm.buttonTextSave ? previousData.exportScorm.buttonTextSave : _('Save score');
         previousData.textButtonScorm = previousData.textButtonScorm ?? textscorm;
 
-        $exeDevices.iDevice.gamification.scorm.setValues(previousData.isScorm, previousData.textButtonScorm, previousData.repeatActivity, previousData.weighted);
-        $exeDevices.iDevice.gamification.common.setLanguageTabValues(previousData.msgs);
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(previousData.isScorm, previousData.textButtonScorm, previousData.repeatActivity, previousData.weighted);
+        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(previousData.msgs);
     $exeDevice.updateQuestionsNumber()
     },
 
@@ -272,7 +272,7 @@ var $exeDevice = {
         let form = new $exeDevice.Form($exeDevice, $exeDevice.questions);
         form.saveInEditionQuestion();
 
-        let scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        let scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         this.isScorm = scorm.isScorm;
         this.textButtonScorm = scorm.textButtonScorm;
         this.repeatActivity = scorm.repeatActivity;
@@ -925,7 +925,7 @@ var $exeDevice = {
             const html = `<div id="formIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible">${_("Create quizzes with multiple-choice, true/false and fill-in-the-blank questions.")} <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_("Usage Instructions")}</a></p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_("Complete the questions in the following quiz"))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_("Complete the questions in the following quiz"))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_("Options")}</a></legend>
                         <div>
@@ -997,16 +997,16 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset("after")}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset("after")}
                 </div>
-                ${$exeDevices.iDevice.gamification.scorm.getTab(true)}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab($exeDevice.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 7, false)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab($exeDevice.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 7, false)}
             </div>            
             `;
             ideviceBody.innerHTML = html;
-            $exeDevices.iDevice.tabs.init("formIdeviceForm");
-            $exeDevices.iDevice.gamification.scorm.init();
+            $exeDevicesEdition.iDevice.tabs.init("formIdeviceForm");
+            $exeDevicesEdition.iDevice.gamification.scorm.init();
         }
 
         /**
@@ -1027,7 +1027,7 @@ var $exeDevice = {
             this.behaviourButtonAddDropdownQuestion($exeDevice.btnAddDropdownBottom, "beforeend");
             this.behaviourButtonAddSelectionQuestion($exeDevice.btnAddSelectionBottom, "beforeend");
             this.behaviourEvaluation();
-            $exeDevices.iDevice.gamification.share.addEvents(7, $exeDevice.insertQuestions);
+            $exeDevicesEdition.iDevice.gamification.share.addEvents(7, $exeDevice.insertQuestions);
             if (window.File && window.FileReader && window.FileList && window.Blob) {
                 $('#eXeGameExportImport .exe-field-instructions').eq(0).text(`${_("Supported formats")}: txt, xml(Moodle)`);
                 $('#eXeGameExportImport').show();

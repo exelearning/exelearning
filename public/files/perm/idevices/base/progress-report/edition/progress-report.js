@@ -352,14 +352,14 @@ var $exeDevice = {
                         </div>
                     </fieldset>
                 </div>
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
 
         $exeDevice.loadPreviousValues();
-        $exeDevices.iDevice.tabs.init("reportQEIdeviceForm");
+        $exeDevicesEdition.iDevice.tabs.init("reportQEIdeviceForm");
 
     },
 
@@ -431,7 +431,7 @@ var $exeDevice = {
             const json = $('.informe-DataGame', wrapper).text();
             const dataGame = $exeDevices.iDevice.gamification.helpers.isJsonString(json);
             $exeDevice.updateFieldGame(dataGame);
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
         }
 
     },

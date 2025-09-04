@@ -800,7 +800,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset($exeDevice.msgs.msgGameIntrunctions)}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset($exeDevice.msgs.msgGameIntrunctions)}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_("Options")}</a></legend>
                         <div>
@@ -1086,11 +1086,11 @@ var $exeDevice = {
                                 <span class="TRVLE-ENumQuestions" id="trivialENumQuestions">0</span>
                             </div>
                         </div>
-                        ${$exeDevices.iDevice.common.getTextFieldset("after")}
+                        ${$exeDevicesEdition.iDevice.common.getTextFieldset("after")}
                     </div>
-                    ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                    ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                    ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                     <p class="exe-block-warning exe-block-dismissible" style="position:relative">
                         ${_("This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.")}
                         <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>x</a>
@@ -1101,8 +1101,8 @@ var $exeDevice = {
 
         this.ideviceBody.innerHTML = html;
 
-        $exeDevices.iDevice.tabs.init("gameQEIdeviceForm");
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init("gameQEIdeviceForm");
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         tinymce.init({
             selector: '#trivialEText',
             height: 157,
@@ -1345,7 +1345,7 @@ var $exeDevice = {
             }
 
             // i18n
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
             $exeDevice.changeNumberTemas(dataGame.numeroTemas);
             $exeDevice.updateFieldGame(dataGame);
 
@@ -1357,7 +1357,7 @@ var $exeDevice = {
         $exeDevice.activesQuestions = [0, 0, 0, 0, 0, 0];
         $exeDevice.temas = game.temas;
         $exeDevice.nombresTemas = game.nombresTemas;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.evaluation = typeof game.evaluation != "undefined" ? game.evaluation : false;
         game.evaluationID = typeof game.evaluationID != "undefined" ? game.evaluationID : '';
         $exeDevice.trivialID = typeof game.trivialID == "undefined" ? $exeDevice.trivialID : game.trivialID;
@@ -1379,7 +1379,7 @@ var $exeDevice = {
         $('#trivialEEvaluationID').val(game.evaluationID);
         $("#trivialEEvaluationID").prop('disabled', (!game.evaluation));
 
-        $exeDevices.iDevice.gamification.scorm.setValues(game.isScorm, game.textButtonScorm, game.repeatActivity, game.weighted);
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(game.isScorm, game.textButtonScorm, game.repeatActivity, game.weighted);
         $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
     },
 
@@ -2014,7 +2014,7 @@ var $exeDevice = {
             idVideo = '',
             endVideo = 0,
             startVideo = 0,
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary =$exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = false,
             temas = [],
             evaluation = $('#trivialEEvaluation').is(':checked'),
@@ -2088,7 +2088,7 @@ var $exeDevice = {
             temas.push(tema);
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             'asignatura': '',
@@ -2506,7 +2506,7 @@ var $exeDevice = {
             $("#trivialEEvaluationHelp").toggle();
             return false;
         });
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         //eX3 3.0 Dismissible messages
         $(".exe-block-dismissible .exe-block-close").click(function () {
             $(this).parent().fadeOut();

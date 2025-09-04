@@ -163,7 +163,7 @@ var $exeDevice = {
      * @returns string
      */
     dataJson: function () {
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         this.data = {
             typeGame: 'ScrambledList',
             instructions: this.instructions,
@@ -317,23 +317,23 @@ var $exeDevice = {
         <div id="scrambledlistIdeviceForm">
             <p class="exe-block-info exe-block-dismissible">${_('Create interactive text ordering activities.')} <a  style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
             <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
                 <fieldset class="exe-fieldset">
                     <legend><a href="#" >${_('List')}</a></legend>
                     <div class="TOF-EPanel" id="tofEPanel">                   
                         ${this.createExeFormContainerGeneralSettings(id, true)}
                      </div>
-                     ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </fieldset>
              </div>
-             ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-             ${$exeDevices.iDevice.gamification.scorm.getTab(true, true, true)}
-             ${$exeDevices.iDevice.gamification.share.getTab(true, 8, false)}
+             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
          </div>
      `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('scrambledlistIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('scrambledlistIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         this.loadPreviousValues();
     },
@@ -356,7 +356,7 @@ var $exeDevice = {
                 helpElement.style.display =
                     helpElement.style.display === 'none' ? 'block' : 'none';
             });
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             8,
             $exeDevice.insertWords,
         );
@@ -556,13 +556,13 @@ var $exeDevice = {
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             data.isScorm,
             data.textButtonScorm,
             data.repeatActivity,
             data.weighted,
         );
-        $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
             data.msgs,
         );
     },

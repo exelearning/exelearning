@@ -438,7 +438,7 @@ var $exeDevicesEdition = {
                     const display = allowtext ? 'block' : 'none';
                     const displayEQ = exportquestion ? 'block' : 'none';
                     const msgimport = _('You can import questions compatible with this activity from txt or xml (Moodle) files.');
-                    const fprompt = $exeDevices.iDevice.gamification.share.getAllowedFormats(type)
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type)
                     const tab = `
                             <div class="exe-form-tab" title="${_('Import/Export')}">
                                 <p class="exe-block-info">${msgimport}</p>
@@ -484,7 +484,7 @@ var $exeDevicesEdition = {
                                                 </textarea>
                                                 <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
                                                 <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
-                                                    ${$exeDevices.iDevice.gamification.share.createIAButtonsHtml()}
+                                                    ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
                                                     <textarea class="form-control font-monospace fs-6" style="display:none" id="eXeEQuestionsIA"> </textarea>
                                                 </div>
                                             </div>
@@ -782,7 +782,7 @@ var $exeDevicesEdition = {
                             alert(_("Please enter at least one question."));
                             return;
                         }
-                        const questions = $exeDevices.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
@@ -799,7 +799,7 @@ var $exeDevicesEdition = {
                             return;
                         }
 
-                        const questions = $exeDevices.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
+                        const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
@@ -835,7 +835,7 @@ var $exeDevicesEdition = {
 
                     $('#eXeIAButton').on('click', function () {
                         $('#eXeIAMessage').text(_('Generating questions. Please wait...')).show();
-                        $exeDevices.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions);
+                        $exeDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions);
                     });
 
                 },
@@ -876,7 +876,7 @@ var $exeDevicesEdition = {
                         promptText += `${_('With the following formats:')}`;
                     }
 
-                    const fprompt = $exeDevices.iDevice.gamification.share.getAllowedFormats(type);
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
                     let prompt = `
                         ${promptText}
                         ${fprompt.format.join('\n')}
@@ -893,9 +893,9 @@ var $exeDevicesEdition = {
                         const data = await eXeLearning.app.api.getGenerateQuestions(prompt);
 
                         if (data.questions) {
-                            let questions = $exeDevices.iDevice.gamification.share.checkQuestions(data.questions);
+                            let questions = $exeDevicesEdition.iDevice.gamification.share.checkQuestions(data.questions);
                             if (questions) {
-                                const correctsQuestions = $exeDevices.iDevice.gamification.share.validateQuesionsIA(type, questions);
+                                const correctsQuestions = $exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(type, questions);
                                 saveQuestions(correctsQuestions);
                             } else {
                                 sdata = _('The questions could not be generated');
@@ -948,7 +948,7 @@ var $exeDevicesEdition = {
                     const lines = $textQuestionsArea.val().trim().split('\n');
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevices.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();
@@ -969,7 +969,7 @@ var $exeDevicesEdition = {
                 validateQuesionsIA: function (gameId, lines) {
                     const validLines = [];
                     const invalidLines = [];
-                    const regex = $exeDevices.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
+                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId).allowRegex;
 
                     lines.forEach((line) => {
                         const cleanLine = line.trim();
@@ -1015,7 +1015,7 @@ var $exeDevicesEdition = {
 
                     text: function (content, addWords) {
                         const lines = content.split('\n');
-                        $exeDevices.iDevice.gamification.share.import.insertWords(lines, wordsgame);
+                        $exeDevicesEdition.iDevice.gamification.share.import.insertWords(lines, wordsgame);
                     },
                     insertWords: function (lines, addWords) {
                         const lineFormat = /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/;
@@ -1032,15 +1032,15 @@ var $exeDevicesEdition = {
                             }
 
                         });
-                        $exeDevices.iDevice.gamification.share.import.addWords(words, wordsgame)
+                        $exeDevicesEdition.iDevice.gamification.share.import.addWords(words, wordsgame)
                     },
                     moodle: function (xmlString, addWords) {
                         const xmlDoc = $.parseXML(xmlString),
                             $xml = $(xmlDoc);
                         if ($xml.find("GLOSSARY").length > 0) {
-                            $exeDevices.iDevice.gamification.share.import.glosary(xmlString, wordsgame);
+                            $exeDevicesEdition.iDevice.gamification.share.import.glosary(xmlString, wordsgame);
                         } else if ($xml.find("quiz").length > 0) {
-                            $exeDevices.iDevice.gamification.share.import.cuestionaryxml(xmlString, wordsgame);
+                            $exeDevicesEdition.iDevice.gamification.share.import.cuestionaryxml(xmlString, wordsgame);
                         } else {
                             eXe.app.alert(_('Sorry, wrong file format'));
                         }

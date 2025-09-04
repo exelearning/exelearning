@@ -32,10 +32,11 @@ export default class Common {
    * @returns {string}
    */
   initTooltips(elm) {
-    $(".exe-app-tooltip", elm).tooltip();
+    // TO REVIEW MN
+    /* $(".exe-app-tooltip", elm).tooltip();
     $('.exe-app-tooltip', elm).on('click mouseleave', function(){
         $(this).tooltip('hide');
-    });
+    }); */
   }
 
   /**
