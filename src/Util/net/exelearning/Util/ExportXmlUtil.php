@@ -1354,7 +1354,9 @@ class ExportXmlUtil
         foreach ($styleCssFiles as $styleUrl) {
             $styleLink = $headCss->addChild('link', '');
             $styleLink->addAttribute('rel', 'stylesheet');
-            $styleLink->addAttribute('href', $styleUrl);
+            // TEMPORARY FIX: Added this to resolve the bug.
+            // TODO: Replace with a final, more robust solution.
+            $styleLink->addAttribute('href', $styleUrl.'?'.bin2hex(random_bytes(8 / 2)));
         }
 
         return $headCss;
