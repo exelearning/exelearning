@@ -263,8 +263,8 @@ var $exeDevice = {
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-       $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -276,9 +276,9 @@ var $exeDevice = {
             $('#ordenaEDefinitionDiv').hide();
             $('#ordenaEPhrase').hide();
             $('#ordenaButtonCardDiv').hide();
-            $('#ordenaCustomizeCard').hide();            
+            $('#ordenaCustomizeCard').hide();
             $('#ordenaEBackDiv').hide();
-            $('#ordenaEWordBorderDiv').show();            
+            $('#ordenaEWordBorderDiv').show();
             $('#ordenaStartAutomaticallyDiv').hide();
             $('#ordenaECustomMessagesDiv').hide();
             $('#ordenaFixedHeaders').hide();
@@ -297,7 +297,7 @@ var $exeDevice = {
             $('#ordenaEBackDiv').show();
             $('#ordenaStartAutomaticallyDiv').show();
             $('#ordenaEPĥraseIDiv').hide();
-            $('#ordenaEWordBorderDiv').hide();   
+            $('#ordenaEWordBorderDiv').hide();
             $('#ordenaECustomMessagesDiv').show();
             $('#ordenaButtonsPrhaseDiv').insertBefore(
                 'ordenaActivityNumberDiv',
@@ -944,8 +944,8 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame),
             divContent = '';
-        
-        
+
+
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
         const textFeedBack = tinyMCE.get('ordenaEFeedBackEditor').getContent();
@@ -971,7 +971,7 @@ var $exeDevice = {
         html += '<div class="ordena-feedback-game">' + textFeedBack + '</div>';
         html += divContent;
         html += '<div class="ordena-DataGame js-hidden">' + json + '</div>';
-        
+
         html += linksImages;
         html += linksAudios;
         html += imgCard;
@@ -1192,7 +1192,7 @@ var $exeDevice = {
             gameColumns: gameColumns,
             evaluation: evaluation,
             evaluationID: evaluationID,
-            wordBorder:wordBorder,
+            wordBorder: wordBorder,
             id: id,
             type: type,
         };
@@ -1791,7 +1791,7 @@ var $exeDevice = {
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         game.type = typeof game.type != 'undefined' ? game.type : 1;
-        game.wordBorder = 
+        game.wordBorder =
             typeof game.wordBorder !== 'undefined' ? game.wordBorder : true;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
@@ -1902,7 +1902,7 @@ var $exeDevice = {
             return;
         }
 
-        game.id =  $exeDevice.getIdeviceID();
+        game.id = $exeDevice.getIdeviceID();
 
         $exeDevice.updateFieldGame(game);
 

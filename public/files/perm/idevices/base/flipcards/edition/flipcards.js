@@ -356,8 +356,8 @@ var $exeDevice = {
         `;
 
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('flipcardsQEIdeviceForm');
-       $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('flipcardsQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -871,8 +871,8 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame),
             divContent = '';
-        
-        
+
+
         if (dataGame.instructions != '')
             divContent =
                 '<div class="flipcards-instructions">' +
@@ -892,7 +892,7 @@ var $exeDevice = {
         html += '<div class="flipcards-DataGame js-hidden">' + json + '</div>';
         html += linksMedias;
         html += imgCard;
-        
+
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
         if (textAfter != '') {
             html +=
