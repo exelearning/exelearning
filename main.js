@@ -119,7 +119,7 @@ function inferKnownExt(suggestedName) {
   try {
     const ext = (path.extname(suggestedName || '') || '').toLowerCase().replace(/^\./, '');
     if (!ext) return null;
-    if (ext === 'elp' || ext === 'zip' || ext === 'epub') return `.${ext}`;
+    if (ext === 'elp' || ext === 'zip' || ext === 'epub' || ext === 'xml') return `.${ext}`;
     return null;
   } catch (_e) {
     return null;
