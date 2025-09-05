@@ -58,6 +58,7 @@ class ThemeHelper
             default:
                 $path = false;
         }
+        $path = DIRECTORY_SEPARATOR.$path;
 
         return $path;
     }
@@ -138,7 +139,7 @@ class ThemeHelper
     {
         $dbUser = $this->getDatabaseUser($user);
 
-        return $dbUser->getUserId();
+        return Constants::SLASH.Constants::FILES_DIR_NAME.$dbUser->getUserId();
     }
 
     /**
