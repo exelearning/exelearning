@@ -155,7 +155,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Hadolint Action
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.2.0
         with:
           format: sarif
           output-file: hadolint-results.sarif
