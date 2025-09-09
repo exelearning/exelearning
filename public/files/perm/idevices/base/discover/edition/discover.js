@@ -26,73 +26,9 @@ var $exeDevice = {
     version: 2,
     id: false,
     NUMMAXCARD: 4,
-    ci18n: {
-        msgSubmit: c_('Submit'),
-        msgClue: c_('Cool! The clue is:'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayAgain: c_('Play Again'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgLive: c_('Life'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgCool: c_('Cool!'),
-        msgLoseT: c_('You lost 330 points'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgYouScore: c_('Your score'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgAudio: c_('Audio'),
-        msgAuthor: c_('Authorship'),
-        msgReboot: c_('Restart'),
-        msgTimeOver: c_('Time is up. Please try again'),
-        msgAllAttemps: c_('You finished all the attempts! Please try again'),
-        mgsAllCards: c_('You found all the pairs!'),
-        mgsAllTrios: c_('You found all the trios!'),
-        mgsAllQuartets: c_('You found all the quartets!'),
-        mgsGameStart: c_('The game has started! Select two cards'),
-        mgsGameStart3: c_('The game has started! Select three cards'),
-        mgsGameStart4: c_('The game has started! Select four cards'),
-        msgNumbersAttemps: c_('Number of attempts'),
-        msgPairs: c_('Pairs'),
-        msgTrios: c_('Trios'),
-        msgQuarts: c_('Quartets'),
-        msgAttempts: c_('Attempts'),
-        msgCompletedPair: c_('You completed a pair. Keep going!'),
-        msgCompletedTrio: c_('You completed a trio. Keep going!'),
-        msgCompletedQuartet: c_('You completed a quartet. Keep going!'),
-        msgSelectCard: c_('Choose another card'),
-        msgSelectCardOne: c_('Choose a card'),
-        msgRookie: c_('Initial'),
-        msgExpert: c_('Medium'),
-        msgMaster: c_('Advanced'),
-        msgLevel: c_('Level'),
-        msgSelectLevel: c_('Select a level'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Discover'),
-    },
+    ci18n: {},
     init: function (element, previousData, path) {
+        this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
             '%',
@@ -103,6 +39,75 @@ var $exeDevice = {
 
         this.setMessagesInfo();
         this.createForm();
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgSubmit: c_('Submit'),
+            msgClue: c_('Cool! The clue is:'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayAgain: c_('Play Again'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgLive: c_('Life'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgCool: c_('Cool!'),
+            msgLoseT: c_('You lost 330 points'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgYouScore: c_('Your score'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgAudio: c_('Audio'),
+            msgAuthor: c_('Authorship'),
+            msgReboot: c_('Restart'),
+            msgTimeOver: c_('Time is up. Please try again'),
+            msgAllAttemps: c_('You finished all the attempts! Please try again'),
+            mgsAllCards: c_('You found all the pairs!'),
+            mgsAllTrios: c_('You found all the trios!'),
+            mgsAllQuartets: c_('You found all the quartets!'),
+            mgsGameStart: c_('The game has started! Select two cards'),
+            mgsGameStart3: c_('The game has started! Select three cards'),
+            mgsGameStart4: c_('The game has started! Select four cards'),
+            msgNumbersAttemps: c_('Number of attempts'),
+            msgPairs: c_('Pairs'),
+            msgTrios: c_('Trios'),
+            msgQuarts: c_('Quartets'),
+            msgAttempts: c_('Attempts'),
+            msgCompletedPair: c_('You completed a pair. Keep going!'),
+            msgCompletedTrio: c_('You completed a trio. Keep going!'),
+            msgCompletedQuartet: c_('You completed a quartet. Keep going!'),
+            msgSelectCard: c_('Choose another card'),
+            msgSelectCardOne: c_('Choose a card'),
+            msgRookie: c_('Initial'),
+            msgExpert: c_('Medium'),
+            msgMaster: c_('Advanced'),
+            msgLevel: c_('Level'),
+            msgSelectLevel: c_('Select a level'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Discover'),
+        }
     },
 
     setMessagesInfo: function () {
@@ -315,8 +320,8 @@ var $exeDevice = {
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('descubreQEIdeviceForm');
-       $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('descubreQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -1227,7 +1232,7 @@ var $exeDevice = {
         } else {
             $('#eXeGameExportImport').hide();
         }
-        
+
         $('#descubreEHasFeedBack').on('change', function () {
             const marcado = $(this).is(':checked');
             if (marcado) {

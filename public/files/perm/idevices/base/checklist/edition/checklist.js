@@ -17,35 +17,40 @@ var $exeDevice = {
     classIdevice: 'checklist',
     id: false,
     idevicePath: '',
-    ci18n: {
-        msgComplit: c_('Completed'),
-        msgDone: c_('Done'),
-        msgInProgress: c_('In progress'),
-        msgUnrealized: c_('Not completed'),
-        msgtaskNumber: c_('Number of tasks'),
-        msgName: c_('Name'),
-        msgDate: c_('Date'),
-        msgSave: c_('Download'),
-        msgList: c_('checklist'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgPoints: c_('points'),
-        msgPoint: c_('point'),
-        msgReboot: c_('Restart'),
-        msgDelete: c_('Are you sure you want clear all form fields?'),
-    },
+
+    ci18n: {},
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
-
+        this.refreshTranslations();
         this.createForm();
         this.addEvents();
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgEProvideID = _('Please provide the ID of this progress report');
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgComplit: c_('Completed'),
+            msgDone: c_('Done'),
+            msgInProgress: c_('In progress'),
+            msgUnrealized: c_('Not completed'),
+            msgtaskNumber: c_('Number of tasks'),
+            msgName: c_('Name'),
+            msgDate: c_('Date'),
+            msgSave: c_('Download'),
+            msgList: c_('checklist'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgPoints: c_('points'),
+            msgPoint: c_('point'),
+            msgReboot: c_('Restart'),
+            msgDelete: c_('Are you sure you want clear all form fields?'),
+        };
     },
 
     createForm: function () {
@@ -169,7 +174,7 @@ var $exeDevice = {
         </div>
       `;
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
         $('.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points').hide();
 
         $exeDevice.loadPreviousValues();

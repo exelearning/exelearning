@@ -34,79 +34,83 @@ var $exeDevice = {
     version: 0.8,
     id: false,
     checkAltImage: true,
-    ci18n: {
-        msgSubmit: c_('Submit'),
-        msgClue: c_('Cool! The clue is:'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayAgain: c_('Play Again'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgCool: c_('Cool!'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgAudio: c_('Audio'),
-        msgYes: c_('Yes'),
-        msgNo: c_('No'),
-        msgTimeOver: c_('Time is up. Please try again'),
-        mgsGameStart: c_('The game has started! Drag each card to its container'),
-        msgSelectCard: c_('Choose another card'),
-        msgSelectCardOne: c_('Choose a card'),
-        msgReboot: c_('Restart'),
-        msgTestPassed: c_("Brilliant! You've passed yout test!"),
-        msgTestFailed: c_("You didn't pass the test. Please try again"),
-        msgRebootGame: c_('Do you want to restart this game?'),
-        msgContinue: c_('Continue'),
-        msgShowAnswers: c_('Check results'),
-        msgUnansweredQuestions: c_('There were %s cards to be placed correctly. Do you want to try again?'),
-        msgAllCorrect: c_('Brilliant! All perfect!'),
-        msgTooManyTries: c_('Great job! You have solved this activity in %s attempts. Surely you can do it faster!'),
-        msgQ5: c_('You placed %s cards in the wrong place. Please try again!'),
-        msgQ7: c_('Great job! You have correctly classified most cards, %s, but you can do even better'),
-        msgQ9: c_('Great job! Only %s cards left to be placed correctly. Strive for perfection!'),
-        msgSaveGameAuto: c_('Your score will be automatically saved at the end of the game.'),
-        msgOnlySaveGameAuto: c_('Your score will be automatically saved at the end of the game. You can only play once.'),
-        msgEndGamerScore: c_('You can only save your score after finishing the game.'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Classify'),
-    },
+    ci18n: {},
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
-
+        this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
             '%',
         ); // Avoid invalid HTML
         this.setMessagesInfo();
         this.createForm();
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgSubmit: c_('Submit'),
+            msgClue: c_('Cool! The clue is:'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayAgain: c_('Play Again'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgCool: c_('Cool!'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgAudio: c_('Audio'),
+            msgYes: c_('Yes'),
+            msgNo: c_('No'),
+            msgTimeOver: c_('Time is up. Please try again'),
+            mgsGameStart: c_('The game has started! Drag each card to its container'),
+            msgSelectCard: c_('Choose another card'),
+            msgSelectCardOne: c_('Choose a card'),
+            msgReboot: c_('Restart'),
+            msgTestPassed: c_("Brilliant! You've passed yout test!"),
+            msgTestFailed: c_("You didn't pass the test. Please try again"),
+            msgRebootGame: c_('Do you want to restart this game?'),
+            msgContinue: c_('Continue'),
+            msgShowAnswers: c_('Check results'),
+            msgUnansweredQuestions: c_('There were %s cards to be placed correctly. Do you want to try again?'),
+            msgAllCorrect: c_('Brilliant! All perfect!'),
+            msgTooManyTries: c_('Great job! You have solved this activity in %s attempts. Surely you can do it faster!'),
+            msgQ5: c_('You placed %s cards in the wrong place. Please try again!'),
+            msgQ7: c_('Great job! You have correctly classified most cards, %s, but you can do even better'),
+            msgQ9: c_('Great job! Only %s cards left to be placed correctly. Strive for perfection!'),
+            msgSaveGameAuto: c_('Your score will be automatically saved at the end of the game.'),
+            msgOnlySaveGameAuto: c_('Your score will be automatically saved at the end of the game. You can only play once.'),
+            msgEndGamerScore: c_('You can only save your score after finishing the game.'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Classify'),
+        }
     },
 
     setMessagesInfo: function () {
@@ -287,8 +291,8 @@ var $exeDevice = {
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('clasificaQEIdeviceForm');
-       $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('clasificaQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -803,7 +807,7 @@ var $exeDevice = {
             imgCard = $('#clasificaEURLImgCard').val(),
             id = $exeDevice.getIdeviceID();
 
-        if(!itinerary) return;
+        if (!itinerary) return;
         if (evaluation && evaluationID.length < 5) {
             eXe.app.alert($exeDevice.msgs.msgIDLenght);
             return false;

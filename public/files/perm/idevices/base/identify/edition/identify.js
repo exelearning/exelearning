@@ -22,65 +22,9 @@ var $exeDevice = {
     version: 1,
     id: false,
     checkAltImage: true,
-
-    ci18n: {
-        msgSubmit: c_('Submit'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgLoseLive: c_('You lost one life'),
-        msgAllQuestions: c_('Questions completed!'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgYouScore: c_('Your score'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgClose: c_('Close'),
-        msgClue: c_('Hint'),
-        msgShowClue: c_('Show a clue'),
-        msgShowNewClue: c_('Show another clue'),
-        msgUseFulInformation: c_('and information that will be very useful'),
-        msgLoading: c_('Loading. Please wait...'),
-        msgPoints: c_('points'),
-        msgAudio: c_('Audio'),
-        msgReply: c_('Reply'),
-        msgAttempts: c_('Attempts'),
-        msgScoreQuestion: c_('Points at stake'),
-        msgAnswer: c_('Please write the answer'),
-        msgYouCanTryAgain: c_('You can try it again'),
-        msgGameStarted: c_('The game has already started.'),
-        msgGameEnd: c_('Game over.'),
-        msgCorrectAnswer: c_('The right answer is:'),
-        msgMoveOne: c_('Move on'),
-        msgUseClue: c_('You used one clue. You can only get %s points.'),
-        msgUseAllClues: c_('You already used all the clues. You can only get %s points.'),
-        msgModeWhiteBoard: c_('Digital whiteboard mode'),
-        msgCheckLetter: c_('Check the letter'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Identify'),
-    },
+    ci18n: {},
     init: function (element, previousData, path) {
+        this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
             '%',
@@ -99,6 +43,67 @@ var $exeDevice = {
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
     },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgSubmit: c_('Submit'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgLoseLive: c_('You lost one life'),
+            msgAllQuestions: c_('Questions completed!'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgYouScore: c_('Your score'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgClose: c_('Close'),
+            msgClue: c_('Hint'),
+            msgShowClue: c_('Show a clue'),
+            msgShowNewClue: c_('Show another clue'),
+            msgUseFulInformation: c_('and information that will be very useful'),
+            msgLoading: c_('Loading. Please wait...'),
+            msgPoints: c_('points'),
+            msgAudio: c_('Audio'),
+            msgReply: c_('Reply'),
+            msgAttempts: c_('Attempts'),
+            msgScoreQuestion: c_('Points at stake'),
+            msgAnswer: c_('Please write the answer'),
+            msgYouCanTryAgain: c_('You can try it again'),
+            msgGameStarted: c_('The game has already started.'),
+            msgGameEnd: c_('Game over.'),
+            msgCorrectAnswer: c_('The right answer is:'),
+            msgMoveOne: c_('Move on'),
+            msgUseClue: c_('You used one clue. You can only get %s points.'),
+            msgUseAllClues: c_('You already used all the clues. You can only get %s points.'),
+            msgModeWhiteBoard: c_('Digital whiteboard mode'),
+            msgCheckLetter: c_('Check the letter'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Identify'),
+        }
+    },
+
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgESelectFile = _(
@@ -588,8 +593,8 @@ var $exeDevice = {
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('identifyQEIdeviceForm');
-       $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('identifyQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -824,8 +829,8 @@ var $exeDevice = {
                 '<div class="identifica-instructions">' +
                 instructions +
                 '</div>';
-        
-        
+
+
         const textFeedBack = tinyMCE.get('idfEFeedBackEditor').getContent(),
             linksImages = $exeDevice.createlinksImage(dataGame.questionsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.questionsGame);
@@ -850,7 +855,7 @@ var $exeDevice = {
             html +=
                 '<div class="identifica-extra-content">' + textAfter + '</div>';
         }
-        
+
         html +=
             '<div class="identifica-bns js-hidden">' +
             $exeDevice.msgs.msgNoSuportBrowser +

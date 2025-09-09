@@ -71,46 +71,7 @@ var $exeDevice = {
 
     questions: [],
 
-    ci18n: {
-        "msgScoreScorm": c_("The score can't be saved because this page is not part of a SCORM package."),
-        "msgYouScore": c_("You scores is"),
-        "msgScore": c_("Score"),
-        "msgWeight": c_("Weight"),
-        "msgYouLastScore": c_("The last score saved is"),
-        "msgOnlySaveScore": c_("You can only save the score once!"),
-        "msgOnlySave": c_("You can only save once"),
-        "msgOnlySaveAuto": c_("Your score will be saved after each question. You can only play once."),
-        "msgSaveAuto": c_("Your score will be automatically saved after each question."),
-        "msgSeveralScore": c_("You can save the score as many times as you want"),
-        "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
-        "msgActityComply": c_("You have already done this activity."),
-        "msgUncompletedActivity": c_("Incomplete activity"),
-        "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
-        "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
-        "msgTypeGame": c_('Form'),
-        "msgStartGame": c_("Click here to start"),
-        "msgTime": c_("Time per question"),
-        "msgSaveScore": c_('Save score'),
-        'msgResult': c_("Result"),
-        'msgCheck': c_("Check"),
-        'msgReset': c_("Reset"),
-        'msgShowAnswers': c_("Show answers"),
-        'msgWeight': ("Weight"),
-        'msgTestResultPass': c_("Congratulations! You passed the test"),
-        'msgTestResultNotPass': c_("Sorry. You failed the test"),
-        'msgTrueFalseHelp': c_("Select whether the statement is true or false"),
-        'msgDropdownHelp': c_("Choose the correct answer among the options proposed"),
-        'msgFillHelp': c_("Fill in the blanks with the appropriate word"),
-        'msgSingleSelectionHelp': c_("Multiple choice with only one correct answer"),
-        'msgMultipleSelectionHelp': c_("Multiple choice with multiple corrects answers"),
-        'msgPlayStart': c_("Click here to start"),
-        'msgTrue': c_("True"),
-        'msgFalse': c_("False"),
-        'msgNext': c_("Next"),
-        'msgPrevious': c_("Previous"),
-
-    },
-
+    ci18n: {},
 
 
     /**
@@ -123,6 +84,7 @@ var $exeDevice = {
         this.idevicePath = path;
         this.id = $(element).attr('idevice-id');
         //**************************************************************
+        this.refreshTranslations();
         this.msgs = new this.Msgs(this);
         this.questions = this.msgs.generateStringsQuestions(this.questionsIds);
         this.form = new this.Form(this, this.questions);
@@ -134,6 +96,49 @@ var $exeDevice = {
         this.form.hideQuestionsPanel("questionsContainerTop");
         this.form.hideQuestionsPanel("questionsContainerBottom");
 
+    },
+
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            "msgScoreScorm": c_("The score can't be saved because this page is not part of a SCORM package."),
+            "msgYouScore": c_("You scores is"),
+            "msgScore": c_("Score"),
+            "msgWeight": c_("Weight"),
+            "msgYouLastScore": c_("The last score saved is"),
+            "msgOnlySaveScore": c_("You can only save the score once!"),
+            "msgOnlySave": c_("You can only save once"),
+            "msgOnlySaveAuto": c_("Your score will be saved after each question. You can only play once."),
+            "msgSaveAuto": c_("Your score will be automatically saved after each question."),
+            "msgSeveralScore": c_("You can save the score as many times as you want"),
+            "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
+            "msgActityComply": c_("You have already done this activity."),
+            "msgUncompletedActivity": c_("Incomplete activity"),
+            "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
+            "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
+            "msgTypeGame": c_('Form'),
+            "msgStartGame": c_("Click here to start"),
+            "msgTime": c_("Time per question"),
+            "msgSaveScore": c_('Save score'),
+            'msgResult': c_("Result"),
+            'msgCheck': c_("Check"),
+            'msgReset': c_("Reset"),
+            'msgShowAnswers': c_("Show answers"),
+            'msgWeight': ("Weight"),
+            'msgTestResultPass': c_("Congratulations! You passed the test"),
+            'msgTestResultNotPass': c_("Sorry. You failed the test"),
+            'msgTrueFalseHelp': c_("Select whether the statement is true or false"),
+            'msgDropdownHelp': c_("Choose the correct answer among the options proposed"),
+            'msgFillHelp': c_("Fill in the blanks with the appropriate word"),
+            'msgSingleSelectionHelp': c_("Multiple choice with only one correct answer"),
+            'msgMultipleSelectionHelp': c_("Multiple choice with multiple corrects answers"),
+            'msgPlayStart': c_("Click here to start"),
+            'msgTrue': c_("True"),
+            'msgFalse': c_("False"),
+            'msgNext': c_("Next"),
+            'msgPrevious': c_("Previous"),
+
+        }
     },
 
     /**
@@ -257,7 +262,7 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(previousData.isScorm, previousData.textButtonScorm, previousData.repeatActivity, previousData.weighted);
         $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(previousData.msgs);
-    $exeDevice.updateQuestionsNumber()
+        $exeDevice.updateQuestionsNumber()
     },
 
     /**

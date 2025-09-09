@@ -29,55 +29,60 @@ var $exeDevice = {
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
         //**************************************************************
+        this.refreshTranslations();
         this.createForm();
     },
+    ci18n: {},
 
-    ci18n: {
-        "start": c_("Start"),
-        "results": c_("Results"),
-        "slide": c_("Slide (frame)"),
-        "score": c_("Score"),
-        "seen": c_("Seen"),
-        "total": c_("Total"),
-        "seeAll": c_("see all the slides and answer all the questions"),
-        "noSlides": c_("This video has no interactive elements."),
-        "goOn": c_("Continue"),
-        "error": c_("Error"),
-        "dataError": c_("Incompatible code"),
-        "onlyOne": c_("Only one interactive video per page."),
-        "cover": c_("Cover"),
-        "fsWarning": c_("Exit the fullscreen mode (Esc) to see the current slide"),
-        "right": c_("Right!"),
-        "wrong": c_("Wrong"),
-        "sortableListInstructions": c_("Drag and drop or use the arrows."),
-        "up": c_("Move up"),
-        "down": c_("Move down"),
-        "rightAnswer": c_("Right answer:"),
-        "notAnswered": c_("Please finish the activity"),
-        "check": c_("Check"),
-        "newWindow": c_("New Window"),
-        "msgOnlySaveAuto": c_("Your score will be saved after each question. You can only play once."),
-        "msgSaveAuto": c_("Your score will be automatically saved after each question."),
-        "msgYouScore": c_("Your score"),
-        "msgScoreScorm": c_("The score can't be saved because this page is not part of a SCORM package."),
-        "msgYouLastScore": c_("The last score saved is"),
-        "msgActityComply": c_("You have already done this activity."),
-        "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
-        "msgScoreScorm": c_("The score can't be saved because this page is not part of a SCORM package."),
-        "msgEndGameScore": c_("Please start the game before saving your score."),
-        "msgSeveralScore": c_("You can save the score as many times as you want"),
-        "msgOnlySaveScore": c_("You can only save the score once!"),
-        "msgOnlySave": c_("You can only save once"),
-        "msgOnlySaveAuto": c_("Your score will be saved after each question. You can only play once."),
-        "msgUncompletedActivity": c_("Incomplete activity"),
-        "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
-        "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
-        "msgTypeGame": c_('Interactive video')
-    },
     scorm: {
         'isScorm': 0,
         'textButtonScorm': c_('Save score'),
         'repeatActivity': false
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            "start": c_("Start"),
+            "results": c_("Results"),
+            "slide": c_("Slide (frame)"),
+            "score": c_("Score"),
+            "seen": c_("Seen"),
+            "total": c_("Total"),
+            "seeAll": c_("see all the slides and answer all the questions"),
+            "noSlides": c_("This video has no interactive elements."),
+            "goOn": c_("Continue"),
+            "error": c_("Error"),
+            "dataError": c_("Incompatible code"),
+            "onlyOne": c_("Only one interactive video per page."),
+            "cover": c_("Cover"),
+            "fsWarning": c_("Exit the fullscreen mode (Esc) to see the current slide"),
+            "right": c_("Right!"),
+            "wrong": c_("Wrong"),
+            "sortableListInstructions": c_("Drag and drop or use the arrows."),
+            "up": c_("Move up"),
+            "down": c_("Move down"),
+            "rightAnswer": c_("Right answer:"),
+            "notAnswered": c_("Please finish the activity"),
+            "check": c_("Check"),
+            "newWindow": c_("New Window"),
+            "msgOnlySaveAuto": c_("Your score will be saved after each question. You can only play once."),
+            "msgSaveAuto": c_("Your score will be automatically saved after each question."),
+            "msgYouScore": c_("Your score"),
+            "msgScoreScorm": c_("The score can't be saved because this page is not part of a SCORM package."),
+            "msgYouLastScore": c_("The last score saved is"),
+            "msgActityComply": c_("You have already done this activity."),
+            "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
+            "msgScoreScorm": c_("The score can't be saved because this page is not part of a SCORM package."),
+            "msgEndGameScore": c_("Please start the game before saving your score."),
+            "msgSeveralScore": c_("You can save the score as many times as you want"),
+            "msgOnlySaveScore": c_("You can only save the score once!"),
+            "msgOnlySave": c_("You can only save once"),
+            "msgOnlySaveAuto": c_("Your score will be saved after each question. You can only play once."),
+            "msgUncompletedActivity": c_("Incomplete activity"),
+            "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
+            "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
+            "msgTypeGame": c_('Interactive video')
+        }
     },
     scoreNIA: true,
     evaluation: false,
@@ -335,7 +340,7 @@ var $exeDevice = {
             if (typeof (InteractiveVideo) == 'object' && typeof (InteractiveVideo.slides) == 'object') {
                 top.interactiveVideoEditor.activityToSave = InteractiveVideo;
                 // i18n
-                InteractiveVideo.scorm =  InteractiveVideo.scorm ?? $exeDevice.scorm;
+                InteractiveVideo.scorm = InteractiveVideo.scorm ?? $exeDevice.scorm;
                 $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(InteractiveVideo.i18n);
                 $exeDevicesEdition.iDevice.gamification.scorm.setValues(InteractiveVideo.scorm.isScorm, InteractiveVideo.scorm.textButtonScorm, InteractiveVideo.scorm.repeatActivity);
                 InteractiveVideo.scoreNIA = typeof InteractiveVideo.scoreNIA == "undefined" ? true : InteractiveVideo.scoreNIA;
@@ -382,7 +387,7 @@ var $exeDevice = {
             var f1 = $("#interactiveVideoFile").val();
             var f2 = $("#interactiveVideoYoutubeURL").val();
             var f3 = $("#interactiveVideoMediatecaURL").val();
-            if (f1=='' && f2=='' && f3=='') {
+            if (f1 == '' && f2 == '' && f3 == '') {
                 eXe.app.alert(_("Please select a file or provide a valid video URL."));
                 return false;
             }

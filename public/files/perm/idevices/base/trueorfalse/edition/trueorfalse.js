@@ -28,43 +28,7 @@ var $exeDevice = {
     clipBoard: '',
     saving: false,
     id: false,
-    ci18n: {
-        msgStartGame: c_('Click here to start'),
-        msgTime: c_('Time per question'),
-        msgNoImage: c_('No picture question'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgYouScore: c_('Your score'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('True or false'),
-        msgFeedback: c_('Feedback'),
-        msgSuggestion: c_('Suggestion'),
-        msgSolution: c_('Solution'),
-        msgQuestion: c_('Question'),
-        msgTrue: c_('True'),
-        msgFalse: c_('False'),
-        msgOk: c_('Correct'),
-        msgKO: c_('Incorrect'),
-        msgShow: c_('Show'),
-        msgHide: c_('Hide'),
-        msgCheck: c_('Check'),
-        msgReboot: c_('Try again!'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgNext: c_('Next'),
-        msgPrevious: c_('Previous'),
-    },
+    ci18n: {},
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
@@ -74,7 +38,7 @@ var $exeDevice = {
         this.idevicePath = path;
 
         this.id = $(element).attr('idevice-id');
-
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
     },
@@ -114,7 +78,45 @@ var $exeDevice = {
             ideviceId: $exeDevice.id,
         };
     },
-
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgStartGame: c_('Click here to start'),
+            msgTime: c_('Time per question'),
+            msgNoImage: c_('No picture question'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgYouScore: c_('Your score'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('True or false'),
+            msgFeedback: c_('Feedback'),
+            msgSuggestion: c_('Suggestion'),
+            msgSolution: c_('Solution'),
+            msgQuestion: c_('Question'),
+            msgTrue: c_('True'),
+            msgFalse: c_('False'),
+            msgOk: c_('Correct'),
+            msgKO: c_('Incorrect'),
+            msgShow: c_('Show'),
+            msgHide: c_('Hide'),
+            msgCheck: c_('Check'),
+            msgReboot: c_('Try again!'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgNext: c_('Next'),
+            msgPrevious: c_('Previous'),
+        }
+    },
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgWriteQuestion = _('Please write the question.');

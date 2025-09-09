@@ -1135,11 +1135,8 @@ div:fullscreen .SPP-LinkMinimize {
 
 #sopaResolve {
     margin-top: 1em;
-    background-color: white;
-    color: #071717;
-    padding: 0.6em;
-    cursor: pointer;
-    border-radius: 0.3em;
+     cursor: pointer;
+
     display: none;
 }
 

@@ -172,8 +172,8 @@ var $eXeCompleta = {
                 <div class="CMPT-StartGame"><a href="#" id="cmptStartGame-${instance}">${msgs.msgPlayStart}</a></div>
                 <div id="cmptMensaje-${instance}" class="CMPT-Message"></div>
                 <div class="CMPT-ButtonsDiv">
-                    <button id="cmptCheckPhrase-${instance}" class="CMPT-ButtonsComands">${msgs.msgCheck}</button>
-                    <button id="cmptReloadPhrase-${instance}" class="CMPT-ButtonsComands CMPT-Hide">${msgs.msgTry}</button>
+                    <button id="cmptCheckPhrase-${instance}" class="btn btn-primary" aria-label="${msgs.msgCheck}">${msgs.msgCheck}</button>
+                    <button id="cmptReloadPhrase-${instance}" class="CMPT-Hide btn btn-primary" aria-label="${msgs.msgTry}">${msgs.msgTry}</button>
                 </div>
                 <div class="CMPT-Hide" id="cmptSolutionDiv-${instance}">
                     <p>${msgs.msgSolution}:</p>

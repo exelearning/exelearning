@@ -28,65 +28,14 @@ var $exeDevice = {
     id: false,
     idevicePath: '',
     accesibilityIsOk: true,
-    ci18n: {
-        msgSubmit: c_('Submit'),
-        msgClue: c_('Cool! The clue is:'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayAgain: c_('Play Again'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgCool: c_('Cool!'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgAudio: c_('Audio'),
-        msgTimeOver: c_('Time is up'),
-        mgsAllPuzzles: c_('You completed all the activities!'),
-        msgNumbersAttemps: c_('Number of activities to be completed'),
-        msgActivities: c_('Activities'),
-        msgContinue: c_('Continue'),
-        msgAgain: c_('Please try again'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgShowImage: c_('Show/Hide image'),
-        msgShowNumbers: c_('Show/Hide numbers'),
-        msgAttempsNumbers: c_('Number of attempts'),
-        msgTimePuzzle: c_('Time spent'),
-        msgsCompletedPuzzle: c_('Puzzle completed'),
-        msgsNext: c_('Next'),
-        msgsRepeat: c_('Repeat'),
-        msgsTerminate: c_('Finish'),
-        msgTypeGame: c_('Puzzle'),
-    },
+    ci18n: {},
+
     checkAltImage: true,
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
             '%',
@@ -94,6 +43,63 @@ var $exeDevice = {
 
         this.setMessagesInfo();
         this.createForm();
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgSubmit: c_('Submit'),
+            msgClue: c_('Cool! The clue is:'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayAgain: c_('Play Again'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgCool: c_('Cool!'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgAudio: c_('Audio'),
+            msgTimeOver: c_('Time is up'),
+            mgsAllPuzzles: c_('You completed all the activities!'),
+            msgNumbersAttemps: c_('Number of activities to be completed'),
+            msgActivities: c_('Activities'),
+            msgContinue: c_('Continue'),
+            msgAgain: c_('Please try again'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgShowImage: c_('Show/Hide image'),
+            msgShowNumbers: c_('Show/Hide numbers'),
+            msgAttempsNumbers: c_('Number of attempts'),
+            msgTimePuzzle: c_('Time spent'),
+            msgsCompletedPuzzle: c_('Puzzle completed'),
+            msgsNext: c_('Next'),
+            msgsRepeat: c_('Repeat'),
+            msgsTerminate: c_('Finish'),
+            msgTypeGame: c_('Puzzle'),
+        }
     },
 
     setMessagesInfo: function () {
@@ -289,8 +295,8 @@ var $exeDevice = {
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('puzzleIdeviceForm');
-       $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('puzzleIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
     enableForm: function () {
@@ -547,8 +553,8 @@ var $exeDevice = {
         dataGame.msgs = i18n;
         let json = JSON.stringify(dataGame),
             divContent = '';
-        
-        
+
+
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
         const textFeedBack = tinyMCE.get('puzzleEFeedBackEditor').getContent();
@@ -572,7 +578,7 @@ var $exeDevice = {
         if (textAfter != '') {
             html += '<div class="puzzle-extra-content">' + textAfter + '</div>';
         }
-        
+
         html +=
             '<div class="puzzle-bns js-hidden">' +
             $exeDevice.msgs.msgNoSuportBrowser +
@@ -687,7 +693,7 @@ var $exeDevice = {
             evaluationID = $('#puzzleEEvaluationID').val(),
             id = $exeDevice.getIdeviceID();
 
-        if(!itinerary) return false;
+        if (!itinerary) return false;
 
         if (puzzlesGame.length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);

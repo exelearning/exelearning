@@ -32,8 +32,7 @@
     padding-right: 1em;
 }
 
-.CMPT-WordsButton,
-.CMPT-ButtonsComands {
+.CMPT-WordsButton {
     color: #6e6e6e;
     font: normal 12px Helvetica, Arial, sans-serif;
     text-decoration: none !important;

@@ -16,76 +16,7 @@ var $exeDevice = {
     classIdevice: 'az-quiz-game',
     roscoVersion: 2,
     id: false,
-    ci18n: {
-        msgReady: c_('Ready?'),
-        msgStartGame: c_('Click here to start'),
-        msgHappen: c_('Move on'),
-        msgReply: c_('Reply'),
-        msgSubmit: c_('Submit'),
-        msgEnterCode: c_('Enter the access code'),
-        msgErrorCode: c_('The access code is not correct'),
-        msgGameOver: c_('Game Over!'),
-        msgNewWord: c_('New word'),
-        msgStartWith: c_('Starts with %1'),
-        msgContaint: c_('Contains letter %1'),
-        msgPass: c_('Move on to the next word'),
-        msgIndicateWord: c_('Provide a word'),
-        msgClue: c_('Cool! The clue is:'),
-        msgNewGame: c_('Click here for a new game'),
-        msgYouHas: c_('You have got %1 hits and %2 misses'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayAgain: c_('Play Again'),
-        msgRequiredAccessKey: c_('Access code required'),
-        msgInformationLooking: c_('The information you were looking for'),
-        msgPlayStart: c_('Click here to play'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgHits: c_('Hits'),
-        msgErrors: c_('Errors'),
-        msgTime: c_('Time Limit (mm:ss)'),
-        msgOneRound: c_('One round'),
-        msgTowRounds: c_('Two rounds'),
-        msgImage: c_('Image'),
-        msgNoImage: c_('No image'),
-        msgWrote: c_('Write the correct word and click on Reply. If you hesitate, click on Move on.'),
-        msgNotNetwork: c_('You can only play this game with internet connection.'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgShowRoulette: c_('Show word wheel'),
-        msgHideRoulette: c_('Hide word wheel'),
-        msgQuestion: c_('Question'),
-        msgAnswer: c_('Answer'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgAuthor: c_('Authorship'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgMoveOne: c_('Move on'),
-        msgAudio: c_('Audio'),
-        msgCorrect: c_('Correct'),
-        msgIncorrect: c_('Incorrect'),
-        msgWhiteBoard: c_('Digital whiteboard'),
-        msgClose: c_('Close'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('A-Z quiz'),
-        msgShowWords: c_('Show solutions'),
-        msgAll: c_('All'),
-        msgUnanswered: c_('Not answered'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-    },
+    ci18n: {},
     colors: {
         black: '#1c1b1b',
         blue: '#0099cc',
@@ -99,15 +30,89 @@ var $exeDevice = {
     modeBoard: false,
     checkAltImage: true,
     accesibilityIsOk: true,
+    
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
         this.letters = $exeDevice.replaceLetters(this.letters);
-
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
         this.addEvents();
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgReady: c_('Ready?'),
+            msgStartGame: c_('Click here to start'),
+            msgHappen: c_('Move on'),
+            msgReply: c_('Reply'),
+            msgSubmit: c_('Submit'),
+            msgEnterCode: c_('Enter the access code'),
+            msgErrorCode: c_('The access code is not correct'),
+            msgGameOver: c_('Game Over!'),
+            msgNewWord: c_('New word'),
+            msgStartWith: c_('Starts with %1'),
+            msgContaint: c_('Contains letter %1'),
+            msgPass: c_('Move on to the next word'),
+            msgIndicateWord: c_('Provide a word'),
+            msgClue: c_('Cool! The clue is:'),
+            msgNewGame: c_('Click here for a new game'),
+            msgYouHas: c_('You have got %1 hits and %2 misses'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayAgain: c_('Play Again'),
+            msgRequiredAccessKey: c_('Access code required'),
+            msgInformationLooking: c_('The information you were looking for'),
+            msgPlayStart: c_('Click here to play'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgHits: c_('Hits'),
+            msgErrors: c_('Errors'),
+            msgTime: c_('Time Limit (mm:ss)'),
+            msgOneRound: c_('One round'),
+            msgTowRounds: c_('Two rounds'),
+            msgImage: c_('Image'),
+            msgNoImage: c_('No image'),
+            msgWrote: c_('Write the correct word and click on Reply. If you hesitate, click on Move on.'),
+            msgNotNetwork: c_('You can only play this game with internet connection.'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgShowRoulette: c_('Show word wheel'),
+            msgHideRoulette: c_('Hide word wheel'),
+            msgQuestion: c_('Question'),
+            msgAnswer: c_('Answer'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgAuthor: c_('Authorship'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgMoveOne: c_('Move on'),
+            msgAudio: c_('Audio'),
+            msgCorrect: c_('Correct'),
+            msgIncorrect: c_('Incorrect'),
+            msgWhiteBoard: c_('Digital whiteboard'),
+            msgClose: c_('Close'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('A-Z quiz'),
+            msgShowWords: c_('Show solutions'),
+            msgAll: c_('All'),
+            msgUnanswered: c_('Not answered'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+        }
     },
 
     setMessagesInfo: function () {
@@ -668,7 +673,7 @@ var $exeDevice = {
         dataGame.msgs = i18n;
 
         let json = JSON.stringify(dataGame);
-       
+
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
@@ -693,7 +698,7 @@ var $exeDevice = {
             '</div>';
         html += divContent;
         html += '<div class="rosco-DataGame js-hidden">' + json + '</div>';
-        
+
         html += linksImages;
         html += linksAudios;
 

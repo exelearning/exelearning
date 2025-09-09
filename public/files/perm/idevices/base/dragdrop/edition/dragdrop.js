@@ -27,52 +27,14 @@ var $exeDevice = {
     id: false,
     mode: false,
     checkAltImage: true,
-    ci18n: {
-        msgSubmit: c_('Submit'),
-        msgClue: c_('Cool! The clue is:'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayStart: c_('Click here to play'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNoImage: c_('No picture question'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgAudio: c_('Audio'),
-        msgNumQuestions: c_('Number of cards'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgEndGameM: c_('You finished the game. Your score is %s.'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Drag and drop'),
-        msgCheck: c_('Check'),
-        msgRestart: c_('Restart'),
-    },
+    ci18n: {},
 
     init: function (element, previousData, path) {
         if (!element) return;
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
-
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
     },
@@ -86,6 +48,48 @@ var $exeDevice = {
             $exeDevice.cardsGame.push($exeDevice.getDefaultCard());
         $('#dadETextDiv, #dadETextDivBack').hide();
         this.active = 0;
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgSubmit: c_('Submit'),
+            msgClue: c_('Cool! The clue is:'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayStart: c_('Click here to play'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNoImage: c_('No picture question'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgAudio: c_('Audio'),
+            msgNumQuestions: c_('Number of cards'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgEndGameM: c_('You finished the game. Your score is %s.'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Drag and drop'),
+            msgCheck: c_('Check'),
+            msgRestart: c_('Restart'),
+        }
     },
 
     setMessagesInfo: function () {
@@ -281,8 +285,8 @@ var $exeDevice = {
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('dragdropQIdeviceForm');
-       $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('dragdropQIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -714,7 +718,7 @@ var $exeDevice = {
         dataGame.msgs = i18n;
         const json = JSON.stringify(dataGame),
             cards = dataGame.cardsGame;
-       
+
         let divContent = dataGame.instructions
             ? `<div class="dragdrop-instructions gameQP-instructions">${dataGame.instructions}</div>`
             : '';
@@ -727,7 +731,7 @@ var $exeDevice = {
         if (textAfter) {
             html += `<div class="dragdrop-extra-content">${textAfter}</div>`;
         }
-        
+
         html += `<div class="dragdrop-bns js-hidden">${$exeDevice.msgs.msgNoSuportBrowser}</div></div>`;
 
         return html;

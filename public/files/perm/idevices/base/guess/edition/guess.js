@@ -40,70 +40,7 @@ var $exeDevice = {
     localPlayer: null,
     sgoogle: null,
     id: false,
-    ci18n: {
-        msgHappen: c_('Move on'),
-        msgReply: c_('Reply'),
-        msgSubmit: c_('Submit'),
-        msgEnterCode: c_('Enter the access code'),
-        msgErrorCode: c_('The access code is not correct'),
-        msgGameOver: c_('Game Over!'),
-        msgIndicateWord: c_('Provide a word or phrase'),
-        msgClue: c_('Cool! The clue is:'),
-        msgYouHas: c_('You have got %1 hits and %2 misses'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayAgain: c_('Play Again'),
-        msgRequiredAccessKey: c_('Access code required'),
-        msgInformationLooking: c_('Cool! The information you were looking for'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgMoveOne: c_('Move on'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgTime: c_('Time Limit (mm:ss)'),
-        msgLive: c_('Life'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgCool: c_('Cool!'),
-        msgLoseT: c_('You lost 330 points'),
-        msgLoseLive: c_('You lost one life'),
-        msgLostLives: c_('You lost all your lives!'),
-        mgsAllQuestions: c_('Questions completed!'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgWrote: c_('Write the correct word and click on Reply. If you hesitate, click on Move on.'),
-        msgNotNetwork: c_('You can only play this game with internet connection.'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgQuestion: c_('Question'),
-        msgAnswer: c_('Answer'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgLoading: c_('Loading. Please wait...'),
-        msgPoints: c_('points'),
-        msgAudio: c_('Audio'),
-        msgCorrect: c_('Correct'),
-        msgIncorrect: c_('Incorrect'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Word Guessing'),
-    },
+    ci18n: {},
     checkAltImage: true,
     modeBoard: false,
     accesibilityIsOk: true,
@@ -111,13 +48,77 @@ var $exeDevice = {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
-        this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
-            '&percnt;',
-            '%',
-        );
+        this.refreshTranslations();
+        this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace('&percnt;', '%');
 
         this.setMessagesInfo();
         this.createForm();
+    },
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgHappen: c_('Move on'),
+            msgReply: c_('Reply'),
+            msgSubmit: c_('Submit'),
+            msgEnterCode: c_('Enter the access code'),
+            msgErrorCode: c_('The access code is not correct'),
+            msgGameOver: c_('Game Over!'),
+            msgIndicateWord: c_('Provide a word or phrase'),
+            msgClue: c_('Cool! The clue is:'),
+            msgYouHas: c_('You have got %1 hits and %2 misses'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayAgain: c_('Play Again'),
+            msgRequiredAccessKey: c_('Access code required'),
+            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgMoveOne: c_('Move on'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgTime: c_('Time Limit (mm:ss)'),
+            msgLive: c_('Life'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgCool: c_('Cool!'),
+            msgLoseT: c_('You lost 330 points'),
+            msgLoseLive: c_('You lost one life'),
+            msgLostLives: c_('You lost all your lives!'),
+            mgsAllQuestions: c_('Questions completed!'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgWrote: c_('Write the correct word and click on Reply. If you hesitate, click on Move on.'),
+            msgNotNetwork: c_('You can only play this game with internet connection.'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgQuestion: c_('Question'),
+            msgAnswer: c_('Answer'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgLoading: c_('Loading. Please wait...'),
+            msgPoints: c_('points'),
+            msgAudio: c_('Audio'),
+            msgCorrect: c_('Correct'),
+            msgIncorrect: c_('Incorrect'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Word Guessing'),
+        };
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
@@ -467,8 +468,8 @@ var $exeDevice = {
         `;
 
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-       $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         tinymce.init({
             selector: '#adivinaEText',
             height: 200,
@@ -1102,8 +1103,8 @@ var $exeDevice = {
         let json = JSON.stringify(dataGame),
             divContent = '';
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
-        
-        
+
+
 
         const textFeedBack = tinyMCE.get('adivinaEFeedBackEditor').getContent();
         if (dataGame.instructions !== '') {
@@ -1118,7 +1119,7 @@ var $exeDevice = {
         html += `<div class="adivina-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="adivina-feedback-game">${textFeedBack}</div>`;
         html += divContent;
-        
+
         html += `<div class="adivina-DataGame js-hidden">${json}</div>`;
         html += linksImages;
         html += linksAudios;

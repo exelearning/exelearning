@@ -63,81 +63,12 @@ var $exeDevice = {
     ctx: null,
     version: 3,
     areas: [],
-    ci18n: {
-        msgSubmit: c_('Submit'),
-        msgIndicateWord: c_('Provide a word or phrase'),
-        msgClue: c_('Cool! The clue is:'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgFullScreen: c_('Full Screen'),
-        msgNoImage: c_('No picture question'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgPoint: c_('Point'),
-        msgAnswer: c_('Answer'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgPoints: c_('points'),
-        msgPointsA: c_('Points'),
-        msgQuestions: c_('Questions'),
-        msgAudio: c_('Audio'),
-        msgAccept: c_('Accept'),
-        msgYes: c_('Yes'),
-        msgNo: c_('No'),
-        msgShowAreas: c_('Show active areas'),
-        msgShowTest: c_('Show questionnaire'),
-        msgGoActivity: c_('Click here to do this activity'),
-        msgSelectAnswers: c_("Select the correct options and click on the 'Reply' button."),
-        msgCheksOptions: c_("Mark all the options in the correct order and click on the 'Reply' button."),
-        msgWriteAnswer: c_("Write the correct word o phrase and click on the 'Reply' button."),
-        msgIdentify: c_('Identify'),
-        msgSearch: c_('Find'),
-        msgClickOn: c_('Click on'),
-        msgReviewContents: c_('You must review %s&percnt; of the contents of the activity before completing the questionnaire.'),
-        msgScore10: c_('Everything is perfect! Do you want to repeat this activity?'),
-        msgScore4: c_('You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?'),
-        msgScore6: c_('Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?'),
-        msgScore8: c_('Almost perfect! You can still do it better. Do you want to repeat this activity?'),
-        msgNotCorrect: c_('It is not correct! You have clicked on'),
-        msgNotCorrect1: c_('It is not correct! You have clicked on'),
-        msgNotCorrect2: c_('and the correct answer is'),
-        msgNotCorrect3: c_('Try again!'),
-        msgAllVisited: c_('Great! You have visited the required dots.'),
-        msgCompleteTest: c_('You can do the test.'),
-        msgPlayStart: c_('Click here to start'),
-        msgSubtitles: c_('Subtitles'),
-        msgSelectSubtitles: c_('Select a subtitle file. Supported formats:'),
-        msgNumQuestions: c_('Number of questions'),
-        msgHome: c_('Home'),
-        msgReturn: c_('Return'),
-        msgCheck: c_('Check'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Map'),
-    },
-
+    ci18n: {},
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
-
+        this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
             '%',
@@ -149,6 +80,78 @@ var $exeDevice = {
 
         this.setMessagesInfo();
         this.createForm();
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgSubmit: c_('Submit'),
+            msgIndicateWord: c_('Provide a word or phrase'),
+            msgClue: c_('Cool! The clue is:'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgFullScreen: c_('Full Screen'),
+            msgNoImage: c_('No picture question'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgPoint: c_('Point'),
+            msgAnswer: c_('Answer'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgPoints: c_('points'),
+            msgPointsA: c_('Points'),
+            msgQuestions: c_('Questions'),
+            msgAudio: c_('Audio'),
+            msgAccept: c_('Accept'),
+            msgYes: c_('Yes'),
+            msgNo: c_('No'),
+            msgShowAreas: c_('Show active areas'),
+            msgShowTest: c_('Show questionnaire'),
+            msgGoActivity: c_('Click here to do this activity'),
+            msgSelectAnswers: c_("Select the correct options and click on the 'Reply' button."),
+            msgCheksOptions: c_("Mark all the options in the correct order and click on the 'Reply' button."),
+            msgWriteAnswer: c_("Write the correct word o phrase and click on the 'Reply' button."),
+            msgIdentify: c_('Identify'),
+            msgSearch: c_('Find'),
+            msgClickOn: c_('Click on'),
+            msgReviewContents: c_('You must review %s&percnt; of the contents of the activity before completing the questionnaire.'),
+            msgScore10: c_('Everything is perfect! Do you want to repeat this activity?'),
+            msgScore4: c_('You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?'),
+            msgScore6: c_('Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?'),
+            msgScore8: c_('Almost perfect! You can still do it better. Do you want to repeat this activity?'),
+            msgNotCorrect: c_('It is not correct! You have clicked on'),
+            msgNotCorrect1: c_('It is not correct! You have clicked on'),
+            msgNotCorrect2: c_('and the correct answer is'),
+            msgNotCorrect3: c_('Try again!'),
+            msgAllVisited: c_('Great! You have visited the required dots.'),
+            msgCompleteTest: c_('You can do the test.'),
+            msgPlayStart: c_('Click here to start'),
+            msgSubtitles: c_('Subtitles'),
+            msgSelectSubtitles: c_('Select a subtitle file. Supported formats:'),
+            msgNumQuestions: c_('Number of questions'),
+            msgHome: c_('Home'),
+            msgReturn: c_('Return'),
+            msgCheck: c_('Check'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Map'),
+        }
     },
 
     setMessagesInfo: function () {
@@ -470,8 +473,8 @@ var $exeDevice = {
                 </p>
             </div>`;
         this.ideviceBody.innerHTML = html;
-       $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-       $exeDevicesEdition.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         tinymce.init({
             selector: '#mapaToolTip',
@@ -3753,7 +3756,7 @@ var $exeDevice = {
 
         $exeDevice.localPlayer = document.getElementById('mapaEVideoLocal');
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        
+
         $(".exe-block-dismissible .exe-block-close").click(function () {
             $(this).parent().fadeOut();
             return false;
