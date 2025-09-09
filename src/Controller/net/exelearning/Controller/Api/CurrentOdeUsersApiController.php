@@ -39,8 +39,6 @@ class CurrentOdeUsersApiController extends DefaultApiController
         parent::__construct($entityManager, $logger);
     }
 
-    
-
     #[Route('/user/get', methods: ['GET'], name: 'api_current_ode_users_for_user_get')]
     public function getCurrentOdeUsersForUserAction(Request $request)
     {

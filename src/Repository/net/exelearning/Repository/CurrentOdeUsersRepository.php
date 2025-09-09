@@ -18,6 +18,7 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, CurrentOdeUsers::class);
     }
+
     public function findByCurrentComponentId(string $currentComponentId): ?CurrentOdeUsers
     {
         return $this->createQueryBuilder('c')

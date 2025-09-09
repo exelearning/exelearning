@@ -3,10 +3,9 @@
 namespace App\Entity\net\exelearning\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
 use ApiPlatform\OpenApi\Model\Operation;
 use ApiPlatform\OpenApi\Model\Parameter;
-use ApiPlatform\Metadata\Get;
-use ApiPlatform\OpenApi\Model as OpenApiModel;
 use App\Controller\Api\CurrentOdeUsers\GetUserByComponentAction;
 use App\Repository\net\exelearning\Repository\CurrentOdeUsersRepository;
 use Doctrine\ORM\Mapping as ORM;
@@ -33,15 +32,12 @@ use Symfony\Component\Serializer\Annotation\Groups;
                         description: 'The current component ID to search for',
                         required: true,
                         schema: ['type' => 'string']
-                    )
+                    ),
                 ]
             )
-        )
+        ),
     ]
 )]
-
-
-
 #[ORM\Index(name: 'index2', columns: ['ode_id'])]
 #[ORM\Index(name: 'index3', columns: ['ode_version_id'])]
 #[ORM\Index(name: 'index4', columns: ['ode_session_id'])]
