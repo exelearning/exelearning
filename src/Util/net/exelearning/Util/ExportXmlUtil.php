@@ -1930,7 +1930,6 @@ class ExportXmlUtil
         // Page header
         $pageHeaderMain = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><header-main></header-main>');
         $pageHeader = $pageHeaderMain->addChild('header', ' ');
-        $pageHeader->addAttribute('class', 'page-header');
         $pageHeader->addAttribute('id', 'header-'.$odeNavStructureSync->getOdePageId());
         $headerEmpty = true;
         $titlePage = isset($pagePropertiesDict['titlePage']) ? $pagePropertiesDict['titlePage'] : '';
@@ -2002,10 +2001,13 @@ class ExportXmlUtil
             $pageTitle = $pageHeader->addChild($pageTitleTag, $odeNavStructureSync->getPageName());
             $pageTitle->addAttribute('id', 'page-title-node-content');
             if ('' == $packageTitleValue) {
-                $pageHeader->addAttribute('class', 'sr-av');
+                $pageHeader->addAttribute('class', 'page-header sr-av');
             } else {
+                $pageHeader->addAttribute('class', 'page-header');
                 $pageTitle->addAttribute('class', 'page-title sr-av');
             }
+        } else {
+            $pageHeader->addAttribute('class', 'page-header');
         }
 
         return $pageHeaderMain;
