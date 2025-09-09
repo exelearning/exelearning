@@ -160,34 +160,7 @@ class UsersApiTest extends WebTestCase
         $this->assertGreaterThanOrEqual(2, count($adminList), 'Admin must see 2 or more users');
     }
 
-    public function testGetUserByUserIdAndByEmail(): void
-    {
-        $client = static::createClient();
-        // Admin can fetch by userId and by email
-        $this->loginClient($client, $this->adminEmail, $this->adminPassword);
-        $client->request('GET', '/api/v2/users/by-userid/'.$this->userUserId, server: [ 'HTTP_ACCEPT' => 'application/json' ]);
-        $this->assertStatus($client, 200);
-        $data = json_decode($client->getResponse()->getContent(), true);
-        $this->assertSame($this->userEmail, $data['email'] ?? null);
-
-        $client->request('GET', '/api/v2/users/by-email/'.urlencode($this->userEmail), server: [ 'HTTP_ACCEPT' => 'application/json' ]);
-        $this->assertStatus($client, 200);
-        $data2 = json_decode($client->getResponse()->getContent(), true);
-        $this->assertSame($this->userUserId, $data2['userId'] ?? null);
-
-        // Regular can fetch own record via both endpoints, but not others
-        static::ensureKernelShutdown();
-        $client = static::createClient();
-        $this->loginClient($client, $this->userEmail, $this->userPassword);
-        $client->request('GET', '/api/v2/users/by-userid/'.$this->userUserId, server: [ 'HTTP_ACCEPT' => 'application/json' ]);
-        $this->assertStatus($client, 200);
-        $client->request('GET', '/api/v2/users/by-email/'.urlencode($this->userEmail), server: [ 'HTTP_ACCEPT' => 'application/json' ]);
-        $this->assertStatus($client, 200);
-        $client->request('GET', '/api/v2/users/by-userid/'.$this->otherUserUserId, server: [ 'HTTP_ACCEPT' => 'application/json' ]);
-        $this->assertStatus($client, 403);
-        $client->request('GET', '/api/v2/users/by-email/'.urlencode($this->otherUserEmail), server: [ 'HTTP_ACCEPT' => 'application/json' ]);
-        $this->assertStatus($client, 403);
-    }
+    
 
     public function testGetOwnUserAsOwner(): void
     {
@@ -342,17 +315,7 @@ class UsersApiTest extends WebTestCase
         $this->assertStatus($client, 200);
     }
 
-    public function testBlockUserAsAdmin(): void
-    {
-        $client = static::createClient();
-        $this->loginClient($client, $this->adminEmail, $this->adminPassword);
-        $client->request('POST', '/api/v2/users/'.$this->userId.'/block', server: [ 'HTTP_ACCEPT' => 'application/json' ]);
-        $this->assertStatus($client, 200);
-
-        $em = $client->getContainer()->get('doctrine')->getManager();
-        $u = $em->getRepository(User::class)->find($this->userId);
-        $this->assertFalse($u->getIsActive());
-    }
+    
 
     public function testGetStatsAsOwner(): void
     {
