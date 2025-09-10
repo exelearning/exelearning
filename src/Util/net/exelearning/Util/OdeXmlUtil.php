@@ -1120,6 +1120,38 @@ class OdeXmlUtil
                 $subOdeNavStructureSync->addOdeNavStructureSyncProperties($subOdeNavStructureSyncProperty);
             }
             foreach ($oldXmlListInstDict->{self::OLD_ODE_XML_LIST} as $oldXmlListInstDictList) {
+                $results = [];
+                if ($oldXmlListInstDictList->reference) {
+                    // If there are reference tag with a key value, we need to get the reference value and look for the node reference inside the $xml
+                    // Buscar nodos hijos con etiqueta reference y un atributo key
+                    $oldXmlListInstDictList->registerXPathNamespace('f', $xpathNamespace);
+                    $nodeReferences = $oldXmlListInstDictList->xpath("f:reference");
+                    if (!empty($nodeReferences)) {
+                        foreach ($nodeReferences as $nodeReference) {
+                            $referenceValue = (string) $nodeReference->attributes()->key;
+                            // Look for the node reference inside the $xml
+                            //$referencedNode = $oldXmlListInstDictList->xpath("f:instance[@id='$referenceValue']");
+                            $xml->registerXPathNamespace('f', $xpathNamespace);
+                            $referencedNode = $xml->xpath("//f:instance[contains(@class, 'exe.engine.freetextidevice.FreeTextIdevice') and @reference='$referenceValue']");
+                            if (!empty($referencedNode)) {
+                                // Do something with the referenced node
+                                 $odeComponentSyncResult = OdeOldXmlFreeTextIdevice::oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $referencedNode, $generatedIds, $xpathNamespace);
+                                 array_push($results, $odeComponentSyncResult);
+                            }
+                        }
+                    }
+                }
+         /*       if (!empty($results)) {
+                       foreach ($results as $result) {
+                            foreach ($result['odeComponentsSync'] as $odeComponentSync) {
+                                $subOdeNavStructureSync->addOdePagStructureSync($odeComponentSync);
+                            }
+                            foreach ($result['srcRoutes'] as $srcRoute) {
+                                array_push($srcRoutes, $srcRoute);
+                            }
+                        }
+                }*/
+
                 if ($oldXmlListInstDictList->{self::OLD_ODE_XML_INSTANCE}) {
                     $oldXmlListInstDictList->registerXPathNamespace('f', $xpathNamespace);
 
