@@ -5,6 +5,7 @@
  */
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$requestedFile = __DIR__ . $uri;
 
 /**
  * Map file extensions to MIME types
@@ -70,6 +71,10 @@ if (preg_match('#^/files/tmp/(.*)$#', $uri, $matches)) {
 
     $path = rtrim($filesDir, '/') . '/tmp/' . $matches[1];
     serveFile($path, $mimeTypes);
+}
+
+if (file_exists($requestedFile) && is_file($requestedFile)) {
+    serveFile($requestedFile, $mimeTypes);
 }
 
 // For all other requests, let the built-in server handle them

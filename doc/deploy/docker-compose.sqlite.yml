@@ -37,9 +37,6 @@ services:
       TEST_USER_EMAIL: "${TEST_USER_EMAIL:-user@exelearning.net}"
       TEST_USER_USERNAME: "${TEST_USER_USERNAME:-user}"
       TEST_USER_PASSWORD: "${TEST_USER_PASSWORD:-1234}"
-      TEST_USER2_EMAIL: "${TEST_USER2_EMAIL:-user2@exelearning.net}"
-      TEST_USER2_USERNAME: "${TEST_USER2_USERNAME:-user2}"
-      TEST_USER2_PASSWORD: "${TEST_USER2_PASSWORD:-1234}"
       
       # Mercure settings
       MERCURE_URL: "http://localhost:8080/.well-known/mercure"
@@ -47,12 +44,13 @@ services:
       MERCURE_JWT_SECRET_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
       MERCURE_PUBLISHER_JWT_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
       MERCURE_SUBSCRIBER_JWT_KEY: "${MERCURE_JWT_SECRET_KEY:-!ChangeThisMercureHubJWTSecretKey!}"
+
+      API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForSQLiteDeployment}"
       
       # Post-configuration commands
       POST_CONFIGURE_COMMANDS: |
         echo "Setting up eXeLearning with SQLite..."
         php bin/console app:create-user ${TEST_USER_EMAIL:-user@exelearning.net} ${TEST_USER_PASSWORD:-1234} ${TEST_USER_USERNAME:-user} --no-fail
-        php bin/console app:create-user ${TEST_USER2_EMAIL:-user2@exelearning.net} ${TEST_USER2_PASSWORD:-1234} ${TEST_USER2_USERNAME:-user2} --no-fail
 
 volumes:
   exelearning-data:

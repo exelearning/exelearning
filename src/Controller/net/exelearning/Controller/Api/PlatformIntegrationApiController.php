@@ -88,7 +88,7 @@ class PlatformIntegrationApiController extends DefaultApiController
         // collect parameters
         $odeSessionId = $request->get('odeSessionId');
         $jwtToken = $request->get('jwt_token');
-        $integrationParams = $this->integrationUtil->getParamsMoodleIntegration($jwtToken, 'set');
+        $integrationParams = $this->integrationUtil->getPlatformIntegrationParams($jwtToken, 'set');
 
         // if $odeSessionId is set load data from database
         if (!empty($odeSessionId)) {
@@ -149,7 +149,7 @@ class PlatformIntegrationApiController extends DefaultApiController
 
                     $responseData['responseMessage'] = $platformJsonResponse['description'];
                     $responseData['returnUrl'] = $integrationParams['returnurl'];
-                // TO DO Eliminado por no ser necesario por el JWT
+                // TO DO Removed as it is not necessary due to the JWT
                 // $this->odeService->setOdePlatformId($saveOdeResult['elpFileName'], $platformJsonResponse['ode_id']);
                 } else {
                     $responseData['responseMessage'] = $odeExportResult['responseMessage'];
@@ -178,7 +178,7 @@ class PlatformIntegrationApiController extends DefaultApiController
         $odeId = $request->get('ode_id');
 
         $jwtToken = $request->get('jwt_token');
-        // TO DO: parar la aplicación si el JWT no es válido porque este es el punto de entrada de la integración
+        // TO DO: stop the application if the JWT is not valid because this is the entry point of the integration
 
         // Debug redirect
         $this->logger->debug('ode_id to receive from platform:', ['ode_id:' => $odeId, 'file:' => $this, 'line' => __LINE__]);

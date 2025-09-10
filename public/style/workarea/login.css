@@ -1,0 +1,6 @@
+body{background:#fafafa}
+.lead{font-size:1.8em}
+.btn-dark{background-color:#438606;border-color:#2A6D00}
+.card{border-radius:8px}
+img{border-radius:8px 0 0 8px}
+#exe-version{position:absolute;bottom:0;right:0}

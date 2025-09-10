@@ -518,19 +518,31 @@ class OdeXmlUtil
     }
 
     /**
-     * Prepares text to be added to xml.
+     * Encode string for XML text nodes in UTF-8.
      *
-     * @param string $text
+     * @param string|null $text
      *
-     * @return string
+     * @return string|null
      */
     private static function prepareText($text)
     {
-        if (is_null($text)) {
+        if (null === $text) {
             return null;
         }
 
-        return htmlspecialchars($text);
+        // Normalize to UTF-8 if needed.
+        if (!mb_check_encoding($text, 'UTF-8')) {
+            // Try common Western encodings explicitly.
+            $enc = mb_detect_encoding($text, ['Windows-1252', 'ISO-8859-1', 'ISO-8859-15'], true);
+            if (false === $enc) {
+                // Fallback to Windows-1252 (superset of ISO-8859-1).
+                $enc = 'Windows-1252';
+            }
+            $text = mb_convert_encoding($text, 'UTF-8', $enc);
+        }
+
+        // Escape for XML (not HTML); keep quotes; substitute any remaining invalid code points.
+        return htmlspecialchars($text, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false);
     }
 
     /**
@@ -543,6 +555,15 @@ class OdeXmlUtil
      */
     public static function readOdeXml($odeSessionId, $elpContentFileContent)
     {
+        // This prevents mojibake issues when the input file content is not properly encoded,
+        // which can happen on different operating systems (e.g., Windows default).
+        if ($elpContentFileContent && !mb_check_encoding($elpContentFileContent, 'UTF-8')) {
+            $enc = mb_detect_encoding($elpContentFileContent, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true);
+            if ($enc) {
+                $elpContentFileContent = mb_convert_encoding($elpContentFileContent, 'UTF-8', $enc);
+            }
+        }
+
         // Initialize response arrays
         $odeResponse = [];
         $odeResponse['userPreferences'] = [];

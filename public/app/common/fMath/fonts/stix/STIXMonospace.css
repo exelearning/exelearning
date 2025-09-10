@@ -1,9 +1,0 @@
-@font-face {
-    	font-family: 'STIXMonospace';
-    	font-style:normal;
-      	
-	src: url('STIXMonospace.eot');
-  	src: local('?'),
-         url('STIXMonospace.woff') format('woff'), url('STIXMonospace.ttf') format('truetype'), url('STIXMonospace.svg') format('svg'); 
-}
-

@@ -3,7 +3,7 @@ export default class ConnecionTime {
         this.connTimeElementWrapper =
             document.querySelector('#exe-last-edition');
         this.connTimeElement = document.querySelector(
-            '#exe-last-edition .content',
+            '#exe-last-edition .content'
         );
         // To do this.lastEditionPreText = _('Last save:');
         this.lastUpdatedJson = null;
@@ -53,12 +53,12 @@ export default class ConnecionTime {
             let textEditionValueText = this.makeStringTimeDiff(
                 timeDict.days,
                 timeDict.hours,
-                timeDict.minutes,
+                timeDict.minutes
             );
 
             $(this.connTimeElementWrapper).attr(
                 'data-bs-original-title',
-                `${textEditionValueText}`,
+                `${textEditionValueText}`
             );
             this.connTimeElement.innerHTML = `<span class="auto-icon" aria-hidden="true">history</span><span class="visually-hidden">${textEditionValueText}</span>`;
             this.connTimeElementWrapper.className = 'saved';
@@ -73,7 +73,7 @@ export default class ConnecionTime {
             ) {
                 $(this.connTimeElementWrapper).attr(
                     'data-bs-original-title',
-                    _('No previous versions'),
+                    _('No previous versions')
                 );
                 this.connTimeElement.innerHTML =
                     '<span class="auto-icon" aria-hidden="true">work_history</span><span class="visually-hidden">' +
@@ -86,7 +86,7 @@ export default class ConnecionTime {
             } else {
                 $(this.connTimeElementWrapper).attr(
                     'data-bs-original-title',
-                    _('Unsaved project'),
+                    _('Unsaved project')
                 );
                 this.connTimeElement.innerHTML =
                     '<span class="auto-icon" aria-hidden="true">warning</span><span class="visually-hidden">' +

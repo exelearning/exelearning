@@ -15,58 +15,56 @@ class SecurityControllerTest extends WebTestCase
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
     private ?User $testUser = null;
+    private string $email;
 
     protected function setUp(): void
     {
         self::ensureKernelShutdown();
         $this->client = static::createClient();
         $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        // Generate a unique email per test run to avoid unique constraint collisions
+        $this->email = sprintf('test+%s@example.com', bin2hex(random_bytes(6)));
         $this->createTestUser();
     }
 
     private function createTestUser(): void
     {
-        $userRepository = $this->entityManager->getRepository(User::class);
-        $this->testUser = $userRepository->findOneBy(['email' => 'test@example.com']);
-
-        if (!$this->testUser) {
-            $this->testUser = new User();
-            $this->testUser->setEmail('test@example.com');
-            $this->testUser->setPassword(
-                static::getContainer()->get('security.user_password_hasher')
-                    ->hashPassword($this->testUser, 'password123')
-            );
-            $this->testUser->setRoles(['ROLE_USER']);
-            $this->testUser->setUserId(uniqid());
-            $this->testUser->setIsLopdAccepted(true);
-            $this->entityManager->persist($this->testUser);
-            $this->entityManager->flush();
-        }
+        $this->testUser = new User();
+        $this->testUser->setEmail($this->email);
+        $this->testUser->setPassword(
+            static::getContainer()->get('security.user_password_hasher')
+                ->hashPassword($this->testUser, 'password123')
+        );
+        $this->testUser->setRoles(['ROLE_USER']);
+        $this->testUser->setUserId(bin2hex(random_bytes(20)));
+        $this->testUser->setIsLopdAccepted(true);
+        $this->entityManager->persist($this->testUser);
+        $this->entityManager->flush();
     }
 
     private function getTestUser(): ?User
     {
         return $this->entityManager
             ->getRepository(User::class)
-            ->findOneBy(['email' => 'test@example.com']);
+            ->findOneBy(['email' => $this->email]);
     }
 
 protected function tearDown(): void
 {
     parent::tearDown();
 
-    // Re-obtenemos la entidad para asegurarnos de que está gestionada
+    // Re-fetch the entity to ensure it is managed
     $user = $this->entityManager
         ->getRepository(User::class)
-        ->findOneBy(['email' => 'test@example.com']);
+        ->findOneBy(['email' => $this->email]);
 
     if ($user) {
-        $this->entityManager->persist($user); // Asegura que Doctrine la gestione
+        $this->entityManager->persist($user); // Ensure that Doctrine manages it
         $this->entityManager->remove($user);
         $this->entityManager->flush();
     }
 
-    // Limpiar y cerrar el EntityManager para evitar contaminación entre pruebas
+    // Clear and close the EntityManager to avoid contamination between tests
     $this->entityManager->clear();
     $this->entityManager->close();
     unset($this->entityManager);
@@ -110,7 +108,7 @@ protected function tearDown(): void
 
         // Fill in the login form with valid credentials
         $form = $crawler->selectButton('login-form-btn-submit')->form([
-            'email'    => 'test@example.com',
+            'email'    => $this->email,
             'password' => 'password123',
         ]);
 
@@ -124,7 +122,7 @@ protected function tearDown(): void
         $this->assertSelectorExists('#head-bottom-user-logged img.exe-gravatar');
         
         // Verify email is in the response content
-        $this->assertStringContainsString('test@example.com', $this->client->getResponse()->getContent());
+        $this->assertStringContainsString($this->email, $this->client->getResponse()->getContent());
         
         // Ensure the user session is authenticated
         $this->assertNotNull(
@@ -137,7 +135,7 @@ protected function tearDown(): void
         
         // Verify the authenticated user is the correct one
         $this->assertEquals(
-            'test@example.com',
+            $this->email,
             static::getContainer()->get('security.token_storage')->getToken()->getUser()->getEmail()
         );
                 
@@ -160,6 +158,9 @@ protected function tearDown(): void
 
     public function testOpenIdCallbackHandlesValidResponse(): void
     {
+        // Ensure a fresh kernel so we can replace services
+        static::ensureKernelShutdown();
+
         // Mock OpenID provider response
         $mockResponse = new MockResponse(json_encode([
             'access_token' => 'valid-access-token',
@@ -169,7 +170,10 @@ protected function tearDown(): void
         ]));
         $mockHttpClient = new MockHttpClient($mockResponse);
 
-        static::getContainer()->set('http_client', $mockHttpClient);
+        // Re-create the BrowserKit client and then override the service
+        // Note: do NOT call bootKernel() explicitly when using WebTestCase
+        $this->client = static::createClient();
+        static::getContainer()->set(\Symfony\Contracts\HttpClient\HttpClientInterface::class, $mockHttpClient);
 
         // Start session manually
         $session = static::getContainer()->get('session.factory')->createSession();

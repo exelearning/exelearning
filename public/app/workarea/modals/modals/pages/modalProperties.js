@@ -8,10 +8,10 @@ export default class ModalProperties extends Modal {
         this.confirmButtonDefaultText = _('Save');
         this.cancelButtonDefaultText = _('Cancel');
         this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary',
+            'button.btn.btn-primary'
         );
         this.cancelButton = this.modalElement.querySelector(
-            'button.close.btn.btn-secondary',
+            'button.close.btn.btn-secondary'
         );
         this.node = null;
     }
@@ -48,7 +48,7 @@ export default class ModalProperties extends Modal {
             // Focus first input text
             setTimeout(() => {
                 this.focusTextInput(
-                    this.modalElementBody.querySelector('input[type="text"'),
+                    this.modalElementBody.querySelector('input[type="text"')
                 );
             }, this.timeMax);
         }, time);
@@ -63,7 +63,7 @@ export default class ModalProperties extends Modal {
         this.modalElementBody.append(bodyElement);
         // Select first category
         let firstCategory = this.modalElementBody.querySelector(
-            '.exe-form-tabs a.exe-tab',
+            '.exe-form-tabs a.exe-tab'
         );
         if (firstCategory) firstCategory.click();
     }
@@ -130,7 +130,7 @@ export default class ModalProperties extends Modal {
                 dictSearchParentGroup[data.parent] = {};
                 let parentGroupElement = this.getGroupElement(
                     dictSearchParentGroup,
-                    table,
+                    table
                 );
                 if (parentGroupElement) {
                     parentGroupElement.append(groupElement);
@@ -217,7 +217,7 @@ export default class ModalProperties extends Modal {
                 key,
                 property,
                 groupElement,
-                table,
+                table
             );
             if (!propertyRow) continue;
             // If there is a group we put the row inside
@@ -229,13 +229,13 @@ export default class ModalProperties extends Modal {
                     groupChildren.forEach((groupChildrenElement) => {
                         if (
                             !groupChildrenElement.querySelector(
-                                '.property-row',
+                                '.property-row'
                             ) &&
                             !inserted
                         ) {
                             groupElement.insertBefore(
                                 propertyRow,
-                                groupChildrenElement,
+                                groupChildrenElement
                             );
                             inserted = true;
                         }
@@ -378,13 +378,13 @@ export default class ModalProperties extends Modal {
         // Label property
         let propertyTitle = this.makeRowElementLabel(
             propertyIdGenerated,
-            property,
+            property
         );
         // Value property
         let propertyValue = this.makeRowValueElement(
             propertyIdGenerated,
             property.id,
-            property,
+            property
         );
         // Help
         let helpContainer = this.makeRowElementHelp(property);
@@ -572,7 +572,7 @@ export default class ModalProperties extends Modal {
     async saveProperties(propertiesDict, inherit) {
         let response = await this.node.apiSaveProperties(
             propertiesDict,
-            inherit,
+            inherit
         );
         return response;
     }
@@ -644,7 +644,7 @@ export default class ModalProperties extends Modal {
     insertAfter(referenceNode, newNode) {
         referenceNode.parentNode.insertBefore(
             newNode,
-            referenceNode.nextSibling,
+            referenceNode.nextSibling
         );
     }
 }

@@ -76,9 +76,14 @@ class JsTranslationExtractor implements ExtractorInterface
 
         // Regular expressions to find translatable strings using different types of quotes
         $translationRegex = [
-            '/_\("([^"]+)"(?:, "[^"]*")?\)/',  // _("") or _("", "")
-            '/_\(\'([^\']+)\'(?:, \'[^\']*\')?\)/', // _('') or _('', '')
-            '/_\(`([^`]+)`(?:, `[^`]*`)?\)/', // _(``) or _(``, ``)
+            // Double quotes
+            '/\b(?:_|c_)\s*\(\s*"((?:[^"\\\\]|\\\\.)*)"\s*\)\s*,?/s',
+
+            // Single quotes
+            '/\b(?:_|c_)\s*\(\s*\'((?:[^\'\\\\]|\\\\.)*)\'\s*\)\s*,?/s',
+
+            // Backticks
+            '/\b(?:_|c_)\s*\(\s*`((?:[^`\\\\]|\\\\.)*)`\s*\)\s*,?/s',
         ];
 
         // Iterate over the regular expressions and find translatable strings

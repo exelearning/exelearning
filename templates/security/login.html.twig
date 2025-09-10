@@ -8,20 +8,13 @@
 
 {% block stylesheets %}
     <link class="exe" rel="stylesheet" href="{{ asset('libs/bootstrap/bootstrap.min.css') }}">
-    <style>
-      body{background:#fafafa}
-      .lead{font-size:1.8em}
-      .btn-dark{background-color:#438606;border-color:#2A6D00}
-      .card{border-radius:8px}
-      img{border-radius:8px 0 0 8px}
-      #exe-version{position:absolute;bottom:0;right:0}
-    </style>
+    <link class="exe" rel="stylesheet" href="{{ asset('style/workarea/login.css') }}">
 {% endblock %}
 
 {% block title %}eXeLearning{% endblock %}
 
 {% block body %}   
-<section class="vh-100">
+<section class="vh-100" id="login-tpl">
   <div class="container py-5 h-100">
     <div class="row d-flex justify-content-center align-items-center h-100">
       <div class="col col-xl-10">
@@ -59,11 +52,11 @@
                     <h2 class="visually-hidden">{{ 'Sign in' | trans }}</h2>
                     <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
                     <div class="form-floating mb-4">
-                      <input type="email" id="inputEmail" class="form-control" name="email" value="{{ last_username }}" placeholder="{{ 'Email' | trans }}" required>
+                      <input type="email" id="inputEmail" class="form-control" name="email" value="{{ last_username }}" placeholder="{{ 'Email' | trans }}" autocomplete="email" required>
                       <label for="inputEmail">{{ 'Email' | trans }}</label>
                     </div>
                     <div class="form-floating mb-4">
-                      <input type="password" class="form-control" id="inputPassword" name="password" placeholder="{{ 'Password' | trans }}" required>
+                      <input type="password" class="form-control" id="inputPassword" name="password" placeholder="{{ 'Password' | trans }}" autocomplete="current-password" required>
                       <label for="inputPassword">{{ 'Password' | trans }}</label>
                     </div>
                     <div class="pt-1 mb-4 text-center text-md-start">

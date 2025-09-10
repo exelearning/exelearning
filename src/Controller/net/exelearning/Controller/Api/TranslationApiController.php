@@ -37,7 +37,7 @@ class TranslationApiController extends DefaultApiController
             $translationsDirArray = glob($translationsParentDir.'/*', GLOB_ONLYDIR);
 
             foreach ($translationsDirArray as $path) {
-                // Obtener el locale desde el Request
+                // Get the locale from the Request
                 $locale = $request->getLocale();
 
                 $dataLang = new TranslationListDto();

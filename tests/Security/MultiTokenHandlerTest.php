@@ -258,35 +258,35 @@ public function testHandleOidcToken(): void
             false, // authCreateUsers = false
             $this->logger
         );
-        
+
         $casTicket = 'ST-1234-abcdefg';
         $identifier = 'user123';
         $email = 'user@example.com';
-        
+
         // Create a UserBadge with attributes
         $userBadge = new UserBadge(
             $identifier,
             null,
             ['email' => $email]
         );
-        
+
         $this->casHandler->expects($this->once())
             ->method('getUserBadgeFrom')
             ->with($casTicket)
             ->willReturn($userBadge);
-        
+
         // Configure user repository to not find a user
         $this->userRepository->method('findOneBy')
             ->willReturn(null);
-        
+
         // Expect error logging
         $this->logger->expects($this->once())
             ->method('error')
             ->with($this->stringContains("Authentication successful but user creation disabled"));
-        
+
         $this->expectException(BadCredentialsException::class);
         $this->expectExceptionMessage("Authentication successful but user creation disabled.");
-        
+
         $result = $tokenHandler->getUserBadgeFrom($casTicket);
         $userLoader = $result->getUserLoader();
         $userLoader($identifier); // Should throw an exception

@@ -20,19 +20,10 @@ class OdeOldXmlCaseStudyIdevice
         'textInfoParticipantsInput' => '',
         'textInfoDurationTextInput' => 'Duration:',
         'textInfoParticipantsTextInput' => 'Grouping:',
-        'textTextarea' => '',
-        'textFeedbackInput' => 'Show Feedback',
-        'textFeedbackTextarea' => '',
+        'history' => '',
+        'activities' => [],
+        'title' => '',
     ];
-
-    // Old Xml idevice content
-    public const OLD_ODE_XML_INSTANCE = 'instance';
-    public const OLD_ODE_XML_DICTIONARY = 'dictionary';
-    public const OLD_ODE_XML_LIST = 'list';
-    public const OLD_ODE_XML_UNICODE = 'unicode';
-    public const OLD_ODE_XML_ATTRIBUTES = '@attributes';
-    // const OLD_ODE_XML_IDEVICE_TEXT = 'instance';
-    public const OLD_ODE_XML_IDEVICE_TEXT_CONTENT = 'string role="key" value="content_w_resourcePaths"';
 
     public static function oldElpCaseStudyStructure($odeSessionId, $odePageId, $caseStudyNodes, $generatedIds, $xpathNamespace)
     {
@@ -40,237 +31,127 @@ class OdeOldXmlCaseStudyIdevice
         $result['srcRoutes'] = [];
 
         foreach ($caseStudyNodes as $caseStudyNode) {
-            $fullHtmlView = [];
-            $fullHtmlFeedbackView = [];
-            $fullOdeComponentsSyncHtmlFeedbackView = '';
-            $fullOdeComponentsSyncHtmlView = '';
+            $caseStudyNode->registerXPathNamespace('f', $xpathNamespace);
 
+            // Generate unique idevice ID
             $odeIdeviceId = Util::generateIdCheckUnique($generatedIds);
             $generatedIds[] = $odeIdeviceId;
-            $odeComponentsMapping[] = $odeIdeviceId;
 
-            $caseStudyNode->registerXPathNamespace('f', $xpathNamespace);
-            // Get blockName
-            $blockNameNode = $caseStudyNode->xpath("f:dictionary/f:string[@value='_title']/following-sibling::f:unicode[1]/@value");
-
-            $nodeIdevices = $caseStudyNode->xpath("f:dictionary/f:instance[@class='exe.engine.field.TextAreaField']");
-            $nodeIdevicesQuestion = $caseStudyNode->xpath("f:dictionary/f:list/f:instance[@class='exe.engine.casestudyidevice.Question']/f:dictionary/
-                f:string[@value='questionTextArea']/following-sibling::f:instance[1][@class='exe.engine.field.TextAreaField']");
-            $nodeIdevicesFeedback = $caseStudyNode->xpath(
-                "f:dictionary/f:list/f:instance[@class='exe.engine.casestudyidevice.Question']/f:dictionary/f:string[@value='feedbackTextArea']/following-sibling::
-                f:instance[1][@class='exe.engine.field.TextAreaField']"
+            // --- Extract history (single) ---
+            $history = '';
+            $storyNode = $caseStudyNode->xpath(
+                "f:dictionary/f:string[@value='storyTextArea']"
+                ."/following-sibling::f:instance[@class='exe.engine.field.TextAreaField'][1]"
+                ."/f:dictionary/f:string[@value='content_w_resourcePaths']"
+                ."/following-sibling::f:unicode[@content='true']/@value"
             );
-
-            foreach ($nodeIdevicesFeedback as $nodeIdeviceFeedback) {
-                $nodeIdeviceFeedback->registerXPathNamespace('f', $xpathNamespace);
-                $nodeIdeviceFeedbackContent = $nodeIdeviceFeedback->xpath("f:dictionary/f:string[@value='content_w_resourcePaths']/
-                following-sibling::f:unicode[@content='true']");
-
-                $sessionPath = null;
-
-                if (!empty($odeSessionId)) {
-                    $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
-                }
-
-                // Common replaces for all OdeComponents
-                $commonReplaces = [
-                    'resources'.Constants::SLASH => $sessionPath.$odeIdeviceId.Constants::SLASH,
-                ];
-
-                if (isset($commonReplaces)) {
-                    $odeComponentsSyncHtmlView = self::applyReplaces(
-                        $commonReplaces,
-                        (string) $nodeIdeviceFeedbackContent[0]['value']
-                    );
-                    array_push($fullHtmlFeedbackView, $odeComponentsSyncHtmlView);
-                } else {
-                    $odeComponentsSyncHtmlView = (string) $nodeIdeviceFeedbackContent[0]['value'];
-                    array_push($fullHtmlFeedbackView, $odeComponentsSyncHtmlView);
-                }
-
-                $prologue = '<?xml encoding="UTF-8">';
-                $html = $prologue.$odeComponentsSyncHtmlView;
+            if (!empty($storyNode)) {
+                $htmlHistory = (string) $storyNode[0];
+                // apply session path replacement
+                $sessionPath = $odeSessionId ? UrlUtil::getOdeSessionUrl($odeSessionId) : '';
+                $htmlHistory = str_replace(
+                    'resources'.Constants::SLASH,
+                    $sessionPath.$odeIdeviceId.Constants::SLASH,
+                    $htmlHistory
+                );
+                $history = $htmlHistory;
+                // collect images
                 $doc = new \DOMDocument();
-                @$doc->loadHTML($html);
-                $xpath = new \DOMXPath($doc);
-                $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
-                foreach ($src as $srcValue) {
-                    $srcString = (string) $srcValue->value;
-                    array_push($result['srcRoutes'], $srcString);
-                }
-
-                $fullOdeComponentsSyncHtmlFeedbackView = '';
-                foreach ($fullHtmlFeedbackView as $htmlView) {
-                    $fullOdeComponentsSyncHtmlFeedbackView .= $htmlView;
+                @$doc->loadHTML('<?xml encoding="UTF-8">'.$history);
+                $xp = new \DOMXPath($doc);
+                foreach ($xp->evaluate('//img/@src') as $src) {
+                    $result['srcRoutes'][] = (string) $src->value;
                 }
             }
 
-            foreach ($nodeIdevices as $nodeIdevice) {
-                $nodeIdevice->registerXPathNamespace('f', $xpathNamespace);
-                $nodeIdeviceHtmlContent = $nodeIdevice->xpath("f:dictionary/f:string[@value='content_w_resourcePaths']/
-                following-sibling::f:unicode[@content='true']");
-
-                $sessionPath = null;
-
-                if (!empty($odeSessionId)) {
-                    $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
-                }
-
-                // Common replaces for all OdeComponents
-                $commonReplaces = [
-                    'resources'.Constants::SLASH => $sessionPath.$odeIdeviceId.Constants::SLASH,
-                ];
-
-                if (isset($commonReplaces)) {
-                    $odeComponentsSyncHtmlView = self::applyReplaces(
-                        $commonReplaces,
-                        (string) $nodeIdeviceHtmlContent[0]['value']
+            // --- Extract activities ---
+            $activities = [];
+            $questionInstances = $caseStudyNode->xpath(
+                "f:dictionary/f:list/f:instance[@class='exe.engine.casestudyidevice.Question']"
+            );
+            foreach ($questionInstances as $qNode) {
+                $qNode->registerXPathNamespace('f', $xpathNamespace);
+                // Activity content
+                $activityNode = $qNode->xpath(
+                    "f:dictionary/f:string[@value='questionTextArea']"
+                    ."/following-sibling::f:instance[@class='exe.engine.field.TextAreaField'][1]"
+                    ."/f:dictionary/f:string[@value='content_w_resourcePaths']"
+                    ."/following-sibling::f:unicode[@content='true']/@value"
+                );
+                $activityHtml = !empty($activityNode) ? (string) $activityNode[0] : '';
+                // Feedback button caption
+                $btnNode = $qNode->xpath(
+                    "f:dictionary/f:instance[@class='exe.engine.field.Feedback2Field']"
+                    ."/f:dictionary/f:string[@value='buttonCaption']"
+                    .'/following-sibling::f:unicode[1]/@value'
+                );
+                $btnCaption = !empty($btnNode) ? (string) $btnNode[0] : '';
+                // Feedback content
+                $fbNode = $qNode->xpath(
+                    "f:dictionary/f:instance[@class='exe.engine.field.Feedback2Field']"
+                    ."/f:dictionary/f:string[@value='content_w_resourcePaths']"
+                    ."/following-sibling::f:unicode[@content='true']/@value"
+                );
+                $feedbackHtml = !empty($fbNode) ? (string) $fbNode[0] : '';
+                // Apply replaces and collect images
+                $sessionPath = $odeSessionId ? UrlUtil::getOdeSessionUrl($odeSessionId) : '';
+                foreach (['activityHtml' => 'questionTextArea', 'feedbackHtml' => 'feedbackTextArea'] as $key => $val) {
+                    // replace resource paths
+                    ${$key} = str_replace(
+                        'resources'.Constants::SLASH,
+                        $sessionPath.$odeIdeviceId.Constants::SLASH,
+                        ${$key}
                     );
-                    array_push($fullHtmlView, $odeComponentsSyncHtmlView);
-                } else {
-                    $odeComponentsSyncHtmlView = (string) $nodeIdeviceHtmlContent[0]['value'];
-                    array_push($fullHtmlView, $odeComponentsSyncHtmlView);
+                    // collect images
+                    $doc = new \DOMDocument();
+                    @$doc->loadHTML('<?xml encoding="UTF-8">'.${$key});
+                    $xp = new \DOMXPath($doc);
+                    foreach ($xp->evaluate('//img/@src') as $src) {
+                        $result['srcRoutes'][] = (string) $src->value;
+                    }
                 }
-
-                $prologue = '<?xml encoding="UTF-8">';
-                $html = $prologue.$odeComponentsSyncHtmlView;
-                $doc = new \DOMDocument();
-                @$doc->loadHTML($html);
-                $xpath = new \DOMXPath($doc);
-                $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
-                foreach ($src as $srcValue) {
-                    $srcString = (string) $srcValue->value;
-                    array_push($result['srcRoutes'], $srcString);
-                }
-
-                $fullOdeComponentsSyncHtmlView = '';
-                foreach ($fullHtmlView as $htmlView) {
-                    $fullOdeComponentsSyncHtmlView .= $htmlView;
-                }
-            }
-
-            foreach ($nodeIdevicesQuestion as $nodeIdevice) {
-                $nodeIdevice->registerXPathNamespace('f', $xpathNamespace);
-                $nodeIdeviceHtmlContent = $nodeIdevice->xpath("f:dictionary/f:string[@value='content_w_resourcePaths']/
-                following-sibling::f:unicode[@content='true']");
-
-                $sessionPath = null;
-
-                if (!empty($odeSessionId)) {
-                    $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
-                }
-
-                // Common replaces for all OdeComponents
-                $commonReplaces = [
-                    'resources'.Constants::SLASH => $sessionPath.$odeIdeviceId.Constants::SLASH,
+                $activities[] = [
+                    'activity' => $activityHtml,
+                    'buttonCaption' => $btnCaption,
+                    'feedback' => $feedbackHtml,
                 ];
-
-                if (isset($commonReplaces)) {
-                    $odeComponentsSyncHtmlView = self::applyReplaces(
-                        $commonReplaces,
-                        (string) $nodeIdeviceHtmlContent[0]['value']
-                    );
-                    array_push($fullHtmlView, $odeComponentsSyncHtmlView);
-                } else {
-                    $odeComponentsSyncHtmlView = (string) $nodeIdeviceHtmlContent[0]['value'];
-                    array_push($fullHtmlView, $odeComponentsSyncHtmlView);
-                }
-
-                $prologue = '<?xml encoding="UTF-8">';
-                $html = $prologue.$odeComponentsSyncHtmlView;
-                $doc = new \DOMDocument();
-                @$doc->loadHTML($html);
-                $xpath = new \DOMXPath($doc);
-                $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
-                foreach ($src as $srcValue) {
-                    $srcString = (string) $srcValue->value;
-                    array_push($result['srcRoutes'], $srcString);
-                }
-
-                $fullOdeComponentsSyncHtmlView = '';
-                foreach ($fullHtmlView as $htmlView) {
-                    $fullOdeComponentsSyncHtmlView .= $htmlView;
-                }
             }
 
-            // IDEVICE TEXT CONTENT
-            if ($nodeIdevice->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}) {
-                $subOdePagStructureSync = new OdePagStructureSync();
-                $odeBlockId = Util::generateIdCheckUnique($generatedIds);
-                $generatedIds[] = $odeBlockId;
+            // --- Build sync objects ---
+            $subPag = new OdePagStructureSync();
+            $blockId = Util::generateIdCheckUnique($generatedIds);
+            $generatedIds[] = $blockId;
 
-                // OdePagStructureSync fields
-                $subOdePagStructureSync->setOdeSessionId($odeSessionId);
-                $subOdePagStructureSync->setOdePageId($odePageId);
-                $subOdePagStructureSync->setOdeBlockId($odeBlockId);
-                // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
+            $subPag->setOdeSessionId($odeSessionId);
+            $subPag->setOdePageId($odePageId);
+            $subPag->setOdeBlockId($blockId);
+            $titleNode = $caseStudyNode->xpath(
+                "f:dictionary/f:string[@value='_title']"
+                .'/following-sibling::f:unicode[1]/@value'
+            );
+            $title = !empty($titleNode) ? (string) $titleNode[0] : '';
+            $subPag->setBlockName($title);
+            $subPag->setOdePagStructureSyncOrder(1);
+            $subPag->loadOdePagStructureSyncPropertiesFromConfig();
 
-                // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
-                $subOdePagStructureSync->setBlockName((string) $blockNameNode[0]);
+            $comp = new OdeComponentsSync();
+            $comp->setOdeSessionId($odeSessionId);
+            $comp->setOdePageId($odePageId);
+            $comp->setOdeBlockId($blockId);
+            $comp->setOdeIdeviceId($odeIdeviceId);
+            $comp->setOdeComponentsSyncOrder(1);
+            $comp->setOdeIdeviceTypeName('casestudy');
 
-                $orderPage = (string) $nodeIdevice['reference'];
-                $subOdePagStructureSync->setOdePagStructureSyncOrder(intval($orderPage));
+            $jsonProps = self::JSON_PROPERTIES;
+            $jsonProps['ideviceId'] = $odeIdeviceId;
+            $jsonProps['history'] = $history;
+            $jsonProps['activities'] = $activities;
+            $jsonProps['title'] = $title;
 
-                // Get pagStructureSync properties
-                $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
-                // foreach($oldXmlListInstDict->{self::OLD_ODE_XML_UNICODE} as $oldXmlListInstDictUnicode){
-                //     // array_push($odeResponse, $oldXmlListInstDictUnicode);
-                //     if($oldXmlListInstDictUnicode["value"]) {
-                //         $odePagStructureSync->setBlockName($oldXmlListInstDictUnicode["value"]);
-                //     }
-
-                // }
-
-                $odeComponentsSync = new OdeComponentsSync();
-
-                // OdeComponentsSync fields
-                $odeComponentsSync->setOdeSessionId($odeSessionId);
-                $odeComponentsSync->setOdePageId($odePageId);
-                $odeComponentsSync->setOdeBlockId($odeBlockId);
-                $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
-
-                // $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
-
-                $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
-                // Set type
-                $odeComponentsSync->setOdeIdeviceTypeName('text');
-
-                // $odeComponentsSync->setHtmlView($fullOdeComponentsSyncHtmlView);
-
-                $jsonProperties = self::JSON_PROPERTIES;
-                $jsonProperties['ideviceId'] = $odeIdeviceId;
-                $jsonProperties['textTextarea'] = $fullOdeComponentsSyncHtmlView;
-                $jsonProperties['textFeedbackTextarea'] = $fullOdeComponentsSyncHtmlFeedbackView;
-
-                // Create jsonProperties for idevice
-                $jsonProperties = json_encode($jsonProperties);
-                $odeComponentsSync->setJsonProperties($jsonProperties);
-
-                // OdeComponentsSync property fields
-                $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
-
-                // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
-                $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
-
-                array_push($result['odeComponentsSync'], $subOdePagStructureSync);
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Applies the replaces passed as param.
-     *
-     * @param array  $replaces
-     * @param string $text
-     */
-    private static function applyReplaces($replaces, $text)
-    {
-        $result = $text;
-
-        foreach ($replaces as $search => $replace) {
-            $result = str_replace($search, $replace, $result);
+            $comp->setJsonProperties(json_encode($jsonProps));
+            $comp->loadOdeComponentsSyncPropertiesFromConfig();
+            $subPag->addOdeComponentsSync($comp);
+            $result['odeComponentsSync'][] = $subPag;
         }
 
         return $result;

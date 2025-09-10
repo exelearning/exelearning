@@ -57,7 +57,7 @@ export default class ModalLegalNotes extends Modal {
             }
             tabsContainer.append(this.generateExeFormTab(tabHtmlStringKey, i));
             bodyContent.append(
-                this.generateExeFormContent(contentStringKey, i),
+                this.generateExeFormContent(contentStringKey, i)
             );
         }
 
@@ -106,19 +106,19 @@ export default class ModalLegalNotes extends Modal {
         // Third party code
         let contents = await eXeLearning.app.api.getThirdPartyCodeText();
         let viewer = this.modalElementBody.querySelector(
-            '#modalLegalNotes .third-party-content',
+            '#modalLegalNotes .third-party-content'
         );
         viewer.innerHTML = eXeLearning.app.common.markdownToHTML(contents);
         // Licenses
         contents = await eXeLearning.app.api.getLicensesList();
         viewer = this.modalElementBody.querySelector(
-            '#modalLegalNotes .licenses-list',
+            '#modalLegalNotes .licenses-list'
         );
         viewer.innerHTML = eXeLearning.app.common.markdownToHTML(contents);
         // Add some CSS classes to the titles
         $('#modalLegalNotes .md-converted-content h2').attr(
             'class',
-            'lead mb-4',
+            'lead mb-4'
         );
         $('#modalLegalNotes .md-converted-content a')
             .attr('title', _('New window'))

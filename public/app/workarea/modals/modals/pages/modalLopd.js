@@ -7,7 +7,7 @@ export default class ModalLopd extends Modal {
         super(manager, id, titleDefault, false);
         this.confirmButtonDefaultText = _('Accept');
         this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary',
+            'button.btn.btn-primary'
         );
         this.permanent = true;
     }

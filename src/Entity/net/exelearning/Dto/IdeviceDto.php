@@ -733,7 +733,7 @@ class IdeviceDto extends BaseDto
                     $this->addEditionJs($filename);
                 }
             }
-        } else { // Search all files in dir and subdirs
+        } else { // Search all files in dir and subdirectories
             if (file_exists($iDeviceEditionDirPath)) {
                 $jsEditionFileList = FileUtil::listFilesByName(
                     $iDeviceEditionDirPath,
@@ -763,7 +763,7 @@ class IdeviceDto extends BaseDto
                     $this->addEditionCss($filename);
                 }
             }
-        } else { // Search all files in dir and subdirs
+        } else { // Search all files in dir and subdirectories
             if (file_exists($iDeviceEditionDirPath)) {
                 $cssEditionFileList = FileUtil::listFilesByName(
                     $iDeviceEditionDirPath,
@@ -793,7 +793,7 @@ class IdeviceDto extends BaseDto
                     $this->addExportJs($filename);
                 }
             }
-        } else { // Search all files in dir and subdirs
+        } else { // Search all files in dir and subdirectories
             if (file_exists($iDeviceExportDirPath)) {
                 $jsExportFileList = FileUtil::listFilesByName(
                     $iDeviceExportDirPath,
@@ -823,7 +823,7 @@ class IdeviceDto extends BaseDto
                     $this->addExportCss($filename);
                 }
             }
-        } else { // Search all files in dir and subdirs
+        } else { // Search all files in dir and subdirectories
             if (file_exists($iDeviceExportDirPath)) {
                 $cssExportFileList = FileUtil::listFilesByName(
                     $iDeviceExportDirPath,

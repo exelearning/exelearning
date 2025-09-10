@@ -97,19 +97,19 @@ class AuthenticationIntegrationTest extends WebTestCase
         // Set online mode to true and enable CAS
         // $this->setParameter('app.online_mode', true);
         // $this->setParameter('app.auth_methods', ['cas']);
-        
+
         // Simulate CAS parameters
         // $this->setParameter('cas_url', 'https://casserverpac4j.herokuapp.com');
         // $this->setParameter('cas_login_path', '/login');
-        
+
         $this->client->request('GET', '/login/cas');
-        
+
         // Should redirect to the CAS server
         $this->assertResponseRedirects();
         $redirectUrl = $this->client->getResponse()->headers->get('Location');
         // $this->assertStringContainsString('https://casserverpac4j.herokuapp.com/login', $redirectUrl);
         // $this->assertStringContainsString('service=', $redirectUrl);
-        
+
         // Use the helper method to get the session
         // $session = $this->getSession();
         // $this->assertEquals('cas', $session->get('auth_method_used'));
@@ -121,17 +121,17 @@ class AuthenticationIntegrationTest extends WebTestCase
         $this->client->request('GET', '/');
         // Set online mode to true for this test
         // $this->setParameter('app.online_mode', true);
-        
+
         // Create and log in a test user
         $user = $this->createTestUser();
         // $this->loginUser($user);
-        
+
         // Request logout
         $this->client->request('GET', '/logout');
-        
+
         // Should redirect to the logout redirection route
         $this->assertResponseRedirects();
-        
+
         // Check that the token storage is empty
         // $tokenStorage = $this->container->get(TokenStorageInterface::class);
         // $this->assertNull($tokenStorage->getToken());

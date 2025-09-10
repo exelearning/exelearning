@@ -292,7 +292,7 @@ class ExportXmlUtil
         $titleValue = isset($titleElement) ? $titleElement->getValue() : 'eXe-p-'.$odeId;
         $titleString = $title->addChild('lom:lom:string', $titleValue);
 
-        $titleLang = $odeProperties['pp_lang']; // todo -> title lang property
+        $titleLang = $odeProperties['pp_lang'];
         $titleLang = isset($titleLang) ? $titleLang->getValue() : Settings::DEFAULT_LOCALE;
         $titleString->addAttribute('language', $titleLang);
 
@@ -441,7 +441,7 @@ class ExportXmlUtil
 
             if (in_array($exportType, [Constants::EXPORT_TYPE_SCORM12, Constants::EXPORT_TYPE_SCORM2004])) {
                 // The next code is an example of how to add a namespace to the attribute
-                // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Ejemplo de URI de namespace
+                // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Namespace URI example
                 // $resource->addAttribute('scormtype', 'sco', $adlcp_ns);
                 $resource->addAttribute('adlcp:adlcp:scormtype', 'sco');
             }
@@ -526,7 +526,7 @@ class ExportXmlUtil
         $resource->addAttribute('type', 'webcontent');
         if (in_array($exportType, [Constants::EXPORT_TYPE_SCORM12, Constants::EXPORT_TYPE_SCORM2004])) {
             // The next code is an example of how to add a namespace to the attribute
-            // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Ejemplo de URI de namespace
+            // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Example of namespace URI
             // $resource->addAttribute('scormtype', 'sco', $adlcp_ns);
             $resource->addAttribute('adlcp:adlcp:scormtype', 'asset');
         }
@@ -547,13 +547,6 @@ class ExportXmlUtil
                 }
             }
         }
-
-        // TODO, a parte del anterior hay mas directorios "raros"
-
-        // ¿Dónde podemos crear directorios?
-        // Hay que procesar los HTML de los idevices y mirar los que hagan referencia a custom/ porque son los del file manager
-        // TODO ver quee mas hay que meter como lo del file manger y de libs hay que quitar los que están en los idevices
-        // TODO deberíamos añadir los archivos de math que se cargan solos? en commun resourse?
     }
 
     /**
@@ -632,7 +625,7 @@ class ExportXmlUtil
         $dateTime = $date->addChild('dateTime', $formatted);
         $dateTime->addAttribute('uniqueElementName', 'dateTime');
         $description = $date->addChild('description');
-        // TODO cambiar la frase al idioma del ODE
+        // TODO change the phrase to the ODE's language
         $descriptionString = $description->addChild('string', 'Fecha de creación de los metadatos');
         $descriptionString->addAttribute('language', $langValue);
 
@@ -657,7 +650,7 @@ class ExportXmlUtil
 
         $description = $date->addChild('description');
 
-        // TODO cambiar la frase al idioma del ODE
+        // TODO change the phrase to the ODE's language
         $string = $description->addChild('string', 'Fecha de creación de los metadatos');
         $string->addAttribute('language', $langValue);
 
@@ -872,7 +865,7 @@ class ExportXmlUtil
         $lang = $odeProperties['pp_lang'] ? $odeProperties['pp_lang']->getValue() : 'es';
 
         $html = '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="'.$lang.'" lang="'.$lang.'">';
-        $html .= "<head><title>{$title}</title></head>";
+        $html .= '<head><meta charset="utf-8" /><title>'.$title.'</title></head>';
         $html .= '<body><nav epub:type="toc" id="toc"><ol>';
 
         $visiblesPages = [];
@@ -1114,8 +1107,8 @@ class ExportXmlUtil
         $head = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><head></head>');
 
         // Meta: charset (see DOMDocument in Export*Service.php)
-        // $metaCharset = $head->addChild('meta');
-        // $metaCharset->addAttribute('charset', 'utf-8');
+        $metaCharset = $head->addChild('meta');
+        $metaCharset->addAttribute('charset', 'utf-8');
 
         // Meta: generator
         $metaGenerator = $head->addChild('meta');
@@ -1207,6 +1200,8 @@ class ExportXmlUtil
 
         $extraHead = $odeProperties['pp_extraHeadContent']->getValue();
         if ('' != $extraHead) {
+            // Replace non ASCII characters in inline SCRIPT tags
+            $extraHead = self::encodeScriptContents($extraHead);
             // convert $head to DOMDocument to add new node easily
             $domHead = dom_import_simplexml($head)->ownerDocument;
             $customCode = new \DOMDocument();
@@ -1220,7 +1215,7 @@ class ExportXmlUtil
                 $domHead->documentElement->appendChild($import);
             }
 
-            // TODO simplexml load the DOM but introduce scaping characters
+            // TODO simplexml load the DOM but introduce scaping characters?
             $head = simplexml_import_dom($domHead);
         }
 
@@ -1431,6 +1426,7 @@ class ExportXmlUtil
         $odeNavStructureSyncs = null, // export HTML5 need all node structure for navigatation menu
     ) {
         $body = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><body></body>');
+        $body->addChild('script', 'document.body.className+=" js"');
 
         // Page properties
         $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
@@ -1631,6 +1627,38 @@ class ExportXmlUtil
     }
 
     /**
+     *  Replace non ASCII characters in inline SCRIPT tags.
+     *
+     * Use UCS-4BE Unicode encoding instead of HTML entities
+     *
+     * @return string
+     */
+    public static function encodeScriptContents($html)
+    {
+        return preg_replace_callback(
+            '#<script(?![^>]*\bsrc=)([^>]*)>(.*?)</script>#is',
+            function ($matches) {
+                $attrs = $matches[1];
+                $content = $matches[2];
+
+                // Replace non ASCII characters
+                $encoded = preg_replace_callback(
+                    '/[^\x20-\x7E]/u',
+                    function ($char) {
+                        $code = unpack('N', mb_convert_encoding($char[0], 'UCS-4BE', 'UTF-8'))[1];
+
+                        return sprintf('\\u%04x', $code);
+                    },
+                    $content
+                );
+
+                return "<script$attrs>$encoded</script>";
+            },
+            $html
+        );
+    }
+
+    /**
      *  Generates page license (package license).
      *
      * @param array $odeProperties
@@ -1675,6 +1703,9 @@ class ExportXmlUtil
 
         $extraFooter = $odeProperties['footer']->getValue();
         if ('' != $extraFooter) {
+            $extraFooter = '<div>'.$extraFooter.'</div>';
+            // Replace non ASCII characters in inline SCRIPT tags
+            $extraFooter = self::encodeScriptContents($extraFooter);
             $siteUserFooter = $pageFooterContent->addChild('div', ' ');
             $siteUserFooter->addAttribute('id', 'siteUserFooter');
             $siteExtra = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><footer></footer>');
@@ -1945,18 +1976,38 @@ class ExportXmlUtil
             self::appendSimpleXml($pageHeader, $pageNumber);
         }
 
+        // Package title
+        $packageTitleValue = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : '';
+        if (Constants::EXPORT_TYPE_HTML5_SP == $exportType) {
+            $packageTitleValue = '';
+        } // The single page export has its own package title
+        if ('' != $packageTitleValue) {
+            $packageTitle = $pageHeader->addChild('h1', $packageTitleValue);
+            $packageTitle->addAttribute('class', 'package-title');
+        }
+
         // Page title
+        $pageTitleTag = 'h1';
+        if ('' != $packageTitleValue) {
+            $pageTitleTag = 'h2';
+        }
         if ('' != $titlePage) {
             $headerEmpty = false;
-            $pageTitle = $pageHeader->addChild('h1', $titlePage);
+            $pageTitle = $pageHeader->addChild($pageTitleTag, $titlePage);
             $pageTitle->addAttribute('class', 'page-title');
         }
 
         if ($headerEmpty) {
-            $pageHeader->addAttribute('class', 'sr-av');
-            $pageTitle = $pageHeader->addChild('h1', $odeNavStructureSync->getPageName());
+            $pageTitle = $pageHeader->addChild($pageTitleTag, $odeNavStructureSync->getPageName());
             $pageTitle->addAttribute('id', 'page-title-node-content');
-            $pageTitle->addAttribute('class', 'page-title');
+            if ('' == $packageTitleValue) {
+                $pageHeader->addAttribute('class', 'page-header sr-av');
+            } else {
+                $pageHeader->addAttribute('class', 'page-header');
+                $pageTitle->addAttribute('class', 'page-title sr-av');
+            }
+        } else {
+            $pageHeader->addAttribute('class', 'page-header');
         }
 
         return $pageHeaderMain;
@@ -2138,6 +2189,14 @@ class ExportXmlUtil
 
         if (isset($blockPropertiesDict['minimized']) && 'true' == $blockPropertiesDict['minimized']) {
             $class .= ' minimized';
+        }
+
+        // Teacher-only checkbox on blocks
+        if (
+            (isset($blockPropertiesDict['teacherOnly']) && 'true' == $blockPropertiesDict['teacherOnly'])
+            || (isset($blockPropertiesDict['visibilityType']) && 'teacher' === $blockPropertiesDict['visibilityType'])
+        ) {
+            $class .= ' teacher-only';
         }
 
         if (isset($blockPropertiesDict['cssClass'])) {
@@ -2326,6 +2385,14 @@ class ExportXmlUtil
         if (!$odeComponentsSync->getHtmlView()) {
             $class .= ' db-no-data';
         }
+        // Teacher-only checkbox on iDevices
+        if (
+            (isset($idevicePropertiesDict['teacherOnly']) && 'true' == $idevicePropertiesDict['teacherOnly'])
+            || (isset($idevicePropertiesDict['visibilityType']) && 'teacher' === $idevicePropertiesDict['visibilityType'])
+        ) {
+            $class .= ' teacher-only';
+        }
+
         if (isset($idevicePropertiesDict['cssClass'])) {
             $class .= ' '.$idevicePropertiesDict['cssClass'];
         }
@@ -2448,7 +2515,7 @@ class ExportXmlUtil
         $filesToCopy = [];
         $libsToSearch = [
             // the following library may not be mandatory
-            // [constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',"clas=xxxx"], //lleva SCORM y parece obligatorio para exportación web
+            // [constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',"clas=xxxx"], // it has SCORM and seems mandatory for web export
             [$commonPath.'exe_effects', 'class', 'exe-fx', ['/exe_effects/exe_effects.js', '/exe_effects/exe_effects.css']],
             [$commonPath.'exe_games', 'class', 'exe-game', ['/exe_games/exe_games.js', '/exe_games/exe_games.css']],
             [$commonPath.'exe_highlighter', 'class', 'highlighted-code', ['/exe_highlighter/exe_highlighter.js', '/exe_highlighter/exe_highlighter.css']],
@@ -2588,9 +2655,9 @@ class ExportXmlUtil
             ];
         }
 
-        // TODO issue 315
+        // TODO issue 315 (exelearning-web)
         // if ('true' == $odeProperties['pp_addSearchBox']->getValue()) {
-        //    Aquí añadimos los ficheros de búsqueda
+        //    Here we add the search files
         // }
 
         return [$librariesToCopy, $filesToCopy];

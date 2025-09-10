@@ -691,3 +691,8 @@ video {
 .exe-export article.minimized .box-content{
     display: none;
 }
+
+/* Teacher mode */
+html:not(.mode-teacher) .js .teacher-only {
+    display: none !important;
+}

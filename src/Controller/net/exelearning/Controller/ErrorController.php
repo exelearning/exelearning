@@ -12,11 +12,11 @@ class ErrorController extends AbstractController
 {
     public function show(Request $request, FlattenException $exception, ?DebugLoggerInterface $logger = null): Response
     {
-        // Obtén información del error
+        // Get error information
         $statusCode = $exception->getStatusCode();
         $message = $exception->getMessage();
 
-        // Renderiza tu plantilla personalizada
+        // Render your custom template
         return $this->render('security/error.html.twig', [
             'status_code' => $statusCode,
             'status_text' => Response::$statusTexts[$statusCode] ?? '',

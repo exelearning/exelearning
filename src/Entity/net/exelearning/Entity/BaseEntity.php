@@ -32,7 +32,7 @@ class BaseEntity
     }
 
     /**
-     * Replica un objeto, poniendo a nulo el atributo id en la copia.
+     * Replicates an object, setting the id attribute to null in the copy.
      */
     public function __clone(): void
     {
@@ -73,6 +73,9 @@ class BaseEntity
         $this->updatedAt = new \DateTime();
     }
 
+    /**
+     * Performs a logical delete by setting the isActive flag to false.
+     */
     public function borradoLogico(): void
     {
         $this->isActive = false;

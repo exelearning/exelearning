@@ -28,7 +28,6 @@ class HealthCheckController extends AbstractController
         }
 
         // Add other checks as needed
-
         return new JsonResponse(['status' => 'ok']);
     }
 }

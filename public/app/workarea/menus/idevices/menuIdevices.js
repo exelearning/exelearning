@@ -19,10 +19,10 @@ export default class MenuIdevices {
     compose() {
         this.menuIdevicesCompose.compose();
         this.categoriesIdevices = document.querySelectorAll(
-            '#menu_idevices .idevice_category',
+            '#menu_idevices .idevice_category'
         );
         this.categoriesIdevicesLabels = document.querySelectorAll(
-            '#menu_idevices .idevice_category .label',
+            '#menu_idevices .idevice_category .label'
         );
     }
 

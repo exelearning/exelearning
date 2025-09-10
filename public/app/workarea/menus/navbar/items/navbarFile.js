@@ -5,7 +5,11 @@ export default class NavbarFile {
         this.newButton = this.menu.navbar.querySelector('#navbar-button-new');
         this.saveButton = this.menu.navbar.querySelector('#navbar-button-save');
         this.saveButtonAs = this.menu.navbar.querySelector(
-            '#navbar-button-save-as',
+            '#navbar-button-save-as'
+        );
+        // Offline-only: dedicated Save As item
+        this.saveButtonAsOffline = this.menu.navbar.querySelector(
+            '#navbar-button-save-as-offline'
         );
         /*
         Temporally disabled:
@@ -17,43 +21,77 @@ export default class NavbarFile {
         );
         */
         this.uploadPlatformButton = this.menu.navbar.querySelector(
-            '#navbar-button-uploadtoplatform',
+            '#navbar-button-uploadtoplatform'
         );
         this.openUserOdeFilesButton = this.menu.navbar.querySelector(
-            '#navbar-button-openuserodefiles',
+            '#navbar-button-openuserodefiles'
+        );
+        // Offline-only Open and Save entries (in the offline actions block)
+        this.openOfflineButton = this.menu.navbar.querySelector(
+            '#navbar-button-open-offline'
+        );
+        this.saveOfflineButton = this.menu.navbar.querySelector(
+            '#navbar-button-save-offline'
         );
         this.recentProjectsButton = this.menu.navbar.querySelector(
-            '#navbar-button-dropdown-recent-projects',
+            '#navbar-button-dropdown-recent-projects'
         );
         this.downloadProjectButton = this.menu.navbar.querySelector(
-            '#navbar-button-download-project',
+            '#navbar-button-download-project'
+        );
+        this.downloadProjectAsButton = this.menu.navbar.querySelector(
+            '#navbar-button-download-project-as'
         );
         this.exportHTML5Button = this.menu.navbar.querySelector(
-            '#navbar-button-export-html5',
+            '#navbar-button-export-html5'
+        );
+        this.exportHTML5AsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-html5'
+        );
+        this.exportHTML5FolderAsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-html5-folder'
         );
         this.exportHTML5SPButton = this.menu.navbar.querySelector(
-            '#navbar-button-export-html5-sp',
+            '#navbar-button-export-html5-sp'
+        );
+        this.exportHTML5SPAsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-html5-sp'
         );
         this.exportSCORM12Button = this.menu.navbar.querySelector(
-            '#navbar-button-export-scorm12',
+            '#navbar-button-export-scorm12'
+        );
+        this.exportSCORM12AsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-scorm12'
         );
         this.exportSCORM2004Button = this.menu.navbar.querySelector(
-            '#navbar-button-export-scorm2004',
+            '#navbar-button-export-scorm2004'
+        );
+        this.exportSCORM2004AsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-scorm2004'
         );
         this.exportIMSButton = this.menu.navbar.querySelector(
-            '#navbar-button-export-ims',
+            '#navbar-button-export-ims'
+        );
+        this.exportIMSAsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-ims'
         );
         this.exportEPUB3Button = this.menu.navbar.querySelector(
-            '#navbar-button-export-epub3',
+            '#navbar-button-export-epub3'
+        );
+        this.exportEPUB3AsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-epub3'
         );
         this.exportXmlPropertiesButton = this.menu.navbar.querySelector(
-            '#navbar-button-export-xml-properties',
+            '#navbar-button-export-xml-properties'
+        );
+        this.exportXmlPropertiesAsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-xml-properties'
         );
         this.importXmlPropertiesButton = this.menu.navbar.querySelector(
-            '#navbar-button-import-xml-properties',
+            '#navbar-button-import-xml-properties'
         );
         this.leftPanelsTogglerButton = this.menu.navbar.querySelector(
-            '#exe-panels-toggler',
+            '#exe-panels-toggler'
         );
     }
 
@@ -64,6 +102,7 @@ export default class NavbarFile {
         this.setNewProjectEvent();
         this.setSaveProjectEvent();
         this.setSaveAsProjectEvent();
+        this.setSaveAsProjectOfflineEvent();
         /*
         Temporally disabled:
         this.setUploadGoogleDriveEvent();
@@ -71,15 +110,26 @@ export default class NavbarFile {
         */
         this.setUploadPlatformEvent();
         this.setOpenUserOdeFilesEvent();
+        this.setOpenOfflineEvent();
         this.setRecentProjectsEvent();
         this.setDownloadProjectEvent();
+        this.setSaveProjectOfflineEvent();
+        this.setDownloadProjectAsEvent();
         this.setExportHTML5Event();
+        this.setExportHTML5AsEvent();
+        this.setExportHTML5FolderAsEvent();
         this.setExportHTML5SPEvent();
+        this.setExportHTML5SPAsEvent();
         this.setExportSCORM12Event();
+        this.setExportSCORM12AsEvent();
         this.setExportSCORM2004Event();
+        this.setExportSCORM2004AsEvent();
         this.setExportIMSEvent();
+        this.setExportIMSAsEvent();
         this.setExportEPUB3Event();
+        this.setExportEPUB3AsEvent();
         this.setExportXmlPropertiesEvent();
+        this.setExportXmlPropertiesAsEvent();
         this.setImportXmlPropertiesEvent();
         this.setLeftPanelsTogglerEvents();
     }
@@ -107,6 +157,14 @@ export default class NavbarFile {
     setSaveProjectEvent() {
         this.saveButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
+            // Offline desktop: use ELP export flow as persistent file save
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                this.downloadProjectEvent();
+                return;
+            }
             this.saveOdeEvent();
         });
     }
@@ -119,7 +177,27 @@ export default class NavbarFile {
     setSaveAsProjectEvent() {
         this.saveButtonAs.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
+            // Offline desktop: prompt file path and remember it
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                this.saveAsElpOffline();
+                return;
+            }
             this.saveAsOdeEvent();
+        });
+    }
+
+    /**
+     * Save as (offline-only explicit entry)
+     * File -> Save as (offline)
+     */
+    setSaveAsProjectOfflineEvent() {
+        if (!this.saveButtonAsOffline) return;
+        this.saveButtonAsOffline.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.saveAsElpOffline();
         });
     }
 
@@ -179,6 +257,17 @@ export default class NavbarFile {
     }
 
     /**
+     * Offline explicit Open action
+     * File -> Offline actions -> Open
+     */
+    setOpenOfflineEvent() {
+        if (!this.openOfflineButton) return;
+        this.openOfflineButton.addEventListener('click', () => {
+            this.openUserOdeFilesEvent();
+        });
+    }
+
+    /**
      * Show the 3 most recent elp
      * File -> Recent projects
      *
@@ -203,6 +292,31 @@ export default class NavbarFile {
     }
 
     /**
+     * Offline explicit Save action
+     * File -> Offline actions -> Save
+     */
+    setSaveProjectOfflineEvent() {
+        if (!this.saveOfflineButton) return;
+        this.saveOfflineButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return false;
+            this.downloadProjectEvent();
+            return false;
+        });
+    }
+
+    /**
+     * Download project (ELP) As... (offline)
+     */
+    setDownloadProjectAsEvent() {
+        if (!this.downloadProjectAsButton) return;
+        this.downloadProjectAsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return false;
+            this.saveAsElpOffline();
+            return false;
+        });
+    }
+
+    /**
      * Download the project to HTML5
      * File -> Export as -> HTML5 (web site)
      *
@@ -211,6 +325,25 @@ export default class NavbarFile {
         this.exportHTML5Button.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5Event();
+        });
+    }
+
+    setExportHTML5AsEvent() {
+        if (!this.exportHTML5AsButton) return;
+        this.exportHTML5AsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportHTML5AsEvent();
+        });
+    }
+
+    /**
+     * Export Website directly to a folder (offline only)
+     */
+    setExportHTML5FolderAsEvent() {
+        if (!this.exportHTML5FolderAsButton) return;
+        this.exportHTML5FolderAsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportHTML5FolderAsEvent();
         });
     }
 
@@ -226,6 +359,14 @@ export default class NavbarFile {
         });
     }
 
+    setExportHTML5SPAsEvent() {
+        if (!this.exportHTML5SPAsButton) return;
+        this.exportHTML5SPAsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportHTML5SPAsEvent();
+        });
+    }
+
     /**
      * Download the project to SCORM 1.2
      * File -> Export as -> SCORM 1.2
@@ -235,6 +376,14 @@ export default class NavbarFile {
         this.exportSCORM12Button.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportSCORM12Event();
+        });
+    }
+
+    setExportSCORM12AsEvent() {
+        if (!this.exportSCORM12AsButton) return;
+        this.exportSCORM12AsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportSCORM12AsEvent();
         });
     }
 
@@ -250,6 +399,14 @@ export default class NavbarFile {
         });
     }
 
+    setExportSCORM2004AsEvent() {
+        if (!this.exportSCORM2004AsButton) return;
+        this.exportSCORM2004AsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportSCORM2004AsEvent();
+        });
+    }
+
     /**
      * Download the project to IMS CP
      * File -> Export as -> IMS CP
@@ -259,6 +416,14 @@ export default class NavbarFile {
         this.exportIMSButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportIMSEvent();
+        });
+    }
+
+    setExportIMSAsEvent() {
+        if (!this.exportIMSAsButton) return;
+        this.exportIMSAsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportIMSAsEvent();
         });
     }
 
@@ -274,6 +439,14 @@ export default class NavbarFile {
         });
     }
 
+    setExportEPUB3AsEvent() {
+        if (!this.exportEPUB3AsButton) return;
+        this.exportEPUB3AsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportEPUB3AsEvent();
+        });
+    }
+
     /**
      * Download the project to ePub3
      * File -> Export as -> Xml properties
@@ -283,6 +456,14 @@ export default class NavbarFile {
         this.exportXmlPropertiesButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportXmlPropertiesEvent();
+        });
+    }
+
+    setExportXmlPropertiesAsEvent() {
+        if (!this.exportXmlPropertiesAsButton) return;
+        this.exportXmlPropertiesAsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.exportXmlPropertiesAsEvent();
         });
     }
 
@@ -419,7 +600,7 @@ export default class NavbarFile {
         } else {
             eXeLearning.app.project.showModalSaveError(response);
             toast.toastBody.innerHTML = _(
-                'An error occurred while saving the project.',
+                'An error occurred while saving the project.'
             );
             toast.toastBody.classList.add('error');
         }
@@ -442,7 +623,7 @@ export default class NavbarFile {
             focusFirstInputText: true,
             confirmExec: () => {
                 let modalInputText = document.querySelector(
-                    '.modal-confirm .properties-title-input',
+                    '.modal-confirm .properties-title-input'
                 );
                 let modalInputTextValue = modalInputText.value;
                 this.saveAs(modalInputTextValue);
@@ -540,7 +721,7 @@ export default class NavbarFile {
         let windowLoginGoogleDrive = window.open(
             urlGoogleDrive.url,
             'drive',
-            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0',
+            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0'
         );
     }
 
@@ -600,7 +781,7 @@ export default class NavbarFile {
         let windowLoginDropbox = window.open(
             urlDropbox.url,
             'dropbox',
-            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0',
+            'location=1,status=1,scrollbars=1,width=600,height=500,top=250, left=720, menubar=0, toolbar=0,resizable=0'
         );
     }
 
@@ -622,7 +803,7 @@ export default class NavbarFile {
 
         response =
             await eXeLearning.app.api.postFirstTypePlatformIntegrationElpUpload(
-                data,
+                data
             );
 
         if (response.responseMessage == 'OK') {
@@ -642,11 +823,12 @@ export default class NavbarFile {
         inputUpload.classList.add('local-ode-file-upload-input');
         inputUpload.setAttribute('type', 'file');
         inputUpload.setAttribute('name', 'local-ode-file-upload');
-        inputUpload.setAttribute('accept', '.elp');
+        // Allow both .elp and .zip for offline picker fallback
+        inputUpload.setAttribute('accept', '.elp,.zip');
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
             let uploadOdeFile = document.querySelector(
-                '.local-ode-file-upload-input',
+                '.local-ode-file-upload-input'
             );
             let odeFile = uploadOdeFile.files[0];
 
@@ -666,14 +848,60 @@ export default class NavbarFile {
      *
      */
     openUserOdeFilesEvent() {
-        if (
-            eXeLearning.config.isOfflineInstallation === true &&
-            eXeLearning.app.user.versionControl == 'inactive'
-        ) {
-            this.createIdevicesUploadInput();
-            this.menu.navbar
-                .querySelector('input.local-ode-file-upload-input')
-                .click();
+        if (eXeLearning.config.isOfflineInstallation === true) {
+            // Electron offline: use native dialog so we know the real path
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.openElp === 'function'
+            ) {
+                (async () => {
+                    const filePath = await window.electronAPI.openElp();
+                    if (!filePath) return;
+                    // Read and build a File for existing upload flow
+                    const res = await window.electronAPI.readFile(filePath);
+                    if (!res || !res.ok) {
+                        eXeLearning.app.modals.alert.show({
+                            title: _('Error opening'),
+                            body:
+                                res && res.error
+                                    ? res.error
+                                    : _('Unknown error.'),
+                            contentId: 'error',
+                        });
+                        return;
+                    }
+                    const base64 = res.base64;
+                    const binStr = atob(base64);
+                    const len = binStr.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++)
+                        bytes[i] = binStr.charCodeAt(i);
+                    const blob = new Blob([bytes], {
+                        type: 'application/octet-stream',
+                    });
+                    // Derive filename in a cross-platform way (Windows/Mac/Linux)
+                    const filename =
+                        (filePath && filePath.split(/[\\\/]/).pop()) ||
+                        'project.elp';
+                    const file = new File([blob], filename, {
+                        type: 'application/octet-stream',
+                        lastModified: Date.now(),
+                    });
+                    // Store original local path so we can remember it after open
+                    try {
+                        window.__originalElpPath = filePath;
+                    } catch (_e) {}
+                    eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
+                        file
+                    );
+                })();
+            } else {
+                // Fallback to hidden input
+                this.createIdevicesUploadInput();
+                this.menu.navbar
+                    .querySelector('input.local-ode-file-upload-input')
+                    .click();
+            }
         } else {
             // Get ode files
             this.getOdeFilesListEvent().then((response) => {
@@ -699,7 +927,7 @@ export default class NavbarFile {
      */
     showMostRecentProjectsEvent() {
         let recentProjectsDropdownList = this.menu.navbar.querySelector(
-            '#navbar-dropdown-menu-recent-projects',
+            '#navbar-dropdown-menu-recent-projects'
         );
         eXeLearning.app.api.getRecentUserOdeFiles().then((response) => {
             let recentProjectsList = this.makeRecentProjecList(response);
@@ -738,7 +966,7 @@ export default class NavbarFile {
                         .then((response) => {
                             if (response['leaveEmptySession']) {
                                 eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
-                                    odeFile.fileName,
+                                    odeFile.fileName
                                 );
                             } else {
                                 let data = {
@@ -779,17 +1007,18 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'elp',
+            'elp'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
+            this.electronSave(
                 response['urlZipFile'],
-                response['exportProjectName'],
+                'elp',
+                response['exportProjectName']
             );
             toast.toastBody.innerHTML = _('File generated.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while generating the file.',
+                'An error occurred while generating the file.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -808,6 +1037,63 @@ export default class NavbarFile {
 
         // Reload last edition text in interface
         eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Offline-only: Save As for ELP using Electron persistent path
+     */
+    async saveAsElpOffline() {
+        try {
+            let toastData = {
+                title: _('Save as'),
+                body: _('File generation in progress.'),
+                icon: 'downloading',
+            };
+            let toast = eXeLearning.app.toasts.createToast(toastData);
+            let odeSessionId = eXeLearning.app.project.odeSession;
+            let response = await eXeLearning.app.api.getOdeExportDownload(
+                odeSessionId,
+                'elp'
+            );
+            if (response && response.responseMessage === 'OK') {
+                const url = response['urlZipFile'];
+                const suggested =
+                    response['exportProjectName'] || 'document.elp';
+                const key = window.__currentProjectId || 'default';
+                const safeName = this.normalizeSuggestedName(suggested, 'elp');
+                if (
+                    window.electronAPI &&
+                    typeof window.electronAPI.saveAs === 'function'
+                ) {
+                    await window.electronAPI.saveAs(url, key, safeName);
+                } else {
+                    // Fallback to browser download
+                    this.downloadLink(url, safeName);
+                }
+                toast.toastBody.innerHTML = _('File generated.');
+            } else {
+                toast.toastBody.innerHTML = _(
+                    'An error occurred while generating the file.'
+                );
+                toast.toastBody.classList.add('error');
+                eXeLearning.app.modals.alert.show({
+                    title: _('Error'),
+                    body:
+                        response && response['responseMessage']
+                            ? response['responseMessage']
+                            : _('Unknown error.'),
+                    contentId: 'error',
+                });
+            }
+            setTimeout(() => toast.remove(), 1000);
+            eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+        } catch (e) {
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: e.message || 'Unknown error.',
+                contentId: 'error',
+            });
+        }
     }
 
     /**
@@ -824,17 +1110,28 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'html5',
+            'html5'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                response['urlZipFile'],
-                response['exportProjectName'],
-            );
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                this.electronSave(
+                    response['urlZipFile'],
+                    'export-html5',
+                    response['exportProjectName']
+                );
+            } else {
+                this.downloadLink(
+                    response['urlZipFile'],
+                    response['exportProjectName']
+                );
+            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -856,6 +1153,140 @@ export default class NavbarFile {
     }
 
     /**
+     * Export HTML5 (Save As...)
+     */
+    async exportHTML5AsEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'html5'
+        );
+        if (response['responseMessage'] == 'OK') {
+            const url = response['urlZipFile'];
+            const suggested = this.normalizeSuggestedName(
+                response['exportProjectName'],
+                'export-html5'
+            );
+            const keyBase = window.__currentProjectId || 'default';
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.saveAs === 'function'
+            ) {
+                await window.electronAPI.saveAs(
+                    url,
+                    `${keyBase}:export-html5`,
+                    suggested
+                );
+            } else {
+                this.downloadLink(url, suggested);
+            }
+            toast.toastBody.innerHTML = _('The project has been exported.');
+        } else {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage']
+                    ? response['responseMessage']
+                    : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+<<<<<<< HEAD
+     * Export Website to folder (unzipped) — offline Electron only
+     */
+    async exportHTML5FolderAsEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        try {
+            if (
+                !eXeLearning.config.isOfflineInstallation ||
+                !window.electronAPI
+            ) {
+                toast.toastBody.innerHTML = _(
+                    'This option is only available offline.'
+                );
+                toast.toastBody.classList.add('error');
+                setTimeout(() => toast.remove(), 1200);
+                return;
+            }
+            let odeSessionId = eXeLearning.app.project.odeSession;
+            let response = await eXeLearning.app.api.getOdeExportDownload(
+                odeSessionId,
+                'html5'
+            );
+            if (response && response['responseMessage'] === 'OK') {
+                const url = response['urlZipFile'];
+                const suggestedBase = this.normalizeSuggestedName(
+                    response['exportProjectName'],
+                    'export-html5'
+                ).replace(/\.zip$/i, '');
+                const keyBase = window.__currentProjectId || 'default';
+
+                if (typeof window.electronAPI.exportToFolder === 'function') {
+                    const result = await window.electronAPI.exportToFolder(
+                        url,
+                        `${keyBase}:export-html5-folder`,
+                        suggestedBase
+                    );
+                    if (result && result.ok) {
+                        toast.toastBody.innerHTML = _(
+                            'The project has been exported.'
+                        );
+                    } else {
+                        toast.toastBody.innerHTML = _('Export canceled.');
+                    }
+                } else {
+                    // Fallback: download as zip if folder export is not available
+                    this.downloadLink(url, `${suggestedBase}.zip`);
+                    toast.toastBody.innerHTML = _(
+                        'The project has been exported.'
+                    );
+                }
+            } else {
+                toast.toastBody.innerHTML = _(
+                    'An error occurred while exporting the project.'
+                );
+                toast.toastBody.classList.add('error');
+                eXeLearning.app.modals.alert.show({
+                    title: _('Error'),
+                    body:
+                        response && response['responseMessage']
+                            ? response['responseMessage']
+                            : _('Unknown error.'),
+                    contentId: 'error',
+                });
+            }
+        } catch (e) {
+            toast.toastBody.innerHTML = _('Unexpected error.');
+            toast.toastBody.classList.add('error');
+        }
+        setTimeout(() => toast.remove(), 1000);
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+=======
+>>>>>>> c0ba7aea408904076081df962baf800d79424a91
      * Export the ode as HTML5 and download it
      *
      */
@@ -869,17 +1300,28 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'html5-sp',
+            'html5-sp'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                response['urlZipFile'],
-                response['exportProjectName'],
-            );
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                this.electronSave(
+                    response['urlZipFile'],
+                    'export-html5-sp',
+                    response['exportProjectName']
+                );
+            } else {
+                this.downloadLink(
+                    response['urlZipFile'],
+                    response['exportProjectName']
+                );
+            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -897,6 +1339,60 @@ export default class NavbarFile {
         }, 1000);
 
         // Reload last edition text in interface
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Export HTML5 Single Page (Save As...)
+     */
+    async exportHTML5SPAsEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'html5-sp'
+        );
+        if (response['responseMessage'] == 'OK') {
+            const url = response['urlZipFile'];
+            const suggested = this.normalizeSuggestedName(
+                response['exportProjectName'],
+                'export-html5-sp'
+            );
+            const keyBase = window.__currentProjectId || 'default';
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.saveAs === 'function'
+            ) {
+                await window.electronAPI.saveAs(
+                    url,
+                    `${keyBase}:export-html5-sp`,
+                    suggested
+                );
+            } else {
+                this.downloadLink(url, suggested);
+            }
+            toast.toastBody.innerHTML = _('The project has been exported.');
+        } else {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage']
+                    ? response['responseMessage']
+                    : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
         eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
     }
 
@@ -914,17 +1410,28 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'scorm12',
+            'scorm12'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                response['urlZipFile'],
-                response['exportProjectName'],
-            );
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                this.electronSave(
+                    response['urlZipFile'],
+                    'export-scorm12',
+                    response['exportProjectName']
+                );
+            } else {
+                this.downloadLink(
+                    response['urlZipFile'],
+                    response['exportProjectName']
+                );
+            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -942,6 +1449,60 @@ export default class NavbarFile {
         }, 1000);
 
         // Reload last edition text in interface
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Export SCORM 1.2 (Save As...)
+     */
+    async exportSCORM12AsEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'scorm12'
+        );
+        if (response['responseMessage'] == 'OK') {
+            const url = response['urlZipFile'];
+            const suggested = this.normalizeSuggestedName(
+                response['exportProjectName'],
+                'export-scorm12'
+            );
+            const keyBase = window.__currentProjectId || 'default';
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.saveAs === 'function'
+            ) {
+                await window.electronAPI.saveAs(
+                    url,
+                    `${keyBase}:export-scorm12`,
+                    suggested
+                );
+            } else {
+                this.downloadLink(url, suggested);
+            }
+            toast.toastBody.innerHTML = _('The project has been exported.');
+        } else {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage']
+                    ? response['responseMessage']
+                    : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
         eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
     }
 
@@ -959,17 +1520,28 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'scorm2004',
+            'scorm2004'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                response['urlZipFile'],
-                response['exportProjectName'],
-            );
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                this.electronSave(
+                    response['urlZipFile'],
+                    'export-scorm2004',
+                    response['exportProjectName']
+                );
+            } else {
+                this.downloadLink(
+                    response['urlZipFile'],
+                    response['exportProjectName']
+                );
+            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -987,6 +1559,60 @@ export default class NavbarFile {
         }, 1000);
 
         // Reload last edition text in interface
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Export SCORM 2004 (Save As...)
+     */
+    async exportSCORM2004AsEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'scorm2004'
+        );
+        if (response['responseMessage'] == 'OK') {
+            const url = response['urlZipFile'];
+            const suggested = this.normalizeSuggestedName(
+                response['exportProjectName'],
+                'export-scorm2004'
+            );
+            const keyBase = window.__currentProjectId || 'default';
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.saveAs === 'function'
+            ) {
+                await window.electronAPI.saveAs(
+                    url,
+                    `${keyBase}:export-scorm2004`,
+                    suggested
+                );
+            } else {
+                this.downloadLink(url, suggested);
+            }
+            toast.toastBody.innerHTML = _('The project has been exported.');
+        } else {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage']
+                    ? response['responseMessage']
+                    : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
         eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
     }
 
@@ -1004,17 +1630,28 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'ims',
+            'ims'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                response['urlZipFile'],
-                response['exportProjectName'],
-            );
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                this.electronSave(
+                    response['urlZipFile'],
+                    'export-ims',
+                    response['exportProjectName']
+                );
+            } else {
+                this.downloadLink(
+                    response['urlZipFile'],
+                    response['exportProjectName']
+                );
+            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -1032,6 +1669,60 @@ export default class NavbarFile {
         }, 1000);
 
         // Reload last edition text in interface
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Export IMS (Save As...)
+     */
+    async exportIMSAsEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'ims'
+        );
+        if (response['responseMessage'] == 'OK') {
+            const url = response['urlZipFile'];
+            const suggested = this.normalizeSuggestedName(
+                response['exportProjectName'],
+                'export-ims'
+            );
+            const keyBase = window.__currentProjectId || 'default';
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.saveAs === 'function'
+            ) {
+                await window.electronAPI.saveAs(
+                    url,
+                    `${keyBase}:export-ims`,
+                    suggested
+                );
+            } else {
+                this.downloadLink(url, suggested);
+            }
+            toast.toastBody.innerHTML = _('The project has been exported.');
+        } else {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage']
+                    ? response['responseMessage']
+                    : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
         eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
     }
 
@@ -1049,17 +1740,28 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'epub3',
+            'epub3'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                response['urlZipFile'],
-                response['exportProjectName'],
-            );
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                this.electronSave(
+                    response['urlZipFile'],
+                    'export-epub3',
+                    response['exportProjectName']
+                );
+            } else {
+                this.downloadLink(
+                    response['urlZipFile'],
+                    response['exportProjectName']
+                );
+            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -1077,6 +1779,60 @@ export default class NavbarFile {
         }, 1000);
 
         // Reload last edition text in interface
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
+     * Export ePub3 (Save As...)
+     */
+    async exportEPUB3AsEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'epub3'
+        );
+        if (response['responseMessage'] == 'OK') {
+            const url = response['urlZipFile'];
+            const suggested = this.normalizeSuggestedName(
+                response['exportProjectName'],
+                'export-epub3'
+            );
+            const keyBase = window.__currentProjectId || 'default';
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.saveAs === 'function'
+            ) {
+                await window.electronAPI.saveAs(
+                    url,
+                    `${keyBase}:export-epub3`,
+                    suggested
+                );
+            } else {
+                this.downloadLink(url, suggested);
+            }
+            toast.toastBody.innerHTML = _('The project has been exported.');
+        } else {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage']
+                    ? response['responseMessage']
+                    : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
         eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
     }
 
@@ -1094,19 +1850,30 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'properties',
+            'properties'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                response['urlZipFile'],
-                response['exportProjectName'],
-            );
+            if (
+                eXeLearning.config.isOfflineInstallation &&
+                window.electronAPI
+            ) {
+                this.electronSave(
+                    response['urlZipFile'],
+                    'export-xml-properties',
+                    response['exportProjectName']
+                );
+            } else {
+                this.downloadLink(
+                    response['urlZipFile'],
+                    response['exportProjectName']
+                );
+            }
             toast.toastBody.innerHTML = _(
-                'The project properties have been exported.',
+                'The project properties have been exported.'
             );
         } else {
             toast.toastBody.innerHTML = _(
-                'An error occurred while exporting the project.',
+                'An error occurred while exporting the project.'
             );
             toast.toastBody.classList.add('error');
             eXeLearning.app.modals.alert.show({
@@ -1128,6 +1895,62 @@ export default class NavbarFile {
     }
 
     /**
+     * Export XML properties (Save As...)
+     */
+    async exportXmlPropertiesAsEvent() {
+        let toastData = {
+            title: _('Export'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        };
+        let toast = eXeLearning.app.toasts.createToast(toastData);
+        let odeSessionId = eXeLearning.app.project.odeSession;
+        let response = await eXeLearning.app.api.getOdeExportDownload(
+            odeSessionId,
+            'properties'
+        );
+        if (response['responseMessage'] == 'OK') {
+            const url = response['urlZipFile'];
+            const suggested = this.normalizeSuggestedName(
+                response['exportProjectName'],
+                'export-xml-properties'
+            );
+            const keyBase = window.__currentProjectId || 'default';
+            if (
+                window.electronAPI &&
+                typeof window.electronAPI.saveAs === 'function'
+            ) {
+                await window.electronAPI.saveAs(
+                    url,
+                    `${keyBase}:export-xml-properties`,
+                    suggested
+                );
+            } else {
+                this.downloadLink(url, suggested);
+            }
+            toast.toastBody.innerHTML = _(
+                'The project properties have been exported.'
+            );
+        } else {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while exporting the project.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: response['responseMessage']
+                    ? response['responseMessage']
+                    : _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
+        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
+    }
+
+    /**
      *
      * @returns
      */
@@ -1140,7 +1963,7 @@ export default class NavbarFile {
         inputUpload.classList.add('hidden');
         inputUpload.addEventListener('change', (e) => {
             let uploadOdeFile = document.querySelector(
-                '.local-xml-properties-upload-input',
+                '.local-xml-properties-upload-input'
             );
             let odeFile = uploadOdeFile.files[0];
 
@@ -1152,7 +1975,7 @@ export default class NavbarFile {
             eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                 odeFile,
                 false,
-                true,
+                true
             );
         });
         this.menu.navbar.append(inputUpload);
@@ -1180,13 +2003,118 @@ export default class NavbarFile {
         eXeLearning.app.api
             .getFileResourcesForceDownload($url)
             .then((response) => {
+                const finalUrl = response.url || $url;
+                // In Electron offline builds, always prefer native save flow to avoid duplicate pickers
+                if (
+                    eXeLearning.config.isOfflineInstallation === true &&
+                    window.electronAPI &&
+                    typeof window.electronAPI.save === 'function'
+                ) {
+                    const key = window.__currentProjectId || 'default';
+                    const suggested =
+                        typeof $name === 'string' && $name
+                            ? $name
+                            : 'document.elp';
+                    // Try to infer a typeKey from the extension for better naming
+                    let typeKey = 'elp';
+                    try {
+                        if (/export-html5-sp/i.test(suggested))
+                            typeKey = 'export-html5-sp';
+                        else if (/export-html5/i.test(suggested))
+                            typeKey = 'export-html5';
+                        else if (/export-scorm2004/i.test(suggested))
+                            typeKey = 'export-scorm2004';
+                        else if (/export-scorm12/i.test(suggested))
+                            typeKey = 'export-scorm12';
+                        else if (/export-ims/i.test(suggested))
+                            typeKey = 'export-ims';
+                        else if (/export-epub3/i.test(suggested))
+                            typeKey = 'export-epub3';
+                        else if (/xml/i.test(suggested))
+                            typeKey = 'export-xml-properties';
+                        else if (/\.zip$/i.test(suggested)) typeKey = 'export';
+                    } catch (_e) {}
+                    const safeName = this.normalizeSuggestedName(
+                        suggested,
+                        typeKey
+                    );
+                    window.electronAPI.save(finalUrl, key, safeName);
+                    return;
+                }
+                // Browser fallback
                 let downloadLink = document.createElement('a');
-                downloadLink.href = response.url;
+                downloadLink.href = finalUrl;
                 downloadLink.download = $name;
                 document.body.appendChild(downloadLink);
                 downloadLink.click();
                 document.body.removeChild(downloadLink);
             });
+    }
+
+    /**
+     * Offline helper: remember per-export-type path
+     * @param {string} url
+     * @param {string} typeKey
+     * @param {string} suggestedName
+     */
+    electronSave(url, typeKey, suggestedName) {
+        const keyBase = window.__currentProjectId || 'default';
+        // For standard project save (ELP), reuse the base key so Save after Save As uses same path
+        const key = typeKey === 'elp' ? keyBase : `${keyBase}:${typeKey}`;
+        const safeName = this.normalizeSuggestedName(suggestedName, typeKey);
+        if (
+            window.electronAPI &&
+            typeof window.electronAPI.save === 'function'
+        ) {
+            window.electronAPI.save(url, key, safeName);
+        } else {
+            this.downloadLink(url, safeName);
+        }
+    }
+
+    /**
+     * Ensure suggested name has the correct extension per export type
+     */
+    normalizeSuggestedName(name, typeKey) {
+        try {
+            let base = (name || '').trim();
+            if (
+                !base ||
+                /^document\.elp$/i.test(base) ||
+                /^export(\..+)?$/i.test(base)
+            ) {
+                // Build from project title if available
+                try {
+                    const titleProp =
+                        eXeLearning.app.project.properties?.properties?.pp_title
+                            ?.value;
+                    if (titleProp && titleProp.trim()) base = titleProp.trim();
+                } catch (_e) {}
+                if (!base) base = 'project';
+                base = this.appendSuffixForType(base, typeKey);
+            }
+            const hasDot = /\.[^.]+$/.test(base);
+            const lower = (typeKey || '').toLowerCase();
+            let ext = '';
+            if (lower.endsWith('epub3')) ext = '.epub';
+            else if (lower.endsWith('elp')) ext = '.elp';
+            else if (lower.includes('xml')) ext = '.xml';
+            else ext = '.zip';
+            if (!hasDot) base += ext;
+            return base;
+        } catch (_e) {
+            return name || 'export.zip';
+        }
+    }
+
+    appendSuffixForType(base, typeKey) {
+        const lower = (typeKey || '').toLowerCase();
+        if (lower.endsWith('html5')) return `${base}_web`;
+        if (lower.endsWith('html5-sp')) return `${base}_page`;
+        if (lower.endsWith('scorm12')) return `${base}_scorm`;
+        if (lower.endsWith('scorm2004')) return `${base}_scorm2004`;
+        if (lower.endsWith('ims')) return `${base}_ims`;
+        return base; // elp, epub3, xml properties: no suffix here
     }
 
     /**
@@ -1197,7 +2125,7 @@ export default class NavbarFile {
         let response = await eXeLearning.app.api.getOdeConcurrentUsers(
             params.odeId,
             params.odeVersionId,
-            params.odeSessionId,
+            params.odeSessionId
         );
         let numberOfCurrentUsers = response.currentUsers.length;
         if (numberOfCurrentUsers == 1) {

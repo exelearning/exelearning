@@ -1,24 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service\net\exelearning\Service\FilemanagerService\Storage;
 
 use App\Helper\net\exelearning\Helper\FileHelper;
-use League\Flysystem\Adapter\Local;
-use League\Flysystem\Filesystem as Flysystem;
 
 /**
- * Implements Flysystem to the filemanager.
+ * Filesystem wrapper for local storage using native PHP.
+ *
+ * It preserves the public API used by the application so you can
+ * remove Flysystem without touching the rest of your code.
  */
 class Filesystem
 {
+    /** @var FileHelper */
     private $fileHelper;
 
+    /** @var string */
     protected $separator;
 
-    protected $storage;
-
+    /** @var string Path prefix applied to all operations (virtual root) */
     protected $path_prefix;
 
+    /** @var string Base path for the current session (physical root) */
     protected $sessionPath;
 
     public function __construct(FileHelper $fileHelper)
@@ -29,48 +34,58 @@ class Filesystem
     }
 
     /**
-     * Create Dir in the destination selected.
+     * Create a directory inside destination path.
      */
     public function createDir(string $path, string $name)
     {
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
-
         $destination = $this->joinPaths($this->applyPathPrefix($path), $name);
+        $abs = $this->absPath($destination);
+        if (is_dir($abs)) {
+            return true;
+        }
 
-        return $this->storage->createDir($destination);
+        return @mkdir($abs, 0775, true);
     }
 
     /**
-     * Create File in the destination selected.
+     * Create an empty file at destination path.
      */
     public function createFile(string $path, string $name)
     {
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
-
         $destination = $this->joinPaths($this->applyPathPrefix($path), $name);
+        $abs = $this->absPath($destination);
 
-        while ($this->storage->has($destination)) {
+        while ($this->fileExists($destination)) {
             $destination = $this->upcountName($destination);
         }
-        $this->storage->put($destination, '');
+        $abs = $this->absPath($destination);
+
+        $dir = \dirname($abs);
+        if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
+            throw new \RuntimeException('Cannot create directory: '.$dir);
+        }
+
+        $fh = @fopen($abs, 'wb');
+        if (!is_resource($fh)) {
+            throw new \RuntimeException('Cannot create file: '.$abs);
+        }
+        fclose($fh);
+
+        return true;
     }
 
     public function fileExists(string $path)
     {
         $path = $this->applyPathPrefix($path);
 
-        return $this->storage->has($path);
+        return file_exists($this->absPath($path));
     }
 
     public function isDir(string $path)
     {
         $path = $this->applyPathPrefix($path);
 
-        return false === $this->storage->getSize($path);
+        return is_dir($this->absPath($path));
     }
 
     public function copyFile(string $source, string $destination)
@@ -78,84 +93,118 @@ class Filesystem
         $source = $this->applyPathPrefix($source);
         $destination = $this->joinPaths($this->applyPathPrefix($destination), $this->getBaseName($source));
 
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
-
-        while ($this->storage->has($destination)) {
+        while ($this->fileExists($destination)) {
             $destination = $this->upcountName($destination);
         }
 
-        return $this->storage->copy($source, $destination);
+        $srcAbs = $this->absPath($source);
+        $dstAbs = $this->absPath($destination);
+
+        $dir = \dirname($dstAbs);
+        if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
+            throw new \RuntimeException('Cannot create directory: '.$dir);
+        }
+
+        return @copy($srcAbs, $dstAbs);
     }
 
     public function copyDir(string $source, string $destination)
     {
         $source = $this->applyPathPrefix($this->addSeparators($source));
         $destination = $this->applyPathPrefix($this->addSeparators($destination));
+
         $source_dir = $this->getBaseName($source);
         $real_destination = $this->joinPaths($destination, $source_dir);
 
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
+        $srcAbs = $this->absPath($source);
+        $dstAbs = $this->absPath($real_destination);
 
-        while (!empty($this->storage->listContents($real_destination, true))) {
+        // Ensure a non-colliding destination name
+        while ($this->dirNotEmpty($real_destination)) {
             $real_destination = $this->upcountName($real_destination);
+            $dstAbs = $this->absPath($real_destination);
         }
-        $contents = $this->storage->listContents($source, true);
-        if (empty($contents)) {
-            $this->storage->createDir($real_destination);
-        }
-        foreach ($contents as $file) {
-            $source_path = $this->separator.ltrim($file['path'], $this->separator);
-            $path = substr($source_path, strlen($source), strlen($source_path));
 
-            if ('dir' == $file['type']) {
-                $this->storage->createDir($this->joinPaths($real_destination, $path));
-                continue;
-            }
+        if (!is_dir($srcAbs)) {
+            // If source is empty/nonexistent, just create the directory
+            return @mkdir($dstAbs, 0775, true);
+        }
 
-            if ('file' == $file['type']) {
-                $this->storage->copy($file['path'], $this->joinPaths($real_destination, $path));
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($srcAbs, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($it as $item) {
+            $rel = ltrim(str_replace($srcAbs, '', $item->getPathname()), DIRECTORY_SEPARATOR);
+            $target = $this->absPath($this->joinPaths($real_destination, str_replace(DIRECTORY_SEPARATOR, '/', $rel)));
+
+            if ($item->isDir()) {
+                if (!is_dir($target) && !@mkdir($target, 0775, true)) {
+                    throw new \RuntimeException('Cannot create directory: '.$target);
+                }
+            } else {
+                $dir = \dirname($target);
+                if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
+                    throw new \RuntimeException('Cannot create directory: '.$dir);
+                }
+                if (!@copy($item->getPathname(), $target)) {
+                    throw new \RuntimeException('Cannot copy file to: '.$target);
+                }
             }
         }
+
+        return true;
     }
 
     public function deleteDir(string $path)
     {
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
+        $abs = $this->absPath($this->applyPathPrefix($path));
+        if (!is_dir($abs)) {
+            return true;
+        }
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($abs, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($it as $fileinfo) {
+            $fileinfo->isDir() ? @rmdir($fileinfo->getPathname()) : @unlink($fileinfo->getPathname());
+        }
 
-        return $this->storage->deleteDir($this->applyPathPrefix($path));
+        return @rmdir($abs);
     }
 
     public function deleteFile(string $path)
     {
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
+        $abs = $this->absPath($this->applyPathPrefix($path));
+        if (is_file($abs)) {
+            return @unlink($abs);
+        }
 
-        return $this->storage->delete($this->applyPathPrefix($path));
+        return true;
     }
 
+    /**
+     * Return a readable stream for a file plus metadata.
+     *
+     * @return array{filename:string,stream:resource,filesize:int}
+     */
     public function readStream(string $path): array
     {
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
-
         if ($this->isDir($path)) {
             throw new \Exception('Cannot stream directory');
         }
 
-        $path = $this->applyPathPrefix($path);
+        $abs = $this->absPath($this->applyPathPrefix($path));
+        $fh = @fopen($abs, 'rb');
+        if (!is_resource($fh)) {
+            throw new \RuntimeException('Cannot open stream for: '.$abs);
+        }
 
         return [
             'filename' => $this->getBaseName($path),
-            'stream' => $this->storage->readStream($path),
-            'filesize' => $this->storage->getSize($path),
+            'stream' => $fh,
+            'filesize' => @filesize($abs) ?: 0,
         ];
     }
 
@@ -164,15 +213,19 @@ class Filesystem
         $from = $this->applyPathPrefix($from);
         $to = $this->applyPathPrefix($to);
 
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
-
-        while ($this->storage->has($to)) {
+        while ($this->fileExists($to)) {
             $to = $this->upcountName($to);
         }
 
-        return $this->storage->rename($from, $to);
+        $fromAbs = $this->absPath($from);
+        $toAbs = $this->absPath($to);
+
+        $dir = \dirname($toAbs);
+        if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
+            throw new \RuntimeException('Cannot create directory: '.$dir);
+        }
+
+        return @rename($fromAbs, $toAbs);
     }
 
     public function rename(string $destination, string $from, string $to): bool
@@ -180,34 +233,55 @@ class Filesystem
         $from = $this->joinPaths($this->applyPathPrefix($destination), $from);
         $to = $this->joinPaths($this->applyPathPrefix($destination), $to);
 
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
-
-        while ($this->storage->has($to)) {
+        while ($this->fileExists($to)) {
             $to = $this->upcountName($to);
         }
 
-        return $this->storage->rename($from, $to);
+        $fromAbs = $this->absPath($from);
+        $toAbs = $this->absPath($to);
+
+        $dir = \dirname($toAbs);
+        if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
+            throw new \RuntimeException('Cannot create directory: '.$dir);
+        }
+
+        return @rename($fromAbs, $toAbs);
     }
 
+    /**
+     * Store a file by streaming it to disk.
+     */
     public function store(string $path, string $name, $resource, bool $overwrite = false): bool
     {
         $destination = $this->joinPaths($this->applyPathPrefix($path), $name);
 
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
-
-        while ($this->storage->has($destination)) {
+        while ($this->fileExists($destination)) {
             if ($overwrite) {
-                $this->storage->delete($destination);
-            } else {
-                $destination = $this->upcountName($destination);
+                $this->deleteFile($destination);
+                break;
             }
+            $destination = $this->upcountName($destination);
         }
 
-        return $this->storage->putStream($destination, $resource);
+        $abs = $this->absPath($destination);
+        $dir = \dirname($abs);
+        if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
+            throw new \RuntimeException('Cannot create directory: '.$dir);
+        }
+
+        if (!is_resource($resource)) {
+            throw new \InvalidArgumentException('store() expects a stream resource');
+        }
+
+        $out = @fopen($abs, 'wb');
+        if (!is_resource($out)) {
+            throw new \RuntimeException('Cannot open destination for writing: '.$abs);
+        }
+
+        stream_copy_to_stream($resource, $out);
+        fclose($out);
+
+        return true;
     }
 
     public function setPathPrefix(string $path_prefix)
@@ -235,23 +309,50 @@ class Filesystem
         return $this->sessionPath;
     }
 
+    /**
+     * Build a DirectoryCollection for a given path.
+     * Mirrors the previous Flysystem-based behavior.
+     */
     public function getDirectoryCollection(string $path, bool $recursive = false): DirectoryCollection
     {
         $collection = new DirectoryCollection($path);
 
-        // Initialice Flysystem
-        $fileManagerDirPath = $this->sessionPath;
-        $this->setFlysystem($fileManagerDirPath);
+        $base = $this->absPath($this->applyPathPrefix($path));
+        if (!is_dir($base)) {
+            if (!$recursive && $this->addSeparators($path) !== $this->separator) {
+                $collection->addFile('back', $this->getParent($path), '..', 0, 0);
+            }
 
-        foreach ($this->storage->listContents($this->applyPathPrefix($path), $recursive) as $entry) {
-            // By default only 'path' and 'type' is present
-            $name = $this->getBaseName($entry['path']);
-            $userpath = $this->stripPathPrefix($entry['path']);
-            $dirname = isset($entry['dirname']) ? $entry['dirname'] : $path;
-            $size = isset($entry['size']) ? $entry['size'] : 0;
-            $timestamp = isset($entry['timestamp']) ? $entry['timestamp'] : 0;
+            return $collection;
+        }
 
-            $collection->addFile($entry['type'], $userpath, $name, $size, $timestamp);
+        if ($recursive) {
+            $it = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($base, \FilesystemIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+            foreach ($it as $fileinfo) {
+                $rel = ltrim(str_replace($base, '', $fileinfo->getPathname()), DIRECTORY_SEPARATOR);
+                $userpath = $this->stripPathPrefix($this->joinPaths($path, str_replace(DIRECTORY_SEPARATOR, '/', $rel)));
+
+                $type = $fileinfo->isDir() ? 'dir' : 'file';
+                $name = $fileinfo->getBasename();
+                $size = $fileinfo->isDir() ? 0 : ($fileinfo->getSize() ?: 0);
+                $timestamp = $fileinfo->getMTime() ?: 0;
+
+                $collection->addFile($type, $userpath, $name, $size, $timestamp);
+            }
+        } else {
+            $it = new \FilesystemIterator($base, \FilesystemIterator::SKIP_DOTS);
+            foreach ($it as $fileinfo) {
+                $type = $fileinfo->isDir() ? 'dir' : 'file';
+                $name = $fileinfo->getBasename();
+                $userpath = $this->stripPathPrefix($this->joinPaths($path, $name));
+                $size = $fileinfo->isDir() ? 0 : ($fileinfo->getSize() ?: 0);
+                $timestamp = $fileinfo->getMTime() ?: 0;
+
+                $collection->addFile($type, $userpath, $name, $size, $timestamp);
+            }
         }
 
         if (!$recursive && $this->addSeparators($path) !== $this->separator) {
@@ -259,6 +360,54 @@ class Filesystem
         }
 
         return $collection;
+    }
+
+    /**
+     * Return absolute path on disk for a virtual path (sessionPath + relative).
+     */
+    private function absPath(string $virtualPath): string
+    {
+        $root = rtrim($this->sessionPath ?? '', DIRECTORY_SEPARATOR);
+        if ('' === $root) {
+            throw new \LogicException('Session path is not set.');
+        }
+        // Normalize to OS separators
+        $virtualPath = ltrim($virtualPath, $this->separator);
+        $path = $root.DIRECTORY_SEPARATOR.str_replace($this->separator, DIRECTORY_SEPARATOR, $virtualPath);
+
+        // Prevent path traversal above the root
+        $normalized = $this->normalizeAbsolutePath($path);
+        $normalizedRoot = $this->normalizeAbsolutePath($root);
+
+        if (0 !== strpos($normalized, $normalizedRoot)) {
+            throw new \RuntimeException('Path traversal detected: '.$virtualPath);
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Normalize absolute path without resolving symlinks (portable realpath).
+     */
+    private function normalizeAbsolutePath(string $abs): string
+    {
+        $parts = [];
+        foreach (explode(DIRECTORY_SEPARATOR, $abs) as $seg) {
+            if ('' === $seg || '.' === $seg) {
+                continue;
+            }
+            if ('..' === $seg) {
+                array_pop($parts);
+                continue;
+            }
+            $parts[] = $seg;
+        }
+        $prefix = DIRECTORY_SEPARATOR;
+        if (1 === preg_match('~^[A-Za-z]:\\\\~', $abs)) { // Windows drive
+            $prefix = '';
+        }
+
+        return $prefix.implode(DIRECTORY_SEPARATOR, $parts);
     }
 
     protected function upcountCallback($matches)
@@ -282,7 +431,7 @@ class Filesystem
     private function applyPathPrefix(string $path): string
     {
         if (
-            '..' == $path
+            '..' === $path
             || false !== strpos($path, '..'.$this->separator)
             || false !== strpos($path, $this->separator.'..')
         ) {
@@ -345,11 +494,16 @@ class Filesystem
     }
 
     /**
-     * Initialice flysystem with path.
+     * Check whether the given virtual directory has any contents.
      */
-    private function setFlysystem(string $path)
+    private function dirNotEmpty(string $virtualDir): bool
     {
-        $adapter = new Local($path);
-        $this->storage = new Flysystem($adapter);
+        $abs = $this->absPath($virtualDir);
+        if (!is_dir($abs)) {
+            return false;
+        }
+        $it = new \FilesystemIterator($abs, \FilesystemIterator::SKIP_DOTS);
+
+        return $it->valid();
     }
 }

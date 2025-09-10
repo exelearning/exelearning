@@ -53,16 +53,16 @@ class PlatformIntegrationService implements PlatformIntegrationServiceInterface
             $fileBase64 = base64_encode($binary);
             $decodedJWT = $this->integrationUtil->decodeJWT($jwtToken);
         } catch (Exception $e) {
-            /* TO DO: mandar mensaje de error */
+            /* TODO: send error message */
             $this->logger->error('Exception:'.$e->getMessage());
-            /* Parar aplicación */
+            /* Stop the application */
         }
 
         $httpClient = HttpClient::create();
 
         $postJson = SettingsUtil::getPlatformJsonStructure();
         $postJson['ode_id'] = $decodedJWT['cmid'];
-        $postJson['ode_filename'] = $odeResultParameters['exportProjectName'] ? $odeResultParameters['exportProjectName'] : $odeResultParameters['elpFileName']; // si viene vacío poner  $odeResultParameters['elpFileName'];
+        $postJson['ode_filename'] = $odeResultParameters['exportProjectName'] ? $odeResultParameters['exportProjectName'] : $odeResultParameters['elpFileName']; // if empty, set  $odeResultParameters['elpFileName'];
         $postJson['ode_file'] = $fileBase64;
         $postJson['ode_user'] = $decodedJWT['userid'];
         $postJson['ode_uri'] = $decodedJWT['returnurl'];

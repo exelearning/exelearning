@@ -1,7 +1,7 @@
 export default class DownloadProjectButton {
     constructor() {
         this.downloadMenuHeadButton = document.querySelector(
-            '#head-top-download-button',
+            '#head-top-download-button'
         );
     }
 
