@@ -21,23 +21,12 @@ var $eXeRelaciona = {
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
     jqueryui: 1,
-    
+
     init: function () {
         $exeDevices.iDevice.gamification.initGame(this, 'Relate', 'relate', 'relaciona-IDevice');
     },
 
     enable: function () {
-        if (typeof $.ui !== 'undefined' && $.ui.draggable && $.ui.droppable) {
-            $eXeRelaciona.enable1();
-        } else {
-            $exe.loadScript(
-                $eXeRelaciona.idevicePath + 'jquery-ui.min.js',
-                '$eXeRelaciona.enable1()',
-            );
-        }
-    },
-
-    enable1: function () {
         $eXeRelaciona.loadGame();
     },
 

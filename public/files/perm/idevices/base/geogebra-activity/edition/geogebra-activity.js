@@ -145,7 +145,7 @@ var $exeDevice = {
 						</div>
 					</div>
 				</fieldset>
-				${$exeDevices.iDevice.common.getTextFieldset('after')}
+				${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
 			</div>
 		`;
 

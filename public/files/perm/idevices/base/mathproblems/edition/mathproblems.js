@@ -11,7 +11,7 @@
  */
 var $exeDevice = {
     i18n: {
-        category: _('Games'),
+        category: _('Science'),
         name: _('Math problems'),
     },
     msgs: {},
@@ -30,64 +30,7 @@ var $exeDevice = {
     idevicePath: '',
     id: false,
     domains: false,
-    ci18n: {
-        msgReply: c_('Reply'),
-        msgSubmit: c_('Submit'),
-        msgEnterCode: c_('Enter the access code'),
-        msgErrorCode: c_('The access code is not correct'),
-        msgGameOver: c_('Game Over!'),
-        msgClue: c_('Cool! The clue is:'),
-        msgYouHas: c_('You have got %1 hits and %2 misses'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayAgain: c_('Play Again'),
-        msgRequiredAccessKey: c_('Access code required'),
-        msgInformationLooking: c_('Cool! The information you were looking for'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgTime: c_('Time Limit (mm:ss)'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        mgsAllQuestions: c_('Questions completed!'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgAnswer: c_('Answer'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgPrevious: c_('Previous'),
-        msgNext: c_('Next'),
-        msgQuestion: c_('Question'),
-        msgCorrect: c_('Right!'),
-        msgClose: c_('Close'),
-        msgNotCorrect: c_('Sorry, that’s incorrect... The right answer is:'),
-        msgSolution: c_('Solution'),
-        msgCheck: c_('Check'),
-        msgEndGameM: c_('You finished the game. Your score is %s.'),
-        msgFeedBack: c_('Feedback'),
-        msgNoImage: c_('No image'),
-        msgMoveOne: c_('Move on'),
-        msgDuplicateAnswer: c_("You can't give repeated solutions"),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Math problems'),
-    },
+    ci18n: {},
     version: 2,
     active: 0,
     questions: [],
@@ -96,7 +39,7 @@ var $exeDevice = {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
-
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
     },
@@ -116,6 +59,67 @@ var $exeDevice = {
         );
     },
 
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgReply: c_('Reply'),
+            msgSubmit: c_('Submit'),
+            msgEnterCode: c_('Enter the access code'),
+            msgErrorCode: c_('The access code is not correct'),
+            msgGameOver: c_('Game Over!'),
+            msgClue: c_('Cool! The clue is:'),
+            msgYouHas: c_('You have got %1 hits and %2 misses'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayAgain: c_('Play Again'),
+            msgRequiredAccessKey: c_('Access code required'),
+            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgTime: c_('Time Limit (mm:ss)'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            mgsAllQuestions: c_('Questions completed!'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgAnswer: c_('Answer'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPrevious: c_('Previous'),
+            msgNext: c_('Next'),
+            msgQuestion: c_('Question'),
+            msgCorrect: c_('Right!'),
+            msgClose: c_('Close'),
+            msgNotCorrect: c_('Sorry, that’s incorrect... The right answer is:'),
+            msgSolution: c_('Solution'),
+            msgCheck: c_('Check'),
+            msgEndGameM: c_('You finished the game. Your score is %s.'),
+            msgFeedBack: c_('Feedback'),
+            msgNoImage: c_('No image'),
+            msgMoveOne: c_('Move on'),
+            msgDuplicateAnswer: c_("You can't give repeated solutions"),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Math problems'),
+        }
+    },
+
     createForm: function () {
         const html = `
             <div id="gameQEIdeviceForm">
@@ -124,7 +128,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Solve the following math problems.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve the following math problems.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -220,16 +224,16 @@ var $exeDevice = {
                             <div class="MTOE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="MTOE-ENumQuestions" id="eCQNumQuestions">1</span>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -682,7 +686,7 @@ var $exeDevice = {
             showSolution = $('#eCQShowSolution').is(':checked'),
             modeBoard = $('#eCQModeBoard').is(':checked'),
             timeShowSolution = parseInt(clear($('#eCQTimeShowSolution').val())),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#eCQHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#eCQPercentajeFB').val())),
             percentajeQuestions = parseInt(
@@ -697,7 +701,7 @@ var $exeDevice = {
             evaluation = $('#eCQEEvaluation').is(':checked'),
             evaluationID = $('#eCQEEvaluationID').val(),
             id = $exeDevice.getIdeviceID();
-            
+
         let errorType = 0;
 
         if (!itinerary) return;
@@ -749,7 +753,7 @@ var $exeDevice = {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             typeGame: 'MathProblems',
             instruccions: instructions,
@@ -931,8 +935,8 @@ var $exeDevice = {
             textFeedBack = tinyMCE.get('eCQFeedBackEditor').getContent(),
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
-        
-        
+
+
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
@@ -958,7 +962,7 @@ var $exeDevice = {
                 textAfter +
                 '</div>';
         }
-        
+
         html +=
             '<div class="mathproblems-bns js-hidden">' +
             $exeDevice.msgs.msgNoSuportBrowser +
@@ -1184,7 +1188,7 @@ var $exeDevice = {
 
         $(document).on('input', '#eCQformula', $exeDevice.updateVariables);
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         //eX3 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').click(function () {
@@ -1272,9 +1276,9 @@ var $exeDevice = {
         }
 
         $exeDevice.questions = game.questions;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         $exeDevice.updateQuestionsNumber();
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.scorm.isScorm,
             game.scorm.textButtonScorm,
             game.scorm.repeatActivity,

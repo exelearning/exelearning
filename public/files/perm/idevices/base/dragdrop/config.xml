@@ -2,7 +2,7 @@
 <idevice>
     <title>Drag and drop</title>
     <css-class>dragdrop</css-class>
-    <category>Games</category>
+    <category>Interactive activities</category>
     <icon>
         <name>dragdrop.icon</name>
         <url>dragdrop-icon.svg</url>

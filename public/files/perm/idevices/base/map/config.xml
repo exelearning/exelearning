@@ -2,7 +2,7 @@
 <idevice>
     <title>Map</title>
     <css-class>map</css-class>
-    <category>Games</category>
+    <category>Information and presentation</category>
     <icon>
         <name>map-icon</name>
         <url>map-icon.svg</url>

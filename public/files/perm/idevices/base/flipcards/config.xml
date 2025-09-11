@@ -2,7 +2,7 @@
 <idevice>
     <title>Memory cards</title>
     <css-class>flipcards</css-class>
-    <category>Games</category>
+    <category>Interactive activities</category>
     <icon>
         <name>flipcards-icon</name>
         <url>flipcards-icon.svg</url>

@@ -2,7 +2,7 @@
 <idevice>
     <title>Sort</title>
     <css-class>sort</css-class>
-    <category>Games</category>
+    <category>Interactive activities</category>
     <icon>
         <name>sort-icon</name>
         <url>sort-icon.svg</url>

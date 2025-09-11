@@ -140,8 +140,8 @@ var $padlock = {
                     </a>
                 </div>
                 <div class="candado-SolutionDiv" id="candadoNavigator-${instance}">
-                    <input type="button" class="candado-ShowIntro feedbackbutton" id="candadoShowIntro-${instance}" value="${msgs.msgInstructions}">
-                    <input type="button" class="candado-ShowRetro feedbackbutton" id="candadoShowRetro-${instance}" value="${msgs.msgFeedback}">
+                    <input type="button" class="btn btn-primary" id="candadoShowIntro-${instance}" style="margin-right:8px;" value="${msgs.msgInstructions}">
+                    <input type="button" class="btn btn-primary" id="candadoShowRetro-${instance}" value="${msgs.msgFeedback}">
                 </div>
             </div>
         </div>

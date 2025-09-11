@@ -27,58 +27,13 @@ var $exeDevice = {
     checkAltImage: true,
     playerAudio: '',
     id: false,
-
-    ci18n: {
-        msgReply: c_('Reply'),
-        msgEnterCode: c_('Enter the access code'),
-        msgErrorCode: c_('The access code is not correct'),
-        msgClue: c_('Cool! The clue is:'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayStart: c_('Click here to play'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgTime: c_('Time Limit (mm:ss)'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgPoints: c_('points'),
-        msgAudio: c_('Audio'),
-        msgWordsFind: c_('You found all the words. Your score is %s.'),
-        msgEndGameScore: c_('Please start playing first...'),
-        mgsGameStart: c_('The game has already started.'),
-        msgYouScore: c_('Score'),
-        msgEndTime: c_('Game time is over. Your score is %s.'),
-        msgEnd: c_('Finish'),
-        msgEndGameM: c_('You finished the game. Your score is %s.'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgManyWord: c_('Try with fewer words'),
-        msgTypeGame: c_('Word search'),
-    },
+    ci18n: {},
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
             '%',
@@ -87,7 +42,54 @@ var $exeDevice = {
         this.setMessagesInfo();
         this.createForm();
     },
-
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgReply: c_('Reply'),
+            msgEnterCode: c_('Enter the access code'),
+            msgErrorCode: c_('The access code is not correct'),
+            msgClue: c_('Cool! The clue is:'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayStart: c_('Click here to play'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgTime: c_('Time Limit (mm:ss)'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgPoints: c_('points'),
+            msgAudio: c_('Audio'),
+            msgWordsFind: c_('You found all the words. Your score is %s.'),
+            msgEndGameScore: c_('Please start playing first...'),
+            mgsGameStart: c_('The game has already started.'),
+            msgYouScore: c_('Score'),
+            msgEndTime: c_('Game time is over. Your score is %s.'),
+            msgEnd: c_('Finish'),
+            msgEndGameM: c_('You finished the game. Your score is %s.'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgManyWord: c_('Try with fewer words'),
+            msgTypeGame: c_('Word search'),
+        }
+    },
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgEProvideDefinition = _('Please provide the definition of the word or phrase');
@@ -314,7 +316,7 @@ var $exeDevice = {
                         <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                     </p>
                     <div class="exe-form-tab" title="${_('General settings')}">
-                        ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Find the hidden words.'))}
+                        ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Find the hidden words.'))}
                         <fieldset class="exe-fieldset exe-fieldset-closed">
                             <legend><a href="#">${_('Options')}</a></legend>
                             <div>
@@ -429,17 +431,17 @@ var $exeDevice = {
                                 </div>
                             </div>
                         </fieldset>
-                        ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                        ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                     </div>
-                    ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                    ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                    ${$exeDevices.iDevice.gamification.share.getTab(true, 0, true)}
+                    ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                    ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
                 </div>
             `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('sopaQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('sopaQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -586,7 +588,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.showQuestion(0);
@@ -619,8 +621,8 @@ var $exeDevice = {
         dataGame.msgs = i18n;
 
         let json = JSON.stringify(dataGame),
-            divInstructions = '';        
-        
+            divInstructions = '';
+
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
         const textFeedBack = tinyMCE.get('sopaEFeedBackEditor').getContent();
@@ -760,7 +762,7 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#sopaEShowMinimize').is(':checked'),
             showResolve = $('#sopaEShowResolve').is(':checked'),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#sopaEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#sopaEPercentajeFB').val())),
             percentajeQuestions = parseInt(
@@ -773,7 +775,7 @@ var $exeDevice = {
             evaluationID = $('#sopaEEvaluationID').val(),
             id = $exeDevice.getIdeviceID(),
             wordsGame = $exeDevice.wordsGame,
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
 
@@ -1040,7 +1042,7 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase();
 
             if (
-                (selectedFile.indexOf('files') == 0 ) &&
+                (selectedFile.indexOf('files') == 0) &&
                 validExt.indexOf(ext) == -1
             ) {
                 $exeDevice.showMessage(
@@ -1182,8 +1184,8 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertWords,
         );
@@ -1314,7 +1316,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
 
         game.percentajeFB =
             typeof game.percentajeFB != 'undefined' ? game.percentajeFB : 100;
@@ -1345,7 +1347,7 @@ var $exeDevice = {
         $('#sopaEEvaluationID').val(game.evaluationID);
         $('#sopaEEvaluationID').prop('disabled', !game.evaluation);
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

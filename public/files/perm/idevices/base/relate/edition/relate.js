@@ -25,52 +25,14 @@ var $exeDevice = {
     version: 2.0,
     id: false,
     checkAltImage: true,
-    ci18n: {
-        "msgSubmit": c_("Submit"),
-        "msgClue": c_("Cool! The clue is:"),
-        "msgCodeAccess": c_("Access code"),
-        "msgPlayStart": c_("Click here to play"),
-        "msgScore": c_("Score"),
-        "msgErrors": c_("Errors"),
-        "msgHits": c_("Hits"),
-        "msgScore": c_("Score"),
-        "msgMinimize": c_("Minimize"),
-        "msgMaximize": c_("Maximize"),
-        "msgFullScreen": c_("Full Screen"),
-        "msgExitFullScreen": c_("Exit Full Screen"),
-        "msgNoImage": c_("No picture question"),
-        "msgEndGameScore": c_("Please start the game before saving your score."),
-        "msgScoreScorm": c_("The score can't be saved because this page is not part of a SCORM package."),
-        "msgOnlySaveScore": c_("You can only save the score once!"),
-        "msgOnlySave": c_("You can only save once"),
-        "msgInformation": c_("Information"),
-        "msgYouScore": c_("Your score"),
-        "msgAuthor": c_("Authorship"),
-        "msgOnlySaveAuto": c_("Your score will be saved after each question. You can only play once."),
-        "msgSaveAuto": c_("Your score will be automatically saved after each question."),
-        "msgYouScore": c_("Your score"),
-        "msgSeveralScore": c_("You can save the score as many times as you want"),
-        "msgYouLastScore": c_("The last score saved is"),
-        "msgActityComply": c_("You have already done this activity."),
-        "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
-        "msgClose": c_("Close"),
-        "msgAudio": c_("Audio"),
-        "msgNumQuestions": c_("Number of cards"),
-        "msgTryAgain": c_("You need at least %s&percnt; of correct answers to get the information. Please try again."),
-        "msgEndGameM": c_("You finished the game. Your score is %s."),
-        "msgUncompletedActivity": c_("Incomplete activity"),
-        "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
-        "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
-        "msgTypeGame": c_('Relate'),
-        "msgCheck": c_('Check'),
-        "msgRestart": c_('Restart')
-    },
+    ci18n: {},
 
     init: function (element, previousData, path) {
         if (!element) return;
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
     },
@@ -82,6 +44,49 @@ var $exeDevice = {
 
         $('#rclETextDiv, #rclETextDivBack').hide();
         this.active = 0;
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            "msgSubmit": c_("Submit"),
+            "msgClue": c_("Cool! The clue is:"),
+            "msgCodeAccess": c_("Access code"),
+            "msgPlayStart": c_("Click here to play"),
+            "msgScore": c_("Score"),
+            "msgErrors": c_("Errors"),
+            "msgHits": c_("Hits"),
+            "msgScore": c_("Score"),
+            "msgMinimize": c_("Minimize"),
+            "msgMaximize": c_("Maximize"),
+            "msgFullScreen": c_("Full Screen"),
+            "msgExitFullScreen": c_("Exit Full Screen"),
+            "msgNoImage": c_("No picture question"),
+            "msgEndGameScore": c_("Please start the game before saving your score."),
+            "msgScoreScorm": c_("The score can't be saved because this page is not part of a SCORM package."),
+            "msgOnlySaveScore": c_("You can only save the score once!"),
+            "msgOnlySave": c_("You can only save once"),
+            "msgInformation": c_("Information"),
+            "msgYouScore": c_("Your score"),
+            "msgAuthor": c_("Authorship"),
+            "msgOnlySaveAuto": c_("Your score will be saved after each question. You can only play once."),
+            "msgSaveAuto": c_("Your score will be automatically saved after each question."),
+            "msgYouScore": c_("Your score"),
+            "msgSeveralScore": c_("You can save the score as many times as you want"),
+            "msgYouLastScore": c_("The last score saved is"),
+            "msgActityComply": c_("You have already done this activity."),
+            "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
+            "msgClose": c_("Close"),
+            "msgAudio": c_("Audio"),
+            "msgNumQuestions": c_("Number of cards"),
+            "msgTryAgain": c_("You need at least %s&percnt; of correct answers to get the information. Please try again."),
+            "msgEndGameM": c_("You finished the game. Your score is %s."),
+            "msgUncompletedActivity": c_("Incomplete activity"),
+            "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
+            "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
+            "msgTypeGame": c_('Relate'),
+            "msgCheck": c_('Check'),
+            "msgRestart": c_('Restart')
+        }
     },
 
     setMessagesInfo: function () {
@@ -107,7 +112,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -323,15 +328,15 @@ var $exeDevice = {
                     </fieldset>
                     ${$exeDevice.getTextFieldset("after")}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 0, true)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init("relateQIdeviceForm");
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init("relateQIdeviceForm");
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -777,7 +782,7 @@ var $exeDevice = {
                 $("#eXeIdeviceTextAfter").val(textAfter);
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
             $exeDevice.showCard(0);
         }
     },
@@ -858,11 +863,11 @@ var $exeDevice = {
             showMinimize = $('#rclEShowMinimize').is(':checked'),
             showSolution = $('#rclEShowSolution').is(':checked'),
             timeShowSolution = parseInt(clear($('#rclETimeShowSolution').val())),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#rclEPercentajeCards').val())),
             author = $('#rclEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues(),
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#rclETime').val()),
             evaluation = $('#rclEEvaluation').is(':checked'),
@@ -1154,8 +1159,8 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(0, $exeDevice.insertCards);
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(0, $exeDevice.insertCards);
 
 
         //eXe 3.0 Dismissible messages
@@ -1258,7 +1263,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.evaluation = typeof game.evaluation != "undefined" ? game.evaluation : false;
         game.evaluationID = typeof game.evaluationID != "undefined" ? game.evaluationID : '';
         game.weighted = typeof game.weighted !== 'undefined' ? game.weighted : 100;
@@ -1287,7 +1292,7 @@ var $exeDevice = {
         $("#rclEArrowsDiv").show();
 
         $('#rclENumCards').text($exeDevice.cardsGame.length);
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

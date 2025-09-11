@@ -38,63 +38,8 @@ var $exeDevice = {
     trivialID: 0,
     localPlayer: null,
     id: false,
-    ci18n: {
-        "msgStartGame": c_("Click here to start"),
-        "msgSubmit": c_("Submit"),
-        "msgEnterCode": c_("Enter the access code"),
-        "msgErrorCode": c_("The access code is not correct"),
-        "msgGameOver": c_("Game Over!"),
-        "msgClue": c_("Cool! The clue is:"),
-        "msgNewGame": c_("Click here for a new game"),
-        "msgCodeAccess": c_("Access code"),
-        "msgPlayStart": c_("Click here to play"),
-        "msgMinimize": c_("Minimize"),
-        "msgMaximize": c_("Maximize"),
-        "msgTime": c_("Time per question"),
-        "msgFullScreen": c_("Full Screen"),
-        "msgExitFullScreen": c_("Exit Full Screen"),
-        "msgNoImage": c_("No picture question"),
-        "msgSuccesses": c_("Right! | Excellent! | Great! | Very good! | Perfect!"),
-        "msgFailures": c_("It was not that! | Incorrect! | Not correct! | Sorry! | Error!"),
-        "msgNotNetwork": c_("You can only play this game with internet connection."),
-        "msgQuestion": c_("Question"),
-        "msgAnswer": c_("Check"),
-        "msgInformation": c_("Information"),
-        "msgAuthor": c_("Authorship"),
-        "msgActityComply": c_("You have already done this activity."),
-        "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
-        "msgYouLastScore": c_("The last score saved is"),
-        "msgOption": c_("Option"),
-        "msgImage": c_("Image"),
-        "msgOrders": c_("Please order the answers"),
-        "msgIndicateWord": c_("Provide a word or phrase"),
-        "msgGameStarted": c_("The game has already started."),
-        "msgPlayersName": c_("You must indicate a name for all the selected players."),
-        "msgReboot": c_("Do you want to restart the game?"),
-        "msgRoolDice": c_("roll the dice."),
-        "msgsWinner": c_("The game has finished. The winner is %1. Do you want to play again?"),
-        "msgWinGame": c_("Cool! You won the game."),
-        "msgsYouPlay": c_("you play. Roll the dice."),
-        "msgSaveDiceAuto": c_("Your score will be automatically saved after each throw."),
-        "msgSaveAuto": c_("Your score will be automatically saved after each question."),
-        "msgOnlyFirstGame": c_("You can only play once."),
-        "msgGamers": c_("Players"),
-        "msgReply": c_("Answer"),
-        "msgErrorQuestion": c_("you have failed."),
-        "msgsYouPlay": c_("you play. Roll the dice."),
-        "msgGetQueso": c_("you get the cheese of"),
-        "msgRightAnswre": c_("One more point."),
-        "msgAudio": c_("Audio"),
-        "msgCorrect": c_("Correct"),
-        "msgIncorrect": c_("Incorrect"),
-        "msgUncompletedActivity": c_("Incomplete activity"),
-        "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
-        "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
-        "msgNext": c_('Next'),
-        "msgTypeGame": c_('TriviExt'),
-        "msgRestart": c_('Restart'),
-        'msgYouScore': c_('Your score'),
-    },
+    ci18n: {},
+
     getId: function () {
         return Math.round(new Date().getTime() + (Math.random() * 100));
     },
@@ -103,6 +48,7 @@ var $exeDevice = {
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
 
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
 
@@ -111,11 +57,71 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.trivialID = $exeDevice.getId();
         $exeDevice.initQuestions();
-
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.loadYoutubeApi();
     },
+    
+    refreshTranslations: function () {
+        this.ci18n = {
+            "msgStartGame": c_("Click here to start"),
+            "msgSubmit": c_("Submit"),
+            "msgEnterCode": c_("Enter the access code"),
+            "msgErrorCode": c_("The access code is not correct"),
+            "msgGameOver": c_("Game Over!"),
+            "msgClue": c_("Cool! The clue is:"),
+            "msgNewGame": c_("Click here for a new game"),
+            "msgCodeAccess": c_("Access code"),
+            "msgPlayStart": c_("Click here to play"),
+            "msgMinimize": c_("Minimize"),
+            "msgMaximize": c_("Maximize"),
+            "msgTime": c_("Time per question"),
+            "msgFullScreen": c_("Full Screen"),
+            "msgExitFullScreen": c_("Exit Full Screen"),
+            "msgNoImage": c_("No picture question"),
+            "msgSuccesses": c_("Right! | Excellent! | Great! | Very good! | Perfect!"),
+            "msgFailures": c_("It was not that! | Incorrect! | Not correct! | Sorry! | Error!"),
+            "msgNotNetwork": c_("You can only play this game with internet connection."),
+            "msgQuestion": c_("Question"),
+            "msgAnswer": c_("Check"),
+            "msgInformation": c_("Information"),
+            "msgAuthor": c_("Authorship"),
+            "msgActityComply": c_("You have already done this activity."),
+            "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
+            "msgYouLastScore": c_("The last score saved is"),
+            "msgOption": c_("Option"),
+            "msgImage": c_("Image"),
+            "msgOrders": c_("Please order the answers"),
+            "msgIndicateWord": c_("Provide a word or phrase"),
+            "msgGameStarted": c_("The game has already started."),
+            "msgPlayersName": c_("You must indicate a name for all the selected players."),
+            "msgReboot": c_("Do you want to restart the game?"),
+            "msgRoolDice": c_("roll the dice."),
+            "msgsWinner": c_("The game has finished. The winner is %1. Do you want to play again?"),
+            "msgWinGame": c_("Cool! You won the game."),
+            "msgsYouPlay": c_("you play. Roll the dice."),
+            "msgSaveDiceAuto": c_("Your score will be automatically saved after each throw."),
+            "msgSaveAuto": c_("Your score will be automatically saved after each question."),
+            "msgOnlyFirstGame": c_("You can only play once."),
+            "msgGamers": c_("Players"),
+            "msgReply": c_("Answer"),
+            "msgErrorQuestion": c_("you have failed."),
+            "msgsYouPlay": c_("you play. Roll the dice."),
+            "msgGetQueso": c_("you get the cheese of"),
+            "msgRightAnswre": c_("One more point."),
+            "msgAudio": c_("Audio"),
+            "msgCorrect": c_("Correct"),
+            "msgIncorrect": c_("Incorrect"),
+            "msgUncompletedActivity": c_("Incomplete activity"),
+            "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
+            "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
+            "msgNext": c_('Next'),
+            "msgTypeGame": c_('TriviExt'),
+            "msgRestart": c_('Restart'),
+            'msgYouScore': c_('Your score'),
+        }
+    },
+
 
     setMessagesInfo: function () {
         var msgs = this.msgs;
@@ -377,7 +383,6 @@ var $exeDevice = {
             $exeDevice.typeEdit = 0;
             var active = $exeDevice.activesQuestions[$exeDevice.activeTema];
             $exeDevice.clipBoard = JSON.parse(JSON.stringify($exeDevice.temas[$exeDevice.activeTema][active]));
-            selectsGame
             $('#trivialEPaste').show();
         }
     },
@@ -800,7 +805,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset($exeDevice.msgs.msgGameIntrunctions)}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset($exeDevice.msgs.msgGameIntrunctions)}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_("Options")}</a></legend>
                         <div>
@@ -1086,11 +1091,11 @@ var $exeDevice = {
                                 <span class="TRVLE-ENumQuestions" id="trivialENumQuestions">0</span>
                             </div>
                         </div>
-                        ${$exeDevices.iDevice.common.getTextFieldset("after")}
+                        ${$exeDevicesEdition.iDevice.common.getTextFieldset("after")}
                     </div>
-                    ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                    ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                    ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                    ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                    ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                     <p class="exe-block-warning exe-block-dismissible" style="position:relative">
                         ${_("This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.")}
                         <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>x</a>
@@ -1101,8 +1106,8 @@ var $exeDevice = {
 
         this.ideviceBody.innerHTML = html;
 
-        $exeDevices.iDevice.tabs.init("gameQEIdeviceForm");
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init("gameQEIdeviceForm");
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         tinymce.init({
             selector: '#trivialEText',
             height: 157,
@@ -1345,7 +1350,7 @@ var $exeDevice = {
             }
 
             // i18n
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
             $exeDevice.changeNumberTemas(dataGame.numeroTemas);
             $exeDevice.updateFieldGame(dataGame);
 
@@ -1357,7 +1362,7 @@ var $exeDevice = {
         $exeDevice.activesQuestions = [0, 0, 0, 0, 0, 0];
         $exeDevice.temas = game.temas;
         $exeDevice.nombresTemas = game.nombresTemas;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.evaluation = typeof game.evaluation != "undefined" ? game.evaluation : false;
         game.evaluationID = typeof game.evaluationID != "undefined" ? game.evaluationID : '';
         $exeDevice.trivialID = typeof game.trivialID == "undefined" ? $exeDevice.trivialID : game.trivialID;
@@ -1379,7 +1384,7 @@ var $exeDevice = {
         $('#trivialEEvaluationID').val(game.evaluationID);
         $("#trivialEEvaluationID").prop('disabled', (!game.evaluation));
 
-        $exeDevices.iDevice.gamification.scorm.setValues(game.isScorm, game.textButtonScorm, game.repeatActivity, game.weighted);
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(game.isScorm, game.textButtonScorm, game.repeatActivity, game.weighted);
         $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
     },
 
@@ -1635,8 +1640,8 @@ var $exeDevice = {
             p.solutionQuestion = $('#trivialESolutionWord').val();
         }
         if (p.typeSelect == 3) {
-            p.solutionQuestion = 'open';            
-        } 
+            p.solutionQuestion = 'open';
+        }
         if (p.typeSelect == 1 && p.solution.length != p.numberOptions) {
             message = msgs.msgTypeChoose;
         } else if (p.quextion.length == 0) {
@@ -2014,7 +2019,7 @@ var $exeDevice = {
             idVideo = '',
             endVideo = 0,
             startVideo = 0,
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = false,
             temas = [],
             evaluation = $('#trivialEEvaluation').is(':checked'),
@@ -2088,7 +2093,7 @@ var $exeDevice = {
             temas.push(tema);
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             'asignatura': '',
@@ -2506,7 +2511,7 @@ var $exeDevice = {
             $("#trivialEEvaluationHelp").toggle();
             return false;
         });
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         //eX3 3.0 Dismissible messages
         $(".exe-block-dismissible .exe-block-close").click(function () {
             $(this).parent().fadeOut();

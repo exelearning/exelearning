@@ -30,17 +30,6 @@ var $eXeDragDrop = {
     },
 
     enable: function () {
-        if (typeof $.ui !== 'undefined' && $.ui.draggable && $.ui.droppable) {
-            $eXeDragDrop.enable1();
-        } else {
-            $exe.loadScript(
-                $eXeDragDrop.idevicePath + '0jquery-ui.min.js',
-                '$eXeDragDrop.enable1()',
-            );
-        }
-    },
-
-    enable1: function () {
         $eXeDragDrop.loadGame();
     },
 
@@ -370,24 +359,60 @@ var $eXeDragDrop = {
     },
 
     initializeDragAndDrop: function (instance) {
-        if (!$.ui || !$.ui.draggable || !$.ui.droppable) return;
-        const mOptions = $eXeDragDrop.options[instance],
-            $dadPGameContainer = $('#dadPGameContainer-' + instance);
+        const mOptions = $eXeDragDrop.options[instance];
 
+        // Keep a retry counter to handle race conditions (jQuery UI or images not ready)
+        mOptions._initRetries = mOptions._initRetries || 0;
+
+        // If jQuery UI not ready yet, retry a few times
+        if (!$.ui || !$.ui.draggable || !$.ui.droppable) {
+            if (mOptions._initRetries < 10) {
+                mOptions._initRetries++;
+                setTimeout(function () {
+                    $eXeDragDrop.initializeDragAndDrop(instance);
+                }, 200);
+            }
+            return;
+        }
+
+        const $dadPGameContainer = $('#dadPGameContainer-' + instance);
         $dadPGameContainer.css('position', 'relative');
+
+        // If images inside draggables aren't loaded yet, wait a bit and retry
+        const $imgs = $dadPGameContainer.find('.DADP-DS img');
+        if ($imgs.length > 0) {
+            let anyNotLoaded = false;
+            $imgs.each(function () {
+                if (!this.complete) anyNotLoaded = true;
+            });
+            if (anyNotLoaded && mOptions._initRetries < 10) {
+                mOptions._initRetries++;
+                setTimeout(function () {
+                    $eXeDragDrop.initializeDragAndDrop(instance);
+                }, 200);
+                return;
+            }
+        }
+
+        // Reset retry counter on success
+        mOptions._initRetries = 0;
 
         const $draggables = $dadPGameContainer.find('.DADP-DS'),
             $droppables = $dadPGameContainer.find('.DADP-DragTargetContainer');
+
         $draggables.draggable({
             revert: 'invalid',
             cursor: 'move',
             containment: 'document',
             helper: function () {
+                // Use outerWidth/outerHeight to avoid zero-dimension helpers
+                const w = $(this).outerWidth() || this.getBoundingClientRect().width || 40;
+                const h = $(this).outerHeight() || this.getBoundingClientRect().height || 32;
                 const $clone = $(this).clone().appendTo('.DADP-GameContainer-' + instance);
                 $clone.css({
                     position: 'absolute',
-                    width: $(this).width(),
-                    height: $(this).height(),
+                    width: w,
+                    height: h,
                     'z-index': 1000,
                     border: '1px solid #ccc',
                     'min-height': '32px',
@@ -397,19 +422,18 @@ var $eXeDragDrop = {
             start: function (event, ui) {
                 $(this).addClass('DADP-Dragging');
                 if (ui.helper) {
+                    const w = $(this).outerWidth() || this.getBoundingClientRect().width || 40;
+                    const h = $(this).outerHeight() || this.getBoundingClientRect().height || 32;
                     ui.helper.css({
-                        width: $(this).width(),
-                        height: $(this).height(),
+                        width: w,
+                        height: h,
                     });
                 }
                 const $audio = $(this).find('.DADP-TAudio');
                 if ($audio.length === 1) {
                     const audioData = $audio.data('audio');
                     if (audioData && audioData.length > 3) {
-                        $exeDevices.iDevice.gamification.media.playSound(
-                            audioData,
-                            mOptions,
-                        );
+                        $exeDevices.iDevice.gamification.media.playSound(audioData, mOptions);
                     }
                 }
             },
@@ -444,10 +468,7 @@ var $eXeDragDrop = {
             event.stopPropagation();
             const data = $(this).data('audio');
             if (data && data.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    data,
-                    mOptions,
-                );
+                $exeDevices.iDevice.gamification.media.playSound(data, mOptions);
             }
         });
         $dadPGameContainer

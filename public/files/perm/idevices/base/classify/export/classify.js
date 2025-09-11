@@ -40,14 +40,7 @@ var $eXeClasifica = {
         $exeDevices.iDevice.gamification.initGame(this, 'Classify', 'classify', 'clasifica-IDevice');
     },
     enable: function () {
-        if (typeof $.ui !== 'undefined' && $.ui.draggable && $.ui.droppable) {
-            $eXeClasifica.loadGame();
-        } else {
-            $exe.loadScript(
-                $eXeClasifica.idevicePath + '0jquery-ui.min.js',
-                '$eXeClasifica.loadGame()',
-            );
-        }
+        $eXeClasifica.loadGame();
     },
 
     loadGame: function () {
@@ -421,6 +414,15 @@ var $eXeClasifica = {
 
         $item.prependTo($container);
         mOptions.attempts++;
+        try {
+            const $cardAudio = $item.find('.CQP-LinkAudio');
+            const audio = $cardAudio.data('audio');
+            if (typeof audio !== 'undefined' && audio && audio.length > 3) {
+                $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            }
+        } catch (err) {
+            // 
+        }
 
         const group = $item.data('group'),
             groupp = $container.data('group'),

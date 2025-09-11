@@ -31,69 +31,73 @@ var $exeDevice = {
     clipBoard: '',
     desafioID: 0,
     id: false,
-    ci18n: {
-        msgStartGame: c_('Click here to start'),
-        msgSubmit: c_('Submit'),
-        msgInformationLooking: c_('Cool! The information you were looking for'),
-        msgPlayStart: c_('Click here to play'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgTime: c_('Time per question'),
-        msgNoImage: c_('No picture question'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgInformation: c_('Information'),
-        mgsSolution: c_('Solution'),
-        msgDate: c_('Date'),
-        msgDesafio: c_('Challenge'), // Desafío in ES
-        msgChallenge: c_('Trial'), // Reto in ES
-        msgChallengesCompleted: c_('Completed trials'),
-        msgStartTime: c_('Starting time'),
-        msgReadTime: c_("Read the instructions and click on a trial when you're ready to play."),
-        msgChallengesAllCompleted: c_("You've completed all the trials! You can now complete the game."),
-        msgDesafioSolved: c_('You made it! You can restart to play again.'),
-        msgDesafioSolved1: c_('You solved the trial! Congratulations!'),
-        msgEndTime: c_('Time Over. Please restart to try again.'),
-        msgSolutionError: c_('Sorry. Wrong solution.'),
-        msgSolutionCError: c_('Sorry. The solution is wrong.'),
-        msgChallengeSolved: c_('You solved this trial! Please select another one.'),
-        msgDesafioReboot: c_('This will restart the game and reset its starting time. Do you want to continue?'),
-        msgCompleteAllChallenged: c_('You must complete all the trials before facing the final challenge.'),
-        msgSolvedChallenge: c_('You already completed this trial.'),
-        msgWriteChallenge: c_('Complete the trial. Write the solution.'),
-        msgEndTimeRestart: c_('Time Over. Please restart to try again.'),
-        msgReboot: c_('Restart'),
-        msgHelp: c_('Help'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgYouScore: c_('Your score'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Challenge'),
-    },
+    ci18n: {},
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
         this.desafioID = this.getId();
-
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
     },
 
     getId: function () {
         return Math.round(new Date().getTime() + Math.random() * 100);
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgStartGame: c_('Click here to start'),
+            msgSubmit: c_('Submit'),
+            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgPlayStart: c_('Click here to play'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgTime: c_('Time per question'),
+            msgNoImage: c_('No picture question'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgInformation: c_('Information'),
+            mgsSolution: c_('Solution'),
+            msgDate: c_('Date'),
+            msgDesafio: c_('Challenge'), // Desafío in ES
+            msgChallenge: c_('Trial'), // Reto in ES
+            msgChallengesCompleted: c_('Completed trials'),
+            msgStartTime: c_('Starting time'),
+            msgReadTime: c_("Read the instructions and click on a trial when you're ready to play."),
+            msgChallengesAllCompleted: c_("You've completed all the trials! You can now complete the game."),
+            msgDesafioSolved: c_('You made it! You can restart to play again.'),
+            msgDesafioSolved1: c_('You solved the trial! Congratulations!'),
+            msgEndTime: c_('Time Over. Please restart to try again.'),
+            msgSolutionError: c_('Sorry. Wrong solution.'),
+            msgSolutionCError: c_('Sorry. The solution is wrong.'),
+            msgChallengeSolved: c_('You solved this trial! Please select another one.'),
+            msgDesafioReboot: c_('This will restart the game and reset its starting time. Do you want to continue?'),
+            msgCompleteAllChallenged: c_('You must complete all the trials before facing the final challenge.'),
+            msgSolvedChallenge: c_('You already completed this trial.'),
+            msgWriteChallenge: c_('Complete the trial. Write the solution.'),
+            msgEndTimeRestart: c_('Time Over. Please restart to try again.'),
+            msgReboot: c_('Restart'),
+            msgHelp: c_('Help'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgYouScore: c_('Your score'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Challenge'),
+        }
     },
 
     setMessagesInfo: function () {
@@ -317,7 +321,7 @@ var $exeDevice = {
             $('#desafioECTime2').val(c.clues[1].time);
             $('#desafioECTime3').val(c.clues[2].time);
         }
-        
+
     },
 
     createForm: function () {
@@ -326,7 +330,7 @@ var $exeDevice = {
         <div id="desafioIdeviceForm">
             <p class="exe-block-info exe-block-dismissible">${_('Create escape room type activities in which players will have to complete trials before solving the final challenge.')} <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/desafo.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
             <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Solve all the trials and complete the final challenge.'))}
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve all the trials and complete the final challenge.'))}
                 <fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
@@ -424,14 +428,14 @@ var $exeDevice = {
                     </div>
                 </fieldset>
             </div>
-            ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevices.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
         </div>
     `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('desafioIdeviceForm');
+        $exeDevicesEdition.iDevice.tabs.init('desafioIdeviceForm');
 
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -746,7 +750,7 @@ var $exeDevice = {
                 $('#eXeGameInstructions').val(instructions.html());
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -770,7 +774,7 @@ var $exeDevice = {
         $('#desafioEEvaluation').prop('checked', game.evaluation);
         $('#desafioEEvaluationID').val(game.evaluationID);
         $('#desafioEEvaluationID').prop('disabled', !game.evaluation);
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -801,8 +805,8 @@ var $exeDevice = {
         }
 
         dataGame.msgs = i18n;
-        let json = JSON.stringify(dataGame);        
-        
+        let json = JSON.stringify(dataGame);
+
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
         const instructions = tinyMCE.get('eXeGameInstructions').getContent(),
@@ -812,7 +816,7 @@ var $exeDevice = {
             divContent =
                 '<div class="desafio-instructions">' + instructions + '</div>';
         }
-        
+
         let html = '<div class="desafio-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
@@ -827,12 +831,12 @@ var $exeDevice = {
                 '<div class="desafio-ChallengeDescription">' + df + '</div>';
         }
         html += '<div class="desafio-DataGame js-hidden">' + json + '</div>';
-        
+
         html +=
             '<div class="desafio-bns js-hidden">' +
             $exeDevice.msgs.msgNoSuportBrowser +
             '</div>';
-        
+
         html += '</div>';
         return html;
     },
@@ -994,7 +998,7 @@ var $exeDevice = {
             }
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             asignatura: '',
