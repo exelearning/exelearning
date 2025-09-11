@@ -9,7 +9,7 @@
  */
 var $exeDevice = {
     i18n: {
-        category: _('Games'),
+        category: _('Interactive activities'),
         name: _('Memory cards'),
     },
     msgs: {},
@@ -26,64 +26,12 @@ var $exeDevice = {
     playerAudio: '',
     version: 1.3,
     id: false,
-    ci18n: {
-        msgSubmit: c_('Submit'),
-        msgClue: c_('Cool! The clue is:'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayAgain: c_('Play Again'),
-        msgPlayStart: c_('Click here to play'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgCool: c_('Cool!'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgNoImage: c_('No picture question'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgAudio: c_('Audio'),
-        msgPreviousCard: c_('Previous'),
-        msgNextCard: c_('Next'),
-        msgNumQuestions: c_('Number of cards'),
-        msgTrue: c_('True'),
-        msgFalse: c_('False'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        mgsAllQuestions: c_('Questions completed!'),
-        msgTrue1: c_("Right. That's the card."),
-        msgTrue2: c_("You're wrong. That's not the card."),
-        msgFalse1: c_("Right. That's not the card."),
-        msgFalse2: c_("You're wrong. That's the card."),
-        mgsClickCard: c_('Click on the card'),
-        msgEndTime: c_('Game time is over. Your score is %s.'),
-        msgEnd: c_('Finish'),
-        msgEndGameM: c_('You finished the game. Your score is %s.'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Memory cards'),
-    },
+    ci18n: {},
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
-
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
     },
@@ -100,7 +48,61 @@ var $exeDevice = {
         $('#flipcardsETextDivBack').hide();
         this.active = 0;
     },
-
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgSubmit: c_('Submit'),
+            msgClue: c_('Cool! The clue is:'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayAgain: c_('Play Again'),
+            msgPlayStart: c_('Click here to play'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgCool: c_('Cool!'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgNoImage: c_('No picture question'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgAudio: c_('Audio'),
+            msgPreviousCard: c_('Previous'),
+            msgNextCard: c_('Next'),
+            msgNumQuestions: c_('Number of cards'),
+            msgTrue: c_('True'),
+            msgFalse: c_('False'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            mgsAllQuestions: c_('Questions completed!'),
+            msgTrue1: c_("Right. That's the card."),
+            msgTrue2: c_("You're wrong. That's not the card."),
+            msgFalse1: c_("Right. That's not the card."),
+            msgFalse2: c_("You're wrong. That's the card."),
+            mgsClickCard: c_('Click on the card'),
+            msgEndTime: c_('Game time is over. Your score is %s.'),
+            msgEnd: c_('Finish'),
+            msgEndGameM: c_('You finished the game. Your score is %s.'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Memory cards'),
+        }
+    },
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgESelectFile = _(
@@ -136,7 +138,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Click on the cards to see what they hide.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Click on the cards to see what they hide.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -346,18 +348,18 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 0, true)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('flipcardsQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('flipcardsQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -836,7 +838,7 @@ var $exeDevice = {
             if (textAfter.length == 1)
                 $('#eXeIdeviceTextAfter').val(textAfter.html());
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.showCard(0);
@@ -871,8 +873,8 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame),
             divContent = '';
-        
-        
+
+
         if (dataGame.instructions != '')
             divContent =
                 '<div class="flipcards-instructions">' +
@@ -892,7 +894,7 @@ var $exeDevice = {
         html += '<div class="flipcards-DataGame js-hidden">' + json + '</div>';
         html += linksMedias;
         html += imgCard;
-        
+
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
         if (textAfter != '') {
             html +=
@@ -971,13 +973,13 @@ var $exeDevice = {
             timeShowSolution = parseInt(
                 clear($('#flipcardsETimeShowSolution').val()),
             ),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(
                 clear($('#flipcardsEPercentajeCards').val()),
             ),
             author = $('#flipcardsEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues(),
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#flipcardsETime').val()),
             evaluation = $('#flipcardsEEvaluation').is(':checked'),
@@ -1389,8 +1391,8 @@ var $exeDevice = {
             $('#flipcardsEEvaluationHelp').toggle();
             return false;
         });
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertCards,
         );
@@ -1534,7 +1536,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.evaluation =
             typeof game.evaluation != 'undefined' ? game.evaluation : false;
         game.evaluationID =
@@ -1569,7 +1571,7 @@ var $exeDevice = {
             $('#flipcardBackDiv').show();
         }
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,

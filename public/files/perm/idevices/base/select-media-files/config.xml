@@ -2,7 +2,7 @@
 <idevice>
     <title>Select media files</title>
     <css-class>select-media-files</css-class>
-    <category>Games</category>
+    <category>Assessment and tracking</category>
     <icon>
         <name>select-media-files-icon</name>
         <url>select-media-files-icon.svg</url>

@@ -38,12 +38,15 @@ var $text = {
             ? c_(data[this.participantsTextId])
             : data[this.participantsTextId];
 
-        const infoContentHTML = this.createInfoHTML(
-            data[this.durationId] === "" ? "" : durationText,
-            data[this.durationId],
-            data[this.participantsId] === "" ? "" : participantsText,
-            data[this.participantsId]
-        );
+        let infoContentHTML = '';
+        if (data[this.durationId] || data[this.participantsId]) {
+            infoContentHTML = this.createInfoHTML(
+                data[this.durationId] === "" ? "" : durationText,
+                data[this.durationId],
+                data[this.participantsId] === "" ? "" : participantsText,
+                data[this.participantsId]
+            );
+        }
 
         let contentHtml = data[this.mainContentId];
         if (!isInExe && pathMedia) contentHtml = this.replaceResourceDirectoryPaths(pathMedia, contentHtml);
@@ -104,23 +107,37 @@ var $text = {
                 data[this.participantsId]
             );
 
-            const $activity = $node.find('.pbl-task-description');
-            if ($activity.length) {
-                $activity.prepend(infoContentHTML);
-            } else {
-                $node.prepend(infoContentHTML);
-            }
+            $node.prepend(infoContentHTML);
         }
 
         let buttonFeedBackText = data[this.feedbackTitleId] || '';
         let feedBackHtml = data[this.feedbackContentId] || '';
         const hasFeedbackNode = $node.find('.feedback.js-feedback').length > 0;
         const hasFeedbackData = !!feedBackHtml;
-
-        // Añadir feedback y botón solo si no existe ya un botón feedback
         const hasFeedbackButton = $node.find('.feedback-button').length > 0;
-        if (!hasFeedbackNode && hasFeedbackData && !hasFeedbackButton) {
-            const feedbackContentHTML = this.createFeedbackHTML(buttonFeedBackText || this.defaultBtnFeedbackText, feedBackHtml);
+
+        if ((hasFeedbackData || hasFeedbackNode)) {
+            const $btnDiv = $node.find('.feedback-button');
+            const hasInput = $btnDiv.find('input.feedbacktooglebutton, input.feedbackbutton').length > 0;
+            if ($btnDiv.length && !hasInput) {
+                const btnText = buttonFeedBackText ? buttonFeedBackText : this.defaultBtnFeedbackText;
+                $btnDiv.append(`<input type="button" class="feedbacktooglebutton" value="${btnText}" />`);
+            } else if (!hasFeedbackButton) {
+                const feedbackButtonHTML = `
+                    <div class="iDevice_buttons feedback-button js-required">
+                        <input type="button" class="feedbacktooglebutton" value="${buttonFeedBackText || this.defaultBtnFeedbackText}" />
+                    </div>`;
+                const $activity = $node.find('.exe-text');
+                if ($activity.length) {
+                    $activity.append(feedbackButtonHTML);
+                } else {
+                    $node.append(feedbackButtonHTML);
+                }
+            }
+        }
+
+        if (hasFeedbackData && !hasFeedbackNode) {
+            const feedbackContentHTML = `<div class="feedback js-feedback js-hidden">${feedBackHtml}</div>`;
             const $activity = $node.find('.exe-text');
             if ($activity.length) {
                 $activity.append(feedbackContentHTML);
@@ -151,7 +168,7 @@ var $text = {
         // Only render html old idevice
         if (!isInExe && $node && $node.length === 1 && $node.find('.exe-text-template').length === 0) {
             const html = $node.html();
-            const newHtml = this.renderHtmlOldIdevice(data, $node);
+            this.renderHtmlOldIdevice(data, $node);
 
         }
 
@@ -175,10 +192,10 @@ var $text = {
                 btn.val(btn.attr('data-text-b'));
                 feedbackEl.fadeIn(() => { $text.working = false; });
             }
-            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+            $exeDevices.iDevice.gamification.math.updateLatex('.exe-text-template');
 
         });
-        const dataString = JSON.stringify(data)
+        const dataString = $node.html() || ''
         const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
 
         if (!hasLatex) return;
@@ -187,7 +204,7 @@ var $text = {
         if (!mathjaxLoaded) {
             $exeDevices.iDevice.gamification.math.loadMathJax();
         } else {
-            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+            $exeDevices.iDevice.gamification.math.updateLatex('.exe-text-template');
         }
     },
 

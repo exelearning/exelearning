@@ -99,10 +99,6 @@ a.eXeE-TabButton:last-child {
 	z-index: 999;
 }
 
-#trueorfalseIdeviceForm {
-	margin-top: 2em;
-}
-
 #trueorfalseIdeviceForm input[type=number] {
 	width: 4em;
 }

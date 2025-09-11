@@ -2,7 +2,7 @@
 <idevice>
     <title>Classify</title>
     <css-class>classify</css-class>
-    <category>Games</category>
+    <category>Interactive activities</category>
     <icon>
         <name>classify-icon</name>
         <url>classify-icon.svg</url>

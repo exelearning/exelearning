@@ -159,7 +159,7 @@ var $exeDevice = {
     for (var i in this.ci18n) {
       strs[i] = _(this.ci18n[i]);
     }
-    var tab = $exeDevices.iDevice.gamification.common.getLanguageTab(strs);
+    var tab = $exeDevicesEdition.iDevice.gamification.common.getLanguageTab(strs);
     html = '<div id="udlContentEditorWrapper"><div class="exe-form-tab" title="' + _('General settings') + '">' + html + '</div>' + tab + '</div>';
     this.ideviceBody.innerHTML = html;
     this.addCommonEvents();
@@ -186,7 +186,7 @@ var $exeDevice = {
       return false;
     });
     // Enable the tabs
-    $exeDevices.iDevice.tabs.init("udlContentEditorWrapper");
+    $exeDevicesEdition.iDevice.tabs.init("udlContentEditorWrapper");
     // iDevice info
     $("#udlContentFormInfo a").click(function () {
       $("#udlContentFormInfoContent").toggle();

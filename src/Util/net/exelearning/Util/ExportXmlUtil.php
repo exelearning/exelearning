@@ -2539,6 +2539,46 @@ class ExportXmlUtil
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
                     $htmlView = $odeComponentsSync->getHtmlView(); // ? $odeComponentsSync->getHtmlView() : $odeComponentsSync->getJsonProperties();
+
+                    // Detect specific drag/sort/classify iDevices and include jquery-ui when present
+                    if ((null != $htmlView) && ('' !== trim($htmlView))) {
+                        $sortableClasses = [
+                            'ordena-IDevice',
+                            'clasifica-IDevice',
+                            'relaciona-IDevice',
+                            'dragdrop-IDevice',
+                        ];
+                        foreach ($sortableClasses as $sc) {
+                            if (preg_match("~<div[^>]*class=[\"']?[^\"']*".preg_quote($sc, '~')."[^\"']*[\"']?[^>]*>~i", $htmlView)) {
+                                $uiLibDir = $libsPath.'jquery-ui';
+                                if (!in_array($uiLibDir, $librariesToCopy, true)) {
+                                    $librariesToCopy[] = $uiLibDir;
+                                }
+                                $uiFiles = ['/jquery-ui/jquery-ui.min.js'];
+                                $alreadyPresent = false;
+                                foreach ($filesToCopy as $existing) {
+                                    if (is_array($existing)) {
+                                        $containsAll = true;
+                                        foreach ($uiFiles as $f) {
+                                            if (!in_array($f, $existing, true)) {
+                                                $containsAll = false;
+                                                break;
+                                            }
+                                        }
+                                        if ($containsAll) {
+                                            $alreadyPresent = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!$alreadyPresent) {
+                                    $filesToCopy[] = $uiFiles;
+                                }
+                                break;
+                            }
+                        }
+                    }
+
                     if ((null != $htmlView) && (!empty($htmlView))) {
                         foreach ($libsToSearch as $libToSearch) {
                             if (!in_array($libToSearch[0], $librariesToCopy)) {

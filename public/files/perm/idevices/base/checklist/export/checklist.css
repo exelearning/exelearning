@@ -56,16 +56,14 @@
     width: 100%;
 }
 
-.CTJP-Capture a {
-    background-color: #007691;
-    color: white;
-    margin-left: 0.3em;
-    padding: 0.3em 0.4em;
-    border-radius: 3px;
-    text-decoration: none !important;
 
+.CTJP-Capture .btn {
+    margin-left: 0.5rem !important;
 }
 
+.CTJP-Capture .btn:first-child {
+    margin-left: 0 !important;
+}
 
 .CTJP-Header {
     width: 100%;
@@ -230,14 +228,6 @@
 }
 
 .CTJP-UserDate input {
-    flex-grow: 0;
-    min-width: 40px;
-    max-width: 150px;
-    border: none;
-    border-bottom: 1px dotted #333;
-}
-
-.CTJP-UserName input {
     flex-grow: 1;
     min-width: 150px;
     border: none;

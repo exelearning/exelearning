@@ -11,32 +11,7 @@ var $exeDevice = {
     items_min: 3,
 
     iDeviceId: 'sortableListForm',
-    ci18n: {
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgYouScore: c_('Your score'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Scrambled list'),
-        msgStartGame: c_('Click here to start'),
-        msgSubmit: c_('Submit'),
-        msgPlayStart: c_('Click here to play'),
-        msgTime: c_('Time per question'),
-        msgCheck: c_('Check'),
-        msgSaveScore: c_('Save score'),
-        msgTestFailed: c_("You didn't pass the test. Please try again"),
-    },
-
+    ci18n: {},
     ideviceBody: null,
     idevicePreviousData: null,
     idevicePath: '',
@@ -56,9 +31,37 @@ var $exeDevice = {
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
         //**************************************************************
+        this.refreshTranslations();
         this.id = $(element).attr('idevice-id');
         this.createForm(this.id);
         this.addEvents();
+    },
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgYouScore: c_('Your score'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Scrambled list'),
+            msgStartGame: c_('Click here to start'),
+            msgSubmit: c_('Submit'),
+            msgPlayStart: c_('Click here to play'),
+            msgTime: c_('Time per question'),
+            msgCheck: c_('Check'),
+            msgSaveScore: c_('Save score'),
+            msgTestFailed: c_("You didn't pass the test. Please try again")
+        }
     },
 
     /**
@@ -163,7 +166,7 @@ var $exeDevice = {
      * @returns string
      */
     dataJson: function () {
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         this.data = {
             typeGame: 'ScrambledList',
             instructions: this.instructions,
@@ -317,23 +320,23 @@ var $exeDevice = {
         <div id="scrambledlistIdeviceForm">
             <p class="exe-block-info exe-block-dismissible">${_('Create interactive text ordering activities.')} <a  style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
             <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
                 <fieldset class="exe-fieldset">
                     <legend><a href="#" >${_('List')}</a></legend>
                     <div class="TOF-EPanel" id="tofEPanel">                   
                         ${this.createExeFormContainerGeneralSettings(id, true)}
                      </div>
-                     ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </fieldset>
              </div>
-             ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-             ${$exeDevices.iDevice.gamification.scorm.getTab(true, true, true)}
-             ${$exeDevices.iDevice.gamification.share.getTab(true, 8, false)}
+             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
          </div>
      `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('scrambledlistIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('scrambledlistIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         this.loadPreviousValues();
     },
@@ -356,7 +359,7 @@ var $exeDevice = {
                 helpElement.style.display =
                     helpElement.style.display === 'none' ? 'block' : 'none';
             });
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             8,
             $exeDevice.insertWords,
         );
@@ -556,13 +559,13 @@ var $exeDevice = {
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             data.isScorm,
             data.textButtonScorm,
             data.repeatActivity,
             data.weighted,
         );
-        $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
             data.msgs,
         );
     },
