@@ -2098,6 +2098,7 @@ export default class NavbarFile {
             let ext = '';
             if (lower.endsWith('epub3')) ext = '.epub';
             else if (lower.endsWith('elp')) ext = '.elp';
+            else if (lower.includes('xml')) ext = '.xml';
             else ext = '.zip';
             if (!hasDot) base += ext;
             return base;

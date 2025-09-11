@@ -1426,6 +1426,7 @@ class ExportXmlUtil
         $odeNavStructureSyncs = null, // export HTML5 need all node structure for navigatation menu
     ) {
         $body = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><body></body>');
+        $body->addChild('script', 'document.body.className+=" js"');
 
         // Page properties
         $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
@@ -2000,10 +2001,13 @@ class ExportXmlUtil
             $pageTitle = $pageHeader->addChild($pageTitleTag, $odeNavStructureSync->getPageName());
             $pageTitle->addAttribute('id', 'page-title-node-content');
             if ('' == $packageTitleValue) {
-                $pageHeader->addAttribute('class', 'sr-av');
+                $pageHeader->addAttribute('class', 'page-header sr-av');
             } else {
+                $pageHeader->addAttribute('class', 'page-header');
                 $pageTitle->addAttribute('class', 'page-title sr-av');
             }
+        } else {
+            $pageHeader->addAttribute('class', 'page-header');
         }
 
         return $pageHeaderMain;
@@ -2185,6 +2189,14 @@ class ExportXmlUtil
 
         if (isset($blockPropertiesDict['minimized']) && 'true' == $blockPropertiesDict['minimized']) {
             $class .= ' minimized';
+        }
+
+        // Teacher-only checkbox on blocks
+        if (
+            (isset($blockPropertiesDict['teacherOnly']) && 'true' == $blockPropertiesDict['teacherOnly'])
+            || (isset($blockPropertiesDict['visibilityType']) && 'teacher' === $blockPropertiesDict['visibilityType'])
+        ) {
+            $class .= ' teacher-only';
         }
 
         if (isset($blockPropertiesDict['cssClass'])) {
@@ -2373,6 +2385,14 @@ class ExportXmlUtil
         if (!$odeComponentsSync->getHtmlView()) {
             $class .= ' db-no-data';
         }
+        // Teacher-only checkbox on iDevices
+        if (
+            (isset($idevicePropertiesDict['teacherOnly']) && 'true' == $idevicePropertiesDict['teacherOnly'])
+            || (isset($idevicePropertiesDict['visibilityType']) && 'teacher' === $idevicePropertiesDict['visibilityType'])
+        ) {
+            $class .= ' teacher-only';
+        }
+
         if (isset($idevicePropertiesDict['cssClass'])) {
             $class .= ' '.$idevicePropertiesDict['cssClass'];
         }
