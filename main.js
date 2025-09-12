@@ -902,7 +902,7 @@ function runSymfonyCommands() {
     }
 
     console.log('Creating database tables in SQLite...');
-    execFileSync(phpBinaryPath, ['bin/console', 'doctrine:schema:update', '--complete', '--force'], {
+    execFileSync(phpBinaryPath, ['bin/console', 'doctrine:schema:update', '--force'], {
       env: env,
       cwd: basePath,
       windowsHide: true,
