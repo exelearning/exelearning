@@ -1,7 +1,5 @@
 <?php
 
-// src/Controller/Api/CurrentOdeUsers/GetUserByComponentAction.php
-
 namespace App\Controller\Api\CurrentOdeUsers;
 
 use App\Repository\net\exelearning\Repository\CurrentOdeUsersRepository;
@@ -19,7 +17,7 @@ class GetUserByComponentAction extends AbstractController
         // Check JWT authentication
         $currentUser = $this->getUser();
         if (!$currentUser) {
-            throw new AccessDeniedHttpException('Authentication required');
+            throw new UnauthorizedHttpException('JWT', 'Valid JWT token required');
         }
 
         // Verify user has required roles (ROLE_ADMIN or ROLE_USER)
