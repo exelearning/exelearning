@@ -53,6 +53,7 @@
             }
         ],
         "asar": true,
+        "afterPack": "afterPack.js",
         "disableDefaultIgnoredFiles": true,
         "files": [
             "main.js",
