@@ -391,4 +391,12 @@ class UserHelper
 
         $this->entityManager->flush();
     }
+
+    public function saveUserTheme($userLogged, $theme)
+    {
+        $databaseUserPreferences = $this->getUserPreferencesFromDatabase($userLogged);
+        $userPreferences = $databaseUserPreferences['theme'];
+        $userPreferences->setValue($theme);
+        $this->entityManager->flush();
+    }
 }

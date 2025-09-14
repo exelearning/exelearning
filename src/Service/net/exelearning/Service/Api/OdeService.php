@@ -1501,7 +1501,6 @@ class OdeService implements OdeServiceInterface
         $odeNavStructureSync,
     ) {
         $destinationFilePathName = $odeSessionDistDirPath.$elpFileName;
-
         FileUtil::copyFile($elpFilePath, $destinationFilePathName);
 
         try {

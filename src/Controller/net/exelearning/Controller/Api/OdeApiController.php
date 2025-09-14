@@ -740,6 +740,9 @@ class OdeApiController extends DefaultApiController
         }
         if (!empty($odeValues['theme'])) {
             $responseData['theme'] = $odeValues['theme'];
+            $this->userHelper->saveUserTheme($user, $odeValues['theme']);
+        } else {
+            // $this->userHelper->saveUserTheme($user,Constants::THEME_DEFAULT);
         }
         if (!empty($odeValues['themeDir'])) {
             $responseData['themeDir'] = $odeValues['themeDir'];
@@ -859,6 +862,9 @@ class OdeApiController extends DefaultApiController
         }
         if (!empty($odeValues['theme'])) {
             $responseData['theme'] = $odeValues['theme'];
+            $this->userHelper->saveUserTheme($user, $odeValues['theme']);
+        } else {
+            // $this->userHelper->saveUserTheme($user,Constants::THEME_DEFAULT);
         }
         if (!empty($odeValues['themeDir'])) {
             $responseData['themeDir'] = $odeValues['themeDir'];
@@ -873,7 +879,6 @@ class OdeApiController extends DefaultApiController
     public function openLocalXmlPropertiesAction(Request $request)
     {
         $responseData = [];
-
         // Collect parameters
         $xmlFileName = $request->get('odeFileName');
         $xmlFilePath = $request->get('odeFilePath');
@@ -1252,7 +1257,6 @@ class OdeApiController extends DefaultApiController
     public function uploadLargeOdeFilesAction(Request $request)
     {
         $responseData = [];
-
         $user = $this->getUser();
 
         // Set locale (TODO: error translator returns to default locale)
