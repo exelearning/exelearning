@@ -505,12 +505,13 @@ class FileHelper
     /**
      * Returns absolute path to odeSessionUserTmpExport. If dir doesn't exists it tries to create it.
      *
-     * @param string $odeSessionId
-     * @param User   $user
+     * @param string   $odeSessionId
+     * @param User     $user
+     * @param tempPath $tempPath
      *
      * @return string|bool
      */
-    public function getOdeSessionUserTmpExportDir($odeSessionId, $user)
+    public function getOdeSessionUserTmpExportDir($odeSessionId, $user, $tempPath = '')
     {
         // validade $odeSessionId
         if (strlen($odeSessionId) < 8) {
@@ -519,7 +520,7 @@ class FileHelper
 
         $odeSessionUserTmpDir = $this->getOdeSessionUserTmpDir($odeSessionId, $user);
 
-        $odeSessionUserTmpExportDir = $odeSessionUserTmpDir.Constants::EXPORT_TMP_DIR.DIRECTORY_SEPARATOR;
+        $odeSessionUserTmpExportDir = $odeSessionUserTmpDir.Constants::EXPORT_TMP_DIR.DIRECTORY_SEPARATOR.$tempPath;
 
         // if dir already exists
         if (file_exists($odeSessionUserTmpExportDir)) {
