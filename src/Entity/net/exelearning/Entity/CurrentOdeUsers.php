@@ -2,16 +2,48 @@
 
 namespace App\Entity\net\exelearning\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\OpenApi\Model\Operation;
+use ApiPlatform\OpenApi\Model\Parameter;
+use App\Controller\Api\CurrentOdeUsers\GetUserByComponentAction;
 use App\Repository\net\exelearning\Repository\CurrentOdeUsersRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
+#[ORM\Entity(repositoryClass: CurrentOdeUsersRepository::class)]
 #[ORM\Table(name: 'current_ode_users')]
+#[ApiResource(
+    operations: [
+        new Get(
+            uriTemplate: '/current_ode_users/by_component/{currentComponentId}',
+            controller: GetUserByComponentAction::class,
+            name: 'get_user_by_component',
+            security: 'is_granted("ROLE_ADMIN") or is_granted("ROLE_USER")',
+            read: false,
+            uriVariables: [],
+            openapi: new Operation(
+                summary: 'Get user by current component ID',
+                description: 'Retrieves a user based on the current component ID',
+                parameters: [
+                    new Parameter(
+                        name: 'currentComponentId',
+                        in: 'path',
+                        description: 'The current component ID to search for',
+                        required: true,
+                        schema: ['type' => 'string']
+                    ),
+                ]
+            )
+        ),
+    ]
+)]
 #[ORM\Index(name: 'index2', columns: ['ode_id'])]
 #[ORM\Index(name: 'index3', columns: ['ode_version_id'])]
 #[ORM\Index(name: 'index4', columns: ['ode_session_id'])]
 #[ORM\Index(name: 'index5', columns: ['user'])]
 #[ORM\Index(name: 'index6', columns: ['ode_session_id', 'user'])]
-#[ORM\Entity(repositoryClass: CurrentOdeUsersRepository::class)]
+
 class CurrentOdeUsers extends BaseEntity
 {
     #[ORM\Column(name: 'ode_id', type: 'string', length: 20, nullable: false, options: ['fixed' => true])]
@@ -25,6 +57,7 @@ class CurrentOdeUsers extends BaseEntity
 
     #[ORM\Column(name: 'user', type: 'string', length: 128, nullable: false)]
     protected string $user;
+    #[Groups(['current_ode_users:read'])]
 
     #[ORM\Column(name: 'last_action', type: 'datetime', nullable: false)]
     protected \DateTime $lastAction;
