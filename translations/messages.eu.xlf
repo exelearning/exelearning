@@ -11457,7 +11457,7 @@
         <source>The case study must have at least one activity</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="DnJYpBC" resname="Please complete the history">
+      <trans-unit id="mFlaair" resname="Please complete the history">
         <source>Please complete the history</source>
         <target></target>
       </trans-unit>
@@ -11611,6 +11611,10 @@
       </trans-unit>
       <trans-unit id="ca3xgwu" resname="API Reference (Swagger)">
         <source>API Reference (Swagger)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Uom6tJO" resname="Information and presentation">
+        <source>Information and presentation</source>
         <target></target>
       </trans-unit>
     </body>
