@@ -11617,6 +11617,10 @@
         <source>Information and presentation</source>
         <target>Información y presentación</target>
       </trans-unit>
+      <trans-unit id="UvqYVFn" resname="Please wait until the changes are completely saved.">
+        <source>Please wait until the changes are completely saved.</source>
+        <target>Por favor, espera a que la aplicación termine de guardar cambios.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

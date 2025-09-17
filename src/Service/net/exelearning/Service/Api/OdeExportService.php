@@ -186,7 +186,7 @@ class OdeExportService implements OdeExportServiceInterface
                 $error = $this->translator->trans('Other user is saving changes right now');
                 $responseData['responseMessage'] = $error;
             } else {
-                $error = $this->translator->trans('An iDevice is open');
+                $error = $this->translator->trans('Please wait until the changes are completely saved.');
                 $responseData['responseMessage'] = $error;
             }
 

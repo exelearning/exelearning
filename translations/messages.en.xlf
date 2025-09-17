@@ -11641,6 +11641,10 @@
         <source>Information and presentation</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="UvqYVFn" resname="Please wait until the changes are completely saved.">
+        <source>Please wait until the changes are completely saved.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
