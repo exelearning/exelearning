@@ -1,5 +1,53 @@
 # CHANGELOG
 
+## v3.0.0-beta6 – 2025-09-22
+
+### Added
+
+- Desktop version specific Save / Open / Export options
+- Keyboard shortcuts
+- New iDevices categories
+- Export to folder (unzipped website) option
+- Teacher mode (teacher-only iDevices and boxes)
+- Project title visible in all exports
+- Paralell testing support
+- New REST API: Users and projects, JWT auth and admin tools
+
+### Fixed
+
+- Performance:
+  - Directory and file removal, ZIP handling and related tests
+  - User handling and session cleanup
+  - Offline version startup
+- Security issues: Defensive programming, type safety and test reliability
+- Caching and logging management
+- Electron app configuration: secret environment variable
+- Mount of public/bundles (permission errors)
+- jQuery UI compatibility issues
+
+### Upgraded
+
+- Documentation
+- Improved support for OpenID Connect
+- iDevices common JavaScript code refactored
+- Symfony Process Component: 7.3.0 → 7.3.3
+- Symfony Security Component - Core: 7.3.2 → 7.3.3
+- PHPUnit: 12.3.6 → 12.3.8
+- PHPUnit Bridge: 7.3.1 → 7.3.3
+- Symfony Translation Component: 7.3.2 → 7.3.3
+- Symfony Yaml Component: 7.3.2 → 7.3.3
+- Symfony WebProfilerBundle: 7.3.2 → 7.3.3
+- Symfony Serializer Component: 7.3.2 → 7.3.3
+- API Platform for Symfony: 4.1.22 → 4.1.23
+- PHP CS Fixer: 3.86.0 → 3.87.1
+- Doctrine ORM support for API Platform: 4.1.22 → 4.1.23
+- Doctrine Bundle: 2.15.1 → 2.16.1
+- Electron: 3.86.0 → 3.87.1
+- setup-node Action: 4 → 5
+- Hadolint Action: 3.1.0 → 3.2.0
+
+---
+
 ## v3.0.0-beta5 – 2025-08-29
 
 ### Added
