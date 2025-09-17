@@ -1,5 +1,6 @@
+
 /**
- * Evaluation activity (Export)
+ * Inform progress activity (Export)
  *
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: Manuel Narváez Martínez
@@ -34,8 +35,125 @@ var $eXeInforme = {
             if (typeof _ != "undefined") this.activities.before("<p>" + _("Progress report") + "</p>");
             return;
         }
-        this.enable()
+
+        this.enable();
+
+
     },
+    loadFromContentXml: function (mOption) {
+        var rutaContent = document.body.classList.contains('exe-index') ? './content.xml' : '../content.xml';
+        fetch(rutaContent)
+            .then(response => response.text())
+            .then(xmlString => {
+
+                const pagesJson = this.parseOdeXmlToJson(xmlString);
+                const pagesHtml = this.generateHtmlFromJsonPages(pagesJson);    
+                $eXeInforme.createTableIdevices(pagesHtml);
+                $eXeInforme.updatePages();
+                $eXeInforme.applyTypeShow(mOption.typeshow);
+                $eXeInforme.addEvents();
+
+            })
+            .catch(() => {
+                const $msg = $('#informeNotLocal');
+                if ($msg.length) {
+                    $msg.show();
+                }
+            });
+
+    },
+
+    parseOdeXmlToJson: function (xmlString) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+        const navStructures = xmlDoc.querySelectorAll("odeNavStructures > odeNavStructure");
+        const flatPages = [];
+
+        navStructures.forEach(pageNode => {
+            const odePageId = pageNode.querySelector("odePageId")?.textContent || "";
+            const odeParentPageId = pageNode.querySelector("odeParentPageId")?.textContent || null;
+            const name = pageNode.querySelector("pageName")?.textContent || "";
+            let components = [];
+
+            const pagStructures = pageNode.querySelectorAll("odePagStructures > odePagStructure");
+            pagStructures.forEach(pagStruct => {
+                const blockName = pagStruct.querySelector("blockName")?.textContent || "";
+                const jsonProp = pagStruct.querySelector("jsonProperties");
+                if (jsonProp && jsonProp.textContent && jsonProp.textContent.trim().length > 0) {
+                    try {
+                        const json = JSON.parse(jsonProp.textContent);
+                        components.push({
+                            odeIdeviceId: json.id || json.ideviceId || "",
+                            odeIdeviceTypeName: json.typeGame || json.type || "",
+                            blockName: blockName,
+                            evaluationID: json['data-evaluationid'] || ''
+                        });
+                    } catch (e) {
+                        // 
+                    }
+                }
+
+                const odeComponents = pagStruct.querySelectorAll("odeComponents > odeComponent");
+                odeComponents.forEach(comp => {
+                    const ideviceId = comp.querySelector("odeIdeviceId")?.textContent || "";
+                    const typeName = comp.querySelector("odeIdeviceTypeName")?.textContent || "";
+                    let evaluationID = '';
+                    const htmlViewNode = comp.querySelector('htmlView');
+                    if (htmlViewNode && htmlViewNode.textContent) {
+                        const match = htmlViewNode.textContent.match(/data-evaluationid\s*=\s*['\"]([^'\"]+)['\"]/);
+                        if (match && match[1]) {
+                            evaluationID = match[1];
+                        }
+                    }
+                    components.push({
+                        odeIdeviceId: ideviceId,
+                        odeIdeviceTypeName: typeName,
+                        blockName: blockName,
+                        evaluationID: evaluationID
+                    });
+                });
+            });
+
+            const filtered = {};
+            components.forEach(comp => {
+                const prev = filtered[comp.odeIdeviceId];
+                if (!prev) {
+                    filtered[comp.odeIdeviceId] = comp;
+                } else {
+                    if (!prev.evaluationID && comp.evaluationID) {
+                        filtered[comp.odeIdeviceId] = comp;
+                    } else if (!prev.odeIdeviceTypeName && comp.odeIdeviceTypeName) {
+                        filtered[comp.odeIdeviceId] = comp;
+                    }
+                }
+            });
+            components = Object.values(filtered);
+
+            flatPages.push({
+                odePageId,
+                id: odePageId,
+                name,
+                parentID: odeParentPageId && odeParentPageId.trim() !== '' ? odeParentPageId : null,
+                children: [],
+                components
+            });
+        });
+
+        const index = {};
+        flatPages.forEach(p => { index[p.odePageId] = p; });
+
+        const roots = [];
+        flatPages.forEach(p => {
+            if (p.parentID && index[p.parentID]) {
+                index[p.parentID].children.push(p);
+            } else {
+                roots.push(p);
+            }
+        });
+
+        return roots;
+    },
+
 
     enable: function () {
         $eXeInforme.loadGame();
@@ -50,12 +168,118 @@ var $eXeInforme = {
                 $eXeInforme.options = mOption;
                 const informe = $eXeInforme.createInterfaceinforme();
                 dl.before(informe).remove();
-                $eXeInforme.createTableIdevices();
-                $eXeInforme.updatePages();
-                $eXeInforme.applyTypeShow(mOption.typeshow);
-                $eXeInforme.addEvents();
+                if (eXe.app.isInExe()) {
+                    $eXeInforme.getIdevicesBySessionId(true);
+                } else {
+                    $eXeInforme.loadFromContentXml(mOption)
+                }
+
             }
         });
+    },
+    async getIdevicesBySessionId(init) {
+        const odeSessionId = eXeLearning.app.project.odeSession;
+        const response = await eXeLearning.app.api.getIdevicesBySessionId(odeSessionId);
+        let idevices = $eXeInforme.buildNestedPages(response.data);
+        const pages = $eXeInforme.createPagesHtml(idevices);
+        $eXeInforme.createTableIdevices(pages);
+        $eXeInforme.updatePages();
+        $eXeInforme.applyTypeShow($eXeInforme.options.typeshow);
+        if (init) {
+            $eXeInforme.addEvents();
+        }
+
+
+    },
+
+    buildNestedPages: function (data) {
+        const pageIndex = {};
+        const rootPages = [];
+
+        if (!Array.isArray(data)) {
+            console.error("El parámetro 'data' debe ser un array.");
+            return [];
+        }
+
+        data.forEach(row => {
+            if (!row) {
+                console.warn("Se encontró una fila nula o indefinida en 'data'.");
+                return;
+            }
+            const pageId = row.odePageId;
+            const parentId = row.odeParentPageId || null;
+            if (!pageIndex[pageId]) {
+                pageIndex[pageId] = {
+                    id: pageId,
+                    parentId: parentId,
+                    title: row.pageName,
+                    navId: row.navId,
+                    ode_nav_structure_sync_id: row.ode_nav_structure_sync_id,
+                    ode_session_id: row.ode_session_id,
+                    ode_nav_structure_sync_order: row.ode_nav_structure_sync_order,
+                    navIsActive: row.navIsActive,
+                    components: [],
+                    children: [],
+                    url: !parentId && row.ode_nav_structure_sync_order == 1 ? 'index' : $eXeInforme.normalizeFileName(row.pageName)
+                };
+            }
+            const dataIDs = $eXeInforme.getEvaluatioID(row.htmlViewer, row.jsonProperties);
+            pageIndex[pageId].components.push({
+                ideviceID: dataIDs.ideviceID,
+                evaluationID: dataIDs.evaluationID,
+                componentId: row.componentId,
+                ode_pag_structure_sync_id: row.ode_pag_structure_sync_id,
+                componentSessionId: row.componentSessionId,
+                componentPageId: row.componentPageId,
+                ode_block_id: row.ode_block_id,
+                blockName: row.blockName,
+                ode_idevice_id: row.ode_idevice_id,
+                odeIdeviceTypeName: row.odeIdeviceTypeName,
+                ode_components_sync_order: row.ode_components_sync_order,
+                componentIsActive: row.componentIsActive,
+            });
+        });
+
+        Object.values(pageIndex).forEach(page => {
+            if (page.parentId && pageIndex[page.parentId]) {
+                pageIndex[page.parentId].children.push(page);
+            } else {
+                rootPages.push(page);
+            }
+        });
+
+        return rootPages;
+    },
+
+    getEvaluatioID(htmlwiew, idevicejson) {
+        let leval = {
+            ideviceID: '',
+            evaluationID: ''
+        }
+        const dataHtml = $eXeInforme.extractEvaluationDataHtml(htmlwiew);
+        const dataJson = $eXeInforme.extractEvaluationDataHtml(idevicejson);
+        if (dataHtml) {
+            leval.evaluationID = dataHtml.evaluationId
+            leval.ideviceID = dataHtml.dataId;
+        } else if (dataJson) {
+            leval.evaluationID = dataJson.evaluationID;
+            leval.ideviceID = dataJson.id;
+        }
+        return leval;
+
+    },
+
+    extractEvaluationDataHtml: function (htmlText) {
+        if (htmlText) {
+            const match = htmlText.match(/data-id="([^"]+)"[^>]*data-evaluationid="([^"]+)"/);
+            if (match) {
+                return {
+                    dataId: match[1],
+                    evaluationId: match[2]
+                };
+            }
+        }
+        return false;
     },
 
     loadDataGame(data) {
@@ -165,7 +389,11 @@ var $eXeInforme = {
 
     },
 
-    generateHtmlFromPages: function (pages) {
+    generateHtmlFromPages: function (pages, acc) {
+
+        const isRootCall = !acc;
+        acc = acc || { count: 0 };
+
         let html = '<ul id="informePagesContainer">';
         let pn = true;
         let pageId = '';
@@ -189,6 +417,10 @@ var $eXeInforme = {
                 page.components.forEach(component => {
                     const surl = $eXeInforme.isInExe || !page.title ? '' : $eXeInforme.getURLPage(page.url) + `#${component.ideviceID}`;
                     const isEvaluable = component.evaluationID && $eXeInforme.options.evaluationID && $eXeInforme.options.evaluationID == component.evaluationID;
+
+                    if (isEvaluable) {
+                        acc.count += 1;
+                    }
                     const iconClass = isEvaluable ? 'IFPP-IdiviceIcon' : 'IFPP-IdiviceIconNo';
                     const componentScore = isEvaluable
                         ? `<div class="IFPP-ComponentDateScore">
@@ -235,7 +467,7 @@ var $eXeInforme = {
 
             let childrenHtml = '';
             if (page.children && page.children.length > 0) {
-                childrenHtml = $eXeInforme.generateHtmlFromPages(page.children);
+                childrenHtml = $eXeInforme.generateHtmlFromPages(page.children, acc);
             }
 
             pageHtml += componentsHtml;
@@ -246,7 +478,133 @@ var $eXeInforme = {
         });
         html += '</ul>';
 
+        if (isRootCall) {
+            $eXeInforme.options.number = acc.count;
+        }
+
         $('#informeEvalutationNumber').html($eXeInforme.options.msgs.msgNoPendientes.replace("%s", $eXeInforme.options.number));
+
+        return html;
+    },
+
+    generateHtmlFromJsonPages: function (pages, acc) {
+        const isRootCall = !acc;
+        acc = acc || { count: 0 };
+
+        let html = '<ul id="informePagesContainer">';
+        let pn = true, pageId = '';
+
+        pages.forEach(page => {
+
+            const pId = page.odePageId || page.id || '';
+            const pTitle = page.name || page.title || '';
+            const pUrl = page.url || '';
+            const hasParent = typeof page.parentID != "undefined" && page.parentID != null;
+
+            if (pn && !hasParent) {
+                pageId = 'index';
+                pn = false;
+            } else {
+                pageId = pId || '';
+            }
+
+            let pageHtml = `<li class="IFPP-PageItem" data-page-id="${pageId}">`;
+            pageHtml += `<div class="IFPP-PageTitleDiv">
+                        <div class="IFPP-PageIcon"></div>
+                        <div class="IFPP-PageTitle">${pTitle}</div>
+                     </div>`;
+
+            let componentsHtml = '';
+            if (page.components && page.components.length > 0) {
+                componentsHtml += '<ul class="IFPP-Components">';
+
+                page.components.forEach(component => {
+                    const ideviceID = component.odeIdeviceId || component.ideviceID || '';
+                    const blockName = component.blockName || '';
+                    const odeIdeviceTypeName = component.odeIdeviceTypeName || '';
+                    const evaluationID = component.evaluationID || '';
+
+                    const surl = $eXeInforme.isInExe || !pTitle
+                        ? ''
+                        : $eXeInforme.getURLPage(pUrl) + `#${ideviceID}`;
+
+                    const isEvaluable = evaluationID
+                        && $eXeInforme.options.evaluationID
+                        && $eXeInforme.options.evaluationID == evaluationID;
+
+                        if (isEvaluable) {
+                        acc.count += 1;
+                    }
+
+                    const iconClass = isEvaluable ? 'IFPP-IdiviceIcon' : 'IFPP-IdiviceIconNo';
+
+                    const componentScore = isEvaluable
+                        ? `<div class="IFPP-ComponentDateScore">
+                           <div class="IFPP-ComponentDate"></div>
+                           <div class="IFPP-ComponentScore" style="text-align:right:min-width:1em"></div>
+                       </div>`
+                        : '';
+
+                    const typeIdevice = $eXeInforme.options.showTypeGame && odeIdeviceTypeName
+                        ? `<div id="informeType">(${odeIdeviceTypeName})</div>`
+                        : '';
+
+                    const inWeb =
+                        !$eXeInforme.isInExe &&
+                        location.protocol !== 'file:' &&
+                        typeof window.API === 'undefined' &&
+                        typeof window.API_1484_11 === 'undefined' &&
+                        Boolean($eXeInforme.options?.activeLinks) &&
+                        Boolean(isEvaluable) &&
+                        typeof surl === 'string' && surl.length > 4;
+
+                    const showLinks = inWeb
+                        ? `<div class="IFPP-PageTitleDiv">
+                           <a href="#" class="IFPP-PageTitleDiv IFPP-IdeviceLink" data-page-id="${surl}" data-idevice-id="${ideviceID}" title="${$eXeInforme.options.msgs.msgSeeActivity}">
+                               <div class="IFPP-Icon ${iconClass}"></div>
+                               <div class="IFPP-ComponentTitle">${blockName}</div>
+                           </a>
+                           ${typeIdevice}
+                       </div>`
+                        : `<div class="IFPP-PageTitleDiv">
+                           <div class="IFPP-Icon ${iconClass}"></div>
+                           <div class="IFPP-ComponentTitle">${blockName}</div>
+                           ${typeIdevice}
+                       </div>`;
+
+                    componentsHtml += `<li class="IFPP-ComponentItem" data-component-id="${ideviceID}" data-is-evaluable="${isEvaluable}">
+                                       <div class="IFPP-ComponentData">
+                                           ${showLinks}
+                                       </div>
+                                       ${componentScore}
+                                   </li>`;
+                });
+
+                componentsHtml += '</ul>';
+            }
+
+            let childrenHtml = '';
+            if (page.children && page.children.length > 0) {
+                childrenHtml = $eXeInforme.generateHtmlFromJsonPages(page.children, acc);
+            }
+
+            pageHtml += componentsHtml;
+            pageHtml += childrenHtml;
+            pageHtml += '</li>';
+
+            html += pageHtml;
+        });
+
+        html += '</ul>';
+
+
+        if (isRootCall) {
+            $eXeInforme.options.number = acc.count;
+        }
+
+        $('#informeEvalutationNumber').html(
+            $eXeInforme.options.msgs.msgNoPendientes.replace("%s", $eXeInforme.options.number)
+        );
 
         return html;
     },
@@ -352,15 +710,16 @@ var $eXeInforme = {
 
     },
 
-    createPagesHtml: function () {
+    createPagesHtml: function (idevices) {
         let pages = $eXeInforme.options.msgs.msgReload || 'Edita este idevice para actualizar sus contenidos';
-        if ($eXeInforme.options.sessionIdevices) {
-            pages = $eXeInforme.generateHtmlFromPages($eXeInforme.options.sessionIdevices);
+        if (idevices) {
+            pages = $eXeInforme.generateHtmlFromPages(idevices);
         }
         return pages;
     },
 
-    createTableIdevices: function () {
+
+    createTableIdevices: function (pages) {
         let userDisplay = $eXeInforme.options.userData ? "flex" : "none"
         let table = `
             <div class="IFPP-Table" id="informeTable">
@@ -385,15 +744,15 @@ var $eXeInforme = {
                 </div>
                 <div id="informePlusDiv" class="IFPP-Plus">
                     <div>${$eXeInforme.options.msgs.mgsSections}:</div>
-                        <div class="IFPP-PagesContainer">${$eXeInforme.createPagesHtml()}</div>
+                        <div class="IFPP-PagesContainer">${pages}</div>
                         <div id="informeScoreBar"class="IFPP-GameScore">
                             <div>${$eXeInforme.options.msgs.msgAverageScore}</div>
                             <div id="informeScoretTotal"></div>
                         </div>
                     </div>
                     <div id="informeButtons" class="IFPP-LinksInforme" style="background-color:white; text-align:right">
-                        <a id="informeReboot" href="#">${$eXeInforme.options.msgs.msgReboot}</a>
-                        <a id="informeCapture" href="#">${$eXeInforme.options.msgs.msgSave}</a>
+                        <button id="informeReboot" type="button" class="btn btn-primary">${$eXeInforme.options.msgs.msgReboot}</button>
+                        <button id="informeCapture" type="button" class="btn btn-primary">${$eXeInforme.options.msgs.msgSave}</button>
                     </div>
                 </div>`
 
@@ -404,6 +763,7 @@ var $eXeInforme = {
 
     getDataStorage: function (id) {
         let data = $exeDevices.iDevice.gamification.helpers.isJsonString(localStorage.getItem("dataEvaluation-" + id));
+        console.log(data);
         return data.activities;
     },
 
@@ -419,9 +779,12 @@ var $eXeInforme = {
                 localStorage.removeItem(
                     "dataEvaluation-" + $eXeInforme.options.evaluationID
                 );
-                $eXeInforme.createTableIdevices();
-                $eXeInforme.updatePages();
-                $eXeInforme.applyTypeShow($eXeInforme.options.typeshow);
+                if (eXe.app.isInExe()) {
+                    $eXeInforme.getIdevicesBySessionId(false)
+
+                } else {
+                    $eXeInforme.loadFromContentXml($eXeInforme.options);
+                }
             }
         });
 

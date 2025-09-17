@@ -181,8 +181,8 @@ var $exeDevice = {
             leval.evaluationID = dataHtml.evaluationId
             leval.ideviceID = dataHtml.dataId;
         } else if (dataJson) {
-            leval.evaluationID = objjons.evaluationID;
-            leval.ideviceID = objjons.id;
+            leval.evaluationID = dataJson.evaluationID;
+            leval.ideviceID = dataJson.id;
         }
         return leval;
 
