@@ -9,6 +9,7 @@
 - New iDevice categories
 - Export to folder (unzipped website) option
 - Teacher mode (teacher-only iDevices and boxes)
+- New "Test" style (for testing only)
 - Project title visible in all export formats
 - Parallel testing support
 - New REST API: Users and projects, JWT authentication and admin tools
