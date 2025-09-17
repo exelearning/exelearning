@@ -1,5 +1,12 @@
 /* Default style (to review) */
 
+/*
+    base vs test:
+        #438606 → #253DC3
+        #1e3f00 → #0F1E73
+        #2A6D00 → #1B2FA0
+*/
+
 body.exe-export {
     padding: 1em 0;
 }
@@ -42,7 +49,7 @@ body.exe-web-site{
 }
 
 .exe-content .page-title{
-    color: #438606;
+    color: #253DC3;
     font-size: 1.7rem;
     text-align: left;
 }
@@ -84,7 +91,7 @@ body.exe-web-site{
 }
 
 .exe-content .box-title{
-    color: #1e3f00;
+    color: #0F1E73;
     font-size: 1.5rem;
 }
 
@@ -219,7 +226,7 @@ button.toggler {
     display: block;
     width: 40px;
     height: 40px;
-    background: #438606 url(default_sprite.png) no-repeat 0 0;
+    background: #253DC3 url(default_sprite.png) no-repeat 0 0;
     background-size: auto 40px;
     border-radius: 50%;
     z-index: 999;
@@ -262,8 +269,8 @@ body.siteNav-off button#searchBarTogger{
 .nav-buttons a:focus,
 button.toggler:hover,
 button.toggler:focus {
-    background-color: #2A6D00;
-    border-color: #2A6D00
+    background-color: #1B2FA0;
+    border-color: #1B2FA0
 }
 .nav-buttons .nav-button span,
 .box-toggle span,
@@ -364,7 +371,7 @@ button.toggler:focus {
 }
 #exe-client-search-submit {
     text-indent: -999em;
-    background: #438606 url(default_sprite.png) no-repeat -41px -1px;
+    background: #253DC3 url(default_sprite.png) no-repeat -41px -1px;
     background-size: auto 40px;
     width: 38px;
     height: 38px;
@@ -390,7 +397,7 @@ button.toggler:focus {
 }
 #exe-client-search-submit:hover,
 #exe-client-search-submit:focus{
-    background-color: #2A6D00;
+    background-color: #1B2FA0;
 }
 #exe-client-search-results-list ul,
 #exe-client-search-results-list li{
@@ -444,7 +451,7 @@ button.toggler:focus {
 .exe-web-site .page-counter{position:fixed;top:18px;right:70px;margin:0;font-size:.9em;color:#777;padding:0 8px; border-radius: 4px;text-align:left}
 
 /* Teacher mode */
-#teacher-mode-toggler.form-check-input:checked{background-color:#438606;border-color:#438606;font-size:.9em;margin-right:.6em}
+#teacher-mode-toggler.form-check-input:checked{background-color:#253DC3;border-color:#253DC3;font-size:.9em;margin-right:.6em}
 label[for='teacher-mode-toggler']{font-size:.9em;color:#777;position:relative;top:-.2em}
 
 /* Responsive design */
@@ -537,7 +544,3 @@ label[for='teacher-mode-toggler']{font-size:.9em;color:#777;position:relative;to
     .exe-web-site main.page{padding-left: 0;padding-right: 0}
     .exe-web-site main.page{padding-top:1em}
 }
-
-/* Test */
-.exe-content{filter:invert(98%) hue-rotate(180deg)}
-.exe-content :is(iframe,video,img){filter:invert(100%) hue-rotate(180deg)}
