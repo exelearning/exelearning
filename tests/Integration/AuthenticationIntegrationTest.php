@@ -4,7 +4,6 @@ namespace App\Tests\Integration;
 
 use App\Entity\net\exelearning\Entity\User;
 use App\Security\MultiTokenHandler;
-use App\Security\OidcUserInfoTokenHandlerCustom;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;

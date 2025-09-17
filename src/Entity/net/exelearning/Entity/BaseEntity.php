@@ -5,6 +5,7 @@ namespace App\Entity\net\exelearning\Entity;
 use Doctrine\ORM\Event\PrePersistEventArgs;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\MappedSuperclass]
 #[ORM\HasLifecycleCallbacks]
@@ -16,7 +17,8 @@ class BaseEntity
     protected ?int $id = null;
 
     #[ORM\Column(name: 'is_active', type: 'boolean', nullable: false, options: ['default' => true])]
-    protected bool $isActive;
+    #[Groups(['user:read', 'user:write'])]
+    protected bool $isActive = true;
 
     #[ORM\Column(name: 'created_at', type: 'datetime', nullable: true)]
     protected ?\DateTime $createdAt = null;

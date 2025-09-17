@@ -28,6 +28,7 @@ The goal is for the documents and their associated images to be readable with pr
 | [09-real-time](09-real-time.md)                             | Real-time communication and collaborative features                 |
 | [10-customization](10-customization.md)                     | Define your own look and feel and add custom JavaScript code       |
 | [11-rest-api](11-rest-api.md)                     		  | REST API v2 documentation									       |
+| [12-authentication](12-authentication.md)                   | Authentication              								       |
 
 
 ### Templates

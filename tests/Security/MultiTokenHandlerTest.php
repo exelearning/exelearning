@@ -4,13 +4,12 @@ namespace App\Tests\Security;
 
 use App\Entity\net\exelearning\Entity\User;
 use App\Security\MultiTokenHandler;
-use App\Security\OidcUserInfoTokenHandlerCustom;
+use Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
-use Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 
 class MultiTokenHandlerTest extends TestCase
@@ -18,7 +17,7 @@ class MultiTokenHandlerTest extends TestCase
     private MultiTokenHandler $tokenHandler;
     private EntityManagerInterface $entityManager;
     private AccessTokenHandlerInterface $casHandler;
-    private OidcUserInfoTokenHandlerCustom $oidcHandler;
+    private AccessTokenHandlerInterface $oidcHandler;
     private LoggerInterface $logger;
     private EntityRepository $userRepository;
 
@@ -27,8 +26,8 @@ class MultiTokenHandlerTest extends TestCase
         // Create a mock for the CAS handler interface
         $this->casHandler = $this->createMock(AccessTokenHandlerInterface::class);
         
-        // Create a mock for the OIDC handler
-        $this->oidcHandler = $this->createMock(OidcUserInfoTokenHandlerCustom::class);
+        // Create a mock for the OIDC handler (use interface to avoid final class issues)
+        $this->oidcHandler = $this->createMock(AccessTokenHandlerInterface::class);
         
         // Create a mock for the user repository
         $this->userRepository = $this->createMock(EntityRepository::class);
@@ -234,14 +233,20 @@ public function testHandleOidcToken(): void
     {
         $invalidToken = 'invalid-token-format';
         
-        // Expect error logging
+        // OIDC userinfo will be attempted and fail
+        $this->oidcHandler->expects($this->once())
+            ->method('getUserBadgeFrom')
+            ->with($invalidToken)
+            ->willThrowException(new BadCredentialsException('Invalid credentials.'));
+
+        // Expect error logging reflecting OIDC failure
         $this->logger->expects($this->once())
             ->method('error')
-            ->with('Invalid token format: neither CAS ticket nor JWT.');
-        
+            ->with('OIDC userinfo failed: Invalid credentials.');
+
         $this->expectException(BadCredentialsException::class);
-        $this->expectExceptionMessage('Invalid token format: neither CAS ticket nor JWT.');
-        
+        $this->expectExceptionMessage('OIDC userinfo failed: Invalid credentials.');
+
         $this->tokenHandler->getUserBadgeFrom($invalidToken);
     }
     

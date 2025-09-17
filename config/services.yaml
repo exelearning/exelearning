@@ -25,9 +25,12 @@ parameters:
     cas_logout_url: '%cas_url%%cas_logout_path%'
 
     oidc_issuer: '%env(OIDC_ISSUER)%'
+    oidc_authorization_endpoint: '%env(OIDC_AUTHORIZATION_ENDPOINT)%'
+    oidc_token_endpoint: '%env(OIDC_TOKEN_ENDPOINT)%'
+    oidc_userinfo_endpoint: '%env(OIDC_USERINFO_ENDPOINT)%'
+    oidc_scope: '%env(OIDC_SCOPE)%'
     oidc_client_id: '%env(OIDC_CLIENT_ID)%'
     oidc_client_secret: '%env(OIDC_CLIENT_SECRET)%'
-    oidc_scope: 'openid email'
 
     api_jwt_secret: '%env(string:API_JWT_SECRET)%'
     api_jwt_issuer: '%env(default::string:API_JWT_ISSUER)%'
@@ -114,30 +117,32 @@ services:
 
     # OIDC Authentication
 
-    # Uncomment this on Symfony >=7.3
-    # # OIDC UserInfo Handler
-    # Symfony\Component\Security\Http\AccessToken\Oidc\OidcUserInfoTokenHandler:
-    #     alias: security.access_token_handler.oidc_userinfo
-    #     public: false
+    # OIDC UserInfo Handler
+    Symfony\Component\Security\Http\AccessToken\Oidc\OidcUserInfoTokenHandler:
+        alias: security.access_token_handler.oidc_userinfo
+        public: false
 
-    # security.access_token_handler.oidc_userinfo:
-    #     class: Symfony\Component\Security\Http\AccessToken\Oidc\OidcUserInfoTokenHandler
-    #     arguments:
-    #         $client: '@http_client'
-    #         $claim: 'sub'
-
-    # Remove this on Symfony >=7.3
-    'App\Security\OidcUserInfoTokenHandlerCustom':
+    # Scoped HTTP client bound to OIDC issuer, used for discovery
+    http_client.oidc:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['@http_client', 'withOptions']
         arguments:
-            $client: '@http_client'
-            $oidcIssuer: '%oidc_issuer%'
-            # $claim: 'email' # we use sub internally
+            - { base_uri: '%oidc_issuer%' }
 
+    security.access_token_handler.oidc_userinfo:
+        class: Symfony\Component\Security\Http\AccessToken\Oidc\OidcUserInfoTokenHandler
+        arguments:
+            - '@http_client.oidc'
+            - '@logger'
+            - 'sub'
+        calls:
+            - [ enableDiscovery, ['@cache.app', 'security.oidc.discovery'] ]
 
     # MultiTokenHandler (combines OIDC, CAS, etc.)
     'App\Security\MultiTokenHandler':
         arguments:
             $casHandler: '@Symfony\Component\Security\Http\AccessToken\Cas\Cas2Handler'
+            $oidcUserInfoHandler: '@security.access_token_handler.oidc_userinfo'
             $jwtHandler: '@App\Security\JwtTokenHandler'
             $authCreateUsers: '%auth_create_users%'
             $passwordHasherFactory: '@security.password_hasher_factory'
