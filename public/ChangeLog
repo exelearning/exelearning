@@ -4,34 +4,34 @@
 
 ### Added
 
-- Desktop version specific Save / Open / Export options
+- Desktop version–specific Save / Open / Export options
 - Keyboard shortcuts
-- New iDevices categories
+- New iDevice categories
 - Export to folder (unzipped website) option
 - Teacher mode (teacher-only iDevices and boxes)
-- Project title visible in all exports
-- Paralell testing support
-- New REST API: Users and projects, JWT auth and admin tools
+- Project title visible in all export formats
+- Parallel testing support
+- New REST API: Users and projects, JWT authentication and admin tools
 
 ### Fixed
 
-- Performance:
+- Performance improvements:
   - Directory and file removal, ZIP handling and related tests
   - User handling and session cleanup
   - Offline version startup
-- Security issues: Defensive programming, type safety and test reliability
+- Security: Defensive programming, type safety and test reliability
 - Caching and logging management
 - Electron app configuration: secret environment variable
-- Mount of public/bundles (permission errors)
+- Mounting of public/bundles (permission errors)
 - jQuery UI compatibility issues
 
 ### Upgraded
 
 - Documentation
 - Improved support for OpenID Connect
-- iDevices common JavaScript code refactored
+- Refactored common iDevice JavaScript code
 - Symfony Process Component: 7.3.0 → 7.3.3
-- Symfony Security Component - Core: 7.3.2 → 7.3.3
+- Symfony Security Component (Core): 7.3.2 → 7.3.3
 - PHPUnit: 12.3.6 → 12.3.8
 - PHPUnit Bridge: 7.3.1 → 7.3.3
 - Symfony Translation Component: 7.3.2 → 7.3.3
