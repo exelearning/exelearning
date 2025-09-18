@@ -143,7 +143,7 @@ test: check-docker check-env
 test-unit: check-docker check-env
 	@echo "Running PHPUnit tests..."
 	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
-	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit
+	@docker compose run --rm --no-deps -e XDEBUG_MODE=off -e memory_limit=512M -e APP_ENV=test exelearning composer --no-cache phpunit-unit
 
 # Run unit tests in parallel using "paratest"
 test-unit-parallel: check-docker check-env
@@ -195,6 +195,40 @@ shell: check-docker check-env upd
 # Clean up and stop Docker containers, removing volumes and orphan containers
 clean: check-docker check-env
 	@docker compose --profile e2e down -v --remove-orphans
+
+# Destroy everything: containers, volumes, images, vendors, caches (with confirmation)
+destroy: check-docker check-env
+ifeq ($(SYSTEM_OS),windows)
+	@echo "⚠️  WARNING: This will remove containers, images, vendor/, node_modules/, dist/, var/* (but keep var/.gitkeep)."
+	@choice /M "Are you sure you want to destroy everything?" || exit 1
+	@echo "🔥 Destroying ALL Docker resources and local build artifacts..."
+	@docker compose down -v --rmi all --remove-orphans
+	@if exist vendor rmdir /S /Q vendor
+	@if exist node_modules rmdir /S /Q node_modules
+	@if exist dist rmdir /S /Q dist
+	@if exist var ( \
+		for /D %%i in (var\*) do if /I not "%%~nxi"==".gitkeep" rmdir /S /Q "%%i" ; \
+		for %%i in (var\*) do if /I not "%%~nxi"==".gitkeep" del /Q "%%i" \
+	)
+	@if exist public\\bundles rmdir /S /Q public\\bundles
+	@echo "✅ Everything destroyed. Next run will be a completely fresh start."
+else
+	@echo "⚠️  WARNING: This will remove containers, images, vendor/, node_modules/, dist/, var/* (but keep var/.gitkeep)."
+	@read -p "Are you sure you want to destroy everything? [y/N] " confirm; \
+	if [ "$$confirm" != "y" ] && [ "$$confirm" != "Y" ]; then \
+		echo "❌ Aborted."; \
+		exit 1; \
+	fi; \
+	echo "🔥 Destroying ALL Docker resources and local build artifacts..."; \
+	docker compose down -v --rmi all --remove-orphans; \
+	echo "🧹 Removing local build directories..."; \
+	rm -rf vendor node_modules dist public/bundles; \
+	if [ -d var ]; then \
+		find var -mindepth 1 ! -name ".gitkeep" -exec rm -rf {} +; \
+	fi; \
+	echo "✅ Everything destroyed. Next run will be a completely fresh start."
+endif
+
 
 # Command to create a user via Symfony console with input prompts
 create-user: check-docker check-env upd
@@ -497,6 +531,7 @@ help:
 	@echo ""
 	@echo "  build                 - Build or rebuild Docker containers"
 	@echo "  clean                 - Clean up and stop Docker containers, removing volumes and orphan containers"
+	@echo "  destroy               - Destroy everything: containers, volumes, images, vendors, caches"
 	@echo "  down                  - Stop and remove Docker containers"
 	@echo "  pull                  - Pull the latest images from the registry"
 	@echo "  shell                 - Open a shell inside the exelearning container"
