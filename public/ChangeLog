@@ -18,6 +18,7 @@
 
 ### Fixed
 
+- iDevice ID mismatch between data and exported HTML
 - Performance improvements:
   - Directory and file removal, ZIP handling and related tests
   - User handling and session cleanup
