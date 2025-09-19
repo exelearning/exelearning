@@ -273,7 +273,8 @@ class OdeXmlUtil
 
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
                     // Generate new id
-                    $newOdeIdeviceId = Util::generateIdCheckUnique($generatedIds);
+                    // $newOdeIdeviceId = Util::generateIdCheckUnique($generatedIds);
+                    $newOdeIdeviceId = $odeComponentsSync->getOdeIdeviceId();
                     $generatedIds[] = $newOdeIdeviceId;
                     $odeComponentsMapping[$odeComponentsSync->getOdeIdeviceId()] = $newOdeIdeviceId;
 

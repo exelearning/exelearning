@@ -22,8 +22,8 @@
                     </li>
                     <li class="dropdown-divider exe-online"></li>
                     <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S">{{ "Save" | trans }}</a></li>
-                    {# Online-only Save As remains hidden as before #}
-                    <li class="d-none"><a id="navbar-button-save-as" class="dropdown-item exe-online" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S">{{ "Save as" | trans }}</a></li>
+                    <li class="exe-online"><a id="navbar-button-save-as" class="dropdown-item" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S">{{ "Save as" | trans }}</a></li>
+                    <li class="dropdown-divider exe-online"></li>
                     <li class="dropdown dropend exe-online">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAs" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Download as..." | trans }}</a>
                         <ul class="dropdown-menu" aria-labelledby="dropdownExportAs">
@@ -37,11 +37,12 @@
                         </ul>
                     </li>
                     {% if config.isOfflineInstallation %}
-                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O">{{ "Open" | trans }}</a></li>
-                        <li class="dropdown-divider exe-offline"></li>
-                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S">{{ "Save" | trans }}</a></li>
-                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-as-offline" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S">{{ "Save as" | trans }}</a></li>
-                        <li class="dropdown dropend exe-offline">
+                        <li><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O">{{ "Open" | trans }}</a></li>
+                        <li class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S">{{ "Save" | trans }}</a></li>
+                        <li><a class="dropdown-item" id="navbar-button-save-as-offline" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S">{{ "Save as" | trans }}</a></li>
+                        <li class="dropdown-divider"></li>
+                        <li class="dropdown dropend">
                             <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Export as..." | trans }}</a>
                             <ul class="dropdown-menu" aria-labelledby="dropdownExportAsOffline">
                                 <li><a id="navbar-button-exportas-html5" class="dropdown-item" href="#">{{ "Website" | trans }}</a></li>
