@@ -7,6 +7,7 @@ use App\Entity\net\exelearning\Dto\ThemeDto;
 use App\Entity\net\exelearning\Entity\User;
 use App\Util\net\exelearning\Util\FilePermissionsUtil;
 use App\Util\net\exelearning\Util\FileUtil;
+use App\Util\net\exelearning\Util\SettingsUtil;
 use App\Util\net\exelearning\Util\XmlUtil;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -440,52 +441,57 @@ class ThemeHelper
     public function unzipTheme($outputFileZip, $tmpThemeDirPath, $themesDir, $user)
     {
         $response = [];
+        if (SettingsUtil::installationTypeIsOffline()) {
+            // Load actual themes
+            $preInstallationThemesBase = $this->getThemesConfigBase();
+            $preInstallationThemesUser = $this->getThemesConfigUser($user);
 
-        // Load actual themes
-        $preInstallationThemesBase = $this->getThemesConfigBase();
-        $preInstallationThemesUser = $this->getThemesConfigUser($user);
+            // Unzip theme into tmp dir
+            FileUtil::extractZipTo($outputFileZip, $tmpThemeDirPath);
 
-        // Unzip theme into tmp dir
-        FileUtil::extractZipTo($outputFileZip, $tmpThemeDirPath);
+            // Load theme
+            $theme = $this->getThemeFromThemeDir($this->tmpThemeFileName, Constants::THEME_TYPE_USER, $user);
 
-        // Load theme
-        $theme = $this->getThemeFromThemeDir($this->tmpThemeFileName, Constants::THEME_TYPE_USER, $user);
-
-        if (!$theme) {
-            $response['error'] = $this->translator->trans('Could not load style');
+            if (!$theme) {
+                $response['error'] = $this->translator->trans('Could not load style');
+            } else {
+                if ($theme->isDownloadable()) {
+                    // Theme dir
+                    $response['themeDirName'] = $theme->getName();
+                    // Check if name is valid
+                    if ($theme->getName() == $this->tmpThemeFileName) {
+                        $response['error'] = $this->translator->trans('Invalid style name');
+                    }
+                    // Check if theme already exists in base themes
+                    foreach ($preInstallationThemesBase as $t) {
+                        if ($t->getName() == $theme->getName()) {
+                            $response['error'] = $this->translator->trans(
+                                'The style [%s] already exists',
+                                ['%s' => $theme->getName()]
+                            );
+                        }
+                    }
+                    // Check if theme already exists in user themes
+                    foreach ($preInstallationThemesUser as $t) {
+                        if ($t->getName() == $theme->getName()) {
+                            $response['error'] = $this->translator->trans(
+                                'The style [%s] already exists',
+                                ['%s' => $theme->getName()]
+                            );
+                        }
+                    }
+                } else {
+                    $response['error'] = $this->translator->trans('The style is not installable');
+                }
+            }
+            // Extract zip into theme name dir
+            if (!isset($response['error'])) {
+                $themeDirPath = $themesDir.DIRECTORY_SEPARATOR.$theme->getName();
+                FileUtil::extractZipTo($outputFileZip, $themeDirPath);
+            }
         } else {
-            // Theme dir
-            $response['themeDirName'] = $theme->getName();
-            // Check if name is valid
-            if ($theme->getName() == $this->tmpThemeFileName) {
-                $response['error'] = $this->translator->trans('Invalid style name');
-            }
-            // Check if theme already exists in base themes
-            foreach ($preInstallationThemesBase as $t) {
-                if ($t->getName() == $theme->getName()) {
-                    $response['error'] = $this->translator->trans(
-                        'The style [%s] already exists',
-                        ['%s' => $theme->getName()]
-                    );
-                }
-            }
-            // Check if theme already exists in user themes
-            foreach ($preInstallationThemesUser as $t) {
-                if ($t->getName() == $theme->getName()) {
-                    $response['error'] = $this->translator->trans(
-                        'The style [%s] already exists',
-                        ['%s' => $theme->getName()]
-                    );
-                }
-            }
+            $response['error'] = $this->translator->trans('Unauthorized');
         }
-
-        // Extract zip into theme name dir
-        if (!isset($response['error'])) {
-            $themeDirPath = $themesDir.DIRECTORY_SEPARATOR.$theme->getName();
-            FileUtil::extractZipTo($outputFileZip, $themeDirPath);
-        }
-
         // Delete tmp theme dir
         try {
             $this->fileHelper->deleteDir($tmpThemeDirPath);
@@ -525,5 +531,14 @@ class ThemeHelper
         $user = $userRepo->findOneBy($userFilters);
 
         return $user;
+    }
+
+    public function checkInstallable($themeConfigFilePathName)
+    {
+        $themeConfigFileContent = FileUtil::getFileContent($themeConfigFilePathName);
+        $themeConfigArray = XmlUtil::loadXmlStringToArray($themeConfigFileContent);
+        //  if ($themeConfigArray['downloadable']===1) {}
+
+        return $themeConfigArray['downloadable'];
     }
 }
