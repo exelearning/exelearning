@@ -392,6 +392,13 @@ class UserHelper
         $this->entityManager->flush();
     }
 
+    /**
+     * Save user preference theme in database.
+     *
+     * @param $userLogged $theme
+     *
+     * @return void
+     */
     public function saveUserTheme($userLogged, $theme)
     {
         $databaseUserPreferences = $this->getUserPreferencesFromDatabase($userLogged);
