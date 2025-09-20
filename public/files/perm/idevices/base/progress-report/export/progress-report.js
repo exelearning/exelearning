@@ -181,7 +181,6 @@ var $eXeInforme = {
         const odeSessionId = eXeLearning.app.project.odeSession;
         const response = await eXeLearning.app.api.getIdevicesBySessionId(odeSessionId);
         let idevices = $eXeInforme.buildNestedPages(response.data);
-        console.log('idevices', idevices);
         const pages = $eXeInforme.createPagesHtml(idevices);
         $eXeInforme.createTableIdevices(pages);
         $eXeInforme.updatePages();
@@ -792,7 +791,6 @@ var $eXeInforme = {
 
     getDataStorage: function (id) {
         let data = $exeDevices.iDevice.gamification.helpers.isJsonString(localStorage.getItem("dataEvaluation-" + id));
-        console.log(data);
         return data.activities;
     },
 

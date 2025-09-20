@@ -15,7 +15,7 @@ class GameRepository
 
     public function getIdevicesBySessionId(string $odeSessionId): array
     {
-            $sql = <<<SQL
+        $sql = <<<SQL
             SELECT 
                 p.id AS navId,
                 p.ode_nav_structure_sync_id,
