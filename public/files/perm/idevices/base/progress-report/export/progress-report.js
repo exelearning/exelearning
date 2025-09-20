@@ -181,6 +181,7 @@ var $eXeInforme = {
         const odeSessionId = eXeLearning.app.project.odeSession;
         const response = await eXeLearning.app.api.getIdevicesBySessionId(odeSessionId);
         let idevices = $eXeInforme.buildNestedPages(response.data);
+        console.log('idevices', idevices);
         const pages = $eXeInforme.createPagesHtml(idevices);
         $eXeInforme.createTableIdevices(pages);
         $eXeInforme.updatePages();
@@ -188,8 +189,6 @@ var $eXeInforme = {
         if (init) {
             $eXeInforme.addEvents();
         }
-
-
     },
 
     buildNestedPages: function (data) {
@@ -206,67 +205,87 @@ var $eXeInforme = {
                 console.warn("Se encontró una fila nula o indefinida en 'data'.");
                 return;
             }
-            const pageId = row.odePageId;
-            const parentId = row.odeParentPageId || null;
-            if (!pageIndex[pageId]) {
-                pageIndex[pageId] = {
-                    id: pageId,
-                    parentId: parentId,
+
+            const rawPageId = (row.odePageId != null) ? String(row.odePageId).trim() : '';
+            const rawParentId = (row.odeParentPageId != null && row.odeParentPageId !== '') ? String(row.odeParentPageId).trim() : null;
+            if (!rawPageId) return;
+
+            if (!pageIndex[rawPageId]) {
+                const order = Number(row.ode_nav_structure_sync_order) || 0;
+                pageIndex[rawPageId] = {
+                    id: rawPageId,
+                    parentId: rawParentId,
                     title: row.pageName,
                     navId: row.navId,
                     ode_nav_structure_sync_id: row.ode_nav_structure_sync_id,
                     ode_session_id: row.ode_session_id,
-                    ode_nav_structure_sync_order: row.ode_nav_structure_sync_order,
+                    ode_nav_structure_sync_order: order,
                     navIsActive: row.navIsActive,
                     components: [],
                     children: [],
-                    url: !parentId && row.ode_nav_structure_sync_order == 1 ? 'index' : $eXeInforme.normalizeFileName(row.pageName)
+                    url: (!rawParentId && order === 1) ? 'index' : $eXeInforme.normalizeFileName(row.pageName)
                 };
             }
-            const dataIDs = $eXeInforme.getEvaluatioID(row.htmlViewer, row.jsonProperties);
-            pageIndex[pageId].components.push({
-                ideviceID: dataIDs.ideviceID,
-                evaluationID: dataIDs.evaluationID,
-                componentId: row.componentId,
-                ode_pag_structure_sync_id: row.ode_pag_structure_sync_id,
-                componentSessionId: row.componentSessionId,
-                componentPageId: row.componentPageId,
-                ode_block_id: row.ode_block_id,
-                blockName: row.blockName,
-                ode_idevice_id: row.ode_idevice_id,
-                odeIdeviceTypeName: row.odeIdeviceTypeName,
-                ode_components_sync_order: row.ode_components_sync_order,
-                componentIsActive: row.componentIsActive,
-            });
+
+            if (row.componentId) {
+                const dataIDs = $eXeInforme.getEvaluatioID(row.htmlViewer, row.jsonProperties);
+                const ideviceID = dataIDs.ideviceID || row.ode_idevice_id || '';
+                const evaluationID = dataIDs.evaluationID || '';
+                pageIndex[rawPageId].components.push({
+                    ideviceID: ideviceID,
+                    evaluationID: evaluationID,
+                    componentId: row.componentId,
+                    ode_pag_structure_sync_id: row.ode_pag_structure_sync_id,
+                    componentSessionId: row.componentSessionId,
+                    componentPageId: row.componentPageId,
+                    ode_block_id: row.ode_block_id,
+                    blockName: row.blockName,
+                    ode_idevice_id: row.ode_idevice_id,
+                    odeIdeviceTypeName: row.odeIdeviceTypeName,
+                    ode_components_sync_order: Number(row.ode_components_sync_order) || 0,
+                    componentIsActive: row.componentIsActive,
+                });
+            }
+        });
+
+        Object.values(pageIndex).forEach(p => {
+            if (Array.isArray(p.components) && p.components.length > 1) {
+                p.components.sort((a, b) => (a.ode_components_sync_order - b.ode_components_sync_order));
+            }
         });
 
         Object.values(pageIndex).forEach(page => {
-            if (page.parentId && pageIndex[page.parentId]) {
-                pageIndex[page.parentId].children.push(page);
+            const pid = page.parentId;
+            if (pid && pageIndex[pid]) {
+                pageIndex[pid].children.push(page);
             } else {
                 rootPages.push(page);
             }
         });
 
+        const sortByOrder = (a, b) => (a.ode_nav_structure_sync_order - b.ode_nav_structure_sync_order);
+        Object.values(pageIndex).forEach(p => {
+            if (Array.isArray(p.children) && p.children.length > 1) {
+                p.children.sort(sortByOrder);
+            }
+        });
+        rootPages.sort(sortByOrder);
+
         return rootPages;
     },
 
     getEvaluatioID(htmlwiew, idevicejson) {
-        let leval = {
-            ideviceID: '',
-            evaluationID: ''
-        }
+        let leval = { ideviceID: '', evaluationID: '' };
         const dataHtml = $eXeInforme.extractEvaluationDataHtml(htmlwiew);
-        const dataJson = $eXeInforme.extractEvaluationDataHtml(idevicejson);
+        const dataJson = $eXeInforme.extractEvaluationDataJSON && $eXeInforme.extractEvaluationDataJSON(idevicejson);
         if (dataHtml) {
-            leval.evaluationID = dataHtml.evaluationId
+            leval.evaluationID = dataHtml.evaluationId;
             leval.ideviceID = dataHtml.dataId;
         } else if (dataJson) {
-            leval.evaluationID = dataJson.evaluationID;
-            leval.ideviceID = dataJson.id;
+            leval.evaluationID = dataJson.evaluationId;
+            leval.ideviceID = dataJson.dataId;
         }
         return leval;
-
     },
 
     extractEvaluationDataHtml: function (htmlText) {
@@ -282,13 +301,24 @@ var $eXeInforme = {
         return false;
     },
 
+    extractEvaluationDataJSON: function (idevicejson) {
+        const obj = $exeDevices.iDevice.gamification.helpers.isJsonString(idevicejson);
+        if (!obj) return false;
+        const evaluationId = obj.evaluationID || obj.evaluationId || obj['data-evaluationid'] || '';
+        const dataId = obj.id || obj.ideviceId || obj.dataId || '';
+        if (evaluationId && evaluationId.length > 0) {
+            return { dataId, evaluationId };
+        }
+        return false;
+    },
+
     loadDataGame(data) {
         const json = data.text(),
             mOptions = $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             currentURL = window.location.href,
             isExportPath = currentURL.includes('/tmp/user/export');
 
-        mOptions.activeLinks = isExportPath || this.isInExe || $('body').hasClass('exe-scorm') || typeof mOptions.activeLinks == 'undefined'
+        mOptions.activeLinks =  this.isInExe || $('body').hasClass('exe-scorm') || typeof mOptions.activeLinks == 'undefined'
             ? false
             : mOptions.activeLinks;
 
@@ -394,17 +424,15 @@ var $eXeInforme = {
         const isRootCall = !acc;
         acc = acc || { count: 0 };
 
-        let html = '<ul id="informePagesContainer">';
-        let pn = true;
-        let pageId = '';
+        let html = isRootCall ? '<ul id="informePagesContainer">' : '<ul class="IFPP-Children">';
+        let firstRootPending = true;
+
         pages.forEach(page => {
-            if (pn && (typeof page.parentID == "undefined" || page.parentID == null)) {
-                pageId = 'index';
-                pn = false;
-            } else {
-                pageId = page.id
-            }
-            let pageHtml = `<li class="IFPP-PageItem" data-page-id="${pageId}">`
+            const hasParent = Boolean(page.parentId) || Boolean(page.parentID);
+            const pageIdAttr = (!hasParent && firstRootPending) ? 'index' : page.id;
+            if (!hasParent && firstRootPending) firstRootPending = false;
+
+            let pageHtml = `<li class="IFPP-PageItem" data-page-id="${pageIdAttr}">`;
             pageHtml += `<div class="IFPP-PageTitleDiv">
                             <div class="IFPP-PageIcon"></div>
                             <div class="IFPP-PageTitle">${page.title}</div>
@@ -498,10 +526,11 @@ var $eXeInforme = {
 
             const pId = page.odePageId || page.id || '';
             const pTitle = page.name || page.title || '';
-            const pUrl = page.url || '';
+            let pUrl = page.url || $eXeInforme.normalizeFileName(pTitle) || '';
             const hasParent = typeof page.parentID != "undefined" && page.parentID != null;
 
             if (pn && !hasParent) {
+                pUrl = 'index';
                 pageId = 'index';
                 pn = false;
             } else {
