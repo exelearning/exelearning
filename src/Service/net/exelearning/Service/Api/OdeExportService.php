@@ -952,13 +952,13 @@ class OdeExportService implements OdeExportServiceInterface
      * @return array
      */
     private function copyBaseFilesToExportDir(
-        $exportDirPath, 
-        $exportType, 
-        $resourcesPrefix, 
-        $isPreview, 
+        $exportDirPath,
+        $exportType,
+        $resourcesPrefix,
+        $isPreview,
         $libraries,
         $packageLanguage,
-        $user
+        $user,
     ) {
         $filesToCopy = [];
 
@@ -966,7 +966,7 @@ class OdeExportService implements OdeExportServiceInterface
         // $filesToCopy = array_merge($filesToCopy, Constants::EXPORT_SYMFONY_PUBLIC_FILES_BASE);
         $filesToCopy = [
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',
-            //Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common_i18n.js',
+            // Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common_i18n.js',
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common.js',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'jquery',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'bootstrap',

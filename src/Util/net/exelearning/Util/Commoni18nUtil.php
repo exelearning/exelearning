@@ -61,7 +61,7 @@ class CommonI18nUtil
             'drag_and_drop' => $this->translator->trans('Drag and drop', [], null, $this->lang),
             'reset' => $this->translator->trans('Reset', [], null, $this->lang),
             'mode_toggler' => $this->translator->trans('Light/dark mode', [], null, $this->lang),
-            'teacher_mode' => $this->translator->trans('Teacher mode', [], null, $this->lang)
+            'teacher_mode' => $this->translator->trans('Teacher mode', [], null, $this->lang),
         ];
     }
 
@@ -91,7 +91,7 @@ class CommonI18nUtil
             'confirmReload' => $this->translator->trans('Reload the game?', [], null, $this->lang),
             'clickOnPlay' => $this->translator->trans('Click "Play" to start a new game.', [], null, $this->lang),
             'clickOnOtherWord' => $this->translator->trans('Click "Another word" to continue.', [], null, $this->lang),
-            'az' => $this->translator->trans('abcdefghijklmnñopqrstuvwxyz', [], null, $this->lang)
+            'az' => $this->translator->trans('abcdefghijklmnñopqrstuvwxyz', [], null, $this->lang),
         ];
     }
 }
