@@ -181,9 +181,9 @@ export default class Theme {
                 .path;
         let pathSplit = path.split('/files/');
         let pathParam = pathSplit.length == 2 ? pathSplit[1] : path;
-        pathParam='/'+pathParam;
+        pathParam = '/' + pathParam;
         let pathServiceResourceContentCss = `${pathServiceResources}?resource=${pathParam}`;
-        
+
         return pathServiceResourceContentCss;
     }
 
