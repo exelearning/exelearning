@@ -821,7 +821,7 @@ var $exeDevice = {
                                 <p class="Games-Reportdiv">
                                     <strong class=""><a href="#vquextEEvaluationHelp" id="vquextEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                                    <input type="checkbox" id="vquextEEvaluation"> <label for="vquextEEvaluation">${_('Progress report')}.</label>
-                                    <label for="vquextEEvaluationID">${_('Identifier')}:</label><input type="text" id="vquextEEvaluationID" disabled/>
+                                    <label for="vquextEEvaluationID">${_('Identifier')}:</label><input type="text" id="vquextEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                                 </p>
                                 <div id="vquextEEvaluationHelp" class="VDQXTE-TypeGameHelp exe-block-info">
                                     <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>

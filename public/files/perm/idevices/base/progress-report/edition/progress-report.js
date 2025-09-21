@@ -335,7 +335,7 @@ var $exeDevice = {
                         <div>
                             <p>${_("The ID can be a number or word of more than five characters. You must use the same ID in all the activities you will assess in this progress report.")}</p>
                             <p>
-                                <label for="informeEEvaluationID">${_("Identifier")}:</label> <input type="text" id="informeEEvaluationID" />
+                                <label for="informeEEvaluationID">${_("Identifier")}:</label> <input type="text" id="informeEEvaluationID" value="${eXeLearning.app.project.odeId || ''}"/>
                                 <button id="informeERefresh">${_("Refresh pages")}</button>
                             </p>
                             <p>                                
@@ -378,6 +378,7 @@ var $exeDevice = {
         this.ideviceBody.innerHTML = html;
 
         $exeDevice.loadPreviousValues();
+
         $exeDevicesEdition.iDevice.tabs.init("reportQEIdeviceForm");
 
     },

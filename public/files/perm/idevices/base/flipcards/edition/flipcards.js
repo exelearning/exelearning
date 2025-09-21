@@ -199,7 +199,7 @@ var $exeDevice = {
                                     </a>
                                 </strong>
                                 <input type="checkbox" id="flipcardsEEvaluation"><label for="flipcardsEEvaluation">${_('Progress report')}. </label>
-                                <label for="flipcardsEEvaluationID">${_('Identifier')}:</label><input type="text" id="flipcardsEEvaluationID" disabled/>
+                                <label for="flipcardsEEvaluationID">${_('Identifier')}:</label><input type="text" id="flipcardsEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="flipcardsEEvaluationHelp" class="FLCRDS-TypeGameHelp exe-block-info exe-block-dismissible">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>

@@ -320,7 +320,7 @@ var $exeDevice = {
                                     </a>
                                 </strong>                                
                                 <input type="checkbox" id="mapaEEvaluation"><label for="mapaEEvaluation">${_('Progress report')}.</label>
-                                <label for="mapaEEvaluationID">${_('Identifier')}:</label><input type="text" id="mapaEEvaluationID" disabled />
+                                <label for="mapaEEvaluationID">${_('Identifier')}:</label><input type="text" id="mapaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="mapaEEvaluationHelp" class="MQE-TypeGameHelp exe-block-info">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>

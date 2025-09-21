@@ -269,7 +269,7 @@ var $exeDevice = {
                                     </a>
                                 </strong>
                                 <input type="checkbox" id="adivinaEEvaluation"><label for="adivinaEEvaluation">${_('Progress report')}.</label>
-                                <label for="adivinaEEvaluationID">${_('Identifier')}:</label> <input type="text" id="adivinaEEvaluationID" disabled/>
+                                <label for="adivinaEEvaluationID">${_('Identifier')}:</label> <input type="text" id="adivinaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                                 
                             </p>
                             <div id="adivinaEEvaluationHelp" class="exe-block-info ADVNE-TypeGameHelp">

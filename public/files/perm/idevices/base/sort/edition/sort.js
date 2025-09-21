@@ -215,7 +215,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#ordenaEEvaluationHelp" id="ordenaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="14" height="14" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="ordenaEEvaluation"><label for="ordenaEEvaluation">${_('Progress report')}.</label>
-                                <label for="ordenaEEvaluationID">${_('Identifier')}</label><input type="text" id="ordenaEEvaluationID" disabled/>
+                                <label for="ordenaEEvaluationID">${_('Identifier')}</label><input type="text" id="ordenaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="ordenaEEvaluationHelp" class="ODNE-TypeGameHelp exe-block-info">
                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>

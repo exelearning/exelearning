@@ -850,7 +850,7 @@ var $exeDevice = {
                                     <input type="checkbox" id="trivialEEvaluation">${_("Progress report")}.
                                 </label>
                                 <label for="trivialEEvaluationID">${_("Identifier")}:
-                                    <input type="text" id="trivialEEvaluationID" disabled/>
+                                    <input type="text" id="trivialEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                                 </label>
                             </p>
                             <div id="trivialEEvaluationHelp" class="TRVLE-TypeGameHelp exe-block-info">

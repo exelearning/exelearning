@@ -137,7 +137,7 @@ var $exeDevice = {
 								<input type="checkbox" id="geogebraActivityEvaluation"> ${_('Progress report')}.
 							</label>
 							<label for="geogebraActivityEvaluationID">${_('Identifier')}: 
-								<input type="text" id="geogebraActivityEvaluationID" disabled />
+                                <input type="text" id="geogebraActivityEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
 							</label>
 						</p>
 						<div id="geogebraActivityEvaluationHelp" class="geogebractivityTypeGameHelp">

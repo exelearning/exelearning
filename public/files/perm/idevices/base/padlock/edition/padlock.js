@@ -162,7 +162,7 @@ var $exeDevice = {
                                 </a>
                             </strong>
                             <input type="checkbox" id="candadoEEvaluation"/><label for="candadoEEvaluation">${_('Progress report')}.</label>
-                            <label for="candadoEEvaluationID">${_('Identifier')}:</label><input type="text" id="candadoEEvaluationID" disabled/>
+                            <label for="candadoEEvaluationID">${_('Identifier')}:</label><input type="text" id="candadoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                         </p>
                         <div id="candadoEEvaluationHelp" class="candado-TypeGameHelp exe-block-info">
                             <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>

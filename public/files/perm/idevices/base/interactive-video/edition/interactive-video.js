@@ -169,7 +169,7 @@ var $exeDevice = {
 						</label>
 						<label for="interactiveVideoEvaluationID">
 							${_("Identifier")}: 
-							<input type="text" id="interactiveVideoEvaluationID" disabled /> 
+                                <input type="text" id="interactiveVideoEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" /> 
 						</label>
 					</p>
 					<p class="exe-block-success flexDisplay">
