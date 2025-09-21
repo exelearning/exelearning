@@ -375,9 +375,7 @@ export default class ModalStyleManager extends Modal {
         buttonsContainer.append(this.makeElementButtonNewTheme());
         // Button import style
         buttonsContainer.append(this.makeElementInputFileImportTheme());
-        if (ithemes == '1') {
-            buttonsContainer.append(this.makeElementButtonImportTheme());
-        }
+        buttonsContainer.append(this.makeElementButtonImportTheme(ithemes));
 
         return buttonsContainer;
     }
@@ -444,11 +442,14 @@ export default class ModalStyleManager extends Modal {
      *
      * @returns
      */
-    makeElementButtonImportTheme() {
+    makeElementButtonImportTheme(ithemes) {
         let buttonImportTheme = document.createElement('button');
         buttonImportTheme.classList.add('themes-button-import');
         buttonImportTheme.classList.add('btn');
         buttonImportTheme.classList.add('btn-secondary');
+        if (!ithemes) {
+            buttonImportTheme.disabled = true;
+        }
         buttonImportTheme.innerHTML = _('Import theme');
         // Add event
         buttonImportTheme.addEventListener('click', (event) => {
