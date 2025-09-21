@@ -587,4 +587,21 @@ class FileHelper
 
         return $newFilename;
     }
+
+    /**
+     * Extract value from key in xml file.
+     */
+    public function xmlKeyValue(string $filename, string $key): string
+    {
+        $value = '0';
+
+        if (is_file($filename)) {
+            $xml = simplexml_load_file($filename);
+            if (isset($xml->$key)) {
+                $value = (string) $xml->$key;
+            }
+        }
+
+        return $value;
+    }
 }

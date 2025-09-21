@@ -763,6 +763,9 @@ class OdeApiController extends DefaultApiController
         $elpFilePath = $request->get('odeFilePath');
         $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession');
 
+        $installThemesAllowed = $this->getParameter('app.online_themes_install');
+        $isOnline = $this->getParameter('app.online_mode');
+
         if (
             $request->request->has('forceCloseOdeUserPreviousSession')
             && (('true' == $forceCloseOdeUserPreviousSession) || ('1' == $forceCloseOdeUserPreviousSession))
@@ -794,9 +797,8 @@ class OdeApiController extends DefaultApiController
 
                 if ('OK' !== $zipResult['responseMessage']) {
                     $responseData['responseMessage'] = $zipResult['responseMessage'];
-                    $jsonData = $this->getJsonSerialized($responseData);
 
-                    return new JsonResponse($jsonData, $this->status, [], true);
+                    return $this->json($responseData, $this->status);
                 }
 
                 $elpFileName = $zipResult['elpName'];
@@ -815,16 +817,13 @@ class OdeApiController extends DefaultApiController
                 $result['responseMessage'] = $this->translator->trans('The file content is wrong');
                 $responseData['responseMessage'] = $result['responseMessage'];
 
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
+                return $this->json($responseData, $this->status);
             }
 
             if ('OK' !== $odeValues['responseMessage']) {
                 $responseData['responseMessage'] = $odeValues['responseMessage'];
-                $jsonData = $this->getJsonSerialized($responseData);
 
-                return new JsonResponse($jsonData, $this->status, [], true);
+                return $this->json($responseData, $this->status);
             }
 
             // Create the structure in database and update current user
@@ -840,9 +839,7 @@ class OdeApiController extends DefaultApiController
             $result['responseMessage'] = 'error: '.$e->getMessage();
             $responseData['responseMessage'] = $result['responseMessage'];
 
-            $jsonData = $this->getJsonSerialized($responseData);
-
-            return new JsonResponse($jsonData, $this->status, [], true);
+            return $this->json($responseData, $this->status);
         }
 
         if (!empty($odeValues['responseMessage'])) {
@@ -869,10 +866,17 @@ class OdeApiController extends DefaultApiController
         if (!empty($odeValues['themeDir'])) {
             $responseData['themeDir'] = $odeValues['themeDir'];
         }
+        if (!empty($odeValues['themeInstallable'])) {
+            $responseData['authorized'] = $odeValues['themeInstallable'];
+        } else {
+            $responseData['authorized'] = false;
+        }
 
-        $jsonData = $this->getJsonSerialized($responseData);
+        if ($isOnline && !$installThemesAllowed) {
+            $responseData['authorized'] = false;
+        }
 
-        return new JsonResponse($jsonData, $this->status, [], true);
+        return $this->json($responseData, $this->status);
     }
 
     #[Route('/ode/local/xml/properties/open', methods: ['POST'], name: 'api_odes_ode_local_xml_properties_open')]
