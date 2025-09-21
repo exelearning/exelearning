@@ -83,10 +83,10 @@ class ThemeApiController extends DefaultApiController
         $ERROR_ZIP_EXTENSION = 'The zip file cannot be unzipped';
         $INSTALL_FAILED = 'Could not install the theme';
 
-        $installThemesAllowed = $this->getParameter('app.online_themes_install');
+        $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
 
-        if ($isOnline && !$installThemesAllowed) {
+        if ($isOnline && !$themesInstallationEnabled) {
             $responseData['responseMessage'] = 'Unauthorized';
 
             return $this->json($responseData, $this->status);
@@ -143,10 +143,10 @@ class ThemeApiController extends DefaultApiController
         $responseData = [];
         $isOnline = false;
 
-        $installThemesAllowed = $this->getParameter('app.online_themes_install');
+        $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
 
-        if ($isOnline && !$installThemesAllowed) {
+        if ($isOnline && !$themesInstallationEnabled) {
             $responseData['responseMessage'] = 'Unauthorized';
 
             return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);

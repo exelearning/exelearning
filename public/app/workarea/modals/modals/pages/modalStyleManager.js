@@ -39,6 +39,9 @@ export default class ModalStyleManager extends Modal {
     show(themes) {
         // Set title
         this.titleDefault = _('Styles');
+        this.paramInstallThemes = JSON.parse(
+            JSON.stringify(eXeLearning.app.api.parameters.canInstallThemes)
+        );
         // Parameters of a theme that we will show in the information
         this.paramsInfo = JSON.parse(
             JSON.stringify(eXeLearning.app.api.parameters.themeInfoFieldsConfig)
@@ -315,7 +318,9 @@ export default class ModalStyleManager extends Modal {
         let bodyContainer = document.createElement('div');
         bodyContainer.classList.add('body-themes-container');
         // Head buttons
-        bodyContainer.append(this.makeElementToButtons());
+        bodyContainer.append(
+            this.makeElementToButtons(this.paramInstallThemes)
+        );
         // Themes list
         let themesListContainer = document.createElement('div');
         themesListContainer.classList.add('themes-list-container');
@@ -362,7 +367,7 @@ export default class ModalStyleManager extends Modal {
      *
      * @returns {Element}
      */
-    makeElementToButtons() {
+    makeElementToButtons(ithemes) {
         // Buttons container element
         let buttonsContainer = document.createElement('div');
         buttonsContainer.classList.add('themes-button-container');
@@ -370,7 +375,9 @@ export default class ModalStyleManager extends Modal {
         buttonsContainer.append(this.makeElementButtonNewTheme());
         // Button import style
         buttonsContainer.append(this.makeElementInputFileImportTheme());
-        buttonsContainer.append(this.makeElementButtonImportTheme());
+        if (ithemes == '1') {
+            buttonsContainer.append(this.makeElementButtonImportTheme());
+        }
 
         return buttonsContainer;
     }

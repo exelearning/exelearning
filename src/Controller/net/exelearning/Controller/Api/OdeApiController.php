@@ -763,7 +763,7 @@ class OdeApiController extends DefaultApiController
         $elpFilePath = $request->get('odeFilePath');
         $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession');
 
-        $installThemesAllowed = $this->getParameter('app.online_themes_install');
+        $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
 
         if (
@@ -872,7 +872,7 @@ class OdeApiController extends DefaultApiController
             $responseData['authorized'] = false;
         }
 
-        if ($isOnline && !$installThemesAllowed) {
+        if ($isOnline && !$themesInstallationEnabled) {
             $responseData['authorized'] = false;
         }
 
