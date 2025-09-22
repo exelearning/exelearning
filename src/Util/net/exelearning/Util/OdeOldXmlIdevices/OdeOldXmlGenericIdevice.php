@@ -202,6 +202,9 @@ class OdeOldXmlGenericIdevice
                 $fullOdeComponentsSyncHtmlView .= '<div class="feedback js-feedback js-hidden" style="display: none;">'.$fullOdeComponentsSyncHtmlFeedbackView.'</div>';
             }
 
+            // Add a div class wrapper
+            $fullOdeComponentsSyncHtmlView = '<div class="exe-text-activity">'.$fullOdeComponentsSyncHtmlView.'</div>';
+
             $odeComponentsSync->setHtmlView($fullOdeComponentsSyncHtmlView);
 
             // Create jsonProperties for idevice

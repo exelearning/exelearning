@@ -1901,6 +1901,9 @@ class OdeXmlUtil
                                         // Add feedback div
                                         $odeComponentsSyncHtmlView .= '<div class="feedback js-feedback js-hidden" style="display: none;">'.$textFeedback.'</div>';
                                     }
+
+                                    // Add a div class wrapper
+                                    $odeComponentsSyncHtmlView = '<div class="exe-text-activity">'.$odeComponentsSyncHtmlView.'</div>';
                                 }
 
                                 foreach ($src as $srcValue) {

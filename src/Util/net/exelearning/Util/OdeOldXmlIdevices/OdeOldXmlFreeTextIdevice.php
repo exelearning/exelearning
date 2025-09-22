@@ -181,7 +181,9 @@ class OdeOldXmlFreeTextIdevice
                                     $odeComponentsSyncHtmlView .= '<div class="feedback js-feedback js-hidden" style="display: none;">'.$odeComponentsSyncFeedbackHtmlView.'</div>';
                                 }
                             }
-
+                            // Add a div class wrapper
+                            $odeComponentsSyncHtmlView = '<div class="exe-text-activity">'.$odeComponentsSyncHtmlView.'</div>';
+                            
                             $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
                             // $odeComponentsSync->setFeedbackHtmlView($odeComponentsSyncFeedbackHtmlView);
 
