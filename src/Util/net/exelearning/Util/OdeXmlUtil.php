@@ -1887,7 +1887,19 @@ class OdeXmlUtil
                                     $taskParticipantsInput = $taskIdeviceElements['taskParticipantsInput'];
                                     $textButtonFeedback = $taskIdeviceElements['textButtonFeedback'];
                                     $textFeedback = $taskIdeviceElements['textFeedback'];
-                                    $odeComponentsSyncHtmlView = $taskIdeviceElements['odeComponentsSyncHtmlView'];
+                                    $odeComponentsSyncHtmlViewTask = $taskIdeviceElements['odeComponentsSyncHtmlView'];
+                                    $odeComponentsSyncHtmlView = '<dl><div class="inline"> <dt><span title="'.$taskDurationInput.'">'.$taskDurationInput.'</span></dt><dd>'.
+                                    $taskDuration.'</dd></div><div class="inline"><dt><span title="'.$taskParticipantsInput.'"></span>'.$taskParticipantsInput.'</dt><dd>'.
+                                    $taskParticipants.'</dd></div></dl>'.$odeComponentsSyncHtmlViewTask;
+                                    if ('' != $textButtonFeedback) {
+                                        $odeComponentsSyncHtmlView .= '<div class="iDevice_buttons feedback-button js-required">
+                                        <input type="button" class="feedbacktooglebutton" value="'.$textButtonFeedback.'" 
+                                        data-text-a="'.$textButtonFeedback.'" data-text-b="'.$textButtonFeedback.'">
+                                        </div>';
+
+                                        // Add feedback div
+                                        $odeComponentsSyncHtmlView .= '<div class="feedback js-feedback js-hidden" style="display: none;">'.$textFeedback.'</div>';
+                                    }
                                 }
 
                                 foreach ($src as $srcValue) {
@@ -1910,6 +1922,10 @@ class OdeXmlUtil
                                 }
 
                                 $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
+                                if ($isTaskContent) {
+                                    $odeComponentsSyncHtmlView = $odeComponentsSyncHtmlViewTask;
+                                }
+
                                 // Different json for scrambled list
                                 if ('scrambled-list' !== $nodeIdeviceTextType) {
                                     // Rubric and download-source-file don't have json
