@@ -154,7 +154,7 @@ class OdeOldXmlFreeTextIdevice
                                     $jsonProperties['textFeedbackInput'] = (string) $buttonCaptionNode[0];
                                     if ('' !== trim((string) $buttonCaptionNode[0])) {
                                         $textButtonCaption = (string) $buttonCaptionNode[0];
-                                    } 
+                                    }
                                 }
 
                                 // Update srcRoutes for feedback

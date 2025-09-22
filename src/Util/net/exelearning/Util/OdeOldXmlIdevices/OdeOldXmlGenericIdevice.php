@@ -190,8 +190,8 @@ class OdeOldXmlGenericIdevice
             if (!empty($fullOdeComponentsSyncHtmlFeedbackView)) {
                 $jsonProperties['textFeedbackTextarea'] = $fullOdeComponentsSyncHtmlFeedbackView;
                 // Add button to show feedback
-                $textButtonCaption =  $translator->trans('Show Feedback');
-               
+                $textButtonCaption = $translator->trans('Show Feedback');
+
                 $fullOdeComponentsSyncHtmlView .=
                 '<div class="iDevice_buttons feedback-button js-required">
                 <input type="button" class="feedbacktooglebutton" value="'.$textButtonCaption.'" 
