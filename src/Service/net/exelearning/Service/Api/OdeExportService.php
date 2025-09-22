@@ -20,6 +20,7 @@ use App\Service\net\exelearning\Service\Export\ExportHTML5SPService;
 use App\Service\net\exelearning\Service\Export\ExportIMSService;
 use App\Service\net\exelearning\Service\Export\ExportSCORM12Service;
 use App\Service\net\exelearning\Service\Export\ExportSCORM2004Service;
+use App\Util\net\exelearning\Util\CommonI18nUtil;
 use App\Util\net\exelearning\Util\ExportXmlUtil;
 use App\Util\net\exelearning\Util\FilePermissionsUtil;
 use App\Util\net\exelearning\Util\FileUtil;
@@ -596,9 +597,12 @@ class OdeExportService implements OdeExportServiceInterface
         // it should search in each idevice if it has any effect included. The method will return an array with all the effects it finds.
         list($librariesToCopy, $librariesFileToCopy) = ExportXmlUtil::getPathForLibrariesInIdevices($odeNavStructureSyncs, $odeProperties);
 
+        // The package language can be obtained from the $odeProperties array using the pp_lang key.
+        $packageLanguage = isset($odeProperties['pp_lang']) ? $odeProperties['pp_lang']->getValue() : Settings::DEFAULT_LOCALE;
+
         // copy all libs, jquery, bootstrap
         // Copy project base files to export --> Here we are going to copy the mandatory ones
-        $this->copyBaseFilesToExportDir($newExportDirPath, $exportType, $resourcesPrefix, $isPreview, $librariesToCopy);
+        $this->copyBaseFilesToExportDir($newExportDirPath, $exportType, $resourcesPrefix, $isPreview, $librariesToCopy, $packageLanguage, $user);
 
         // Copy ode files
         $idevicesMapping = $odeSaveXML->getOdeComponentsMapping();
@@ -868,28 +872,125 @@ class OdeExportService implements OdeExportServiceInterface
     }
 
     /**
+     * Generate common i18n JavaScript content with main translations and iDevice translations.
+     *
+     * @param string        $packageLanguage
+     * @param array         $translations
+     * @param UserInterface $user
+     *
+     * @return string
+     */
+    private function generateCommonI18nJs(
+        $packageLanguage,
+        $translations,
+        $user,
+    ) {
+        // Build JS object $exe_i18n
+        $entriesCommon = [];
+        $commonTranslations = $translations['common'] ?? [];
+        $jsContent = "// The content of this file will be dynamically generated in the language of the elp.\n";
+        $jsContent .= '$exe_i18n = {';
+        foreach ($commonTranslations as $key => $value) {
+            $entriesCommon[] = $key.': "'.addslashes($value).'"';
+        }
+
+        $jsContent .= implode(', ', $entriesCommon);
+        $jsContent .= '};'."\n";
+
+        // Build JS object $exe_i18n.exeGames
+        $entriesGames = [];
+        $gamesTranslations = $translations['games'] ?? [];
+        $jsContent .= "// This line is only present if the elp contains a hangman game.\n";
+        $jsContent .= '$exe_i18n.exeGames = {';
+        foreach ($gamesTranslations as $key => $value) {
+            $entriesGames[] = $key.': "'.addslashes($value).'"';
+        }
+
+        $jsContent .= implode(', ', $entriesGames);
+        $jsContent .= '};'."\n";
+
+        // Add iDevice translations
+        try {
+            $idevicesInstalled = $this->ideviceHelper->getInstalledIdevices($user);
+            foreach ($idevicesInstalled as $idevice) {
+                $ideviceName = $idevice->getName();
+                $ideviceDir = $idevice->getDirName();
+
+                $ideviceTranslationPath = $this->ideviceHelper->getIdeviceTranslationFilePathName(
+                    $packageLanguage,
+                    $ideviceDir,
+                    $ideviceName
+                );
+
+                if (file_exists($ideviceTranslationPath)) {
+                    $ideviceTranslations = FileUtil::readXlfFile($ideviceTranslationPath, $packageLanguage);
+                    foreach ($ideviceTranslations as $key => $value) {
+                        $translated = $this->translator->trans($value, [], null, $packageLanguage);
+                        $prefixedKey = $ideviceName.'_'.$key;
+                        $jsContent .= '$exe_i18n.exeGames["'.addslashes($prefixedKey).'"] = "'.addslashes($translated)."\";\n";
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            $this->logger->warning('Failed to load iDevice translations: '.$e->getMessage());
+        }
+
+        return $jsContent;
+    }
+
+    /**
      * Copy symfony base files to project export libs dir.
      *
-     * @param string $exportDirPath
-     * @param string $exportType
-     * @param string $isPreview
+     * @param string        $exportDirPath
+     * @param string        $exportType
+     * @param string        $resourcesPrefix
+     * @param string        $isPreview
+     * @param array         $libraries
+     * @param string        $packageLanguage
+     * @param UserInterface $user
      *
      * @return array
      */
-    private function copyBaseFilesToExportDir($exportDirPath, $exportType, $resourcesPrefix, $isPreview, $libraries)
-    {
+    private function copyBaseFilesToExportDir(
+        $exportDirPath,
+        $exportType,
+        $resourcesPrefix,
+        $isPreview,
+        $libraries,
+        $packageLanguage,
+        $user,
+    ) {
         $filesToCopy = [];
 
         // Base files
         // $filesToCopy = array_merge($filesToCopy, Constants::EXPORT_SYMFONY_PUBLIC_FILES_BASE);
         $filesToCopy = [
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',
-            Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common_i18n.js',
+            // Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common_i18n.js',
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common.js',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'jquery',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'bootstrap',
         ];
         $filesToCopy = array_merge($filesToCopy, $libraries);
+
+        // Get translations
+        $commonI18n = new CommonI18nUtil($this->translator, $packageLanguage);
+
+        $translations = [
+            'common' => $commonI18n->getCommonStringsi18n(),
+            'games' => $commonI18n->getGamesStringsi18n(),
+        ];
+
+        // Generate common_i18n.js directly in the export folder
+        $commonI18nContent = $this->generateCommonI18nJs($packageLanguage, $translations, $user);
+        $exportLibsDir = $exportDirPath.Constants::EXPORT_DIR_PUBLIC_LIBS.DIRECTORY_SEPARATOR;
+
+        if (!is_dir($exportLibsDir)) {
+            mkdir($exportLibsDir, 0777, true);
+        }
+
+        $commonI18nPath = $exportLibsDir.'common_i18n.js';
+        file_put_contents($commonI18nPath, $commonI18nContent);
 
         // Add symfony path
         $symfonyPublicDirPath = $this->fileHelper->getSymfonyPublicDir();
