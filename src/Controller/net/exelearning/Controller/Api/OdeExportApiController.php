@@ -122,7 +122,7 @@ class OdeExportApiController extends DefaultApiController
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
-
+        // $tempID= $this->fileHelper->getTempID(4);
         // Generate export file
         $odeExportResult = $this->odeExportService->export(
             $user,
@@ -131,7 +131,8 @@ class OdeExportApiController extends DefaultApiController
             $baseUrl,
             $exportType,
             true,
-            false
+            false,
+            bin2hex(random_bytes(6 / 2)).DIRECTORY_SEPARATOR
         );
 
         $jsonData = $this->getJsonSerialized($odeExportResult);

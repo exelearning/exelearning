@@ -76,16 +76,28 @@ class ThemeApiController extends DefaultApiController
     }
 
     #[Route('/upload', methods: ['POST'], name: 'api_themes_upload')]
-    public function uploadThemeAction(Request $request)
+    public function uploadThemeAction(Request $request): JsonResponse
     {
+        $UNAUTHORIZED = 'Unauthorized';
+        $ERROR_INVALID_DATA = 'Invalid data';
+        $ERROR_ZIP_EXTENSION = 'The zip file cannot be unzipped';
+        $INSTALL_FAILED = 'Could not install the theme';
+
+        $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
+        $isOnline = $this->getParameter('app.online_mode');
+
+        if ($isOnline && !$themesInstallationEnabled) {
+            $responseData['responseMessage'] = 'Unauthorized';
+
+            return $this->json($responseData, $this->status);
+        }
         try {
             Util::checkPhpZipExtension();
         } catch (PhpZipExtensionException $e) {
-            $this->logger->error('The zip file cannot be unzipped', ['file:' => $this, 'line' => __LINE__]);
-            $responseData['error'] = 'The zip file cannot be unzipped';
-            $jsonData = $this->getJsonSerialized($responseData);
+            $this->logger->error($ERROR_ZIP_EXTENSION, ['file:' => $this, 'line' => __LINE__]);
+            $responseData['error'] = $ERROR_ZIP_EXTENSION;
 
-            return new JsonResponse($jsonData, $this->status, [], true);
+            return $this->json($responseData, $this->status);
         }
 
         $user = $this->getUser();
@@ -97,10 +109,9 @@ class ThemeApiController extends DefaultApiController
         // Validate received data
         if ((empty($base64String)) || (empty($filename))) {
             $this->logger->error('invalid data', ['file:' => $this, 'line' => __LINE__]);
-            $responseData = ['error' => 'Invalid data'];
-            $jsonData = $this->getJsonSerialized($responseData);
+            $responseData = ['error' => $ERROR_INVALID_DATA];
 
-            return new JsonResponse($jsonData, $this->status, [], true);
+            return $this->json($responseData, $this->status);
         }
 
         // Upload and install theme
@@ -109,14 +120,12 @@ class ThemeApiController extends DefaultApiController
         // Check installed theme
         if ($newTheme && $newTheme['error']) {
             $responseData = ['error' => $newTheme['error']];
-            $jsonData = $this->getJsonSerialized($responseData);
 
-            return new JsonResponse($jsonData, $this->status, [], true);
+            return $this->json($responseData, $this->status);
         } elseif (!isset($newTheme['theme'])) {
-            $responseData = ['error' => 'Could not install the theme'];
-            $jsonData = $this->getJsonSerialized($responseData);
+            $responseData = ['error' => $INSTALL_FAILED];
 
-            return new JsonResponse($jsonData, $this->status, [], true);
+            return $this->json($responseData, $this->status);
         }
 
         // Response
@@ -125,21 +134,30 @@ class ThemeApiController extends DefaultApiController
         $responseData['themes'] = $this->getInstalledThemesAction($request, false);
         $responseData['responseMessage'] = 'OK';
 
-        $jsonData = $this->getJsonSerialized($responseData);
-
-        return new JsonResponse($jsonData, $this->status, [], true);
+        return $this->json($responseData, $this->status);
     }
 
     #[Route('/import/odetheme', methods: ['POST'], name: 'api_ode_theme_import')]
     public function importOdeThemeAction(Request $request)
     {
         $responseData = [];
+        $isOnline = false;
+
+        $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
+        $isOnline = $this->getParameter('app.online_mode');
+
+        if ($isOnline && !$themesInstallationEnabled) {
+            $responseData['responseMessage'] = 'Unauthorized';
+
+            return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);
+        }
 
         try {
             Util::checkPhpZipExtension();
         } catch (PhpZipExtensionException $e) {
             $this->logger->error('The zip file cannot be unzipped', ['file:' => $this, 'line' => __LINE__]);
             $responseData['error'] = 'The zip file cannot be unzipped';
+
             $jsonData = $this->getJsonSerialized($responseData);
 
             return new JsonResponse($jsonData, $this->status, [], true);
@@ -156,13 +174,38 @@ class ThemeApiController extends DefaultApiController
         $odeSessionThemeDir = $odeSessionDir.DIRECTORY_SEPARATOR.Constants::EXPORT_DIR_THEME;
 
         $themesDirPath = $this->fileHelper->getThemesUsersDir().$dbUser->getUserId().DIRECTORY_SEPARATOR;
+        $themeConfigFile = $odeSessionThemeDir.DIRECTORY_SEPARATOR.'config.xml';
+        if (!is_file($themeConfigFile)) {
+            $responseData['responseMessage'] = 'Theme configuration not found';
+
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, $this->status, [], true);
+        }
+
+        $isInstallable = $this->fileHelper->xmlKeyValue($themeConfigFile, Constants::THEME_INSTALLABLE);
+
+        if (!$isInstallable) {
+            $responseData['responseMessage'] = 'Unauthorized';
+
+            return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);
+        }
+
         $outputThemePath = $themesDirPath.$themeDirname;
+        try {
+            FileUtil::copyDir($odeSessionThemeDir, $outputThemePath);
 
-        FileUtil::copyDir($odeSessionThemeDir, $outputThemePath);
-
-        // Response
-        $responseData['themes'] = $this->getInstalledThemesAction($request, false);
-        $responseData['responseMessage'] = 'OK';
+            // Response
+            $responseData['themes'] = $this->getInstalledThemesAction($request, false);
+            $responseData['responseMessage'] = 'OK';
+        } catch (\Exception $e) {
+            $this->logger->error('Theme installation failed', [
+                'exception' => $e->getMessage(),
+                'theme' => $themeDirname,
+                'user' => $dbUser->getUserId(),
+            ]);
+            $responseData['responseMessage'] = 'Could not install the theme';
+        }
 
         $jsonData = $this->getJsonSerialized($responseData);
 
