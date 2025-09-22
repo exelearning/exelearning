@@ -182,7 +182,7 @@ class OdeOldXmlFreeTextIdevice
                                 }
                             }
                             // Add a div class wrapper
-                            $odeComponentsSyncHtmlView = '<div class="exe-text-activity">'.$odeComponentsSyncHtmlView.'</div>';
+                            $odeComponentsSyncHtmlView = '<div class="textIdeviceContent"><div class="exe-text-activity">'.$odeComponentsSyncHtmlView.'</div></div>';
 
                             $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
                             // $odeComponentsSync->setFeedbackHtmlView($odeComponentsSyncFeedbackHtmlView);

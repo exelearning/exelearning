@@ -203,7 +203,7 @@ class OdeOldXmlGenericIdevice
             }
 
             // Add a div class wrapper
-            $fullOdeComponentsSyncHtmlView = '<div class="exe-text-activity">'.$fullOdeComponentsSyncHtmlView.'</div>';
+            $fullOdeComponentsSyncHtmlView = '<div class="textIdeviceContent"><div class="exe-text-activity">'.$fullOdeComponentsSyncHtmlView.'</div></div>';
 
             $odeComponentsSync->setHtmlView($fullOdeComponentsSyncHtmlView);
 
