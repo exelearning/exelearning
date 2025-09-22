@@ -58,6 +58,12 @@ parameters:
     app.logs.dir:  '%env(default:logs_default_dir:LOG_DIR)%'
     app.cache.dir: '%env(default:cache_default_dir:CACHE_DIR)%'
 
+    # Allow users to import/install styles
+    app.online_themes_install: '%env(bool:ONLINE_THEMES_INSTALL)%'
+
+    # Allow users to import/install iDevices
+    app.online_idevices_install: '%env(bool:ONLINE_IDEVICES_INSTALL)%'
+
 services:
     Symfony\Component\DependencyInjection\ContainerInterface: '@service_container'
     # default configuration for services in *this* file

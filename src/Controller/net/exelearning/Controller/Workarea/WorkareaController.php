@@ -161,6 +161,11 @@ class WorkareaController extends DefaultWorkareaController
         // Themes css file
         $themeDefaultCssFile = Constants::THEME_DEFAULT_CSS_FILE;
 
+        // Allow user styles
+        $userStyles = $this->getParameter('app.online_themes_install');
+        // Allow user iDevices
+        $userIdevices = $this->getParameter('app.online_idevices_install');
+
         // Idevices
         $ideviceTypeBase = Constants::IDEVICE_TYPE_BASE;
         $ideviceTypeUser = Constants::IDEVICE_TYPE_USER;
@@ -245,6 +250,8 @@ class WorkareaController extends DefaultWorkareaController
                     'defaultTheme' => $defaultTheme,
                     'isOfflineInstallation' => $isOfflineInstallation,
                     'platformIntegration' => $platformIntegration,
+                    'userStyles' => $userStyles,
+                    'userIdevices' => $userIdevices,
                 ],
                 'symfony' => [
                     'odeSessionId' => $odeSessionId,

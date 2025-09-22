@@ -1184,7 +1184,7 @@ export default class modalOpenUserOdeFiles extends Modal {
      * @param {*} response
      */
     loadOdeTheme(response) {
-        if (response.theme && response.themeDir) {
+        if (response.theme && response.themeDir && response.authorized) {
             if (
                 Object.keys(eXeLearning.app.themes.list.installed).includes(
                     response.theme

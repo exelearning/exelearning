@@ -52,7 +52,7 @@ class NewFileEmptyPreviewTest extends ExelearningE2EBase
 
         $this->assertMatchesRegularExpression(
             sprintf(
-                '/\/files\/tmp\/\d{4}\/\d{2}\/\d{2}\/[a-zA-Z0-9]+\/tmp\/%s\/export\/index\.html$/',
+                '/\/files\/tmp\/\d{4}\/\d{2}\/\d{2}\/[a-zA-Z0-9]+\/tmp\/%s\/export\/[a-zA-Z0-9]+\/index\.html$/',                
                 preg_quote($this->currentUserId, '/')
             ),
             $client->getCurrentURL(),

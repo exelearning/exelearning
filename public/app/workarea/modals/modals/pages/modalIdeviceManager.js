@@ -345,7 +345,8 @@ export default class ModalIdeviceManager extends Modal {
         buttonsContainer.classList.add('idevices-button-container');
         // Button import style
         buttonsContainer.append(this.makeElementInputFileImportIdevice());
-        buttonsContainer.append(this.makeElementButtonImportIdevice());
+        let importButton = this.makeElementButtonImportIdevice();
+        if (importButton != false) buttonsContainer.append(importButton);
 
         return buttonsContainer;
     }
@@ -379,6 +380,11 @@ export default class ModalIdeviceManager extends Modal {
      * @returns
      */
     makeElementButtonImportIdevice() {
+        if (
+            eXeLearning.config.isOfflineInstallation == false &&
+            eXeLearning.config.userIdevices == false
+        )
+            return false;
         let buttonImportIdevice = document.createElement('button');
         buttonImportIdevice.classList.add('idevices-button-import');
         buttonImportIdevice.classList.add('btn');
