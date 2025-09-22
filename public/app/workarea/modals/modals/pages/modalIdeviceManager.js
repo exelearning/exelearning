@@ -148,6 +148,10 @@ export default class ModalIdeviceManager extends Modal {
                 eXeLearning.app.api.parameters.ideviceInfoFieldsConfig
             )
         );
+        this.paramInstallIdevices = JSON.parse(
+            JSON.stringify(eXeLearning.app.api.parameters.canInstallIdevices)
+        );
+
         // Installed idevices
         if (idevices) this.idevices = idevices;
         this.idevicesBase = this.getBaseIdevices(this.idevices.installed);
@@ -283,7 +287,9 @@ export default class ModalIdeviceManager extends Modal {
         let bodyContainer = document.createElement('div');
         bodyContainer.classList.add('body-idevices-container');
         // Head buttons
-        bodyContainer.append(this.makeElementToButtons());
+        bodyContainer.append(
+            this.makeElementToButtons(this.paramInstallIdevices)
+        );
         // Filter
         let filterTable = this.makeFilterTable(
             bodyContainer,
@@ -339,13 +345,13 @@ export default class ModalIdeviceManager extends Modal {
      *
      * @returns {Element}
      */
-    makeElementToButtons() {
+    makeElementToButtons(iIdevices) {
         // Buttons container element
         let buttonsContainer = document.createElement('div');
         buttonsContainer.classList.add('idevices-button-container');
         // Button import style
         buttonsContainer.append(this.makeElementInputFileImportIdevice());
-        buttonsContainer.append(this.makeElementButtonImportIdevice());
+        buttonsContainer.append(this.makeElementButtonImportIdevice(iIdevices));
 
         return buttonsContainer;
     }
@@ -378,11 +384,14 @@ export default class ModalIdeviceManager extends Modal {
      *
      * @returns
      */
-    makeElementButtonImportIdevice() {
+    makeElementButtonImportIdevice(iIdevices) {
         let buttonImportIdevice = document.createElement('button');
         buttonImportIdevice.classList.add('idevices-button-import');
         buttonImportIdevice.classList.add('btn');
         buttonImportIdevice.classList.add('btn-secondary');
+        if (!iIdevices) {
+            buttonImportIdevice.disabled = true;
+        }
         buttonImportIdevice.innerHTML = _('Import iDevice');
         // Add event
         buttonImportIdevice.addEventListener('click', (event) => {

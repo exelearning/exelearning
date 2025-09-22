@@ -126,6 +126,14 @@ class IdeviceApiController extends DefaultApiController
     #[Route('/upload', methods: ['POST'], name: 'api_idevices_upload')]
     public function uploadIdeviceAction(Request $request)
     {
+        $idevicesInstallationEnabled = $this->getParameter('app.online_idevices_install');
+        $isOnline = $this->getParameter('app.online_mode');
+
+        if ($isOnline && !$idevicesInstallationEnabled) {
+            $responseData['responseMessage'] = 'Unauthorized';
+
+            return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);
+        }
         try {
             Util::checkPhpZipExtension();
         } catch (PhpZipExtensionException $e) {
