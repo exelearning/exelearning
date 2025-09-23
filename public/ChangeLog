@@ -22,6 +22,7 @@
 ### Fixed
 
 - iDevice ID mismatch between data and exported HTML
+- Refactor iDevice feedback handling and remove old rendering logic
 - Performance improvements:
   - Directory and file removal, ZIP handling and related tests
   - User handling and session cleanup
