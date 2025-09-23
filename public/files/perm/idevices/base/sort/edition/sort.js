@@ -215,7 +215,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#ordenaEEvaluationHelp" id="ordenaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="14" height="14" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="ordenaEEvaluation"><label for="ordenaEEvaluation">${_('Progress report')}.</label>
-                                <label for="ordenaEEvaluationID">${_('Identifier')}</label><input type="text" id="ordenaEEvaluationID" disabled/>
+                                <label for="ordenaEEvaluationID">${_('Identifier')}</label><input type="text" id="ordenaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="ordenaEEvaluationHelp" class="ODNE-TypeGameHelp exe-block-info">
                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -970,8 +970,8 @@ var $exeDevice = {
         let linksImages = $exeDevice.createlinksImage(dataGame.phrasesGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.phrasesGame);
 
-        let html = '<div class="ordena-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="ordena-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += '<div class="ordena-feedback-game">' + textFeedBack + '</div>';
         html += divContent;
         html += '<div class="ordena-DataGame js-hidden">' + json + '</div>';

@@ -180,7 +180,7 @@ var $eXeHiddenImage = {
         <div class="HIP-Content">
             <div class="HIP-LeftPanel">
                 <div id="hiPLeftContainer" class="HIP-LefContainer">
-                    <img id="hiPImage-${instance}" class="HIP-GameImage" src="https://via.placeholder.com/600x400"
+                    <img id="hiPImage-${instance}" class="HIP-GameImage" src=""
                         alt="Imagen a descubrir">
                     <a href="#" class="HIP-LinkAudio" id="hiPLinkAudio-${instance}" title="${msgs.msgAudio}">
                         <img src="${path}exequextaudio.png" class="HIP-Activo" alt="${msgs.msgAudio}">

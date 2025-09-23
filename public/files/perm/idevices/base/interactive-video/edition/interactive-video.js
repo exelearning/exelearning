@@ -169,7 +169,7 @@ var $exeDevice = {
 						</label>
 						<label for="interactiveVideoEvaluationID">
 							${_("Identifier")}: 
-							<input type="text" id="interactiveVideoEvaluationID" disabled /> 
+                                <input type="text" id="interactiveVideoEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" /> 
 						</label>
 					</p>
 					<p class="exe-block-success flexDisplay">
@@ -345,7 +345,10 @@ var $exeDevice = {
                 $exeDevicesEdition.iDevice.gamification.scorm.setValues(InteractiveVideo.scorm.isScorm, InteractiveVideo.scorm.textButtonScorm, InteractiveVideo.scorm.repeatActivity);
                 InteractiveVideo.scoreNIA = typeof InteractiveVideo.scoreNIA == "undefined" ? true : InteractiveVideo.scoreNIA;
                 InteractiveVideo.evaluation = typeof InteractiveVideo.evaluation == "undefined" ? false : InteractiveVideo.evaluation;
-                InteractiveVideo.evaluationID = typeof InteractiveVideo.evaluationID == "undefined" ? '' : InteractiveVideo.evaluationID;
+                const defaultEvalID = $("#interactiveVideoEvaluationID").val() || (typeof eXeLearning !== 'undefined' && eXeLearning.app && eXeLearning.app.project ? (eXeLearning.app.project.odeId || '') : '');
+                InteractiveVideo.evaluationID = (typeof InteractiveVideo.evaluationID == "undefined" || InteractiveVideo.evaluationID === '')
+                    ? defaultEvalID
+                    : InteractiveVideo.evaluationID;
                 InteractiveVideo.ideviceID = typeof InteractiveVideo.ideviceID != "undefined" ? InteractiveVideo.ideviceID : false;
                 $exeDevice.ideviceID = $exeDevice.getIdeviceID();
                 $("#interactiveVideoEvaluation").prop("checked", InteractiveVideo.evaluation);
@@ -574,8 +577,8 @@ var $exeDevice = {
             contentAfter = '<div class="exe-interactive-video-content-after">' + contentAfter + '</div>';
         }
 
-        var html = contentBefore;
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${ideviceID}" data-evaluationid="${sevalid}"></div>`;
+    var html = contentBefore;
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${ideviceID}" data-evaluationb="${seval}" data-evaluationid="${sevalid}"></div>`;
 
         html += '\
 			<div class="exe-interactive-video'+ extraCSS + '">\

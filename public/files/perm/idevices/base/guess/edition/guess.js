@@ -269,7 +269,7 @@ var $exeDevice = {
                                     </a>
                                 </strong>
                                 <input type="checkbox" id="adivinaEEvaluation"><label for="adivinaEEvaluation">${_('Progress report')}.</label>
-                                <label for="adivinaEEvaluationID">${_('Identifier')}:</label> <input type="text" id="adivinaEEvaluationID" disabled/>
+                                <label for="adivinaEEvaluationID">${_('Identifier')}:</label> <input type="text" id="adivinaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                                 
                             </p>
                             <div id="adivinaEEvaluationHelp" class="exe-block-info ADVNE-TypeGameHelp">
@@ -1114,8 +1114,8 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.wordsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.wordsGame);
 
-        let html = '<div class="adivina-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="adivina-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `<div class="adivina-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="adivina-feedback-game">${textFeedBack}</div>`;
         html += divContent;

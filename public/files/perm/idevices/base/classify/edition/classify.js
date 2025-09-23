@@ -225,7 +225,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#clasificaEEvaluationHelp" id="clasificaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" /></a></strong>
                                 <input type="checkbox" id="clasificaEEvaluation"><label for="clasificaEEvaluation">${_('Progress report')}.</label>
-                                <label for="clasificaEEvaluationID"></label>${_('Identifier')}:<input type="text" id="clasificaEEvaluationID" disabled />
+                                <label for="clasificaEEvaluationID"></label>${_('Identifier')}:<input type="text" id="clasificaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
                             </p>
                             <div id="clasificaEEvaluationHelp" class="CQE-TypeGameHelp  exe-block-info exe-block-dismissible">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -669,8 +669,8 @@ var $exeDevice = {
             imgCard = '';
         }
 
-        let html = '<div class="clasifica-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="clasifica-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `<div class="clasifica-feedback-game">${textFeedBack}</div>`;
         html += divContent;
         html += `<div class="clasifica-DataGame js-hidden">${json}</div>`;

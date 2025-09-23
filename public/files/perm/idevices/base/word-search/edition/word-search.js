@@ -349,7 +349,7 @@ var $exeDevice = {
                                  <p class="Games-Reportdiv">
                                     <strong class="GameModeLabel"><a href="#sopaEEvaluationHelp" id="sopaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" /></a></strong>
                                     <input type="checkbox" id="sopaEEvaluation"><label for="sopaEEvaluation">${_('Progress report')}.</label>
-                                    <label for="sopaEEvaluationID">${_('Identifier')}:</label><input type="text" id="sopaEEvaluationID" disabled />
+                                    <label for="sopaEEvaluationID">${_('Identifier')}:</label><input type="text" id="sopaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                                 </p>
                                 <div id="sopaEEvaluationHelp" class="SPE-TypeGameHelp">
                                     <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -642,8 +642,8 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.wordsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.wordsGame);
 
-        let html = `<div class="sopa-IDevice">
-                <div class="game-evaluation-ids js-hidden" data-id="${dataGame.id}" data-evaluationid="${dataGame.evaluationID}"></div>
+    let html = `<div class="sopa-IDevice">
+        <div class="game-evaluation-ids js-hidden" data-id="${dataGame.id}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>
                 <div class="sopa-version js-hidden">${$exeDevice.version}</div>
                  ${divInstructions}
                 <div class="sopa-feedback-game">${textFeedBack}</div>              

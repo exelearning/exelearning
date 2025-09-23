@@ -850,7 +850,7 @@ var $exeDevice = {
                                     <input type="checkbox" id="trivialEEvaluation">${_("Progress report")}.
                                 </label>
                                 <label for="trivialEEvaluationID">${_("Identifier")}:
-                                    <input type="text" id="trivialEEvaluationID" disabled/>
+                                    <input type="text" id="trivialEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                                 </label>
                             </p>
                             <div id="trivialEEvaluationHelp" class="TRVLE-TypeGameHelp exe-block-info">
@@ -1410,8 +1410,8 @@ var $exeDevice = {
             linksAudios = $exeDevice.createlinksAudio(dataGame);
 
         let html = '<div class="trivial-IDevice">';
-        html += divIntrunstion;
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    html += divIntrunstion;
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += '<div class="trivial-DataGame js-hidden">' + $exeDevice.Encrypt(dataGame) + '</div>';
         html += linksImages;
         html += linksAudios;
