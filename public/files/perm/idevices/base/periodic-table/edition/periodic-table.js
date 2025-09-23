@@ -341,7 +341,7 @@ var $exeDevice = {
                                     </a>
                                 </strong>
                                 <input type="checkbox" id="ptEEvaluation">  <label for="ptEEvaluation">${_('Progress report')}. </label>                        
-                                <label for="ptEEvaluationID">${_('Identifier')}: </label><input type="text" id="ptEEvaluationID" disabled/> 
+                                <label for="ptEEvaluationID">${_('Identifier')}: </label><input type="text" id="ptEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/> 
                             </p>
                             <div id="ptEEvaluationHelp" class="PTE-TypeGameHelp" style="display:none;">
                                 <p class="exe-block-info exe-block-dismissible" >${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -438,8 +438,8 @@ var $exeDevice = {
         if (textAfter !== '') {
             textAfter = `<div class="periodic-table-extra-content">${textAfter}</div>`;
         }
-        const html = `<div class="periodic-table-IDevice">
-           <div class="game-evaluation-ids js-hidden" data-id="${dataGame.id}" data-evaluationid="${dataGame.evaluationID}"></div>
+    const html = `<div class="periodic-table-IDevice">
+       <div class="game-evaluation-ids js-hidden" data-id="${dataGame.id}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>
             <div class="periodic-table-version js-hidden">${$exeDevice.version}</div>
             <div class="periodic-table-feedback-game">${textFeedBack}</div>
             ${divInstructions}

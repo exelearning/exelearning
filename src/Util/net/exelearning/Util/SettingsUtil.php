@@ -52,6 +52,22 @@ class SettingsUtil
     }
 
     /**
+     * Checks if theme installation allowed in online.
+     */
+    public static function themeInstallationAllowed(): bool
+    {
+        return self::getParameter('app.online_themes_install');
+    }
+
+    /**
+     * Checks if idevices installation allowed in online.
+     */
+    public static function idevicesInstallationAllowed(): bool
+    {
+        return self::getParameter('app.online_idevices_install');
+    }
+
+    /**
      * Converts USER_STORAGE_MAX_DISK_SPACE from MB to Bytes.
      */
     public static function getUserStorageMaxDiskSpaceInBytes(): float

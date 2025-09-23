@@ -170,7 +170,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#puzzleEEvaluationHelp" id="puzzleEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="puzzleEEvaluation"><label for="puzzleEEvaluation">${_('Progress report')}.</label>
-                                <label for="puzzleEEvaluationID">${_('Identifier')}:</label><input type="text" id="puzzleEEvaluationID" disabled/>
+                                <label for="puzzleEEvaluationID">${_('Identifier')}:</label><input type="text" id="puzzleEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="puzzleEEvaluationHelp" class="PZLE-TypeGameHelp exe-block-info">
                                 <div>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</div>
@@ -567,8 +567,8 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.puzzlesGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.puzzlesGame);
 
-        let html = '<div class="puzzle-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="puzzle-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += '<div class="puzzle-feedback-game">' + textFeedBack + '</div>';
         html += divContent;
         html += '<div class="puzzle-DataGame js-hidden">' + json + '</div>';

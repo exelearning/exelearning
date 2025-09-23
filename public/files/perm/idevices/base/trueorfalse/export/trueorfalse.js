@@ -309,8 +309,8 @@ var $trueorfalse = {
                 ? 'TOFP-EHidden'
                 : '';
         const display = mOptions.isScorm == 2 ? 'block' : 'none';
-        const html = `
-        <div class="game-evaluation-ids js-hidden" data-id="${mOptions.id}" data-evaluationid="${mOptions.evaluationID}"></div>
+    const html = `
+    <div class="game-evaluation-ids js-hidden" data-id="${mOptions.id}" data-evaluationb="${mOptions.evaluation}" data-evaluationid="${mOptions.evaluationID}"></div>
         <div class="TOFP-instructions">${mOptions.eXeGameInstructions}</div>
         <div class="TOFP-MainContainer" data-instance="${instance}" id="tofPMainContainer-${instance}">
             <div class="TOFP-GameContainer" id="tofPGameContainer-${instance}">

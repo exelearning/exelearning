@@ -1264,7 +1264,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#seleccionaEEvaluationHelp" id="seleccionaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="seleccionaEEvaluation"><label for="seleccionaEEvaluation">${_('Progress report')}.</label>
-                                <label for="seleccionaEEvaluationID">${_('Identifier')}:</label><input type="text" id="seleccionaEEvaluationID" disabled/>
+                                <label for="seleccionaEEvaluationID">${_('Identifier')}:</label><input type="text" id="seleccionaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="seleccionaEEvaluationHelp" class="exe-block-info SLCNE-TypeGameHelp">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -1880,8 +1880,8 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.selectsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.selectsGame);
 
-        let html = '<div class="selecciona-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="selecciona-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html += `<div class="selecciona-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="selecciona-feedback-game">${textFeedBack}</div>`;

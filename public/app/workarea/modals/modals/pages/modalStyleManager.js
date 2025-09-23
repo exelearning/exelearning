@@ -39,6 +39,9 @@ export default class ModalStyleManager extends Modal {
     show(themes) {
         // Set title
         this.titleDefault = _('Styles');
+        this.paramInstallThemes = JSON.parse(
+            JSON.stringify(eXeLearning.app.api.parameters.canInstallThemes)
+        );
         // Parameters of a theme that we will show in the information
         this.paramsInfo = JSON.parse(
             JSON.stringify(eXeLearning.app.api.parameters.themeInfoFieldsConfig)
@@ -315,7 +318,9 @@ export default class ModalStyleManager extends Modal {
         let bodyContainer = document.createElement('div');
         bodyContainer.classList.add('body-themes-container');
         // Head buttons
-        bodyContainer.append(this.makeElementToButtons());
+        bodyContainer.append(
+            this.makeElementToButtons(this.paramInstallThemes)
+        );
         // Themes list
         let themesListContainer = document.createElement('div');
         themesListContainer.classList.add('themes-list-container');
@@ -362,15 +367,18 @@ export default class ModalStyleManager extends Modal {
      *
      * @returns {Element}
      */
-    makeElementToButtons() {
+    makeElementToButtons(ithemes) {
         // Buttons container element
         let buttonsContainer = document.createElement('div');
         buttonsContainer.classList.add('themes-button-container');
         // Button new theme
         buttonsContainer.append(this.makeElementButtonNewTheme());
         // Button import style
-        buttonsContainer.append(this.makeElementInputFileImportTheme());
-        buttonsContainer.append(this.makeElementButtonImportTheme());
+        var importStyleButton = this.makeElementButtonImportTheme(ithemes);
+        if (importStyleButton != false) {
+            buttonsContainer.append(this.makeElementInputFileImportTheme());
+            buttonsContainer.append(this.makeElementButtonImportTheme(ithemes));
+        }
 
         return buttonsContainer;
     }
@@ -437,12 +445,20 @@ export default class ModalStyleManager extends Modal {
      *
      * @returns
      */
-    makeElementButtonImportTheme() {
+    makeElementButtonImportTheme(ithemes) {
+        if (
+            eXeLearning.config.isOfflineInstallation == false &&
+            eXeLearning.config.userStyles == false
+        )
+            return false;
         let buttonImportTheme = document.createElement('button');
         buttonImportTheme.classList.add('themes-button-import');
         buttonImportTheme.classList.add('btn');
         buttonImportTheme.classList.add('btn-secondary');
-        buttonImportTheme.innerHTML = _('Import theme');
+        if (!ithemes) {
+            buttonImportTheme.disabled = true;
+        }
+        buttonImportTheme.innerHTML = _('Import style');
         // Add event
         buttonImportTheme.addEventListener('click', (event) => {
             this.modalElementBody

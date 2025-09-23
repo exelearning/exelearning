@@ -70,6 +70,7 @@ class Constants
     public const THEME_LOGO_IMG = 'logo';
     public const THEME_TYPE_BASE = 'base';
     public const THEME_TYPE_USER = 'user';
+    public const THEME_INSTALLABLE = 'downloadable';
 
     // iDevices
     public const IDEVICE_CONFIG_FILENAME = 'config.xml';

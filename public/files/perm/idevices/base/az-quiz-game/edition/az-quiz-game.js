@@ -192,7 +192,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#roscoEEvaluationHelp" id="roscoEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif"  width="16" height="16" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="roscoEEvaluation"><label for="roscoEEvaluation">${_('Progress report')}.</label>
-                                <label for="roscoEEvaluationID">${_('Identifier')}:</label><input type="text" id="roscoEEvaluationID" disabled/>
+                                <label for="roscoEEvaluationID">${_('Identifier')}:</label><input type="text" id="roscoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="roscoEEvaluationHelp" class="roscoTypeGameHelp">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -691,7 +691,7 @@ var $exeDevice = {
             textAfter = tinymce.editors[1].getContent();
 
         let html = '<div class="rosco-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="rosco-version js-hidden">' +
             $exeDevice.roscoVersion +
