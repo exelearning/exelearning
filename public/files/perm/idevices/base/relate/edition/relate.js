@@ -161,7 +161,7 @@ var $exeDevice = {
                                     </a>
                                 </strong>                                
                                 <input type="checkbox" id="rclEEvaluation"><label for="rclEEvaluation">${_("Progress report")}.</label>
-                                <label for="rclEEvaluationID">${_("Identifier")}:</label><input type="text" id="rclEEvaluationID" disabled/>
+                                <label for="rclEEvaluationID">${_("Identifier")}:</label><input type="text" id="rclEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="rclEEvaluationHelp" class="RLC-TypeGameHelp exe-block-info">
                                 <p>${_("You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.")}</p>
@@ -808,8 +808,8 @@ var $exeDevice = {
 
         let divContent = dataGame.instructions ? `<div class="relaciona-instructions gameQP-instructions">${dataGame.instructions}</div>` : "";
         const linksMedias = $exeDevice.createlinksIMedias(cards);
-        let html = `<div class="relaciona-IDevice">${divContent}<div class="relaciona-DataGame js-hidden">${json}</div>`;
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = `<div class="relaciona-IDevice">${divContent}<div class="relaciona-DataGame js-hidden">${json}</div>`;
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += linksMedias;
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
         if (textAfter) html += `<div class="relaciona-extra-content">${textAfter}</div>`;

@@ -185,7 +185,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#slcmEEvaluationHelp" id="slcmEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                                <input type="checkbox" id="slcmEEvaluation"><label for="slcmEEvaluation">${_('Progress report')}. </label>
-                                <label for="slcmEEvaluationID">${_('Identifier')}:</label><input type="text" id="slcmEEvaluationID" disabled/> 
+                                <label for="slcmEEvaluationID">${_('Identifier')}:</label><input type="text" id="slcmEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/> 
                             </p>
                             <div id="slcmEEvaluationHelp" class="SLCME-TypeGameHelp exe-block-info">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -937,7 +937,7 @@ var $exeDevice = {
         let linksImages = $exeDevice.createlinksImage(dataGame.phrasesGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.phrasesGame),
             html = '<div class="seleccionamedias-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="seleccionamedias-feedback-game">' +
             textFeedBack +

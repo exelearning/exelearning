@@ -199,7 +199,7 @@ var $exeDevice = {
                                     </a>
                                 </strong>
                                 <input type="checkbox" id="flipcardsEEvaluation"><label for="flipcardsEEvaluation">${_('Progress report')}. </label>
-                                <label for="flipcardsEEvaluationID">${_('Identifier')}:</label><input type="text" id="flipcardsEEvaluationID" disabled/>
+                                <label for="flipcardsEEvaluationID">${_('Identifier')}:</label><input type="text" id="flipcardsEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="flipcardsEEvaluationHelp" class="FLCRDS-TypeGameHelp exe-block-info exe-block-dismissible">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -888,8 +888,8 @@ var $exeDevice = {
         } else {
             imgCard = '';
         }
-        let html = '<div class="flipcards-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="flipcards-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html += '<div class="flipcards-DataGame js-hidden">' + json + '</div>';
         html += linksMedias;

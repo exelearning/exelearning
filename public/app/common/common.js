@@ -964,6 +964,10 @@ var $exeDevices = {
 
             report: {
                 updateEvaluationIcon: function (game, isInExe) {
+                    if (typeof game !== 'undefined' && game.main) {
+                        const $gmain = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
+                        game.id = $gmain.closest('.idevice_node').attr('id');
+                    }
                     if (game && game.id && game.evaluation && game.evaluationID && game.evaluationID.length > 0) {
                         const data = $exeDevices.iDevice.gamification.report.getDataStorage(game.evaluationID);
                         const $gmain = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
@@ -1089,6 +1093,10 @@ var $exeDevices = {
                 },
 
                 saveEvaluation: function (game,) {
+                    if (typeof game !== 'undefined' && game.main) {
+                        const $gmain = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
+                        game.id = $gmain.closest('.idevice_node').attr('id');
+                    }
                     if (game && game.id && game.evaluation && game.evaluationID.length > 0) {
                         const $main = game.main.charAt(0) === '.' ? $(`${game.main}`).eq(0) : $(`#${game.main}`).eq(0);
                         const name = $exeDevices.iDevice.gamification.report.getNameIdevice($main),
@@ -1107,8 +1115,9 @@ var $exeDevices = {
 
                         localStorage.setItem('dataEvaluation-' + game.evaluationID, JSON.stringify(data));
                         $exeDevices.iDevice.gamification.report.showEvaluationIcon(game, scorm.state, scorm.score);
+                        const event = new CustomEvent('gamification-evaluation-saved', { detail: { evaluationID: game.evaluationID, ideviceId: game.id, ideviceType: game.idevice, score: scorm.score, state: scorm.state } });
+                        window.dispatchEvent(event);
                     }
-
                 },
 
                 getDataStorage: function (id) {
@@ -1133,7 +1142,7 @@ var $exeDevices = {
 
             },
 
-             math: {
+            math: {
                 loadMathJax: function () {
                     if (!window.MathJax) window.MathJax = $exeDevices.iDevice.gamification.math.engineConfig;
                     const script = document.createElement('script');

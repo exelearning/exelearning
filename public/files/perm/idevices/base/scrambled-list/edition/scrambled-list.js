@@ -307,7 +307,7 @@ var $exeDevice = {
                     <p class="Games-Reportdiv">
                         <strong class="GameModeLabel"><a href="#sortableEvaluationHelp" id="sortableEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${this.idevicePath}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                         <label for="sortableEvaluation"><input type="checkbox" id="sortableEvaluation">${_('Progress report')}. </label>
-                        <label for="sortableEvaluationID">${_('Identifier')}: </label><input type="text" id="sortableEvaluationID" disabled/>
+                        <label for="sortableEvaluationID">${_('Identifier')}: </label><input type="text" id="sortableEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                     </p>
                     <div id="sortableEvaluationHelp" class="tofTypeGameHelp"  style="display:none">
                         <p class="exe-block-info exe-block-dismissible">${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -543,8 +543,9 @@ var $exeDevice = {
             data.wrongText || wrongText;
         this.ideviceBody.querySelector('#sortableEvaluation').checked =
             data.evaluation || false;
-        this.ideviceBody.querySelector('#sortableEvaluationID').value =
-            data.evaluationID || '';
+        if (data.evaluationID) {
+            this.ideviceBody.querySelector('#sortableEvaluationID').value = data.evaluationID;
+        }
         this.ideviceBody.querySelector('#sortableEvaluationID').disabled =
             !data.evaluation;
         this.ideviceBody.querySelector('#eXeGameInstructions').value =
