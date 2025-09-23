@@ -165,13 +165,6 @@ var $text = {
         const $node = $('#' + data.ideviceId);
         const isInExe = eXe.app.isInExe();
 
-        // Only render html old idevice
-        if (!isInExe && $node && $node.length === 1 && $node.find('.exe-text-template').length === 0) {
-            const html = $node.html();
-            this.renderHtmlOldIdevice(data, $node);
-
-        }
-
         const $btn = $(`#${data.ideviceId} input.feedbackbutton, #${data.ideviceId} input.feedbacktooglebutton`);
         if ($btn.length !== 1) return;
 

@@ -1545,7 +1545,7 @@ class OdeService implements OdeServiceInterface
         try {
             // Read XML
             if (!$isNewOdeXml) {
-                $odeResponse = OdeXmlUtil::readOldExeXml($newOdeSessionId, $elpContentFileContent);
+                $odeResponse = OdeXmlUtil::readOldExeXml($newOdeSessionId, $elpContentFileContent, $this->translator);
             } else {
                 if (!$isImportIdevices) {
                     $odeResponse = OdeXmlUtil::readOdeXml($newOdeSessionId, $elpContentFileContent);

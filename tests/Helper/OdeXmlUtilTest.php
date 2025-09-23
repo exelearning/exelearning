@@ -4,6 +4,7 @@ namespace App\Tests\Helper;
 
 use PHPUnit\Framework\TestCase;
 use App\Util\net\exelearning\Util\OdeXmlUtil;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 class OdeXmlUtilTest extends TestCase
 {
@@ -12,6 +13,7 @@ class OdeXmlUtilTest extends TestCase
         $odeSessionId  = '20250418172857XIPCIJ';
         $generatedIds  = [];
         $xpathNamespace = "http://www.exelearning.org/content/v0.3";
+        $translator = $this->createMock(TranslatorInterface::class);
 
         // This is an xml node taken from an old elp
         $xml_serialized = file_get_contents(realpath(__DIR__ . '/../Fixtures/node_serialized.xml'));
@@ -26,7 +28,7 @@ class OdeXmlUtilTest extends TestCase
 
         $result = $refMethod->invokeArgs(
             null,
-            [$odeSessionId, $generatedIds, $oldXmlListInst, null, $xpathNamespace]
+            [$odeSessionId, $generatedIds, $oldXmlListInst, null, $xpathNamespace, $translator]
         );
 
         // 4) Aserciones básicas sobre la estructura de salida

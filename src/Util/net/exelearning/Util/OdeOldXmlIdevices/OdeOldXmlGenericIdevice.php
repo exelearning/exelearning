@@ -7,6 +7,7 @@ use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Util\net\exelearning\Util\UrlUtil;
 use App\Util\net\exelearning\Util\Util;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * OdeOldXmlGenericIdevice.
@@ -34,7 +35,7 @@ class OdeOldXmlGenericIdevice
     // const OLD_ODE_XML_IDEVICE_TEXT = 'instance';
     public const OLD_ODE_XML_IDEVICE_TEXT_CONTENT = 'string role="key" value="content_w_resourcePaths"';
 
-    public static function oldElpGenericIdeviceStructure($odeSessionId, $odePageId, $genericNodes, $generatedIds, $xpathNamespace)
+    public static function oldElpGenericIdeviceStructure($odeSessionId, $odePageId, $genericNodes, $generatedIds, $xpathNamespace, TranslatorInterface $translator)
     {
         $result['odeComponentsSync'] = [];
         $result['srcRoutes'] = [];
@@ -181,8 +182,6 @@ class OdeOldXmlGenericIdevice
             // Set type
             $odeComponentsSync->setOdeIdeviceTypeName('text');
 
-            $odeComponentsSync->setHtmlView($fullOdeComponentsSyncHtmlView);
-
             $jsonProperties = self::JSON_PROPERTIES;
             $jsonProperties['ideviceId'] = $odeIdeviceId;
             if (!empty($fullOdeComponentsSyncHtmlView)) {
@@ -190,7 +189,24 @@ class OdeOldXmlGenericIdevice
             }
             if (!empty($fullOdeComponentsSyncHtmlFeedbackView)) {
                 $jsonProperties['textFeedbackTextarea'] = $fullOdeComponentsSyncHtmlFeedbackView;
+                // Add button to show feedback
+                $textButtonCaption = $translator->trans('Show Feedback');
+
+                $fullOdeComponentsSyncHtmlView .=
+                '<div class="iDevice_buttons feedback-button js-required">
+                <input type="button" class="feedbacktooglebutton" value="'.$textButtonCaption.'" 
+                data-text-a="'.$textButtonCaption.'" data-text-b="'.$textButtonCaption.'">
+                </div>';
+
+                // Add feedback div
+                $fullOdeComponentsSyncHtmlView .= '<div class="feedback js-feedback js-hidden" style="display: none;">'.$fullOdeComponentsSyncHtmlFeedbackView.'</div>';
             }
+
+            // Add a div class wrapper
+            $fullOdeComponentsSyncHtmlView = '<div class="textIdeviceContent"><div class="exe-text-activity">'.$fullOdeComponentsSyncHtmlView.'</div></div>';
+
+            $odeComponentsSync->setHtmlView($fullOdeComponentsSyncHtmlView);
+
             // Create jsonProperties for idevice
             $jsonProperties = json_encode($jsonProperties);
             $odeComponentsSync->setJsonProperties($jsonProperties);
