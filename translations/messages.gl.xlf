@@ -2539,7 +2539,7 @@
       </trans-unit>
       <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
         <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target>Precisas polo menos %s&amp;percnt; de respostas correctas para obter a información. Téntao de novo.</target>
+        <target><![CDATA[Precisas polo menos %s&percnt; de respostas correctas para obter a información. Téntao de novo.]]></target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -2767,7 +2767,7 @@
       </trans-unit>
       <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
         <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target>Permítense letras incorrectas (&amp;percnt;)</target>
+        <target><![CDATA[Permítense letras incorrectas (&percnt;)]]></target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -2775,7 +2775,7 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
         <source>&amp;percnt; right to see the feedback</source>
-        <target>__&amp;percnt; de acertos requiridos para ver a retroalimentación</target>
+        <target><![CDATA[&percnt; de acertos requiridos para ver a retroalimentación]]></target>
       </trans-unit>
       <trans-unit id="mA7cA0x" resname="Crossword">
         <source>Crossword</source>
@@ -6455,7 +6455,7 @@
       </trans-unit>
       <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
         <source>Action &amp; Expression</source>
-        <target>__Action &amp; Expression</target>
+        <target>~Acción e expresión</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>
