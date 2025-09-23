@@ -17,6 +17,7 @@
 - New REST API: Users and projects, JWT authentication and admin tools
 - New settings to enable or disable the iDevices and styles import option in the online version
 - New option to import a style from an .elp file or exported content
+- Updated translations: Spanish (es), Galician (gl)
 
 ### Fixed
 
