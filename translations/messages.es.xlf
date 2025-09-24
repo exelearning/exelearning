@@ -11623,99 +11623,99 @@
       </trans-unit>
       <trans-unit id="niBfDzY" resname="Could not extract theme">
         <source>Could not extract theme</source>
-        <target>~No se pudo extraer el tema</target>
+        <target>No se pudo extraer el estilo</target>
       </trans-unit>
       <trans-unit id="qEE0Zw." resname="The style is not installable">
         <source>The style is not installable</source>
-        <target>~El estilo no se puede instalar</target>
+        <target>El estilo no se puede instalar</target>
       </trans-unit>
       <trans-unit id="RRGAG5X" resname="Could not install theme">
         <source>Could not install theme</source>
-        <target>~No se pudo instalar el tema</target>
+        <target>No se pudo instalar el estilo</target>
       </trans-unit>
       <trans-unit id="ldQmgCC" resname="Show feedback">
         <source>Show feedback</source>
-        <target>~Mostrar comentarios</target>
+        <target>Mostrar retroalimentación</target>
       </trans-unit>
       <trans-unit id="IIWdrDp" resname="Hide feedback">
         <source>Hide feedback</source>
-        <target>~Ocultar comentarios</target>
+        <target>Ocultar retroalimentación</target>
       </trans-unit>
       <trans-unit id="qXxIKiI" resname="Menu">
         <source>Menu</source>
-        <target>~Menú</target>
+        <target>Menú</target>
       </trans-unit>
       <trans-unit id="uPK90IF" resname="Your score is">
         <source>Your score is</source>
-        <target>~Tu puntuación es</target>
+        <target>Tu puntuación es</target>
       </trans-unit>
       <trans-unit id="b6hmtD_" resname="Error retrieving data">
         <source>Error retrieving data</source>
-        <target>~Error al recuperar los datos</target>
+        <target>Error al recuperar los datos</target>
       </trans-unit>
       <trans-unit id="iM.0BJl" resname="This might not work in this ePub reader.">
         <source>This might not work in this ePub reader.</source>
-        <target>~Esto podría no funcionar en este lector de ePub.</target>
+        <target>Esto podría no funcionar en este lector de ePub.</target>
       </trans-unit>
       <trans-unit id="oORf9iD" resname="This activity does not work in ePub format.">
         <source>This activity does not work in ePub format.</source>
-        <target>~Esta actividad no funciona en formato ePub.</target>
+        <target>Esta actividad no funciona en formato ePub.</target>
       </trans-unit>
       <trans-unit id="MA7trt8" resname="Search all pages">
         <source>Search all pages</source>
-        <target>~Buscar en todas las páginas</target>
+        <target>Buscar en todas las páginas</target>
       </trans-unit>
       <trans-unit id="l1Hcq.m" resname="No results found for %">
         <source>No results found for %</source>
-        <target>~No se encontraron resultados para %</target>
+        <target>No se encontraron resultados para %</target>
       </trans-unit>
       <trans-unit id="s_Ykup3" resname="Search results for %">
         <source>Search results for %</source>
-        <target>~Resultados de búsqueda para %</target>
+        <target>Resultados de búsqueda para %</target>
       </trans-unit>
       <trans-unit id="QJSMbTz" resname="Hide results">
         <source>Hide results</source>
-        <target>~Ocultar resultados</target>
+        <target>Ocultar resultados</target>
       </trans-unit>
       <trans-unit id="vZ3g5lk" resname="Full size">
         <source>Full size</source>
-        <target>~Tamaño completo</target>
+        <target>Tamaño completo</target>
       </trans-unit>
       <trans-unit id="Y.SUx2B" resname="Accessibility tools">
         <source>Accessibility tools</source>
-        <target>~Herramientas de accesibilidad</target>
+        <target>Herramientas de accesibilidad</target>
       </trans-unit>
       <trans-unit id=".LN5KpH" resname="Default typography">
         <source>Default typography</source>
-        <target>~Tipografía predeterminada</target>
+        <target>Tipografía predeterminada</target>
       </trans-unit>
       <trans-unit id="Y_lcdMn" resname="Increase text size">
         <source>Increase text size</source>
-        <target>~Aumentar tamaño del texto</target>
+        <target>Aumentar tamaño del texto</target>
       </trans-unit>
       <trans-unit id="83VcOiT" resname="Decrease text size">
         <source>Decrease text size</source>
-        <target>~Disminuir tamaño del texto</target>
+        <target>Disminuir tamaño del texto</target>
       </trans-unit>
       <trans-unit id="OLinVBN" resname="Stop reading">
         <source>Stop reading</source>
-        <target>~Detener lectura</target>
+        <target>Detener la lectura</target>
       </trans-unit>
       <trans-unit id="nfZSB2j" resname="Translate">
         <source>Translate</source>
-        <target>~Traducir</target>
+        <target>Traducir</target>
       </trans-unit>
       <trans-unit id="h_JJhAn" resname="Light/dark mode">
         <source>Light/dark mode</source>
-        <target>~Modo claro/oscuro</target>
+        <target>Modo claro/oscuro</target>
       </trans-unit>
       <trans-unit id="WA9z9oQ" resname="Teacher mode">
         <source>Teacher mode</source>
-        <target>~Modo profesor</target>
+        <target>Modo profesor</target>
       </trans-unit>
       <trans-unit id="zp1nkll" resname="Hangman Game">
         <source>Hangman Game</source>
-        <target>~Juego del ahorcado</target>
+        <target>Juego del ahorcado</target>
       </trans-unit>
       <trans-unit id="Qmo7OQW" resname="Stat">
         <source>Stat</source>
@@ -11723,27 +11723,27 @@
       </trans-unit>
       <trans-unit id="RiWn7g_" resname="Selected letters">
         <source>Selected letters</source>
-        <target>~Letras seleccionadas</target>
+        <target>Letras seleccionadas</target>
       </trans-unit>
       <trans-unit id="D.9uOUj" resname="Other word">
         <source>Other word</source>
-        <target>~Otra palabra</target>
+        <target>Otra palabra</target>
       </trans-unit>
       <trans-unit id="QCsa0JO" resname="Game Over">
         <source>Game Over</source>
-        <target>~Juego terminado</target>
+        <target>Juego terminado</target>
       </trans-unit>
       <trans-unit id="rXfx2XN" resname="Reload the game?">
         <source>Reload the game?</source>
-        <target>~¿Recargar el juego?</target>
+        <target>¿Recargar el juego?</target>
       </trans-unit>
       <trans-unit id="84o0Zr9" resname="Click &quot;Play&quot; to start a new game.">
         <source>Click "Play" to start a new game.</source>
-        <target>~Haz clic en "Jugar" para empezar una nueva partida.</target>
+        <target>Haz clic en "Jugar" para empezar una nueva partida.</target>
       </trans-unit>
       <trans-unit id="JP_t.5h" resname="Click &quot;Another word&quot; to continue.">
         <source>Click "Another word" to continue.</source>
-        <target>~Haz clic en "Otra palabra" para continuar.</target>
+        <target>Haz clic en "Otra palabra" para continuar.</target>
       </trans-unit>
       <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
         <source>abcdefghijklmnñopqrstuvwxyz</source>
