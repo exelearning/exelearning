@@ -5,11 +5,11 @@ namespace App\Util\net\exelearning\Util;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * CommonI18nUtil.
+ * Commoni18nUtil.
  *
  * Utility functions for working with strings i18n
  */
-class CommonI18nUtil
+class Commoni18nUtil
 {
     private TranslatorInterface $translator;
     private string $lang;

@@ -20,7 +20,7 @@ use App\Service\net\exelearning\Service\Export\ExportHTML5SPService;
 use App\Service\net\exelearning\Service\Export\ExportIMSService;
 use App\Service\net\exelearning\Service\Export\ExportSCORM12Service;
 use App\Service\net\exelearning\Service\Export\ExportSCORM2004Service;
-use App\Util\net\exelearning\Util\CommonI18nUtil;
+use App\Util\net\exelearning\Util\Commoni18nUtil;
 use App\Util\net\exelearning\Util\ExportXmlUtil;
 use App\Util\net\exelearning\Util\FilePermissionsUtil;
 use App\Util\net\exelearning\Util\FileUtil;
@@ -982,7 +982,7 @@ class OdeExportService implements OdeExportServiceInterface
         $filesToCopy = array_merge($filesToCopy, $libraries);
 
         // Get translations
-        $commonI18n = new CommonI18nUtil($this->translator, $packageLanguage);
+        $commonI18n = new Commoni18nUtil($this->translator, $packageLanguage);
 
         $translations = [
             'common' => $commonI18n->getCommonStringsi18n(),
