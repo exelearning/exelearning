@@ -11623,127 +11623,127 @@
       </trans-unit>
       <trans-unit id="niBfDzY" resname="Could not extract theme">
         <source>Could not extract theme</source>
-        <target></target>
+        <target>~No s'ha pogut extraure el tema</target>
       </trans-unit>
       <trans-unit id="qEE0Zw." resname="The style is not installable">
         <source>The style is not installable</source>
-        <target></target>
+        <target>~L'estil no es pot instal·lar</target>
       </trans-unit>
       <trans-unit id="RRGAG5X" resname="Could not install theme">
         <source>Could not install theme</source>
-        <target></target>
+        <target>~No s'ha pogut instal·lar el tema</target>
       </trans-unit>
       <trans-unit id="ldQmgCC" resname="Show feedback">
         <source>Show feedback</source>
-        <target></target>
+        <target>~Mostrar comentaris</target>
       </trans-unit>
       <trans-unit id="IIWdrDp" resname="Hide feedback">
         <source>Hide feedback</source>
-        <target></target>
+        <target>~Ocultar comentaris</target>
       </trans-unit>
       <trans-unit id="qXxIKiI" resname="Menu">
         <source>Menu</source>
-        <target></target>
+        <target>~Menú</target>
       </trans-unit>
       <trans-unit id="uPK90IF" resname="Your score is">
         <source>Your score is</source>
-        <target></target>
+        <target>~La teua puntuació és</target>
       </trans-unit>
       <trans-unit id="b6hmtD_" resname="Error retrieving data">
         <source>Error retrieving data</source>
-        <target></target>
+        <target>~Error en recuperar les dades</target>
       </trans-unit>
       <trans-unit id="iM.0BJl" resname="This might not work in this ePub reader.">
         <source>This might not work in this ePub reader.</source>
-        <target></target>
+        <target>~Això potser no funcionarà en este lector d'ePub.</target>
       </trans-unit>
       <trans-unit id="oORf9iD" resname="This activity does not work in ePub format.">
         <source>This activity does not work in ePub format.</source>
-        <target></target>
+        <target>~Aquesta activitat no funciona en format ePub.</target>
       </trans-unit>
       <trans-unit id="MA7trt8" resname="Search all pages">
         <source>Search all pages</source>
-        <target></target>
+        <target>~Buscar en totes les pàgines</target>
       </trans-unit>
       <trans-unit id="l1Hcq.m" resname="No results found for %">
         <source>No results found for %</source>
-        <target></target>
+        <target>~No s'han trobat resultats per a %</target>
       </trans-unit>
       <trans-unit id="s_Ykup3" resname="Search results for %">
         <source>Search results for %</source>
-        <target></target>
+        <target>~Resultats de la cerca per a %</target>
       </trans-unit>
       <trans-unit id="QJSMbTz" resname="Hide results">
         <source>Hide results</source>
-        <target></target>
+        <target>~Ocultar resultats</target>
       </trans-unit>
       <trans-unit id="vZ3g5lk" resname="Full size">
         <source>Full size</source>
-        <target></target>
+        <target>~Mida completa</target>
       </trans-unit>
       <trans-unit id="Y.SUx2B" resname="Accessibility tools">
         <source>Accessibility tools</source>
-        <target></target>
+        <target>~Eines d'accessibilitat</target>
       </trans-unit>
       <trans-unit id=".LN5KpH" resname="Default typography">
         <source>Default typography</source>
-        <target></target>
+        <target>~Tipografia predeterminada</target>
       </trans-unit>
       <trans-unit id="Y_lcdMn" resname="Increase text size">
         <source>Increase text size</source>
-        <target></target>
+        <target>~Augmentar la mida del text</target>
       </trans-unit>
       <trans-unit id="83VcOiT" resname="Decrease text size">
         <source>Decrease text size</source>
-        <target></target>
+        <target>~Disminuir la mida del text</target>
       </trans-unit>
       <trans-unit id="OLinVBN" resname="Stop reading">
         <source>Stop reading</source>
-        <target></target>
+        <target>~Detindre la lectura</target>
       </trans-unit>
       <trans-unit id="nfZSB2j" resname="Translate">
         <source>Translate</source>
-        <target></target>
+        <target>~Traduir</target>
       </trans-unit>
       <trans-unit id="h_JJhAn" resname="Light/dark mode">
         <source>Light/dark mode</source>
-        <target></target>
+        <target>~Mode clar/fosc</target>
       </trans-unit>
       <trans-unit id="WA9z9oQ" resname="Teacher mode">
         <source>Teacher mode</source>
-        <target></target>
+        <target>~Mode professor</target>
       </trans-unit>
       <trans-unit id="zp1nkll" resname="Hangman Game">
         <source>Hangman Game</source>
-        <target></target>
+        <target>~Joc del penjat</target>
       </trans-unit>
       <trans-unit id="Qmo7OQW" resname="Stat">
         <source>Stat</source>
-        <target></target>
+        <target>~Estadística</target>
       </trans-unit>
       <trans-unit id="RiWn7g_" resname="Selected letters">
         <source>Selected letters</source>
-        <target></target>
+        <target>~Lletres seleccionades</target>
       </trans-unit>
       <trans-unit id="D.9uOUj" resname="Other word">
         <source>Other word</source>
-        <target></target>
+        <target>~Una altra paraula</target>
       </trans-unit>
       <trans-unit id="QCsa0JO" resname="Game Over">
         <source>Game Over</source>
-        <target></target>
+        <target>~Fi del joc</target>
       </trans-unit>
       <trans-unit id="rXfx2XN" resname="Reload the game?">
         <source>Reload the game?</source>
-        <target></target>
+        <target>~Vols tornar a carregar el joc?</target>
       </trans-unit>
       <trans-unit id="84o0Zr9" resname="Click &quot;Play&quot; to start a new game.">
         <source>Click "Play" to start a new game.</source>
-        <target></target>
+        <target>~Fes clic en "Jugar" per a començar una nova partida.</target>
       </trans-unit>
       <trans-unit id="JP_t.5h" resname="Click &quot;Another word&quot; to continue.">
         <source>Click "Another word" to continue.</source>
-        <target></target>
+        <target>~Fes clic en "Una altra paraula" per a continuar.</target>
       </trans-unit>
       <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
         <source>abcdefghijklmnñopqrstuvwxyz</source>

@@ -11623,127 +11623,127 @@
       </trans-unit>
       <trans-unit id="niBfDzY" resname="Could not extract theme">
         <source>Could not extract theme</source>
-        <target></target>
+        <target>~Ezin izan da gaia atera</target>
       </trans-unit>
       <trans-unit id="qEE0Zw." resname="The style is not installable">
         <source>The style is not installable</source>
-        <target></target>
+        <target>~Ezin da estiloa instalatu</target>
       </trans-unit>
       <trans-unit id="RRGAG5X" resname="Could not install theme">
         <source>Could not install theme</source>
-        <target></target>
+        <target>~Ezin izan da gaia instalatu</target>
       </trans-unit>
       <trans-unit id="ldQmgCC" resname="Show feedback">
         <source>Show feedback</source>
-        <target></target>
+        <target>~Erakutsi iruzkinak</target>
       </trans-unit>
       <trans-unit id="IIWdrDp" resname="Hide feedback">
         <source>Hide feedback</source>
-        <target></target>
+        <target>~Ezkutatu iruzkinak</target>
       </trans-unit>
       <trans-unit id="qXxIKiI" resname="Menu">
         <source>Menu</source>
-        <target></target>
+        <target>~Menua</target>
       </trans-unit>
       <trans-unit id="uPK90IF" resname="Your score is">
         <source>Your score is</source>
-        <target></target>
+        <target>~Zure puntuazioa da</target>
       </trans-unit>
       <trans-unit id="b6hmtD_" resname="Error retrieving data">
         <source>Error retrieving data</source>
-        <target></target>
+        <target>~Errorea datuak eskuratzean</target>
       </trans-unit>
       <trans-unit id="iM.0BJl" resname="This might not work in this ePub reader.">
         <source>This might not work in this ePub reader.</source>
-        <target></target>
+        <target>~Baliteke honek ez funtzionatzea ePub irakurgailu honetan.</target>
       </trans-unit>
       <trans-unit id="oORf9iD" resname="This activity does not work in ePub format.">
         <source>This activity does not work in ePub format.</source>
-        <target></target>
+        <target>~Jarduera honek ez du ePub formatuan funtzionatzen.</target>
       </trans-unit>
       <trans-unit id="MA7trt8" resname="Search all pages">
         <source>Search all pages</source>
-        <target></target>
+        <target>~Bilatu orrialde guztietan</target>
       </trans-unit>
       <trans-unit id="l1Hcq.m" resname="No results found for %">
         <source>No results found for %</source>
-        <target></target>
+        <target>~Ez da emaitzarik aurkitu %-(r)entzat</target>
       </trans-unit>
       <trans-unit id="s_Ykup3" resname="Search results for %">
         <source>Search results for %</source>
-        <target></target>
+        <target>~Bilaketaren emaitzak %-(r)entzat</target>
       </trans-unit>
       <trans-unit id="QJSMbTz" resname="Hide results">
         <source>Hide results</source>
-        <target></target>
+        <target>~Ezkutatu emaitzak</target>
       </trans-unit>
       <trans-unit id="vZ3g5lk" resname="Full size">
         <source>Full size</source>
-        <target></target>
+        <target>~Tamaina osoa</target>
       </trans-unit>
       <trans-unit id="Y.SUx2B" resname="Accessibility tools">
         <source>Accessibility tools</source>
-        <target></target>
+        <target>~Irisgarritasun tresnak</target>
       </trans-unit>
       <trans-unit id=".LN5KpH" resname="Default typography">
         <source>Default typography</source>
-        <target></target>
+        <target>~Letra-tipo lehenetsia</target>
       </trans-unit>
       <trans-unit id="Y_lcdMn" resname="Increase text size">
         <source>Increase text size</source>
-        <target></target>
+        <target>~Handitu testuaren tamaina</target>
       </trans-unit>
       <trans-unit id="83VcOiT" resname="Decrease text size">
         <source>Decrease text size</source>
-        <target></target>
+        <target>~Txikitu testuaren tamaina</target>
       </trans-unit>
       <trans-unit id="OLinVBN" resname="Stop reading">
         <source>Stop reading</source>
-        <target></target>
+        <target>~Utzi irakurtzeari</target>
       </trans-unit>
       <trans-unit id="nfZSB2j" resname="Translate">
         <source>Translate</source>
-        <target></target>
+        <target>~Itzuli</target>
       </trans-unit>
       <trans-unit id="h_JJhAn" resname="Light/dark mode">
         <source>Light/dark mode</source>
-        <target></target>
+        <target>~Argi/ilun modua</target>
       </trans-unit>
       <trans-unit id="WA9z9oQ" resname="Teacher mode">
         <source>Teacher mode</source>
-        <target></target>
+        <target>~Irakasle modua</target>
       </trans-unit>
       <trans-unit id="zp1nkll" resname="Hangman Game">
         <source>Hangman Game</source>
-        <target></target>
+        <target>~Zintzilikario jokoa</target>
       </trans-unit>
       <trans-unit id="Qmo7OQW" resname="Stat">
         <source>Stat</source>
-        <target></target>
+        <target>~Estatistika</target>
       </trans-unit>
       <trans-unit id="RiWn7g_" resname="Selected letters">
         <source>Selected letters</source>
-        <target></target>
+        <target>~Hautatutako letrak</target>
       </trans-unit>
       <trans-unit id="D.9uOUj" resname="Other word">
         <source>Other word</source>
-        <target></target>
+        <target>~Beste hitz bat</target>
       </trans-unit>
       <trans-unit id="QCsa0JO" resname="Game Over">
         <source>Game Over</source>
-        <target></target>
+        <target>~Jokoa amaitu da</target>
       </trans-unit>
       <trans-unit id="rXfx2XN" resname="Reload the game?">
         <source>Reload the game?</source>
-        <target></target>
+        <target>~Berriro kargatu jokoa?</target>
       </trans-unit>
       <trans-unit id="84o0Zr9" resname="Click &quot;Play&quot; to start a new game.">
         <source>Click "Play" to start a new game.</source>
-        <target></target>
+        <target>~Egin klik "Jokatu" botoian partida berria hasteko.</target>
       </trans-unit>
       <trans-unit id="JP_t.5h" resname="Click &quot;Another word&quot; to continue.">
         <source>Click "Another word" to continue.</source>
-        <target></target>
+        <target>~Egin klik "Beste hitz bat" botoian jarraitzeko.</target>
       </trans-unit>
       <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
         <source>abcdefghijklmnñopqrstuvwxyz</source>
