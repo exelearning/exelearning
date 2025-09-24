@@ -1367,8 +1367,8 @@ export default class IdeviceBlockNode {
     }
 
     /**
-     * Returns the next available order number for a block on the current page.  
-     * If no blocks exist, it defaults to 1.  
+     * Returns the next available order number for a block on the current page.
+     * If no blocks exist, it defaults to 1.
      *
      * @returns {number} The calculated fallback page order.
      */
@@ -1376,18 +1376,19 @@ export default class IdeviceBlockNode {
         try {
             const currentPageId =
                 this.pageId ||
-                (this.engine && this.engine.project &&
-                    this.engine.project.app &&
-                    this.engine.project.app.project &&
-                    this.engine.project.app.project.structure &&
-                    this.engine.project.app.project.structure.getSelectNodePageId
+                (this.engine &&
+                this.engine.project &&
+                this.engine.project.app &&
+                this.engine.project.app.project &&
+                this.engine.project.app.project.structure &&
+                this.engine.project.app.project.structure.getSelectNodePageId
                     ? this.engine.project.app.project.structure.getSelectNodePageId()
                     : null);
 
             const list =
                 this.engine &&
-                    this.engine.components &&
-                    Array.isArray(this.engine.components.blocks)
+                this.engine.components &&
+                Array.isArray(this.engine.components.blocks)
                     ? this.engine.components.blocks
                     : [];
 
@@ -1415,7 +1416,7 @@ export default class IdeviceBlockNode {
             if (orders.length) return Math.max(...orders) + 1;
 
             return 1;
-        } catch (_) { }
+        } catch (_) {}
 
         return 1;
     }
