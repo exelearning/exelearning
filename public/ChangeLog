@@ -35,6 +35,7 @@
 - jQuery UI compatibility issues
 - Untranslated JavaScript strings
 - Progress Report iDevice: real-time score updates and repeated alert fix
+- Accessibility toolbar presentation and duplicated CSS loading error
 
 ### Upgraded
 
