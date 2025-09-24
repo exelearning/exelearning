@@ -8,6 +8,9 @@
 *   Dependency Manager: composer
     *   Copyright: Nils Adermann, Jordi Boggiano
     *   License: MIT
+*   Package: api-platform/core
+    *   Copyright: Kévin Dunglas
+    *   License: MIT
 *   Package: api-platform/doctrine-common
     *   Copyright: Kévin Dunglas, API Platform Community
     *   License: MIT
@@ -143,6 +146,9 @@
 *   Package: myclabs/deep-copy
     *   Copyright: (c) 2013 My C-Sense
     *   License: MIT
+*   Package: nativephp/php-bin
+    *   Copyright: Marcel Pociot, Simon Hamp
+    *   License: Apache-2.0, GPL-3.0-or-later, MIT, PHP-3.01
 *   Package: nikic/php-parser
     *   Copyright: Nikita Popov
     *   License: BSD-3-Clause
