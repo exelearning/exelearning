@@ -12,7 +12,7 @@
 - Teacher mode (teacher-only iDevices and boxes)
 - New "Test" style (for testing only)
 - Project title visible in all export formats
-- New Make command for developers
+- New `make destroy` command for developers
 - Parallel testing support
 - New REST API: Users and projects, JWT authentication and admin tools
 - New settings to enable or disable the iDevices and styles import option in the online version
