@@ -2,7 +2,7 @@
 <idevice>
     <title>Guess</title>
     <css-class>guess</css-class>
-    <category>Games</category>
+    <category>Assessment and tracking</category>
     <icon>
         <name>gues-icon</name>
         <url>guess-icon.svg</url>

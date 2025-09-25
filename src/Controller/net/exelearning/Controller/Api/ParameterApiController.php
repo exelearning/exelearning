@@ -65,6 +65,14 @@ class ParameterApiController extends DefaultApiController
         $data['autosaveIntervalTime'] = Settings::PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL;
         $data['countUserAutosave'] = Settings::COUNT_USER_AUTOSAVE_SPACE_ODE_FILES;
 
+        $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
+        $isOnline = $this->getParameter('app.online_mode');
+
+        if ($isOnline && !$themesInstallationEnabled) {
+            $data['canInstallThemes'] = 0;
+        } else {
+            $data['canInstallThemes'] = 1;
+        }
         // iDevice info
         $data['ideviceInfoFieldsConfig'] = $this->getProcessedPropertiesConfig(
             Properties::IDEVICE_INFO_FIELDS_CONFIG

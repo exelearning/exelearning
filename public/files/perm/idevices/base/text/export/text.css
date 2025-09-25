@@ -1,13 +1,13 @@
 /* Text iDevice (export CSS) */
-.textIdeviceContent .inline {
+.exe-text-activity div.inline {
     display: flex;
 }
 
-.textIdeviceContent dt {
+.exe-text-activity div.inline dt {
     margin: 0 0 0 auto;
 }
 
-.textIdeviceContent dd {
+.exe-text-activity div.inline dd {
     margin-left: 10px;
 }
 

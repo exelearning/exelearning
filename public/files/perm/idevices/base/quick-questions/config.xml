@@ -2,7 +2,7 @@
 <idevice>
     <title>Test</title>
     <css-class>quick-questions</css-class>
-    <category>Games</category>
+    <category>Assessment and tracking</category>
     <icon>
         <name>quick-questions.icon</name>
         <url>quick-questions-icon.svg</url>

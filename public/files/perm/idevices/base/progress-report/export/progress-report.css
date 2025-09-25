@@ -212,7 +212,6 @@
 .IFPP-MainContainer .IFPP-LinksInforme {
 	background-color: transparent;
 	min-width: 280px;
-	padding: 0.6em;
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
@@ -221,18 +220,8 @@
 	margin-top: 1em;
 }
 
-.IFPP-MainContainer .IFPP-LinksInforme a {
-	background-color: #007691 !important;
-	color: white !important;
-	margin-left: 0.3em;
-	padding: 0.3em 0.4em;
-	border-radius: 3px
-}
 
-.IFPP-MainContainer .IFPP-LinksInforme a:hover {
-	color: black !important;
-	
-}
+.IFPP-MainContainer .IFPP-LinksInforme .btn { margin-left: 0.3em; }
 
 #informeName {
 	margin-left: 0.3em;
@@ -274,7 +263,7 @@
 .IFPP-MainContainer .IFPP-UserDate input {
 	flex-grow: 0;
 	min-width: 40px;
-	max-width: 160px;
+	max-width: 170px;
 	border: none;
 	border-bottom: 1px dotted #333;
 }

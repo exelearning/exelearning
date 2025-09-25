@@ -22,7 +22,7 @@ use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 class MultiTokenHandler implements AccessTokenHandlerInterface
 {
     private AccessTokenHandlerInterface $casHandler;
-    private OidcUserInfoTokenHandlerCustom $oidcUserInfoHandler;
+    private AccessTokenHandlerInterface $oidcUserInfoHandler;
     private ?JwtTokenHandler $jwtHandler;
     private EntityManagerInterface $em;
     private bool $authCreateUsers;
@@ -31,7 +31,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
 
     public function __construct(
         AccessTokenHandlerInterface $casHandler,
-        OidcUserInfoTokenHandlerCustom $oidcUserInfoHandler,
+        AccessTokenHandlerInterface $oidcUserInfoHandler,
         EntityManagerInterface $em,
         bool $authCreateUsers,
         ?LoggerInterface $logger = null,
@@ -81,30 +81,36 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
                     $subBadge = $this->oidcUserInfoHandler->getUserBadgeFrom($accessToken);
                 }
             } else {
-                // Optional API Key (UUID) flow: only if password hasher factory is available
-                if ($this->passwordHasherFactory) {
-                    $this->logger?->debug('Trying API key token verification');
-                    $repo = $this->em->getRepository(User::class);
-                    $qb = $repo->createQueryBuilder('u')
-                        ->where('u.apiToken IS NOT NULL');
-                    foreach ($qb->getQuery()->toIterable() as $candidate) {
-                        $hasher = $this->passwordHasherFactory->getPasswordHasher($candidate);
-                        if ($candidate->getApiToken() && $hasher->verify($candidate->getApiToken(), $accessToken)) {
-                            $this->logger?->debug('API key matched user');
+                // Try OIDC userinfo for non-JWT bearer tokens (e.g., Google 'ya29...')
+                try {
+                    $this->logger?->debug('Trying OIDC userinfo as bearer access token');
+                    $subBadge = $this->oidcUserInfoHandler->getUserBadgeFrom($accessToken);
+                } catch (BadCredentialsException $e) {
+                    $this->logger?->warning('OIDC userinfo failed: '.$e->getMessage(), ['exception' => $e]);
+                    // Optional API Key flow
+                    if ($this->passwordHasherFactory) {
+                        $this->logger?->debug('Trying API key token verification');
+                        $repo = $this->em->getRepository(User::class);
+                        $qb = $repo->createQueryBuilder('u')->where('u.apiToken IS NOT NULL');
+                        foreach ($qb->getQuery()->toIterable() as $candidate) {
+                            $hasher = $this->passwordHasherFactory->getPasswordHasher($candidate);
+                            if ($candidate->getApiToken() && $hasher->verify($candidate->getApiToken(), $accessToken)) {
+                                $this->logger?->debug('API key matched user');
 
-                            return new UserBadge(
-                                $candidate->getEmail(),
-                                function (string $identifier) use ($candidate) {
-                                    return $candidate;
-                                },
-                                ['api_key' => true]
-                            );
+                                return new UserBadge(
+                                    $candidate->getEmail(),
+                                    function (string $identifier) use ($candidate) {
+                                        return $candidate;
+                                    },
+                                    ['api_key' => true]
+                                );
+                            }
                         }
                     }
+                    $message = 'OIDC userinfo failed: '.$e->getMessage();
+                    $this->logger?->error($message);
+                    throw new BadCredentialsException($message, previous: $e);
                 }
-                $message = 'Invalid token format: neither CAS ticket nor JWT.';
-                $this->logger?->error($message);
-                throw new BadCredentialsException($message);
             }
 
             $identifier = $subBadge->getUserIdentifier();

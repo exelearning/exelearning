@@ -9,7 +9,7 @@
  */
 var $exeDevice = {
     i18n: {
-        category: _('Games'),
+        category: _('Assessment and tracking'),
         name: _('Progress report')
     },
     msgs: {
@@ -18,57 +18,61 @@ var $exeDevice = {
     number: 0,
     sessionIdevices: null,
     typeshow: 0,
-    ci18n: {
-        "msgSummary": c_("Summary of activities"),
-        "msgNoCompletedActivities": c_("You have not completed any of the suggested activities to be assessed in this educational resource."),
-        "msgNoPendientes": c_("Number of activities to be completed: %s"),
-        "msgCompletedActivities": c_("The following table registers the results you have obtained in the completed, suggested and assessed activities in this educational resource."),
-        "msgAverageScore": c_("Average score"),
-        "msgReboot": c_("Restart"),
-        "msgReload": c_("Update"),
-        "mssActivitiesNumber": c_("No. of activities: %s"),
-        "msgActivitiesCompleted": c_("Completed: %s"),
-        "msgAverageScore1": c_("Average score: %s"),
-        "msgAverageScoreCompleted": c_("Average score of completed activities: %s"),
-        "msgDelete": c_("This will eliminate the stored scores of all activities. Are you sure you want to continue?"),
-        "msgSections": c_("Educational resource sections"),
-        "msgSave": c_("Save"),
-        "msgReport": c_("progress_report"),
-        "msgReportTitle": c_("Progress report"),
-        "msgType": c_("Type"),
-        "msgSeeActivity": c_("Go to the activity"),
-        "mgsSections": c_("Educational resource sections"),
-        "msgName": c_("Name"),
-        "msgDate": c_("Date"),
-        "msgNotCompleted": c_("Not completed"),
-        "msgNotData": c_("Error recovering data"),
-        "msgScoredActivities": c_("Scored Activities"),
-        "msgInEXE": c_("In preview mode, visit this progress report to see the status of all associated scored activities. This status can be:"),
-        "msgInEXE2": c_("This message will only be displayed in edit mode."),
-        "msgUncompletedActivity": c_("Uncompleted Activity"),
-        "msgUnsuccessfulActivity": c_("Unsuccessful Activity"),
-        "msgSuccessfulActivity": c_("Successful Activity"),
-        "msgLocalMode": c_("In local mode, the results of completed activities cannot be displayed in the report"),
-        "msgDownload": c_("Download progress report"),
-        "msgReload": c_("Edit this iDevice to update its contents."),
-    },
-
+    ci18n: {},
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.refreshTranslations();
         this.createForm();
         this.addEvents();
         this.getIdevicesBySessionId();
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            "msgSummary": c_("Summary of activities"),
+            "msgNoCompletedActivities": c_("You have not completed any of the suggested activities to be assessed in this educational resource."),
+            "msgNoPendientes": c_("Number of activities to be completed: %s"),
+            "msgCompletedActivities": c_("The following table registers the results you have obtained in the completed, suggested and assessed activities in this educational resource."),
+            "msgAverageScore": c_("Average score"),
+            "msgReboot": c_("Restart"),
+            "msgReload": c_("Update"),
+            "mssActivitiesNumber": c_("No. of activities: %s"),
+            "msgActivitiesCompleted": c_("Completed: %s"),
+            "msgAverageScore1": c_("Average score: %s"),
+            "msgAverageScoreCompleted": c_("Average score of completed activities: %s"),
+            "msgDelete": c_("This will eliminate the stored scores of all activities. Are you sure you want to continue?"),
+            "msgSections": c_("Educational resource sections"),
+            "msgSave": c_("Save"),
+            "msgReport": c_("progress_report"),
+            "msgReportTitle": c_("Progress report"),
+            "msgType": c_("Type"),
+            "msgSeeActivity": c_("Go to the activity"),
+            "mgsSections": c_("Educational resource sections"),
+            "msgName": c_("Name"),
+            "msgDate": c_("Date"),
+            "msgNotCompleted": c_("Not completed"),
+            "msgNotData": c_("Error recovering data"),
+            "msgScoredActivities": c_("Scored Activities"),
+            "msgInEXE": c_("In preview mode, visit this progress report to see the status of all associated scored activities. This status can be:"),
+            "msgInEXE2": c_("This message will only be displayed in edit mode."),
+            "msgUncompletedActivity": c_("Uncompleted Activity"),
+            "msgUnsuccessfulActivity": c_("Unsuccessful Activity"),
+            "msgSuccessfulActivity": c_("Successful Activity"),
+            "msgLocalMode": c_("In local mode, the results of completed activities cannot be displayed in the report"),
+            "msgDownload": c_("Download progress report"),
+            "msgReload": c_("Edit this iDevice to update its contents."),
+        }
     },
 
     async getIdevicesBySessionId() {
         const odeSessionId = eXeLearning.app.project.odeSession;
         const response = await eXeLearning.app.api.getIdevicesBySessionId(odeSessionId);
         let idevices = $exeDevice.buildNestedPages(response.data);
- 
+
         $exeDevice.sessionIdevices = idevices;
-  
+
         $exeDevice.number = 0;
         const htmlContent = $exeDevice.generateHtmlFromPagesEdition(idevices);
 
@@ -93,42 +97,46 @@ var $exeDevice = {
         }
 
         data.forEach(row => {
-            if (!row) {
-                console.warn("Se encontró una fila nula o indefinida en 'data'.");
-                return;
-            }
-            const pageId = row.odePageId;
-            const parentId = row.odeParentPageId || null;
-            if (!pageIndex[pageId]) {
-                pageIndex[pageId] = {
-                    id: pageId,
-                    parentId: parentId,
+            if (!row) return;
+
+            const rawPageId = (row.odePageId != null) ? String(row.odePageId).trim() : '';
+            if (!rawPageId) return;
+            const rawParentId = (row.odeParentPageId != null && row.odeParentPageId !== '') ? String(row.odeParentPageId).trim() : null;
+
+            if (!pageIndex[rawPageId]) {
+                const order = Number(row.ode_nav_structure_sync_order) || 0;
+                pageIndex[rawPageId] = {
+                    id: rawPageId,
+                    parentId: rawParentId,
                     title: row.pageName,
                     navId: row.navId,
                     ode_nav_structure_sync_id: row.ode_nav_structure_sync_id,
                     ode_session_id: row.ode_session_id,
-                    ode_nav_structure_sync_order: row.ode_nav_structure_sync_order,
+                    ode_nav_structure_sync_order: order,
                     navIsActive: row.navIsActive,
                     components: [],
                     children: [],
-                    url: !parentId && row.ode_nav_structure_sync_order == 1 ? 'index' : $exeDevice.normalizeFileName(row.pageName)
+                    url: (!rawParentId && order === 1) ? 'index' : $exeDevice.normalizeFileName(row.pageName || '')
                 };
             }
-            const dataIDs = $exeDevice.getEvaluatioID(row.htmlViewer, row.jsonProperties);
-            pageIndex[pageId].components.push({
-                ideviceID: dataIDs.ideviceID,
-                evaluationID: dataIDs.evaluationID,
-                componentId: row.componentId,
-                ode_pag_structure_sync_id: row.ode_pag_structure_sync_id,
-                componentSessionId: row.componentSessionId,
-                componentPageId: row.componentPageId,
-                ode_block_id: row.ode_block_id,
-                blockName: row.blockName,
-                ode_idevice_id: row.ode_idevice_id,
-                odeIdeviceTypeName: row.odeIdeviceTypeName,
-                ode_components_sync_order: row.ode_components_sync_order,
-                componentIsActive: row.componentIsActive,
-            });
+            if (row.componentId) {
+                const dataIDs = $exeDevice.getEvaluatioID(row.htmlViewer, row.jsonProperties) || {};
+                pageIndex[rawPageId].components.push({
+                    ideviceID: dataIDs.ideviceID || row.ode_idevice_id || '',
+                    evaluationID: dataIDs.evaluationID || '',
+                    evaluation: dataIDs.evaluation,
+                    componentId: row.componentId,
+                    ode_pag_structure_sync_id: row.ode_pag_structure_sync_id,
+                    componentSessionId: row.componentSessionId,
+                    componentPageId: row.componentPageId,
+                    ode_block_id: row.ode_block_id,
+                    blockName: row.blockName,
+                    ode_idevice_id: row.ode_idevice_id,
+                    odeIdeviceTypeName: row.odeIdeviceTypeName,
+                    ode_components_sync_order: Number(row.ode_components_sync_order) || 0,
+                    componentIsActive: row.componentIsActive,
+                });
+            }
         });
 
         Object.values(pageIndex).forEach(page => {
@@ -138,50 +146,75 @@ var $exeDevice = {
                 rootPages.push(page);
             }
         });
+        const sortByOrder = (a, b) => Number(a.ode_nav_structure_sync_order) - Number(b.ode_nav_structure_sync_order);
+        const sortComponents = (a, b) => Number(a.ode_components_sync_order) - Number(b.ode_components_sync_order);
 
+        Object.values(pageIndex).forEach(page => {
+            if (Array.isArray(page.components)) {
+                page.components.sort(sortComponents);
+            }
+            if (Array.isArray(page.children)) {
+                page.children.sort(sortByOrder);
+            }
+        });
+
+        rootPages.sort(sortByOrder);
         return rootPages;
+    },
+
+
+    getEvaluatioID(htmlwiew, idevicejson) {
+        let leval = { evaluation: false, ideviceID: '', evaluationID: '' };
+        const dataHtml = $exeDevice.extractEvaluationDataHtml(htmlwiew);
+        const dataJson = $exeDevice.extractEvaluationDataJSON(idevicejson);
+        if (dataHtml) {
+            leval.evaluationID = dataHtml.evaluationId;
+            leval.ideviceID = dataHtml.dataId;
+            leval.evaluation = dataHtml.evaluation;
+        } else if (dataJson) {
+            leval.evaluationID = dataJson.evaluationId;
+            leval.ideviceID = dataJson.dataId;
+            leval.evaluation = dataJson.evaluation;
+        }
+        return leval;
     },
 
     extractEvaluationDataHtml: function (htmlText) {
         if (htmlText) {
-            const match = htmlText.match(/data-id="([^"]+)"[^>]*data-evaluationid="([^"]+)"/);
+            const match = htmlText.match(/data-id="([^"]+)"[^>]*data-evaluationid="([^"]+)"/)
             if (match) {
+                const evalMatch = htmlText.match(/data-evaluationb="([^"]+)"/)
                 return {
                     dataId: match[1],
-                    evaluationId: match[2]
+                    evaluationId: match[2],
+                    evaluation: evalMatch === null || (evalMatch[1].toLowerCase() === 'true' || evalMatch[1].toLowerCase() === '1' || evalMatch[1].toLowerCase() === 'yes' || evalMatch[1].toLowerCase() === 'on')
                 };
             }
         }
-        return false;
+        return false
     },
 
     extractEvaluationDataJSON: function (idevicejson) {
-        let objjons = $exeDevices.iDevice.gamification.helpers.isJsonString(idevicejson);
-        if (objjons && objjons.evaluationId && objjons.evaluationID.length > 4) {
-            return {
-                dataId: objjons.id,
-                evaluationId: objjons.evaluationID
-            };
+        const obj = $exeDevices.iDevice.gamification.helpers.isJsonString(idevicejson);
+        if (!obj) return false;
+
+        const evaluationId = obj.evaluationID || obj.evaluationId || obj['data-evaluationid'] || '';
+        const dataId = obj.id || obj.ideviceId || obj.dataId || '';
+
+        let evaluation = null;
+        const rawEval = (typeof obj['data-evaluation'] !== 'undefined')
+            ? obj['data-evaluation']
+            : (typeof obj['data-evaluationb'] !== 'undefined')
+                ? obj['data-evaluationb']
+                : undefined;
+
+        if (typeof rawEval !== 'undefined') {
+            const v = String(rawEval).trim().toLowerCase();
+            evaluation = (v === 'true' || v === '1' || v === 'yes' || v === 'on');
         }
+
+        if (evaluationId && evaluationId.length > 0) return { dataId, evaluationId, evaluation };
         return false;
-    },
-
-    getEvaluatioID(htmlwiew, idevicejson) {
-        let leval = {
-            ideviceID: '',
-            evaluationID: ''
-        }
-        const dataHtml = $exeDevice.extractEvaluationDataHtml(htmlwiew);
-        const dataJson = $exeDevice.extractEvaluationDataHtml(idevicejson);
-        if (dataHtml) {
-            leval.evaluationID = dataHtml.evaluationId
-            leval.ideviceID = dataHtml.dataId;
-        } else if (dataJson) {
-            leval.evaluationID = objjons.evaluationID;
-            leval.ideviceID = objjons.id;
-        }
-        return leval;
-
     },
 
     generateHtmlFromPagesEdition: function (pages) {
@@ -199,7 +232,7 @@ var $exeDevice = {
             if (page.components && page.components.length > 0) {
                 componentsHtml += '<ul class="IFPE-Components">';
                 page.components.forEach(component => {
-                    const isEvaluable = component.evaluationID && idEvaluation && idEvaluation == component.evaluationID;
+                    const isEvaluable = component.evaluation && component.evaluationID && idEvaluation && idEvaluation == component.evaluationID;
                     const iconClass = isEvaluable ? 'IFPE-IdiviceIcon' : 'IFPE-IdiviceIconNo';
                     const componentScore = isEvaluable
                         ? `<div class="IFPE-ComponentDateScore">
@@ -316,7 +349,7 @@ var $exeDevice = {
                         <div>
                             <p>${_("The ID can be a number or word of more than five characters. You must use the same ID in all the activities you will assess in this progress report.")}</p>
                             <p>
-                                <label for="informeEEvaluationID">${_("Identifier")}:</label> <input type="text" id="informeEEvaluationID" />
+                                <label for="informeEEvaluationID">${_("Identifier")}:</label> <input type="text" id="informeEEvaluationID" value="${eXeLearning.app.project.odeId || ''}"/>
                                 <button id="informeERefresh">${_("Refresh pages")}</button>
                             </p>
                             <p>                                
@@ -352,14 +385,15 @@ var $exeDevice = {
                         </div>
                     </fieldset>
                 </div>
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
 
         $exeDevice.loadPreviousValues();
-        $exeDevices.iDevice.tabs.init("reportQEIdeviceForm");
+
+        $exeDevicesEdition.iDevice.tabs.init("reportQEIdeviceForm");
 
     },
 
@@ -431,7 +465,7 @@ var $exeDevice = {
             const json = $('.informe-DataGame', wrapper).text();
             const dataGame = $exeDevices.iDevice.gamification.helpers.isJsonString(json);
             $exeDevice.updateFieldGame(dataGame);
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
         }
 
     },

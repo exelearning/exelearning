@@ -27,45 +27,47 @@ var $exeDevice = {
     candadoErrorMessage: '',
     candadoVersion: 1,
     id: null,
-    ci18n: {
-        msgOk: c_('Accept'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgTime: c_('Time Limit (mm:ss)'),
-        msgInstructions: c_('Instructions'),
-        msgFeedback: c_('Feedback'),
-        msgCodeAccess: c_('Access code'),
-        msgEnterCode: c_('Enter the access code'),
-        msgErrorCode: c_('The access code is not correct'),
-        msgRequiredAccessKey: c_('Access code required'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgEShowActivity: c_('Show activity'),
-        msgSubmit: c_('Check'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgYouScore: c_('Your score'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgTypeGame: c_('Padlock'),
-    },
-
+    ci18n: {},
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
-
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
     },
 
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgOk: c_('Accept'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgTime: c_('Time Limit (mm:ss)'),
+            msgInstructions: c_('Instructions'),
+            msgFeedback: c_('Feedback'),
+            msgCodeAccess: c_('Access code'),
+            msgEnterCode: c_('Enter the access code'),
+            msgErrorCode: c_('The access code is not correct'),
+            msgRequiredAccessKey: c_('Access code required'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgEShowActivity: c_('Show activity'),
+            msgSubmit: c_('Check'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgYouScore: c_('Your score'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgTypeGame: c_('Padlock'),
+        }
+    },
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgEGeneralSettings = _('General settings');
@@ -160,23 +162,23 @@ var $exeDevice = {
                                 </a>
                             </strong>
                             <input type="checkbox" id="candadoEEvaluation"/><label for="candadoEEvaluation">${_('Progress report')}.</label>
-                            <label for="candadoEEvaluationID">${_('Identifier')}:</label><input type="text" id="candadoEEvaluationID" disabled/>
+                            <label for="candadoEEvaluationID">${_('Identifier')}:</label><input type="text" id="candadoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                         </p>
                         <div id="candadoEEvaluationHelp" class="candado-TypeGameHelp exe-block-info">
                             <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
                         </div>
                     </div>
                 </div>
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
         $('#divCandadoFeebBack').hide();
 
-        $exeDevices.iDevice.tabs.init('candadoIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('candadoIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -208,7 +210,7 @@ var $exeDevice = {
                 .eq(0)
                 .html();
             candadoRetro = $('.candado-retro', wrapper).eq(0).html();
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.typeActive = 0;
@@ -245,7 +247,7 @@ var $exeDevice = {
             if (candadoRetro.length > 0) {
                 $('#candadoEFeedBack').val(candadoRetro);
             }
-            $exeDevices.iDevice.gamification.scorm.setValues(
+            $exeDevicesEdition.iDevice.gamification.scorm.setValues(
                 dataGame.isScorm,
                 dataGame.textButtonScorm,
                 dataGame.repeatActivity,
@@ -279,8 +281,8 @@ var $exeDevice = {
         dataGame.msgs = i18n;
         let json = JSON.stringify(dataGame);
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
-        let html = '<div class="candado-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="candado-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="candado-version js-hidden">' +
             $exeDevice.candadoVersion +
@@ -361,7 +363,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             candadoTime: $exeDevice.candadoTime,
             candadoSolution: $exeDevice.candadoSolution,

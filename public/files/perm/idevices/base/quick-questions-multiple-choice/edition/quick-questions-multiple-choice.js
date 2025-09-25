@@ -39,82 +39,14 @@ var $exeDevice = {
     localPlayer: null,
     localPlayerIntro: null,
     id: false,
-
-    ci18n: {
-        msgReady: c_('Ready?'),
-        msgStartGame: c_('Click here to start'),
-        msgSubmit: c_('Submit'),
-        msgEnterCode: c_('Enter the access code'),
-        msgErrorCode: c_('The access code is not correct'),
-        msgGameOver: c_('Game Over!'),
-        msgClue: c_('Cool! The clue is:'),
-        msgNewGame: c_('Click here for a new game'),
-        msgYouHas: c_('You have got %1 hits and %2 misses'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayAgain: c_('Play Again'),
-        msgRequiredAccessKey: c_('Access code required'),
-        msgInformationLooking: c_('Cool! The information you were looking for'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgTime: c_('Time per question'),
-        msgLive: c_('Life'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgCool: c_('Cool!'),
-        msgLoseT: c_('You lost 330 points'),
-        msgLoseLive: c_('You lost one life'),
-        msgLostLives: c_('You lost all your lives!'),
-        msgAllQuestions: c_('Questions completed!'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgNotNetwork: c_('You can only play this game with internet connection.'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgQuestion: c_('Question'),
-        msgAnswer: c_('Check'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgVideoIntro: c_('Video Intro'),
-        msgClose: c_('Close'),
-        msgOption: c_('Option'),
-        msgRickText: c_('Rich Text'),
-        msgUseFulInformation: c_('and information that will be very useful'),
-        msgLoading: c_('Loading. Please wait...'),
-        msgOrders: c_('Please order the answers'),
-        msgIndicateWord: c_('Provide a word or phrase'),
-        msgMoveOne: c_('Move on'),
-        msgPoints: c_('points'),
-        msgAudio: c_('Audio'),
-        msgCorrect: c_('Correct'),
-        msgIncorrect: c_('Incorrect'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Multiple Choice Quiz'),
-    },
+    ci18n: {},
     checkAltImage: true,
 
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
             '%',
@@ -130,6 +62,78 @@ var $exeDevice = {
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.loadYoutubeApi();
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgReady: c_('Ready?'),
+            msgStartGame: c_('Click here to start'),
+            msgSubmit: c_('Submit'),
+            msgEnterCode: c_('Enter the access code'),
+            msgErrorCode: c_('The access code is not correct'),
+            msgGameOver: c_('Game Over!'),
+            msgClue: c_('Cool! The clue is:'),
+            msgNewGame: c_('Click here for a new game'),
+            msgYouHas: c_('You have got %1 hits and %2 misses'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayAgain: c_('Play Again'),
+            msgRequiredAccessKey: c_('Access code required'),
+            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgTime: c_('Time per question'),
+            msgLive: c_('Life'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgCool: c_('Cool!'),
+            msgLoseT: c_('You lost 330 points'),
+            msgLoseLive: c_('You lost one life'),
+            msgLostLives: c_('You lost all your lives!'),
+            msgAllQuestions: c_('Questions completed!'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgNotNetwork: c_('You can only play this game with internet connection.'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgQuestion: c_('Question'),
+            msgAnswer: c_('Check'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgVideoIntro: c_('Video Intro'),
+            msgClose: c_('Close'),
+            msgOption: c_('Option'),
+            msgRickText: c_('Rich Text'),
+            msgUseFulInformation: c_('and information that will be very useful'),
+            msgLoading: c_('Loading. Please wait...'),
+            msgOrders: c_('Please order the answers'),
+            msgIndicateWord: c_('Provide a word or phrase'),
+            msgMoveOne: c_('Move on'),
+            msgPoints: c_('points'),
+            msgAudio: c_('Audio'),
+            msgCorrect: c_('Correct'),
+            msgIncorrect: c_('Incorrect'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Multiple Choice Quiz'),
+        }
     },
 
     setMessagesInfo: function () {
@@ -231,7 +235,7 @@ var $exeDevice = {
 
     clickPlay: function () {
         const ulrvideo = $('#seleccionaEURLYoutube');
-        if ( !ulrvideo || (ulrvideo.length === 0) || (ulrvideo.val().trim().length < 3))
+        if (!ulrvideo || (ulrvideo.length === 0) || (ulrvideo.val().trim().length < 3))
             return;
         if (
             $exeDevices.iDevice.gamification.media.getIDYoutube(
@@ -1200,7 +1204,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Choose the right answers and click on the Check button.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answers and click on the Check button.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -1260,7 +1264,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#seleccionaEEvaluationHelp" id="seleccionaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="seleccionaEEvaluation"><label for="seleccionaEEvaluation">${_('Progress report')}.</label>
-                                <label for="seleccionaEEvaluationID">${_('Identifier')}:</label><input type="text" id="seleccionaEEvaluationID" disabled/>
+                                <label for="seleccionaEEvaluationID">${_('Identifier')}:</label><input type="text" id="seleccionaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="seleccionaEEvaluationHelp" class="exe-block-info SLCNE-TypeGameHelp">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -1489,18 +1493,18 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 3, true)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 3, true)}
 
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('quickMultipleQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('quickMultipleQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         tinymce.init({
             selector: '#seleccionaEText',
@@ -1644,7 +1648,7 @@ var $exeDevice = {
             if (textFeedBack.length === 1)
                 $('#seleccionaEFeedBackEditor').val(textFeedBack.html());
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -1677,7 +1681,7 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.answersRamdon = game.answersRamdon || false;
         game.percentajeFB =
             typeof game.percentajeFB != 'undefined' ? game.percentajeFB : 100;
@@ -1805,7 +1809,7 @@ var $exeDevice = {
             $('#seleccionaEFeedbackP').hide();
         }
         $('#seleccionaEPercentajeFB').prop('disabled', !game.feedBack);
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1862,8 +1866,8 @@ var $exeDevice = {
 
         const json = JSON.stringify(dataGame),
             instructions = tinyMCE.get('eXeGameInstructions').getContent();
-        
-        
+
+
 
         let divContent = '';
         if (instructions !== '') {
@@ -1876,13 +1880,13 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.selectsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.selectsGame);
 
-        let html = '<div class="selecciona-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="selecciona-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html += `<div class="selecciona-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="selecciona-feedback-game">${textFeedBack}</div>`;
         html += `<div class="selecciona-DataGame js-hidden">${$exeDevices.iDevice.gamification.helpers.encrypt(json)}</div>`;
-        
+
         html += linksImages;
         html += linksAudios;
 
@@ -1926,145 +1930,145 @@ var $exeDevice = {
             message = '';
 
 
-            p.type = parseInt($('input[name=slcmediatype]:checked').val());
-            p.time = parseInt($('input[name=slctime]:checked').val());
-            p.numberOptions = parseInt($('input[name=slcnumber]:checked').val());
-            p.typeSelect = parseInt($('input[name=slctypeselect]:checked').val());
-            p.x = parseFloat($('#seleccionaEXImage').val());
-            p.y = parseFloat($('#seleccionaEYImage').val());
-            p.author = $('#seleccionaEAuthor').val();
-            p.alt = $('#seleccionaEAlt').val();
-            p.customScore = parseFloat($('#seleccionaEScoreQuestion').val());
-            p.url = $('#seleccionaEURLImage').val();
-            p.audio = $('#seleccionaEURLAudio').val();
-            p.hit = parseInt($('#seleccionaGotoCorrect').val());
-            p.error = parseInt($('#seleccionaGotoIncorrect').val());
-            p.msgHit = $('#seleccionaEMessageOK').val();
-            p.msgError = $('#seleccionaEMessageKO').val();
+        p.type = parseInt($('input[name=slcmediatype]:checked').val());
+        p.time = parseInt($('input[name=slctime]:checked').val());
+        p.numberOptions = parseInt($('input[name=slcnumber]:checked').val());
+        p.typeSelect = parseInt($('input[name=slctypeselect]:checked').val());
+        p.x = parseFloat($('#seleccionaEXImage').val());
+        p.y = parseFloat($('#seleccionaEYImage').val());
+        p.author = $('#seleccionaEAuthor').val();
+        p.alt = $('#seleccionaEAlt').val();
+        p.customScore = parseFloat($('#seleccionaEScoreQuestion').val());
+        p.url = $('#seleccionaEURLImage').val();
+        p.audio = $('#seleccionaEURLAudio').val();
+        p.hit = parseInt($('#seleccionaGotoCorrect').val());
+        p.error = parseInt($('#seleccionaGotoIncorrect').val());
+        p.msgHit = $('#seleccionaEMessageOK').val();
+        p.msgError = $('#seleccionaEMessageKO').val();
 
-            $exeDevice.stopSound();
-            $exeDevice.stopVideo();
+        $exeDevice.stopSound();
+        $exeDevice.stopVideo();
 
-            if (p.type == 2) {
-                p.url = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                    $('#seleccionaEURLYoutube').val().trim(),
-                )
-                    ? $('#seleccionaEURLYoutube').val()
-                    : '';
-                if (p.url == '') {
-                    p.url =
-                        $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                            $('#seleccionaEURLYoutube').val().trim(),
-                        )
-                            ? $('#seleccionaEURLYoutube').val()
-                            : '';
-                }
+        if (p.type == 2) {
+            p.url = $exeDevices.iDevice.gamification.media.getIDYoutube(
+                $('#seleccionaEURLYoutube').val().trim(),
+            )
+                ? $('#seleccionaEURLYoutube').val()
+                : '';
+            if (p.url == '') {
+                p.url =
+                    $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                        $('#seleccionaEURLYoutube').val().trim(),
+                    )
+                        ? $('#seleccionaEURLYoutube').val()
+                        : '';
             }
+        }
 
-            p.soundVideo = $('#seleccionaECheckSoundVideo').is(':checked') ? 1 : 0;
-            p.imageVideo = $('#seleccionaECheckImageVideo').is(':checked') ? 1 : 0;
+        p.soundVideo = $('#seleccionaECheckSoundVideo').is(':checked') ? 1 : 0;
+        p.imageVideo = $('#seleccionaECheckImageVideo').is(':checked') ? 1 : 0;
 
-            let isVideo = $('#seleccionaEInitVideo').length == 1 ? $('#seleccionaEInitVideo').val().trim() : '00:00:00';
-            p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(isVideo);
+        let isVideo = $('#seleccionaEInitVideo').length == 1 ? $('#seleccionaEInitVideo').val().trim() : '00:00:00';
+        p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(isVideo);
 
-            let fsVideo = $('#seleccionaEEndVideo').length == 1 ? $('#seleccionaEEndVideo').val().trim() : '00:00:00';
-            p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(fsVideo);
+        let fsVideo = $('#seleccionaEEndVideo').length == 1 ? $('#seleccionaEEndVideo').val().trim() : '00:00:00';
+        p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(fsVideo);
 
-            let ssVideo = $('#seleccionaESilenceVideo').length == 1 ? $('#seleccionaESilenceVideo').val().trim() : '00:00:00';
-            p.silentVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(ssVideo);
+        let ssVideo = $('#seleccionaESilenceVideo').length == 1 ? $('#seleccionaESilenceVideo').val().trim() : '00:00:00';
+        p.silentVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(ssVideo);
 
-            let stVideo = $('#seleccionaESilenceVideo').length == 1 ? ($('#seleccionaESilenceVideo').val()) : 0;
-            p.tSilentVideo = parseInt(stVideo);
+        let stVideo = $('#seleccionaESilenceVideo').length == 1 ? ($('#seleccionaESilenceVideo').val()) : 0;
+        p.tSilentVideo = parseInt(stVideo);
 
-            p.eText = tinyMCE.get('seleccionaEText').getContent() || '';
-            p.quextion = $('#seleccionaEQuestion').val().trim();
-            p.options = [];
-            p.solution = $('#selecionaESolutionSelect').text().trim();
-            p.solutionQuestion = '';
+        p.eText = tinyMCE.get('seleccionaEText').getContent() || '';
+        p.quextion = $('#seleccionaEQuestion').val().trim();
+        p.options = [];
+        p.solution = $('#selecionaESolutionSelect').text().trim();
+        p.solutionQuestion = '';
 
+        if (p.typeSelect == 2) {
+            p.quextion = $('#seleccionaEDefinitionWord').val().trim();
+            p.solution = '';
+            p.solutionQuestion = $('#seleccionaESolutionWord').val();
+        }
+
+        p.percentageShow = parseInt($('#seleccionaPercentageShow').val());
+
+        let optionEmpy = false;
+        $('.SLCNE-EAnwersOptions').each(function (i) {
+            let option = $(this).val().trim();
+            if (i < p.numberOptions && option.length == 0) {
+                optionEmpy = true;
+            }
             if (p.typeSelect == 2) {
-                p.quextion = $('#seleccionaEDefinitionWord').val().trim();
-                p.solution = '';
-                p.solutionQuestion = $('#seleccionaESolutionWord').val();
+                option = '';
             }
+            p.options.push(option);
+        });
 
-            p.percentageShow = parseInt($('#seleccionaPercentageShow').val());
+        if (p.typeSelect == 1 && p.solution.length != p.numberOptions) {
+            message = msgs.msgTypeChoose;
+        } else if (p.typeSelect != 2 && p.quextion.length == 0) {
+            message = msgs.msgECompleteQuestion;
+        } else if (p.typeSelect != 2 && optionEmpy) {
+            message = msgs.msgECompleteAllOptions;
+        } else if (p.type == 1 && p.url.length < 5) {
+            message = msgs.msgEURLValid;
+        } else if (p.type == 2 && p.url.length == 0) {
+            message = msgs.msgECompleteURLYoutube;
+        } else if (
+            p.type == 2 &&
+            (p.iVideo.length == 0 || p.fVideo.length == 0)
+        ) {
+            message = msgs.msgEStartEndVideo;
+        } else if (p.type == 2 && p.iVideo >= p.fVideo) {
+            message = msgs.msgEStartEndIncorrect;
+        } else if (p.type == 3 && p.eText.length == 0) {
+            message = msgs.msgWriteText;
+        } else if (
+            (p.type == 2 &&
+                !$exeDevice.validTime($('#seleccionaEInitVideo').val())) ||
+            !$exeDevice.validTime($('#seleccionaEEndVideo').val())
+        ) {
+            message = $exeDevice.msgs.msgTimeFormat;
+        } else if (
+            p.type == 2 &&
+            p.tSilentVideo > 0 &&
+            !$exeDevice.validTime($('#seleccionaESilenceVideo').val())
+        ) {
+            message = msgs.msgTimeFormat;
+        } else if (
+            p.type == 2 &&
+            p.tSilentVideo > 0 &&
+            (p.silentVideo < p.iVideo || p.silentVideo >= p.fVideo)
+        ) {
+            message = msgs.msgSilentPoint;
+        } else if (p.typeSelect == 2 && p.solutionQuestion.trim().length == 0) {
+            message = $exeDevice.msgs.msgEProvideWord;
+        } else if (p.typeSelect == 2 && p.quextion.trim().length == 0) {
+            message = $exeDevice.msgs.msgEDefintion;
+        }
 
-            let optionEmpy = false;
-            $('.SLCNE-EAnwersOptions').each(function (i) {
-                let option = $(this).val().trim();
-                if (i < p.numberOptions && option.length == 0) {
-                    optionEmpy = true;
-                }
-                if (p.typeSelect == 2) {
-                    option = '';
-                }
-                p.options.push(option);
-            });
+        const order = parseInt($('input[name=slcgameorder]:checked').val());
 
-            if (p.typeSelect == 1 && p.solution.length != p.numberOptions) {
-                message = msgs.msgTypeChoose;
-            } else if (p.typeSelect != 2 && p.quextion.length == 0) {
-                message = msgs.msgECompleteQuestion;
-            } else if (p.typeSelect != 2 && optionEmpy) {
-                message = msgs.msgECompleteAllOptions;
-            } else if (p.type == 1 && p.url.length < 5) {
-                message = msgs.msgEURLValid;
-            } else if (p.type == 2 && p.url.length == 0) {
-                message = msgs.msgECompleteURLYoutube;
-            } else if (
-                p.type == 2 &&
-                (p.iVideo.length == 0 || p.fVideo.length == 0)
-            ) {
-                message = msgs.msgEStartEndVideo;
-            } else if (p.type == 2 && p.iVideo >= p.fVideo) {
-                message = msgs.msgEStartEndIncorrect;
-            } else if (p.type == 3 && p.eText.length == 0) {
-                message = msgs.msgWriteText;
-            } else if (
-                (p.type == 2 &&
-                    !$exeDevice.validTime($('#seleccionaEInitVideo').val())) ||
-                !$exeDevice.validTime($('#seleccionaEEndVideo').val())
-            ) {
-                message = $exeDevice.msgs.msgTimeFormat;
-            } else if (
-                p.type == 2 &&
-                p.tSilentVideo > 0 &&
-                !$exeDevice.validTime($('#seleccionaESilenceVideo').val())
-            ) {
-                message = msgs.msgTimeFormat;
-            } else if (
-                p.type == 2 &&
-                p.tSilentVideo > 0 &&
-                (p.silentVideo < p.iVideo || p.silentVideo >= p.fVideo)
-            ) {
-                message = msgs.msgSilentPoint;
-            } else if (p.typeSelect == 2 && p.solutionQuestion.trim().length == 0) {
-                message = $exeDevice.msgs.msgEProvideWord;
-            } else if (p.typeSelect == 2 && p.quextion.trim().length == 0) {
-                message = $exeDevice.msgs.msgEDefintion;
+        if (order == 2) {
+            if (p.hit >= $exeDevice.selectsGame.length) {
+                message = $exeDevice.msgs.msgNotHitCuestion;
             }
-
-            const order = parseInt($('input[name=slcgameorder]:checked').val());
-
-            if (order == 2) {
-                if (p.hit >= $exeDevice.selectsGame.length) {
-                    message = $exeDevice.msgs.msgNotHitCuestion;
-                }
-                if (p.error >= $exeDevice.selectsGame.length) {
-                    message = $exeDevice.msgs.msgNotErrorCuestion;
-                }
+            if (p.error >= $exeDevice.selectsGame.length) {
+                message = $exeDevice.msgs.msgNotErrorCuestion;
             }
+        }
 
-            if (message.length == 0) {
-                $exeDevice.selectsGame[$exeDevice.active] = p;
-                message = true;
-            } else {
-                $exeDevice.showMessage(message);
-                message = false;
-            }
+        if (message.length == 0) {
+            $exeDevice.selectsGame[$exeDevice.active] = p;
+            message = true;
+        } else {
+            $exeDevice.showMessage(message);
+            message = false;
+        }
 
-            return message;
+        return message;
 
     },
 
@@ -2175,7 +2179,7 @@ var $exeDevice = {
             startVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                 $('#seleccionaEVIStart').val(),
             ),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#seleccionaECustomScore').is(':checked'),
             customMessages = $('#seleccionaECustomMessages').is(':checked'),
             feedBack = $('#seleccionaEHasFeedBack').is(':checked'),
@@ -2265,7 +2269,7 @@ var $exeDevice = {
             }
         });
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             asignatura: '',
             author: '',
@@ -2822,8 +2826,8 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             3,
             $exeDevice.insertQuestions,
         );

@@ -8,7 +8,7 @@ namespace App;
 class Constants
 {
     public const APP_VERSION = 'v0.0.0-alpha';
-    public const DEMO_EXPIRATION_DATE = '20250930'; // Expiration date for the offline beta versions: YYYYMMDD (empty for no expiration date)
+    public const DEMO_EXPIRATION_DATE = '20251020'; // Expiration date for the offline beta versions: YYYYMMDD (empty for no expiration date)
 
     // Directories
     public const PUBLIC_DIR_NAME = 'public';
@@ -70,6 +70,7 @@ class Constants
     public const THEME_LOGO_IMG = 'logo';
     public const THEME_TYPE_BASE = 'base';
     public const THEME_TYPE_USER = 'user';
+    public const THEME_INSTALLABLE = 'downloadable';
 
     // iDevices
     public const IDEVICE_CONFIG_FILENAME = 'config.xml';
@@ -101,6 +102,7 @@ class Constants
     // Do not extract strings from these files:
     public const TRANSLATION_EXCEPTIONS = [
         '/app/public/app/common/fMath/js/jquery-ui/jquery-ui.min.js',
+        '/app/public/bundles/apiplatform/swagger-ui/swagger-ui-bundle.js',
         '/app/public/libs/filegator/js/chunk-vendors.js',
         '/app/public/libs/jquery-ui/jquery-ui.min.js',
         '/app/public/files/perm/idevices/base/classify/export/0jquery-ui.min.js',

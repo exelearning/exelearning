@@ -163,7 +163,7 @@ To create or update the database schema:
 
 ```bash
 make shell
-php bin/console doctrine:schema:update --complete --force
+php bin/console doctrine:schema:update --force
 ```
 
 ## Advanced Configuration

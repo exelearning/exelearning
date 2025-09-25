@@ -10,7 +10,7 @@
  */
 var $exeDevice = {
     i18n: {
-        category: _('Games'),
+        category: _('Interactive activities'),
         name: _('Sort'),
     },
     msgs: {},
@@ -30,66 +30,12 @@ var $exeDevice = {
     playerAudio: '',
     version: 1.5,
     id: false,
-    ci18n: {
-        msgSubmit: c_('Submit'),
-        msgClue: c_('Cool! The clue is:'),
-        msgCodeAccess: c_('Access code'),
-        msgPlayAgain: c_('Play Again'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgLive: c_('Life'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgCool: c_('Cool!'),
-        msgLoseT: c_('You lost 330 points'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgEndGameScore: c_('Please start the game before saving your score.'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgYouScore: c_('Your score'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgAudio: c_('Audio'),
-        msgTimeOver: c_('Time is up. Please try again'),
-        msgAllAttemps: c_('You finished all the attempts! Please try again'),
-        mgsAllPhrases: c_('You have ordered all the activities!'),
-        msgAttempts: c_('Attempts'),
-        msgNumbersAttemps: c_('Number of activities to be completed'),
-        msgAuthor: c_('Authorship'),
-        msgReboot: c_('Restart'),
-        msgActivities: c_('Activities'),
-        msgCheck: c_('Check'),
-        msgNextPhrase: c_('Next activity'),
-        msgContinue: c_('Continue'),
-        msgPositions: c_('Correct positions'),
-        msgAllOK: c_('Brilliant! All correct!'),
-        msgAgain: c_('Please try again'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgPhrases: c_('Phrases'),
-        msgTypeGame: c_('Sort'),
-    },
+    ci18n: {},
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
             '%',
@@ -97,6 +43,64 @@ var $exeDevice = {
 
         this.setMessagesInfo();
         this.createForm();
+    },
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgSubmit: c_('Submit'),
+            msgClue: c_('Cool! The clue is:'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayAgain: c_('Play Again'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgLive: c_('Life'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgCool: c_('Cool!'),
+            msgLoseT: c_('You lost 330 points'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgAudio: c_('Audio'),
+            msgTimeOver: c_('Time is up. Please try again'),
+            msgAllAttemps: c_('You finished all the attempts! Please try again'),
+            mgsAllPhrases: c_('You have ordered all the activities!'),
+            msgAttempts: c_('Attempts'),
+            msgNumbersAttemps: c_('Number of activities to be completed'),
+            msgAuthor: c_('Authorship'),
+            msgReboot: c_('Restart'),
+            msgActivities: c_('Activities'),
+            msgCheck: c_('Check'),
+            msgNextPhrase: c_('Next activity'),
+            msgContinue: c_('Continue'),
+            msgPositions: c_('Correct positions'),
+            msgAllOK: c_('Brilliant! All correct!'),
+            msgAgain: c_('Please try again'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPhrases: c_('Phrases'),
+            msgTypeGame: c_('Sort'),
+        }
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
@@ -141,7 +145,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Drag each letter to its correct position'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each letter to its correct position'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -211,7 +215,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#ordenaEEvaluationHelp" id="ordenaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="14" height="14" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="ordenaEEvaluation"><label for="ordenaEEvaluation">${_('Progress report')}.</label>
-                                <label for="ordenaEEvaluationID">${_('Identifier')}</label><input type="text" id="ordenaEEvaluationID" disabled/>
+                                <label for="ordenaEEvaluationID">${_('Identifier')}</label><input type="text" id="ordenaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="ordenaEEvaluationHelp" class="ODNE-TypeGameHelp exe-block-info">
                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -255,16 +259,16 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>`;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -276,9 +280,9 @@ var $exeDevice = {
             $('#ordenaEDefinitionDiv').hide();
             $('#ordenaEPhrase').hide();
             $('#ordenaButtonCardDiv').hide();
-            $('#ordenaCustomizeCard').hide();            
+            $('#ordenaCustomizeCard').hide();
             $('#ordenaEBackDiv').hide();
-            $('#ordenaEWordBorderDiv').show();            
+            $('#ordenaEWordBorderDiv').show();
             $('#ordenaStartAutomaticallyDiv').hide();
             $('#ordenaECustomMessagesDiv').hide();
             $('#ordenaFixedHeaders').hide();
@@ -297,7 +301,7 @@ var $exeDevice = {
             $('#ordenaEBackDiv').show();
             $('#ordenaStartAutomaticallyDiv').show();
             $('#ordenaEPĥraseIDiv').hide();
-            $('#ordenaEWordBorderDiv').hide();   
+            $('#ordenaEWordBorderDiv').hide();
             $('#ordenaECustomMessagesDiv').show();
             $('#ordenaButtonsPrhaseDiv').insertBefore(
                 'ordenaActivityNumberDiv',
@@ -910,7 +914,7 @@ var $exeDevice = {
             if (textFeedBack.length == 1)
                 $('#ordenaEFeedBackEditor').val(textFeedBack.html());
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.showPhrase(0, true);
@@ -944,8 +948,8 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame),
             divContent = '';
-        
-        
+
+
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
         const textFeedBack = tinyMCE.get('ordenaEFeedBackEditor').getContent();
@@ -966,12 +970,12 @@ var $exeDevice = {
         let linksImages = $exeDevice.createlinksImage(dataGame.phrasesGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.phrasesGame);
 
-        let html = '<div class="ordena-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="ordena-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += '<div class="ordena-feedback-game">' + textFeedBack + '</div>';
         html += divContent;
         html += '<div class="ordena-DataGame js-hidden">' + json + '</div>';
-        
+
         html += linksImages;
         html += linksAudios;
         html += imgCard;
@@ -1123,7 +1127,7 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#ordenaEShowMinimize').is(':checked'),
             wordBorder = $('#ordenaEWordBorder').is(':checked'),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#ordenaECaseSensitive').is(':checked'),
             feedBack = $('#ordenaEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#ordenaEPercentajeFB').val())),
@@ -1161,7 +1165,7 @@ var $exeDevice = {
             return false;
         }
 
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             typeGame: 'Ordena',
@@ -1192,7 +1196,7 @@ var $exeDevice = {
             gameColumns: gameColumns,
             evaluation: evaluation,
             evaluationID: evaluationID,
-            wordBorder:wordBorder,
+            wordBorder: wordBorder,
             id: id,
             type: type,
         };
@@ -1549,7 +1553,7 @@ var $exeDevice = {
         if (type == 1) {
             $exeDevice.resizePanel(orderedColumns, gameColumns);
         }
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         $('.exe-block-dismissible .exe-block-close').click(function () {
             $(this).parent().fadeOut();
@@ -1771,7 +1775,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.maxWidth =
             typeof game.maxWidth == 'undefined' ? false : game.maxWidth;
         game.orderedColumns =
@@ -1791,7 +1795,7 @@ var $exeDevice = {
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         game.type = typeof game.type != 'undefined' ? game.type : 1;
-        game.wordBorder = 
+        game.wordBorder =
             typeof game.wordBorder !== 'undefined' ? game.wordBorder : true;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
@@ -1806,7 +1810,7 @@ var $exeDevice = {
         $('#ordenaEAuthor').val(game.author);
         $('#ordenaEShowSolution').prop('checked', game.showSolution);
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1902,7 +1906,7 @@ var $exeDevice = {
             return;
         }
 
-        game.id =  $exeDevice.getIdeviceID();
+        game.id = $exeDevice.getIdeviceID();
 
         $exeDevice.updateFieldGame(game);
 

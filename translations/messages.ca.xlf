@@ -11457,8 +11457,8 @@
         <source>The case study must have at least one activity</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="DnJYpBC" resname="Complete the story">
-        <source>Complete the story</source>
+      <trans-unit id="mFlaair" resname="Please complete the history">
+        <source>Please complete the history</source>
         <target></target>
       </trans-unit>
       <trans-unit id="ofUWEOP" resname="You must provide the text for each activity">
@@ -11516,6 +11516,238 @@
       <trans-unit id="_iRtiV6" resname="Free response">
         <source>Free response</source>
         <target>~Resposta lliure</target>
+      </trans-unit>
+      <trans-unit id="ZLhutDM" resname="Send to AI">
+        <source>Send to AI</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="HAl2U3v" resname="There is no query to send to the assistant.">
+        <source>There is no query to send to the assistant.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Q3Kq_T9" resname="This option is only available offline.">
+        <source>This option is only available offline.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="alnAuc." resname="Export canceled.">
+        <source>Export canceled.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="AzTECQQ" resname="Unexpected error.">
+        <source>Unexpected error.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jkArR.M" resname="Assessment and tracking">
+        <source>Assessment and tracking</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ALckUtg" resname="Science">
+        <source>Science</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1piunaK" resname="Alkali metals">
+        <source>Alkali metals</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="B_3nlZS" resname="Alkaline earth metals">
+        <source>Alkaline earth metals</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j3Itwu3" resname="Transition metals">
+        <source>Transition metals</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8_ejxKp" resname="Post-Transition metals">
+        <source>Post-Transition metals</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jPZCkB4" resname="Metalloids">
+        <source>Metalloids</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="x7hstnQ" resname="Non-metals">
+        <source>Non-metals</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l2FPPLx" resname="Halogens">
+        <source>Halogens</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f4MBuUC" resname="Noble gases">
+        <source>Noble gases</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1Bo32t3" resname="Lanthanides">
+        <source>Lanthanides</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qzg7BFl" resname="Actinides">
+        <source>Actinides</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fE2HH6r" resname="Visibility type">
+        <source>Visibility type</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="RWxaLMk" resname="Visible to all">
+        <source>Visible to all</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ZT.NQle" resname="Teacher only">
+        <source>Teacher only</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bBHJSiQ" resname="Export as...">
+        <source>Export as...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hoh2x39" resname="Export to Folder (Unzipped Website)">
+        <source>Export to Folder (Unzipped Website)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pkPMDRH" resname="Metadata (XML)">
+        <source>Metadata (XML)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ca3xgwu" resname="API Reference (Swagger)">
+        <source>API Reference (Swagger)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Uom6tJO" resname="Information and presentation">
+        <source>Information and presentation</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="UvqYVFn" resname="Please wait until the changes are completely saved.">
+        <source>Please wait until the changes are completely saved.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="niBfDzY" resname="Could not extract theme">
+        <source>Could not extract theme</source>
+        <target>~No s'ha pogut extreure el tema</target>
+      </trans-unit>
+      <trans-unit id="qEE0Zw." resname="The style is not installable">
+        <source>The style is not installable</source>
+        <target>~L'estil no es pot instal·lar</target>
+      </trans-unit>
+      <trans-unit id="RRGAG5X" resname="Could not install theme">
+        <source>Could not install theme</source>
+        <target>~No s'ha pogut instal·lar el tema</target>
+      </trans-unit>
+      <trans-unit id="ldQmgCC" resname="Show feedback">
+        <source>Show feedback</source>
+        <target>~Mostra comentaris</target>
+      </trans-unit>
+      <trans-unit id="IIWdrDp" resname="Hide feedback">
+        <source>Hide feedback</source>
+        <target>~Amaga comentaris</target>
+      </trans-unit>
+      <trans-unit id="qXxIKiI" resname="Menu">
+        <source>Menu</source>
+        <target>~Menú</target>
+      </trans-unit>
+      <trans-unit id="uPK90IF" resname="Your score is">
+        <source>Your score is</source>
+        <target>~La teva puntuació és</target>
+      </trans-unit>
+      <trans-unit id="b6hmtD_" resname="Error retrieving data">
+        <source>Error retrieving data</source>
+        <target>~Error en recuperar les dades</target>
+      </trans-unit>
+      <trans-unit id="iM.0BJl" resname="This might not work in this ePub reader.">
+        <source>This might not work in this ePub reader.</source>
+        <target>~Això potser no funcionarà en aquest lector d'ePub.</target>
+      </trans-unit>
+      <trans-unit id="oORf9iD" resname="This activity does not work in ePub format.">
+        <source>This activity does not work in ePub format.</source>
+        <target>~Aquesta activitat no funciona en format ePub.</target>
+      </trans-unit>
+      <trans-unit id="MA7trt8" resname="Search all pages">
+        <source>Search all pages</source>
+        <target>~Cerca en totes les pàgines</target>
+      </trans-unit>
+      <trans-unit id="l1Hcq.m" resname="No results found for %">
+        <source>No results found for %</source>
+        <target>~No s'han trobat resultats per a %</target>
+      </trans-unit>
+      <trans-unit id="s_Ykup3" resname="Search results for %">
+        <source>Search results for %</source>
+        <target>~Resultats de la cerca per a %</target>
+      </trans-unit>
+      <trans-unit id="QJSMbTz" resname="Hide results">
+        <source>Hide results</source>
+        <target>~Amaga resultats</target>
+      </trans-unit>
+      <trans-unit id="vZ3g5lk" resname="Full size">
+        <source>Full size</source>
+        <target>~Mida completa</target>
+      </trans-unit>
+      <trans-unit id="Y.SUx2B" resname="Accessibility tools">
+        <source>Accessibility tools</source>
+        <target>~Eines d'accessibilitat</target>
+      </trans-unit>
+      <trans-unit id=".LN5KpH" resname="Default typography">
+        <source>Default typography</source>
+        <target>~Tipografia predeterminada</target>
+      </trans-unit>
+      <trans-unit id="Y_lcdMn" resname="Increase text size">
+        <source>Increase text size</source>
+        <target>~Augmenta la mida del text</target>
+      </trans-unit>
+      <trans-unit id="83VcOiT" resname="Decrease text size">
+        <source>Decrease text size</source>
+        <target>~Redueix la mida del text</target>
+      </trans-unit>
+      <trans-unit id="OLinVBN" resname="Stop reading">
+        <source>Stop reading</source>
+        <target>~Atura la lectura</target>
+      </trans-unit>
+      <trans-unit id="nfZSB2j" resname="Translate">
+        <source>Translate</source>
+        <target>~Tradueix</target>
+      </trans-unit>
+      <trans-unit id="h_JJhAn" resname="Light/dark mode">
+        <source>Light/dark mode</source>
+        <target>~Mode clar/fosc</target>
+      </trans-unit>
+      <trans-unit id="WA9z9oQ" resname="Teacher mode">
+        <source>Teacher mode</source>
+        <target>~Mode professor</target>
+      </trans-unit>
+      <trans-unit id="zp1nkll" resname="Hangman Game">
+        <source>Hangman Game</source>
+        <target>~Joc del penjat</target>
+      </trans-unit>
+      <trans-unit id="Qmo7OQW" resname="Stat">
+        <source>Stat</source>
+        <target>~Estadística</target>
+      </trans-unit>
+      <trans-unit id="RiWn7g_" resname="Selected letters">
+        <source>Selected letters</source>
+        <target>~Lletres seleccionades</target>
+      </trans-unit>
+      <trans-unit id="D.9uOUj" resname="Other word">
+        <source>Other word</source>
+        <target>~Una altra paraula</target>
+      </trans-unit>
+      <trans-unit id="QCsa0JO" resname="Game Over">
+        <source>Game Over</source>
+        <target>~Fi del joc</target>
+      </trans-unit>
+      <trans-unit id="rXfx2XN" resname="Reload the game?">
+        <source>Reload the game?</source>
+        <target>~Vols tornar a carregar el joc?</target>
+      </trans-unit>
+      <trans-unit id="84o0Zr9" resname="Click &quot;Play&quot; to start a new game.">
+        <source>Click "Play" to start a new game.</source>
+        <target>~Fes clic a "Jugar" per començar una nova partida.</target>
+      </trans-unit>
+      <trans-unit id="JP_t.5h" resname="Click &quot;Another word&quot; to continue.">
+        <source>Click "Another word" to continue.</source>
+        <target>~Fes clic a "Una altra paraula" per continuar.</target>
+      </trans-unit>
+      <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
+        <source>abcdefghijklmnñopqrstuvwxyz</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>

@@ -1,5 +1,65 @@
 # CHANGELOG
 
+## v3.0.0-beta6 – 2025-09-24
+
+### Added
+
+- Desktop version–specific Save / Open / Export options
+- Online version "Save as" option
+- Keyboard shortcuts
+- New iDevice categories
+- Export to folder (unzipped website) option
+- Teacher mode (teacher-only iDevices and boxes)
+- New "Test" style (for testing only)
+- Project title visible in all export formats
+- New `make destroy` command for developers
+- Parallel testing support
+- New REST API: Users and projects, JWT authentication and admin tools
+- New settings to enable or disable the iDevices and styles import option in the online version
+- New option to import a style from an .elp file or exported content
+- Updated translations: Spanish (es), Galician (gl)
+
+### Fixed
+
+- iDevice ID mismatch between data and exported HTML
+- Refactor iDevice feedback handling and remove old rendering logic
+- Performance improvements:
+  - Directory and file removal, ZIP handling and related tests
+  - User handling and session cleanup
+  - Offline version startup
+- Security: Defensive programming, type safety and test reliability
+- Style management errors
+- Caching and logging management
+- Electron app configuration: secret environment variable
+- Mounting of public/bundles (permission errors)
+- jQuery UI compatibility issues
+- Untranslated JavaScript strings
+- Progress Report iDevice: real-time score updates and repeated alert fix
+- Accessibility toolbar presentation and duplicated CSS loading error
+
+### Upgraded
+
+- Documentation
+- Improved support for OpenID Connect
+- Refactored common iDevice JavaScript code
+- Symfony Process Component: 7.3.0 → 7.3.3
+- Symfony Security Component (Core): 7.3.2 → 7.3.3
+- PHPUnit: 12.3.6 → 12.3.12
+- PHPUnit Bridge: 7.3.1 → 7.3.3
+- Symfony Translation Component: 7.3.2 → 7.3.3
+- Symfony Yaml Component: 7.3.2 → 7.3.3
+- Symfony WebProfilerBundle: 7.3.2 → 7.3.3
+- Symfony Serializer Component: 7.3.2 → 7.3.3
+- API Platform for Symfony: 4.1.22 → 4.2.0
+- PHP CS Fixer: 3.86.0 → 3.87.1
+- Doctrine ORM support for API Platform: 4.1.22 → 4.2.0
+- Doctrine Bundle: 2.15.1 → 2.16.1
+- Electron: 3.86.0 → 3.87.1
+- setup-node Action: 4 → 5
+- Hadolint Action: 3.1.0 → 3.3.0
+
+---
+
 ## v3.0.0-beta5 – 2025-08-29
 
 ### Added

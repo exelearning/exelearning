@@ -41,15 +41,8 @@ var $eXeOrdena = {
     },
 
     enable: function () {
-        if (typeof $.ui !== 'undefined' && $.fn.draggable && $.fn.droppable) {
-            $eXeOrdena.loadGame();
-        } else {
-            $exe.loadScript(
-                $eXeOrdena.idevicePath + 'jquery-ui.min.js',
-                '$eXeOrdena.loadGame()'
-            );
-        }
-    },    
+        $eXeOrdena.loadGame();
+    },
 
     loadGame: function () {
         $eXeOrdena.options = [];
@@ -90,11 +83,13 @@ var $eXeOrdena = {
             $('#ordenaDivFeedBack-' + i).hide();
 
             if (mOption.type == 0) $('#ordenaPhrasesContainer-' + i).hide();
-            if (
+            if (!mOption.itinerary.showCodeAccess && (
                 mOption.startAutomatically ||
-                (mOption.type == 0 && mOption.time == 0)
-            )
+                (mOption.type == 0 && mOption.time == 0))
+            ) {
                 $('#ordenaStartGame-' + i).click();
+            }
+
 
             $('#ordenaMainContainer-' + i).show();
 
@@ -659,8 +654,13 @@ var $eXeOrdena = {
     showPhraseText: function (num, instance) {
         const mOptions = $eXeOrdena.options[instance];
         if (!mOptions) return;
-        mOptions.phrase = mOptions.phrasesGame[num];
-        mOptions.correctOrder = mOptions.phrase.phrase.split(' ');
+        mOptions.phrase = mOptions.phrasesGame[num] || { phrase: '' };
+        // normalize whitespace and avoid empty words
+        mOptions.correctOrder = $eXeOrdena.clear(mOptions.phrase.phrase || '')
+            .split(' ')
+            .filter(function (w) {
+                return w && w.length > 0;
+            });
 
         let words = [];
         for (let i = 0; i < mOptions.correctOrder.length; i++) {
@@ -683,7 +683,8 @@ var $eXeOrdena = {
                 `ordenaPhrasesContainer-${instance}`,
             );
 
-        $eXeOrdena.initializePhraseDragAndDrop(instance);
+        // pass num to allow initializePhraseDragAndDrop to react to "num>0" cases
+        $eXeOrdena.initializePhraseDragAndDrop(instance, num);
     },
 
     addCardsPhrase: function (words, instance) {
@@ -1045,7 +1046,7 @@ var $eXeOrdena = {
             $(`#ordenaValidatePhrase-${instance}`).hide();
             $eXeOrdena.saveEvaluation(instance);
             if (mOptions.isScorm == 1) {
-                   $eXeOrdena.sendScore(true, instance);   
+                $eXeOrdena.sendScore(true, instance);
             }
         });
 
@@ -1127,9 +1128,11 @@ var $eXeOrdena = {
         if (!$.ui || !$.ui.draggable || !$.ui.droppable) return;
 
         const mOptions = $eXeOrdena.options[instance];
-        const $ordenaPhrasesContainer = $(
-            '#ordenaPhrasesContainer-' + instance,
-        );
+        const $ordenaPhrasesContainer = $('#ordenaPhrasesContainer-' + instance);
+        // multimedia container is used below when num>0
+        const $ordenaMultimedia = $('#ordenaMultimedia-' + instance);
+        // ensure local variable for cards (avoid implicit global)
+        let $cards = null;
         const $sources = $ordenaPhrasesContainer.find('.ODNP-Word');
         const $targets = $('#ordenaPhrasesContainer-' + instance).find(
             '.ODNP-WordTarget',
@@ -1491,6 +1494,7 @@ var $eXeOrdena = {
         const mOptions = $eXeOrdena.options[instance],
             enteredCode = $(`#ordenaCodeAccessE-${instance}`).val();
         if (mOptions.itinerary.codeAccess === enteredCode) {
+            $('#ordenaStartGame-' + instance).click();
             $(
                 `#ordenaCodeAccessDiv-${instance}, #ordenaCubierta-${instance}`,
             ).hide();

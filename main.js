@@ -902,7 +902,7 @@ function runSymfonyCommands() {
     }
 
     console.log('Creating database tables in SQLite...');
-    execFileSync(phpBinaryPath, ['bin/console', 'doctrine:schema:update', '--complete', '--force'], {
+    execFileSync(phpBinaryPath, ['bin/console', 'doctrine:schema:update', '--force'], {
       env: env,
       cwd: basePath,
       windowsHide: true,
@@ -939,6 +939,23 @@ function runSymfonyCommands() {
   }
 }
 
+function phpIniArgs() {
+  const opcacheDir = path.join(customEnv.CACHE_DIR, 'opcache');
+  ensureWritableDirectory(opcacheDir);
+  return [
+    '-dopcache.enable=1',
+    '-dopcache.enable_cli=1',
+    '-dopcache.memory_consumption=128',
+    '-dopcache.interned_strings_buffer=16',
+    '-dopcache.max_accelerated_files=20000',
+    `-dopcache.file_cache=${opcacheDir}`,
+    '-dopcache.file_cache_only=1',
+    '-dopcache.validate_timestamps=0',
+    '-drealpath_cache_size=4096k',
+    '-drealpath_cache_ttl=600',
+  ];
+}
+
 /**
  * Starts the embedded PHP server.
  */
@@ -946,7 +963,7 @@ function startPhpServer() {
   try {
     phpServer = spawn(
       phpBinaryPath,
-      ['-S', `localhost:${customEnv.APP_PORT}`, '-t', 'public', 'public/router.php'],
+      [...phpIniArgs(), '-S', `localhost:${customEnv.APP_PORT}`, '-t', 'public', 'public/router.php'],
       {
         // env: Object.assign({}, process.env, customEnv),
         env, // usa el env ya combinado por combineEnv()
@@ -1005,6 +1022,12 @@ function showErrorDialog(message) {
  * @returns {string} The path to the PHP executable.
  */
 function getPhpBinaryPath() {
+
+  // Try to get the previous extracted bundled PHP binary
+  const bundledDir = path.join(process.resourcesPath, 'php-bin', 'php-8.4');
+  const bundledBin = path.join(bundledDir, process.platform === 'win32' ? 'php.exe' : 'php');
+  if (fs.existsSync(bundledBin)) return bundledBin;
+
   const platform = process.platform;
   const arch = process.arch;
 

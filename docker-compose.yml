@@ -28,6 +28,8 @@ services:
       - ./composer.lock:/app/composer.lock
       - mnt-data:/mnt/data:rw # Mount the volume for persistent data
       - ./e2e_screenshots:/tmp/e2e_screenshots
+    tmpfs:
+      - /app/public/bundles:rw,size=64m,mode=1777 # public/bundles mounted as tmpfs to avoid permission errors
     environment:
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}

@@ -15,7 +15,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\Exception\AuthenticationServiceException;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
+use Symfony\Component\Security\Core\Exception\InvalidCsrfTokenException;
 use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -166,7 +168,7 @@ class SecurityController extends AbstractController
                 'prompt' => 'consent',
             ]);
 
-            return $this->redirect($this->params->get('oidc_issuer').'/connect/authorize?'.$query);
+            return $this->redirect($this->params->get('oidc_authorization_endpoint').'?'.$query);
         } catch (\Throwable $e) {
             $this->logger->error('OpenID authentication failed: '.$e->getMessage());
 
@@ -216,7 +218,7 @@ class SecurityController extends AbstractController
 
         // Retrieve tokens using PKCE
         try {
-            $response = $this->httpClient->request('POST', $this->params->get('oidc_issuer').'/connect/token', [
+            $response = $this->httpClient->request('POST', $this->params->get('oidc_token_endpoint'), [
                 'body' => [
                     'grant_type' => 'authorization_code',
                     'client_id' => $this->params->get('oidc_client_id'),
@@ -229,22 +231,31 @@ class SecurityController extends AbstractController
 
             $tokenData = $response->toArray();
             $accessToken = $tokenData['access_token'] ?? null;
+            $idToken = $tokenData['id_token'] ?? null;
 
-            if (!$accessToken) {
-                throw new AuthenticationException('Access token not found in token response');
+            if ($idToken) {
+                $session->set('oidc_id_token', $idToken);
+            }
+            if ($accessToken) {
+                $session->set('oidc_access_token', $accessToken);
             }
 
-            // If a target path was stored before authentication, redirect there with the access token
+            // Prefer access_token for AccessTokenAuthenticator; fallback to id_token
+            // AccessTokenAuthenticator + OIDC userinfo requires a bearer access token.
+            $tokenForAuthenticator = $accessToken ?? $idToken;
+            if (!$tokenForAuthenticator) {
+                throw new AuthenticationException('No token found in token response');
+            }
+
             $targetPath = $session->get('_security.main.target_path');
             if ($targetPath) {
-                $session->remove('_security.main.target_path');   // avoid loops
+                $session->remove('_security.main.target_path');
                 $sep = str_contains($targetPath, '?') ? '&' : '?';
 
-                return $this->redirect($targetPath.$sep.'access_token='.urlencode($accessToken));
+                return $this->redirect($targetPath.$sep.'access_token='.urlencode($tokenForAuthenticator));
             }
 
-            // fallback
-            return $this->redirectToRoute('workarea', ['access_token' => $accessToken]);
+            return $this->redirectToRoute('workarea', ['access_token' => $tokenForAuthenticator]);
         } catch (\Throwable $e) {
             $this->logger->error('OpenID token exchange failed: '.$e->getMessage());
 
@@ -270,6 +281,10 @@ class SecurityController extends AbstractController
         $authMethodUsed = $session->get('auth_method_used');
         $this->logger->debug("Authentication method used: $authMethodUsed");
 
+        // Capture tokens needed for provider logout before invalidating the session
+        $idToken = $session->get('oidc_id_token');
+        $accessToken = $session->get('oidc_access_token');
+
         // Clear token and invalidate session
         $tokenStorage->setToken(null);
         $session->invalidate();
@@ -277,7 +292,7 @@ class SecurityController extends AbstractController
         // Redirect depending authentication method used
         return match ($authMethodUsed) {
             'cas' => $this->handleCasLogout(),
-            'oidc' => $this->handleOidcLogout($session),
+            'oidc' => $this->handleOidcLogout($session, $idToken, $accessToken),
             default => $this->redirectToRoute('workarea'),
         };
     }
@@ -298,23 +313,57 @@ class SecurityController extends AbstractController
         return $this->redirect("$casUrl/$casLogoutPath?service=".urlencode($redirectUrl));
     }
 
-    private function handleOidcLogout(SessionInterface $session): Response
+    private function handleOidcLogout(SessionInterface $session, ?string $idToken = null, ?string $accessToken = null): Response
     {
-        $oidcIssuer = $this->params->get('oidc_issuer');
-        $idToken = $session->get('oidc_id_token');
+        $oidcIssuer = (string) $this->params->get('oidc_issuer');
+        $idToken = $idToken ?? $session->get('oidc_id_token');
+        $redirectUri = $this->generateUrl('workarea', [], UrlGeneratorInterface::ABSOLUTE_URL);
 
         if (!$oidcIssuer) {
             $this->logger->warning('OIDC logout attempted but OIDC issuer is missing.');
 
-            return $this->redirectToRoute('workarea');
+            return $this->redirect($redirectUri);
         }
 
-        $params = array_filter([
-            'id_token_hint' => $idToken,
-            'post_logout_redirect_uri' => $this->generateUrl('workarea', [], UrlGeneratorInterface::ABSOLUTE_URL),
-        ]);
+        // Try OIDC discovery to find the end_session_endpoint
+        try {
+            $discoveryUrl = rtrim($oidcIssuer, '/').'/.well-known/openid-configuration';
+            $conf = $this->httpClient->request('GET', $discoveryUrl)->toArray(false);
+            $endSession = $conf['end_session_endpoint'] ?? null;
 
-        return $this->redirect("$oidcIssuer/connect/endsession?".http_build_query($params));
+            if ($endSession) {
+                $params = array_filter([
+                    'post_logout_redirect_uri' => $redirectUri,
+                    // Duende accepts id_token_hint; Keycloak usually accepts client_id and redirect
+                    'id_token_hint' => $idToken,
+                    'client_id' => $this->params->get('oidc_client_id'),
+                ]);
+
+                return $this->redirect($endSession.'?'.http_build_query($params));
+            }
+        } catch (\Throwable $e) {
+            $this->logger->debug('OIDC discovery failed on logout: '.$e->getMessage());
+        }
+
+        // Provider-specific fallback for Google: revoke the access token and redirect locally
+        if (str_contains($oidcIssuer, 'accounts.google.com')) {
+            $accessToken = $accessToken ?? $session->get('oidc_access_token');
+            if ($accessToken) {
+                try {
+                    $this->httpClient->request('POST', 'https://oauth2.googleapis.com/revoke', [
+                        'body' => ['token' => $accessToken],
+                        'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+                    ]);
+                } catch (\Throwable $e) {
+                    $this->logger->debug('Google token revoke failed: '.$e->getMessage());
+                }
+            }
+
+            return $this->redirect($redirectUri);
+        }
+
+        // Fallback: local logout only
+        return $this->redirect($redirectUri);
     }
 
     /**

@@ -1176,7 +1176,7 @@ var $eXeFlipCards = {
                         <input type="text" class="FLCDSP-CodeAccessE" id="flcdsCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                         <a href="#" id="flcdsCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                             <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
-                            <div class="exeQuextIcons-Submit FLCDSP-Activo"></div>
+                            <div class="exeQuextIcons exeQuextIcons-Submit FLCDSP-Activo"></div>
                         </a>
                     </div>
                 </div>
@@ -1614,6 +1614,8 @@ var $eXeFlipCards = {
             e.preventDefault();
             $eXeFlipCards.startGameMemory(instance);
         });
+
+        $('#flcdsGameOver-' + instance).hide();
 
         $('#flcdsMultimedia-' + instance).on(
             'click',

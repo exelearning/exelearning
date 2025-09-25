@@ -938,7 +938,7 @@ var $eXeDescubre = {
         $(window).on('unload.eXeDescubre beforeunload.eXeDescubre', function () {
             if (typeof $eXeDescubre.mScorm != 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeCrucigrama.eXeDescubre,
+                    $eXeDescubre.mScorm
                 );
             }
         });

@@ -40,64 +40,13 @@ var $exeDevice = {
     i18n: {
         name: _('Quick questions'),
     },
-    ci18n: {
-        msgStartGame: c_('Click here to start'),
-        msgSubmit: c_('Submit'),
-        msgClue: c_('Cool! The clue is:'),
-        msgNewGame: c_('Click here for a new game'),
-        msgCodeAccess: c_('Access code'),
-        msgInformationLooking: c_('Cool! The information you were looking for'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgTime: c_('Time per question'),
-        msgLive: c_('Life'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgCool: c_('Cool!'),
-        msgLoseT: c_('You lost 330 points'),
-        msgLoseLive: c_('You lost one life'),
-        msgLostLives: c_('You lost all your lives!'),
-        msgAllQuestions: c_('Questions completed!'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgQuestion: c_('Question'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgYouScore: c_('Your score'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-        msgVideoIntro: c_('Video Intro'),
-        msgClose: c_('Close'),
-        msgOption: c_('Option'),
-        msgUseFulInformation: c_('and information that will be very useful'),
-        msgLoading: c_('Loading. Please wait...'),
-        msgPoints: c_('points'),
-        msgAudio: c_('Audio'),
-        msgEndGameScore: c_('Please start playing first...'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Quick questions'),
-    },
+    ci18n: {},
+
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
             '%',
@@ -112,6 +61,63 @@ var $exeDevice = {
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
+    },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgStartGame: c_('Click here to start'),
+            msgSubmit: c_('Submit'),
+            msgClue: c_('Cool! The clue is:'),
+            msgNewGame: c_('Click here for a new game'),
+            msgCodeAccess: c_('Access code'),
+            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgTime: c_('Time per question'),
+            msgLive: c_('Life'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgCool: c_('Cool!'),
+            msgLoseT: c_('You lost 330 points'),
+            msgLoseLive: c_('You lost one life'),
+            msgLostLives: c_('You lost all your lives!'),
+            msgAllQuestions: c_('Questions completed!'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgQuestion: c_('Question'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgYouScore: c_('Your score'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgVideoIntro: c_('Video Intro'),
+            msgClose: c_('Close'),
+            msgOption: c_('Option'),
+            msgUseFulInformation: c_('and information that will be very useful'),
+            msgLoading: c_('Loading. Please wait...'),
+            msgPoints: c_('points'),
+            msgAudio: c_('Audio'),
+            msgEndGameScore: c_('Please start playing first...'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Quick questions'),
+        }
     },
 
     setMessagesInfo: function () {
@@ -952,7 +958,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answer'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -999,7 +1005,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#quextEEvaluationHelp" id="quextEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="quextEEvaluation"><label for="quextEEvaluation">${_('Progress report')}.</label>
-                                <label for="quextEEvaluationID">${_('Identifier')}:</label><input type="text" id="quextEEvaluationID" disabled/>
+                                <label for="quextEEvaluationID">${_('Identifier')}:</label><input type="text" id="quextEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="quextEEvaluationHelp" class="QXTE-TypeGameHelp exe-block-info">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -1211,17 +1217,17 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevices.iDevice.gamification.share.getTab(true, 2, true)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 2, true)}
             </div>
         `;
         this.ideviceBody.innerHTML = html; //eXe 3.0
-        $exeDevices.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         tinymce.init({
             selector: '#quextEText',
             height: 200,
@@ -1364,7 +1370,7 @@ var $exeDevice = {
                 $('#quextEFeedBackEditor').val(textFeedBack.html());
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -1390,7 +1396,7 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.answersRamdon = game.answersRamdon || false;
         game.percentajeFB =
             typeof game.percentajeFB !== 'undefined' ? game.percentajeFB : 100;
@@ -1469,7 +1475,7 @@ var $exeDevice = {
             $('#quextEScoreQuestionDiv').show();
         }
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1546,8 +1552,8 @@ var $exeDevice = {
             linksImages = $exeDevice.createlinksImage(dataGame.questionsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.questionsGame);
 
-        let html = '<div class="quext-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="quext-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html += `<div class="quext-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="quext-feedback-game">${textFeedBack}</div>`;
@@ -1996,7 +2002,7 @@ var $exeDevice = {
             startVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                 $('#quextEVIStart').val(),
             ),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#quextECustomScore').is(':checked'),
             feedBack = $('#quextEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#quextEPercentajeFB').val())),
@@ -2009,7 +2015,7 @@ var $exeDevice = {
             evaluationID = $('#quextEEvaluationID').val(),
             id = $exeDevice.getIdeviceID(),
             questionsGame = $exeDevice.questionsGame,
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
 
@@ -2563,8 +2569,8 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             2,
             $exeDevice.insertQuestions,
         );

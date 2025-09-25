@@ -88,11 +88,7 @@ $exe.atools = {
                 $exe.atools.i18n[i] = strs[i];
             }
         }
-        let path = '../libs/';
-        if ($("html").attr("id") == 'exe-index') path = 'libs/';
-        path += 'exe_atools/';
-        
-        $exe.loadScript(path+"exe_atools.css","$exe.atools.start()");
+        this.start();
     },
     start : function(){
         var i18n = $exe.atools.i18n;

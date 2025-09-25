@@ -23,62 +23,13 @@ var $exeDevice = {
     i18n: {
         name: _('Hidden image'),
     },
-    ci18n: {
-        msgStartGame: c_('Click here to start'),
-        msgSubmit: c_('Submit'),
-        msgClue: c_('Cool! The clue is:'),
-        msgNewGame: c_('Click here for a new game'),
-        msgCodeAccess: c_('Access code'),
-        msgInformationLooking: c_('Cool! The information you were looking for'),
-        msgPlayStart: c_('Click here to play'),
-        msgErrors: c_('Errors'),
-        msgHits: c_('Hits'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgMinimize: c_('Minimize'),
-        msgMaximize: c_('Maximize'),
-        msgTime: c_('Time game'),
-        msgFullScreen: c_('Full Screen'),
-        msgExitFullScreen: c_('Exit Full Screen'),
-        msgNumQuestions: c_('Number of questions'),
-        msgNoImage: c_('No picture question'),
-        msgCool: c_('Cool!'),
-        msgAllQuestions: c_('Questions completed!'),
-        msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-        msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgQuestion: c_('Question'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgInformation: c_('Information'),
-        msgAuthor: c_('Authorship'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgYouScore: c_('Your score'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgClose: c_('Close'),
-        msgOption: c_('Option'),
-        msgUseFulInformation: c_('and information that will be very useful'),
-        msgLoading: c_('Loading. Please wait...'),
-        msgPoints: c_('points'),
-        msgAudio: c_('Audio'),
-        msgEndGameScore: c_('Please start playing first...'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgCardClick: c_('Click on a card. Attempts: %s'),
-        msgGameOver: c_('You finished the game. Your score is %s.'),
-        msgattempts0: c_('No more attempts left. Please answer the question.'),
-        msgEndTime: c_('Time Over. 0 points'),
-        msgTypeGame: c_('Hidden image'),
-    },
+    ci18n: {},
+
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
     },
@@ -88,6 +39,62 @@ var $exeDevice = {
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
     },
+
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgStartGame: c_('Click here to start'),
+            msgSubmit: c_('Submit'),
+            msgClue: c_('Cool! The clue is:'),
+            msgNewGame: c_('Click here for a new game'),
+            msgCodeAccess: c_('Access code'),
+            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgPlayStart: c_('Click here to play'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgTime: c_('Time game'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNumQuestions: c_('Number of questions'),
+            msgNoImage: c_('No picture question'),
+            msgCool: c_('Cool!'),
+            msgAllQuestions: c_('Questions completed!'),
+            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
+            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgQuestion: c_('Question'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgYouScore: c_('Your score'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgClose: c_('Close'),
+            msgOption: c_('Option'),
+            msgUseFulInformation: c_('and information that will be very useful'),
+            msgLoading: c_('Loading. Please wait...'),
+            msgPoints: c_('points'),
+            msgAudio: c_('Audio'),
+            msgEndGameScore: c_('Please start playing first...'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgCardClick: c_('Click on a card. Attempts: %s'),
+            msgGameOver: c_('You finished the game. Your score is %s.'),
+            msgattempts0: c_('No more attempts left. Please answer the question.'),
+            msgEndTime: c_('Time Over. 0 points'),
+            msgTypeGame: c_('Hidden image'),
+        }
+    },
+
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
@@ -312,7 +319,7 @@ var $exeDevice = {
         $(
             `input.HIE-Solution[name='hisoluiton'][value='${p.solution}']`,
         ).prop('checked', true);
-        
+
     },
 
 
@@ -382,7 +389,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Reveal the hidden image and choose the right answer.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Reveal the hidden image and choose the right answer.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
@@ -403,7 +410,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#hiEEvaluationHelp" id="hiEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                                 <input type="checkbox" id="hiEEvaluation"><label for="hiEEvaluation">${_('Progress report')}.</label>
-                                <label for="hiEEvaluationID">${_('Identifier')}:</label><input type="text" id="hiEEvaluationID" disabled/>
+                                <label for="hiEEvaluationID">${_('Identifier')}:</label><input type="text" id="hiEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </p>
                             <div id="hiEEvaluationHelp" class="HIE-TypeGameHelp exe-block-info">
                                 <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -527,16 +534,16 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
-                ${$exeDevices.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevices.iDevice.gamification.scorm.getTab()}
-                ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             </div>
         `;
         this.ideviceBody.innerHTML = html; //eXe 3.0
-        $exeDevices.iDevice.tabs.init('hiQEIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('hiQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -640,7 +647,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter.html());
             }
 
-            $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs,
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -649,7 +656,7 @@ var $exeDevice = {
 
 
     updateFieldGame: function (game) {
-        $exeDevices.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
         game.answersRamdon = game.answersRamdon || false;
         game.percentajeFB =
             typeof game.percentajeFB !== 'undefined' ? game.percentajeFB : 100;
@@ -707,7 +714,7 @@ var $exeDevice = {
             $('#hiEScoreQuestionDiv').show();
         }
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -781,8 +788,8 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.questionsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.questionsGame);
 
-        let html = '<div class="hiddenimage-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="hiddenimage-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html += `<div class="hiddenimage-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="hiddenimage-DataGame js-hidden">${$exeDevices.iDevice.gamification.helpers.encrypt(json)}</div>`;
@@ -922,7 +929,7 @@ var $exeDevice = {
             timeShowSolution = parseInt(
                 clear($('#hiETimeShowSolution').val()),
             ),
-            itinerary = $exeDevices.iDevice.gamification.itinerary.getValues(),
+            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#hiECustomScore').is(':checked'),
             customMessages = $('#hiECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
@@ -932,8 +939,8 @@ var $exeDevice = {
             evaluationID = $('#hiEEvaluationID').val(),
             id = $exeDevice.getIdeviceID(),
             questionsGame = $exeDevice.questionsGame,
-            revealTime =  $('#hiERevealTime').val(),
-            scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+            revealTime = $('#hiERevealTime').val(),
+            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
 
@@ -1215,7 +1222,7 @@ var $exeDevice = {
             return false;
         });
 
-        $exeDevices.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
 
         //eXe 3.0 Dismissible messages

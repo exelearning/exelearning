@@ -8,6 +8,48 @@
 *   Dependency Manager: composer
     *   Copyright: Nils Adermann, Jordi Boggiano
     *   License: MIT
+*   Package: api-platform/doctrine-common
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/doctrine-orm
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/documentation
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/http-cache
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/hydra
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/json-schema
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/jsonld
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/metadata
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/openapi
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/serializer
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/state
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/symfony
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: api-platform/validator
+    *   Copyright: Kévin Dunglas, API Platform Community
+    *   License: MIT
+*   Package: brianium/paratest
+    *   Copyright: Brian Scaturro, Filippo Tessarotto
+    *   License: MIT
 *   Package: clue/ndjson-react
     *   Copyright: Christian Lück
     *   License: MIT
@@ -25,6 +67,9 @@
     *   License: MIT
 *   Package: doctrine/collections
     *   Copyright: Guilherme Blanco, Roman Borschel, Benjamin Eberlei, Jonathan Wage, Johannes Schmitt
+    *   License: MIT
+*   Package: doctrine/common
+    *   Copyright: Guilherme Blanco, Roman Borschel, Benjamin Eberlei, Jonathan Wage, Johannes Schmitt, Marco Pivetta
     *   License: MIT
 *   Package: doctrine/dbal
     *   Copyright: Guilherme Blanco, Roman Borschel, Benjamin Eberlei, Jonathan Wage
@@ -80,18 +125,12 @@
 *   Package: imagine/imagine
     *   Copyright: Bulat Shakirzyanov
     *   License: MIT
+*   Package: jean85/pretty-package-versions
+    *   Copyright: Alessandro Lai
+    *   License: MIT
 *   Package: lcobucci/jwt
     *   Copyright: Luís Cobucci
     *   License: BSD-3-Clause
-*   Package: league/flysystem
-    *   Copyright: Frank de Jonge
-    *   License: MIT
-*   Package: league/flysystem-ziparchive
-    *   Copyright: Frank de Jonge
-    *   License: MIT
-*   Package: league/mime-type-detection
-    *   Copyright: Frank de Jonge
-    *   License: MIT
 *   Package: liip/imagine-bundle
     *   Copyright: Liip and other contributors
     *   License: MIT
@@ -116,8 +155,20 @@
 *   Package: php-webdriver/webdriver
     *   Copyright: (c) 2004-2020 Facebook
     *   License: MIT
+*   Package: phpdocumentor/reflection-common
+    *   Copyright: Jaap van Otterdijk
+    *   License: MIT
+*   Package: phpdocumentor/reflection-docblock
+    *   Copyright: Mike van Riel, Jaap van Otterdijk
+    *   License: MIT
+*   Package: phpdocumentor/type-resolver
+    *   Copyright: Mike van Riel
+    *   License: MIT
+*   Package: phpstan/phpdoc-parser
+    *   Copyright: (c) 2016 Ondřej Mirtes, 2025 PHPStan s
+    *   License: MIT
 *   Package: phpstan/phpstan
-    *   Copyright: (c) 2016 Ondřej Mirtes
+    *   Copyright: (c) 2016 Ondřej Mirtes, 2025 PHPStan s
     *   License: MIT
 *   Package: phpunit/php-code-coverage
     *   Copyright: Sebastian Bergmann
@@ -452,6 +503,12 @@
 *   Package: twig/twig
     *   Copyright: Fabien Potencier, Twig Team, Armin Ronacher
     *   License: BSD-3-Clause
+*   Package: webmozart/assert
+    *   Copyright: Bernhard Schussek
+    *   License: MIT
+*   Package: willdurand/negotiation
+    *   Copyright: William Durand
+    *   License: MIT
 
 ## Client-side libraries
 

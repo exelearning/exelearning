@@ -16,7 +16,6 @@ use ApiPlatform\OpenApi\Model as OpenApiModel;
 use App\ApiFilter\UserRoleFilter;
 use App\ApiFilter\UserSearchFilter;
 use App\Constants;
-use App\Controller\Api\User\BlockUserAction;
 use App\Controller\Api\User\UpdateQuotaAction;
 use App\Controller\Api\User\UserStatsAction;
 use App\Repository\net\exelearning\Repository\UserRepository;
@@ -66,19 +65,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
             security: 'is_granted("ROLE_ADMIN")',
             securityMessage: 'Only admins can delete users.'
         ),
-        // Custom: block/disable a user
-        new Post(
-            uriTemplate: '/users/{id}/block',
-            controller: BlockUserAction::class,
-            name: 'user_block',
-            security: 'is_granted("ROLE_ADMIN")',
-            read: true,
-            deserialize: false,
-            openapi: new OpenApiModel\Operation(
-                summary: 'Block/disable a user',
-                description: 'Sets isActive=false to disable the user.'
-            )
-        ),
+
         // Custom: update quota
         new Patch(
             uriTemplate: '/users/{id}/quota',
