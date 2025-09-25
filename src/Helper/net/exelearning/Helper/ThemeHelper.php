@@ -58,6 +58,7 @@ class ThemeHelper
             default:
                 $path = false;
         }
+
         return $path;
     }
 
