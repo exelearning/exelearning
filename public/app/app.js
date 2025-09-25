@@ -439,9 +439,7 @@ class App {
                     <p class="alert alert-info mb-4">Por favor, antes de avisar de un fallo, asegúrate de que no está en esta lista.</p>
                     <p><strong>Problemas que ya conocemos:</strong></p>
                     <ul>
-                        <li class="exe-offline">Solo deja descargar proyectos, no guardar y exportar. Estamos en ello...</li>
-                        <li class="exe-offline">De momento guarda en un directorio temporal, no puedes elegir dónde.</li>
-                        <li>Solo hay un estilo.</li>
+                        <li>Solo hay dos estilos, y son casi iguales.</li>
                         <li>No hay editor de estilos.</li>
                         <li>Falta Archivo - Imprimir.</li>
                         <li>No se puede exportar o importar una página.</li>

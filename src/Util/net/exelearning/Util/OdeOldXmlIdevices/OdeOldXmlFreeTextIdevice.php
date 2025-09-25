@@ -7,6 +7,7 @@ use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Util\net\exelearning\Util\UrlUtil;
 use App\Util\net\exelearning\Util\Util;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * OdeOldXmlFreeTextIdevice.
@@ -34,7 +35,7 @@ class OdeOldXmlFreeTextIdevice
     // const OLD_ODE_XML_IDEVICE_TEXT = 'instance';
     public const OLD_ODE_XML_IDEVICE_TEXT_CONTENT = 'string role="key" value="content_w_resourcePaths"';
 
-    public static function oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $freeTextNodes, $generatedIds, $xpathNamespace)
+    public static function oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $freeTextNodes, $generatedIds, $xpathNamespace, TranslatorInterface $translator)
     {
         $result['odeComponentsSync'] = [];
         $result['srcRoutes'] = [];
@@ -125,15 +126,15 @@ class OdeOldXmlFreeTextIdevice
                                 $result['srcRoutes'][] = (string) $srcValue->value;
                             }
 
-                            $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
-
                             // Create json properties
                             $jsonProperties = self::JSON_PROPERTIES;
                             $jsonProperties['ideviceId'] = $odeIdeviceId;
                             $jsonProperties['textTextarea'] = $odeComponentsSyncHtmlView;
 
                             // Get feedback and button caption from idevice (only one)
-                            if (!empty($nodeFeedbackIdevice)) {
+                            if (!empty($nodeFeedbackIdevice) && (null != $nodeFeedbackIdevice) && (false != $nodeFeedbackIdevice)) {
+                                $textButtonCaption = $translator->trans('Show Feedback');
+
                                 $nodeFeedbackIdevice->registerXPathNamespace('f', $xpathNamespace);
 
                                 // Extract feedback HTML
@@ -151,6 +152,9 @@ class OdeOldXmlFreeTextIdevice
                                 );
                                 if (!empty($buttonCaptionNode)) {
                                     $jsonProperties['textFeedbackInput'] = (string) $buttonCaptionNode[0];
+                                    if ('' !== trim((string) $buttonCaptionNode[0])) {
+                                        $textButtonCaption = (string) $buttonCaptionNode[0];
+                                    }
                                 }
 
                                 // Update srcRoutes for feedback
@@ -165,7 +169,23 @@ class OdeOldXmlFreeTextIdevice
 
                                 // Set feedback in properties json
                                 $jsonProperties['textFeedbackTextarea'] = $odeComponentsSyncFeedbackHtmlView;
+
+                                if ('' != trim($odeComponentsSyncFeedbackHtmlView)) {
+                                    $odeComponentsSyncHtmlView .=
+                                    '<div class="iDevice_buttons feedback-button js-required">
+                                    <input type="button" class="feedbacktooglebutton" value="'.$textButtonCaption.'" 
+                                    data-text-a="'.$textButtonCaption.'" data-text-b="'.$textButtonCaption.'">
+                                    </div>';
+
+                                    // Add feedback div
+                                    $odeComponentsSyncHtmlView .= '<div class="feedback js-feedback js-hidden" style="display: none;">'.$odeComponentsSyncFeedbackHtmlView.'</div>';
+                                }
                             }
+                            // Add a div class wrapper
+                            $odeComponentsSyncHtmlView = '<div class="textIdeviceContent"><div class="exe-text-activity">'.$odeComponentsSyncHtmlView.'</div></div>';
+
+                            $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
+                            // $odeComponentsSync->setFeedbackHtmlView($odeComponentsSyncFeedbackHtmlView);
 
                             // Finalize jsonProperties
                             $odeComponentsSync->setJsonProperties(json_encode($jsonProperties));

@@ -219,7 +219,7 @@ var $exeDevice = {
         let valid = true;
 
         if (!storyEditor.getContent().trim()) {
-            eXe.app.alert(_('Complete the story'));
+            eXe.app.alert(_('Please complete the history'));
             return false;
         }
 

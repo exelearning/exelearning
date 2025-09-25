@@ -83,6 +83,7 @@ var $scrambledlist = {
         html = html.replace('{afterElement}', ldata.afterElement);
         html = html.replace('{evaluationID}', ldata.evaluationID);
         html = html.replace('{ideviceID}', ideviceId);
+        html = html.replace('{evaluation}', ldata.evaluation);
         return html;
     },
 

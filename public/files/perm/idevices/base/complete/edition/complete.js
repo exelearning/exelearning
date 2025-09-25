@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 /**
- * Lock iDevice (edition code)
+ * Complete iDevice (edition code)
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: Manuel Narváez Martínez
  * Graphic design: Ana María Zamora Moreno, Francisco Javier Pulido
@@ -179,7 +179,7 @@ var $exeDevice = {
                             <p class="Games-Reportdiv">
                                 <strong class="GameModeLabel"><a href="#cmptEEvaluationHelp" id="cmptEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${$exeDevice.idevicePath}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" /></a></strong>
                                 <label for="cmptEEvaluation"><input type="checkbox" id="cmptEEvaluation">${_('Progress report')}.</label> 
-                                <label for="cmptEEvaluationID">${_('Identifier')}:</label> <input type="text" id="cmptEEvaluationID" disabled />
+                                <label for="cmptEEvaluationID">${_('Identifier')}:</label> <input type="text" id="cmptEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
                             </p>
                             <div id="cmptEEvaluationHelp" class="CMPT-TypeGameHelp">
                                 <p class="exe-block-info">${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -389,8 +389,8 @@ var $exeDevice = {
             divContent = `<div class="completa-instructions">${dataGame.instructions}</div>`;
         }
 
-        let html = '<div class="completa-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    let html = '<div class="completa-IDevice">';
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `<div class="completa-feedback-game">${textFeedBack}</div>`;
         html += divContent;
         html += `<div class="completa-DataGame js-hidden">${json}</div>`;
