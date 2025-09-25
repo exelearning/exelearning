@@ -58,8 +58,6 @@ class ThemeHelper
             default:
                 $path = false;
         }
-        $path = DIRECTORY_SEPARATOR.$path;
-
         return $path;
     }
 
