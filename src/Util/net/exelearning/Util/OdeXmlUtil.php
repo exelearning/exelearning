@@ -1177,13 +1177,13 @@ class OdeXmlUtil
                             $referencedNode = $xml->xpath("//f:instance[contains(@class, 'exe.engine.freetextidevice.FreeTextIdevice') and @reference='$referenceValue']");
                             if (!empty($referencedNode)) {
                                 // Do something with the referenced node
-                                 $odeComponentSyncResult = OdeOldXmlFreeTextIdevice::oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $referencedNode, $generatedIds, $xpathNamespace);
+                                 $odeComponentSyncResult = OdeOldXmlFreeTextIdevice::oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $referencedNode, $generatedIds, $xpathNamespace, $translator);
                                  array_push($results, $odeComponentSyncResult);
                             }
                         }
                     }
                 }
-         /*       if (!empty($results)) {
+                if (!empty($results)) {
                        foreach ($results as $result) {
                             foreach ($result['odeComponentsSync'] as $odeComponentSync) {
                                 $subOdeNavStructureSync->addOdePagStructureSync($odeComponentSync);
@@ -1192,7 +1192,7 @@ class OdeXmlUtil
                                 array_push($srcRoutes, $srcRoute);
                             }
                         }
-                }*/
+                }
 
                 if ($oldXmlListInstDictList->{self::OLD_ODE_XML_INSTANCE}) {
                     $oldXmlListInstDictList->registerXPathNamespace('f', $xpathNamespace);
