@@ -5,28 +5,11 @@ on:
     types: [prereleased]
   push:
     branches:
-      # - main
-      - "*"
+      - main
   workflow_dispatch: # Allows manually triggering
 
 jobs:
   package:
-
-
-    # # Only run package job for:
-    # #  - release.prereleased
-    # #  - push to main
-    # #  - pull_request closed AND merged into main
-    # if: >
-    #   github.event_name == 'release' ||
-    #   (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-    #   (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
-
-
-
-
-
-    # if: ${{ github.event.release.target_commitish == 'main' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}  # only main pre‑releases    
 
     permissions:
       contents: write
@@ -62,7 +45,7 @@ jobs:
       #             "confinement": "strict",
       #             "plugs": ["network", "home", "removable-media"],
       #             "publish": false
-      #         },        
+      #         },
       #         "linux": {
       #             "target": [
       #                  ...
@@ -123,7 +106,7 @@ jobs:
         run: |
           rm -f vendor/nativephp/php-bin/bin/win/x64/php-8.3.zip
           rm -rf vendor/nativephp/php-bin/bin/mac
-          rm -rf vendor/nativephp/php-bin/bin/linux          
+          rm -rf vendor/nativephp/php-bin/bin/linux
 
       - name: Decode Windows certificate
         if: matrix.os == 'windows-latest'
@@ -141,8 +124,8 @@ jobs:
         env:
           # GitHub Releases API token for electron-builder
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # WIN_CSC_LINK: ./windows-cert.pfx
-          # WIN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ./windows-cert.pfx
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           # choose publish mode depending on trigger:
           # - when triggered by a release.prereleased -> publish (PUBLISH=always)
           # - when triggered by push/merged PR -> do not publish (PUBLISH=never)
@@ -290,7 +273,7 @@ jobs:
 
           # Activate app, small pause and first screenshot
           osascript -e 'tell application "eXeLearning" to activate' || true
-          
+
           sleep ${SCREENSHOT_DELAY:-4}
 
           screencapture -x mac-screenshot-1.png || true
@@ -347,11 +330,10 @@ jobs:
           $null = $ws.AppActivate("eXeLearning")
           if ($proc.MainWindowHandle -eq 0) {
             # fallback: try by generic title "Untitled document" if that's the case
-            $null = $ws.AppActivate("Untitled") 
+            $null = $ws.AppActivate("Untitled")
           }
-          
-          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 4)
 
+          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 4)
 
           # First screenshot
           $bmp = New-Object Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
@@ -362,7 +344,7 @@ jobs:
 
           # Send Ctrl+P, wait and second screenshot
           [System.Windows.Forms.SendKeys]::SendWait("^p")
-          
+
           Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 3)
 
           $bmp2 = New-Object Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
@@ -376,8 +358,6 @@ jobs:
           $log2 = Join-Path $env:APPDATA "eXeLearning\log\main.log"
           if (Test-Path $log1) { Copy-Item $log1 windows-app.log -ErrorAction SilentlyContinue }
           elseif (Test-Path $log2) { Copy-Item $log2 windows-app.log -ErrorAction SilentlyContinue }
-
-
 
       - name: Upload screenshots and logs (per OS)
         uses: actions/upload-artifact@v4

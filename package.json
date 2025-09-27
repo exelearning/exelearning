@@ -127,7 +127,7 @@
             ],
             "icon": "public/exelearning.ico",
             "legalTrademarks": "INTEF",
-            "signAndEditExecutable": false,
+            "signAndEditExecutable": true,
             "verifyUpdateCodeSignature": false
         },
         "nsis": {
