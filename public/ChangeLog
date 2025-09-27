@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v3.0.0-beta6 – 2025-09-24
+## v3.0.0-beta6 – 2025-09-25
 
 ### Added
 
@@ -50,7 +50,7 @@
 - Symfony Yaml Component: 7.3.2 → 7.3.3
 - Symfony WebProfilerBundle: 7.3.2 → 7.3.3
 - Symfony Serializer Component: 7.3.2 → 7.3.3
-- API Platform for Symfony: 4.1.22 → 4.2.0
+- API Platform for Symfony: api-platform/api-platform 4.1.22 → api-platform/core 4.2
 - PHP CS Fixer: 3.86.0 → 3.87.1
 - Doctrine ORM support for API Platform: 4.1.22 → 4.2.0
 - Doctrine Bundle: 2.15.1 → 2.16.1
