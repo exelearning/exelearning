@@ -178,7 +178,7 @@ jobs:
 
     steps:
       - name: Download installers
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: installers-${{ matrix.os }}
           path: installers
@@ -376,7 +376,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all per-OS artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: screenshots-and-logs-*
           merge-multiple: true   # leave all files in the workspace
