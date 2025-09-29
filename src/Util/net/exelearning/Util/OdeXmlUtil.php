@@ -1161,6 +1161,24 @@ class OdeXmlUtil
 
                 $subOdeNavStructureSync->addOdeNavStructureSyncProperties($subOdeNavStructureSyncProperty);
             }
+            $types = [];
+            $references = [];
+            $lostiDevicesReferencesId = [];
+            $oldXmlListInstDict->registerXPathNamespace('f', $xpathNamespace);
+            $directReferences = $oldXmlListInstDict->xpath('f:list[1]/f:reference[@key]');
+            if ((null != $directReferences) && !empty($directReferences)) {
+                foreach ($directReferences as $directReference) {
+                    $lostiDevicesReferencesId[] = (string) $directReference['key'];
+                    $xml->registerXPathNamespace('f', $xpathNamespace);
+                    $nodeIdevices = $xml->xpath("//f:instance[starts-with(@class, 'exe.engine') and contains(@class, 'idevice')  and @reference = '".$directReference['key']."']");
+                    if (!empty($nodeIdevices)) {
+                        $types = $nodeIdevices[0]["class"];
+                        $references = $nodeIdevices[0]["reference"];
+                        $a=$references;
+                    }   
+                }
+            }
+        
             foreach ($oldXmlListInstDict->{self::OLD_ODE_XML_LIST} as $oldXmlListInstDictList) {
                 if ($oldXmlListInstDictList->{self::OLD_ODE_XML_INSTANCE}) {
                     $oldXmlListInstDictList->registerXPathNamespace('f', $xpathNamespace);
@@ -1176,7 +1194,7 @@ class OdeXmlUtil
                     // Get component sync by node type
                     $types = $oldXmlListInstDictList->xpath('f:instance/@class');
                     $references = $oldXmlListInstDictList->xpath('f:instance/@reference');
-                    $results = self::getComponentSyncFromNode($types, $references, $oldXmlListInstDictList, $odeSessionId, $odePageId, $generatedIds, $xpathNamespace, $translator);
+                    $results = self::getComponentSyncFromNode($types, $references, $oldXmlListInstDictList, $xml, $odeSessionId, $odePageId, $generatedIds, $xpathNamespace, $translator);
                     if (!empty($results)) {
                         foreach ($results as $result) {
                             foreach ($result['odeComponentsSync'] as $odeComponentSync) {
@@ -2427,7 +2445,7 @@ class OdeXmlUtil
      *
      * @return array $result
      */
-    private static function getComponentSyncFromNode($types, $references, $oldXmlListInstDictList, $odeSessionId, $odePageId, $generatedIds, $xpathNamespace, TranslatorInterface $translator)
+    private static function getComponentSyncFromNode($types, $references, $oldXmlListInstDictList, $xml, $odeSessionId, $odePageId, $generatedIds, $xpathNamespace, TranslatorInterface $translator)
     {
         $result = [];
 
@@ -2436,6 +2454,9 @@ class OdeXmlUtil
                 $node = $oldXmlListInstDictList->xpath("f:instance[@class='".$types[$i][0]."'][@reference= '".$references[$i][0]."']");
             } else {
                 $node = $oldXmlListInstDictList->xpath("f:instance[@class='".$types[$i][0]."']");
+            }
+            if(!$node || empty($node)) {
+                $node = $xml->xpath("//f:instance[@class='".$types[$i][0]."'][@reference= '".$references[$i][0]."']");
             }
 
             switch ($types[$i]) {
