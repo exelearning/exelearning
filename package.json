@@ -46,8 +46,6 @@
         "publish": [
             {
                 "provider": "github",
-                "owner": "exelearning",
-                "repo": "exelearning",
                 "releaseType": "prerelease",
                 "private": true
             }
@@ -108,6 +106,10 @@
             {
                 "from": ".env.dist",
                 "to": ".env.dist"
+            },
+            {
+                "from": "packaging/keys/",
+                "to": "keys/"
             }
         ],
         "win": {
@@ -143,6 +145,7 @@
             "oneClick": true
         },
         "linux": {
+            "executableName": "exelearning",
             "executableArgs": [
                 "--no-sandbox"
             ],
@@ -163,6 +166,14 @@
             "category": "Education",
             "icon": "public/icons"
         },
+        "deb": {
+          "afterInstall": "packaging/deb/after-install.sh",
+          "afterRemove": "packaging/deb/after-remove.sh"
+        },
+        "rpm": {
+          "afterInstall": "packaging/rpm/after-install.sh",
+          "afterRemove": "packaging/rpm/after-remove.sh"
+        },        
         "mac": {
             "category": "public.app-category.education",
             "hardenedRuntime": false,
