@@ -232,7 +232,7 @@ jobs:
           APP_PID=$!
           echo "App pid: $APP_PID"
 
-          # Espera a que responda el server o aparezca la ventana
+          # Wait until the server responds or the window appears
           end=$((SECONDS + ${APP_BOOT_TIMEOUT:-120}))
           until curl -sf "http://localhost:${APP_PORT:-41309}/" >/dev/null 2>&1 || \
                 xdotool search --name 'eXeLearning' >/dev/null 2>&1 || \
@@ -240,13 +240,13 @@ jobs:
             sleep 1
           done
 
-          # (opcional) activar ventana/screenshot 1
+          # Activate window / screenshot 1
           WID=$(xdotool search --name "eXeLearning" | head -n1 || true)
           [ -n "$WID" ] && xdotool windowactivate "$WID" || true
           sleep ${SCREENSHOT_DELAY:-4}
           import -display :99 -window root ubuntu-screenshot-1.png || true
 
-          # --- CDP: click en "Preview" sin teclas ---
+          # --- CDP: click "Preview" without keys ---
           node - <<'NODE'
           const CDP = require('chrome-remote-interface');
           (async () => {
