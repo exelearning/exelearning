@@ -334,6 +334,9 @@ jobs:
           if (-not $exe) { Write-Error "No NSIS .exe installer found"; exit 1 }
           Start-Process $exe.FullName -ArgumentList "/S" -Wait -NoNewWindow
 
+          # Add wait to the NSIS installer to be finished
+          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 10)
+
           $exePath = "C:\Program Files\eXeLearning\eXeLearning.exe"
           if (-not (Test-Path $exePath)) { $exePath = "C:\Program Files (x86)\eXeLearning\eXeLearning.exe" }
           if (-not (Test-Path $exePath)) { $exePath = Join-Path $env:LOCALAPPDATA "Programs\eXeLearning\eXeLearning.exe" }
