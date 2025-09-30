@@ -1161,25 +1161,73 @@ class OdeXmlUtil
 
                 $subOdeNavStructureSync->addOdeNavStructureSyncProperties($subOdeNavStructureSyncProperty);
             }
-            $types = [];
-            $references = [];
-            $lostiDevicesReferencesId = [];
+            $typesLost = [];
+            $referencesLost = [];
+            $nodeIdevices= [];
+            //$lostiDevicesReferencesId = [];
             $oldXmlListInstDict->registerXPathNamespace('f', $xpathNamespace);
             $directReferences = $oldXmlListInstDict->xpath('f:list[1]/f:reference[@key]');
             if ((null != $directReferences) && !empty($directReferences)) {
                 foreach ($directReferences as $directReference) {
-                    $lostiDevicesReferencesId[] = (string) $directReference['key'];
+                    //$lostiDevicesReferencesId[] = (string) $directReference['key'];
                     $xml->registerXPathNamespace('f', $xpathNamespace);
                     $nodeIdevices = $xml->xpath("//f:instance[starts-with(@class, 'exe.engine') and contains(@class, 'idevice')  and @reference = '".$directReference['key']."']");
                     if (!empty($nodeIdevices)) {
-                        $types = $nodeIdevices[0]["class"];
-                        $references = $nodeIdevices[0]["reference"];
-                        $a=$references;
+                        foreach ($nodeIdevices as $nodeIdevice) {
+                            if (isset($nodeIdevice["class"])) {
+                                $typesLost[] = (string)$nodeIdevice["class"];                               
+                            }
+                            if (isset($nodeIdevice["reference"])) {
+                                $referencesLost[] = (string)$nodeIdevice["reference"];
+                            }
+                        }
+
                     }   
                 }
             }
         
             foreach ($oldXmlListInstDict->{self::OLD_ODE_XML_LIST} as $oldXmlListInstDictList) {
+                if(!empty($referencesLost) && !empty($typesLost))
+                {
+                    $oldXmlListInstDictList->registerXPathNamespace('f', $xpathNamespace);
+                    //$nodeIdevices = $oldXmlListInstDictList->xpath("//f:instance[@class='".$typesLost."' and @reference = '".$referencesLost."']");
+                    $results = self::getComponentSyncFromNode($typesLost, $referencesLost, $oldXmlListInstDictList, $xml, $odeSessionId, $odePageId, $generatedIds, $xpathNamespace, $translator);
+                    if (!empty($results)) {
+                        foreach ($results as $result) {
+                            foreach ($result['odeComponentsSync'] as $odeComponentSync) {
+                                $subOdeNavStructureSync->addOdePagStructureSync($odeComponentSync);
+                            }
+                            foreach ($result['srcRoutes'] as $srcRoute) {
+                                array_push($srcRoutes, $srcRoute);
+                            }
+                        }
+                    }
+                     foreach ($nodeIdevices as $nodeIdevice) {
+                        $nodeIdevice->registerXPathNamespace('f', $xpathNamespace);
+
+                        // Search game idevice and process it
+                        $gameIdevicesResult = self::searchGameIdeviceOldElp($odeSessionId, $odePageId, $nodeIdevice, $subOdeNavStructureSync, $srcRoutes, $xpathNamespace, $generatedIds);
+
+                        $nodeIdevice = $gameIdevicesResult['nodeIdevice'];
+                        $subOdeNavStructureSync = $gameIdevicesResult['subOdeNavStructureSync'];
+                        $srcRoutes = $gameIdevicesResult['srcRoutes'];
+                        // In case of not be a game idevice
+                        if (!empty($nodeIdevice)) {
+                            // Process node text idevices
+                            $nodeIdevicesTextResult = self::searchTextIdeviceOldElp($odeSessionId, $odePageId, $nodeIdevice, $subOdeNavStructureSync, $srcRoutes, $xpathNamespace, $generatedIds);
+                            $subOdeNavStructureSync = $nodeIdevicesTextResult['subOdeNavStructureSync'];
+                            $srcRoutes = $nodeIdevicesTextResult['srcRoutes'];
+                        }
+                    }
+                    $typesLost = [];
+                    $referencesLost = [];
+
+                }
+                
+                
+                
+                
+                
                 if ($oldXmlListInstDictList->{self::OLD_ODE_XML_INSTANCE}) {
                     $oldXmlListInstDictList->registerXPathNamespace('f', $xpathNamespace);
 
@@ -2456,7 +2504,9 @@ class OdeXmlUtil
                 $node = $oldXmlListInstDictList->xpath("f:instance[@class='".$types[$i][0]."']");
             }
             if(!$node || empty($node)) {
-                $node = $xml->xpath("//f:instance[@class='".$types[$i][0]."'][@reference= '".$references[$i][0]."']");
+                $xpath = "//f:instance[@class='".$types[$i]."'][@reference= '".$references[$i]."']";
+                $xml->registerXPathNamespace('f', $xpathNamespace);
+                $node = $xml->xpath($xpath);
             }
 
             switch ($types[$i]) {
