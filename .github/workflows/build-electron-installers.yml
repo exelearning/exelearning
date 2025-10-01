@@ -110,9 +110,13 @@ jobs:
           rm -rf vendor/nativephp/php-bin/bin/linux
 
       - name: Decode Windows certificate
-        if: matrix.os == 'windows-latest' && secrets.CERT_P12 != ''
+        if: matrix.os == 'windows-latest'
         run: |
-          echo "${{ secrets.CERT_P12 }}" | base64 --decode > windows-cert.pfx
+          if [ -n "${{ secrets.CERT_P12 }}" ]; then
+            echo "${{ secrets.CERT_P12 }}" | base64 --decode > windows-cert.pfx
+          else
+            echo "No CERT_P12 secret set, skipping certificate decode"
+          fi
         shell: bash
 
       - name: Build Symfony assets into public
