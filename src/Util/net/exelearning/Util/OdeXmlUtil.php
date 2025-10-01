@@ -1830,6 +1830,7 @@ class OdeXmlUtil
         }
 
         switch ($type) {
+            case null:
             case 'exe.engine.resource.Resource':
                 // In case $type is a resource class, search for old lost text in iDevices
                 $xpath = "//f:instance[@class='".$nodeIdevice['class']."'][@reference='".$nodeIdevice['reference']."']/parent::f:dictionary/parent::f:instance[@class='exe.engine.field.TextAreaField']";
