@@ -1829,224 +1829,220 @@ class OdeXmlUtil
             $type = (string) $type[0];
         }
 
-        switch ($type) {
-            case null:
-            case 'exe.engine.resource.Resource':
-                // In case $type is a resource class, search for old lost text in iDevices
-                $xpath = "//f:instance[@class='".$nodeIdevice['class']."'][@reference='".$nodeIdevice['reference']."']/parent::f:dictionary/parent::f:instance[@class='exe.engine.field.TextAreaField']";
-                $xml->registerXPathNamespace('f', $xpathNamespace);
-                $nodeIdevicesText = $xml->xpath($xpath);
-                // no break;
+        if (is_null($type) || 'exe.engine.field.TextAreaField' != $type) {
+            // In case $type is not a exe.engine.field.TextAreaField, search for old lost text in iDevices
+            $xpath = "//f:instance[@class='".$nodeIdevice['class']."'][@reference='".$nodeIdevice['reference']."']/parent::f:dictionary/parent::f:instance[@class='exe.engine.field.TextAreaField']";
+            $xml->registerXPathNamespace('f', $xpathNamespace);
+            $nodeIdevicesText = $xml->xpath($xpath);
+        }
+        if ('exe.engine.field.TextAreaField' == $type || !is_null($nodeIdevicesText)) {
+            if (is_null($nodeIdevicesText)) {
+                $nodeIdevicesText = $nodeIdevice->xpath("f:dictionary/f:list/f:instance[@class='exe.engine.field.TextAreaField']");
+            }
+            foreach ($nodeIdevicesText as $nodeIdeviceText) {
+                // IDEVICE TEXT CONTENT
+                if ($nodeIdeviceText->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}) {
+                    $subOdePagStructureSync = new OdePagStructureSync();
+                    $odeBlockId = Util::generateIdCheckUnique($generatedIds);
+                    $generatedIds[] = $odeBlockId;
 
-            case 'exe.engine.field.TextAreaField':
-                if (is_null($nodeIdevicesText)) {
-                    $nodeIdevicesText = $nodeIdevice->xpath("f:dictionary/f:list/f:instance[@class='exe.engine.field.TextAreaField']");
-                }
-                foreach ($nodeIdevicesText as $nodeIdeviceText) {
-                    // IDEVICE TEXT CONTENT
-                    if ($nodeIdeviceText->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}) {
-                        $subOdePagStructureSync = new OdePagStructureSync();
-                        $odeBlockId = Util::generateIdCheckUnique($generatedIds);
-                        $generatedIds[] = $odeBlockId;
+                    // OdePagStructureSync fields
+                    $subOdePagStructureSync->setOdeSessionId($odeSessionId);
+                    $subOdePagStructureSync->setOdePageId($odePageId);
+                    $subOdePagStructureSync->setOdeBlockId($odeBlockId);
+                    // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
 
-                        // OdePagStructureSync fields
-                        $subOdePagStructureSync->setOdeSessionId($odeSessionId);
-                        $subOdePagStructureSync->setOdePageId($odePageId);
-                        $subOdePagStructureSync->setOdeBlockId($odeBlockId);
-                        // $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
+                    // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
+                    $subOdePagStructureSync->setBlockName((string) $blockNameNode[0]);
 
-                        // $odeBlockTitle = $oldXmlListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}["value"][0];
-                        $subOdePagStructureSync->setBlockName((string) $blockNameNode[0]);
+                    $orderPage = (string) $nodeIdevice['reference'];
+                    $subOdePagStructureSync->setOdePagStructureSyncOrder(intval($orderPage));
 
-                        $orderPage = (string) $nodeIdevice['reference'];
-                        $subOdePagStructureSync->setOdePagStructureSyncOrder(intval($orderPage));
+                    // Get pagStructureSync properties
+                    $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
+                    // foreach($oldXmlListInstDict->{self::OLD_ODE_XML_UNICODE} as $oldXmlListInstDictUnicode){
+                    //     // array_push($odeResponse, $oldXmlListInstDictUnicode);
+                    //     if($oldXmlListInstDictUnicode["value"]) {
+                    //         $odePagStructureSync->setBlockName($oldXmlListInstDictUnicode["value"]);
+                    //     }
 
-                        // Get pagStructureSync properties
-                        $subOdePagStructureSync->loadOdePagStructureSyncPropertiesFromConfig();
-                        // foreach($oldXmlListInstDict->{self::OLD_ODE_XML_UNICODE} as $oldXmlListInstDictUnicode){
-                        //     // array_push($odeResponse, $oldXmlListInstDictUnicode);
-                        //     if($oldXmlListInstDictUnicode["value"]) {
-                        //         $odePagStructureSync->setBlockName($oldXmlListInstDictUnicode["value"]);
-                        //     }
+                    // }
 
-                        // }
+                    $odeComponentsSync = new OdeComponentsSync();
+                    $odeIdeviceId = Util::generateIdCheckUnique($generatedIds);
+                    $generatedIds[] = $odeIdeviceId;
+                    $odeComponentsMapping[] = $odeIdeviceId;
 
-                        $odeComponentsSync = new OdeComponentsSync();
-                        $odeIdeviceId = Util::generateIdCheckUnique($generatedIds);
-                        $generatedIds[] = $odeIdeviceId;
-                        $odeComponentsMapping[] = $odeIdeviceId;
+                    // OdeComponentsSync fields
+                    $odeComponentsSync->setOdeSessionId($odeSessionId);
+                    $odeComponentsSync->setOdePageId($odePageId);
+                    $odeComponentsSync->setOdeBlockId($odeBlockId);
+                    $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
 
-                        // OdeComponentsSync fields
-                        $odeComponentsSync->setOdeSessionId($odeSessionId);
-                        $odeComponentsSync->setOdePageId($odePageId);
-                        $odeComponentsSync->setOdeBlockId($odeBlockId);
-                        $odeComponentsSync->setOdeIdeviceId($odeIdeviceId);
+                    // $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
 
-                        // $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
+                    $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
+                    // Set type
+                    $odeComponentsSync->setOdeIdeviceTypeName('text');
 
-                        $odeComponentsSync->setOdeComponentsSyncOrder(intval(1));
-                        // Set type
-                        $odeComponentsSync->setOdeIdeviceTypeName('text');
+                    foreach ($nodeIdeviceText->{self::OLD_ODE_XML_DICTIONARY} as $oldXmlListDictListInstDictListInstDict) {
+                        // $oldXmlListDictListInstDictListInstDict->registerXPathNamespace('f', $xpathNamespace);
+                        // $fileTextPathToChange = $oldXmlListDictListInstDictListInstDict->xpath('//f:unicode[@content="true"]starts-with(@src,"resources/")]');
+                        // src="resources/
 
-                        foreach ($nodeIdeviceText->{self::OLD_ODE_XML_DICTIONARY} as $oldXmlListDictListInstDictListInstDict) {
-                            // $oldXmlListDictListInstDictListInstDict->registerXPathNamespace('f', $xpathNamespace);
-                            // $fileTextPathToChange = $oldXmlListDictListInstDictListInstDict->xpath('//f:unicode[@content="true"]starts-with(@src,"resources/")]');
-                            // src="resources/
+                        $sessionPath = null;
 
-                            $sessionPath = null;
+                        if (!empty($odeSessionId)) {
+                            $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
+                        }
 
-                            if (!empty($odeSessionId)) {
-                                $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
-                            }
+                        // Common replaces for all OdeComponents
+                        $commonReplaces = [
+                            'resources'.Constants::SLASH => $sessionPath.$odeIdeviceId.Constants::SLASH,
+                        ];
 
-                            // Common replaces for all OdeComponents
-                            $commonReplaces = [
-                                'resources'.Constants::SLASH => $sessionPath.$odeIdeviceId.Constants::SLASH,
-                            ];
-
-                            $oldXmlListDictListInstDictListInstDict->registerXPathNamespace('f', $xpathNamespace);
-                            $contentHtmlNode = $oldXmlListDictListInstDictListInstDict->xpath('f:string[@value="content_w_resourcePaths"]/
+                        $oldXmlListDictListInstDictListInstDict->registerXPathNamespace('f', $xpathNamespace);
+                        $contentHtmlNode = $oldXmlListDictListInstDictListInstDict->xpath('f:string[@value="content_w_resourcePaths"]/
                             following-sibling::f:unicode[1]');
 
-                            if (isset($contentHtmlNode)) {
-                                if (isset($commonReplaces)) {
-                                    $odeComponentsSyncHtmlView = self::applyReplaces($commonReplaces, $contentHtmlNode[0]['value']);
-                                } else {
-                                    $odeComponentsSyncHtmlView = $contentHtmlNode[0]['value'];
-                                }
+                        if (isset($contentHtmlNode)) {
+                            if (isset($commonReplaces)) {
+                                $odeComponentsSyncHtmlView = self::applyReplaces($commonReplaces, $contentHtmlNode[0]['value']);
+                            } else {
+                                $odeComponentsSyncHtmlView = $contentHtmlNode[0]['value'];
+                            }
 
-                                // Set different type if necessary
-                                $nodeTextIdeviceType = self::changeTypeNodetextIdeviceOldElp($odeComponentsSync, $odeComponentsSyncHtmlView);
-                                $odeComponentsSync = $nodeTextIdeviceType['odeComponentsSync'];
-                                $odeComponentsSyncHtmlView = $nodeTextIdeviceType['odeComponentsSyncHtmlView'];
-                                $nodeIdeviceTextType = $nodeTextIdeviceType['type'];
+                            // Set different type if necessary
+                            $nodeTextIdeviceType = self::changeTypeNodetextIdeviceOldElp($odeComponentsSync, $odeComponentsSyncHtmlView);
+                            $odeComponentsSync = $nodeTextIdeviceType['odeComponentsSync'];
+                            $odeComponentsSyncHtmlView = $nodeTextIdeviceType['odeComponentsSyncHtmlView'];
+                            $nodeIdeviceTextType = $nodeTextIdeviceType['type'];
 
-                                $prologue = '<?xml encoding="UTF-8">';
-                                $html = $prologue.$odeComponentsSyncHtmlView;
-                                $doc = new \DOMDocument();
-                                @$doc->loadHTML($html);
-                                $xpath = new \DOMXPath($doc);
-                                $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
-                                $href = $xpath->evaluate('//a/@href', $doc);
-                                if ('scrambled-list' == $nodeIdeviceTextType) {
-                                    $scrambleIdeviceElements = self::searchScrambleIdeviceElementsOldElp($xpath, $doc);
+                            $prologue = '<?xml encoding="UTF-8">';
+                            $html = $prologue.$odeComponentsSyncHtmlView;
+                            $doc = new \DOMDocument();
+                            @$doc->loadHTML($html);
+                            $xpath = new \DOMXPath($doc);
+                            $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
+                            $href = $xpath->evaluate('//a/@href', $doc);
+                            if ('scrambled-list' == $nodeIdeviceTextType) {
+                                $scrambleIdeviceElements = self::searchScrambleIdeviceElementsOldElp($xpath, $doc);
 
-                                    $listOptions = $scrambleIdeviceElements['listOptions'];
-                                    $scrambleInstructions = $scrambleIdeviceElements['scrambleInstructions'];
-                                    $scrambleCorrect = $scrambleIdeviceElements['scrambleCorrect'];
-                                    $scrambleWrong = $scrambleIdeviceElements['scrambleWrong'];
-                                    $scrambleButton = $scrambleIdeviceElements['scrambleButton'];
-                                    $scrambleAfterText = $scrambleIdeviceElements['scrambleAfterText'];
-                                    $scrambleAfterElement = $scrambleIdeviceElements['scrambleAfterElement'];
-                                }
-                                // Get task information if pbl-task-description is in tags
-                                $isTaskContent = str_contains($odeComponentsSyncHtmlView, 'pbl-task-description');
-                                // task json info
-                                $taskDuration = '';
-                                $taskParticipants = '';
-                                $taskDurationInput = '';
-                                $taskParticipantsInput = '';
-                                $textButtonFeedback = '';
-                                $textFeedback = '';
-                                if ($isTaskContent) {
-                                    $taskIdeviceElements = self::searchTaskIdeviceElementsOldElp($xpath, $doc, $odeComponentsSyncHtmlView);
+                                $listOptions = $scrambleIdeviceElements['listOptions'];
+                                $scrambleInstructions = $scrambleIdeviceElements['scrambleInstructions'];
+                                $scrambleCorrect = $scrambleIdeviceElements['scrambleCorrect'];
+                                $scrambleWrong = $scrambleIdeviceElements['scrambleWrong'];
+                                $scrambleButton = $scrambleIdeviceElements['scrambleButton'];
+                                $scrambleAfterText = $scrambleIdeviceElements['scrambleAfterText'];
+                                $scrambleAfterElement = $scrambleIdeviceElements['scrambleAfterElement'];
+                            }
+                            // Get task information if pbl-task-description is in tags
+                            $isTaskContent = str_contains($odeComponentsSyncHtmlView, 'pbl-task-description');
+                            // task json info
+                            $taskDuration = '';
+                            $taskParticipants = '';
+                            $taskDurationInput = '';
+                            $taskParticipantsInput = '';
+                            $textButtonFeedback = '';
+                            $textFeedback = '';
+                            if ($isTaskContent) {
+                                $taskIdeviceElements = self::searchTaskIdeviceElementsOldElp($xpath, $doc, $odeComponentsSyncHtmlView);
 
-                                    $taskDuration = $taskIdeviceElements['taskDuration'];
-                                    $taskParticipants = $taskIdeviceElements['taskParticipants'];
-                                    $taskDurationInput = $taskIdeviceElements['taskDurationInput'];
-                                    $taskParticipantsInput = $taskIdeviceElements['taskParticipantsInput'];
-                                    $textButtonFeedback = $taskIdeviceElements['textButtonFeedback'];
-                                    $textFeedback = $taskIdeviceElements['textFeedback'];
-                                    $odeComponentsSyncHtmlViewTask = $taskIdeviceElements['odeComponentsSyncHtmlView'];
-                                    $odeComponentsSyncHtmlView = '<dl><div class="inline"> <dt><span title="'.$taskDurationInput.'">'.$taskDurationInput.'</span></dt><dd>'.
-                                    $taskDuration.'</dd></div><div class="inline"><dt><span title="'.$taskParticipantsInput.'"></span>'.$taskParticipantsInput.'</dt><dd>'.
-                                    $taskParticipants.'</dd></div></dl>'.$odeComponentsSyncHtmlViewTask;
-                                    if ('' != $textButtonFeedback) {
-                                        $odeComponentsSyncHtmlView .= '<div class="iDevice_buttons feedback-button js-required">
+                                $taskDuration = $taskIdeviceElements['taskDuration'];
+                                $taskParticipants = $taskIdeviceElements['taskParticipants'];
+                                $taskDurationInput = $taskIdeviceElements['taskDurationInput'];
+                                $taskParticipantsInput = $taskIdeviceElements['taskParticipantsInput'];
+                                $textButtonFeedback = $taskIdeviceElements['textButtonFeedback'];
+                                $textFeedback = $taskIdeviceElements['textFeedback'];
+                                $odeComponentsSyncHtmlViewTask = $taskIdeviceElements['odeComponentsSyncHtmlView'];
+                                $odeComponentsSyncHtmlView = '<dl><div class="inline"> <dt><span title="'.$taskDurationInput.'">'.$taskDurationInput.'</span></dt><dd>'.
+                                $taskDuration.'</dd></div><div class="inline"><dt><span title="'.$taskParticipantsInput.'"></span>'.$taskParticipantsInput.'</dt><dd>'.
+                                $taskParticipants.'</dd></div></dl>'.$odeComponentsSyncHtmlViewTask;
+                                if ('' != $textButtonFeedback) {
+                                    $odeComponentsSyncHtmlView .= '<div class="iDevice_buttons feedback-button js-required">
                                         <input type="button" class="feedbacktooglebutton" value="'.$textButtonFeedback.'" 
                                         data-text-a="'.$textButtonFeedback.'" data-text-b="'.$textButtonFeedback.'">
                                         </div>';
 
-                                        // Add feedback div
-                                        $odeComponentsSyncHtmlView .= '<div class="feedback js-feedback js-hidden" style="display: none;">'.$textFeedback.'</div>';
-                                    }
-
-                                    // Add a div class wrapper
-                                    $odeComponentsSyncHtmlView = '<div class="exe-text-activity">'.$odeComponentsSyncHtmlView.'</div>';
+                                    // Add feedback div
+                                    $odeComponentsSyncHtmlView .= '<div class="feedback js-feedback js-hidden" style="display: none;">'.$textFeedback.'</div>';
                                 }
 
-                                foreach ($src as $srcValue) {
-                                    $srcString = (string) $srcValue->value;
-                                    array_push($srcRoutes, $srcString);
-                                }
+                                // Add a div class wrapper
+                                $odeComponentsSyncHtmlView = '<div class="exe-text-activity">'.$odeComponentsSyncHtmlView.'</div>';
+                            }
 
-                                foreach ($href as $hrefValue) {
-                                    $hrefString = (string) $hrefValue->value;
-                                    array_push($srcRoutes, $hrefString);
-                                }
+                            foreach ($src as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
 
-                                // In case rubric change class exe-rubric to exe-rubrics
-                                if ('rubric' == $nodeIdeviceTextType) {
-                                    $odeComponentsSyncHtmlView = str_replace('exe-rubric', 'exe-rubrics', $odeComponentsSyncHtmlView);
-                                }
+                            foreach ($href as $hrefValue) {
+                                $hrefString = (string) $hrefValue->value;
+                                array_push($srcRoutes, $hrefString);
+                            }
 
-                                if ('download-source-file' == $nodeIdeviceTextType) {
-                                    $odeComponentsSyncHtmlView = str_replace('a href="exe-package:elp"', 'a download="exe-package:elp-name" href="exe-package:elp"', $odeComponentsSyncHtmlView);
-                                }
+                            // In case rubric change class exe-rubric to exe-rubrics
+                            if ('rubric' == $nodeIdeviceTextType) {
+                                $odeComponentsSyncHtmlView = str_replace('exe-rubric', 'exe-rubrics', $odeComponentsSyncHtmlView);
+                            }
 
-                                $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
-                                if ($isTaskContent) {
-                                    $odeComponentsSyncHtmlView = $odeComponentsSyncHtmlViewTask;
-                                }
+                            if ('download-source-file' == $nodeIdeviceTextType) {
+                                $odeComponentsSyncHtmlView = str_replace('a href="exe-package:elp"', 'a download="exe-package:elp-name" href="exe-package:elp"', $odeComponentsSyncHtmlView);
+                            }
 
-                                // Different json for scrambled list
-                                if ('scrambled-list' !== $nodeIdeviceTextType) {
-                                    // Rubric and download-source-file don't have json
-                                    if ('rubric' !== $nodeIdeviceTextType && 'download-source-file' !== $nodeIdeviceTextType) {
-                                        // Create jsonProperties for idevice
-                                        $jsonProperties = [
-                                            'ideviceId' => $odeIdeviceId,
-                                            'textInfoDurationInput' => $taskDuration,
-                                            'textInfoParticipantsInput' => $taskParticipants,
-                                            'textInfoDurationTextInput' => $taskDurationInput,
-                                            'textInfoParticipantsTextInput' => $taskParticipantsInput,
-                                            'textTextarea' => $odeComponentsSyncHtmlView,
-                                            'textFeedbackInput' => $textButtonFeedback,
-                                            'textFeedbackTextarea' => $textFeedback,
-                                        ];
+                            $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
+                            if ($isTaskContent) {
+                                $odeComponentsSyncHtmlView = $odeComponentsSyncHtmlViewTask;
+                            }
 
-                                        $jsonProperties = json_encode($jsonProperties, JSON_UNESCAPED_SLASHES);
-                                        $odeComponentsSync->setJsonProperties($jsonProperties);
-                                    }
-                                } else {
+                            // Different json for scrambled list
+                            if ('scrambled-list' !== $nodeIdeviceTextType) {
+                                // Rubric and download-source-file don't have json
+                                if ('rubric' !== $nodeIdeviceTextType && 'download-source-file' !== $nodeIdeviceTextType) {
                                     // Create jsonProperties for idevice
                                     $jsonProperties = [
-                                        'instructions' => $scrambleInstructions,
-                                        'options' => $listOptions,
-                                        'buttonText' => $scrambleButton,
-                                        'rightText' => $scrambleCorrect,
-                                        'wrongText' => $scrambleWrong,
-                                        'textAfter' => $scrambleAfterText,
-                                        'afterElement' => $scrambleAfterElement,
+                                        'ideviceId' => $odeIdeviceId,
+                                        'textInfoDurationInput' => $taskDuration,
+                                        'textInfoParticipantsInput' => $taskParticipants,
+                                        'textInfoDurationTextInput' => $taskDurationInput,
+                                        'textInfoParticipantsTextInput' => $taskParticipantsInput,
+                                        'textTextarea' => $odeComponentsSyncHtmlView,
+                                        'textFeedbackInput' => $textButtonFeedback,
+                                        'textFeedbackTextarea' => $textFeedback,
                                     ];
 
                                     $jsonProperties = json_encode($jsonProperties, JSON_UNESCAPED_SLASHES);
                                     $odeComponentsSync->setJsonProperties($jsonProperties);
                                 }
+                            } else {
+                                // Create jsonProperties for idevice
+                                $jsonProperties = [
+                                    'instructions' => $scrambleInstructions,
+                                    'options' => $listOptions,
+                                    'buttonText' => $scrambleButton,
+                                    'rightText' => $scrambleCorrect,
+                                    'wrongText' => $scrambleWrong,
+                                    'textAfter' => $scrambleAfterText,
+                                    'afterElement' => $scrambleAfterElement,
+                                ];
 
-                                // OdeComponentsSync property fields
-                                $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
-
-                                // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
-                                $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
+                                $jsonProperties = json_encode($jsonProperties, JSON_UNESCAPED_SLASHES);
+                                $odeComponentsSync->setJsonProperties($jsonProperties);
                             }
+
+                            // OdeComponentsSync property fields
+                            $odeComponentsSync->loadOdeComponentsSyncPropertiesFromConfig();
+
+                            // $oldXmlListDictListInstDictListInstDict->{self::OLD_ODE_XML_UNICODE}[1]["value"];
+                            $subOdePagStructureSync->addOdeComponentsSync($odeComponentsSync);
                         }
                     }
-                    if (isset($subOdePagStructureSync)) {
-                        $subOdeNavStructureSync->addOdePagStructureSync($subOdePagStructureSync);
-                    }
                 }
-                break;
+                if (isset($subOdePagStructureSync)) {
+                    $subOdeNavStructureSync->addOdePagStructureSync($subOdePagStructureSync);
+                }
+            }
         }
 
         $result['subOdeNavStructureSync'] = $subOdeNavStructureSync;
