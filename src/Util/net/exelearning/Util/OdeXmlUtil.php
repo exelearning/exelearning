@@ -1164,12 +1164,11 @@ class OdeXmlUtil
             $typesLost = [];
             $referencesLost = [];
             $nodeIdevices = [];
-            // $lostiDevicesReferencesId = [];
+            // TODO: If device reference IDs are needed for debugging or future features, consider restoring $lostiDevicesReferencesId here.
             $oldXmlListInstDict->registerXPathNamespace('f', $xpathNamespace);
             $directReferences = $oldXmlListInstDict->xpath('f:list[1]/f:reference[@key]');
             if ((null != $directReferences) && !empty($directReferences)) {
                 foreach ($directReferences as $directReference) {
-                    // $lostiDevicesReferencesId[] = (string) $directReference['key'];
                     $xml->registerXPathNamespace('f', $xpathNamespace);
                     $nodeIdevices = $xml->xpath("//f:instance[starts-with(@class, 'exe.engine') and contains(@class, 'idevice')  and @reference = '".$directReference['key']."']");
                     if (!empty($nodeIdevices)) {
@@ -1189,7 +1188,6 @@ class OdeXmlUtil
                 if (!empty($referencesLost) && !empty($typesLost)) {
                     $oldXmlListInstDictList->registerXPathNamespace('f', $xpathNamespace);
                     // $nodeIdevices = $oldXmlListInstDictList->xpath("//f:instance[@class='".$typesLost."' and @reference = '".$referencesLost."']");
-                    $results = self::getComponentSyncFromNode($typesLost, $referencesLost, $oldXmlListInstDictList, $xml, $odeSessionId, $odePageId, $generatedIds, $xpathNamespace, $translator);
                     if (!empty($results)) {
                         foreach ($results as $result) {
                             foreach ($result['odeComponentsSync'] as $odeComponentSync) {
