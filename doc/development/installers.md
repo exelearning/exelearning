@@ -139,6 +139,6 @@ You can also:
 ## See Also
 
 - End‑user installation steps: [getting-started/install.md](../install.md)
-- Server deployment options: [deployment/overview.md](../deploy/overview.md)
+- Server deployment options: [deployment/overview.md](../deployment.md)
 
 

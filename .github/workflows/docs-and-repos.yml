@@ -58,8 +58,13 @@ jobs:
           set -euo pipefail
           REPO="${{ github.repository }}"
 
-          REL_JSON=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-                     "https://api.github.com/repos/${REPO}/releases/latest")
+          # Try to fetch the latest release JSON
+          if ! REL_JSON=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+                         "https://api.github.com/repos/${REPO}/releases/latest"); then
+            echo "No releases found (404)."
+            echo "has_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           TAG=$(echo "$REL_JSON" | jq -r '.tag_name // empty')
           if [ -z "${TAG:-}" ]; then
