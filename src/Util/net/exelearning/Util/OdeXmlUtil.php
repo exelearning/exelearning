@@ -1163,34 +1163,32 @@ class OdeXmlUtil
             }
             $typesLost = [];
             $referencesLost = [];
-            $nodeIdevices= [];
-            //$lostiDevicesReferencesId = [];
+            $nodeIdevices = [];
+            // $lostiDevicesReferencesId = [];
             $oldXmlListInstDict->registerXPathNamespace('f', $xpathNamespace);
             $directReferences = $oldXmlListInstDict->xpath('f:list[1]/f:reference[@key]');
             if ((null != $directReferences) && !empty($directReferences)) {
                 foreach ($directReferences as $directReference) {
-                    //$lostiDevicesReferencesId[] = (string) $directReference['key'];
+                    // $lostiDevicesReferencesId[] = (string) $directReference['key'];
                     $xml->registerXPathNamespace('f', $xpathNamespace);
                     $nodeIdevices = $xml->xpath("//f:instance[starts-with(@class, 'exe.engine') and contains(@class, 'idevice')  and @reference = '".$directReference['key']."']");
                     if (!empty($nodeIdevices)) {
                         foreach ($nodeIdevices as $nodeIdevice) {
-                            if (isset($nodeIdevice["class"])) {
-                                $typesLost[] = (string)$nodeIdevice["class"];                               
+                            if (isset($nodeIdevice['class'])) {
+                                $typesLost[] = (string) $nodeIdevice['class'];
                             }
-                            if (isset($nodeIdevice["reference"])) {
-                                $referencesLost[] = (string)$nodeIdevice["reference"];
+                            if (isset($nodeIdevice['reference'])) {
+                                $referencesLost[] = (string) $nodeIdevice['reference'];
                             }
                         }
-
-                    }   
+                    }
                 }
             }
-        
+
             foreach ($oldXmlListInstDict->{self::OLD_ODE_XML_LIST} as $oldXmlListInstDictList) {
-                if(!empty($referencesLost) && !empty($typesLost))
-                {
+                if (!empty($referencesLost) && !empty($typesLost)) {
                     $oldXmlListInstDictList->registerXPathNamespace('f', $xpathNamespace);
-                    //$nodeIdevices = $oldXmlListInstDictList->xpath("//f:instance[@class='".$typesLost."' and @reference = '".$referencesLost."']");
+                    // $nodeIdevices = $oldXmlListInstDictList->xpath("//f:instance[@class='".$typesLost."' and @reference = '".$referencesLost."']");
                     $results = self::getComponentSyncFromNode($typesLost, $referencesLost, $oldXmlListInstDictList, $xml, $odeSessionId, $odePageId, $generatedIds, $xpathNamespace, $translator);
                     if (!empty($results)) {
                         foreach ($results as $result) {
@@ -1202,7 +1200,7 @@ class OdeXmlUtil
                             }
                         }
                     }
-                     foreach ($nodeIdevices as $nodeIdevice) {
+                    foreach ($nodeIdevices as $nodeIdevice) {
                         $nodeIdevice->registerXPathNamespace('f', $xpathNamespace);
 
                         // Search game idevice and process it
@@ -1221,13 +1219,8 @@ class OdeXmlUtil
                     }
                     $typesLost = [];
                     $referencesLost = [];
-
                 }
-                
-                
-                
-                
-                
+
                 if ($oldXmlListInstDictList->{self::OLD_ODE_XML_INSTANCE}) {
                     $oldXmlListInstDictList->registerXPathNamespace('f', $xpathNamespace);
 
@@ -2503,7 +2496,7 @@ class OdeXmlUtil
             } else {
                 $node = $oldXmlListInstDictList->xpath("f:instance[@class='".$types[$i][0]."']");
             }
-            if(!$node || empty($node)) {
+            if (!$node || empty($node)) {
                 $xpath = "//f:instance[@class='".$types[$i]."'][@reference= '".$references[$i]."']";
                 $xml->registerXPathNamespace('f', $xpathNamespace);
                 $node = $xml->xpath($xpath);
@@ -2519,12 +2512,6 @@ class OdeXmlUtil
                     // Get image magnifier idevices
                 case 'exe.engine.imagemagnifieridevice.ImageMagnifierIdevice':
                     $odeComponentSyncResult = OdeOldXmlImageMagnifierIdevice::oldElpImageMagnifierIdeviceStructure($odeSessionId, $odePageId, $node, $generatedIds, $xpathNamespace);
-                    array_push($result, $odeComponentSyncResult);
-                    break;
-
-                    // Get free text idevices and process
-                case 'exe.engine.freetextidevice.FreeTextIdevice':
-                    $odeComponentSyncResult = OdeOldXmlFreeTextIdevice::oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $node, $generatedIds, $xpathNamespace, $translator);
                     array_push($result, $odeComponentSyncResult);
                     break;
 
@@ -2627,6 +2614,7 @@ class OdeXmlUtil
                     array_push($result, $odeComponentSyncResult);
                     break;
 
+                    // Get free text idevices and process
                     // Get reflection idevice and situation, quotes to think, must know, highlighted,
                     // guidelines for teacher, guidelines for students, a step ahead,
                     // an advice, think about it, think about it (without feedback), free text fpd idevice
@@ -2642,8 +2630,8 @@ class OdeXmlUtil
                 case 'exe.engine.reflectionfpdidevice.ReflectionfpdIdevice':
                 case 'exe.engine.reflectionfpdmodifidevice.ReflectionfpdmodifIdevice':
                 case 'exe.engine.freetextfpdidevice.FreeTextfpdIdevice':
-                    // Same as free text idevice
-                    $odeComponentSyncResult = OdeOldXmlFreeTextIdevice::oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $node, $generatedIds, $xpathNamespace, $translator);
+                case 'exe.engine.freetextidevice.FreeTextIdevice':
+                    $odeComponentSyncResult = OdeOldXmlFreeTextIdevice::oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $node, $xml, $generatedIds, $xpathNamespace, $translator);
                     array_push($result, $odeComponentSyncResult);
                     break;
 
