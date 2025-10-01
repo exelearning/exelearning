@@ -113,7 +113,7 @@ Two test users are created by default for collaborative feature testing:
 * Primary User: `user@exelearning.net` / `1234`
 * Secondary User: `user2@exelearning.net` / `1234`
 
-For more details, see [09-real-time.md](09-real-time.md).
+For more details, see Real-Time: [development/real-time.md](real-time.md).
 
 ## Makefile Commands
 
@@ -219,6 +219,37 @@ DB_SERVER_VERSION=13
 DB_PATH=
 ```
 
+## Debugging (Xdebug + VS Code)
+
+The Docker image ships with Xdebug enabled. Recommended setup (VS Code):
+
+1. Install the “PHP Debug” extension.
+2. Create `.vscode/launch.json` with a “Listen for Xdebug” configuration on port `9003`.
+3. Start the app (`make up`) and set breakpoints in PHP files.
+4. Trigger requests in the app; VS Code should stop at breakpoints.
+
+Notes
+
+- Xdebug is configured to start on every request and discover the client host automatically.
+- If you develop with VS Code inside a container, the image already creates `/.vscode-server` to avoid permission issues.
+- For container path mapping, the PHP code lives under `/app` inside the container.
+
+## Troubleshooting
+
+- Docker for Windows: Enable WSL 2 backend. If performance is slow, place the repo inside the Linux filesystem (e.g., `\wsl$`).
+- Port already in use: Change `APP_PORT` in `.env` before `make up` or run `make down && APP_PORT=8081 make up`.
+- Composer cache issues: Run `make shell` then `composer clear-cache`.
+- File permissions: Ensure mounted directories are writable by the container user.
+- Real‑time not working: Check proxy configs and ensure `proxy_buffering off;` on SSE routes. See [development/real-time.md](real-time.md).
+
+---
+
+## See Also
+
+- Testing: [development/testing.md](testing.md)
+- Real‑Time: [development/real-time.md](real-time.md)
+- Internationalization: [development/internationalization.md](internationalization.md)
+
 If you change the database engine, make sure the corresponding service is uncommented in `docker-compose.yml`.
 
 ### SSL Proxy Configuration
@@ -301,5 +332,5 @@ It is strongly recommended to enable WSL2 in Docker Desktop for better performan
 2. Go to Settings > General
 3. Check the "Use the WSL 2 based engine" option
 
-![WSL Configuration in Docker Desktop](Img/docker-windows-settings.png)
+![WSL Configuration in Docker Desktop](../img/docker-windows-settings.png)
 

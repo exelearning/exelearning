@@ -132,7 +132,7 @@ public function testCreateDocument(): void
 
 ## Continuous Integration
 
-All tests are executed automatically on GitHub Actions when a pull request is submitted or changes are pushed to main branches. This ensures that regressions or breaking changes are caught before being merged.
+All tests run in GitHub Actions for every pull request and on main branches. Failing tests block merges to keep the project stable.
 
 ## Best Practices
 
@@ -143,3 +143,10 @@ All tests are executed automatically on GitHub Actions when a pull request is su
 5. Capture screenshots on failure for debugging
 6. Use `TestLogger` for detailed logs during test runs
 7. Use the real-time base class for collaborative feature testing
+
+---
+
+## See Also
+
+- Developer environment: [development/environment.md](environment.md)
+- Real‑time: [development/real-time.md](real-time.md)

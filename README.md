@@ -32,7 +32,7 @@ This version is built with modern technologies (PHP 8, Symfony 7) and provides a
 * Multilingual support
 * Exportation to various formats
 * Moodle integration
-* [RESTful API](./doc/11-rest-api.md) Self-documented with Swagger
+* [RESTful API](./doc/development/rest-api.md) Self-documented with Swagger
 * Real-time collaborative features powered by [Mercure](https://mercure.rocks/)
 * Modern and accessible interface built with [Bootstrap](https://getbootstrap.com/)
 * Multiple authentication methods (Password, CAS, OpenID Connect)
@@ -69,11 +69,12 @@ Offline installers for Linux, Windows and macOS are also available on the [Relea
 
 To deploy eXeLearning in a production environment, see:
 
-📦 [doc/05-deployment.md](./doc/05-deployment.md)
+- Overview: [doc/deploy/overview.md](./doc/deploy/overview.md)
+- Sample Compose files: [doc/deploy/README.md](./doc/deploy/README.md)
 
 ## Development Environment
 
-See [doc/03-development-environment.md](./doc/03-development-environment.md) for full setup instructions.
+See [doc/development/environment.md](./doc/development/environment.md) for full setup instructions.
 
 To start developing:
 
@@ -133,7 +134,7 @@ The project supports multiple languages and uses Symfony's Translation component
 * Valencià
 * Esperanto
 
-For more information on translation management, see the [internationalization documentation](./doc/08-internationalization.md).
+For more information on translation management, see the [internationalization documentation](./doc/development/internationalization.md).
 
 ## Contributing
 
@@ -145,7 +146,7 @@ Contributions are what make the open source community such an amazing place to l
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-See our [versioning guide](./doc/04-version-control.md) for details about our Git workflow.
+See our [versioning guide](./doc/development/version-control.md) for details about our Git workflow.
 
 ### Useful Makefile Commands
 
@@ -172,7 +173,7 @@ make help
 
 ## Documentation
 
-The full project documentation is available in the [`doc`](./doc/00-index.md) directory
+The full project documentation is available in the [`doc`](./doc/index.md) directory
 
 ## Contributors
 
@@ -196,4 +197,3 @@ Distributed under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0. See `LICENSE` for 
 [Symfony-url]: https://symfony.com/
 [Docker.badge]: https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
 [Docker-url]: https://www.docker.com/
-

@@ -1,17 +1,17 @@
 # Real-Time Communication
 
-eXeLearning Web includes real-time communication capabilities that enable collaborative features such as simultaneous document editing.
+eXeLearning includes real-time features (e.g., collaborative editing) powered by Mercure using Server‑Sent Events (SSE).
 
 ## Real-Time Architecture
 
-Real-time communication in eXeLearning Web relies on two core technologies:
+Real-time communication relies on:
 
 1. **Mercure Hub**: Uses Server-Sent Events (SSE) to push updates from the server to subscribed clients.
-2. **WebSockets**: Enables bidirectional communication between client and server.
+2. **JWT**: Authorizes who can publish/subscribe to topics.
 
 ### Integrated Mercure Hub
 
-The Docker container of eXeLearning Web includes an integrated Mercure Hub via Nginx. This setup has several advantages:
+The Docker image includes an integrated Mercure Hub via Nginx. This setup has several advantages:
 
 * **No CORS issues**: The app and the hub are served from the same domain.
 * **Simplified deployment**: No need for additional services.
@@ -23,10 +23,7 @@ The Docker container of eXeLearning Web includes an integrated Mercure Hub via N
 
 Nginx is configured to proxy requests to the Mercure Hub:
 
-> **⚠️ Extremely Important:**  
-> The directive `proxy_buffering off;` is **absolutely essential** for Server-Sent Events (SSE) to work correctly with Mercure.  
-> If you omit or misconfigure this line, real-time updates **will not be delivered** to clients, as Nginx will buffer the SSE stream and prevent immediate delivery of events.  
-> **Always ensure** that `proxy_buffering off;` is present in the Mercure location block!
+> Important: The directive `proxy_buffering off;` is essential for Server‑Sent Events (SSE). Without it, Nginx buffers the stream and clients won’t receive live events.
 
 ```nginx
 location ^~ /.well-known/mercure {
@@ -111,7 +108,7 @@ eventSource.onmessage = event => {
 };
 ```
 
-## Support for External Mercure Hub
+## External Mercure Hub (optional)
 
 While the integrated Mercure Hub suffices for most scenarios, a separate Mercure Hub may be used for high-load environments. To configure it:
 
@@ -135,4 +132,11 @@ make test-shell
 composer phpunit tests/E2E/RealTime/
 ```
 
-See the [Testing documentation](07-testing.md) for more details.
+See the Testing docs: [development/testing.md](testing.md).
+
+## Troubleshooting
+
+- SSE not updating: Ensure `proxy_buffering off;` for the Mercure location in any reverse proxy.
+- 401/403 subscribing: The subscriber JWT must include allowed topics; check `MERCURE_SUBSCRIBER_JWT_KEY` and claims.
+- Mixed content over HTTPS: Ensure the Mercure URL matches your site scheme/host.
+- Timeouts: Increase `proxy_read_timeout` for the Mercure location.

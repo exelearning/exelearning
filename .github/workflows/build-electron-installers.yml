@@ -75,7 +75,7 @@ jobs:
       # Install Make on Windows
       - name: Install Make on Windows
         if: matrix.os == 'windows-latest'
-        run: choco install make
+        run: choco install make --yes
         shell: pwsh
 
       # Use the Makefile to install the nativephp/php pacakge
@@ -89,6 +89,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           rm -f vendor/nativephp/php-bin/bin/linux/x64/php-8.3.zip
+          rm -rf vendor/nativephp/php-bin/bin/linux/arm64/          
           rm -rf vendor/nativephp/php-bin/bin/mac
           rm -rf vendor/nativephp/php-bin/bin/win
 
@@ -178,12 +179,25 @@ jobs:
 
     steps:
       - name: Download installers
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: installers-${{ matrix.os }}
           path: installers
 
-      # ---------- Linux test ----------
+      # ---------- Ubuntu test ----------
+      - name: Set up Node.js (for CDP)
+        if: matrix.os == 'ubuntu-latest'
+
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install CDP helper
+        if: matrix.os == 'ubuntu-latest'
+        run: npm i chrome-remote-interface
+        shell: bash
+
       - name: Test install on Linux (.deb only)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -212,12 +226,13 @@ jobs:
           export ELECTRON_DISABLE_SANDBOX=1
           export ELECTRON_DISABLE_GPU=1
 
-          app_cmd="/usr/bin/exelearning"
+          app_cmd="/opt/eXeLearning/exelearning"
           command -v exelearning >/dev/null 2>&1 && app_cmd="$(command -v exelearning)" || true
-          "$app_cmd" > linux-app.log 2>&1 &
+          "$app_cmd" --remote-debugging-port=9222 > ubuntu-app.log 2>&1 &
           APP_PID=$!
           echo "App pid: $APP_PID"
 
+          # Wait until the server responds or the window appears
           end=$((SECONDS + ${APP_BOOT_TIMEOUT:-120}))
           until curl -sf "http://localhost:${APP_PORT:-41309}/" >/dev/null 2>&1 || \
                 xdotool search --name 'eXeLearning' >/dev/null 2>&1 || \
@@ -225,19 +240,41 @@ jobs:
             sleep 1
           done
 
-          # Ensure focus (do not break the job if it fails)
+          # Activate window / screenshot 1
           WID=$(xdotool search --name "eXeLearning" | head -n1 || true)
-          if [ -n "$WID" ]; then xdotool windowactivate "$WID" || true; fi
+          [ -n "$WID" ] && xdotool windowactivate "$WID" || true
+          sleep ${SCREENSHOT_DELAY:-4}
+          import -display :99 -window root ubuntu-screenshot-1.png || true
+
+          # --- CDP: click "Preview" without keys ---
+          node - <<'NODE'
+          const CDP = require('chrome-remote-interface');
+          (async () => {
+            const targets = await CDP.List();
+            // el renderer principal suele tener la URL de tu servidor embebido
+            const target =
+              targets.find(t => (t.url||'').includes('http://localhost:41309')) ||
+              targets.find(t => (t.title||'').includes('eXeLearning')) ||
+              targets[0];
+            const client = await CDP({ target });
+            const { Runtime } = client;
+            await Runtime.evaluate({ expression: `
+              (function(){
+                const btn = document.getElementById('navbar-button-preview');
+                if (btn) btn.click();
+                else if (window.eXeLearning?.app?.menu?.navbarFile?.previewEvent) {
+                  window.eXeLearning.app.menu.navbarFile.previewEvent();
+                }
+                'ok';
+              })();
+            `});
+            await client.close();
+          })();
+          NODE
 
           sleep ${SCREENSHOT_DELAY:-4}
+          import -display :99 -window root ubuntu-screenshot-2.png || true
 
-          import -display :99 -window root linux-screenshot-1.png || true
-
-          # Send Ctrl+P and take the second screenshot
-          if [ -n "$WID" ]; then xdotool key --window "$WID" ctrl+p || true; else xdotool key ctrl+p || true; fi
-          sleep ${SCREENSHOT_DELAY:-4}
-
-          import -display :99 -window root linux-screenshot-2.png || true
 
       # ---------- macOS test ----------
       - name: Test install on macOS
@@ -296,6 +333,9 @@ jobs:
           $exe = Get-ChildItem installers\*.exe | Select-Object -First 1
           if (-not $exe) { Write-Error "No NSIS .exe installer found"; exit 1 }
           Start-Process $exe.FullName -ArgumentList "/S" -Wait -NoNewWindow
+
+          # Add wait to the NSIS installer to be finished
+          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 10)
 
           $exePath = "C:\Program Files\eXeLearning\eXeLearning.exe"
           if (-not (Test-Path $exePath)) { $exePath = "C:\Program Files (x86)\eXeLearning\eXeLearning.exe" }
@@ -364,10 +404,10 @@ jobs:
         with:
           name: screenshots-and-logs-${{ matrix.os }}
           path: |
-            linux-*.png
+            ubuntu-*.png
             mac-*.png
             windows-*.png
-            linux-*.log
+            ubuntu-*.log
             mac-*.log
             windows-*.log
 
@@ -376,7 +416,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all per-OS artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: screenshots-and-logs-*
           merge-multiple: true   # leave all files in the workspace

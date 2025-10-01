@@ -76,3 +76,25 @@ This extractor runs automatically when you execute `make translations`, so no ex
 * Always regenerate translation files when you add new translatable strings by running `make translations` or `composer translations:extract`.
 * To support a new language, simply add it to the `LOCALES` array in `settings.php` and run the extraction command to generate the corresponding `.xlf` files.
 
+---
+
+## Add a New Language
+
+1) Add the locale to `LOCALES` in `settings.php` (e.g., `'fr' => 'Français'`).
+
+2) Extract translations:
+
+```bash
+make translations
+```
+
+3) Edit the generated `translations/messages.<locale>.xlf` files and provide translations.
+
+4) Test locally by setting the app locale to the new language in your dev environment (or by switching language where available in the UI).
+
+---
+
+## See Also
+
+- Developer environment: [development/environment.md](environment.md)
+

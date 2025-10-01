@@ -4,9 +4,9 @@ This directory contains sample Docker Compose configurations for deploying eXeLe
 
 ## Available Configurations
 
-- **PostgreSQL**: `docker-compose.postgres.yml`
-- **MariaDB**: `docker-compose.mariadb.yml`
-- **SQLite**: `docker-compose.sqlite.yml` (simplest option)
+- **PostgreSQL**: [docker-compose.postgres.yml](docker-compose.postgres.yml)
+- **MariaDB**: [docker-compose.mariadb.yml](docker-compose.mariadb.yml)
+- **SQLite**: [docker-compose.sqlite.yml](docker-compose.sqlite.yml) (simplest option)
 
 ## How to Use
 
