@@ -1212,7 +1212,7 @@ class OdeXmlUtil
                         // In case of not be a game idevice
                         if (!empty($nodeIdevice)) {
                             // Process node text idevices
-                            $nodeIdevicesTextResult = self::searchTextIdeviceOldElp($odeSessionId, $odePageId, $nodeIdevice, $subOdeNavStructureSync, $srcRoutes, $xpathNamespace, $generatedIds);
+                            $nodeIdevicesTextResult = self::searchTextIdeviceOldElp($odeSessionId, $odePageId, $nodeIdevice, $xml, $subOdeNavStructureSync, $srcRoutes, $xpathNamespace, $generatedIds);
                             $subOdeNavStructureSync = $nodeIdevicesTextResult['subOdeNavStructureSync'];
                             $srcRoutes = $nodeIdevicesTextResult['srcRoutes'];
                         }
@@ -1281,7 +1281,7 @@ class OdeXmlUtil
                         // In case of not be a game idevice
                         if (!empty($nodeIdevice)) {
                             // Process node text idevices
-                            $nodeIdevicesTextResult = self::searchTextIdeviceOldElp($odeSessionId, $odePageId, $nodeIdevice, $subOdeNavStructureSync, $srcRoutes, $xpathNamespace, $generatedIds);
+                            $nodeIdevicesTextResult = self::searchTextIdeviceOldElp($odeSessionId, $odePageId, $nodeIdevice, $xml, $subOdeNavStructureSync, $srcRoutes, $xpathNamespace, $generatedIds);
                             $subOdeNavStructureSync = $nodeIdevicesTextResult['subOdeNavStructureSync'];
                             $srcRoutes = $nodeIdevicesTextResult['srcRoutes'];
                         }
@@ -1817,10 +1817,10 @@ class OdeXmlUtil
      *
      * @return array $result
      */
-    private static function searchTextIdeviceOldElp($odeSessionId, $odePageId, $nodeIdevice, $subOdeNavStructureSync, $srcRoutes, $xpathNamespace, $generatedIds)
+    private static function searchTextIdeviceOldElp($odeSessionId, $odePageId, $nodeIdevice, $xml, $subOdeNavStructureSync, $srcRoutes, $xpathNamespace, $generatedIds)
     {
         $result = [];
-
+        $nodeIdevicesText = null;
         $type = $nodeIdevice->xpath('f:dictionary/f:list/f:instance/@class');
 
         // Get blockName
@@ -1830,8 +1830,17 @@ class OdeXmlUtil
         }
 
         switch ($type) {
+            case 'exe.engine.resource.Resource':
+                // In case $type is a resource class, search for old lost text in iDevices
+                $xpath = "//f:instance[@class='".$nodeIdevice['class']."'][@reference='".$nodeIdevice['reference']."']/parent::f:dictionary/parent::f:instance[@class='exe.engine.field.TextAreaField']";
+                $xml->registerXPathNamespace('f', $xpathNamespace);
+                $nodeIdevicesText = $xml->xpath($xpath);
+                // no break;
+
             case 'exe.engine.field.TextAreaField':
-                $nodeIdevicesText = $nodeIdevice->xpath("f:dictionary/f:list/f:instance[@class='exe.engine.field.TextAreaField']");
+                if (is_null($nodeIdevicesText)) {
+                    $nodeIdevicesText = $nodeIdevice->xpath("f:dictionary/f:list/f:instance[@class='exe.engine.field.TextAreaField']");
+                }
                 foreach ($nodeIdevicesText as $nodeIdeviceText) {
                     // IDEVICE TEXT CONTENT
                     if ($nodeIdeviceText->{self::OLD_ODE_XML_DICTIONARY}->{self::OLD_ODE_XML_UNICODE}) {
