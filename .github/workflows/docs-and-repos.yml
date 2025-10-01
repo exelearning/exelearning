@@ -281,6 +281,7 @@ jobs:
           path: site
 
       - name: Deploy to GitHub Pages
+        if: github.repository == 'exelearning/exelearning'
         id: deployment
         uses: actions/deploy-pages@v4
 
