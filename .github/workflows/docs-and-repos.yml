@@ -385,3 +385,4 @@ jobs:
           # Optional: if you want to force the version instead of using the tag without the "v" prefix
           # version: ${{ github.event.release.tag_name }}          
           token: ${{ secrets.WINGET_TOKEN }}
+          fork-user: exelearning
