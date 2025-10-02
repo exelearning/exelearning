@@ -35,7 +35,7 @@ class OdeOldXmlFreeTextIdevice
     // const OLD_ODE_XML_IDEVICE_TEXT = 'instance';
     public const OLD_ODE_XML_IDEVICE_TEXT_CONTENT = 'string role="key" value="content_w_resourcePaths"';
 
-    public static function oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $freeTextNodes, $generatedIds, $xpathNamespace, TranslatorInterface $translator)
+    public static function oldElpFreeTextIdeviceStructure($odeSessionId, $odePageId, $freeTextNodes, $xml, $generatedIds, $xpathNamespace, TranslatorInterface $translator)
     {
         $result['odeComponentsSync'] = [];
         $result['srcRoutes'] = [];
@@ -51,6 +51,13 @@ class OdeOldXmlFreeTextIdevice
             // In case empty $nodeIdevices get by value "content"
             if (empty($nodeIdevices)) {
                 $nodeIdevices = $freeTextNode->xpath("f:dictionary/f:string[@value='content']/following-sibling::f:instance[1]");
+            }
+
+            // In case $nodeIdevices is a node instance, search for old lost iDevices
+            if (empty($nodeIdevices) || ('exe.engine.node.Node' == $nodeIdevices[0]['class'])) {
+                $xpath = "//f:instance[@class='".$freeTextNode['class']."'][@reference='".$freeTextNode['reference']."']/parent::f:dictionary/parent::f:instance[@class='exe.engine.field.TextAreaField']";
+                $xml->registerXPathNamespace('f', $xpathNamespace);
+                $nodeIdevices = $xml->xpath($xpath);
             }
 
             // Get first value of feedback node
