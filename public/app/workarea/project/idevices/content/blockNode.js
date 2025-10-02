@@ -1326,13 +1326,19 @@ export default class IdeviceBlockNode {
      */
     async apiUpdateOrder(getCurrentOrder) {
         let params = ['odePagStructureSyncId', 'order'];
+
         // If indicated, obtains the new order of the neighboring blocks
         if (getCurrentOrder) {
             let currentOrder = this.getCurrentOrder();
             if (currentOrder >= 0) {
                 this.order = currentOrder;
+            } else {
+                if (typeof this.getFallbackPageOrder === 'function') {
+                    this.order = this.getFallbackPageOrder();
+                }
             }
         }
+
         // Update order in database
         let response = await this.apiSendDataService('putReorderBlock', params);
         if (response.responseMessage == 'OK') {
@@ -1358,6 +1364,61 @@ export default class IdeviceBlockNode {
         }
         // this.sendPublishedNotification();
         return response;
+    }
+
+    /**
+     * Returns the next available order number for a block on the current page.
+     * If no blocks exist, it defaults to 1.
+     *
+     * @returns {number} The calculated fallback page order.
+     */
+    getFallbackPageOrder() {
+        try {
+            const currentPageId =
+                this.pageId ||
+                (this.engine &&
+                this.engine.project &&
+                this.engine.project.app &&
+                this.engine.project.app.project &&
+                this.engine.project.app.project.structure &&
+                this.engine.project.app.project.structure.getSelectNodePageId
+                    ? this.engine.project.app.project.structure.getSelectNodePageId()
+                    : null);
+
+            const list =
+                this.engine &&
+                this.engine.components &&
+                Array.isArray(this.engine.components.blocks)
+                    ? this.engine.components.blocks
+                    : [];
+
+            const orders = list
+                .filter((blk) => {
+                    if (!blk) return false;
+                    const blkPageId = blk.pageId || null;
+                    return blkPageId && currentPageId
+                        ? String(blkPageId) === String(currentPageId)
+                        : false;
+                })
+                .map((blk) => {
+                    const v1 =
+                        blk.order !== undefined && blk.order !== null
+                            ? parseInt(blk.order)
+                            : NaN;
+                    const v2 =
+                        blk.blockContent && blk.blockContent.getAttribute
+                            ? parseInt(blk.blockContent.getAttribute('order'))
+                            : NaN;
+                    return !isNaN(v1) ? v1 : !isNaN(v2) ? v2 : NaN;
+                })
+                .filter((n) => !isNaN(n));
+
+            if (orders.length) return Math.max(...orders) + 1;
+
+            return 1;
+        } catch (_) {}
+
+        return 1;
     }
 
     /**

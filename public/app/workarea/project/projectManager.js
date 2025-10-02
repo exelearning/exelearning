@@ -50,7 +50,7 @@ export default class projectManager {
         // Show workarea of app
         this.showScreen();
         // Call the function to execute sorting and reordering
-        this.sortBlocksById(true);
+        //this.sortBlocksById(true);
         // Set offline atributtes
         this.setInstallationTypeAttribute();
         // Run autosave

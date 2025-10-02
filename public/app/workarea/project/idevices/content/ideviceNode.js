@@ -1833,6 +1833,16 @@ export default class IdeviceNode {
             eXeLearning.app.project.structure.getSelectNodeNavId();
         let defaultOdePageId =
             eXeLearning.app.project.structure.getSelectNodePageId();
+
+        let safeBlockOrder = null;
+        if (this.block && this.block.getCurrentOrder) {
+            let bo = this.block.getCurrentOrder();
+            if (bo >= 0) {
+                safeBlockOrder = bo;
+            } else if (typeof this.block.getFallbackPageOrder === 'function') {
+                safeBlockOrder = this.block.getFallbackPageOrder();
+            }
+        }
         return {
             odeComponentsSyncId: this.id,
             odeVersionId: defaultVersion,
@@ -1842,10 +1852,7 @@ export default class IdeviceNode {
                 : defaultOdeNavStructureSyncId,
             odePageId: this.pageId ? this.pageId : defaultOdePageId,
             odePagStructureSyncId: this.block ? this.block.id : null,
-            odePagStructureSyncOrder:
-                this.block && this.block.getCurrentOrder
-                    ? this.block.getCurrentOrder()
-                    : null,
+            odePagStructureSyncOrder: safeBlockOrder,
             odeBlockId: this.block ? this.block.blockId : null,
             blockName: this.block ? this.block.blockName : null,
             iconName: this.block ? this.block.iconName : null,
