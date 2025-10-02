@@ -119,7 +119,6 @@ sudo rpm -Uvh exelearning-<version>.x86_64.rpm
 ## Security & Updates
 
 * **Auto-updates:** Windows and macOS include automatic updates. On Linux, updates flow via the package manager if the repository is enabled.
-* **Malware scanning:** As part of the release process, installers are scanned via VirusTotal before publication. See [development/installers.md](development/installers.md).
 
 ---
 
