@@ -1,7 +1,7 @@
 ARG ARCH=
 ARG VERSION=v0.0.0-alpha
 
-FROM ${ARCH}erseco/alpine-php-webserver:3.22.0
+FROM ${ARCH}erseco/alpine-php-webserver:3.22
 
 LABEL maintainer="INTEF <cedec@educacion.gob.es>"
 LABEL org.opencontainers.image.title="eXeLearning"
