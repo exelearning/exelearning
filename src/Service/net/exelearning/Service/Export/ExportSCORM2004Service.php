@@ -146,7 +146,7 @@ class ExportSCORM2004Service implements ExportServiceInterface
         $imsmanifest->saveXML($exportDirPath.Constants::SCORM_IMSMANIFEST_NAME);
 
         // imslrm.xml
-        $imslrm = ExportXmlUtil::createSCORMimslrm($odeId, $odeProperties);
+        $imslrm = ExportXmlUtil::createSCORMimslrm($odeId, $odeProperties, $this->translator);
         $imslrm->saveXML($exportDirPath.Constants::SCORM_IMSLRM_NAME);
 
         return true;
