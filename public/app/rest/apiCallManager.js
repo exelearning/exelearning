@@ -563,14 +563,14 @@ export default class ApiCallManager {
         downloadResponse['url'] = url.replace('{odeSessionId}', odeSessionId);
         downloadResponse['url'] = downloadResponse['url'].replace(
             '{odeBlockId}',
-            odeBlockId,
+            odeBlockId
         );
         downloadResponse['url'] = downloadResponse['url'].replace(
             '{odeIdeviceId}',
-            odeIdeviceId,
+            odeIdeviceId
         );
         downloadResponse['response'] = await this.func.getText(
-            downloadResponse['url'],
+            downloadResponse['url']
         );
 
         return downloadResponse;
@@ -636,17 +636,6 @@ export default class ApiCallManager {
     }
 
     /**
-     * Upload new elp to second type platform
-     *
-     * @param {*} params
-     * @returns
-     */
-    async postSecondTypePlatformIntegrationElpUpload(params) {
-        let url = this.endpoints.set_second_type_platform_new_ode.path;
-        return await this.func.post(url, params);
-    }
-
-    /**
      * Open elp from platform
      *
      * @param {*} params
@@ -654,17 +643,6 @@ export default class ApiCallManager {
      */
     async platformIntegrationOpenElp(params) {
         let url = this.endpoints.open_platform_elp.path;
-        return await this.func.post(url, params);
-    }
-
-    /**
-     * Open elp from platform
-     *
-     * @param {*} params
-     * @returns
-     */
-    async secondTypePlatformIntegrationOpenElp(params) {
-        let url = this.endpoints.open_second_type_platform_elp.path;
         return await this.func.post(url, params);
     }
 

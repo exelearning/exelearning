@@ -1,9 +1,0 @@
-@font-face {
-    	font-family: 'STIXSansSerifBoldItalic';
-    	font-style:normal;
-      	
-	src: url('STIXSansSerif-BoldItalic.eot');
-  	src: local('?'),
-         url('STIXSansSerif-BoldItalic.woff') format('woff'), url('STIXSansSerif-BoldItalic.ttf') format('truetype'), url('STIXSansSerif-BoldItalic.svg') format('svg'); 
-}
-

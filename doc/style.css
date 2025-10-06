@@ -1,0 +1,27 @@
+/* Primary color for light scheme */
+:root {
+  /* Main brand color */
+  --md-primary-fg-color: #0BA1A1;
+  /* Slightly lighter/darker tones used by the theme */
+  --md-primary-fg-color--light: #30b8b8;
+  --md-primary-fg-color--dark:  #087575;
+
+  /* Optional: accent color; reuse brand or tweak if you want */
+  --md-accent-fg-color: #0BA1A1;
+}
+
+/* Primary color for default scheme */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #0BA1A1;
+  --md-primary-fg-color--light: #30b8b8;
+  --md-primary-fg-color--dark:  #075f5f;
+  --md-accent-fg-color: #0BA1A1;
+}
+
+/* Primary color for dark scheme */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #0BA1A1;
+  --md-primary-fg-color--light: #30b8b8;
+  --md-primary-fg-color--dark:  #075f5f;
+  --md-accent-fg-color: #0BA1A1;
+}

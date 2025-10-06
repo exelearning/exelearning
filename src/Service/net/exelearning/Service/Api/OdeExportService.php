@@ -3,6 +3,7 @@
 namespace App\Service\net\exelearning\Service\Api;
 
 use App\Constants;
+use App\Entity\net\exelearning\Dto\ThemeDto;
 use App\Entity\net\exelearning\Dto\UserPreferencesDto;
 use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
@@ -19,6 +20,7 @@ use App\Service\net\exelearning\Service\Export\ExportHTML5SPService;
 use App\Service\net\exelearning\Service\Export\ExportIMSService;
 use App\Service\net\exelearning\Service\Export\ExportSCORM12Service;
 use App\Service\net\exelearning\Service\Export\ExportSCORM2004Service;
+use App\Util\net\exelearning\Util\Commoni18nUtil;
 use App\Util\net\exelearning\Util\ExportXmlUtil;
 use App\Util\net\exelearning\Util\FilePermissionsUtil;
 use App\Util\net\exelearning\Util\FileUtil;
@@ -110,6 +112,7 @@ class OdeExportService implements OdeExportServiceInterface
         $exportType,
         $preview = false,
         $isIntegration = false,
+        $tempPath = '',
     ) {
         $response = [];
 
@@ -133,7 +136,7 @@ class OdeExportService implements OdeExportServiceInterface
         // Get ode pages
         $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
         $odeNavStructureSyncs = $odeNavStructureSyncRepo->findByOdeSessionId($odeSessionId);
-        // TODO NO NECESARIO porque siempre va a tener una página ******************
+        // TODO NOT NECESSARY because it will always have a page ******************
         if (empty($odeNavStructureSyncs)) {
             $error = $this->translator->trans('Please create at least one page before exporting.');
             $responseData['responseMessage'] = $error;
@@ -148,7 +151,7 @@ class OdeExportService implements OdeExportServiceInterface
         $odeProperties = $this->odeService->getOdePropertiesFromDatabase($odeSessionId, $user);
 
         // Get user preferences
-        // TODO siguiente instrucción se ejecuta al inicio del método
+        // TODO next instruction is executed at the beginning of the method
         $dbUserPreferences = $this->userHelper->getUserPreferencesFromDatabase($user);
         $userPreferencesDtos = [];
         foreach ($dbUserPreferences as $userPreference) {
@@ -164,6 +167,14 @@ class OdeExportService implements OdeExportServiceInterface
             $theme = $this->themeHelper->searchThemeFromThemeDir(Constants::THEME_DEFAULT, $dbUser);
         }
 
+        // Defensive fallback if theme not found at all
+        if (!$theme) {
+            $this->logger->warning('Theme not found, using fallback');
+            $theme = new ThemeDto();
+            $theme->setDirName(Constants::THEME_DEFAULT);
+            $theme->setType(Constants::THEME_TYPE_BASE);
+        }
+
         // ////////////////////////////////////////
         // SAVE ODE BEFORE EXPORT
         // ////////////////////////////////////////
@@ -177,7 +188,7 @@ class OdeExportService implements OdeExportServiceInterface
                 $error = $this->translator->trans('Other user is saving changes right now');
                 $responseData['responseMessage'] = $error;
             } else {
-                $error = $this->translator->trans('An iDevice is open');
+                $error = $this->translator->trans('Please wait until the changes are completely saved.');
                 $responseData['responseMessage'] = $error;
             }
 
@@ -251,7 +262,8 @@ class OdeExportService implements OdeExportServiceInterface
                 $baseUrl,
                 $exportType,
                 $preview,
-                $isIntegration
+                $isIntegration,
+                $tempPath
             );
         } catch (\Exception $e) {
             $exportStructure = ['responseMessage' => $this->translator->trans('Export generation error')];
@@ -265,15 +277,18 @@ class OdeExportService implements OdeExportServiceInterface
             return $response;
         }
 
+        // Export dir path
+        // $exportDirPath = $this->fileHelper->getOdeSessionUserTmpExportDir($odeSessionId, $dbUser);
+        $exportDirPath = $this->fileHelper->getOdeSessionUserTmpExportDir($odeSessionId, $dbUser, $tempPath);
+        $exportDirPath = $exportDirPath.$tempPath;
+
         // Get url to export dir
         $urlExportDir = UrlUtil::getOdeSessionExportUrl($odeSessionId, $dbUser);
+        $urlExportDir = $urlExportDir.$tempPath;
 
         // Index filename
         $indexFileName = self::generateIndexFileName();
         $response['urlPreviewIndex'] = $urlExportDir.$indexFileName;
-
-        // Export dir path
-        $exportDirPath = $this->fileHelper->getOdeSessionUserTmpExportDir($odeSessionId, $dbUser);
 
         // In case it is not a preview we need compress the export files to generate the zip
         if (!$preview) {
@@ -470,7 +485,7 @@ class OdeExportService implements OdeExportServiceInterface
      * @param OdeNavStructureSync[] $odeNavStructureSyncs
      * @param array                 $odeProperties
      * @param userPreferencesDtos   $userPreferencesDtos
-     * @param themeDto              $theme
+     * @param ThemeDto              $theme
      * @param string                $baseUrl
      * @param string                $exportType
      * @param bool                  $isPreview
@@ -490,6 +505,7 @@ class OdeExportService implements OdeExportServiceInterface
         $exportType,
         $isPreview,
         $isIntegration,
+        $tempPath = '',
     ) {
         // To do (see #198)
         $isPreview = false;
@@ -503,8 +519,8 @@ class OdeExportService implements OdeExportServiceInterface
         $addElpToExport = false;
 
         // Server export dir path
-        $exportDirPath = $this->fileHelper->getOdeSessionUserTmpExportDir($odeSessionId, $dbUser);
-
+        $exportParentDirPath = $this->fileHelper->getOdeSessionUserTmpExportDir($odeSessionId, $dbUser);
+        $exportDirPath = $exportParentDirPath.'/'.$tempPath.'/';
         // Check dist dir
         if (!($exportDirPath && FilePermissionsUtil::isWritable($exportDirPath))) {
             $response['responseMessage'] = $this->translator->trans('Export folder could not be created');
@@ -512,12 +528,13 @@ class OdeExportService implements OdeExportServiceInterface
             return $response;
         }
 
-        // Export url prefix (used in preview)
+        // Export url prefix (used in preview)y
+        // $isPreview=True;
         if ($isPreview) {
             $collection = $this->router->getRouteCollection();
             $routes = $collection->all();
             $apiFilesRoute = $routes['api_idevices_download_file_resources']->getPath();
-            $exportUrlPath = substr(UrlUtil::getOdeSessionExportUrl($odeSessionId, $dbUser), 5);
+            $exportUrlPath = substr(UrlUtil::getOdeSessionExportUrl($odeSessionId, $dbUser), 5).$tempPath.'/';
             $resourcesPrefix = $baseUrl.$apiFilesRoute.'?resource='.$exportUrlPath;
         } else {
             $resourcesPrefix = '';
@@ -562,13 +579,13 @@ class OdeExportService implements OdeExportServiceInterface
         );
 
         // Remove export dir
-        FileUtil::removeDirContent($exportDirPath);
+        FileUtil::removeDirContent($exportParentDirPath);
 
         // ///////////////////////////////////////////////////
         // COPY FILES
         // ///////////////////////////////////////////////////
 
-        // TODO VER QUé HACE PORQUE NO COPIA NADA en export ELP ****************
+        // TODO SEE WHAT IT DOES BECAUSE IT DOESN'T COPY ANYTHING in ELP export ****************
         // Copy project schema files
         $this->copySchemaFilesToExportDir($exportDirPath, $exportType);
 
@@ -579,17 +596,20 @@ class OdeExportService implements OdeExportServiceInterface
             $newExportDirName = Constants::EXPORT_DIR_CONTENT_BY_EXPORT[$exportType];
             $newExportDirPath = self::createDirInExportDir($exportDirPath, $newExportDirName);
         }
-        // TODO VER QUé HACE PORQUE NO COPIA NADA en export ELP ****************
+        // TODO SEE WHAT IT DOES BECAUSE IT DOESN'T COPY ANYTHING in ELP export ****************
         // Copy project common files
         $this->copyCommonFilesToExportDir($newExportDirPath, $exportType);
 
-        // vamos a crear un método que analice recursivamente odeNavStructureSyncs y que copie los archivos de las librerías que se deben de incluir en el proyecto
-        // debe de buscar en cada idevice si tiene una algún efecto incluido. El método retornará todos un array con todos los efectos que encuentre.
+        // we are going to create a method that recursively analyzes odeNavStructureSyncs and copies the library files that should be included in the project
+        // it should search in each idevice if it has any effect included. The method will return an array with all the effects it finds.
         list($librariesToCopy, $librariesFileToCopy) = ExportXmlUtil::getPathForLibrariesInIdevices($odeNavStructureSyncs, $odeProperties);
 
-        // copia todos los libs, jquery, bootstrap
-        // Copy project base files to export --> Aquí vamos a copiar los obligatorios
-        $this->copyBaseFilesToExportDir($newExportDirPath, $exportType, $resourcesPrefix, $isPreview, $librariesToCopy);
+        // The package language can be obtained from the $odeProperties array using the pp_lang key.
+        $packageLanguage = isset($odeProperties['pp_lang']) ? $odeProperties['pp_lang']->getValue() : Settings::DEFAULT_LOCALE;
+
+        // copy all libs, jquery, bootstrap
+        // Copy project base files to export --> Here we are going to copy the mandatory ones
+        $this->copyBaseFilesToExportDir($newExportDirPath, $exportType, $resourcesPrefix, $isPreview, $librariesToCopy, $packageLanguage, $user);
 
         // Copy ode files
         $idevicesMapping = $odeSaveXML->getOdeComponentsMapping();
@@ -605,7 +625,7 @@ class OdeExportService implements OdeExportServiceInterface
             Constants::PERMANENT_SAVE_CONTENT_CSS_DIRNAME.DIRECTORY_SEPARATOR.
             Constants::WORKAREA_STYLE_BASE_CSS_FILENAME;
         $this->replaceUrlsBaseCssFile($baseCssPath, $resourcesPrefix, $isPreview);
-        // array con todos las rutas de las librerías
+        // array with all the library paths
         // Get links to files (previously copied files)
         $libsResourcesPath = $this->getFilesLoadedPath($exportType, $librariesFileToCopy);
 
@@ -679,7 +699,7 @@ class OdeExportService implements OdeExportServiceInterface
                     } else {
                         $newResourcesPrefix = $resourcesPrefix;
                     }
-
+                    $isIndex = $pageData['isIndex'];
                     $odeComponentsSyncClone->replaceLinksHtml(
                         $newIdeviceId,
                         $ideviceResourcesMapping,
@@ -688,7 +708,8 @@ class OdeExportService implements OdeExportServiceInterface
                         $userPreferencesDtos,
                         $elpFileName,
                         $newResourcesPrefix,
-                        $exportType
+                        $exportType,
+                        $isIndex
                     );
 
                     $odeComponentsSyncCloneArray[$ideviceId] = $odeComponentsSyncClone;
@@ -826,6 +847,7 @@ class OdeExportService implements OdeExportServiceInterface
         // Generate export type files
         // Create files: xml, html, etc. depending on the type of export
         $viewContentGenerated = false;
+
         if ($exportService) {
             try {
                 $viewContentGenerated = $exportService->generateExportFiles(
@@ -858,28 +880,125 @@ class OdeExportService implements OdeExportServiceInterface
     }
 
     /**
+     * Generate common i18n JavaScript content with main translations and iDevice translations.
+     *
+     * @param string        $packageLanguage
+     * @param array         $translations
+     * @param UserInterface $user
+     *
+     * @return string
+     */
+    private function generateCommonI18nJs(
+        $packageLanguage,
+        $translations,
+        $user,
+    ) {
+        // Build JS object $exe_i18n
+        $entriesCommon = [];
+        $commonTranslations = $translations['common'] ?? [];
+        $jsContent = "// The content of this file will be dynamically generated in the language of the elp.\n";
+        $jsContent .= '$exe_i18n = {';
+        foreach ($commonTranslations as $key => $value) {
+            $entriesCommon[] = $key.': "'.addslashes($value).'"';
+        }
+
+        $jsContent .= implode(', ', $entriesCommon);
+        $jsContent .= '};'."\n";
+
+        // Build JS object $exe_i18n.exeGames
+        $entriesGames = [];
+        $gamesTranslations = $translations['games'] ?? [];
+        $jsContent .= "// This line is only present if the elp contains a hangman game.\n";
+        $jsContent .= '$exe_i18n.exeGames = {';
+        foreach ($gamesTranslations as $key => $value) {
+            $entriesGames[] = $key.': "'.addslashes($value).'"';
+        }
+
+        $jsContent .= implode(', ', $entriesGames);
+        $jsContent .= '};'."\n";
+
+        // Add iDevice translations
+        try {
+            $idevicesInstalled = $this->ideviceHelper->getInstalledIdevices($user);
+            foreach ($idevicesInstalled as $idevice) {
+                $ideviceName = $idevice->getName();
+                $ideviceDir = $idevice->getDirName();
+
+                $ideviceTranslationPath = $this->ideviceHelper->getIdeviceTranslationFilePathName(
+                    $packageLanguage,
+                    $ideviceDir,
+                    $ideviceName
+                );
+
+                if (file_exists($ideviceTranslationPath)) {
+                    $ideviceTranslations = FileUtil::readXlfFile($ideviceTranslationPath, $packageLanguage);
+                    foreach ($ideviceTranslations as $key => $value) {
+                        $translated = $this->translator->trans($value, [], null, $packageLanguage);
+                        $prefixedKey = $ideviceName.'_'.$key;
+                        $jsContent .= '$exe_i18n.exeGames["'.addslashes($prefixedKey).'"] = "'.addslashes($translated)."\";\n";
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            $this->logger->warning('Failed to load iDevice translations: '.$e->getMessage());
+        }
+
+        return $jsContent;
+    }
+
+    /**
      * Copy symfony base files to project export libs dir.
      *
-     * @param string $exportDirPath
-     * @param string $exportType
-     * @param string $isPreview
+     * @param string        $exportDirPath
+     * @param string        $exportType
+     * @param string        $resourcesPrefix
+     * @param string        $isPreview
+     * @param array         $libraries
+     * @param string        $packageLanguage
+     * @param UserInterface $user
      *
      * @return array
      */
-    private function copyBaseFilesToExportDir($exportDirPath, $exportType, $resourcesPrefix, $isPreview, $libraries)
-    {
+    private function copyBaseFilesToExportDir(
+        $exportDirPath,
+        $exportType,
+        $resourcesPrefix,
+        $isPreview,
+        $libraries,
+        $packageLanguage,
+        $user,
+    ) {
         $filesToCopy = [];
 
         // Base files
         // $filesToCopy = array_merge($filesToCopy, Constants::EXPORT_SYMFONY_PUBLIC_FILES_BASE);
         $filesToCopy = [
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',
-            Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common_i18n.js',
+            // Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common_i18n.js',
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common.js',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'jquery',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'bootstrap',
         ];
         $filesToCopy = array_merge($filesToCopy, $libraries);
+
+        // Get translations
+        $commonI18n = new Commoni18nUtil($this->translator, $packageLanguage);
+
+        $translations = [
+            'common' => $commonI18n->getCommonStringsi18n(),
+            'games' => $commonI18n->getGamesStringsi18n(),
+        ];
+
+        // Generate common_i18n.js directly in the export folder
+        $commonI18nContent = $this->generateCommonI18nJs($packageLanguage, $translations, $user);
+        $exportLibsDir = $exportDirPath.Constants::EXPORT_DIR_PUBLIC_LIBS.DIRECTORY_SEPARATOR;
+
+        if (!is_dir($exportLibsDir)) {
+            mkdir($exportLibsDir, 0777, true);
+        }
+
+        $commonI18nPath = $exportLibsDir.'common_i18n.js';
+        file_put_contents($commonI18nPath, $commonI18nContent);
 
         // Add symfony path
         $symfonyPublicDirPath = $this->fileHelper->getSymfonyPublicDir();

@@ -51,8 +51,9 @@ export default class Common {
    * Get assets timestamp
    */
   getVersionTimeStamp() {
-      if (eXeLearning.symfony.environment == 'dev') return Date.now();
-      return eXeLearning.version;
+      const v = eXeLearning.version;
+      if (eXeLearning.symfony.environment == 'dev' || v == "v0.0.0-alpha") return Date.now();
+      return v;
   }
 
   /**

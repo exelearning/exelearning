@@ -1,8 +1,8 @@
 {
     "name": "exelearning",
     "version": "v0.0.0-alpha",
-    "license": "GPL-2.0-or-later",
-    "description": "eXeLearning",
+    "license": "AGPL-3.0-or-later",
+    "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
     "main": "main.js",
     "homepage": "https://exelearning.net",
     "scripts": {
@@ -11,7 +11,8 @@
         "js:lint": "eslint 'public/**/*.js'",
         "js:fix": "eslint 'public/**/*.js' --fix",
         "check-format": "prettier --check \"public/**/*.js\"",
-        "format": "prettier --write \"public/**/*.js\""
+        "format": "prettier --write \"public/**/*.js\"",
+        "test": "playwright test tests/electron"
     },
     "keywords": [],
     "author": {
@@ -27,7 +28,8 @@
         "i18n": "^0.15.1"
     },
     "devDependencies": {
-        "electron": "^36.3.2",
+        "@playwright/test": "^1.55.0",
+        "electron": "^38.0.0",
         "electron-builder": "^26.0.12",
         "eslint": "^9.20.0",
         "eslint-config-prettier": "^10.1.5",
@@ -44,16 +46,16 @@
         "publish": [
             {
                 "provider": "github",
-                "owner": "exelearning",
-                "repo": "exelearning",
                 "releaseType": "prerelease",
                 "private": true
             }
         ],
         "asar": true,
+        "afterPack": "afterPack.js",
         "disableDefaultIgnoredFiles": true,
         "files": [
             "main.js",
+            "preload.js",
             "composer.json",
             "composer.lock",
             ".env.dist",
@@ -104,6 +106,10 @@
             {
                 "from": ".env.dist",
                 "to": ".env.dist"
+            },
+            {
+                "from": "packaging/keys/",
+                "to": "keys/"
             }
         ],
         "win": {
@@ -139,16 +145,11 @@
             "oneClick": true
         },
         "linux": {
+            "executableName": "exelearning",
             "executableArgs": [
                 "--no-sandbox"
             ],
             "target": [
-                {
-                    "target": "AppImage",
-                    "arch": [
-                        "x64"
-                    ]
-                },
                 {
                     "target": "deb",
                     "arch": [
@@ -165,6 +166,14 @@
             "category": "Education",
             "icon": "public/icons"
         },
+        "deb": {
+          "afterInstall": "packaging/deb/after-install.sh",
+          "afterRemove": "packaging/deb/after-remove.sh"
+        },
+        "rpm": {
+          "afterInstall": "packaging/rpm/after-install.sh",
+          "afterRemove": "packaging/rpm/after-remove.sh"
+        },        
         "mac": {
             "category": "public.app-category.education",
             "hardenedRuntime": false,

@@ -25,9 +25,16 @@ parameters:
     cas_logout_url: '%cas_url%%cas_logout_path%'
 
     oidc_issuer: '%env(OIDC_ISSUER)%'
+    oidc_authorization_endpoint: '%env(OIDC_AUTHORIZATION_ENDPOINT)%'
+    oidc_token_endpoint: '%env(OIDC_TOKEN_ENDPOINT)%'
+    oidc_userinfo_endpoint: '%env(OIDC_USERINFO_ENDPOINT)%'
+    oidc_scope: '%env(OIDC_SCOPE)%'
     oidc_client_id: '%env(OIDC_CLIENT_ID)%'
     oidc_client_secret: '%env(OIDC_CLIENT_SECRET)%'
-    oidc_scope: 'openid email'
+
+    api_jwt_secret: '%env(string:API_JWT_SECRET)%'
+    api_jwt_issuer: '%env(default::string:API_JWT_ISSUER)%'
+    api_jwt_audience: '%env(default::string:API_JWT_AUDIENCE)%'
 
     filesdir: '%env(FILES_DIR)%'
     google_client_id: '%env(GOOGLE_CLIENT_ID)%'
@@ -43,6 +50,19 @@ parameters:
 
     security.firewall_name: 'main'
 
+    # Default logs and cache directories
+    logs_default_dir: '%kernel.logs_dir%'
+    cache_default_dir: '%kernel.project_dir%/var/cache'
+
+    # Read the LOG_DIR and CACHE_DIR env vars. If it does not exist, use the defaults.
+    app.logs.dir:  '%env(default:logs_default_dir:LOG_DIR)%'
+    app.cache.dir: '%env(default:cache_default_dir:CACHE_DIR)%'
+
+    # Allow users to import/install styles
+    app.online_themes_install: '%env(bool:ONLINE_THEMES_INSTALL)%'
+
+    # Allow users to import/install iDevices
+    app.online_idevices_install: '%env(bool:ONLINE_IDEVICES_INSTALL)%'
 
 services:
     Symfony\Component\DependencyInjection\ContainerInterface: '@service_container'
@@ -60,7 +80,9 @@ services:
         exclude:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
+            - '../src/ApiResource/'
             - '../src/Kernel.php'
+            - '../src/var/'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
@@ -83,39 +105,91 @@ services:
         arguments:
             - 'ticket'
 
+    # Authorization: Bearer <token>
+    security.access_token_extractor.header:
+        class: Symfony\Component\Security\Http\AccessToken\HeaderAccessTokenExtractor
+        arguments: ['Authorization', 'Bearer']
+
+    # Query string ?access_token=...
+    security.access_token_extractor.query_string:
+        class: Symfony\Component\Security\Http\AccessToken\QueryAccessTokenExtractor
+        arguments:
+            - 'access_token'
+
     # We must define here the Cas2Handler to pass the $validationUrl to allow autowire
-    Symfony\Component\Security\Http\AccessToken\Cas\Cas2Handler:
+    'Symfony\Component\Security\Http\AccessToken\Cas\Cas2Handler':
         arguments:
             $validationUrl: '%cas_validate_url%'
 
     # OIDC Authentication
 
-    # Uncomment this on Symfony >=7.3
-    # # OIDC UserInfo Handler
-    # Symfony\Component\Security\Http\AccessToken\Oidc\OidcUserInfoTokenHandler:
-    #     alias: security.access_token_handler.oidc_userinfo
-    #     public: false
+    # OIDC UserInfo Handler
+    Symfony\Component\Security\Http\AccessToken\Oidc\OidcUserInfoTokenHandler:
+        alias: security.access_token_handler.oidc_userinfo
+        public: false
 
-    # security.access_token_handler.oidc_userinfo:
-    #     class: Symfony\Component\Security\Http\AccessToken\Oidc\OidcUserInfoTokenHandler
-    #     arguments:
-    #         $client: '@http_client'
-    #         $claim: 'sub'
-
-    # Remove this on Symfony >=7.3
-    App\Security\OidcUserInfoTokenHandlerCustom:
+    # Scoped HTTP client bound to OIDC issuer, used for discovery
+    http_client.oidc:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['@http_client', 'withOptions']
         arguments:
-            $client: '@http_client'
-            $oidcIssuer: '%oidc_issuer%'
-            # $claim: 'email' # we use sub internally
+            - { base_uri: '%oidc_issuer%' }
 
+    security.access_token_handler.oidc_userinfo:
+        class: Symfony\Component\Security\Http\AccessToken\Oidc\OidcUserInfoTokenHandler
+        arguments:
+            - '@http_client.oidc'
+            - '@logger'
+            - 'sub'
+        calls:
+            - [ enableDiscovery, ['@cache.app', 'security.oidc.discovery'] ]
 
     # MultiTokenHandler (combines OIDC, CAS, etc.)
-    App\Security\MultiTokenHandler:
+    'App\Security\MultiTokenHandler':
         arguments:
             $casHandler: '@Symfony\Component\Security\Http\AccessToken\Cas\Cas2Handler'
+            $oidcUserInfoHandler: '@security.access_token_handler.oidc_userinfo'
+            $jwtHandler: '@App\Security\JwtTokenHandler'
             $authCreateUsers: '%auth_create_users%'
+            $passwordHasherFactory: '@security.password_hasher_factory'
         tags: ['monolog.logger']
+
+    'App\Security\JwtTokenHandler':
+        arguments:
+            $secretKey: '%api_jwt_secret%'
+            $allowedAlgs: ['HS256']
+            $issuer: '%api_jwt_issuer%'
+            $audience: '%api_jwt_audience%'
+
+    App\Controller\Api\AuthController:
+        arguments:
+            $jwtSecret: '%api_jwt_secret%'
+            $jwtIssuer: '%api_jwt_issuer%'
+            $jwtAudience: '%api_jwt_audience%'
+
+    App\Command\GenerateJwtCommand:
+        arguments:
+            $secret: '%api_jwt_secret%'
+            $issuer: '%api_jwt_issuer%'
+            $audience: '%api_jwt_audience%'
+
+    App\Command\ValidateJwtCommand:
+        arguments:
+            $secret: '%api_jwt_secret%'
+            $issuer: '%api_jwt_issuer%'
+            $audience: '%api_jwt_audience%'
+
+    # Register custom Doctrine repositories as services
+    App\Entity\Project\ProjectPropertyRepository:
+        autowire: true
+        autoconfigure: true
+        tags: ['doctrine.repository_service']
+
+    # Restrict /api/v2/users collection for non-admins
+    # Run AFTER built-in filters so we can neutralize them for non-admins
+    App\Doctrine\Extension\UserCollectionExtension:
+        tags:
+            - { name: 'api_platform.doctrine.orm.query_extension.collection', priority: -999999 }
 
 
     decorating_translator:

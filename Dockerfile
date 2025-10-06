@@ -1,13 +1,13 @@
 ARG ARCH=
 ARG VERSION=v0.0.0-alpha
 
-FROM ${ARCH}erseco/alpine-php-webserver:3.20.7
+FROM ${ARCH}erseco/alpine-php-webserver:3.22
 
 LABEL maintainer="INTEF <cedec@educacion.gob.es>"
 LABEL org.opencontainers.image.title="eXeLearning"
 LABEL org.opencontainers.image.description="eXeLearning Docker Image"
 LABEL org.opencontainers.image.version="${VERSION}"
-LABEL org.opencontainers.image.licenses="GPL-3.0-or-later"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 ENV VERSION=${VERSION} \
     LANG=en_US.UTF-8 \
@@ -36,31 +36,34 @@ USER root
 
 # Install Composer and required dependencies
 RUN apk add --no-cache \
-    php83-pdo_mysql \
-    php83-pdo_sqlite \
-    php83-pdo_pgsql \
-    php83-mbstring \
-    php83-exif \
-    php83-pcntl \
-    php83-bcmath \
-    php83-gd \
-    php83-zip \
-    php83-intl \
-    php83-xmlwriter \
-    php83-ctype \
-    php83-fileinfo \
-    php83-tokenizer \
-    php83-xml \
-    php83-simplexml \
-    php83-dom \
-    php83-session \
-    composer && \
+    php84-pdo_mysql \
+    php84-pdo_sqlite \
+    php84-pdo_pgsql \
+    php84-mbstring \
+    php84-exif \
+    php84-pcntl \
+    php84-bcmath \
+    php84-gd \
+    php84-zip \
+    php84-intl \
+    php84-xmlwriter \
+    php84-ctype \
+    php84-fileinfo \
+    php84-tokenizer \
+    php84-xml \
+    php84-simplexml \
+    php84-dom \
+    php84-session && \
+# Install Composer manually (latest version compatible with PHP 8.4)
+    curl -sS https://getcomposer.org/installer | php84 -d allow_url_fopen=1 && \
+    mv composer.phar /usr/local/bin/composer && \
+    chmod +x /usr/local/bin/composer && \
 # Install xdebug (TODO: consider removing in production environment)
-    apk add --no-cache php83-pecl-xdebug; \
-    sed -i 's/;zend_extension=xdebug.so/zend_extension=xdebug.so/' /etc/php83/conf.d/50_xdebug.ini && \
-    echo "xdebug.start_with_request=yes" >> /etc/php83/conf.d/50_xdebug.ini && \
-    echo "xdebug.discover_client_host=1" >> /etc/php83/conf.d/50_xdebug.ini && \
-    echo "xdebug.log=/dev/stdout" >> /etc/php83/conf.d/50_xdebug.ini && \
+    apk add --no-cache php84-pecl-xdebug; \
+    sed -i 's/;zend_extension=xdebug.so/zend_extension=xdebug.so/' /etc/php84/conf.d/50_xdebug.ini && \
+    echo "xdebug.start_with_request=yes" >> /etc/php84/conf.d/50_xdebug.ini && \
+    echo "xdebug.discover_client_host=1" >> /etc/php84/conf.d/50_xdebug.ini && \
+    echo "xdebug.log=/dev/stdout" >> /etc/php84/conf.d/50_xdebug.ini && \
 # This directory is required if debugging with xdebug in Visual Studio Code
 # in an attached container (see development environment documentation)
     mkdir /.vscode-server && chmod -R 777 /.vscode-server && \
@@ -72,6 +75,7 @@ RUN apk add --no-cache \
     mkdir -p /etc/service/mercure && chown nobody:nobody /etc/service/mercure && \
 # Create /app/vendor directory and change ownership to nobody
     mkdir -p /app/vendor && chown -R nobody:nobody /app/vendor && \
+    mkdir -p /app/public && chown -R nobody:nobody /app/public && \
     mkdir -p /app/var/cache /app/var/log && chown -R nobody:nobody /app/var/cache /app/var/log
 
 # nginx configuration for assets, files and iDevices
@@ -83,6 +87,9 @@ COPY --chown=nobody subdir.conf.template /etc/nginx/server-conf.d/subdir.conf.te
 COPY --from=dunglas/mercure:latest /usr/bin/caddy /usr/bin/mercure
 COPY --from=dunglas/mercure:latest /etc/caddy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=dunglas/mercure:latest /etc/caddy/dev.Caddyfile /etc/caddy/dev.Caddyfile
+
+# Create symbolic link to the php84 binary
+RUN ln -sf /usr/bin/php84 /usr/local/bin/php
 
 # Set up Mercure service
 COPY mercure.run /etc/service/mercure/run

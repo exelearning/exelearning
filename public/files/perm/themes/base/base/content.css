@@ -28,8 +28,17 @@ body.exe-web-site{
     color: #333;
 }
 
-.exe-export .exe-content{
+.js .exe-export .exe-content{
     min-height: calc(100vh - 30px);
+}
+
+.js .in-iframe .exe-content{
+    min-height: 0;
+}
+
+.exe-content .package-title{
+    font-size: 1.25rem;
+    font-weight: 300;
 }
 
 .exe-content .page-title{
@@ -114,18 +123,24 @@ body.exe-web-site{
     width:300px;
     padding-top: 66px;
     padding-left: 8px;
-    height: 100%;
+}
+#siteNav:after{
+    content:"";
+    width:300px;
+    height:100vh;
+    background:#F6F6F6;
+    position: absolute;
+    left:0;
+    border-right:1px solid #F0F0F0
 }
 #siteFooterExtra{
     margin-bottom:2em;
     color: #555;
     font-size: .95em;
 }
-/* To review
 #siteNav .other-section{
     display: none;
 }
-*/
 #sidebar-nav.fixed{
     position: fixed;
 }
@@ -329,6 +344,7 @@ button.toggler:focus {
     border: 1px solid #ddd;
     padding: 20px;
     border-radius: 8px;
+    overflow: auto;
 }
 
 .exe-export .box.no-header .box-content{
@@ -427,9 +443,14 @@ button.toggler:focus {
 .page-counter .page-counter-sep{margin:0 .1em}
 .exe-web-site .page-counter{position:fixed;top:18px;right:70px;margin:0;font-size:.9em;color:#777;padding:0 8px; border-radius: 4px;text-align:left}
 
+/* Teacher mode */
+#teacher-mode-toggler.form-check-input:checked{background-color:#438606;border-color:#438606;font-size:.9em;margin-right:.6em}
+label[for='teacher-mode-toggler']{font-size:.9em;color:#777;position:relative;top:-.2em}
+
 /* Responsive design */
 @media (max-width: 767.98px) {
-    #siteNav{
+    #siteNav,
+    #siteNav:after{
         width: 255px;
     }
     #siteNav a{
@@ -454,6 +475,9 @@ button.toggler:focus {
         padding: 68px 10px 20px 10px;
         min-height: 0!important;
         height: auto!important;
+    }
+    #siteNav:after{
+        display: none;
     }
     body.exe-web-site main.page{
         padding-top: 2.5em;

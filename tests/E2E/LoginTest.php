@@ -21,15 +21,15 @@ class LoginTest extends ExelearningE2EBase
             return;
         }
 
-        $client = static::createTestClient();
+        $client = $this->createTestClient();
 
         // Verify redirection from login in offline mode
-        $client->request('GET', self::$baseUrl . '/login');
+        $client->request('GET', '/login');
         // $this->assertStringEndsWith('/workarea', $client->getCurrentURL());
         $this->assertStringContainsString('/workarea', $client->getCurrentURL());
 
         // Verify direct access to a protected route
-        $client->request('GET', self::$baseUrl . '/workarea');
+        $client->request('GET', '/workarea');
         $this->assertStringEndsWith('/workarea', $client->getCurrentURL());
     }
 
@@ -46,16 +46,16 @@ class LoginTest extends ExelearningE2EBase
             return;
         }
 
-        $client   = static::createTestClient();
+        $client   = $this->createTestClient();
         $email    = $_ENV['TEST_USER_EMAIL'] ?? self::$defaultUserEmail;
         $password = $_ENV['TEST_USER_PASSWORD'] ?? self::$defaultUserPass;
 
         // Step 1: Verify redirection from a protected route
-        $client->request('GET', self::$baseUrl . '/workarea');
+        $client->request('GET','/workarea');
         $this->assertStringContainsString('/login', $client->getCurrentURL());
 
         // Step 2: Verify the login form is present and in its initial state
-        $client->request('GET', self::$baseUrl . '/login');
+        $client->request('GET', '/login');
         $this->assertSelectorExists('form#login-form', 'Login form exists');
         $this->assertInputValueSame('email', '', 'Email input is empty initially');
 
@@ -64,7 +64,7 @@ class LoginTest extends ExelearningE2EBase
             'email'    => $email,
             'password' => $password,
         ]);
-        
+
         // Wait for and verify redirection
         // $client->waitFor('.workspace-header', 5);
         // $this->assertStringEndsWith('/workarea', $client->getCurrentURL());
@@ -75,7 +75,7 @@ class LoginTest extends ExelearningE2EBase
         // $this->assertSelectorExists('.workspace-header', 'Workspace header exists');
 
         // Step 4: Verify persistent session
-        // $client->request('GET', self::$baseUrl . '/workarea/profile');
+        // $client->request('GET', '/workarea/profile');
         // $this->assertStringNotContainsString('/login', $client->getCurrentURL());
     }
 
@@ -92,9 +92,9 @@ class LoginTest extends ExelearningE2EBase
             return;            
         }
 
-        $client = static::createTestClient();
+        $client = $this->createTestClient();
 
-        $client->request('GET', self::$baseUrl . '/login');
+        $client->request('GET', '/login');
         $client->submitForm('btn-submit', [
             'email'    => 'invalid@example.com',
             'password' => 'wrongpassword',

@@ -14,21 +14,25 @@ export default class MenuIdevicesCompose {
         this.idevicesList = ideviceList;
         this.idevicesInstalled = this.idevicesList.installed;
         this.menuIdevices = document.querySelector(
-            '#menu_idevices #list_menu_idevices',
+            '#menu_idevices #list_menu_idevices'
         );
     }
 
     categoriesTitle = {
-        text: _('Text'),
+        text: _('Information and presentation'),
+        tracking: _('Assessment and tracking'),
         interactive: _('Interactive activities'),
         games: _('Games'),
+        science: _('Science'),
         others: _('Others'),
     };
 
     categoriesFirst = [
         this.categoriesTitle.text,
+        this.categoriesTitle.tracking,
         this.categoriesTitle.interactive,
         this.categoriesTitle.games,
+        this.categoriesTitle.science,
     ];
     categoriesLast = [this.categoriesTitle.others];
 
@@ -49,7 +53,7 @@ export default class MenuIdevicesCompose {
         // Generate elements
         this.orderedCategories = this.categoriesFirst.concat(
             this.categoriesExtra,
-            this.categoriesLast,
+            this.categoriesLast
         );
         this.orderedCategories.forEach((category) => {
             if (
@@ -58,7 +62,7 @@ export default class MenuIdevicesCompose {
             ) {
                 this.createDivCategoryIdevices(
                     category,
-                    this.categoriesIdevices[category],
+                    this.categoriesIdevices[category]
                 );
             }
         });

@@ -72,7 +72,6 @@ class Settings
         'video/webm',
     ];
 
-    public const SECOND_TYPE_PLATFORM_COLLECTION_ID = 'c62d024b-474b-49a4-9286-4eb7ca035c07'; // Collection where insert the ode item
     public const PLATFORM_INTEGRATION = 0; // Active integrated platform (Set here the api value from PLATFORMS array)
 
     public const JWT_SECRET_HASH = 'HS256'; // JWT Signature algorithm
@@ -109,7 +108,7 @@ class Settings
         'el' => 'Ελληνικά', // Greek
         'en' => 'English',
         'eo' => 'Esperanto',
-        'es' => 'Español', // Español, Spanish
+        'es' => 'Español', // Spanish
         'et' => 'Eesti', // Estonian
         'eu' => 'Euskara', // Basque
         'fa' => 'فارسی', // Farsi, Persian
@@ -136,7 +135,7 @@ class Settings
         'ru' => 'Русский', // Russian
         'sk' => 'Slovenčina, slovenský jazyk', // Jazyk - Slovak
         'sl' => 'Slovenščina', // Slovene
-        'sr' => 'Српски / srpski', // Srpski, serbio
+        'sr' => 'Српски / srpski', // Srpski, Serbian
         'sv' => 'Svenska', // Swedish
         'th' => 'ไทย', // Thai
         'tl' => 'Wikang Tagalog, ᜏᜒᜃᜅ᜔ ᜆᜄᜎᜓᜄ᜔', // Tagalog

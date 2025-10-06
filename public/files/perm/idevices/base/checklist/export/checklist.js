@@ -263,8 +263,8 @@ var $eXeListaCotejo = {
                         <div class="CTJP-Footer" style="display:${df}">${footer}</div>
                     </div>
                     <div class="CTJP-Capture">
-                        <a id="ctjReboot-${instance}" href="#">${mOptions.msgs.msgReboot}</a>
-                        <a id="ctjCapture-${instance}" href="#">${mOptions.msgs.msgSave}</a>
+                        <button type="button" id="ctjReboot-${instance}" class="btn btn-primary btn-sm" aria-label="${mOptions.msgs.msgReboot}">${mOptions.msgs.msgReboot}</button>
+                        <button type="button" id="ctjCapture-${instance}" class="btn btn-primary btn-sm" aria-label="${mOptions.msgs.msgSave}">${mOptions.msgs.msgSave}</button>
                     </div>
                 </div>
             </div>`;

@@ -104,7 +104,7 @@ export default class Locale {
             ) {
                 return this.strings.translations[stringConcIdevice].replace(
                     /\\"/g,
-                    '"',
+                    '"'
                 );
             }
         }
@@ -115,11 +115,9 @@ export default class Locale {
             this.strings.translations &&
             string in this.strings.translations
         ) {
-            return this.strings.translations[string]
-                .replace(/\\"/g, '"')
-                .replace(/\\\//g, '/');
+            return this.strings.translations[string].replace(/\\"/g, '"');
         } else {
-            return string.replace(/\\"/g, '"').replace(/\\\//g, '/');
+            return string.replace(/\\"/g, '"');
         }
     }
 }

@@ -129,7 +129,7 @@ export default class Idevice {
             let element =
                 this.manager.app.project.idevices.loadScriptDynamically(
                     servicePath,
-                    false,
+                    false
                 );
             elementsArray.push(element);
         }
@@ -149,7 +149,7 @@ export default class Idevice {
             let element =
                 this.manager.app.project.idevices.loadScriptDynamically(
                     servicePath,
-                    false,
+                    false
                 );
             elementsArray.push(element);
         }
@@ -170,7 +170,7 @@ export default class Idevice {
                 await this.manager.app.project.idevices.loadStyleByInsertingIt(
                     servicePath,
                     this,
-                    'edition',
+                    'edition'
                 );
             elementsArray.push(element);
         }
@@ -191,7 +191,7 @@ export default class Idevice {
                 await this.manager.app.project.idevices.loadStyleByInsertingIt(
                     servicePath,
                     this,
-                    'export',
+                    'export'
                 );
             elementsArray.push(element);
         }

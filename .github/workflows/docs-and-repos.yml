@@ -1,0 +1,280 @@
+name: Docs & Repos to GitHub Pages (latest release)
+
+on:
+  push:
+    branches:
+      - main
+    paths: # Only run on push when changes doc/ related files
+      - 'doc/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs-and-repos.yml'
+  release: # Always run on release
+    types: [released]
+  workflow_dispatch: # Allows manually triggering
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---- Build MkDocs docs ----
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install MkDocs
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs mkdocs-material
+
+      - name: Build docs
+        run: |
+          SITE_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+          sed -i "1s|^|site_url: ${SITE_URL}\n|" mkdocs.yml
+          mkdocs build -d site-docs
+
+      # ---- Tools for repo metadata ----
+      - name: Install repo tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl dpkg-dev apt-utils apt-transport-https gnupg \
+                                  rpm createrepo-c
+
+      # ---- Resolve LATEST release (always) ----
+      - name: Resolve latest release info
+        id: rel
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+
+          REL_JSON=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+                     "https://api.github.com/repos/${REPO}/releases/latest")
+
+          TAG=$(echo "$REL_JSON" | jq -r '.tag_name // empty')
+          if [ -z "${TAG:-}" ]; then
+            echo "has_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          DEB_URL=$(echo "$REL_JSON" | jq -r '.assets[]? | select(.name|test("\\.deb$")) | .browser_download_url' | head -n1)
+          RPM_URL=$(echo "$REL_JSON" | jq -r '.assets[]? | select(.name|test("\\.rpm$")) | .browser_download_url' | head -n1)
+
+          echo "has_release=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
+          echo "deb_url=$DEB_URL" >> "$GITHUB_OUTPUT"
+          echo "rpm_url=$RPM_URL" >> "$GITHUB_OUTPUT"
+
+      # ---- Download assets and extract metadata ----
+      - name: Download release assets
+        if: steps.rel.outputs.has_release == 'true'
+        id: assets
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          if [ -n "${{ steps.rel.outputs.deb_url }}" ]; then
+            curl -fsSL -o artifacts/pkg.deb "${{ steps.rel.outputs.deb_url }}"
+            DEB_PKG=$(dpkg-deb -f artifacts/pkg.deb Package)
+            DEB_VER=$(dpkg-deb -f artifacts/pkg.deb Version)
+            DEB_ARCH=$(dpkg-deb -f artifacts/pkg.deb Architecture)
+            DEB_SIZE=$(stat -c%s artifacts/pkg.deb)
+            DEB_SHA256=$(sha256sum artifacts/pkg.deb | awk '{print $1}')
+            echo "deb_pkg=$DEB_PKG"     >> "$GITHUB_OUTPUT"
+            echo "deb_ver=$DEB_VER"     >> "$GITHUB_OUTPUT"
+            echo "deb_arch=$DEB_ARCH"   >> "$GITHUB_OUTPUT"
+            echo "deb_size=$DEB_SIZE"   >> "$GITHUB_OUTPUT"
+            echo "deb_sha256=$DEB_SHA256" >> "$GITHUB_OUTPUT"
+            echo "have_deb=true"        >> "$GITHUB_OUTPUT"
+          else
+            echo "have_deb=false"       >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "${{ steps.rel.outputs.rpm_url }}" ]; then
+            curl -fsSL -o artifacts/pkg.rpm "${{ steps.rel.outputs.rpm_url }}"
+            # rpm tool is available; fallbacks just in case
+            RPM_NAME=$(rpm -qp --qf '%{NAME}\n' artifacts/pkg.rpm || echo exelearning)
+            RPM_VERREL=$(rpm -qp --qf '%{VERSION}-%{RELEASE}\n' artifacts/pkg.rpm || echo "${{ steps.rel.outputs.tag }}")
+            RPM_ARCH=$(rpm -qp --qf '%{ARCH}\n' artifacts/pkg.rpm || echo x86_64)
+            echo "rpm_name=$RPM_NAME"   >> "$GITHUB_OUTPUT"
+            echo "rpm_verrel=$RPM_VERREL" >> "$GITHUB_OUTPUT"
+            echo "rpm_arch=$RPM_ARCH"   >> "$GITHUB_OUTPUT"
+            echo "have_rpm=true"        >> "$GITHUB_OUTPUT"
+          else
+            echo "have_rpm=false"       >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---- Build APT repo with pool/ and relative Filename ----
+      - name: Build APT repo (deb/pool + Packages/Release)
+        if: steps.rel.outputs.has_release == 'true' && steps.assets.outputs.have_deb == 'true'
+        run: |
+          set -euo pipefail
+          REPO_DIR="site-repo/deb"
+          PKG="${{ steps.assets.outputs.deb_pkg }}"
+          VER="${{ steps.assets.outputs.deb_ver }}"
+          ARCH="${{ steps.assets.outputs.deb_arch }}"
+          FIRST="$(echo "$PKG" | cut -c1 | tr '[:upper:]' '[:lower:]')"
+
+          # 1) Copy .deb into Debian pool layout
+          DEST_DIR="$REPO_DIR/pool/main/${FIRST}/${PKG}"
+          mkdir -p "$DEST_DIR"
+          cp artifacts/pkg.deb "$DEST_DIR/${PKG}_${VER}_${ARCH}.deb"
+
+          # 2) Generate Packages/Packages.gz for the right arch
+          BIN_DIR="dists/stable/main/binary-${ARCH}"
+          mkdir -p "$REPO_DIR/$BIN_DIR"
+          # Run inside REPO_DIR so Filenames are relative (pool/...) for APT
+          pushd "$REPO_DIR" >/dev/null
+          dpkg-scanpackages -a "$ARCH" pool > "$BIN_DIR/Packages"
+          gzip -kf "$BIN_DIR/Packages"
+
+          # 3) Generate Release with proper metadata
+          apt-ftparchive \
+            -o APT::FTPArchive::Release::Origin="exelearning" \
+            -o APT::FTPArchive::Release::Label="eXeLearning" \
+            -o APT::FTPArchive::Release::Suite="stable" \
+            -o APT::FTPArchive::Release::Codename="stable" \
+            -o APT::FTPArchive::Release::Architectures="${ARCH}" \
+            -o APT::FTPArchive::Release::Components="main" \
+            release dists/stable > dists/stable/Release
+          popd >/dev/null
+
+          # 4) Optional: export unsigned public placeholder (for docs)
+          echo "Use 'signed-by=/etc/apt/keyrings/exelearning.gpg' if you sign later." > "$REPO_DIR/README.txt"
+
+      # ---- Sign APT Release (optional) ----
+      - name: Sign APT Release and export public key
+        if: steps.rel.outputs.has_release == 'true' && steps.assets.outputs.have_deb == 'true' && env.APT_GPG_KEY_ID != ''
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+          APT_GPG_KEY_ID: ${{ secrets.APT_GPG_KEY_ID }}
+          APT_GPG_PASSPHRASE: ${{ secrets.APT_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          REPO_DIR="site-repo/deb"
+          echo "${APT_GPG_PRIVATE_KEY}" | gpg --batch --import
+
+          gpg --default-key "${APT_GPG_KEY_ID}" \
+              --batch --yes ${APT_GPG_PASSPHRASE:+--passphrase "$APT_GPG_PASSPHRASE"} \
+              -abs -o "$REPO_DIR/dists/stable/Release.gpg" "$REPO_DIR/dists/stable/Release"
+
+          gpg --default-key "${APT_GPG_KEY_ID}" \
+              --batch --yes ${APT_GPG_PASSPHRASE:+--passphrase "$APT_GPG_PASSPHRASE"} \
+              --clearsign -o "$REPO_DIR/dists/stable/InRelease" "$REPO_DIR/dists/stable/Release"
+
+          # Armored ASCII (for humans o documentation)
+          gpg --armor --export "${APT_GPG_KEY_ID}" > "$REPO_DIR/public.key"
+
+          # Binary .gpg (for apt signed-by=)
+          gpg --export "${APT_GPG_KEY_ID}" > "$REPO_DIR/public.gpg"
+
+
+      # ---- Build RPM repo (sign packages + repodata) ----
+      - name: Build and Sign RPM repo
+        if: steps.rel.outputs.has_release == 'true' && steps.assets.outputs.have_rpm == 'true'
+        env:
+          GH_PAGES_BASEURL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          RPM_GPG_PRIVATE_KEY: ${{ secrets.RPM_GPG_PRIVATE_KEY }}
+          RPM_GPG_KEY_ID: ${{ secrets.RPM_GPG_KEY_ID }}
+        run: |
+          set -euo pipefail
+          REPO_DIR="site-repo/rpm"
+          mkdir -p "$REPO_DIR"
+
+          # Configure GPG in non-interactive mode
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+
+          # Import PRIVATE key for signing
+          echo "${RPM_GPG_PRIVATE_KEY}" | gpg --batch --import
+
+          # Sign package (forcing gpg loopback with inline defines)
+          rpmsign \
+            --define "_gpg_name ${RPM_GPG_KEY_ID}" \
+            --define "__gpg /usr/bin/gpg" \
+            --define "__gpg_sign_cmd %{__gpg} --batch --no-tty --pinentry-mode loopback -u %{_gpg_name} -sbo %{__signature_filename} %{__plaintext_filename}" \
+            --addsign artifacts/pkg.rpm
+
+          # Export PUBLIC key and import into rpmdb so verification does not show NOKEY
+          gpg --armor --export "${RPM_GPG_KEY_ID}" > /tmp/RPM-GPG-KEY-exelearning.asc
+          sudo rpm --import /tmp/RPM-GPG-KEY-exelearning.asc
+
+          # Optional debug (list public keys in rpmdb)
+          rpm -q gpg-pubkey || true
+
+          # Verify package signature (should show ...Signature...: OK, no NOKEY)
+          rpm -Kv artifacts/pkg.rpm || true
+
+          # Publish package and repo metadata
+          cp artifacts/pkg.rpm "$REPO_DIR/"
+          createrepo_c --update "$REPO_DIR"
+          cp /tmp/RPM-GPG-KEY-exelearning.asc "$REPO_DIR/public.key"
+
+          # Generate .repo file with gpgcheck=1
+          cat > "$REPO_DIR/exelearning.repo" <<EOF
+          [exelearning]
+          name=eXeLearning
+          baseurl=${GH_PAGES_BASEURL}/rpm
+          enabled=1
+          gpgcheck=1
+          gpgkey=${GH_PAGES_BASEURL}/rpm/public.key
+          EOF
+
+      # ---- Merge docs + repos and autoindex ----
+      - name: Merge docs + repos
+        run: |
+          set -euo pipefail
+          mkdir -p site
+          rsync -a site-docs/ site/ || true
+          rsync -a site-repo/  site/ || true
+
+      - name: Generate recursive autoindex
+        shell: bash
+        run: |
+          set -euo pipefail
+          generate_index() {
+            local dir="$1"
+            local base="$2"
+            local rel="${dir#site/$base/}"
+            local index="$dir/index.html"
+
+            echo "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Index of /$base/${rel}</title></head><body><h1>Index of /$base/${rel}</h1><ul>" > "$index"
+            if [ "$dir" != "site/$base" ]; then
+              echo "<li><a href=\"../\">../</a></li>" >> "$index"
+            fi
+            for entry in "$dir"/*; do
+              [ -e "$entry" ] || continue
+              name=$(basename "$entry")
+              if [ -d "$entry" ]; then
+                echo "<li><a href=\"$name/\">$name/</a></li>" >> "$index"
+                generate_index "$entry" "$base"
+              elif [ "$name" != "index.html" ]; then
+                echo "<li><a href=\"$name\">$name</a></li>" >> "$index"
+              fi
+            done
+            echo "</ul></body></html>" >> "$index"
+          }
+
+          [ -d site/deb ] && generate_index "site/deb" "deb" || true
+          [ -d site/rpm ] && generate_index "site/rpm" "rpm" || true
+
+      # ---- Deploy to GitHub Pages ----
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

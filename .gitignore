@@ -90,3 +90,4 @@ data_database/
 data_persistent/
 
 symfony.lock
+.phpunit.cache

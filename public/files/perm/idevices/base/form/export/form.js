@@ -88,7 +88,7 @@ var $form = {
         const time = this.formatTime(ldata.time * 60)
 
 
-        const htmlContent = `<div class="game-evaluation-ids js-hidden" data-id="${ldata.id}" data-evaluationid="${ldata.evaluationID}"></div>
+    const htmlContent = `<div class="game-evaluation-ids js-hidden" data-id="${ldata.id}" data-evaluationb="${ldata.evaluation}" data-evaluationid="${ldata.evaluationID}"></div>
 
             <div id="frmMainContainer-${ldata.id}" class="form-IDevice" data-id="${ldata.id}">
                 <div class="form-Data js-hidden">${json}</div>
@@ -128,7 +128,10 @@ var $form = {
                     </div>
                 </div>
                 <div class="form-instructions">${ldata.eXeIdeviceTextAfter}</div>
-            </div>`;
+            </div>
+            ${$form.extractMediaElements(data.questionsData)}
+            
+            `;
 
         return template.replace("{content}", htmlContent);
     },
@@ -149,7 +152,7 @@ var $form = {
 
         const data = JSON.parse(JSON.stringify(odata));
         data.msgs = $form.mergeFields(data.msgs, $form.msgs);
-        data.id = ideviceId ?? data.id;
+        data.id = ideviceId || data.ideviceId || data.id;
         data.evaluation = data.evaluation || false;
         data.evaluationID = data.evaluationID || '';
         data.time = data.time || 0;
@@ -176,6 +179,7 @@ var $form = {
         data.totalQuestions = 0;
         data.rightQuestions = 0;
         data.wrongQuestions = 0;
+        data.showSlider = data.showSlider ?? false;
 
         data.passRate = data.passRate ?? 5;
         data.addBtnAnswers = data.addBtnAnswers ?? true;
@@ -225,6 +229,9 @@ var $form = {
                 $form.hideScore(ldata.id);
                 $form.setBehaviourTest(ldata);
                 clearInterval(interval);
+                if (ldata.showSlider) {
+                    $form.addEventsSlideShow(ldata)
+                }
             }
         }, 200);
 
@@ -280,8 +287,174 @@ var $form = {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(ldata, this.isInExe);
         }
 
-        $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+        const dataString = JSON.stringify(ldata)
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex('.form-IDevice');
+        }
     },
+
+
+
+    extractMediaElements: function (items) {
+        if (!Array.isArray(items)) return ''
+
+        const tmp = document.createElement('div')
+        const set = new Set()
+
+        for (const { baseText = '' } of items) {
+            tmp.innerHTML = baseText
+
+            tmp.querySelectorAll('img').forEach(el => set.add(el.outerHTML))
+            tmp.querySelectorAll('audio, video').forEach(el => set.add(el.outerHTML))
+
+            tmp.innerHTML = ''
+        }
+
+        return `<div class="questionsMedia" style="display:none">${[...set].join('')}</div>`
+    },
+
+
+    replaceResourceDirectoryPaths(data, htmlString) {
+
+        const $node = $('#' + data.ideviceId);
+        const isInExe = eXe.app.isInExe();
+
+        if (isInExe || $node.length == 0) return htmlString;
+
+        let dir = $('html').is('#exe-index')
+            ? 'content/resources/' + $node.first().attr('id-resource')
+            : '../content/resources/' + $node.first().attr('id-resource');
+        const custom = $('html').is('#exe-index')
+            ? 'custom/'
+            : '../custom/';
+        if (!dir.endsWith('/')) dir += '/';
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        doc.querySelectorAll('img[src], video[src], audio[src], a[href]')
+            .forEach(el => {
+                const attr = el.hasAttribute('src') ? 'src' : 'href';
+                const val = el.getAttribute(attr).trim();
+
+                if (/^\/?files\//.test(val)) {
+                    const filename = val.split('/').pop() || '';
+                    if (val.indexOf('file_manager') === -1) {
+                        el.setAttribute(attr, dir + filename);
+                    } else {
+                        el.setAttribute(attr, custom + filename);
+                    }
+                }
+            });
+        return doc.body.innerHTML;
+    },
+
+
+    addEventsSlideShow: function (data) {
+        const mOptions = data;
+        const instance = data.id;
+        mOptions.current = 0;
+        function clearPreviousMathInWrapper(wrapperEl) {
+            if (!wrapperEl || typeof MathJax === 'undefined') return;
+
+            try {
+                if (typeof MathJax.typesetClear === 'function') {
+                    MathJax.typesetClear([wrapperEl]);
+                    return;
+                }
+            } catch (e) {
+                // 
+            }
+            try {
+
+                wrapperEl.querySelectorAll('mjx-container').forEach(function (n) { n.remove(); });
+                wrapperEl.querySelectorAll('span.MathJax, div.MathJax').forEach(function (n) { n.remove(); });
+            } catch (e) {
+                // 
+            }
+        }
+
+        if (mOptions.showSlider) {
+            const $slideshow = $('#frmMainContainer-' + instance).find('.FRMP-SlideshowContainer');
+            const $wrapper = $slideshow.find('.FRMP-SlideshowWrapper');
+            const $slides = $wrapper.children();
+            const total = $slides.length;
+
+            if (total > 1) {
+                $wrapper.css({ position: 'relative', overflow: 'hidden' });
+
+                const firstHeight = $slides.eq(0).outerHeight(true);
+                $wrapper.css('height', firstHeight);
+                $slideshow.css('height', firstHeight + $slideshow.find('.FRMP-SlideshowControls').outerHeight(true));
+                $slides.css({ position: 'absolute', top: 0, left: 0, width: '100%' }).hide().eq(0).show();
+
+                function goTo(index, direction) {
+                    const nextIndex = (index + total) % total;
+                    const $currentSlide = $slides.eq(mOptions.current);
+                    const $nextSlide = $slides.eq(nextIndex);
+
+                    if (direction === 'next') {
+                        $currentSlide
+                            .animate({ left: '-100%' }, 200, function () {
+                                $(this).hide().css({ left: 0 });
+                            });
+                        $nextSlide
+                            .css({ left: '100%' })
+                            .show()
+                            .animate({ left: 0 }, 200, function () {
+                                const newH = $nextSlide.outerHeight(true);
+                                $wrapper.animate({ height: newH }, 200);
+                                $slideshow.animate({ height: newH + $slideshow.find('.FRMP-SlideshowControls').outerHeight(true) }, 300);
+                            });
+                    } else {
+                        $currentSlide
+                            .animate({ left: '100%' }, 200, function () {
+                                $(this).hide().css({ left: 0 });
+                            });
+                        $nextSlide
+                            .css({ left: '-100%' })
+                            .show()
+                            .animate({ left: 0 }, 200, function () {
+                                const newH = $nextSlide.outerHeight(true);
+                                $wrapper.animate({ height: newH }, 200);
+                                $slideshow.animate({ height: newH + $slideshow.find('.FRMP-SlideshowControls').outerHeight(true) }, 300);
+                            });
+                    }
+
+                    mOptions.current = nextIndex;
+                    $slideshow.find('#frmSlideNumber-' + instance).text((mOptions.current + 1) + '/' + total);
+                    clearPreviousMathInWrapper($wrapper.get(0));
+
+                    setTimeout(function () {
+                        if ($exeDevices?.iDevice?.gamification?.math?.updateLatex)
+                            $exeDevices.iDevice.gamification.math.updateLatex('.FRMP-SlideshowWrapper');
+                    }, 1000);
+                }
+
+                $slideshow.find('#frmNext-' + instance).on('click', function (e) {
+                    e.preventDefault();
+                    goTo(mOptions.current + 1, 'next');
+                });
+                $slideshow.find('#frmPrev-' + instance).on('click', function (e) {
+                    e.preventDefault();
+                    goTo(mOptions.current - 1, 'prev');
+                });
+            } else if (total === 1) {
+                clearPreviousMathInWrapper($wrapper.get(0));
+                setTimeout(function () {
+                    if ($exeDevices?.iDevice?.gamification?.math?.updateLatex)
+                        $exeDevices.iDevice.gamification.math.updateLatex('.FRMP-SlideshowWrapper');
+                }, 1000);
+            }
+        }
+    },
+
+
 
     initScormData: function (ldata) {
         $form.mScorm = window.scorm;
@@ -376,7 +549,12 @@ var $form = {
             }
         }, 1000);
         $exeDevices.iDevice.gamification.math.updateLatex('#frmMainContainer-' + data.id);
+        setTimeout(function () {
+            $form.resizeSlideShow(data);
+        }, 100)
         data.gameStarted = true;
+
+
     },
 
     gameOver: function (data) {
@@ -414,51 +592,44 @@ var $form = {
         }
     },
 
-    rebootGame: function (data) {
+    rebootGame(data) {
         this.resetScore(data);
-        const checkButton = $(`#form-button-check-${data.id}`);
-        const rebootButton = $(`#form-button-reset-${data.id}`);
-        const showAnswers = $(`#form-button-show-answers-${data.id}`);
-        const cover = $(`#frmCover-${data.id}`);
 
+        const $checkButton = $(`#form-button-check-${data.id}`);
+        const $resetButton = $(`#form-button-reset-${data.id}`);
+        const $showAnswers = $(`#form-button-show-answers-${data.id}`);
+        const $cover = $(`#frmCover-${data.id}`);
+        const $formPreview = $(`#form-questions-${data.id}`);
 
-        if (cover.length) cover.hide();
+        const toggle = ($el, show) => {
+            if ($el.length) show ? $el.show() : $el.hide();
+        };
 
-        if (checkButton.length) checkButton.show();
-        if (rebootButton.length) rebootButton.hide();
-        if (showAnswers.length) showAnswers.hide();
-        const $formPreview = $("#formPreview-" + data.id);
+        if ($cover.length) $cover.hide();
+        toggle($checkButton, true);
+        toggle($resetButton, false);
+        toggle($showAnswers, false);
 
-        $formPreview.find("input").each(function () {
-            const $input = $(this);
-            if ($input.hasClass("fillInput")) {
-                $input.css({ "border-color": "" }).val("");
-            } else if ($input.attr("name").includes("TrueFalseQuestion")) {
-                $input.closest("[id^=TrueFalseQuestion]").find("input").each(function () {
-                    $(this).prop("checked", false).parent().css("color", "");
-                });
-            } else if ($input.attr("name").includes("SelectionQuestion")) {
-                $input.closest("[id^=SelectionQuestion]").find("input").each(function () {
-                    $(this).prop("checked", false).parent().css("color", "");
-                });
-            }
-        });
+        $formPreview.find("input.fillInput").css("border-color", "").val("");
+        $formPreview
+            .find("[id^=TrueFalseQuestion] input, [id^=SelectionQuestion] input")
+            .prop("checked", false)
+            .parent().css("color", "");
 
-        $formPreview.find("select").each(function () {
-            $(this).css({ "border-color": "" }).val("");
-        });
+        $formPreview.find("select").css("border-color", "").val("");
 
         $form.hideScore(data.id);
 
-        if (data.time > 0) {
-            if (rebootButton.length) rebootButton.hide();
-            if (showAnswers.length) showAnswers.hide();
-            data.gameStarted = false;
-            data.gameOver = false;
-            $form.startGame(data)
+        data.gameStarted = false;
+        data.gameOver = false;
 
+        if (data.time > 0) {
+            toggle($resetButton, false);
+            toggle($showAnswers, false);
+            $form.startGame(data);
         }
     },
+
 
     saveEvaluation: function (data) {
         data.scorerp = (data.rightQuestions * 10) / data.totalQuestions;
@@ -481,7 +652,7 @@ var $form = {
      *
      * @returns {String}
      */
-    getHtmlFormView(questionsData, data) {
+    generatePage(questionsData, data) {
         let form = `<ul id="formPreview-${data.id}" class="FRMP-PREVIEW">`;
 
         questionsData.forEach(question => {
@@ -506,6 +677,88 @@ var $form = {
         form += "</ul>";
 
         return form;
+    },
+
+    getHtmlFormView: function (questionsData, data) {
+        const html = data.showSlider
+            ? $form.generateFormSlideshow(questionsData, data) :
+            $form.generatePage(questionsData, data);
+        return html;
+    },
+
+
+    generateFormSlideshow: function (questionsData, data) {
+        const itemsPerSlide = data.showSlider ? 1 : 0;
+        if (typeof itemsPerSlide !== 'number' || itemsPerSlide < 1) {
+            return this.generatePage(questionsData, data);
+        }
+
+        const grouped = [];
+        for (let i = 0; i < questionsData.length; i += itemsPerSlide) {
+            grouped.push(questionsData.slice(i, i + itemsPerSlide));
+        }
+
+        const slidesHtml = grouped
+            .map((group, slideIdx) => {
+                let questionsHtml = `<ul class="FRMP-PREVIEW">`;
+                group.forEach((question) => {
+                    switch (question.activityType) {
+                        case "dropdown":
+                            questionsHtml += this.createDropdownQuestion(question, data);
+                            break;
+                        case "selection":
+                            questionsHtml += this.createSelectionQuestion(question, data);
+                            break;
+                        case "true-false":
+                            questionsHtml += this.createTrueFalseQuestion(question, data);
+                            break;
+                        case "fill":
+                            questionsHtml += this.createFillQuestion(question, data);
+                            break;
+                        default:
+                            break;
+                    }
+                });
+                questionsHtml += `</ul>`;
+
+                return `
+              <div class="FRMP-SlideshowSlide" data-slide="${slideIdx}">
+                ${questionsHtml}
+              </div>`;
+            })
+            .join('');
+
+        const totalSlides = grouped.length;
+        return `
+            <div class="FRMP-SlideshowContainer" id="frmSlideShow-${data.id}">
+                <div class="FRMP-SlideshowControls">
+                    <a href="#" class="FRMP-SlideshowPrev FRMP-SlideshowControl" id="frmPrev-${data.id}" title="${data.msgs.msgPrevious}">
+                        <img src="${data.idevicePath}formprevious.png" alt="${data.msgs.msgPrevious}" />
+                    </a>
+                    <span class="FRMP-SlideNumber" id="frmSlideNumber-${data.id}">1/${totalSlides}</span>
+                    <a href="#" class="FRMP-SlideshowNext FRMP-SlideshowControl" id="frmNext-${data.id}" title="${data.msgs.msgNext}">
+                        <img src="${data.idevicePath}formnext.png" alt="${data.msgs.msgNext}" />
+                    </a>
+                </div>
+                <div class="FRMP-SlideshowWrapper">
+                    ${slidesHtml}
+                </div>
+            </div>
+        `;
+    },
+
+    resizeSlideShow: function (data) {
+        const mOptions = data;
+        const instance = data.id;
+        if (mOptions.showSlider) {
+            const $slideshow = $('#frmSlideShow-' + instance)
+            const $wrapper = $slideshow.find('.FRMP-SlideshowWrapper');
+            const controlsHeight = $slideshow.find('.FRMP-SlideshowControls').outerHeight(true) + 30;
+            const maxHeight = $slideshow.find('.FRMP-SlideshowSlide').eq(mOptions.current).outerHeight();
+            $wrapper.css('height', maxHeight);
+            $slideshow.css('height', maxHeight + controlsHeight);
+        }
+
     },
 
     /**
@@ -632,6 +885,7 @@ var $form = {
      * @returns
      */
     getProcessTextDropdownQuestion(baseText, otherWordsText, data) {
+        baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         let regexReplace = /(<u>).*?(<\/u>)/;
         let regexElement = /(?<=<u>).*?(?=<\/u>)/;
         let regexElementsAll = /(?<=<u>).*?(?=<\/u>)/g;
@@ -698,6 +952,7 @@ var $form = {
      * @returns {String}
      */
     getProcessTextFillQuestion(baseText, checkCapitalization, strictQualification, data) {
+        baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         const regexReplace = /(<u>).*?(<\/u>)/;
         const regexElement = /(?<=<u>).*?(?=<\/u>)/;
 
@@ -735,7 +990,9 @@ var $form = {
      * @returns {String}
      */
 
+
     getProcessTextSelectionQuestion(baseText, optionType, answer, data) {
+        baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         let id = this.generateRandomId();
         let stringTitle;
         optionType === "radio" ? stringTitle = data.msgs.msgSingleSelectionHelp : stringTitle = data.msgs.msgMultipleSelectionHelp;
@@ -773,6 +1030,7 @@ var $form = {
      * @returns {String}
      */
     getProcessTextTrueFalseQuestion(baseText, answer, data) {
+        baseText = $form.replaceResourceDirectoryPaths(data, baseText);
         let id = this.generateRandomId();
         let htmlTrueFalse = `<div title="${data.msgs.msgTrueFalseHelp}">`;
         htmlTrueFalse += baseText.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi, '');
@@ -817,11 +1075,17 @@ var $form = {
         const $scoreText = $("#form-score-" + ideviceId);
         const $resultsContainer = $("#resultsContainer-" + ideviceId);
 
-        if (!$resultTest.length || !$scoreText.length || !$resultsContainer.length) return;
+        if ($resultTest.length) {
+            $resultTest.hide();
+        }
 
-        $resultTest.hide();
-        $scoreText.hide();
-        $resultsContainer.hide();
+        if ($scoreText.length) {
+            $scoreText.hide();
+        }
+
+        if ($resultsContainer.length) {
+            $resultsContainer.hide();
+        }
     },
 
     showScore: function (passRate, data) {
@@ -910,42 +1174,56 @@ var $form = {
     },
 
 
-    setBehaviourButtonShowAnswers: function (data) {
-        const $showAnswersButton = $("#form-button-show-answers-" + data.id);
-        if (!$showAnswersButton.length) return;
+    setBehaviourButtonShowAnswers(data) {
+        const $btn = $(`#form-button-show-answers-${data.id}`);
+        if (!$btn.length) return;
 
-        $showAnswersButton.on("click", function () {
-            const $formPreview = $("#formPreview-" + data.id);
-            let num = 0;
+        const $formPreview = $(`#form-questions-${data.id}`);
+
+        const showFillInput = $input => {
+            $input.css("border-color", "").val($input.next().text());
+        };
+
+        const showTrueFalse = $container => {
+            const answer = parseInt($container.data("answer"), 10);
+            $container.find("input").each(function () {
+                const $opt = $(this);
+                const val = parseInt($opt.val(), 10);
+                $opt.prop("checked", val === answer).parent().css("color", "");
+            });
+        };
+
+        const showSelection = $container => {
+            const answers = $container.find("[id^=SelectionAnswer]").text().split(",");
+            $container.find("input").each(function (i) {
+                const $opt = $(this);
+                const checked = answers.includes(i.toString());
+                $opt.prop("checked", checked).parent().css("color", "");
+            });
+        };
+
+        $btn.on("click", () => {
             $formPreview.find("input").each(function () {
-                const $input = $(this);
-                if ($input.hasClass("fillInput")) {
-                    $input.css("border-color", "").val($input.next().text());
-                } else if ($input.attr("name").includes("TrueFalseQuestion")) {
-                    const $trueFalseContainer = $input.closest("[id^=TrueFalseQuestion_]");
-                    const answer = parseInt($trueFalseContainer.data("answer"), 10);
-                    $trueFalseContainer.find("input").each(function () {
-                        const $option = $(this);
-                        const val = parseInt($option.val(), 10);
-                        $option.parent().css("color", "");
-                        $option.prop("checked", val === answer);
-                    });
-                    num++;
-                } else if ($input.attr("name").includes("SelectionQuestion")) {
-                    const $selectionContainer = $input.closest("[id^=SelectionQuestion]");
-                    const answers = $selectionContainer.find("[id^=SelectionAnswer]").text().split(",");
-                    $selectionContainer.find("input").each(function (index) {
-                        $(this).prop("checked", answers.includes(index.toString())).parent().css("color", "");
-                    });
+                const $inp = $(this);
+                if ($inp.hasClass("fillInput")) {
+                    showFillInput($inp);
+                } else if ($inp.attr("name").includes("TrueFalseQuestion")) {
+                    showTrueFalse($inp.closest("[id^=TrueFalseQuestion_]"));
+                } else if ($inp.attr("name").includes("SelectionQuestion")) {
+                    showSelection($inp.closest("[id^=SelectionQuestion]"));
                 }
             });
+
             $formPreview.find("select").each(function () {
-                $(this).css("border-color", "").val($(this).next().text());
+                const $sel = $(this);
+                $sel.css("border-color", "").val($sel.next().text());
             });
 
-            //$form.hideScore(data.id);
+            // Ocultar puntuación si es necesario
+            // this.hideScore(data.id);
         });
     },
+
 
 
     setBehaviourButtonCheckQuestions: function (data) {
@@ -981,7 +1259,6 @@ var $form = {
             checkFunctions[typeQuestion]();
         }
     },
-
 
     /**
      *
@@ -1079,19 +1356,68 @@ var $form = {
      */
     checkQuestionFill: function ($question, data) {
         data.totalQuestions++;
+
         const checkCapitalization = $question.find('[id^="fillCapitalization"]').text() === "true";
         const strictQualification = $question.find('[id^="fillStrictQualification"]').text() === "true";
         let correctWords = 0;
 
+        function levenshtein(a, b) {
+            const m = a.length;
+            const n = b.length;
+            const dp = Array.from({ length: m + 1 }, () => new Array(n + 1));
+
+            for (let i = 0; i <= m; i++) {
+                dp[i][0] = i;
+            }
+            for (let j = 0; j <= n; j++) {
+                dp[0][j] = j;
+            }
+
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                    dp[i][j] = Math.min(
+                        dp[i - 1][j] + 1,
+                        dp[i][j - 1] + 1,
+                        dp[i - 1][j - 1] + cost
+                    );
+                }
+            }
+
+            return dp[m][n];
+        }
+
         $question.find(".fillInput").each((_, input) => {
             const $input = $(input);
             const questionId = $input.data("id");
-            const answerValues = $(`#fillAnswer_${questionId}`, $question).text().split("|");
-            const userValue = $input.val().trim();
+            const answerValues = $(`#fillAnswer_${questionId}`, $question)
+                .text()
+                .split("|");
+            const userValueRaw = $input.val().trim();
 
-            const isCorrect = checkCapitalization
-                ? answerValues.includes(userValue)
-                : answerValues.some(answer => answer.toLowerCase() === userValue.toLowerCase());
+            let isCorrect = false;
+
+            for (let answerRaw of answerValues) {
+                let answer = answerRaw;
+                let userValue = userValueRaw;
+
+                if (!checkCapitalization) {
+                    answer = answer.toLowerCase();
+                    userValue = userValue.toLowerCase();
+                }
+
+                if (strictQualification) {
+                    if (answer === userValue) {
+                        isCorrect = true;
+                        break;
+                    }
+                } else {
+                    if (levenshtein(answer, userValue) <= 1) {
+                        isCorrect = true;
+                        break;
+                    }
+                }
+            }
 
             if (isCorrect) {
                 $input.css({ "border-color": "green" });
@@ -1101,7 +1427,11 @@ var $form = {
             }
         });
 
-        correctWords === $question.find(".fillInput").length ? data.rightQuestions++ : data.wrongQuestions++;
+        if (correctWords === $question.find(".fillInput").length) {
+            data.rightQuestions++;
+        } else {
+            data.wrongQuestions++;
+        }
     },
 
     /**
@@ -1153,7 +1483,7 @@ var $form = {
     initSCORM: function (ldata) {
         let parsedData = (typeof ldata === 'string') ? JSON.parse(ldata) : ldata;
         $form.mScorm = scorm;
-        if ($form.mScorm.init()); {
+        if ($form.mScorm.init()) {
             $form.initScormData(parsedData);
         }
     },

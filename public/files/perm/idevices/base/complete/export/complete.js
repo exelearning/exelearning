@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 /**
- * Lock iDevice (export code)
+ * Complete iDevice (export code)
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: Manuel Narváez Martínez
  * Graphic design: Ana María Zamora Moreno, Francisco Javier Pulido
@@ -172,8 +172,8 @@ var $eXeCompleta = {
                 <div class="CMPT-StartGame"><a href="#" id="cmptStartGame-${instance}">${msgs.msgPlayStart}</a></div>
                 <div id="cmptMensaje-${instance}" class="CMPT-Message"></div>
                 <div class="CMPT-ButtonsDiv">
-                    <button id="cmptCheckPhrase-${instance}" class="CMPT-ButtonsComands">${msgs.msgCheck}</button>
-                    <button id="cmptReloadPhrase-${instance}" class="CMPT-ButtonsComands CMPT-Hide">${msgs.msgTry}</button>
+                    <button id="cmptCheckPhrase-${instance}" class="btn btn-primary" aria-label="${msgs.msgCheck}">${msgs.msgCheck}</button>
+                    <button id="cmptReloadPhrase-${instance}" class="CMPT-Hide btn btn-primary" aria-label="${msgs.msgTry}">${msgs.msgTry}</button>
                 </div>
                 <div class="CMPT-Hide" id="cmptSolutionDiv-${instance}">
                     <p>${msgs.msgSolution}:</p>
@@ -618,7 +618,7 @@ var $eXeCompleta = {
         $('#cmptMultimedia-' + instance)
             .find('.CMPT-Input')
             .val('');
-        if (mOptions.type == 1) {
+    if (mOptions.type == 1) {
             $('#cmptMultimedia-' + instance)
                 .find('.CMPT-Input')
                 .addClass('CMPT-Drag');
@@ -1078,8 +1078,8 @@ var $eXeCompleta = {
     createButtons: function (instance) {
         const mOptions = $eXeCompleta.options[instance];
         let html = '';
-        for (const [key, value] of Object.entries(mOptions.oWords)) {
-            const button = `<div class="CMPT-WordsButton" draggable="true" data-number="${value}">${key}
+            for (const [key, value] of Object.entries(mOptions.oWords)) {
+                const button = `<div class="CMPT-WordsButton" data-word="${key}" data-number="${value}">${key}
                                 <div class="CMPT-WordsButtonNumber">${value}</div>
                             </div>`;
             html += button;
@@ -1103,42 +1103,125 @@ var $eXeCompleta = {
         });
         $cc.css('cursor', 'pointer');
         $cc.draggable({
-            revert: true,
-            placeholder: false,
-            droptarget: pc,
-            start: function () {
-                if (!$(this).hasClass('CMPT-Drag')) {
-                    return false;
-                }
-            },
-            drop: function (evt, droptarget) {
-                $(this).parent(pc).css('z-index', '1');
-                $(this).css('z-index', '1');
+            helper: 'clone',
+            appendTo: 'body',
+            zIndex: 10000,
+            revert: 'invalid',
+            start: function () { $eXeCompleta.isDragging = true; },
+            stop: function () {
                 $eXeCompleta.isDragging = false;
-                $eXeCompleta.moveCard($(this), droptarget, instance);
+            }
+        });
+
+        $(`#cmptMultimedia-${instance}`).find('.CMPT-Input.CMPT-Drag').droppable({
+            accept: function(draggable){
+                return draggable.hasClass('CMPT-WordsButton') || draggable.is('input.CMPT-Input');
             },
+            tolerance: 'pointer',
+            hoverClass: 'hovering',
+            drop: function (event, ui) {
+                const $target = $(this);
+                if (ui.draggable.is('input.CMPT-Input') && ui.draggable[0] === $target[0]) return;
+                $eXeCompleta.moveCard(ui.draggable, $target, instance);
+            }
         });
         $buttonsDiv.show();
     },
 
-    moveCard: function ($item, destino) {
-        if ($(destino).attr('disabled')) return;
-        const $hijo = $item.find('.CMPT-WordsButtonNumber').eq(0),
-            $clone = $item.clone();
-        let number = parseInt($hijo.text(), 10);
-        $clone.find('.CMPT-WordsButtonNumber').remove();
-        const oword = $clone.text();
-        $(destino).val(oword);
-        number--;
-        $hijo.text(number);
-        if (number === 0) {
-            $hijo.remove();
-            $item.each(function () {
-                this.style.setProperty('text-decoration', 'line-through', 'important');
-            });
-            $item.draggable('destroy');
+    moveCard: function ($item, $destino, instance) {
+
+    const mOptions = $eXeCompleta.options[instance];
+    if (!mOptions.gameStarted || mOptions.gameOver) return;
+    if ($destino.is(':disabled')) return;
+
+        const fromInput = $item.is('input.CMPT-Input');
+
+        let incoming = '';
+        if (fromInput) {
+            incoming = $.trim($item.val());
+            if (!incoming) return; 
+        } else {
+            const $clone = $item.clone();
+            $clone.find('.CMPT-WordsButtonNumber').remove();
+            incoming = $.trim($clone.text());
         }
-        $(destino).attr('disabled', true).removeClass('CMPT-Drag');
+
+        const prev = $.trim($destino.val());
+
+
+        if (prev) {
+            const $buttonsDiv = $(`#cmptButonsDiv-${instance}`);
+            let $btn = $buttonsDiv.find(`.CMPT-WordsButton[data-word="${prev.replace(/"/g,'\\"')}"]`).first();
+            if ($btn.length === 0) {
+                $btn = $buttonsDiv.find('.CMPT-WordsButton').filter(function(){
+                    const $c = $(this).clone();
+                    $c.find('.CMPT-WordsButtonNumber').remove();
+                    return $.trim($c.text()) === prev;
+                }).first();
+            }
+            if ($btn.length) {
+                let $num = $btn.find('.CMPT-WordsButtonNumber').eq(0);
+                if ($num.length) {
+                    const n = parseInt($num.text(), 10) + 1;
+                    $num.text(n);
+                    if (n === 1) { $num.hide(); } else { $num.show(); }
+                } else {            
+                    $btn.each(function(){ this.style.removeProperty('text-decoration'); });
+                    $btn.append(`<div class="CMPT-WordsButtonNumber">1</div>`);
+                    $btn.find('.CMPT-WordsButtonNumber').eq(0).hide();
+                    try { $btn.draggable('destroy'); } catch (e) {}
+                    $btn.draggable({
+                        helper: 'clone',
+                        appendTo: 'body',
+                        zIndex: 10000,
+                        revert: 'invalid',
+                        start: function () { $eXeCompleta.isDragging = true; },
+                        stop: function () { $eXeCompleta.isDragging = false; }
+                    });
+                }
+            }
+        }
+
+        $destino.val(incoming);
+        $destino.prop('readonly', true).addClass('CMPT-Drag');
+        $destino.addClass('CMPT-Filled');
+        try { $destino.draggable('destroy'); } catch (e) {}
+        $destino.draggable({
+            helper: 'clone',
+            appendTo: 'body',
+            zIndex: 10000,
+            revert: 'invalid',
+            cancel: '',
+            start: function () { $eXeCompleta.isDragging = true; },
+            stop: function () { $eXeCompleta.isDragging = false; }
+        });
+
+        if (fromInput) {
+            $item.val('');
+            $item.prop('readonly', false).removeClass('CMPT-Filled');
+            setTimeout(function(){
+                $item.val('');
+                $item.prop('readonly', false).removeClass('CMPT-Filled');
+                try { $item.draggable('destroy'); } catch (e) {}
+                $item.trigger('change');
+            }, 0);
+            try { $item.draggable('destroy'); } catch (e) {}
+        } else {
+             const $numIn = $item.find('.CMPT-WordsButtonNumber').eq(0);
+            if ($numIn.length) {
+                let count = parseInt($numIn.text(), 10) - 1;
+                $numIn.text(count);
+                if (count <= 0) {
+                    $numIn.remove();
+                    $item.each(function(){ this.style.setProperty('text-decoration','line-through','important'); });
+                    try { $item.draggable('destroy'); } catch (e) {}
+                } else if (count === 1) {
+                    $numIn.hide();
+                } else {
+                    $numIn.show();
+                }
+            }
+        }
     },
 
     showFeedBack: function (instance) {
@@ -1227,561 +1310,4 @@ $(function () {
     $eXeCompleta.init();
 });
 
-/* eslint-disable */
-function factory(e) {
-    'use strict';
-    function t(t, o) {
-        var r = this,
-            n = e(t),
-            a = n[0].nodeName,
-            s = 'OL' == a || 'UL' == a ? 'LI' : 'DIV';
-        (r.$sortable = n.data('sortable', r)),
-            (r.options = e.extend(
-                {},
-                {
-                    handle: !1,
-                    container: a,
-                    container_type: a,
-                    same_depth: !1,
-                    make_unselectable: !1,
-                    nodes: s,
-                    nodes_type: s,
-                    placeholder_class: null,
-                    auto_container_class: 'sortable_container',
-                    autocreate: !1,
-                    group: !1,
-                    scroll: !1,
-                    update: null,
-                },
-                o,
-            )),
-            r.init();
-    }
-    function o(t, o) {
-        var r = this;
-        (r.$draggable = e(t).data('draggable', r)),
-            (r.options = e.extend(
-                {},
-                {
-                    handle: !1,
-                    delegate: !1,
-                    revert: !1,
-                    placeholder: !1,
-                    droptarget: !1,
-                    container: !1,
-                    scroll: !1,
-                    update: null,
-                    drop: null,
-                },
-                o,
-            )),
-            r.init();
-    }
-    function r(t, o) {
-        var r = this;
-        (r.$droppable = e(t).data('droppable', r)),
-            (r.options = e.extend(
-                {},
-                {
-                    accept: !1,
-                    drop: null,
-                },
-                o,
-            )),
-            r.init();
-    }
-    function n(t, o) {
-        var r,
-            n = e(t),
-            a = null,
-            s = null,
-            i = null;
-        function l(e) {
-            return (
-                'touch' ===
-                (e = window.hasOwnProperty('event')
-                    ? window.event
-                    : e).type.substr(0, 5) &&
-                (e = (e = e.hasOwnProperty('originalEvent')
-                    ? e.originalEvent
-                    : e).touches[0]),
-                {
-                    pageX: e.pageX,
-                    pageY: e.pageY,
-                    clientX: e.clientX,
-                    clientY: e.clientY,
-                    dX: s ? e.pageX - s.pageX : 0,
-                    dY: s ? e.pageY - s.pageY : 0,
-                }
-            );
-        }
-        function d(e) {
-            if (
-                ((i = l(e)),
-                    o.scroll &&
-                    (function e(t) {
-                        var a = n.scrollParent(),
-                            s = {
-                                x: t.pageX,
-                                y: t.pageY,
-                            },
-                            i = a.offset(),
-                            l = a.scrollLeft(),
-                            d = a.scrollTop(),
-                            c = a.width(),
-                            p = a.height();
-                        if ((window.clearTimeout(r), l > 0 && s.x < i.left))
-                            a.scrollLeft(l - o.scrollspeed);
-                        else if (
-                            l < a.prop('scrollWidth') - c &&
-                            s.x > i.left + c
-                        )
-                            a.scrollLeft(l + o.scrollspeed);
-                        else if (d > 0 && s.y < i.top)
-                            a.scrollTop(d - o.scrollspeed);
-                        else {
-                            if (
-                                !(d < a.prop('scrollHeight') - p) ||
-                                !(s.y > i.top + p)
-                            )
-                                return;
-                            a.scrollTop(d + o.scrollspeed);
-                        }
-                        r = window.setTimeout(function () {
-                            e(t);
-                        }, o.scrolltimeout);
-                    })(i),
-                    a.trigger('dragging'),
-                    o.drag)
-            )
-                return o.drag.call(a, e, i), !1;
-        }
-        function c(t) {
-            return (
-                window.clearTimeout(r),
-                o.dragstop && o.dragstop.call(a, t, i),
-                a.removeClass('dragging'),
-                a.trigger('dragstop'),
-                (s = !1),
-                (i = !1),
-                (a = !1),
-                e(document).off('.dragaware'),
-                !1
-            );
-        }
-        (o = e.extend(
-            {},
-            {
-                handle: null,
-                delegate: null,
-                scroll: !1,
-                scrollspeed: 15,
-                scrolltimeout: 50,
-                dragstart: null,
-                drag: null,
-                dragstop: null,
-            },
-            o,
-        )),
-            n
-                .addClass('dragaware')
-                .on(
-                    'touchstart.dragaware mousedown.dragaware',
-                    o.delegate,
-                    function t(r) {
-                        var p = e(r.target);
-                        if (
-                            ((a = o.delegate ? p.closest(o.delegate) : n),
-                                p.closest(o.handle || '*').length &&
-                                ('touchstart' == r.type || 0 == r.button))
-                        )
-                            return (
-                                (s = i = l(r)),
-                                o.dragstart && o.dragstart.call(a, r, i),
-                                a.addClass('dragging'),
-                                a.trigger('dragstart'),
-                                e(document)
-                                    .on(
-                                        'touchend.dragaware mouseup.dragaware click.dragaware',
-                                        c,
-                                    )
-                                    .on(
-                                        'touchmove.dragaware mousemove.dragaware',
-                                        d,
-                                    ),
-                                !1
-                            );
-                    },
-                ),
-            n.on('destroy.dragaware', function () {
-                n.removeClass('dragaware').off('.dragaware');
-            });
-    }
-    function a(e) {
-        this.origin = e;
-    }
-    return (
-        (t.prototype.invoke = function (e) {
-            return 'destroy' === e
-                ? this.destroy()
-                : 'serialize' === e
-                    ? this.serialize(this.$sortable)
-                    : void 0;
-        }),
-        (t.prototype.init = function () {
-            var t,
-                o,
-                r,
-                n = this;
 
-            function s(r, a) {
-                var s, i, l;
-                if (a)
-                    return (
-                        (s = n.$sortable
-                            .add(n.$sortable.find(n.options.container))
-                            .not(r.find(n.options.container))
-                            .not(t.find(n.options.container))
-                            .not(n.find_nodes())),
-                        n.options.same_depth &&
-                        ((l = r.parent().nestingDepth('ul')),
-                            (s = s.filter(function () {
-                                return e(this).nestingDepth('ul') == l;
-                            }))),
-                        o.hide(),
-                        s.each(function (t, o) {
-                            var r,
-                                s,
-                                l,
-                                d = e(n.create_placeholder()).appendTo(o),
-                                c = e(o)
-                                    .children(n.options.nodes)
-                                    .not('.sortable_clone');
-                            for (s = 0; s < c.length; s++)
-                                (r = c.eq(s)),
-                                    (l = n.square_dist(r.offset(), a)),
-                                    (!i || i.dist > l) &&
-                                    (i = {
-                                        container: o,
-                                        before: r[0],
-                                        dist: l,
-                                    });
-                            d.remove();
-                        }),
-                        o.show(),
-                        i
-                    );
-            }
-            function i(t, o) {
-                var r = e(o.container);
-                o.before && o.before.closest('html')
-                    ? t.insertBefore(o.before)
-                    : t.appendTo(r);
-            }
-            n.options.make_unselectable && e('html').unselectable(),
-                n.$sortable
-                    .addClass('sortable')
-                    .on('destroy.sortable', function () {
-                        n.destroy();
-                    }),
-                n.$sortable.dragaware(
-                    e.extend({}, n.options, {
-                        delegate: n.options.nodes,
-                        dragstart: function (s) {
-                            var i = e(this);
-                            (t = i
-                                .clone()
-                                .removeAttr('id')
-                                .addClass('sortable_clone')
-                                .css({
-                                    position: 'absolute',
-                                })
-                                .insertAfter(i)
-                                .offset(i.offset())),
-                                (o = n
-                                    .create_placeholder()
-                                    .css({
-                                        height: i.outerHeight(),
-                                        width: i.outerWidth(),
-                                    })
-                                    .insertAfter(i)),
-                                i.hide(),
-                                (r = new a(t.offset())),
-                                n.options.autocreate &&
-                                n
-                                    .find_nodes()
-                                    .filter(function (t, o) {
-                                        return (
-                                            0 ==
-                                            e(o).find(n.options.container)
-                                                .length
-                                        );
-                                    })
-                                    .append(
-                                        '<' +
-                                        n.options.container_type +
-                                        ' class="' +
-                                        n.options.auto_container_class +
-                                        '"/>',
-                                    );
-                        },
-                        drag: function (n, a) {
-                            var l = e(this),
-                                d = r.absolutize(a),
-                                c = s(l, d);
-                            t.offset(d), i(o, c);
-                        },
-                        dragstop: function (a, l) {
-                            var d = e(this),
-                                c = r.absolutize(l),
-                                p = s(d, c);
-                            p && i(d, p),
-                                d.show(),
-                                t && t.remove(),
-                                o && o.remove(),
-                                (t = null),
-                                (o = null),
-                                p &&
-                                n.options.update &&
-                                n.options.update.call(n.$sortable, a, n),
-                                n.$sortable.trigger('update');
-                        },
-                    }),
-                );
-        }),
-        (t.prototype.destroy = function () {
-            this.options.make_unselectable && e('html').unselectable('destroy'),
-                this.$sortable
-                    .removeClass('sortable')
-                    .off('.sortable')
-                    .dragaware('destroy');
-        }),
-        (t.prototype.serialize = function (t) {
-            var o = this;
-            return t
-                .children(o.options.nodes)
-                .not(o.options.container)
-                .map(function (t, r) {
-                    var n = e(r),
-                        a = n.clone().children().remove().end().text().trim(),
-                        s = {
-                            id: n.attr('id') || a,
-                        };
-                    return (
-                        n.find(o.options.nodes).length &&
-                        (s.children = o.serialize(
-                            n.children(o.options.container),
-                        )),
-                        s
-                    );
-                })
-                .get();
-        }),
-        (t.prototype.find_nodes = function () {
-            return this.$sortable
-                .find(this.options.nodes)
-                .not(this.options.container);
-        }),
-        (t.prototype.create_placeholder = function () {
-            return e('<' + this.options.nodes_type + '/>')
-                .addClass('sortable_placeholder')
-                .addClass(this.options.placeholder_class);
-        }),
-        (t.prototype.square_dist = function (e, t) {
-            return Math.pow(t.left - e.left, 2) + Math.pow(t.top - e.top, 2);
-        }),
-        (o.prototype.init = function () {
-            var t,
-                o,
-                r = this;
-            function n(o) {
-                var n;
-                if (
-                    (e('.hovering').removeClass('hovering'),
-                        t.hide(),
-                        (n = e(
-                            document.elementFromPoint(o.clientX, o.clientY),
-                        ).closest(r.options.droptarget)),
-                        t.show(),
-                        n.length)
-                )
-                    return n.addClass('hovering'), n;
-            }
-            r.$draggable
-                .addClass('draggable')
-                .on('destroy.draggable', function () {
-                    r.destroy();
-                }),
-                r.$draggable.dragaware(
-                    e.extend({}, r.options, {
-                        dragstart: function (n) {
-                            var s = e(this);
-                            r.options.placeholder || r.options.revert
-                                ? ((t = s
-                                    .clone()
-                                    .removeAttr('id')
-                                    .addClass('draggable_clone')
-                                    .css({
-                                        position: 'absolute',
-                                    })
-                                    .appendTo(
-                                        r.options.container || s.parent(),
-                                    )
-                                    .offset(s.offset())),
-                                    r.options.placeholder || e(this).invisible())
-                                : (t = s),
-                                (o = new a(t.offset()));
-                            $eXeCompleta.isDragging = true;
-                        },
-                        drag: function (e, r) {
-                            n(r), t.offset(o.absolutize(r));
-                        },
-                        dragstop: function (a, s) {
-                            $eXeCompleta.isDragging = false;
-                            var i = e(this),
-                                l = n(s);
-                            (r.options.revert || r.options.placeholder) &&
-                                (i.visible(),
-                                    r.options.revert || i.offset(o.absolutize(s)),
-                                    t.remove()),
-                                (t = null),
-                                r.options.update &&
-                                r.options.update.call(i, a, r),
-                                i.trigger('update'),
-                                l
-                                    ? (r.options.drop &&
-                                        r.options.drop.call(i, a, l[0]),
-                                        l.trigger('drop', [i]),
-                                        l.removeClass('hovering'))
-                                    : r.options.onrevert &&
-                                    r.options.onrevert.call(i, a);
-                        },
-                    }),
-                );
-        }),
-        (o.prototype.destroy = function () {
-            this.$draggable
-                .dragaware('destroy')
-                .removeClass('draggable')
-                .off('.draggable');
-        }),
-        (r.prototype.init = function () {
-            var e = this;
-            e.$droppable
-                .addClass('droppable')
-                .on('drop', function (t, o) {
-                    (!e.options.accept || o.is(e.options.accept)) &&
-                        e.options.drop &&
-                        e.options.drop.call(e.$droppable, t, o);
-                })
-                .on('destroy.droppable', function () {
-                    e.destroy();
-                });
-        }),
-        (r.prototype.destroy = function () {
-            this.$droppable.removeClass('droppable').off('.droppable');
-        }),
-        (a.prototype.absolutize = function (e) {
-            return e
-                ? {
-                    top: this.origin.top + e.dY,
-                    left: this.origin.left + e.dX,
-                }
-                : this.origin;
-        }),
-        (e.fn.sortable = function (o) {
-            var r = this.not(function () {
-                return (
-                    e(this).is('.sortable') ||
-                    e(this).closest('.sortable').length
-                );
-            });
-            return this.data('sortable') && 'string' == typeof o
-                ? this.data('sortable').invoke(o)
-                : (r.length && o && o.group
-                    ? new t(r, o)
-                    : r.each(function (e, r) {
-                        new t(r, o);
-                    }),
-                    this);
-        }),
-        (e.fn.draggable = function (e) {
-            return (
-                'destroy' === e
-                    ? this.trigger('destroy.draggable')
-                    : this.not('.draggable').each(function (t, r) {
-                        new o(r, e);
-                    }),
-                this
-            );
-        }),
-        (e.fn.droppable = function (e) {
-            return (
-                'destroy' === e
-                    ? this.trigger('destroy.droppable')
-                    : this.not('.droppable').each(function (t, o) {
-                        new r(o, e);
-                    }),
-                this
-            );
-        }),
-        (e.fn.dragaware = function (e) {
-            return (
-                'destroy' === e
-                    ? this.trigger('destroy.dragaware')
-                    : this.not('.dragaware').each(function (t, o) {
-                        new n(o, e);
-                    }),
-                this
-            );
-        }),
-        (e.fn.unselectable = function (e) {
-            function t() {
-                return !1;
-            }
-            return 'destroy' == e
-                ? this.removeClass('unselectable')
-                    .removeAttr('unselectable')
-                    .off('selectstart.unselectable')
-                : this.addClass('unselectable')
-                    .attr('unselectable', 'on')
-                    .on('selectstart.unselectable', t);
-        }),
-        (e.fn.invisible = function () {
-            return this.css({
-                visibility: 'hidden',
-            });
-        }),
-        (e.fn.visible = function () {
-            return this.css({
-                visibility: 'visible',
-            });
-        }),
-        (e.fn.scrollParent = function () {
-            return this.parents()
-                .addBack()
-                .filter(function () {
-                    var t = e(this);
-                    return /(scroll|auto)/.test(
-                        t.css('overflow-x') +
-                        t.css('overflow-y') +
-                        t.css('overflow'),
-                    );
-                });
-        }),
-        (e.fn.nestingDepth = function (e) {
-            var t = this.parent().closest(e || '*');
-            return t.length ? t.nestingDepth(e) + 1 : 0;
-        }),
-        {
-            Sortable: t,
-            Draggable: o,
-            Droppable: r,
-            Dragaware: n,
-            PositionHelper: a,
-        }
-    );
-}
-'undefined' != typeof define
-    ? define(['jquery'], factory)
-    : factory(jQuery, factory);

@@ -2,7 +2,7 @@
 <idevice>
     <title>External website</title>
     <css-class>external-website</css-class>
-    <category>Other contents</category>
+    <category>Information and presentation</category>
      <icon>
         <name>external-website-icon</name>
         <url>external-website-icon.svg</url>

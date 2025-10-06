@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<idevice>
+    <title>Magnifier</title>
+    <css-class>magnifier</css-class>
+    <category>Information and presentation</category>
+    <icon>
+        <name>magnifier-icon</name>
+        <url>magnifier-icon.svg</url>
+        <type>img</type>
+    </icon>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <location>location</location>
+    <location-type>location type</location-type>
+    <edition-js>
+        <filename>magnifier.js</filename>
+    </edition-js>
+    <edition-css>
+        <filename>magnifier.css</filename>
+    </edition-css>
+    <export-js>
+        <filename>magnifier.js</filename>
+    </export-js>
+    <export-css>
+        <filename>magnifier.css</filename>
+    </export-css>
+    <export-template-filename>magnifier.html</export-template-filename>
+    <author>author</author>
+    <author-url>author url</author-url>
+    <license>license</license>
+    <license-url>license url</license-url>
+    <description></description>
+    <downloadable>0</downloadable>
+</idevice>

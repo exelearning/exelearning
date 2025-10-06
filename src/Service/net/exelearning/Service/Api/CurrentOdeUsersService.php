@@ -350,8 +350,13 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
      *
      * @return bool
      */
-    public function checkSyncSaveFlag(string $odeId, string $odeSessionId)
+    public function checkSyncSaveFlag(?string $odeId, string $odeSessionId)
     {
+        // If no odeId is available, we assume there is no concurrent saving.
+        if (empty($odeId)) {
+            return false;
+        }
+
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentOdeUsers = $currentOdeUsersRepository->getCurrentUsers($odeId, null, $odeSessionId);
 

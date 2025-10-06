@@ -1,13 +1,192 @@
 # CHANGELOG
 
+## v3.0.0-beta6 – 2025-09-27
+
+### Added
+
+- Desktop version–specific Save / Open / Export options
+- Online version "Save as" option
+- Keyboard shortcuts
+- New iDevice categories
+- Export to folder (unzipped website) option
+- Teacher mode (teacher-only iDevices and boxes)
+- New "Test" style (for testing only)
+- Project title visible in all export formats
+- New `make destroy` command for developers
+- Parallel testing support
+- New REST API: Users and projects, JWT authentication and admin tools
+- New settings to enable or disable the iDevices and styles import option in the online version
+- New option to import a style from an .elp file or exported content
+- Updated translations: Spanish (es), Galician (gl)
+
+### Fixed
+
+- iDevice ID mismatch between data and exported HTML
+- Refactor iDevice feedback handling and remove old rendering logic
+- Performance improvements:
+  - Directory and file removal, ZIP handling and related tests
+  - User handling and session cleanup
+  - Offline version startup
+- Security: Defensive programming, type safety and test reliability
+- Style management errors
+- Caching and logging management
+- Electron app configuration: secret environment variable
+- Mounting of public/bundles (permission errors)
+- jQuery UI compatibility issues
+- Untranslated JavaScript strings
+- Progress Report iDevice: real-time score updates and repeated alert fix
+- Accessibility toolbar presentation and duplicated CSS loading error
+
+### Upgraded
+
+- Documentation
+- Improved support for OpenID Connect
+- Refactored common iDevice JavaScript code
+- Symfony Process Component: 7.3.0 → 7.3.3
+- Symfony Security Component (Core): 7.3.2 → 7.3.3
+- PHPUnit: 12.3.6 → 12.3.12
+- PHPUnit Bridge: 7.3.1 → 7.3.3
+- Symfony Translation Component: 7.3.2 → 7.3.3
+- Symfony Yaml Component: 7.3.2 → 7.3.3
+- Symfony WebProfilerBundle: 7.3.2 → 7.3.3
+- Symfony Serializer Component: 7.3.2 → 7.3.3
+- API Platform for Symfony: api-platform/api-platform 4.1.22 → api-platform/core 4.2
+- PHP CS Fixer: 3.86.0 → 3.87.1
+- Doctrine ORM support for API Platform: 4.1.22 → 4.2.0
+- Doctrine Bundle: 2.15.1 → 2.16.1
+- Electron: 3.86.0 → 3.87.1
+- setup-node Action: 4 → 5
+- Hadolint Action: 3.1.0 → 3.3.0
+
+---
+
+## v3.0.0-beta5 – 2025-08-29
+
+### Added
+
+- New Security Improvements: Disabled directory listing and prevented execution of uploaded scripts
+- New Automate Workflows
+- New Make commands for developers
+- Question type iDevices: Send prompt to IA button
+
+### Fixed
+
+- Improved provider support for LMS and other platforms
+- Update iDevices and styles when installing a new version
+- Download source file iDevice presentation issues
+- Improved XDebug handling for developers
+- Faster Test Suite
+
+### Upgraded
+
+- Documentation
+- Checkout action: 4 → 5
+- Doctrine: 3.5.1 → 3.5.2
+- MariaDB: 11.8 → 12.0
+- PHP: 8.3 → 8.4
+- PHPUnit: 12.3.0 → 12.3.6
+- Rector: 1.2.10 → 2.1.4
+- Symfony Flex: 2.8.1 → 2.8.2
+
+---
+
+## v3.0.0-beta4 – 2025-07-23
+
+### Added
+
+- Case Study iDevice
+- Magnifier iDevice
+- iDevice Manager enabled
+- Style Manager enabled
+- New LaTeX Equation Editor: EdiCuaTeX
+- Console commands for generating and managing API tokens for users
+- Full translation: Spanish (es)
+- Updated translations: Catalan (ca), Basque (eu), Galician (gl), Valencian (va), Esperanto (eo)
+
+### Fixed
+
+- File Manager: Mixed content errors under HTTPS
+- TriviExt iDevice: Open-ended response questions always marked as correct
+- Licenses: Revised attributions for third-party libraries
+- Localization: String extraction issues
+
+### Upgraded
+
+- Electron: 36.3.2 → 37.1.0
+
+### Removed
+
+- Previous JavaScript Equation Editor: FMath
+- Unused fonts
+
+---
+
+## v3.0.0-beta3 - 2025-06-30
+
+### Added
+
+- Complete translations: es (Español), va (Valencià)
+- Updated translations: ca (Català), eu (Euskara), gl (Galego), eo (Esperanto)
+- Form iDevice: Slideshow mode and "Check capitalization" options
+- True/False iDevice: Slideshow mode
+- Transitions for collapsing/expanding feedback content and boxes
+- Function to know who is editing an iDevice in collaborative mode
+- Make commands: up-local and test-local
+- UI customization via CSS and JavaScript
+
+### Fixed
+
+- Reviewed English texts throughout the application
+- Errors when opening old .elp files
+- Broken internal links in old .elp files
+- "Visible in export" page preference
+- Encoding issues in HEAD and page footer
+- Advanced page preferences (SEO title and description)
+- Child pages from other sections showing in the navigation menu
+- Navigation menu errors in ePub exports
+- Scrollbar growth in auto-resizing iframes (e.g., eXe Moodle viewers)
+- Insufficient contrast between elements in the work area
+- Missing icons when using Google Translate
+- Display of the "Not appropriate" license on pages
+- Box order issues in collaborative editing
+- Conflicts between Bootstrap tooltips and iDevices using jQuery UI
+- Image Gallery iDevice: Missing image titles from old .elp files
+- Form iDevice: Validation issues
+- Rubric iDevice: "Apply rubric" errors
+- Text iDevice:
+  - Missing images in old .elp files
+  - Support for two different texts in the feedback button
+- Old Wikipedia iDevice: Content presentation revision
+- Effects: Color adjustments
+- Mercure connection issues when APP_PORT differs from 8080
+- Errors in platform integration tests
+
+### Upgraded
+
+- Bootstrap: v5.1.3 → v5.3.6
+- Electron: 30.5.1 → 36.3.2
+- jQuery: v3.6.0 → v3.7.1
+- MariaDB: 11.7 → 11.8 (in /doc/deploy)
+- Symfony: 7.2 → 7.3
+- SSE setup documentation for Mercure
+
+### Removed
+
+- Deprecated classification fields: Only Title, Language, Authorship, License, and Description remain
+- AppImage generation (sandboxing issues in Ubuntu 24.04+)
+
+---
+
 ## v3.0.0-beta2 - 2025-06-02
 
-- eXeLearning 3.0 first beta release with source code.
-- License changed to AGPL 3.0.
-- Complete Spanish translation.
-- Install instructions updated.
-- "Version control" preference temporarily hidden.
+- First eXeLearning 3.0 beta release with source code
+- License changed to AGPL 3.0
+- Complete Spanish translation
+- Updated installation instructions
+- "Version control" preference temporarily hidden
+
+---
 
 ## v3.0.0-beta1 - 2025-05-27
 
-- eXeLearning 3.0 first beta release available for testing and collaborating.
+- eXeLearning 3.0 first beta release available for testing and collaborating

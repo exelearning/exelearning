@@ -399,6 +399,14 @@ body [dir='rtl'] {
     display: block
 }
 
+.box-toggle {
+    display: none;
+}
+
+.js .box-toggle {
+    display: inline-block;
+}
+
 .sr-av,
 .js .js-sr-av,
 .exe-hidden-accessible,
@@ -682,4 +690,9 @@ video {
 /* Box toggler */
 .exe-export article.minimized .box-content{
     display: none;
+}
+
+/* Teacher mode */
+html:not(.mode-teacher) .js .teacher-only {
+    display: none !important;
 }

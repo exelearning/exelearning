@@ -1,9 +1,0 @@
-@font-face {
-    	font-family: 'DejaVu SerifItalic';
-    	font-style:normal;
-      	
-	src: url('DejaVuSerif-Italic.eot');
-  	src: local('?'),
-         url('DejaVuSerif-Italic.woff') format('woff'), url('DejaVuSerif-Italic.ttf') format('truetype'), url('DejaVuSerif-Italic.svg') format('svg'); 
-}
-

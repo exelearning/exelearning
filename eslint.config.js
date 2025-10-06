@@ -24,7 +24,7 @@ export default [
         'error',
         {
           singleQuote: true,
-          trailingComma: 'all',
+          trailingComma: 'es5',
           tabWidth: 4,
           useTabs: false,
           printWidth: 120,

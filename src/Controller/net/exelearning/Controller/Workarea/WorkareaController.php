@@ -62,14 +62,12 @@ class WorkareaController extends DefaultWorkareaController
     #[Route('/workarea', name: 'workarea')]
     public function workareaAction(Request $request)
     {
-        // die("hola");
         // Get odeSessionId
         $odeSessionId = $request->get('shareCode');
 
         // Get elpFileName
         $odePlatformNew = $request->get('newOde');
         $odePlatformId = $request->get('odeId');
-        $odeSecondTypePlatformId = $request->get('item_uuid');
 
         // Check installation type
         $isOfflineInstallation = SettingsUtil::installationTypeIsOffline();
@@ -163,6 +161,11 @@ class WorkareaController extends DefaultWorkareaController
         // Themes css file
         $themeDefaultCssFile = Constants::THEME_DEFAULT_CSS_FILE;
 
+        // Allow user styles
+        $userStyles = $this->getParameter('app.online_themes_install');
+        // Allow user iDevices
+        $userIdevices = $this->getParameter('app.online_idevices_install');
+
         // Idevices
         $ideviceTypeBase = Constants::IDEVICE_TYPE_BASE;
         $ideviceTypeUser = Constants::IDEVICE_TYPE_USER;
@@ -233,7 +236,6 @@ class WorkareaController extends DefaultWorkareaController
                     'usernameFirsLetter' => $userLoggedNameFirsLetter,
                     'acceptedLopd' => $acceptedLopd,
                     'odePlatformId' => $odePlatformId,
-                    'odeSecondTypePlatformId' => $odeSecondTypePlatformId,
                     'newOde' => $odePlatformNew,
                     'gravatarUrl' => $userGravatarUrl,
                 ],
@@ -248,6 +250,8 @@ class WorkareaController extends DefaultWorkareaController
                     'defaultTheme' => $defaultTheme,
                     'isOfflineInstallation' => $isOfflineInstallation,
                     'platformIntegration' => $platformIntegration,
+                    'userStyles' => $userStyles,
+                    'userIdevices' => $userIdevices,
                 ],
                 'symfony' => [
                     'odeSessionId' => $odeSessionId,

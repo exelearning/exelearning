@@ -26,13 +26,16 @@ framework:
     trusted_proxies: '%env(TRUSTED_PROXIES)%'
     trusted_headers: ['x-forwarded-for', 'x-forwarded-proto']
 
-    # Desactivamos la caché
     cache:
-        app: cache.adapter.array      # Usa la caché en memoria que no se persiste
-        system: cache.adapter.array   # Usa la caché en memoria para el sistema
+        # The path where the cache will be stored.
+        directory: '%app.cache.dir%'
+        app: cache.adapter.array      # Use in-memory cache that is not persisted
+        system: cache.adapter.array   # Use in-memory cache for the system
     router:
-        strict_requirements: null      # Desactiva la caché de rutas dinámicas
+        strict_requirements: null     # Disable the cache for dynamic routes
 
     assets:
         base_path: 'assets/%app.version%'  # Base path for assets based on version for avoid cache
 
+parameters:
+    default_cache_dir: '%kernel.project_dir%/var/cache'

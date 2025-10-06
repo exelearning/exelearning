@@ -20,13 +20,13 @@ export default class Modal {
         this.modalElementButtonsCancel =
             this.modalElement.querySelectorAll('.cancel');
         this.exeTabs = this.modalElement.querySelectorAll(
-            '.exe-form-tabs li a',
+            '.exe-form-tabs li a'
         );
         this.exeContents =
             this.modalElement.querySelectorAll('.exe-form-content');
         this.exeHelp = this.modalElement.querySelectorAll('.exe-form-help');
         this.cancelButton = this.modalElement.querySelector(
-            'button.close.btn.btn-secondary',
+            'button.close.btn.btn-secondary'
         );
         this.preventCloseModal = false;
         this.tabSelectedLink = null;
@@ -96,7 +96,7 @@ export default class Modal {
      */
     addBehaviourExeTabs() {
         this.exeTabs = this.modalElement.querySelectorAll(
-            '.exe-form-tabs li a',
+            '.exe-form-tabs li a'
         );
         this.exeContents =
             this.modalElement.querySelectorAll('.exe-form-content');
@@ -121,7 +121,7 @@ export default class Modal {
                     this.tabSelectedLink = link.hash;
                 } else {
                     this.exeContentsRows = this.modalElement.querySelectorAll(
-                        '.exe-form-content-rows .row-form-content',
+                        '.exe-form-content-rows .row-form-content'
                     );
                     if (this.exeContentsRows.length > 0) {
                         this.exeContentsRows.forEach((row) => {

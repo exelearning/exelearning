@@ -38,7 +38,7 @@ var $rubric = {
         });
       }
 
-      var id = ideviceElement.getAttribute("idevice-id");
+      var id = ideviceElement.getAttribute("id");
 
       var i18n = $rubric.ci18n;
       var applyLink = '<a href="#" class="exe-rubrics-print" id="print-' + id + '"title="' + i18n.apply + ' (' + i18n.newWindow.toLowerCase() + ')"><span>' + i18n.apply + '</span></a>';
@@ -47,6 +47,10 @@ var $rubric = {
         $rubric.printRubric($("caption", table).text(), table.html())
         return false;
       });
+      // To review (Electron)
+      if (window.location.host=='localhost:41309') {
+        $("#print-" + id).css("cursor", "not-allowed");
+      }
 
     });
 
@@ -149,11 +153,16 @@ var $rubric = {
       eXe.app.alert(_("Please export the content to apply the rubric."));
       return false;
     }
+    if (window.location.host=='localhost:41309') {
+      return false; // To review (Electron)
+    }
+    var isIndex = $("html").attr("id") == "exe-index";
     var basePath = "idevices/rubric/";
-    if (window.location.host=='localhost:41309') return false; // To review (Electron)
+    if (!isIndex) basePath = "../" + basePath;
     var rubricStyle = basePath + "rubric.css";
     var rubricScript = basePath + "rubric.js";
     var jqueryScript = "libs/jquery/jquery.min.js";
+    if (!isIndex) jqueryScript = "../" + jqueryScript;
     // Strings
     var i18n = this.ci18n;
     var a = window.open(tit);

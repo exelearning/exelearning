@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <idevice>
-	<title>UDL content</title>
+	<title>UDL Content</title>
 	<css-class>udl-content</css-class>
-	<category>Text</category>
+	<category>Information and presentation</category>
 		<icon>
         <name>udl-content-icon</name>
         <url>udl-content-icon.svg</url>

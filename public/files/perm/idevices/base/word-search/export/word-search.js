@@ -279,7 +279,7 @@ var $eXeSopa = {
                     <ul id="sopaWords" class="SPP-Words"></ul>
                 </div>
                  <div class="SPP-ResolveDiv ">
-                    <button id="sopaResolve">${msgs.msgEnd}</button>
+                    <button class="btn btn-primary" id="sopaResolve">${msgs.msgEnd}</button>
                  </div>                
                 <div class="SPP-Cubierta" id="sopaCubierta">
                     <div class="SPP-CodeAccessDiv" id="sopaCodeAccessDiv">

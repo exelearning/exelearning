@@ -11,31 +11,7 @@ var $exeDevice = {
     items_min: 3,
 
     iDeviceId: 'sortableListForm',
-    ci18n: {
-        msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-        msgYouScore: c_('Your score'),
-        msgScore: c_('Score'),
-        msgWeight: c_('Weight'),
-        msgYouLastScore: c_('The last score saved is'),
-        msgOnlySaveScore: c_('You can only save the score once!'),
-        msgOnlySave: c_('You can only save once'),
-        msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-        msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-        msgSeveralScore: c_('You can save the score as many times as you want'),
-        msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-        msgActityComply: c_('You have already done this activity.'),
-        msgUncompletedActivity: c_('Incomplete activity'),
-        msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
-        msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
-        msgTypeGame: c_('Scrambled list'),
-        msgStartGame: c_('Click here to start'),
-        msgSubmit: c_('Submit'),
-        msgPlayStart: c_('Click here to play'),
-        msgTime: c_('Time per question'),
-        msgCheck: c_('Check'),
-        msgSaveScore: c_('Save score'),
-    },
-
+    ci18n: {},
     ideviceBody: null,
     idevicePreviousData: null,
     idevicePath: '',
@@ -55,9 +31,37 @@ var $exeDevice = {
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
         //**************************************************************
+        this.refreshTranslations();
         this.id = $(element).attr('idevice-id');
         this.createForm(this.id);
         this.addEvents();
+    },
+    refreshTranslations: function () {
+        this.ci18n = {
+            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgYouScore: c_('Your score'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
+            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Scrambled list'),
+            msgStartGame: c_('Click here to start'),
+            msgSubmit: c_('Submit'),
+            msgPlayStart: c_('Click here to play'),
+            msgTime: c_('Time per question'),
+            msgCheck: c_('Check'),
+            msgSaveScore: c_('Save score'),
+            msgTestFailed: c_("You didn't pass the test. Please try again")
+        }
     },
 
     /**
@@ -118,6 +122,10 @@ var $exeDevice = {
             '#sortableEvaluation',
         ).checked;
 
+        this.showSolutions = this.ideviceBody.querySelector(
+            '#sortableShowSolutions',
+        ).checked;
+
         this.textAfter = '';
         if (tinyMCE.get('eXeIdeviceTextAfter')) {
             this.textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
@@ -158,7 +166,7 @@ var $exeDevice = {
      * @returns string
      */
     dataJson: function () {
-        const scorm = $exeDevices.iDevice.gamification.scorm.getValues();
+        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
         this.data = {
             typeGame: 'ScrambledList',
             instructions: this.instructions,
@@ -179,6 +187,7 @@ var $exeDevice = {
             msgs: this.msgs,
             scorerp: 0,
             idevice: 'idevice_node',
+            showSolutions: this.showSolutions,
             id: this.id,
         };
         return this.data;
@@ -192,7 +201,7 @@ var $exeDevice = {
     checkValues: function () {
         // Check instructiones
         if (this.instructions == '') {
-            eXe.app.alert(_('Please write some instructions.'));
+            eXe.app.alert(_('Please write the instructions.'));
             return false;
         }
         // Check options counter
@@ -277,18 +286,28 @@ var $exeDevice = {
             textWrongAnswer_2,
             true,
         );
+        html += this.createShowSolutionsInput();
         html += this.createEvaluationInputs();
         html += `</div>`;
 
         return html;
     },
 
+    createShowSolutionsInput: function () {
+        return `<div>
+                    <p class="Games-Reportdiv">
+                       <label for="sortableShowSolutions"><input type="checkbox" checked id="sortableShowSolutions">${_('Show solutions')}. </label>
+                    </p>
+                </div> `;
+    },
+
+
     createEvaluationInputs: function () {
         return `<div>
                     <p class="Games-Reportdiv">
                         <strong class="GameModeLabel"><a href="#sortableEvaluationHelp" id="sortableEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${this.idevicePath}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
                         <label for="sortableEvaluation"><input type="checkbox" id="sortableEvaluation">${_('Progress report')}. </label>
-                        <label for="sortableEvaluationID">${_('Identifier')}: </label><input type="text" id="sortableEvaluationID" disabled/>
+                        <label for="sortableEvaluationID">${_('Identifier')}: </label><input type="text" id="sortableEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                     </p>
                     <div id="sortableEvaluationHelp" class="tofTypeGameHelp"  style="display:none">
                         <p class="exe-block-info exe-block-dismissible">${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
@@ -299,25 +318,25 @@ var $exeDevice = {
     createForm: function (id) {
         const html = `
         <div id="scrambledlistIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible">${_('Create interactive text ordering activities.')} <a  style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Use Instructions')}</a></p>
+            <p class="exe-block-info exe-block-dismissible">${_('Create interactive text ordering activities.')} <a  style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
             <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevices.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
                 <fieldset class="exe-fieldset">
                     <legend><a href="#" >${_('List')}</a></legend>
                     <div class="TOF-EPanel" id="tofEPanel">                   
                         ${this.createExeFormContainerGeneralSettings(id, true)}
                      </div>
-                     ${$exeDevices.iDevice.common.getTextFieldset('after')}
+                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </fieldset>
              </div>
-             ${$exeDevices.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-             ${$exeDevices.iDevice.gamification.scorm.getTab(true, true, true)}
-             ${$exeDevices.iDevice.gamification.share.getTab(true, 8, false)}
+             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
          </div>
      `;
         this.ideviceBody.innerHTML = html;
-        $exeDevices.iDevice.tabs.init('scrambledlistIdeviceForm');
-        $exeDevices.iDevice.gamification.scorm.init();
+        $exeDevicesEdition.iDevice.tabs.init('scrambledlistIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         this.loadPreviousValues();
     },
@@ -340,7 +359,7 @@ var $exeDevice = {
                 helpElement.style.display =
                     helpElement.style.display === 'none' ? 'block' : 'none';
             });
-        $exeDevices.iDevice.gamification.share.addEvents(
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
             8,
             $exeDevice.insertWords,
         );
@@ -505,7 +524,7 @@ var $exeDevice = {
         // Default values
         var buttonText = c_('Check');
         var rightText = c_('Right!');
-        var wrongText = c_('Sorry... The right answer is:');
+        var wrongText = c_('Sorry, that’s incorrect... The right answer is:');
         // Set form values
         let data = this.idevicePreviousData;
         if (data.options) {
@@ -524,26 +543,30 @@ var $exeDevice = {
             data.wrongText || wrongText;
         this.ideviceBody.querySelector('#sortableEvaluation').checked =
             data.evaluation || false;
-        this.ideviceBody.querySelector('#sortableEvaluationID').value =
-            data.evaluationID || '';
+        if (data.evaluationID) {
+            this.ideviceBody.querySelector('#sortableEvaluationID').value = data.evaluationID;
+        }
         this.ideviceBody.querySelector('#sortableEvaluationID').disabled =
             !data.evaluation;
         this.ideviceBody.querySelector('#eXeGameInstructions').value =
             data.instructions || _('Arrange the following texts in the correct order to complete the activity.');
         this.ideviceBody.querySelector('#eXeIdeviceTextAfter').value =
             data.textAfter || '';
+        this.ideviceBody.querySelector('#sortableShowSolutions').checked =
+            typeof data.showSolutions !== "undefined" ? data.showSolutions : true;
+
         data.weighted = data.weighted || 100;
         data.repeatActivity = data.repeatActivity || false;
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 
-        $exeDevices.iDevice.gamification.scorm.setValues(
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             data.isScorm,
             data.textButtonScorm,
             data.repeatActivity,
             data.weighted,
         );
-        $exeDevices.iDevice.gamification.common.setLanguageTabValues(
+        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
             data.msgs,
         );
     },

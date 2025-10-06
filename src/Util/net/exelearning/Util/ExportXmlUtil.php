@@ -292,7 +292,7 @@ class ExportXmlUtil
         $titleValue = isset($titleElement) ? $titleElement->getValue() : 'eXe-p-'.$odeId;
         $titleString = $title->addChild('lom:lom:string', $titleValue);
 
-        $titleLang = $odeProperties['pp_lang']; // todo -> title lang property
+        $titleLang = $odeProperties['pp_lang'];
         $titleLang = isset($titleLang) ? $titleLang->getValue() : Settings::DEFAULT_LOCALE;
         $titleString->addAttribute('language', $titleLang);
 
@@ -333,46 +333,63 @@ class ExportXmlUtil
         $titleValue = isset($titleElement) ? $titleElement->getValue() : 'eXe-p-'.$odeId;
         $title = $organization->addChild('title', $titleValue);
 
+        $visiblesPages = [];
+        $indexNode = 0;
+
+        foreach ($pagesFileData as $key => $pageData) {
+            if (self::isVisibleExport($odeNavStructureSyncs, $indexNode)) {
+                $url = $pageData['fileUrl'];
+                // Add the page to the visibles pages and link it with the previous page and the next page
+                $visiblesPages[$key] = ['url' => $url];
+            }
+            ++$indexNode;
+        }
+
         // Pages organization
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
-            // Page properties
-            $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
-            $pagePropertiesDict = [];
-            foreach ($pageProperties as $property) {
-                if ($property->getValue()) {
-                    $pagePropertiesDict[$property->getKey()] = $property->getValue();
+            if (isset($visiblesPages[$odeNavStructureSync->getOdePageId()])) {
+                // Page properties
+                $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
+                $pagePropertiesDict = [];
+                foreach ($pageProperties as $property) {
+                    if ($property->getValue()) {
+                        $pagePropertiesDict[$property->getKey()] = $property->getValue();
+                    }
                 }
+
+                // Page data
+                $odePageId = $odeNavStructureSync->getOdePageId();
+                $odePageName = $odeNavStructureSync->getPageName();
+                $pageData = $pagesFileData[$odePageId];
+
+                // Add item to XML manifest
+
+                $odeParentPageId = $odeNavStructureSync->getOdeParentPageId();
+                // If it has no parent node, it is first-level
+                if (null == $odeParentPageId) {
+                    $item = $organization->addChild('item');
+                } else {
+                    //  Search for the parent node of the current one
+                    $parentNodes = $organization->xpath('//item[@identifier="ITEM-'.$odeParentPageId.'"]');
+                    $parentNode = $parentNodes[0];
+                    $item = $parentNode->addChild('item');
+                }
+
+                $item->addAttribute('identifier', 'ITEM-'.$odePageId);
+                $item->addAttribute('identifierref', 'RES-'.$odePageId);
+
+                $visible = 'true';
+                if (
+                    isset($pagePropertiesDict['visibility'])
+                    && 'false' === $pagePropertiesDict['visibility']
+                ) {
+                    $visible = 'false';
+                }
+
+                $item->addAttribute('isvisible', $visible);
+
+                $title = $item->addChild('title', $odePageName);
             }
-
-            // Page data
-            $odePageId = $odeNavStructureSync->getOdePageId();
-            $odePageName = $odeNavStructureSync->getPageName();
-            $pageData = $pagesFileData[$odePageId];
-
-            // Add item to XML manifest
-
-            $odeParentPageId = $odeNavStructureSync->getOdeParentPageId();
-            // If it has no parent node, it is first-level
-            if (null == $odeParentPageId) {
-                $item = $organization->addChild('item');
-            } else {
-                //  Search for the parent node of the current one
-                $parentNodes = $organization->xpath('//item[@identifier="ITEM-'.$odeParentPageId.'"]');
-                $parentNode = $parentNodes[0];
-                $item = $parentNode->addChild('item');
-            }
-
-            $item->addAttribute('identifier', 'ITEM-'.$odePageId);
-            $item->addAttribute('identifierref', 'RES-'.$odePageId);
-
-            $visible = 'true';
-            if (isset($pagePropertiesDict['visible']) && 'false' == $pagePropertiesDict['visible']->getValue()) {
-                $visible = 'false';
-            }
-
-            $item->addAttribute('isvisible', $visible);
-
-            $title = $item->addChild('title', $odePageName);
         }
 
         if (Constants::EXPORT_TYPE_SCORM2004 == $exportType) {
@@ -424,7 +441,7 @@ class ExportXmlUtil
 
             if (in_array($exportType, [Constants::EXPORT_TYPE_SCORM12, Constants::EXPORT_TYPE_SCORM2004])) {
                 // The next code is an example of how to add a namespace to the attribute
-                // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Ejemplo de URI de namespace
+                // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Namespace URI example
                 // $resource->addAttribute('scormtype', 'sco', $adlcp_ns);
                 $resource->addAttribute('adlcp:adlcp:scormtype', 'sco');
             }
@@ -509,7 +526,7 @@ class ExportXmlUtil
         $resource->addAttribute('type', 'webcontent');
         if (in_array($exportType, [Constants::EXPORT_TYPE_SCORM12, Constants::EXPORT_TYPE_SCORM2004])) {
             // The next code is an example of how to add a namespace to the attribute
-            // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Ejemplo de URI de namespace
+            // $adlcp_ns = 'http://www.adlnet.org/xsd/adlcp_rootv1p2'; // Example of namespace URI
             // $resource->addAttribute('scormtype', 'sco', $adlcp_ns);
             $resource->addAttribute('adlcp:adlcp:scormtype', 'asset');
         }
@@ -530,13 +547,6 @@ class ExportXmlUtil
                 }
             }
         }
-
-        // TODO, a parte del anterior hay mas directorios "raros"
-
-        // ¿Dónde podemos crear directorios?
-        // Hay que procesar los HTML de los idevices y mirar los que hagan referencia a custom/ porque son los del file manager
-        // TODO ver quee mas hay que meter como lo del file manger y de libs hay que quitar los que están en los idevices
-        // TODO deberíamos añadir los archivos de math que se cargan solos? en commun resourse?
     }
 
     /**
@@ -615,7 +625,7 @@ class ExportXmlUtil
         $dateTime = $date->addChild('dateTime', $formatted);
         $dateTime->addAttribute('uniqueElementName', 'dateTime');
         $description = $date->addChild('description');
-        // TODO cambiar la frase al idioma del ODE
+        // TODO change the phrase to the ODE's language
         $descriptionString = $description->addChild('string', 'Fecha de creación de los metadatos');
         $descriptionString->addAttribute('language', $langValue);
 
@@ -640,7 +650,7 @@ class ExportXmlUtil
 
         $description = $date->addChild('description');
 
-        // TODO cambiar la frase al idioma del ODE
+        // TODO change the phrase to the ODE's language
         $string = $description->addChild('string', 'Fecha de creación de los metadatos');
         $string->addAttribute('language', $langValue);
 
@@ -696,7 +706,6 @@ class ExportXmlUtil
      * @param OdeNavStructureSync $odeNavStructureSyncs
      * @param array               $pagesFileData
      * @param array               $odeProperties
-     * @param string              $elpFileName
      * @param string              $resourcesPrefix
      * @param string              $exportType
      *
@@ -707,10 +716,12 @@ class ExportXmlUtil
         $odeNavStructureSyncs,
         $pagesFileData,
         $odeProperties,
-        $elpFileName,
+        $exportDirPath,
         $resourcesPrefix,
         $exportType,
     ) {
+        $exportDirPath = $exportDirPath.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB.DIRECTORY_SEPARATOR;
+
         $package = new \SimpleXMLElement('<?xml version="1.0" encoding="utf-8"?><package></package>');
 
         // package attributes
@@ -723,20 +734,32 @@ class ExportXmlUtil
         $metadata->addAttribute('xmlns:xmlns:dc', 'http://purl.org/dc/elements/1.1/');
 
         // metadata -> language
-        $lang = isset($odeProperties['pp_lang']) ?
-            $odeProperties['pp_lang']->getValue() : Settings::DEFAULT_LOCALE;
+        $lang = isset($odeProperties['pp_lang']) ? $odeProperties['pp_lang']->getValue() : Settings::DEFAULT_LOCALE;
         $languageDC = $metadata->addChild('dc:dc:language', $lang);
 
         // metadata -> identifier
-        $id = isset($odeProperties['lom_general_identifier_entry'])
-            ? $odeProperties['lom_general_identifier_entry']->getValue() : 'ODE-'.$odeId;
+        $id = isset($odeProperties['lom_general_identifier_entry']) ? $odeProperties['lom_general_identifier_entry']->getValue() : 'ODE-'.$odeId;
         $identifierDC = $metadata->addChild('dc:dc:identifier', $id);
         $identifierDC->addAttribute('id', 'pub-id');
 
         // metadata -> title
-        $title = isset($odeProperties['pp_title']) ?
-            $odeProperties['pp_title']->getValue() : 'eXe-p-'.$odeId;
+        $title = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : 'eXe-p-'.$odeId;
         $titleDC = $metadata->addChild('dc:dc:title', $title);
+        $titleDC->addAttribute('xml:lang', $lang);
+
+        // metadata -> description
+        $descriptionValue = isset($odeProperties['pp_description']) ? $odeProperties['pp_description']->getValue() : '';
+        $descriptionDC = $metadata->addChild('dc:dc:description', $descriptionValue);
+        $descriptionDC->addAttribute('xml:lang', $lang);
+
+        // metadata -> license
+        $licenseValue = isset($odeProperties['license']) ? $odeProperties['license']->getValue() : '';
+        $licenseDC = $metadata->addChild('dc:dc:license', $licenseValue);
+        $licenseDC->addAttribute('xml:lang', $lang);
+
+        // metadata -> creator
+        $authorValue = isset($odeProperties['pp_author']) ? $odeProperties['pp_author']->getValue() : '';
+        $creatorDC = $metadata->addChild('dc:dc:creator', $authorValue);
 
         // metadata -> meta
         $date = new \DateTime('now');
@@ -753,6 +776,18 @@ class ExportXmlUtil
         $item->addAttribute('properties', 'nav');
         $item->addAttribute('media-type', 'application/xhtml+xml');
 
+        $visiblesPages = [];
+        $indexNode = 0;
+
+        foreach ($pagesFileData as $key => $pageData) {
+            if (self::isVisibleExport($odeNavStructureSyncs, $indexNode)) {
+                $url = $pageData['fileUrl'];
+                // Add the page to the visibles pages and link it with the previous page and the next page
+                $visiblesPages[$key] = ['url' => $url];
+            }
+            ++$indexNode;
+        }
+
         // manifest -> item [pages]
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             $odePageId = $odeNavStructureSync->getOdePageId();
@@ -761,7 +796,32 @@ class ExportXmlUtil
             $item->addAttribute('id', 'PAGE-'.$odePageId);
             $item->addAttribute('href', $pageData['fileUrl']);
             $item->addAttribute('media-type', 'application/xhtml+xml');
-            $item->addAttribute('properties', 'scripted');
+
+            if (isset($visiblesPages[$odePageId])) {
+                $item->addAttribute('properties', 'scripted');
+            } else {
+                $item->addAttribute('fallback', 'fallback');
+            }
+        }
+
+        $directoriesToCopy = ['content', 'custom', 'idevices', 'libs', 'theme'];
+        foreach ($directoriesToCopy as $directory) {
+            ExportXmlUtil::addCommonExportedFilesToOpfManifest($manifest, $exportDirPath, $directory);
+        }
+
+        // add all files in root directory exept index.html
+        $files = scandir($exportDirPath);
+        foreach ($files as $file) {
+            if ('.' !== $file && '..' !== $file) {
+                $filePath = $exportDirPath.'/'.$file;
+                if (is_file($filePath) && !preg_match('/index\.html$/', $file)) {
+                    $item = $manifest->addChild('item', ' ');
+                    $item->addAttribute('id', $file);
+                    $item->addAttribute('href', $file);
+                    $item->addAttribute('media-type', mime_content_type($filePath));
+                    $item->addAttribute('fallback', 'fallback');
+                }
+            }
         }
 
         // spine
@@ -770,16 +830,14 @@ class ExportXmlUtil
         // spine -> itemref [pages]
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             $odePageId = $odeNavStructureSync->getOdePageId();
-            $itemref = $spine->addChild('itemref', ' ');
-            $itemref->addAttribute('idref', 'PAGE-'.$odePageId);
+            if (isset($visiblesPages[$odePageId])) {
+                $itemref = $spine->addChild('itemref', ' ');
+                $itemref->addAttribute('idref', 'PAGE-'.$odePageId);
+            }
         }
 
         return $package;
     }
-
-    // ///////////////////////////////////////////////////////////////////////////////////
-    // HTML
-    // ///////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Generate ePub3 package.opf file.
@@ -803,36 +861,72 @@ class ExportXmlUtil
         $resourcesPrefix,
         $exportType,
     ) {
-        $html = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><html></html>');
+        $title = $odeProperties['pp_title'] ? $odeProperties['pp_title']->getValue() : '';
+        $lang = $odeProperties['pp_lang'] ? $odeProperties['pp_lang']->getValue() : 'es';
 
-        // html attributes
-        $html->addAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-        $html->addAttribute('xmlns:xmlns:epub', 'http://www.idpf.org/2007/ops');
+        $html = '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="'.$lang.'" lang="'.$lang.'">';
+        $html .= '<head><meta charset="utf-8" /><title>'.$title.'</title></head>';
+        $html .= '<body><nav epub:type="toc" id="toc"><ol>';
 
-        $lang = isset($odeProperties['pp_lang']) ? $odeProperties['pp_lang']->getValue() : Settings::DEFAULT_LOCALE;
-        $html->addAttribute('xml:xml:lang', $lang);
-        $html->addAttribute('lang', $lang);
+        $visiblesPages = [];
+        $indexNode = 0;
 
-        // html -> head
-        $head = $html->addChild('head', '');
-        $meta = $head->addChild('meta', ' ');
-        $meta->addAttribute('charset', 'utf-8');
+        foreach ($pagesFileData as $key => $pageData) {
+            if (self::isVisibleExport($odeNavStructureSyncs, $indexNode)) {
+                $url = $pageData['fileUrl'];
+                // Add the page to the visibles pages and link it with the previous page and the next page
+                $visiblesPages[$key] = ['url' => $url];
+            }
+            ++$indexNode;
+        }
 
-        // html -> body
-        $body = $html->addChild('body', '');
-
-        // html -> body -> nav
-        $nav = $body->addChild('nav', '');
-        $nav->addAttribute('epub:epub:type', 'toc');
-        $nav->addAttribute('id', 'toc');
-
-        $ol = $nav->addChild('ol', ' ');
+        // Build a tree from the flat list
+        $tree = [];
+        $nodes = [];
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             $odePageId = $odeNavStructureSync->getOdePageId();
-            $pageData = $pagesFileData[$odePageId];
-            $li = $ol->addChild('li', ' ');
-            $a = $li->addChild('a', $odeNavStructureSync->getPageName());
-            $a->addAttribute('href', $pageData['fileUrl']);
+            if (isset($visiblesPages[$odePageId])) {
+                $nodes[$odePageId] = [
+                    'id' => $odePageId,
+                    'parent' => $odeNavStructureSync->getOdeParentPageId(),
+                    'name' => $odeNavStructureSync->getPageName(),
+                    'children' => [],
+                ];
+            }
+        }
+
+        foreach ($nodes as $nodeId => &$node) {
+            if (null !== $node['parent'] && isset($nodes[$node['parent']])) {
+                $nodes[$node['parent']]['children'][] = &$node;
+            } else {
+                $tree[] = &$node;
+            }
+        }
+
+        $html .= self::buildEpub3NavList($tree, $pagesFileData);
+
+        $html .= '</ol></nav></body></html>';
+
+        // Convert the HTML string to a SimpleXMLElement before returning
+        libxml_use_internal_errors(true);
+        $simpleXml = simplexml_load_string($html);
+        libxml_clear_errors();
+
+        return $simpleXml;
+    }
+
+    private static function buildEpub3NavList($nodes, $pagesFileData)
+    {
+        $html = '';
+        foreach ($nodes as $node) {
+            $pageFile = $pagesFileData[$node['id']]['fileUrl'];
+            $html .= "<li><a href=\"{$pageFile}\">{$node['name']}</a>";
+            if (!empty($node['children'])) {
+                $html .= '<ol>';
+                $html .= self::buildEpub3NavList($node['children'], $pagesFileData);
+                $html .= '</ol>';
+            }
+            $html .= '</li>';
         }
 
         return $html;
@@ -911,7 +1005,8 @@ class ExportXmlUtil
             $userPreferencesDtos,
             $theme,
             $resourcesPrefix,
-            $exportDynamicPage
+            $exportDynamicPage,
+            $exportType
         );
 
         self::appendSimpleXml($head, $headContent);
@@ -1007,12 +1102,13 @@ class ExportXmlUtil
         $theme,
         $resourcesPrefix,
         $exportDynamicPage,
+        $exportType,
     ) {
         $head = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><head></head>');
 
         // Meta: charset (see DOMDocument in Export*Service.php)
-        // $metaCharset = $head->addChild('meta');
-        // $metaCharset->addAttribute('charset', 'utf-8');
+        $metaCharset = $head->addChild('meta');
+        $metaCharset->addAttribute('charset', 'utf-8');
 
         // Meta: generator
         $metaGenerator = $head->addChild('meta');
@@ -1037,29 +1133,50 @@ class ExportXmlUtil
             }
         }
 
-        if (!empty($odeProperties['pp_title']) && '' != $odeProperties['pp_title']->getValue()) {
-            $titleValueText = $odeProperties['pp_title']->getValue();
-
-            // HTML title for any html page apart from index.html
-            if (!$pagesFileData[$odeNavStructureSync->getOdePageId()]['isIndex']) {
-                $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
-                $pagePropertiesDict = [];
-                foreach ($pageProperties as $property) {
-                    if ($property->getValue()) {
-                        $pagePropertiesDict[$property->getKey()] = $property->getValue();
-                    }
-                }
-                if (isset($pagePropertiesDict['titlePage'])) {
-                    // HTML title: Page title | Package title
-                    $titleValueText = $pagePropertiesDict['titlePage'].' | '.$titleValueText;
-                }
+        $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
+        $pagePropertiesDict = [];
+        foreach ($pageProperties as $property) {
+            if ($property->getValue()) {
+                $pagePropertiesDict[$property->getKey()] = $property->getValue();
             }
+        }
+
+        if (!empty($odeProperties['pp_title']) && '' != $odeProperties['pp_title']->getValue()
+            && Constants::ELP_PROPERTIES_NO_TITLE_NAME != $odeProperties['pp_title']->getValue()) {
+            $titleValueText = $odeProperties['pp_title']->getValue();
         } else {
             $titleValueText = Constants::ELP_PROPERTIES_NO_TITLE_NAME;
         }
 
+        // HTML title for any html page apart from index.html
+        if (!$pagesFileData[$odeNavStructureSync->getOdePageId()]['isIndex']) {
+            if (isset($pagePropertiesDict['titlePage'])) {
+                // HTML title: title Node | Package title
+                $titleValueText = $pagePropertiesDict['titlePage'].' | '.$titleValueText;
+            }
+        }
+
+        // HTML title for any html page - SEO title property (except for single-page)
+        if (Constants::EXPORT_TYPE_HTML5_SP != $exportType && isset($pagePropertiesDict['titleHtml']) && '' != $pagePropertiesDict['titleHtml']) {
+            // HTML title: SEO title property
+            $titleValueText = $pagePropertiesDict['titleHtml'];
+        }
+
         if ($exportDynamicPage) {
             $head->addChild('title', $titleValueText);
+            $descriptionText = $odeProperties['pp_description']->getValue();
+            if (!$pagesFileData[$odeNavStructureSync->getOdePageId()]['isIndex']) {
+                $descriptionText = '';
+            }
+            // SEO description, except for single-page
+            if (Constants::EXPORT_TYPE_HTML5_SP != $exportType && isset($pagePropertiesDict['description'])) {
+                $descriptionText = $pagePropertiesDict['description'];
+            }
+            if ('' != $descriptionText) {
+                $description = $head->addChild('meta');
+                $description->addAttribute('name', 'description');
+                $description->addAttribute('content', htmlspecialchars($descriptionText));
+            }
         }
 
         // Script JS class
@@ -1083,6 +1200,8 @@ class ExportXmlUtil
 
         $extraHead = $odeProperties['pp_extraHeadContent']->getValue();
         if ('' != $extraHead) {
+            // Replace non ASCII characters in inline SCRIPT tags
+            $extraHead = self::encodeScriptContents($extraHead);
             // convert $head to DOMDocument to add new node easily
             $domHead = dom_import_simplexml($head)->ownerDocument;
             $customCode = new \DOMDocument();
@@ -1096,13 +1215,7 @@ class ExportXmlUtil
                 $domHead->documentElement->appendChild($import);
             }
 
-            // simplexml load the DOM but introduce scaping characters
-            // so we need to convert it back to SimpleXMLElement
-            // $domHead->formatOutput = true; // format output
-            // $domHead->preserveWhiteSpace = false; // remove unnecessary white spaces
-            // $domHead->encoding = 'UTF-8'; // set encoding
-            // $domHead->normalizeDocument(); // normalize the document
-            // $domHead->removeChild($domHead->doctype); // remove doctype
+            // TODO simplexml load the DOM but introduce scaping characters?
             $head = simplexml_import_dom($domHead);
         }
 
@@ -1241,6 +1354,8 @@ class ExportXmlUtil
         foreach ($styleCssFiles as $styleUrl) {
             $styleLink = $headCss->addChild('link', '');
             $styleLink->addAttribute('rel', 'stylesheet');
+            // TEMPORARY FIX: Added this to resolve the bug.
+            // TODO: Replace with a final, more robust solution.
             $styleLink->addAttribute('href', $styleUrl);
         }
 
@@ -1313,6 +1428,7 @@ class ExportXmlUtil
         $odeNavStructureSyncs = null, // export HTML5 need all node structure for navigatation menu
     ) {
         $body = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><body></body>');
+        $body->addChild('script', 'document.body.className+=" js"');
 
         // Page properties
         $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
@@ -1327,12 +1443,31 @@ class ExportXmlUtil
         $exe = $body->addChild('div', ' ');
         $exe->addAttribute('class', 'exe-content exe-export pre-js siteNav-hidden');
 
+        // search inside the structure for visible pages and keep the $visiblesPages array to
+        // generate the page, navigation menu, page counters, etc.
+        $visiblesPages = [];
+        $indexNode = 0;
+
+        if (null === $odeNavStructureSyncs) {
+            $odeNavStructureSyncs = [$odeNavStructureSync];
+        }
+
+        foreach ($pagesFileData as $key => $pageData) {
+            if (self::isVisibleExport($odeNavStructureSyncs, $indexNode)) {
+                $url = $pageData['fileUrl'];
+                // Add the page to the visibles pages and link it with the previous page and the next page
+                $visiblesPages[$key] = ['url' => $url, 'previousPage' => null, 'nextPage' => null];
+            }
+            ++$indexNode;
+        }
+
         // Nav menu
         if (in_array($exportType, [Constants::EXPORT_TYPE_HTML5])) {
             $navContent = self::createHTMLPageMenuNav(
                 $odeNavStructureSync,
                 $odeNavStructureSyncs,
                 $pagesFileData,
+                $visiblesPages,
                 $resourcesPrefix,
                 $isPreview
             );
@@ -1343,6 +1478,7 @@ class ExportXmlUtil
         $page = $exe->addChild('main', ' ');
         $page->addAttribute('id', $odeNavStructureSync->getOdePageId());
         $page->addAttribute('class', 'page');
+
         /* To review
         if ($exportDynamicPage) {
             foreach ($pagePropertiesDict as $key => $value) {
@@ -1362,6 +1498,7 @@ class ExportXmlUtil
         ) {
             $clientSearch = self::createHTMLClientSearch(
                 $pagesFileData,
+                $visiblesPages,
                 $odeProperties,
                 $translator
             );
@@ -1371,7 +1508,7 @@ class ExportXmlUtil
         // Page header
         $pageHeader = self::createHTMLPageHeader(
             $odeNavStructureSync,
-            $pagesFileData,
+            $visiblesPages,
             $odeProperties,
             $translator,
             $theme,
@@ -1402,9 +1539,11 @@ class ExportXmlUtil
                 [Constants::EXPORT_TYPE_HTML5, Constants::EXPORT_TYPE_EPUB3]
             )
         ) {
+            // $visiblesPages
             $navButtons = self::createHTMLNavButtons(
                 $odeNavStructureSync,
                 $pagesFileData,
+                $visiblesPages,
                 $odeProperties,
                 $resourcesPrefix,
                 $isPreview,
@@ -1413,16 +1552,21 @@ class ExportXmlUtil
             self::appendSimpleXml($exe, $navButtons);
         }
 
-        $pageFooter = $exe->addChild('footer', '');
-        $pageFooter->addAttribute('id', 'siteFooter');
+        // Add a page footer if it requires a license and/or has custom footer
+        $license = $odeProperties['license']->getValue();
+        $extraFooter = $odeProperties['footer']->getValue();
+        if ('not appropriate' != $license || '' != $extraFooter) {
+            $pageFooter = $exe->addChild('footer', '');
+            $pageFooter->addAttribute('id', 'siteFooter');
 
-        // Page license and custom code
-        $pageLicense = self::createHTMLPageFooter(
-            $odeProperties,
-            $exportDynamicPage,
-        );
+            // Page license and custom code
+            $pageLicense = self::createHTMLPageFooter(
+                $odeProperties,
+                $exportDynamicPage,
+            );
 
-        self::appendSimpleXml($pageFooter, $pageLicense);
+            self::appendSimpleXml($pageFooter, $pageLicense);
+        }
 
         // Made with eXe
         if (
@@ -1485,6 +1629,38 @@ class ExportXmlUtil
     }
 
     /**
+     *  Replace non ASCII characters in inline SCRIPT tags.
+     *
+     * Use UCS-4BE Unicode encoding instead of HTML entities
+     *
+     * @return string
+     */
+    public static function encodeScriptContents($html)
+    {
+        return preg_replace_callback(
+            '#<script(?![^>]*\bsrc=)([^>]*)>(.*?)</script>#is',
+            function ($matches) {
+                $attrs = $matches[1];
+                $content = $matches[2];
+
+                // Replace non ASCII characters
+                $encoded = preg_replace_callback(
+                    '/[^\x20-\x7E]/u',
+                    function ($char) {
+                        $code = unpack('N', mb_convert_encoding($char[0], 'UCS-4BE', 'UTF-8'))[1];
+
+                        return sprintf('\\u%04x', $code);
+                    },
+                    $content
+                );
+
+                return "<script$attrs>$encoded</script>";
+            },
+            $html
+        );
+    }
+
+    /**
      *  Generates page license (package license).
      *
      * @param array $odeProperties
@@ -1501,36 +1677,39 @@ class ExportXmlUtil
         $pageFooterContent = $pageFooterWrapper->addChild('div', ' ');
         $pageFooterContent->addAttribute('id', 'siteFooterContent');
 
-        $pageFooterLicense = $pageFooterContent->addChild('div', ' ');
-        $pageFooterLicense->addAttribute('id', 'packageLicense');
-        $pageFooterLicenseP = $pageFooterLicense->addChild('p', ' ');
-        $pageFooterLicenseTitle = $pageFooterLicenseP->addChild('span', 'Licencia: ');
-        $pageFooterLicenseTitle->addAttribute('class', 'license-label');
-
         // License
         if (isset($odeProperties['license'])) {
             $license = $odeProperties['license']->getValue();
-            $licensesLinks = Properties::LICENSES_LINKS;
-            if (array_key_exists($license, $licensesLinks)) {
-                $licenseLink = $licensesLinks[$license];
-                $pageFooterLicenseClass = str_replace('https://creativecommons.org/licenses/', '', $licenseLink);
-                $pageFooterLicenseClass = explode('/', $pageFooterLicenseClass);
-                $pageFooterLicenseClass = 'cc cc-'.$pageFooterLicenseClass[0];
-                $pageFooterLicense->addAttribute('class', $pageFooterLicenseClass);
-                $pageFooterLicenseA = $pageFooterLicenseP->addChild('a', $license);
-                $pageFooterLicenseA->addAttribute('href', $licenseLink);
-                $pageFooterLicenseA->addAttribute('class', 'license');
-            } else {
-                $pageFooterLicenseText = $pageFooterLicenseP->addChild('span', $license);
-                $pageFooterLicenseText->addAttribute('class', 'license');
+            if ('not appropriate' != $license) {
+                $pageFooterLicense = $pageFooterContent->addChild('div', ' ');
+                $pageFooterLicense->addAttribute('id', 'packageLicense');
+                $pageFooterLicenseP = $pageFooterLicense->addChild('p', ' ');
+                $pageFooterLicenseTitle = $pageFooterLicenseP->addChild('span', 'Licencia: ');
+                $pageFooterLicenseTitle->addAttribute('class', 'license-label');
+                $licensesLinks = Properties::LICENSES_LINKS;
+                if (array_key_exists($license, $licensesLinks)) {
+                    $licenseLink = $licensesLinks[$license];
+                    $pageFooterLicenseClass = str_replace('https://creativecommons.org/licenses/', '', $licenseLink);
+                    $pageFooterLicenseClass = explode('/', $pageFooterLicenseClass);
+                    $pageFooterLicenseClass = 'cc cc-'.$pageFooterLicenseClass[0];
+                    $pageFooterLicense->addAttribute('class', $pageFooterLicenseClass);
+                    $pageFooterLicenseA = $pageFooterLicenseP->addChild('a', $license);
+                    $pageFooterLicenseA->addAttribute('href', $licenseLink);
+                    $pageFooterLicenseA->addAttribute('class', 'license');
+                } else {
+                    $pageFooterLicenseText = $pageFooterLicenseP->addChild('span', $license);
+                    $pageFooterLicenseText->addAttribute('class', 'license');
+                }
             }
         }
 
-        $siteUserFooter = $pageFooterContent->addChild('div', ' ');
-        $siteUserFooter->addAttribute('id', 'siteUserFooter');
-
         $extraFooter = $odeProperties['footer']->getValue();
         if ('' != $extraFooter) {
+            $extraFooter = '<div>'.$extraFooter.'</div>';
+            // Replace non ASCII characters in inline SCRIPT tags
+            $extraFooter = self::encodeScriptContents($extraFooter);
+            $siteUserFooter = $pageFooterContent->addChild('div', ' ');
+            $siteUserFooter->addAttribute('id', 'siteUserFooter');
             $siteExtra = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><footer></footer>');
             // convert $head to DOMDocument to add new node easily
             $domExtra = dom_import_simplexml($siteExtra)->ownerDocument;
@@ -1561,9 +1740,17 @@ class ExportXmlUtil
      */
     public static function createHTMLClientSearch(
         $pagesFileData,
+        $visiblesPages,
         $odeProperties,
         $translator,
     ) {
+        $pagesFileDataAux = [];
+        foreach ($pagesFileData as $pageId => $pageData) {
+            if (isset($visiblesPages[$pageId])) {
+                $pagesFileDataAux[$pageId] = $pageData;
+            }
+        }
+
         $localeODE = isset($odeProperties['pp_lang']) ? $odeProperties['pp_lang']->getValue() : '';
 
         try {
@@ -1574,7 +1761,7 @@ class ExportXmlUtil
             $searchContainer->addAttribute('id', 'exe-client-search');
             $searchContainer->addAttribute('data-block-order-string', $translator->trans('Block %e'));
             $searchContainer->addAttribute('data-no-results-string', $translator->trans('No results.'));
-            $searchContainer->addAttribute('data-pages', json_encode($pagesFileData));
+            $searchContainer->addAttribute('data-pages', json_encode($pagesFileDataAux));
         } finally {
             // Restore locale GUI
             $translator->restorePreviousLocale();
@@ -1597,6 +1784,7 @@ class ExportXmlUtil
         $odeNavStructureSync,
         $odeNavStructureSyncs,
         $pagesFileData,
+        &$visiblesPages,
         $resourcesPrefix,
         $isPreview,
     ) {
@@ -1606,42 +1794,54 @@ class ExportXmlUtil
         $nav->addAttribute('id', 'siteNav');
 
         // Pages
-
         $currentOdePageId = $odeNavStructureSync->getOdePageId();
         $navUl = $nav->addChild('ul', ' ');
         $navLi = null;
         $indexNode = 0;
+        $previousPage = null;
+
         foreach ($pagesFileData as $key => $pageData) {
-            $name = $pageData['name'];
-            $url = $pageData['fileUrl'];
-            $odeParentPageId = $odeNavStructureSyncs[$indexNode]->getOdeParentPageId();
-            // If it has no parent node, it is first-level
-            if (null == $odeParentPageId) {
-                $navLi = $navUl->addChild('li', ' ');
-            } else {
-                //  Search for the parent node of the current one
-                $items = $navUl->xpath('//li[@odePageId="'.$odeParentPageId.'"]');
-                $item = $items[0];
-                // If it is the first child add a ul tag and a child li tag
-                $liChildrens = $item->count();
-                if ($liChildrens < 2) {
-                    $navLi = $item->addChild('ul', ' ')->addChild('li', ' ');
-                } else {
-                    $navLi = $item->ul->addChild('li', ' ');
+            if (isset($visiblesPages[$key])) {
+                $name = $pageData['name'];
+                $url = $pageData['fileUrl'];
+
+                // Add the page to the visibles pages and link it with the previous page and the next page
+                $visiblesPages[$key] = ['url' => $url, 'previousPage' => $previousPage, 'nextPage' => null];
+                if (null != $previousPage) {
+                    $visiblesPages[$previousPage]['nextPage'] = $key;
                 }
-            }
-            $navLi->addAttribute('odePageId', $key);
-            $navLink = $navLi->addChild('a', $name);
-            $navLink->addAttribute('href', !$isPreview ? $resourcesPrefix.$url : $url);
-            $class = '';
-            if ($currentOdePageId == $key) {
-                $class .= 'active';
-            }
-            if (0 == $indexNode) {
-                $class .= $class ? ' main-node' : 'main-node';
-            }
-            if (!empty($class)) {
-                $navLink->addAttribute('class', $class);
+
+                $previousPage = $key;
+
+                $odeParentPageId = $odeNavStructureSyncs[$indexNode]->getOdeParentPageId();
+                // If it has no parent node, it is first-level
+                if (null == $odeParentPageId) {
+                    $navLi = $navUl->addChild('li', ' ');
+                } else {
+                    //  Search for the parent node of the current one
+                    $items = $navUl->xpath('//li[@odePageId="'.$odeParentPageId.'"]');
+                    $item = $items[0];
+                    // If it is the first child add a ul tag and a child li tag
+                    $liChildrens = $item->count();
+                    if ($liChildrens < 2) {
+                        $navLi = $item->addChild('ul', ' ')->addChild('li', ' ');
+                    } else {
+                        $navLi = $item->ul->addChild('li', ' ');
+                    }
+                }
+                $navLi->addAttribute('odePageId', $key);
+                $navLink = $navLi->addChild('a', $name);
+                $navLink->addAttribute('href', !$isPreview ? $resourcesPrefix.$url : $url);
+                $class = '';
+                if ($currentOdePageId == $key) {
+                    $class .= 'active';
+                }
+                if (0 == $indexNode) {
+                    $class .= $class ? ' main-node' : 'main-node';
+                }
+                if (!empty($class)) {
+                    $navLink->addAttribute('class', $class);
+                }
             }
             ++$indexNode;
         }
@@ -1669,12 +1869,12 @@ class ExportXmlUtil
             $link['class'] = isset($link['class']) ? $link['class'].' daddy' : 'daddy';
         }
 
-        // Add class other-section to all ul which first child is a li ant li class is not active
+        // Add class other-section to all ul which first child is li and li class is not active
         $ulNodesCounter = 0;
         $ulNodes = $navUl->xpath('//ul');
         foreach ($ulNodes as $ulNode) {
             // Check the ancestors
-            $liNodes = $ulNode->xpath('./li/ancestor::li');
+            $liNodes = $ulNode->xpath('./parent::li');
             $allInactive = true;
             foreach ($liNodes as $liNode) {
                 if (isset($liNode['class']) && false !== strpos($liNode['class'], 'active')) {
@@ -1720,7 +1920,7 @@ class ExportXmlUtil
      */
     public static function createHTMLPageHeader(
         $odeNavStructureSync,
-        $pagesFileData,
+        $visiblesPages,
         $odeProperties,
         $translator,
         $theme,
@@ -1772,24 +1972,44 @@ class ExportXmlUtil
         ) {
             $pageNumber = self::createHTMLPageNumber(
                 $odeNavStructureSync,
-                $pagesFileData,
+                $visiblesPages,
                 $translator
             );
             self::appendSimpleXml($pageHeader, $pageNumber);
         }
 
+        // Package title
+        $packageTitleValue = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : '';
+        if (Constants::EXPORT_TYPE_HTML5_SP == $exportType) {
+            $packageTitleValue = '';
+        } // The single page export has its own package title
+        if ('' != $packageTitleValue) {
+            $packageTitle = $pageHeader->addChild('h1', $packageTitleValue);
+            $packageTitle->addAttribute('class', 'package-title');
+        }
+
         // Page title
+        $pageTitleTag = 'h1';
+        if ('' != $packageTitleValue) {
+            $pageTitleTag = 'h2';
+        }
         if ('' != $titlePage) {
             $headerEmpty = false;
-            $pageTitle = $pageHeader->addChild('h1', $titlePage);
+            $pageTitle = $pageHeader->addChild($pageTitleTag, $titlePage);
             $pageTitle->addAttribute('class', 'page-title');
         }
 
         if ($headerEmpty) {
-            $pageHeader->addAttribute('class', 'sr-av');
-            $pageTitle = $pageHeader->addChild('h1', $odeNavStructureSync->getPageName());
+            $pageTitle = $pageHeader->addChild($pageTitleTag, $odeNavStructureSync->getPageName());
             $pageTitle->addAttribute('id', 'page-title-node-content');
-            $pageTitle->addAttribute('class', 'page-title');
+            if ('' == $packageTitleValue) {
+                $pageHeader->addAttribute('class', 'page-header sr-av');
+            } else {
+                $pageHeader->addAttribute('class', 'page-header');
+                $pageTitle->addAttribute('class', 'page-title sr-av');
+            }
+        } else {
+            $pageHeader->addAttribute('class', 'page-header');
         }
 
         return $pageHeaderMain;
@@ -1800,6 +2020,7 @@ class ExportXmlUtil
      *
      * @param OdeNavStructureSync $odeNavStructureSync
      * @param array               $pagesFileData
+     * @param array               $visiblesPages
      * @param array               $odeProperties
      * @param string              $resourcesPrefix
      * @param string              $isPreview
@@ -1810,6 +2031,7 @@ class ExportXmlUtil
     public static function createHTMLNavButtons(
         $odeNavStructureSync,
         $pagesFileData,
+        $visiblesPages,
         $odeProperties,
         $resourcesPrefix,
         $isPreview,
@@ -1824,7 +2046,7 @@ class ExportXmlUtil
             $translator->switchTemporaryLocale($localeODE);
             $previousButtonText = $translator->trans('Previous');
             $nextButtonText = $translator->trans('Next');
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             error_log('Error changing locale: '.$e->getMessage());
             throw $e;
         } finally {
@@ -1835,11 +2057,10 @@ class ExportXmlUtil
         $navButtonsContainer = $navButtons->addChild('div', ' ');
         $navButtonsContainer->addAttribute('class', 'nav-buttons');
 
-        $currentPageData = $pagesFileData[$odeNavStructureSync->getOdePageId()];
+        $prePageData = $visiblesPages[$odeNavStructureSync->getOdePageId()]['previousPage'];
 
-        if ($currentPageData['prePageId']) {
-            $prePageData = $pagesFileData[$currentPageData['prePageId']];
-            $leftLink = !$isPreview ? $resourcesPrefix.$prePageData['fileUrl'] : $prePageData['fileUrl'];
+        if ($prePageData) {
+            $leftLink = !$isPreview ? $resourcesPrefix.$visiblesPages[$prePageData]['url'] : $visiblesPages[$prePageData]['url'];
             $navButtonLeft = $navButtonsContainer->addChild('a', ' ');
             $navButtonLeft->addAttribute('href', $leftLink);
             $navButtonLeft->addAttribute('title', $previousButtonText);
@@ -1852,9 +2073,9 @@ class ExportXmlUtil
             $navButtonLeft->addChild('span', $previousButtonText);
         }
 
-        if ($currentPageData['nextPageId']) {
-            $nextPageData = $pagesFileData[$currentPageData['nextPageId']];
-            $rightLink = !$isPreview ? $resourcesPrefix.$nextPageData['fileUrl'] : $nextPageData['fileUrl'];
+        $nextPageData = $visiblesPages[$odeNavStructureSync->getOdePageId()]['nextPage'];
+        if ($nextPageData) {
+            $rightLink = !$isPreview ? $resourcesPrefix.$visiblesPages[$nextPageData]['url'] : $visiblesPages[$nextPageData]['url'];
             $navButtonRight = $navButtonsContainer->addChild('a', ' ');
             $navButtonRight->addAttribute('href', $rightLink);
             $navButtonRight->addAttribute('title', $nextButtonText);
@@ -1874,13 +2095,13 @@ class ExportXmlUtil
      * Generates html of page number.
      *
      * @param OdeNavStructureSync $odeNavStructureSync
-     * @param array               $pagesFileData
+     * @param array               $visiblesPages
      *
      * @return SimpleXMLElement
      */
     public static function createHTMLPageNumber(
         $odeNavStructureSync,
-        $pagesFileData,
+        $visiblesPages,
         $translator,
     ) {
         $pageNumber = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><page-number></page-number>');
@@ -1888,8 +2109,8 @@ class ExportXmlUtil
         $pageNumberContainer = $pageNumber->addChild('p', ' ');
         $pageNumberContainer->addAttribute('class', 'page-counter');
 
-        $currentPage = array_search($odeNavStructureSync->getOdePageId(), array_keys($pagesFileData)) + 1;
-        $totalPages = count($pagesFileData);
+        $currentPage = array_search($odeNavStructureSync->getOdePageId(), array_keys($visiblesPages)) + 1;
+        $totalPages = count($visiblesPages);
 
         $pageNumberLabelText = $translator->trans('Page').' ';
         $pageNumberLabel = $pageNumberContainer->addChild('span', $pageNumberLabelText);
@@ -1970,6 +2191,14 @@ class ExportXmlUtil
 
         if (isset($blockPropertiesDict['minimized']) && 'true' == $blockPropertiesDict['minimized']) {
             $class .= ' minimized';
+        }
+
+        // Teacher-only checkbox on blocks
+        if (
+            (isset($blockPropertiesDict['teacherOnly']) && 'true' == $blockPropertiesDict['teacherOnly'])
+            || (isset($blockPropertiesDict['visibilityType']) && 'teacher' === $blockPropertiesDict['visibilityType'])
+        ) {
+            $class .= ' teacher-only';
         }
 
         if (isset($blockPropertiesDict['cssClass'])) {
@@ -2158,11 +2387,20 @@ class ExportXmlUtil
         if (!$odeComponentsSync->getHtmlView()) {
             $class .= ' db-no-data';
         }
+        // Teacher-only checkbox on iDevices
+        if (
+            (isset($idevicePropertiesDict['teacherOnly']) && 'true' == $idevicePropertiesDict['teacherOnly'])
+            || (isset($idevicePropertiesDict['visibilityType']) && 'teacher' === $idevicePropertiesDict['visibilityType'])
+        ) {
+            $class .= ' teacher-only';
+        }
+
         if (isset($idevicePropertiesDict['cssClass'])) {
             $class .= ' '.$idevicePropertiesDict['cssClass'];
         }
 
         $ideviceContainer->addAttribute('id', $odeComponentsSync->getOdeIdeviceId());
+        $ideviceContainer->addAttribute('id-resource', $idevicesMapping[$odeComponentsSync->getOdeIdeviceId()]);
         $ideviceContainer->addAttribute('class', $class);
 
         if ($exportDynamicPage && $ideviceTypeData) {
@@ -2279,7 +2517,7 @@ class ExportXmlUtil
         $filesToCopy = [];
         $libsToSearch = [
             // the following library may not be mandatory
-            // [constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',"clas=xxxx"], //lleva SCORM y parece obligatorio para exportación web
+            // [constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'exe_export.js',"clas=xxxx"], // it has SCORM and seems mandatory for web export
             [$commonPath.'exe_effects', 'class', 'exe-fx', ['/exe_effects/exe_effects.js', '/exe_effects/exe_effects.css']],
             [$commonPath.'exe_games', 'class', 'exe-game', ['/exe_games/exe_games.js', '/exe_games/exe_games.css']],
             [$commonPath.'exe_highlighter', 'class', 'highlighted-code', ['/exe_highlighter/exe_highlighter.js', '/exe_highlighter/exe_highlighter.css']],
@@ -2303,6 +2541,46 @@ class ExportXmlUtil
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
                     $htmlView = $odeComponentsSync->getHtmlView(); // ? $odeComponentsSync->getHtmlView() : $odeComponentsSync->getJsonProperties();
+
+                    // Detect specific drag/sort/classify iDevices and include jquery-ui when present
+                    if ((null != $htmlView) && ('' !== trim($htmlView))) {
+                        $sortableClasses = [
+                            'ordena-IDevice',
+                            'clasifica-IDevice',
+                            'relaciona-IDevice',
+                            'dragdrop-IDevice',
+                        ];
+                        foreach ($sortableClasses as $sc) {
+                            if (preg_match("~<div[^>]*class=[\"']?[^\"']*".preg_quote($sc, '~')."[^\"']*[\"']?[^>]*>~i", $htmlView)) {
+                                $uiLibDir = $libsPath.'jquery-ui';
+                                if (!in_array($uiLibDir, $librariesToCopy, true)) {
+                                    $librariesToCopy[] = $uiLibDir;
+                                }
+                                $uiFiles = ['/jquery-ui/jquery-ui.min.js'];
+                                $alreadyPresent = false;
+                                foreach ($filesToCopy as $existing) {
+                                    if (is_array($existing)) {
+                                        $containsAll = true;
+                                        foreach ($uiFiles as $f) {
+                                            if (!in_array($f, $existing, true)) {
+                                                $containsAll = false;
+                                                break;
+                                            }
+                                        }
+                                        if ($containsAll) {
+                                            $alreadyPresent = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!$alreadyPresent) {
+                                    $filesToCopy[] = $uiFiles;
+                                }
+                                break;
+                            }
+                        }
+                    }
+
                     if ((null != $htmlView) && (!empty($htmlView))) {
                         foreach ($libsToSearch as $libToSearch) {
                             if (!in_array($libToSearch[0], $librariesToCopy)) {
@@ -2419,9 +2697,9 @@ class ExportXmlUtil
             ];
         }
 
-        // TODO issue 315
+        // TODO issue 315 (exelearning-web)
         // if ('true' == $odeProperties['pp_addSearchBox']->getValue()) {
-        //    Aquí añadimos los ficheros de búsqueda
+        //    Here we add the search files
         // }
 
         return [$librariesToCopy, $filesToCopy];
@@ -2499,5 +2777,80 @@ class ExportXmlUtil
                 }
             }
         }
+    }
+
+    /**
+     * Adds exported files to the OPF manifest.
+     *
+     * @param string $exportDirPath the path to the export directory
+     * @param string $dir           the directory to add files from
+     */
+    public static function addCommonExportedFilesToOpfManifest($manifest, $exportDirPath, $dir)
+    {
+        $resourcesDir = $exportDirPath.$dir;
+        if (is_dir($resourcesDir)) {
+            $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($resourcesDir));
+            foreach ($iterator as $file) {
+                if ($file->isFile()) {
+                    $relativePath = str_replace($resourcesDir.'/', '', $file->getPathname());
+                    $item = $manifest->addChild('item', ' ');
+                    $item->addAttribute('id', $dir.'/'.$relativePath);
+                    $item->addAttribute('href', $dir.'/'.$relativePath);
+                    $item->addAttribute('media-type', mime_content_type($file->getPathname()));
+                    $item->addAttribute('fallback', 'fallback');
+                }
+            }
+        }
+    }
+
+    /**
+     * Determines if a page should be visible in the export.
+     *
+     * @param array $odeNavStructureSyncs Collection of OdeNavStructureSyncs
+     * @param int   $indexNode            Index of the current page in $odeNavStructureSyncs
+     *
+     * @return bool
+     */
+    public static function isVisibleExport($odeNavStructureSyncs, $indexNode)
+    {
+        // Get the current OdeNavStructureSync
+        if (!isset($odeNavStructureSyncs[$indexNode])) {
+            return false;
+        }
+        $currentNavSync = $odeNavStructureSyncs[$indexNode];
+
+        // Get properties of the current page
+        $pageProperties = $currentNavSync->getOdeNavStructureSyncProperties();
+        unset($pagePropertiesDict);
+        $pagePropertiesDict = [];
+        foreach ($pageProperties as $property) {
+            if ($property->getKey()) {
+                $pagePropertiesDict[$property->getKey()] = $property;
+            }
+        }
+
+        // If the current page is not visible, return false
+        if (
+            isset($pagePropertiesDict['visibility'])
+            && method_exists($pagePropertiesDict['visibility'], 'getValue')
+            && 'false' === $pagePropertiesDict['visibility']->getValue()
+        ) {
+            return false;
+        }
+
+        // Check visibility of parent pages recursively
+        $odeParentPageId = $currentNavSync->getOdeParentPageId();
+        if (null !== $odeParentPageId) {
+            // Find the index of the parent in $odeNavStructureSyncs
+            foreach ($odeNavStructureSyncs as $parentIndex => $navSync) {
+                if ($navSync->getOdePageId() == $odeParentPageId) {
+                    // Recursive call for the parent
+                    return self::isVisibleExport($odeNavStructureSyncs, $parentIndex);
+                }
+            }
+        }
+
+        // If there are no restrictions, it is visible
+        return true;
     }
 }

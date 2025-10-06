@@ -8,19 +8,13 @@
 
 {% block stylesheets %}
     <link class="exe" rel="stylesheet" href="{{ asset('libs/bootstrap/bootstrap.min.css') }}">
-    <style>
-      body { background: #fafafa; }
-      .lead { font-size: 1.8em; }
-      .btn-dark { background-color: #438606; border-color: #2A6D00; }
-      .card { border-radius: 8px; }
-      img { border-radius: 8px 0 0 8px; }
-    </style>
+    <link class="exe" rel="stylesheet" href="{{ asset('style/workarea/login.css') }}">
 {% endblock %}
 
 {% block title %}eXeLearning{% endblock %}
 
 {% block body %}
-<section class="vh-100">
+<section class="vh-100" id="error-tpl">
   <div class="container py-5 h-100">
     <div class="row d-flex justify-content-center align-items-center h-100">
       <div class="col col-xl-10">

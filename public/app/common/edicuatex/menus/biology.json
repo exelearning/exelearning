@@ -1,0 +1,99 @@
+{
+  "categorias": [
+    {
+      "nombre": "pH and acid-base balance",
+      "id": "ph_equilibrio",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "\\mathrm{pH} = -\\log_{10}[H^+]",
+          "title": "pH"
+        },
+        {
+          "type": "button",
+          "latex": "\\mathrm{pH} = \\mathrm{p}K_a + \\log\\frac{[A^-]}{[HA]}",
+          "title": "Henderson–Hasselbalch"
+        }
+      ]
+    },
+    {
+      "nombre": "Enzyme kinetics",
+      "id": "cinetica_enzimatica",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "v = \\frac{V_{max}[S]}{K_m + [S]}",
+          "title": "Michaelis–Menten"
+        },
+        {
+          "type": "button",
+          "latex": "\\frac{1}{v} = \\frac{K_m}{V_{max}}\\frac{1}{[S]} + \\frac{1}{V_{max}}",
+          "title": "Lineweaver–Burk"
+        }
+      ]
+    },
+    {
+      "nombre": "Population genetics",
+      "id": "genetica_poblaciones",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "p + q = 1",
+          "title": "Allele frequency"
+        },
+        {
+          "type": "button",
+          "latex": "p^2 + 2pq + q^2 = 1",
+          "title": "Hardy–Weinberg"
+        }
+      ]
+    },
+    {
+      "nombre": "Population dynamics",
+      "id": "dinamica_poblacional",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "N(t) = N_0 e^{rt}",
+          "title": "Exponential growth"
+        },
+        {
+          "type": "button",
+          "latex": "N(t) = \\frac{K}{1 + Ae^{-rt}}",
+          "title": "Logistic growth"
+        }
+      ]
+    },
+    {
+      "nombre": "Transport and diffusion",
+      "id": "transporte_difusion",
+      "grid_template_columns": "repeat(auto-fit, minmax(180px, 1fr))",
+      "isCollapsed": false,
+      "elementos": [
+        {
+          "type": "button",
+          "latex": "J = -D \\frac{dC}{dx}",
+          "title": "Fick's Law"
+        },
+        {
+          "type": "button",
+          "latex": "E = \\frac{RT}{zF} \\ln\\frac{[\\text{ion}_{out}]}{[\\text{ion}_{in}]}",
+          "title": "Nernst equation"
+        },
+        {
+          "type": "button",
+          "latex": "\\Pi = i C R T",
+          "title": "Osmotic pressure"
+        }
+      ]
+    }
+  ]
+}

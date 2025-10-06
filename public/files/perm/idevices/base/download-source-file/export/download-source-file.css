@@ -15,7 +15,7 @@
 	margin-top: 3em !important;
 	margin-bottom: 2em;
 }
-.exe-download-package-link a {
+.exe-content .exe-download-package-link a {
 	padding: 0.5em 1em;
 	border-radius: 5px;
 	background: #5a7f0c;

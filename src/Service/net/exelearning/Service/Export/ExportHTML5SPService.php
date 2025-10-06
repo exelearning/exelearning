@@ -126,6 +126,18 @@ class ExportHTML5SPService implements ExportServiceInterface
         $isPreview,
         $translator,
     ) {
+        $visiblesPages = [];
+        $indexNode = 0;
+
+        foreach ($pagesFileData as $key => $pageData) {
+            if (ExportXmlUtil::isVisibleExport($odeNavStructureSyncs, $indexNode)) {
+                $url = $pageData['fileUrl'];
+                // Add the page to the visibles pages and link it with the previous page and the next page
+                $visiblesPages[$key] = ['url' => $url];
+            }
+            ++$indexNode;
+        }
+
         // This export generates a single html page with all the component
         // We separate the index from the rest of the pages
         $otherOdeNavStructureSyncs = [];
@@ -134,7 +146,9 @@ class ExportHTML5SPService implements ExportServiceInterface
             if ($pageData['isIndex']) {
                 $indexOdeNavStructureSync = $odeNavStructureSync;
             } else {
-                $otherOdeNavStructureSyncs[] = $odeNavStructureSync;
+                if (isset($visiblesPages[$odeNavStructureSync->getOdePageId()])) {
+                    $otherOdeNavStructureSyncs[] = $odeNavStructureSync;
+                }
             }
         }
 
@@ -207,7 +221,7 @@ class ExportHTML5SPService implements ExportServiceInterface
         foreach ($domFather->childNodes as $node) {
             if ('section' === $node->nodeName) {
                 continue;
-            } // No mover el nuevo nodo
+            } // Do not move the new node
             if (XML_ELEMENT_NODE === $node->nodeType) {
                 if ($cont < 2) {
                     $nodesToMove[] = $node;
@@ -277,10 +291,33 @@ class ExportHTML5SPService implements ExportServiceInterface
         );
         $dom->appendChild($importedNode);
 
+        // Update data-idevice-json-data attributes in the DOM using the processed clones
+        $xpath = new \DOMXPath($dom);
+        foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
+            foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
+                $ideviceId = $odeComponentsSync->getOdeIdeviceId();
+                if (!isset($odeComponentsSyncCloneArray[$ideviceId])) {
+                    continue;
+                }
+                $odeComponentsSyncClone = $odeComponentsSyncCloneArray[$ideviceId];
+                $jsonData = $odeComponentsSyncClone->getJsonProperties();
+
+                $query = "//*[@id='".$ideviceId."']";
+                $nodes = $xpath->query($query);
+                if ($nodes && $nodes->length > 0) {
+                    foreach ($nodes as $node) {
+                        if (null !== $jsonData) {
+                            $node->setAttribute('data-idevice-json-data', $jsonData);
+                        }
+                    }
+                }
+            }
+        }
+
         // Write the file as real HTML5
         $dom->saveHTMLFile($pageFile);
 
-        // Añade el doctype al principio del HTML5: <!DOCTYPE html>
+        // Add the doctype to the beginning of the HTML5: <!DOCTYPE html>
         $pageFileNewText = '<!DOCTYPE html>'.PHP_EOL.file_get_contents($pageFile);
 
         file_put_contents($pageFile, $pageFileNewText);

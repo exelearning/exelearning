@@ -1,0 +1,428 @@
+name: Build Electron Desktop Offline Installers
+
+on:
+  release:
+    types: [prereleased]
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Allows manually triggering
+
+jobs:
+  package:
+
+    permissions:
+      contents: write
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # Install Node.js and npm
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'  # Use the version you need
+          package-manager-cache: false 
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: sodium, fileinfo, zip, mbstring
+
+      # TODO: Temporary disabled because we must have an account in snapcraft.io,
+      #  when we release the app we should edit packages.json to add
+      # to add
+      #     "build": {
+      #         "snap": {
+      #             "grade": "stable",
+      #             "confinement": "strict",
+      #             "plugs": ["network", "home", "removable-media"],
+      #             "publish": false
+      #         },
+      #         "linux": {
+      #             "target": [
+      #                  ...
+      #                 { "target": "snap", "arch": ["x64"] }
+      # # Install Snapcraft only in Ubuntu
+      # - name: Install Snapcraft
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: |
+      #     sudo snap install snapcraft --classic
+
+      # Install composer dependencies
+      - name: Install composer dependencies
+        run: composer install --optimize-autoloader --no-interaction --no-progress
+
+      # Extract version from tag
+      - name: Get version from tag or commit
+        id: get_version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            shortsha=$(echo $GITHUB_SHA | cut -c1-8)
+            echo "version=v0.0.0-alpha-build$shortsha" >> $GITHUB_OUTPUT
+          fi
+
+      # Install Make on Windows
+      - name: Install Make on Windows
+        if: matrix.os == 'windows-latest'
+        run: choco install make --yes
+        shell: pwsh
+
+      # Use the Makefile to install the nativephp/php pacakge
+      - name: Install nativephp using Makefile
+        run: |
+          make install-php-bin
+        shell: bash
+
+      # Remove unnecessary PHP versions on each platform
+      - name: Remove unnecessary PHP versions (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          rm -f vendor/nativephp/php-bin/bin/linux/x64/php-8.3.zip
+          rm -rf vendor/nativephp/php-bin/bin/linux/arm64/          
+          rm -rf vendor/nativephp/php-bin/bin/mac
+          rm -rf vendor/nativephp/php-bin/bin/win
+
+      - name: Remove unnecessary PHP versions (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          rm -f vendor/nativephp/php-bin/bin/mac/arm64/php-8.3.zip
+          rm -f vendor/nativephp/php-bin/bin/mac/x86/php-8.3.zip
+          rm -rf vendor/nativephp/php-bin/bin/linux
+          rm -rf vendor/nativephp/php-bin/bin/win
+
+      - name: Remove unnecessary PHP versions (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          rm -f vendor/nativephp/php-bin/bin/win/x64/php-8.3.zip
+          rm -rf vendor/nativephp/php-bin/bin/mac
+          rm -rf vendor/nativephp/php-bin/bin/linux
+
+      - name: Decode Windows certificate
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "${{ secrets.CERT_P12 }}" | base64 --decode > windows-cert.pfx
+        shell: bash
+
+      - name: Build Symfony assets into public
+        run: |
+          php -d detect_unicode=0 bin/console assets:install public --no-debug --env=prod
+        shell: bash
+
+      # Use the Makefile package target
+      - name: Package application using Makefile
+        env:
+          # GitHub Releases API token for electron-builder
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIN_CSC_LINK: ./windows-cert.pfx
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # choose publish mode depending on trigger:
+          # - when triggered by a release.prereleased -> publish (PUBLISH=always)
+          # - when triggered by push/merged PR -> do not publish (PUBLISH=never)
+          PUBLISH: ${{ github.event_name == 'release' && 'always' || 'never' }}
+        run: |
+          # Run the package command with the version
+          make package VERSION=${{ steps.get_version.outputs.version }}  PUBLISH=${{ env.PUBLISH }}
+        shell: bash
+
+      - name: VirusTotal Scan
+        uses: crazy-max/ghaction-virustotal@v4
+        continue-on-error: true
+        with:
+          vt_api_key: ${{ secrets.VT_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          update_release_body: true
+          files: |
+            .msi$
+            .exe$
+            .dmg$
+            .deb$
+            .rpm$
+            .zip$
+
+      # Always upload installers as workflow artifacts so test job can use them.
+      # If the trigger was a release and electron-builder already published, this
+      # artifact is an extra safe copy; if it was a push/PR-merge, this is the only copy.
+      - name: Upload installers artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            # dist/*.msi
+            dist/*.exe
+            dist/*.dmg
+            dist/*.deb
+            # dist/*.rpm
+
+  test-install:
+    env:
+      APP_BOOT_TIMEOUT: 300   # increase if needed
+      APP_PORT: 41309         # the one used in Electron
+      SCREENSHOT_DELAY: 20    # seconds before screenshots
+
+    needs: package
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@v5
+        with:
+          name: installers-${{ matrix.os }}
+          path: installers
+
+      # ---------- Ubuntu test ----------
+      - name: Set up Node.js (for CDP)
+        if: matrix.os == 'ubuntu-latest'
+
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install CDP helper
+        if: matrix.os == 'ubuntu-latest'
+        run: npm i chrome-remote-interface
+        shell: bash
+
+      - name: Test install on Linux (.deb only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          set -euo pipefail
+
+          sudo apt-get update
+          sudo apt-get install -y xvfb xdotool imagemagick curl openbox || true
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-0 libnss3 libxss1 libgbm1 libxshmfence1 libdrm2 \
+            libatk-bridge2.0-0 libatspi2.0-0 libx11-xcb1 libxtst6 || true
+          sudo apt-get install -y --no-install-recommends libasound2t64 || true
+
+          installer=$(ls installers/*.deb 2>/dev/null || true)
+          if [ -z "$installer" ]; then echo "No .deb installer found" >&2; exit 1; fi
+          sudo dpkg -i "$installer" || sudo apt-get -f install -y
+
+          # X virtual
+          Xvfb :99 -screen 0 1280x800x24 >/tmp/xvfb.log 2>&1 &
+          export DISPLAY=:99
+
+          # Window manager so that _NET_ACTIVE_WINDOW works
+          openbox >/tmp/openbox.log 2>&1 &
+          sleep 1
+
+          export ALLOW_UI_IN_CI=1
+          export ELECTRON_DISABLE_SANDBOX=1
+          export ELECTRON_DISABLE_GPU=1
+
+          app_cmd="/opt/eXeLearning/exelearning"
+          command -v exelearning >/dev/null 2>&1 && app_cmd="$(command -v exelearning)" || true
+          "$app_cmd" --remote-debugging-port=9222 > ubuntu-app.log 2>&1 &
+          APP_PID=$!
+          echo "App pid: $APP_PID"
+
+          # Wait until the server responds or the window appears
+          end=$((SECONDS + ${APP_BOOT_TIMEOUT:-120}))
+          until curl -sf "http://localhost:${APP_PORT:-41309}/" >/dev/null 2>&1 || \
+                xdotool search --name 'eXeLearning' >/dev/null 2>&1 || \
+                [ $SECONDS -ge $end ]; do
+            sleep 1
+          done
+
+          # Activate window / screenshot 1
+          WID=$(xdotool search --name "eXeLearning" | head -n1 || true)
+          [ -n "$WID" ] && xdotool windowactivate "$WID" || true
+          sleep ${SCREENSHOT_DELAY:-4}
+          import -display :99 -window root ubuntu-screenshot-1.png || true
+
+          # --- CDP: click "Preview" without keys ---
+          node - <<'NODE'
+          const CDP = require('chrome-remote-interface');
+          (async () => {
+            const targets = await CDP.List();
+            // el renderer principal suele tener la URL de tu servidor embebido
+            const target =
+              targets.find(t => (t.url||'').includes('http://localhost:41309')) ||
+              targets.find(t => (t.title||'').includes('eXeLearning')) ||
+              targets[0];
+            const client = await CDP({ target });
+            const { Runtime } = client;
+            await Runtime.evaluate({ expression: `
+              (function(){
+                const btn = document.getElementById('navbar-button-preview');
+                if (btn) btn.click();
+                else if (window.eXeLearning?.app?.menu?.navbarFile?.previewEvent) {
+                  window.eXeLearning.app.menu.navbarFile.previewEvent();
+                }
+                'ok';
+              })();
+            `});
+            await client.close();
+          })();
+          NODE
+
+          sleep ${SCREENSHOT_DELAY:-4}
+          import -display :99 -window root ubuntu-screenshot-2.png || true
+
+
+      # ---------- macOS test ----------
+      - name: Test install on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          set -euo pipefail
+
+          installer=$(ls installers/*.dmg 2>/dev/null || true)
+          if [ -z "$installer" ]; then echo "No DMG installer found" >&2; exit 1; fi
+
+          ATTACH_OUT=$(hdiutil attach -nobrowse -noverify -noautoopen -readonly -mountRandom /Volumes "$installer" 2>&1) || true
+          echo "$ATTACH_OUT"
+          VOL=$(echo "$ATTACH_OUT" | awk '/\/Volumes\//{print $NF}' | tail -n1)
+          [ -z "${VOL:-}" ] && { echo "Failed to attach DMG"; exit 1; }
+
+          APP_PATH=$(find "$VOL" -maxdepth 2 -type d -name "*.app" -print -quit)
+          [ -z "$APP_PATH" ] && { echo "No .app found in $VOL"; hdiutil detach "$VOL" || true; exit 1; }
+          xattr -dr com.apple.quarantine "$APP_PATH" || true
+          cp -R "$APP_PATH" /Applications/
+          hdiutil detach "$VOL" || true
+
+          export ALLOW_UI_IN_CI=1
+          export ELECTRON_DISABLE_GPU=1
+
+          # Open app and wait for readiness
+          open -a "eXeLearning" || open -n "/Applications/eXeLearning.app" || true
+          end=$((SECONDS + ${APP_BOOT_TIMEOUT:-120}))
+          until pgrep -x "eXeLearning" >/dev/null 2>&1 || \
+                curl -sf "http://localhost:${APP_PORT:-41309}/" >/dev/null 2>&1 || \
+                [ $SECONDS -ge $end ]; do
+            sleep 1
+          done
+
+          # Activate app, small pause and first screenshot
+          osascript -e 'tell application "eXeLearning" to activate' || true
+
+          sleep ${SCREENSHOT_DELAY:-4}
+
+          screencapture -x mac-screenshot-1.png || true
+
+          # Cmd+P, wait and second screenshot
+          osascript -e 'tell application "System Events" to keystroke "p" using command down' || true
+          sleep ${SCREENSHOT_DELAY:-4}
+
+          screencapture -x mac-screenshot-2.png || true
+
+          LOG1="$HOME/Library/Application Support/eXeLearning/logs/main.log"
+          LOG2="$HOME/Library/Application Support/eXeLearning/log/main.log"
+          if [ -f "$LOG1" ]; then cp "$LOG1" mac-app.log; elif [ -f "$LOG2" ]; then cp "$LOG2" mac-app.log; fi
+
+      # ---------- Windows test ----------
+      - name: Test install on Windows (NSIS .exe only)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem installers\*.exe | Select-Object -First 1
+          if (-not $exe) { Write-Error "No NSIS .exe installer found"; exit 1 }
+          Start-Process $exe.FullName -ArgumentList "/S" -Wait -NoNewWindow
+
+          # Add wait to the NSIS installer to be finished
+          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 10)
+
+          $exePath = "C:\Program Files\eXeLearning\eXeLearning.exe"
+          if (-not (Test-Path $exePath)) { $exePath = "C:\Program Files (x86)\eXeLearning\eXeLearning.exe" }
+          if (-not (Test-Path $exePath)) { $exePath = Join-Path $env:LOCALAPPDATA "Programs\eXeLearning\eXeLearning.exe" }
+          if (-not (Test-Path $exePath)) { Write-Error "eXeLearning.exe not found after install"; exit 1 }
+
+          $env:ALLOW_UI_IN_CI = "1"
+
+          # Load assemblies and launch
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          [System.Windows.Forms.Application]::EnableVisualStyles()
+
+          $proc = Start-Process -FilePath $exePath -PassThru
+          $timeoutSec = [int]($env:APP_BOOT_TIMEOUT ?? 120)
+          try { $proc.WaitForInputIdle(10000) } catch {}
+          $end = (Get-Date).AddSeconds($timeoutSec)
+          do {
+            Start-Sleep -Milliseconds 900
+            try { $proc.Refresh() } catch {}
+            $ready = $proc.MainWindowHandle -ne 0
+            if (-not $ready) {
+              try {
+                $resp = Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 -Uri ("http://localhost:{0}/" -f ($env:APP_PORT ?? 41309)) -ErrorAction SilentlyContinue
+                if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) { $ready = $true }
+              } catch {}
+            }
+          } until ($ready -or (Get-Date) -ge $end)
+
+          # Bring window to front (by title or by PID)
+          $ws = New-Object -ComObject WScript.Shell
+          $null = $ws.AppActivate("eXeLearning")
+          if ($proc.MainWindowHandle -eq 0) {
+            # fallback: try by generic title "Untitled document" if that's the case
+            $null = $ws.AppActivate("Untitled")
+          }
+
+          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 4)
+
+          # First screenshot
+          $bmp = New-Object Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
+          $g = [Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen([System.Drawing.Point]::Empty,[System.Drawing.Point]::Empty,$bmp.Size)
+          $bmp.Save("windows-screenshot-1.png")
+          $g.Dispose(); $bmp.Dispose()
+
+          # Send Ctrl+P, wait and second screenshot
+          [System.Windows.Forms.SendKeys]::SendWait("^p")
+
+          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 3)
+
+          $bmp2 = New-Object Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
+          $g2 = [Drawing.Graphics]::FromImage($bmp2)
+          $g2.CopyFromScreen([System.Drawing.Point]::Empty,[System.Drawing.Point]::Empty,$bmp2.Size)
+          $bmp2.Save("windows-screenshot-2.png")
+          $g2.Dispose(); $bmp2.Dispose()
+
+          # Logs (electron-log)
+          $log1 = Join-Path $env:APPDATA "eXeLearning\logs\main.log"
+          $log2 = Join-Path $env:APPDATA "eXeLearning\log\main.log"
+          if (Test-Path $log1) { Copy-Item $log1 windows-app.log -ErrorAction SilentlyContinue }
+          elseif (Test-Path $log2) { Copy-Item $log2 windows-app.log -ErrorAction SilentlyContinue }
+
+      - name: Upload screenshots and logs (per OS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-and-logs-${{ matrix.os }}
+          path: |
+            ubuntu-*.png
+            mac-*.png
+            windows-*.png
+            ubuntu-*.log
+            mac-*.log
+            windows-*.log
+
+  collect-artifacts:
+    needs: test-install
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all per-OS artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: screenshots-and-logs-*
+          merge-multiple: true   # leave all files in the workspace
+
+      - name: Re-upload merged artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-and-logs
+          path: .

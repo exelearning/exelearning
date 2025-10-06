@@ -28,7 +28,7 @@ export default class ModalReleaseNotes extends Modal {
     async load() {
         let contents = await eXeLearning.app.api.getChangelogText();
         let viewer = this.modalElementBody.querySelector(
-            '.body-release .changelog-content',
+            '.body-release .changelog-content'
         );
         viewer.innerHTML = eXeLearning.app.common.markdownToHTML(contents);
         // Add some style to the titles
@@ -42,5 +42,6 @@ export default class ModalReleaseNotes extends Modal {
             }
             e.attr('class', 'lead mb-4');
         });
+        $('h3', viewer).attr('class', 'lead mb-3');
     }
 }

@@ -5,14 +5,14 @@
             <span class="visually-hidden">{{ "Toggle panels" | trans }}</span>
         </button>
         <ul class="navbar-nav mr-auto">
-            <li class="nav-item dropdown">
+                    <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="dropdownFile" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     {{ "File" | trans }}
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="dropdownFile">
-                    <li><a class="dropdown-item" id="navbar-button-new" href="#">{{ "New" | trans }}</a></li>
-                    <li><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#">{{ "Open" | trans }}</a></li>
-                    <li class="dropdown dropend">
+                    <li><a class="dropdown-item" id="navbar-button-new" href="#" data-shortcut="Mod+Alt+N" aria-keyshortcuts="Control+Alt+N Meta+Alt+N">{{ "New" | trans }}</a></li>
+                    <li class="exe-online"><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O" >{{ "Open" | trans }}</a></li>
+                    <li class="dropdown dropend exe-online">
                         <a class="dropdown-item dropdown-toggle" href="#" id="navbar-button-dropdown-recent-projects" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             {{ "Recent projects" | trans }}
                         </a>
@@ -20,10 +20,11 @@
                             <li class="text-center">...</li>
                         </ul>
                     </li>
-                    <li class="dropdown-divider"></li>
-                    <li><a id="navbar-button-save" class="dropdown-item" href="#">{{ "Save" | trans }}</a></li>
-                    <li class="d-none"><a id="navbar-button-save-as" class="dropdown-item exe-online" href="#">{{ "Save as" | trans }}</a></li>
-                    <li class="dropdown dropend">
+                    <li class="dropdown-divider exe-online"></li>
+                    <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S">{{ "Save" | trans }}</a></li>
+                    <li class="exe-online"><a id="navbar-button-save-as" class="dropdown-item" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S">{{ "Save as" | trans }}</a></li>
+                    <li class="dropdown-divider exe-online"></li>
+                    <li class="dropdown dropend exe-online">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAs" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Download as..." | trans }}</a>
                         <ul class="dropdown-menu" aria-labelledby="dropdownExportAs">
                             <li><a class="dropdown-item exe-advanced" id="navbar-button-download-project" href="#">{{ "eXeLearning content" | trans }} ({{ constant('App\\Constants::FILE_EXTENSION_ELP' ) }})</a></li>
@@ -35,6 +36,26 @@
                             <li><a id="navbar-button-export-epub3" class="dropdown-item" href="#">{{ "ePub3" | trans }}</a></li>
                         </ul>
                     </li>
+                    {% if config.isOfflineInstallation %}
+                        <li><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O">{{ "Open" | trans }}</a></li>
+                        <li class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S">{{ "Save" | trans }}</a></li>
+                        <li><a class="dropdown-item" id="navbar-button-save-as-offline" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S">{{ "Save as" | trans }}</a></li>
+                        <li class="dropdown-divider"></li>
+                        <li class="dropdown dropend">
+                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Export as..." | trans }}</a>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownExportAsOffline">
+                                <li><a id="navbar-button-exportas-html5" class="dropdown-item" href="#">{{ "Website" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-html5-folder" class="dropdown-item" href="#">{{ "Export to Folder (Unzipped Website)" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-html5-sp" class="dropdown-item" href="#">{{ "Single page" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-scorm12" class="dropdown-item" href="#">{{ "SCORM 1.2" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-scorm2004" class="dropdown-item exe-advanced" href="#">{{ "SCORM 2004" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-ims" class="dropdown-item exe-advanced" href="#">{{ "IMS CP" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-epub3" class="dropdown-item" href="#">{{ "ePub3" | trans }}</a></li>
+                                <li><a id="navbar-button-exportas-xml-properties" class="dropdown-item" href="#">{{ "Metadata (XML)" | trans }}</a></li>
+                            </ul>
+                        </li>
+                    {% endif %}
                     {#<li class="dropdown dropend exe-advanced">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Upload to" | trans }}</a>
                         <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
@@ -62,13 +83,13 @@
                     </li>
                 </ul>
             </li>
-            <li class="nav-item dropdown">
+                    <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="dropdownUtilities" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     {{ "Utilities" | trans }}
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="dropdownUtilities">
                     {# <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ "Preferences" | trans }}</a></li> #}
-                    <li><a class="dropdown-item" id="navbar-button-preview" href="#">{{ "Preview" | trans }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-preview" href="#" data-shortcut="Mod+P" aria-keyshortcuts="Control+P Meta+P">{{ "Preview" | trans }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-idevice-manager" href="#">{{ "iDevice manager" | trans }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#">{{ "Resources report" | trans }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#">{{ "Link validation" | trans }}</a></li>
@@ -83,6 +104,7 @@
                 <ul class="dropdown-menu" aria-labelledby="dropdownHelp">
                     <li><a class="dropdown-item" id="navbar-button-assistant" href="#">{{ "Assistant" | trans }}</a></li>
                     <li><a class="dropdown-item" id="navbar-button-exe-tutorial" href="#">{{ "User manual" | trans }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-api-docs" href="#">{{ "API Reference (Swagger)" | trans }}</a></li>
                     <li class="dropdown-divider"></li>
                     <li><a class="dropdown-item" id="navbar-button-about-exe" href="#">{{ "About eXeLearning" | trans }}</a></li>
                     <li><a class="dropdown-item" id="navbar-button-release-notes" href="#">{{ "Release notes" | trans }}</a></li>

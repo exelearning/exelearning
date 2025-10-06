@@ -53,6 +53,8 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
 
+        $this->userHelper->saveUserTheme($user, Constants::THEME_DEFAULT);
+
         // Check if user has already an open session
         $currentOdeUserForUser = $currentOdeUsersRepository->getCurrentSessionForUser($databaseUser->getUserIdentifier());
 

@@ -1,9 +1,0 @@
-@font-face {
-    	font-family: 'STIXGeneralBold';
-    	font-style:normal;
-      	
-	src: url('STIXGeneral-Bold.eot');
-  	src: local('?'),
-         url('STIXGeneral-Bold.woff') format('woff'), url('STIXGeneral-Bold.ttf') format('truetype'), url('STIXGeneral-Bold.svg') format('svg'); 
-}
-

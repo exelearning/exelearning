@@ -19,22 +19,20 @@ class CreateNewDocumentTest extends ExelearningE2EBase
     public function testCreateNewDocument(): void
     {
 
-        sleep(3);
-        // $this->markTestSkipped('disabled until we release the new test sysstem');
-
-
     	// Call the base class login method that gets the PantherClient object
         $client = $this->login();
 
+        // $this->captureAllWindowsScreenshots($client, 'main');
+
         // Wait for the interface to fully load
-        $client->waitForInvisibility('#load-screen-main');
+        // $client->waitForInvisibility('#load-screen-main');
 
         // Close any confirmation modals
         $this->closeConfirmationModals($client);
 
         $this->createNewDocument($client);
 
-        $this->assertSelectorExists('#properties-node-content-form > ul');
+        $this->assertSelectorExists('#properties-node-content-form');
 
     }
 

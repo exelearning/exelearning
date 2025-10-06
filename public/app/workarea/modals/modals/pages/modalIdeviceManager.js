@@ -7,20 +7,20 @@ export default class ModalIdeviceManager extends Modal {
         super(manager, id, titleDefault, false);
         // Modal body content element
         this.modalElementBodyContent = this.modalElementBody.querySelector(
-            '.modal-body-content',
+            '.modal-body-content'
         );
         // Modal footer
         this.modalFooter = this.modalElement.querySelector('.modal-footer');
         // Modal buttons
         this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary',
+            'button.btn.btn-primary'
         );
         this.cancelButton = this.modalElement.querySelector(
-            'button.close.btn.btn-secondary',
+            'button.close.btn.btn-secondary'
         );
         // Modal alert element
         this.modalElementAlert = this.modalElementBody.querySelector(
-            '.alert.alert-danger',
+            '.alert.alert-danger'
         );
         this.modalElementAlertText =
             this.modalElementBody.querySelector('.text');
@@ -145,8 +145,8 @@ export default class ModalIdeviceManager extends Modal {
         // Parameters of a idevice that we will show in the information
         this.paramsInfo = JSON.parse(
             JSON.stringify(
-                eXeLearning.app.api.parameters.ideviceInfoFieldsConfig,
-            ),
+                eXeLearning.app.api.parameters.ideviceInfoFieldsConfig
+            )
         );
         // Installed idevices
         if (idevices) this.idevices = idevices;
@@ -195,7 +195,7 @@ export default class ModalIdeviceManager extends Modal {
     saveIdevicesVisibility() {
         let preferences = {};
         let ideviceListInputVisibility = this.modalElementBody.querySelectorAll(
-            '.idevice-row .idevice-visible input',
+            '.idevice-row .idevice-visible input'
         );
         ideviceListInputVisibility.forEach((input) => {
             let ideviceName = input.getAttribute('idevice');
@@ -288,7 +288,7 @@ export default class ModalIdeviceManager extends Modal {
         let filterTable = this.makeFilterTable(
             bodyContainer,
             '.idevice-title',
-            _('Search iDevices'),
+            _('Search iDevices')
         );
         bodyContainer.append(filterTable);
         // Idevices list
@@ -312,22 +312,22 @@ export default class ModalIdeviceManager extends Modal {
             idevicesListContainer.append(
                 this.makeElementTableIdevices(
                     this.idevicesBase,
-                    defaultIdevicesTabData,
-                ),
+                    defaultIdevicesTabData
+                )
             );
             idevicesListContainer.append(
                 this.makeElementTableIdevices(
                     this.idevicesUser,
-                    userIdevicesTabData,
-                ),
+                    userIdevicesTabData
+                )
             );
         } else {
             // Only show base idevices
             idevicesListContainer.append(
                 this.makeElementTableIdevices(
                     this.idevicesBase,
-                    defaultIdevicesTabData,
-                ),
+                    defaultIdevicesTabData
+                )
             );
             idevicesListContainer.classList.add('no-tabs');
         }
@@ -345,7 +345,8 @@ export default class ModalIdeviceManager extends Modal {
         buttonsContainer.classList.add('idevices-button-container');
         // Button import style
         buttonsContainer.append(this.makeElementInputFileImportIdevice());
-        buttonsContainer.append(this.makeElementButtonImportIdevice());
+        let importButton = this.makeElementButtonImportIdevice();
+        if (importButton != false) buttonsContainer.append(importButton);
 
         return buttonsContainer;
     }
@@ -379,6 +380,11 @@ export default class ModalIdeviceManager extends Modal {
      * @returns
      */
     makeElementButtonImportIdevice() {
+        if (
+            eXeLearning.config.isOfflineInstallation == false &&
+            eXeLearning.config.userIdevices == false
+        )
+            return false;
         let buttonImportIdevice = document.createElement('button');
         buttonImportIdevice.classList.add('idevices-button-import');
         buttonImportIdevice.classList.add('btn');
@@ -651,7 +657,7 @@ export default class ModalIdeviceManager extends Modal {
         actionInfoTd.addEventListener('click', (event) => {
             this.modalElementBodyContent.innerHTML = '';
             this.modalElementBodyContent.append(
-                this.makeElementInfoIdevice(idevice),
+                this.makeElementInfoIdevice(idevice)
             );
             this.generateButtonBack();
             this.hideConfirmButtonText();
@@ -695,8 +701,8 @@ export default class ModalIdeviceManager extends Modal {
                     this.makeElementInfoIdeviceTableRow(
                         param,
                         idevice[param],
-                        config,
-                    ),
+                        config
+                    )
                 );
             }
         }
@@ -713,10 +719,10 @@ export default class ModalIdeviceManager extends Modal {
         let rowTableInfo = document.createElement('tr');
         rowTableInfo.classList.add('row-table-info-idevice');
         rowTableInfo.append(
-            this.makeElementInfoIdeviceTableRowKey(key, config),
+            this.makeElementInfoIdeviceTableRowKey(key, config)
         );
         rowTableInfo.append(
-            this.makeElementInfoIdeviceTableRowValue(value, config),
+            this.makeElementInfoIdeviceTableRowValue(value, config)
         );
 
         return rowTableInfo;
@@ -852,10 +858,10 @@ export default class ModalIdeviceManager extends Modal {
                 // Load idevice in client
                 this.idevices.loadIdevice(response.idevice);
                 this.idevicesBase = this.getBaseIdevices(
-                    this.idevices.installed,
+                    this.idevices.installed
                 );
                 this.idevicesUser = this.getUserIdevices(
-                    this.idevices.installed,
+                    this.idevices.installed
                 );
                 // Make body element idevices table
                 let bodyContent = this.makeBodyElement();
@@ -864,7 +870,7 @@ export default class ModalIdeviceManager extends Modal {
                     bodyContent.classList.add('only-base-idevices');
                 // Set visibility in installed idevice
                 let newIdeviceInput = this.modalElementBody.querySelector(
-                    `tr[idevice-id="${response.idevice.name}"] input`,
+                    `tr[idevice-id="${response.idevice.name}"] input`
                 );
                 if (newIdeviceInput) newIdeviceInput.click();
                 // Tab events
@@ -875,7 +881,7 @@ export default class ModalIdeviceManager extends Modal {
                 // Show alert
                 this.showElementAlert(
                     _('Failed to install the new iDevice'),
-                    response,
+                    response
                 );
             }
         });
@@ -908,7 +914,7 @@ export default class ModalIdeviceManager extends Modal {
                     if (!this.modal._isShown) this.show(false);
                     this.showElementAlert(
                         _('Could not remove the iDevice'),
-                        response,
+                        response
                     );
                 }, this.timeMax);
             }
@@ -924,7 +930,7 @@ export default class ModalIdeviceManager extends Modal {
         eXeLearning.app.api
             .getIdeviceInstalledZip(
                 eXeLearning.app.project.odeSession,
-                idevice.dirName,
+                idevice.dirName
             )
             .then((response) => {
                 if (response && response.zipFileName && response.zipBase64) {

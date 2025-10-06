@@ -142,7 +142,7 @@ class ExportEPUB3Service implements ExportServiceInterface
             $odeNavStructureSyncs,
             $pagesFileData,
             $odeProperties,
-            $elpFileName,
+            $exportDirPath,
             $resourcesPrefix,
             $this->exportType
         );
@@ -253,7 +253,8 @@ class ExportEPUB3Service implements ExportServiceInterface
                 $newResourcesPrefix,
                 $this->exportType,
                 $isPreview,
-                $translator
+                $translator,
+                $odeNavStructureSyncs
             );
 
             // Save page as HTML file
@@ -288,6 +289,38 @@ class ExportEPUB3Service implements ExportServiceInterface
 
                     // Write page file
                     file_put_contents($pageFile, $ideviceHtml);
+                }
+            }
+
+            // Convert SimpleXMLElement to DOMDocument
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+            $dom->formatOutput = true;
+            $importedNode = $dom->importNode(
+                dom_import_simplexml($pageExportHTML),
+                true // deep copy
+            );
+            $dom->appendChild($importedNode);
+
+            // Update data-idevice-json-data attributes in the DOM using the processed clones
+            $xpath = new \DOMXPath($dom);
+            foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
+                foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
+                    $ideviceId = $odeComponentsSync->getOdeIdeviceId();
+                    if (!isset($odeComponentsSyncCloneArray[$ideviceId])) {
+                        continue;
+                    }
+                    $odeComponentsSyncClone = $odeComponentsSyncCloneArray[$ideviceId];
+                    $jsonData = $odeComponentsSyncClone->getJsonProperties();
+
+                    $query = "//*[@id='".$ideviceId."']";
+                    $nodes = $xpath->query($query);
+                    if ($nodes && $nodes->length > 0) {
+                        foreach ($nodes as $node) {
+                            if (null !== $jsonData) {
+                                $node->setAttribute('data-idevice-json-data', $jsonData);
+                            }
+                        }
+                    }
                 }
             }
         }

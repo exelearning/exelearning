@@ -21,17 +21,17 @@ var $exeDevice = {
     // True/false options
     trueFalseOptions: {
         showMenuBar: [_('Show menu bar'), false],
-        showAlgebraInput: [_('Allow algebra input'), false],
-        showToolBar: [_('Show toolbar'), false],
-        showToolBarHelp: [_('Show toolbar help'), false],
-        showResetIcon: [_('Show reset icon'), false],
+        showAlgebraInput: [_('Algebra input field'), false],
+        showToolBar: [_('Toolbar'), false],
+        showToolBarHelp: [_('Toolbar help'), false],
+        showResetIcon: [_('Reset icon'), false],
         enableShiftDragZoom: [_('Zoom'), false],
         enableRightClick: [_('Enable right click'), false],
-        errorDialogsActive: [_('Error dialogs active'), false],
+        errorDialogsActive: [_('Error dialogs'), false],
         preventFocus: [_('Prevent focus'), false],
-        showFullscreenButton: [_('Show fullscreen button'), true],
+        showFullscreenButton: [_('Fullscreen button'), true],
         disableAutoScale: [_('Disable auto-scale'), false],
-        showSuggestionButtons: [_('Show suggestion buttons'), true],
+        showSuggestionButtons: [_('Suggestion buttons'), true],
         playButton: [_('Play button'), false],
         ShowAuthor: [_('Authorship'), true],
     },
@@ -137,7 +137,7 @@ var $exeDevice = {
 								<input type="checkbox" id="geogebraActivityEvaluation"> ${_('Progress report')}.
 							</label>
 							<label for="geogebraActivityEvaluationID">${_('Identifier')}: 
-								<input type="text" id="geogebraActivityEvaluationID" disabled />
+                                <input type="text" id="geogebraActivityEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
 							</label>
 						</p>
 						<div id="geogebraActivityEvaluationHelp" class="geogebractivityTypeGameHelp">
@@ -145,7 +145,7 @@ var $exeDevice = {
 						</div>
 					</div>
 				</fieldset>
-				${$exeDevices.iDevice.common.getTextFieldset('after')}
+				${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
 			</div>
 		`;
 
@@ -544,7 +544,7 @@ var $exeDevice = {
                 '<div class="auto-geogebra-instructions">' +
                 instructions +
                 '</div>';
-        divContent += `<div class="game-evaluation-ids js-hidden" data-id="${ideviceID}" data-evaluationid="${evaluationID}"></div>`;
+        divContent += `<div class="game-evaluation-ids js-hidden" data-id="${ideviceID}" data-evaluationb="${evaluation}" data-evaluationid="${evaluationID}"></div>`;
         divContent +=
             '<p><a href="' +
             urlBase +

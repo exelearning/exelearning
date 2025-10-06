@@ -30,11 +30,33 @@ var $trueorfalse = {
     renderView: function (data, accesibility, template, ideviceId) {
 
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
+        const medias = $trueorfalse.extractMediaElements(data.questionsGame);
         const htmlContent = $trueorfalse.createInterfaceTrueOrFalse(ldata);
-        const html = template.replace('{content}', htmlContent);
+        const content = htmlContent + medias
+
+        const html = template.replace('{content}', content);
+        $exeDevices.iDevice.gamification.math.updateLatex(
+            '.exe-trueorfalse-container',
+        );
 
         return html;
     },
+
+
+    extractMediaElements: function (items) {
+        if (!Array.isArray(items)) return ''
+ 
+        const tmp = document.createElement('div')
+        const set = new Set()
+
+        for (const { question = '', feedback = '', suggestion = '', baseText = '' } of items) {
+            tmp.innerHTML = `${question} ${feedback} ${suggestion} ${baseText}`
+            tmp.querySelectorAll('img, audio, video').forEach(el => set.add(el.outerHTML))
+            tmp.innerHTML = '' 
+        }
+        return `<div class="questionsMedia" style="display:none">${[...set].join('')}</div>`
+    },
+
 
     renderBehaviour(data, accesibility, ideviceId) {
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
@@ -48,9 +70,6 @@ var $trueorfalse = {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
-
-        
-        
         if (document.body.classList.contains('exe-scorm') && ldata.isScorm > 0) {
             if (typeof window.scorm !== "undefined" && window.scorm.init()) {
                 this.initScormData(ldata);
@@ -61,11 +80,24 @@ var $trueorfalse = {
             $exeDevices.iDevice.gamification.scorm.registerActivity(ldata)
         }
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMainContainer-' + ldata.id,
-        );
-
         $trueorfalse.addEvents(ldata);
+
+        const dataString = JSON.stringify(ldata)
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+
+
+        if (!hasLatex) return;
+        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+
+        if (!mathjaxLoaded) {
+            $exeDevices.iDevice.gamification.math.loadMathJax();
+        } else {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '#tofPMainContainer-' + ldata.id,
+            );
+        }
+
+        
     },
 
     initScormData: function (ldata) {
@@ -143,6 +175,7 @@ var $trueorfalse = {
                 solution: q.answer === 'True' ? 1 : 0
             }));
             data.gameStarted = true;
+            data.showSlider = false
         }
         if (data.percentageQuestions < 100) {
             data.questionsGame = $exeDevices.iDevice.gamification.helpers.getQuestions(data.questionsGame, data.percentageQuestions)
@@ -150,10 +183,49 @@ var $trueorfalse = {
             data.questionsGame = $exeDevices.iDevice.gamification.helpers.shuffleAds(data.questionsGame)
         }
         data.numberQuestions = data.questionsGame.length;
+        data.current = 0;
 
         return data;
     },
 
+    replaceDirPath(htmlString, ideviceId) {
+        const node = document.getElementById(ideviceId);
+        if (!node || eXe.app.isInExe() || !htmlString) return htmlString;
+
+        const idRes = node.getAttribute('id-resource') || '';
+        if (!idRes) return htmlString;
+
+        const basePath = document.documentElement.id === 'exe-index'
+            ? `content/resources/${idRes}/`
+            : `../content/resources/${idRes}/`;
+
+        const custom = document.documentElement.id === 'exe-index'
+            ? 'custom/'
+            : '../custom/';
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
+        doc.querySelectorAll('img[src], video[src], audio[src], a[href], source[src]')
+            .forEach(el => {
+                const attr = el.hasAttribute('src') ? 'src' : 'href';
+                let val = el.getAttribute(attr).trim();
+                try {
+                    const u = new URL(val, window.location.origin);
+                    if (/^\/?files\//.test(u.pathname)) {
+                        const filename = u.pathname.split('/').pop() || '';
+                        if (u.pathname.indexOf('file_manager') === -1) {
+                            el.setAttribute(attr, basePath + filename);
+                        } else {
+                            el.setAttribute(attr, custom + filename);
+                        }
+                    }
+                } catch {
+                    // 
+                }
+            });
+
+        return doc.body.innerHTML;
+    },
 
     loadSCORM_API_wrapper: function (data) {
         let parsedData = (typeof data === 'string') ? JSON.parse(data) : data;
@@ -237,8 +309,8 @@ var $trueorfalse = {
                 ? 'TOFP-EHidden'
                 : '';
         const display = mOptions.isScorm == 2 ? 'block' : 'none';
-        const html = `
-        <div class="game-evaluation-ids js-hidden" data-id="${mOptions.id}" data-evaluationid="${mOptions.evaluationID}"></div>
+    const html = `
+    <div class="game-evaluation-ids js-hidden" data-id="${mOptions.id}" data-evaluationb="${mOptions.evaluation}" data-evaluationid="${mOptions.evaluationID}"></div>
         <div class="TOFP-instructions">${mOptions.eXeGameInstructions}</div>
         <div class="TOFP-MainContainer" data-instance="${instance}" id="tofPMainContainer-${instance}">
             <div class="TOFP-GameContainer" id="tofPGameContainer-${instance}">
@@ -256,11 +328,11 @@ var $trueorfalse = {
                 </div>
                 <div class="TOFP-Multimedia ${questionsClass}" id="tofPMultimedia-${instance}">
                 </div>
-            <div class="TOFP-CheckTestDiv ${checkClass}" id="tofPCheckTestDiv-${instance}">
-                 <button id="tofPCheckTest-${instance}" type="button" class="btn btn-primary">${msgs.msgCheck}</button>
-                 <button id="tofRebootTest-${instance}" type="button" class="btn btn-primary TOFP-EHidden">${msgs.msgReboot}</button>
-            </div>
-        </div>
+                <div class="TOFP-CheckTestDiv ${checkClass}" id="tofPCheckTestDiv-${instance}">
+                    <button id="tofPCheckTest-${instance}" type="button" class="btn btn-primary">${msgs.msgCheck}</button>
+                    <button id="tofRebootTest-${instance}" type="button" class="btn btn-primary TOFP-EHidden">${msgs.msgReboot}</button>
+                </div>
+        </div> 
         <div class="Games-BottonContainer">
             <div class="Games-GetScore">
                 <input id="tofPSendScore-${instance}" type="button" value="${mOptions.textButtonScorm}" class="feedbackbutton Games-SendScore" style="display:${display}"/> <span class="Games-RepeatActivity"></span>
@@ -276,6 +348,13 @@ var $trueorfalse = {
     },
 
     generateTrueFalseQuizHtml: function (data) {
+        const html = data.showSlider
+            ? $trueorfalse.generateSlideshow(data) :
+            $trueorfalse.generatePage(data);
+        return html;
+    },
+
+    generatePage: function (data) {
         const mOptions = data;
         const questionsGame = mOptions.questionsGame;
         const instance = mOptions.id;
@@ -285,13 +364,13 @@ var $trueorfalse = {
             .map(
                 (question, index) => `
             <div class="TOFP-QuestionDiv ${index % 2 ? 'TOFP-QuestionDivBlack' : ''} " data-number="${index}">
-               <div class="TOFP-Question">${question.question}</div> 
+               <div class="TOFP-Question">${$trueorfalse.replaceDirPath(question.question, instance)}</div> 
                <a href="#" class="TOFP-ShowSuggestion ${!question.suggestion.trim() ? 'TOFP-EHidden' : ''}">
                     <img src="${mOptions.idevicePath}tofshowsuggestion.png" alt="${msgs.msgSuggestion}" class="TOFP-SuggestionIcon">
                     <span>${msgs.msgSuggestion}</span>
                 </a>
                 <div class="TOFP-Suggestion TOFP-EHidden">
-                    ${question.suggestion}                    
+                    ${$trueorfalse.replaceDirPath(question.suggestion, instance)}                    
                 </div>         
                 <p class="TOFP-Answers">
                     <label>
@@ -303,7 +382,7 @@ var $trueorfalse = {
                 </p>
                <div class="TOFP-Feedback TOFP-EHidden">
                     <strong><span class="TOFP-SolutionMessage"></span></strong>
-                    ${question.feedback}
+                    ${$trueorfalse.replaceDirPath(question.feedback, instance)}
                 </div>            
             </div>
         `,
@@ -316,6 +395,65 @@ var $trueorfalse = {
             </div>
         `;
     },
+
+    generateSlideshow: function (data) {
+        const itemsPerSlide = data.showSlider ? 1 : 0;
+        const mOptions = data;
+        const questionsGame = mOptions.questionsGame;
+        const instance = mOptions.id;
+        const msgs = mOptions.msgs;
+
+        if (typeof itemsPerSlide !== 'number' || itemsPerSlide < 1) {
+            return $trueorfalse.generatePage(data)
+        }
+
+        const grouped = [];
+        for (let i = 0; i < questionsGame.length; i += itemsPerSlide) {
+            grouped.push(questionsGame.slice(i, i + itemsPerSlide));
+        }
+
+        const slidesHtml = grouped.map((group, slideIdx) => {
+            const questionsHtml = group.map((question, idx) => {
+                const index = slideIdx * itemsPerSlide + idx;
+                return `
+          <div class="TOFP-QuestionDiv" data-number="${index}">
+            <div class="TOFP-Question">${$trueorfalse.replaceDirPath(question.question, instance)}</div>
+            <a href="#" class="TOFP-ShowSuggestion ${!question.suggestion.trim() ? 'TOFP-EHidden' : ''}">
+              <img src="${mOptions.idevicePath}tofshowsuggestion.png" alt="${msgs.msgSuggestion}" class="TOFP-SuggestionIcon">
+              <span>${msgs.msgSuggestion}</span>
+            </a>
+            <div class="TOFP-Suggestion TOFP-EHidden">${$trueorfalse.replaceDirPath(question.suggestion, instance)}</div>
+            <p class="TOFP-Answers">
+              <label><input class="TOFP-Answer" type="radio" name="tofanswer-${instance}-${index}" value="1"> ${msgs.msgTrue}</label>
+              <label><input class="TOFP-Answer" type="radio" name="tofanswer-${instance}-${index}" value="0"> ${msgs.msgFalse}</label>
+            </p>
+            <div class="TOFP-Feedback TOFP-EHidden">
+              <strong><span class="TOFP-SolutionMessage"></span></strong>
+              ${$trueorfalse.replaceDirPath(question.feedback, instance)}
+            </div>
+          </div>`;
+            }).join('');
+
+            return `<div class="TOFP-SlideshowSlide" data-slide="${slideIdx}">${questionsHtml}</div>`;
+        }).join('');
+        return `
+      <div class="TOFP-SlideshowContainer" id="tofpSlideShow-${instance}">
+        <div class="TOFP-SlideshowControls">
+            <a href="#" class="TOFP-SlideshowPrev TOFP-SlideshowControl" id="tofpPrevious-${instance}" title="${msgs.msgPrevious}">
+            <img src="${mOptions.idevicePath}tofprevious.png" alt="${msgs.msgPrevious}" />
+            </a>
+            <span class="TOFP-SlideNumber" id="tofpSlideNumber-${instance}">1/10</span>
+            <a href="#" class="TOFP-SlideshowNext TOFP-SlideshowControl" id="tofpNext-${instance}" title="${msgs.msgNext}">
+            <img src="${mOptions.idevicePath}tofnext.png" alt="${msgs.msgNext}" />
+            </a>
+        </div>
+        <div class="TOFP-SlideshowWrapper">
+          ${slidesHtml}
+        </div>
+      </div>
+    `;
+    },
+
 
     removeEvents: function (data) {
         const instance = data.id;
@@ -331,7 +469,94 @@ var $trueorfalse = {
             '.TOFP-ShowSuggestion',
         );
     },
+    addEventsSlideShow: function (data) {
+        const mOptions = data;
+        const instance = data.id;
+        mOptions.current = 0;
+        if (mOptions.showSlider) {
+            const $slideshow = $('#tofPMultimedia-' + instance).find('.TOFP-SlideshowContainer');
+            const $wrapper = $slideshow.find('.TOFP-SlideshowWrapper');
+            const $slides = $wrapper.children();
+            const total = $slides.length;
+            $slideshow.find('.TOFP-SlideNumber').text(`${mOptions.current + 1}/${total}`)
+            if (total > 1) {
+                $slideshow.find('.TOFP-SlideshowControl').removeClass('TOFP-EHidden');
+                $wrapper.css({ position: 'relative' });
+                let heights = $slides.map((i, el) => $(el).outerHeight()).get();
+                let maxHeight = Math.max(...heights);
+                const controlsHeight = $slideshow.find('.TOFP-SlideshowControl').outerHeight(true) + 30;
+                $wrapper.css('height', maxHeight);
+                $slideshow.css('height', maxHeight + controlsHeight);
 
+                $slides.css({ position: 'absolute', top: 0, left: 0, width: '100%' })
+                    .hide()
+                    .eq(0)
+                    .show();
+
+                function goToNext() {
+                    const next = (mOptions.current + 1) % total;
+                    $slides.eq(mOptions.current)
+                        .animate({ left: '100%' }, 300, function () {
+                            $(this).hide().css({ left: 0 });
+                        });
+                    $slides.eq(next)
+                        .css({ left: '-100%' })
+                        .show()
+                        .animate({ left: 0 }, 300, function () {
+                            const h = $slides.eq(next).outerHeight();
+                            $wrapper.animate({ height: h }, 300);
+                            $slideshow.animate({ height: h + controlsHeight }, 300);
+                        });
+                    mOptions.current = next;
+                    $slideshow.find('.TOFP-SlideNumber').text(`${mOptions.current + 1}/${total}`)
+                }
+
+                function goToPrev() {
+                    const prev = (mOptions.current - 1 + total) % total;
+                    $slides.eq(mOptions.current)
+                        .animate({ left: '-100%' }, 300, function () {
+                            $(this).hide().css({ left: 0 });
+                        });
+
+                    $slides.eq(prev)
+                        .css({ left: '100%' })
+                        .show()
+                        .animate({ left: 0 }, 300, function () {
+                            const h = $slides.eq(prev).outerHeight() + controlsHeight + 20;
+                            $wrapper.animate({ height: h }, 300);
+                            $slideshow.animate({ height: h }, 300);
+                        });
+                    mOptions.current = prev;
+                    $slideshow.find('.TOFP-SlideNumber').text(`${mOptions.current + 1}/${total}`)
+                }
+                $slideshow.find('.TOFP-SlideshowNext').off('click');
+                $slideshow.find('.TOFP-SlideshowNext').on('click', function (e) {
+                    e.preventDefault();
+                    goToNext();
+                });
+                $slideshow.find('.TOFP-SlideshowPrev').off('click')
+                $slideshow.find('.TOFP-SlideshowPrev').on('click', function (e) {
+                    e.preventDefault();
+                    goToPrev();
+                });
+            }
+        }
+
+
+    },
+    resizeSlideShow: function (data) {
+        const mOptions = data;
+        const instance = data.id;
+        if (mOptions.showSlider) {
+            const $slideshow = $('#tofpSlideShow-' + instance)
+            const $wrapper = $slideshow.find('.TOFP-SlideshowWrapper');
+            const controlsHeight = $slideshow.find('.TOFP-SlideshowControls').outerHeight(true) + 30;
+            const maxHeight = $slideshow.find('.TOFP-SlideshowSlide').eq(mOptions.current).outerHeight();
+            $wrapper.css('height', maxHeight);
+            $slideshow.css('height', maxHeight + controlsHeight);
+        }
+
+    },
     addEvents: function (data) {
         $(document).on('questionsReady', function (e, questions) {
             //var container = $('#questionsContainer');
@@ -381,6 +606,10 @@ var $trueorfalse = {
                     return;
                 }
                 const $parentDiv = $(this).closest('.TOFP-QuestionDiv');
+                if (mOptions.showSlider) {
+                    $trueorfalse.resizeSlideShow(mOptions)
+                }
+
                 const number = parseInt($parentDiv.data('number'));
                 const correct =
                     mOptions.questionsGame[number].solution ==
@@ -408,6 +637,9 @@ var $trueorfalse = {
         $('#tofPCheckTest-' + instance).on('click', function (e) {
             e.preventDefault();
             $trueorfalse.gameOver(mOptions);
+            if (mOptions.showSlider) {
+                $trueorfalse.resizeSlideShow(mOptions)
+            }
         });
 
         $('#tofRebootTest-' + instance).on('click', function (e) {
@@ -424,9 +656,12 @@ var $trueorfalse = {
                         mOptions.questionsGame,
                     );
             }
-            const questionsHtml = $trueorfalse.generateTrueFalseQuizHtml(data);
+            const questionsHtml = $trueorfalse.generateTrueFalseQuizHtml(mOptions);
             $('#tofPMultimedia-' + mOptions.id).empty();
             $('#tofPMultimedia-' + mOptions.id).append(questionsHtml);
+            if (mOptions.showSlider) {
+                $trueorfalse.addEventsSlideShow(mOptions)
+            }
             $trueorfalse.startGame(mOptions);
         });
 
@@ -443,6 +678,7 @@ var $trueorfalse = {
                 const $question = $(this).closest('.TOFP-QuestionDiv');
                 const $suggestion = $question.find('.TOFP-Suggestion');
                 const $icon = $question.find('.TOFP-SuggestionIcon');
+                const $parentDiv = $(this).closest('.TOFP-QuestionDiv');
 
                 $suggestion.slideToggle('fast', function () {
                     const isVisible = $suggestion.is(':visible');
@@ -456,9 +692,16 @@ var $trueorfalse = {
                         src: newSrc,
                         alt: altText,
                     });
+                    if (mOptions.showSlider) {
+                        $trueorfalse.resizeSlideShow(mOptions)
+                    }
                 });
             },
         );
+        if (mOptions.showSlider) {
+            $trueorfalse.addEventsSlideShow(mOptions)
+        }
+
 
         if (mOptions.isTest && mOptions.time > 0) {
             $trueorfalse.updateTime(mOptions.time * 60, instance);
@@ -689,6 +932,8 @@ var $trueorfalse = {
         msgStartGame: 'Haz clic aquí para comenzar',
         msgYouScore: 'Tu puntuación',
         textButtonScorm: 'Guardar puntuación',
+        msgNext: 'Siguiente',
+        msgPrevious: 'Anterior',
     },
 
 };
