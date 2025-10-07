@@ -19,6 +19,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/current-ode-users-management/current-ode-user')]
 class CurrentOdeUsersApiController extends DefaultApiController
@@ -30,13 +31,19 @@ class CurrentOdeUsersApiController extends DefaultApiController
     private $currentOdeUsersService;
     private $currentOdeUsersSyncChangesService;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, UserHelper $userHelper, CurrentOdeUsersServiceInterface $currentOdeUsersService, CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        UserHelper $userHelper,
+        CurrentOdeUsersServiceInterface $currentOdeUsersService,
+        CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService,
+        SerializerInterface $serializer,
+    ) {
         $this->userHelper = $userHelper;
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->currentOdeUsersSyncChangesService = $currentOdeUsersSyncChangesService;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     #[Route('/user/get', methods: ['GET'], name: 'api_current_ode_users_for_user_get')]
