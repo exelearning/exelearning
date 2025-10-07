@@ -12,6 +12,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/translation-management/translations')]
 class TranslationApiController extends DefaultApiController
@@ -19,12 +20,17 @@ class TranslationApiController extends DefaultApiController
     private $fileHelper;
     private $iDeviceHelper;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, FileHelper $fileHelper, IdeviceHelper $iDeviceHelper)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        FileHelper $fileHelper,
+        IdeviceHelper $iDeviceHelper,
+        SerializerInterface $serializer,
+    ) {
         $this->fileHelper = $fileHelper;
         $this->iDeviceHelper = $iDeviceHelper;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     #[Route('', methods: ['GET'], name: 'api_translations_lists')]
