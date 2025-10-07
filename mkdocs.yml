@@ -17,13 +17,14 @@ theme:
       toggle:
         icon: material/weather-sunny
         name: Light mode
+  features:
+    - content.code.copy
+    - content.tooltips
 nav:
   - Home: index.md
   - Overview: overview.md
   - Install: install.md
-  - Deployment:
-      - Overview: deploy/overview.md
-      - Guides: deploy/README.md
+  - Deployment: deployment.md
   - Development:
       - Environment: development/environment.md
       - Version Control: development/version-control.md
@@ -44,11 +45,19 @@ markdown_extensions:
   - admonition
   - toc:
       permalink: true
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      linenums: true
+      linenums_style: pymdownx-inline  
   - pymdownx.superfences
   - pymdownx.details
   - pymdownx.emoji
   - pymdownx.tasklist
+  - pymdownx.snippets:
+      base_path: doc
+      check_paths: true
+  - pymdownx.tabbed:
+      alternate_style: true
+
 
 extra_css:
   - style.css
