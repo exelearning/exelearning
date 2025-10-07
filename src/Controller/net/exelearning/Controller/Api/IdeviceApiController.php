@@ -35,6 +35,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/api/idevice-management/idevices')]
@@ -63,6 +64,7 @@ class IdeviceApiController extends DefaultApiController
         ThumbnailServiceInterface $thumbnailService,
         OdeServiceInterface $odeService,
         HubInterface $hub,
+        SerializerInterface $serializer,
     ) {
         $this->fileHelper = $fileHelper;
         $this->iDeviceHelper = $iDeviceHelper;
@@ -74,7 +76,7 @@ class IdeviceApiController extends DefaultApiController
         $this->thumbnailService = $thumbnailService;
         $this->odeService = $odeService;
 
-        parent::__construct($entityManager, $logger, $hub);
+        parent::__construct($entityManager, $logger, $serializer, $hub);
     }
 
     #[Route('/installed', methods: ['GET'], name: 'api_idevices_installed')]
@@ -490,6 +492,8 @@ class IdeviceApiController extends DefaultApiController
      */
     private function saveOdeComponentsSync(Request $request, $method)
     {
+        $this->hydrateRequestBody($request);
+
         $user = $this->getUser();
 
         // collect parameters
@@ -1063,6 +1067,8 @@ class IdeviceApiController extends DefaultApiController
     #[Route('/reorder/save', methods: ['PUT'], name: 'api_idevices_idevice_reorder')]
     public function reorderOdeComponentsSyncAction(Request $request)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = [];
         $responseData['odeComponentsSyncs'] = [];
 
@@ -1738,6 +1744,8 @@ class IdeviceApiController extends DefaultApiController
     #[Route('/properties/save', methods: ['PUT'], name: 'api_idevices_idevice_properties_save')]
     public function saveOdeComponentsSyncPropertiesAction(Request $request)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = [];
         $responseData['odeComponentsSync'] = null;
 

@@ -9,9 +9,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
 use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
-use Symfony\Component\Serializer\Serializer;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Uid\Uuid;
 
 class DefaultApiController extends AbstractController
@@ -27,6 +25,8 @@ class DefaultApiController extends AbstractController
     protected $logger;
 
     protected $status;
+
+    protected SerializerInterface $serializer;
     /**
      * Mercure hub.
      *
@@ -34,11 +34,16 @@ class DefaultApiController extends AbstractController
      */
     protected $hub;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, ?HubInterface $hub = null)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        SerializerInterface $serializer,
+        ?HubInterface $hub = null,
+    ) {
         $this->entityManager = $entityManager;
         $this->logger = $logger;
         $this->status = self::STATUS_CODE_OK;
+        $this->serializer = $serializer;
         $this->hub = $hub;
     }
 
@@ -49,14 +54,49 @@ class DefaultApiController extends AbstractController
      */
     protected function getJsonSerialized($data)
     {
-        $encoders = [new JsonEncoder()];
-        $normalizers = [new ObjectNormalizer()];
+        return $this->serializer->serialize($data, 'json');
+    }
 
-        $serializer = new Serializer($normalizers, $encoders);
+    /**
+     * Ensures request parameters are available when the payload is sent in the
+     * body of non-POST requests (e.g. PUT form submissions or JSON payloads).
+     */
+    protected function hydrateRequestBody(Request $request): void
+    {
+        if (!\in_array($request->getMethod(), ['PUT', 'PATCH', 'DELETE'], true)) {
+            return;
+        }
 
-        $jsonSerialized = $serializer->serialize($data, 'json');
+        if ($request->request->count() > 0) {
+            return;
+        }
 
-        return $jsonSerialized;
+        $content = $request->getContent();
+
+        if ('' === $content) {
+            return;
+        }
+
+        $contentType = strtolower((string) $request->headers->get('Content-Type'));
+
+        if (str_contains($contentType, 'application/json')) {
+            $decoded = json_decode($content, true);
+
+            if (is_array($decoded)) {
+                $request->request->add($decoded);
+
+                return;
+            }
+        }
+
+        if (str_contains($contentType, 'application/x-www-form-urlencoded') || str_contains($contentType, 'multipart/form-data')) {
+            $parsed = [];
+            parse_str($content, $parsed);
+
+            if (!empty($parsed)) {
+                $request->request->add($parsed);
+            }
+        }
     }
 
     /**

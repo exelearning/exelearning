@@ -13,6 +13,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/ode-operations-management/ode-operations')]
 class OdeOperationsLogApiController extends DefaultApiController
@@ -33,6 +34,7 @@ class OdeOperationsLogApiController extends DefaultApiController
         UserHelper $userHelper,
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
         OdeOperationsLogService $odeOperationsLogService,
+        SerializerInterface $serializer,
     ) {
         $this->fileHelper = $fileHelper;
         $this->odeService = $odeService;
@@ -41,7 +43,7 @@ class OdeOperationsLogApiController extends DefaultApiController
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->odeOperationsLogService = $odeOperationsLogService;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     #[Route('/get/ode/operation/log', methods: ['POST'], name: 'api_ode_operations_ode_operation_log_get')]

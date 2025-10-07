@@ -20,6 +20,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 class PlatformIntegrationApiController extends DefaultApiController
@@ -47,6 +48,7 @@ class PlatformIntegrationApiController extends DefaultApiController
         RedirectController $redirectController,
         PlatformIntegrationServiceInterface $platformIntegrationService,
         OdeExportServiceInterface $odeExportService,
+        SerializerInterface $serializer,
     ) {
         $this->fileHelper = $fileHelper;
         $this->odeService = $odeService;
@@ -58,7 +60,7 @@ class PlatformIntegrationApiController extends DefaultApiController
         $this->redirectController = $redirectController;
         $this->platformIntegrationService = $platformIntegrationService;
         $this->integrationUtil = new IntegrationUtil($logger);
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     #[Route('/new_ode', methods: ['GET'], name: 'api_platform_integration_new_ode')]

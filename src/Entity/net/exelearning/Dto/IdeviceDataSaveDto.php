@@ -2,6 +2,8 @@
 
 namespace App\Entity\net\exelearning\Dto;
 
+use Symfony\Component\Serializer\Annotation\SerializedName;
+
 /**
  * IdeviceDataSaveDto.
  */
@@ -25,6 +27,7 @@ class IdeviceDataSaveDto extends BaseDto
     /**
      * @var bool
      */
+    #[SerializedName('newOdeComponentsSync')]
     protected $isNewOdeComponentsSync;
 
     /**
@@ -50,6 +53,7 @@ class IdeviceDataSaveDto extends BaseDto
     /**
      * @var bool
      */
+    #[SerializedName('newOdePagStructureSync')]
     protected $isNewOdePagStructureSync;
 
     /**
@@ -70,6 +74,7 @@ class IdeviceDataSaveDto extends BaseDto
     /**
      * @var bool
      */
+    #[SerializedName('newOdeNavStructureSync')]
     protected $isNewOdeNavStructureSync;
 
     public function __construct()
