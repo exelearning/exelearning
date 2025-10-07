@@ -21,6 +21,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/pag-structure-management/pag-structures')]
 class PagStructureApiController extends DefaultApiController
@@ -41,18 +42,21 @@ class PagStructureApiController extends DefaultApiController
         OdeComponentsSyncServiceInterface $odeComponentsSyncService,
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
         HubInterface $hub,
+        SerializerInterface $serializer,
     ) {
         $this->fileHelper = $fileHelper;
         $this->pagStructureApiService = $pagStructureApiService;
         $this->odeComponentsSyncService = $odeComponentsSyncService;
         $this->currentOdeUsersService = $currentOdeUsersService;
 
-        parent::__construct($entityManager, $logger, $hub);
+        parent::__construct($entityManager, $logger, $serializer, $hub);
     }
 
     #[Route('/pag/structure/data/save', methods: ['PUT'], name: 'api_pag_structures_pag_structure_data_save')]
     public function saveOdePagStructureSyncDataAction(Request $request)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = new OdePagStructureSyncDataSaveDto();
 
         $odePagStructureSyncId = $request->get('odePagStructureSyncId');
@@ -303,6 +307,8 @@ class PagStructureApiController extends DefaultApiController
     #[Route('/reorder/save', methods: ['PUT'], name: 'api_pag_structures_pag_structure_reorder')]
     public function reorderOdePagStructureSyncAction(Request $request)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = [];
 
         $responseData['odePagStructureSyncs'] = [];
@@ -451,6 +457,8 @@ class PagStructureApiController extends DefaultApiController
     #[Route('/properties/save', methods: ['PUT'], name: 'api_pag_structures_pag_structure_properties_save')]
     public function saveOdePagStructureSyncPropertiesAction(Request $request)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = [];
         $responseData['odePagStructureSync'] = null;
 

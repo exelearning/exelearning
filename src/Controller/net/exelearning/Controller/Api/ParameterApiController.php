@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/api/parameter-management/parameters')]
@@ -22,13 +23,19 @@ class ParameterApiController extends DefaultApiController
     private $translator;
     private $userHelper;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, UrlGeneratorInterface $router, TranslatorInterface $translator, UserHelper $userHelper)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        UrlGeneratorInterface $router,
+        TranslatorInterface $translator,
+        UserHelper $userHelper,
+        SerializerInterface $serializer,
+    ) {
         $this->router = $router;
         $this->translator = $translator;
         $this->userHelper = $userHelper;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     #[Route('/data/list', methods: ['GET'], name: 'api_parameters_data_list')]

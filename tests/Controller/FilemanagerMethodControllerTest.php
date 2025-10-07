@@ -20,6 +20,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
+use Symfony\Component\Serializer\SerializerInterface;
 
 /**
  * Tests for FilemanagerMethodController functionality
@@ -34,6 +35,7 @@ class FilemanagerMethodControllerTest extends WebTestCase
     private MockObject $logger;
     private MockObject $translator;
     private MockObject $view;
+    private MockObject $serializer;
 
     /**
      * Set up test environment before each test
@@ -50,6 +52,10 @@ class FilemanagerMethodControllerTest extends WebTestCase
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->translator = $this->createMock(TranslatorInterface::class);
         $this->view = $this->createMock(ViewInterface::class);
+        $this->serializer = $this->createMock(SerializerInterface::class);
+        $this->serializer->method('serialize')->willReturnCallback(static function ($data, $format, array $context = []) {
+            return json_encode($data);
+        });
 
         // Configure standard mock behavior
         $this->storage->method('getSessionPath')->willReturn('/tmp/session_path');
@@ -71,7 +77,8 @@ class FilemanagerMethodControllerTest extends WebTestCase
             $this->storage,
             $this->tmpfs,
             $this->logger,
-            $this->translator
+            $this->translator,
+            $this->serializer
         );
     }
 
@@ -138,7 +145,8 @@ class FilemanagerMethodControllerTest extends WebTestCase
                 $this->storage,
                 $this->tmpfs,
                 $this->logger,
-                $this->translator
+                $this->translator,
+                $this->serializer
             ])
             ->onlyMethods(['getParameter'])
             ->getMock();
@@ -181,7 +189,8 @@ class FilemanagerMethodControllerTest extends WebTestCase
                 $this->storage,
                 $this->tmpfs,
                 $this->logger,
-                $this->translator
+                $this->translator,
+                $this->serializer
             ])
             ->onlyMethods(['input', 'getOdeSessionId'])
             ->getMock();
@@ -254,7 +263,8 @@ class FilemanagerMethodControllerTest extends WebTestCase
                 $this->storage,
                 $this->tmpfs,
                 $this->logger,
-                $this->translator
+                $this->translator,
+                $this->serializer
             ])
             ->onlyMethods(['input', 'getOdeSessionId'])
             ->getMock();
