@@ -1,67 +1,86 @@
-## Install
+# Install
 
 This guide helps end users (educators) download, install, and update eXeLearning on Windows, macOS, and Linux.
 
-> Tip: If you are deploying eXeLearning for multiple users on a server, skip to Deployment: [deploy/overview.md](deploy/overview.md)
+> **Tip:** For multi-user/server setups, go to **Deployment** → [deploy/deployment.md](deploy/deployment.md)
+
+---
 
 ### Download
 
-- Official releases: [https://github.com/exelearning/exelearning/releases](https://github.com/exelearning/exelearning/releases)
-- Installer types by OS:
-  - Windows: `.exe` (NSIS) and `.msi`
-  - macOS: `.dmg` and `.zip` (universal: Intel + Apple Silicon)
-  - Linux: `.deb` (Debian/Ubuntu) and `.rpm` (Fedora/RHEL/openSUSE)
+- Official releases: <https://github.com/exelearning/exelearning/releases>
+- Installer types:
+  - **Windows:** `.exe` (NSIS) and `.msi`
+  - **macOS:** `.dmg` and `.zip` (universal: Intel + Apple Silicon)
+  - **Linux:** `.deb` (Debian/Ubuntu) and `.rpm` (Fedora/RHEL/openSUSE)
 
-### Windows
+---
 
-1) Download the `.exe` (installer) or `.msi` (enterprise-friendly) from Releases.
-2) Double‑click and follow the installer steps.
-3) Launch eXeLearning from the Start Menu.
+## Windows
 
-Notes
+#### Option 1 — Package manager
 
-- SmartScreen: If Windows warns about an unknown publisher, choose “More info” → “Run anyway”.
-- Updates: eXeLearning auto‑updates in the background when new releases are published.
-- Uninstall: Settings → Apps → Installed apps → eXeLearning → Uninstall.
+```powershell title="winget (recommended)"
+winget install exelearning
+```
 
-### macOS
+```powershell title="Chocolatey"
+choco install exelearning
+```
 
-1) Download the `.dmg` from Releases and open it.
-2) Drag the eXeLearning app into the Applications folder.
-3) Open eXeLearning from Applications or Spotlight.
+#### Option 2 — Installer from Releases
 
-Gatekeeper
+1. Download `.exe` (NSIS installer) or `.msi` (enterprise-friendly) from **Releases**.
+2. Double-click and follow the steps.
+3. Launch eXeLearning from the **Start menu**.
 
-- If macOS blocks the app, right‑click the app in Applications and select “Open” to approve it.
+> **SmartScreen:** If Windows warns about an unknown publisher, choose **More info → Run anyway**.
 
-Updates
+---
 
-- eXeLearning auto‑updates after you install the `.dmg` version.
-- To remove, move the app from Applications to Trash.
+## macOS
 
-### Linux
+#### Option 1 — Homebrew (in progress)
 
-Option A — Use our package repositories (recommended)
+```bash title="brew (coming soon)"
+brew install --cask exelearning
+```
 
-- Debian/Ubuntu (APT):
+> Until it’s available on Homebrew Cask, use the `.dmg` from Releases.
 
-```bash
+#### Option 2 — Installer from Releases
+
+1. Download the `.dmg` from **Releases** and open it.
+2. Drag **eXeLearning** into **Applications**.
+3. Open eXeLearning from **Applications** or **Spotlight**.
+
+> **Gatekeeper:** If macOS blocks the app, right-click it in **Applications** and choose **Open** to approve it.
+
+---
+
+## Linux
+
+#### Option 1 — Official repositories (recommended)
+
+**Debian/Ubuntu (APT)**
+
+```bash title="Add APT repo and install"
 # Import GPG key
 sudo curl -fsSL https://exelearning.github.io/exelearning/deb/public.gpg \
   -o /usr/share/keyrings/exelearning.gpg
 
 # Add the repository
 echo "deb [arch=amd64 signed-by=/usr/share/keyrings/exelearning.gpg] https://exelearning.github.io/exelearning/deb stable main" \
-  | sudo tee /etc/apt/sources.list.d/exelearning.list >/dev/null 
+  | sudo tee /etc/apt/sources.list.d/exelearning.list >/dev/null
 
-# Update metadata and install eXeLearning
+# Update metadata and install
 sudo apt update
 sudo apt install -y exelearning
 ```
 
-- Fedora/RHEL/openSUSE (DNF/YUM):
+**Fedora/RHEL/openSUSE (DNF/YUM)**
 
-```bash
+```bash title="Add DNF/YUM repo and install"
 # Import GPG key
 sudo curl -fsSL https://exelearning.github.io/exelearning/rpm/public.key \
   -o /etc/pki/rpm-gpg/RPM-GPG-KEY-exelearning
@@ -76,40 +95,42 @@ gpgcheck=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-exelearning
 EOF
 
-# Update metadata and install eXeLearning
-sudo dnf makecache
-sudo dnf install -y exelearning
+# Update metadata and install
+sudo dnf makecache || sudo yum makecache
+sudo dnf install -y exelearning || sudo yum install -y exelearning
 ```
 
-Option B — Download a `.deb` or `.rpm`
+#### Option 2 — Local package
 
-- Download the package from Releases and install with your package manager:
+**Debian/Ubuntu (.deb)**
 
-```bash
-# Debian/Ubuntu
+```bash title="Install local .deb"
 sudo apt install ./exelearning_<version>_amd64.deb
+```
 
-# Fedora/RHEL/openSUSE
+**Fedora/RHEL/openSUSE (.rpm)**
+
+```bash title="Install local .rpm"
 sudo rpm -Uvh exelearning-<version>.x86_64.rpm
 ```
 
-Updates
+---
 
-- Using repositories keeps eXeLearning updated automatically via `apt upgrade` or `dnf upgrade`.
+## Security & Updates
 
-### Security & Updates
+* **Auto-updates:** Windows and macOS include automatic updates. On Linux, updates flow via the package manager if the repository is enabled.
 
-- Auto‑updates: Windows and macOS installers include automatic updates. Linux updates flow via your package manager if you enable our repository.
-- Malware scanning: As part of our release process, generated installers are automatically scanned via VirusTotal before publication. See [development/installers.md](development/installers.md) for details.
+---
 
-### Troubleshooting
+## Troubleshooting
 
-- The app does not start: Reboot, then try launching from the Start Menu (Windows) or Applications (macOS). On Linux, run `exelearning` from a terminal to see messages.
-- Network is blocked by a firewall/proxy: Ask your IT admin to allow the app or update URLs used by auto‑update.
-- Install conflicts: Remove older versions before installing a new major version.
+* **The app does not start:** Reboot, then launch from **Start menu** (Windows) or **Applications** (macOS). On Linux, run `exelearning` in a terminal to inspect messages.
+* **Firewall/proxy:** Ask IT to allow the app and the auto-update URLs.
 
-### Next Steps
+---
 
-- Installers (advanced topics): [development/installers.md](development/installers.md)
-- Server deployment for multiple users: [deployment/overview.md](deploy/overview.md)
-- Contributing or running from source: [development/environment.md](development/environment.md)
+## Next steps
+
+* Installers (advanced): [development/installers.md](development/installers.md)
+* Server deployment for multiple users: [deploy/deployment.md](deployment.md)
+* Contributing / running from source: [development/environment.md](development/environment.md)

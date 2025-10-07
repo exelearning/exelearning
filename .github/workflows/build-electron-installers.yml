@@ -112,7 +112,11 @@ jobs:
       - name: Decode Windows certificate
         if: matrix.os == 'windows-latest'
         run: |
-          echo "${{ secrets.CERT_P12 }}" | base64 --decode > windows-cert.pfx
+          if [ -n "${{ secrets.CERT_P12 }}" ]; then
+            echo "${{ secrets.CERT_P12 }}" | base64 --decode > windows-cert.pfx
+          else
+            echo "No CERT_P12 secret set, skipping certificate decode"
+          fi
         shell: bash
 
       - name: Build Symfony assets into public
@@ -125,31 +129,18 @@ jobs:
         env:
           # GitHub Releases API token for electron-builder
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WIN_CSC_LINK: ./windows-cert.pfx
+          # Only set signing secrets if they exist
+          WIN_CSC_LINK: ${{ secrets.CERT_P12 != '' && './windows-cert.pfx' || '' }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           # choose publish mode depending on trigger:
           # - when triggered by a release.prereleased -> publish (PUBLISH=always)
           # - when triggered by push/merged PR -> do not publish (PUBLISH=never)
-          PUBLISH: ${{ github.event_name == 'release' && 'always' || 'never' }}
+          # - skip publishing on forks
+          PUBLISH: ${{ github.event_name == 'release' && github.repository_owner == 'exelearning' && 'always' || 'never' }}
         run: |
           # Run the package command with the version
           make package VERSION=${{ steps.get_version.outputs.version }}  PUBLISH=${{ env.PUBLISH }}
         shell: bash
-
-      - name: VirusTotal Scan
-        uses: crazy-max/ghaction-virustotal@v4
-        continue-on-error: true
-        with:
-          vt_api_key: ${{ secrets.VT_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          update_release_body: true
-          files: |
-            .msi$
-            .exe$
-            .dmg$
-            .deb$
-            .rpm$
-            .zip$
 
       # Always upload installers as workflow artifacts so test job can use them.
       # If the trigger was a release and electron-builder already published, this

@@ -14,14 +14,6 @@ The application includes built-in support for **automatic updates** via [`electr
 
 ---
 
-## Security Scanning
-
-As part of the `app.yml` build pipeline, **all generated binaries are automatically uploaded to [VirusTotal](https://www.virustotal.com/)** for malware scanning. This provides an extra layer of security and trust for end users.
-
-If any issue is reported, the release is flagged before publication.
-
----
-
 ## Installer Formats
 
 Each production release generates and publishes the following installers:
@@ -139,6 +131,6 @@ You can also:
 ## See Also
 
 - End‑user installation steps: [getting-started/install.md](../install.md)
-- Server deployment options: [deployment/overview.md](../deploy/overview.md)
+- Server deployment options: [deployment/overview.md](../deployment.md)
 
 
