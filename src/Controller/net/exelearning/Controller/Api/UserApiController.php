@@ -12,6 +12,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/user-management/user')]
 class UserApiController extends DefaultApiController
@@ -24,11 +25,12 @@ class UserApiController extends DefaultApiController
         LoggerInterface $logger,
         FileHelper $fileHelper,
         UserHelper $userHelper,
+        SerializerInterface $serializer,
     ) {
         $this->fileHelper = $fileHelper;
         $this->userHelper = $userHelper;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     /**
@@ -135,6 +137,8 @@ class UserApiController extends DefaultApiController
     #[Route('/preferences/save', methods: ['PUT'], name: 'api_user_preferences_save')]
     public function saveUserPreferencesAction(Request $request)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = [];
 
         $userLogged = $this->getUser();

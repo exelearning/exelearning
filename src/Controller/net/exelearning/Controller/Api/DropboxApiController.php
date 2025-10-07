@@ -17,6 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/dropbox')]
 class DropboxApiController extends DefaultApiController
@@ -29,14 +30,21 @@ class DropboxApiController extends DefaultApiController
     private $odeService;
     private $userHelper;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, UrlGeneratorInterface $router, FileHelper $fileHelper, OdeServiceInterface $odeService, UserHelper $userHelper)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        UrlGeneratorInterface $router,
+        FileHelper $fileHelper,
+        OdeServiceInterface $odeService,
+        UserHelper $userHelper,
+        SerializerInterface $serializer,
+    ) {
         $this->router = $router;
         $this->fileHelper = $fileHelper;
         $this->odeService = $odeService;
         $this->userHelper = $userHelper;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     #[Route('/oauth/login/url/get', methods: ['GET'], name: 'api_dropbox_oauth_login_url_get')]
