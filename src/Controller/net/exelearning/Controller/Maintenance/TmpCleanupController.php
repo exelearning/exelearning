@@ -5,7 +5,6 @@ namespace App\Controller\net\exelearning\Controller\Maintenance;
 use App\Service\net\exelearning\Service\Maintenance\TmpFilesCleanupService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -18,17 +17,16 @@ class TmpCleanupController extends AbstractController
     ) {
     }
 
-    #[Route('/maintenance/tmp/cleanup', name: 'maintenance_tmp_cleanup', methods: ['POST'])]
-    public function __invoke(Request $request): JsonResponse
+    #[Route('/maintenance/tmp/cleanup', name: 'maintenance_tmp_cleanup', methods: ['POST', 'GET'])]
+    public function __invoke(Request $request): Response
     {
+        // If no key is configured, exit quietly with no error
         if ('' === trim($this->cleanupKey)) {
-            return $this->json(
-                ['error' => 'Cleanup key is not configured.'],
-                Response::HTTP_SERVICE_UNAVAILABLE
-            );
+            return new Response('', Response::HTTP_NO_CONTENT);
         }
 
-        $providedKey = (string) $request->query->get('key', '');
+        // Accept key from query string (GET) or request body (POST)
+        $providedKey = (string) ($request->query->get('key', '') ?: $request->request->get('key', ''));
 
         if ('' === $providedKey || !hash_equals($this->cleanupKey, $providedKey)) {
             return $this->json(
