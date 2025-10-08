@@ -229,7 +229,9 @@ class IntegrationUtil
      */
     private function isValidProvider(string $providerId): bool
     {
-        return in_array($providerId, $this->providerIds, true);
+        // Remove '_legacy' suffix if present
+        $normalizedId = str_ends_with($providerId, '_legacy') ? substr($providerId, 0, -7) : $providerId;
+        return in_array($normalizedId, $this->providerIds, true);
     }
 
     /**
