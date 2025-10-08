@@ -75,8 +75,15 @@ jobs:
       - name: JS Lint
         run: make lint-js
 
+      # Down the container, because we are starting with ENV=test in the next step
+      - name: Down the container to change ENV mode
+        run: make down
+
       - name: PHPUnit Unit Tests
         run: make test-unit
+
+      - name: PHPUnit E2E Tests
+        run: make test-e2e
 
       - name: PHPUnit E2E Tests
         run: make test-e2e
