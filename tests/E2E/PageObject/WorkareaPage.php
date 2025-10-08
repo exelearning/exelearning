@@ -130,102 +130,223 @@ final class WorkareaPage
         ])->getAttribute('value'));
     }
 
-    /**
-     * Selects a node in the navigation tree and waits until its content is ready.
-     *
-     * Rules:
-     * - If $node is null or isRoot(): use current selected or the first nav-element.
-     * - If $node has id: select by [nav-id] clicking on ".nav-element-text".
-     * - Otherwise select by exact title (span.node-text-span) and click its ".nav-element-text".
-     * Then:
-     * - Ensure selection matches (by id/title) and the content overlay is hidden.
-     * - Optionally assert #page-title-node-content if we know the expected title.
-     */
-    public function selectNode(?Node $node = null): void
-    {
-        $c  = $this->client;
-        $wd = $c->getWebDriver();
+//     /**
+//      * Selects a node in the navigation tree and waits until its content is ready.
+//      *
+//      * Rules:
+//      * - If $node is null or isRoot(): use current selected or the first nav-element.
+//      * - If $node has id: select by [nav-id] clicking on ".nav-element-text".
+//      * - Otherwise select by exact title (span.node-text-span) and click its ".nav-element-text".
+//      * Then:
+//      * - Ensure selection matches (by id/title) and the content overlay is hidden.
+//      * - Optionally assert #page-title-node-content if we know the expected title.
+//      */
+//     public function selectNode(?Node $node = null): void
+//     {
+//         $c  = $this->client;
+//         $wd = $c->getWebDriver();
 
-        $this->waitForLoadingScreenToDisappear();
-        $c->waitFor('#nav_list .nav-element', 20);
+//         $this->waitForLoadingScreenToDisappear();
+//         $c->waitFor('#nav_list .nav-element', 20);
 
-        // Normalize expected identity (id may be numeric or string like "root")
-        $expect = $this->resolveExpectedNode($node);
+//         // Normalize expected identity (id may be numeric or string like "root")
+//         $expect = $this->resolveExpectedNode($node);
 
-        // 1) Wait target to exist and be clickable; expand ancestors if collapsed.
-        $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
-          const exp = arguments[0];
+//         // 1) Wait target to exist and be clickable; expand ancestors if collapsed.
+//         $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+//           const exp = arguments[0];
 
-          const byId = (id) => document.querySelector(`.nav-element[nav-id="${id}"] .nav-element-text`);
-          const byTitle = (t) => {
-            const spans = Array.from(document.querySelectorAll('#nav_list .node-text-span'));
-            const span = spans.find(s => s?.textContent?.trim() === String(t ?? '').trim());
-            return span ? span.closest('.nav-element')?.querySelector('.nav-element-text') : null;
-          };
+//           const byId = (id) => document.querySelector(`.nav-element[nav-id="${id}"] .nav-element-text`);
+//           const byTitle = (t) => {
+//             const spans = Array.from(document.querySelectorAll('#nav_list .node-text-span'));
+//             const span = spans.find(s => s?.textContent?.trim() === String(t ?? '').trim());
+//             return span ? span.closest('.nav-element')?.querySelector('.nav-element-text') : null;
+//           };
 
-          let el = (exp.id ?? null) !== null ? byId(exp.id) : null;
-          if (!el && exp.title) el = byTitle(exp.title);
-          if (!el) return false;
+//           let el = (exp.id ?? null) !== null ? byId(exp.id) : null;
+//           if (!el && exp.title) el = byTitle(exp.title);
+//           if (!el) return false;
 
-          let navEl = el.closest('.nav-element');
-          let collapsed = navEl?.closest('.nav-element.toggle-off[is-parent="true"]')
-                        ?? navEl?.closest('.nav-element[is-parent="true"].toggle-off');
-          if (collapsed) {
-            collapsed.querySelector('.nav-element-toggle')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
-            return false;
-          }
+//           let navEl = el.closest('.nav-element');
+//           let collapsed = navEl?.closest('.nav-element.toggle-off[is-parent="true"]')
+//                         ?? navEl?.closest('.nav-element[is-parent="true"].toggle-off');
+//           if (collapsed) {
+//             collapsed.querySelector('.nav-element-toggle')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+//             return false;
+//           }
 
-          const r = el.getBoundingClientRect();
-          if (r.bottom <= 0 || r.top >= innerHeight) {
-            el.scrollIntoView({block:'center'});
-            return false;
-          }
+//           const r = el.getBoundingClientRect();
+//           if (r.bottom <= 0 || r.top >= innerHeight) {
+//             el.scrollIntoView({block:'center'});
+//             return false;
+//           }
 
-          const cx = Math.floor(r.left + r.width/2);
-          const cy = Math.floor(r.top + r.height/2);
-          const topEl = document.elementFromPoint(cx, cy);
-          return !!topEl && (topEl === el || el.contains(topEl));
-JS, [$expect]), 15);
+//           const cx = Math.floor(r.left + r.width/2);
+//           const cy = Math.floor(r.top + r.height/2);
+//           const topEl = document.elementFromPoint(cx, cy);
+//           return !!topEl && (topEl === el || el.contains(topEl));
+// JS, [$expect]), 15);
 
-        // 2) Fresh clickable (".nav-element-text") and guarded click (fallback DOM click).
-        $clickable = $this->locateNavClickable($expect);
-        $this->guardedClick($clickable);
+//         // 2) Fresh clickable (".nav-element-text") and guarded click (fallback DOM click).
+//         $clickable = $this->locateNavClickable($expect);
+//         $this->guardedClick($clickable);
 
-        // 3) Wait selection (id/title) + content overlay hidden.
-        $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
-          const exp = arguments[0];
-          const sel = document.querySelector('.nav-element.selected');
-          if (!sel) return false;
+//         // 3) Wait selection (id/title) + content overlay hidden.
+//         $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+//           const exp = arguments[0];
+//           const sel = document.querySelector('.nav-element.selected');
+//           if (!sel) return false;
 
-          if (exp.id !== null && exp.id !== undefined) {
-            const sid = sel.getAttribute('nav-id');
-            if (String(sid) !== String(exp.id)) return false;
-          }
-          if (exp.title) {
-            const t = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
-            if (t !== String(exp.title).trim()) return false;
-          }
+//           if (exp.id !== null && exp.id !== undefined) {
+//             const sid = sel.getAttribute('nav-id');
+//             if (String(sid) !== String(exp.id)) return false;
+//           }
+//           if (exp.title) {
+//             const t = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
+//             if (t !== String(exp.title).trim()) return false;
+//           }
 
-          const overlay = document.querySelector('#load-screen-node-content');
-          const hidden = !overlay || overlay.classList.contains('hide') || overlay.classList.contains('hidden')
-                         || getComputedStyle(overlay).display === 'none';
-          return hidden;
-JS, [$expect]), 20);
 
-        // 4) If we know the expected title, assert it in the content panel as well.
-        if (($expect['title'] ?? '') !== '') {
-            $c->waitFor('#page-title-node-content', 10);
-            $title = trim((string) $wd->findElement(WebDriverBy::cssSelector('#page-title-node-content'))->getText());
-            if ($title !== trim((string) $expect['title'])) {
-                // Rare race in slow environments: try one refresh click.
-                $this->guardedClick($this->locateNavClickable($expect));
-                $this->waitUntil(fn () => (bool) $c->executeScript(
-                    'const h=document.querySelector("#page-title-node-content");return !!h && h.textContent?.trim()===String(arguments[0]).trim();',
-                    [$expect['title']]
-                ), 10);
-            }
+//         //         // 4) Wait content panel truly ready (all overlays hidden + node-selected sync + optional title)
+//         //         $this->waitNodeContentReady($expect['title'] ?? null, 30);
+
+//         //           const overlay = document.querySelector('#load-screen-node-content');
+//         //           const hidden = !overlay || overlay.classList.contains('hide') || overlay.classList.contains('hidden')
+//         //                          || getComputedStyle(overlay).display === 'none';
+//         //           return hidden;
+//         // JS, [$expect]), 20);
+
+//         //         // 4) Wait content panel truly ready (all overlays hidden + node-selected sync + optional title)
+//         //         $this->waitNodeContentReady($expect['title'] ?? null, 30);
+
+
+//         // 3) Wait selection (by id/title)
+//         $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+//           const exp = arguments[0];
+//           const sel = document.querySelector('.nav-element.selected');
+//           if (!sel) return false;
+
+//           if (exp.id !== null && exp.id !== undefined) {
+//             const sid = sel.getAttribute('nav-id');
+//             if (String(sid) !== String(exp.id)) return false;
+//           }
+//           if (exp.title) {
+//             const t = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
+//             if (t !== String(exp.title).trim()) return false;
+//           }
+//           return true;
+//         JS, [$expect]), 20);
+
+//     // 4) Wait content panel truly ready (all overlays hidden + node-selected sync + optional title)
+//     $this->waitNodeContentReady($expect['title'] ?? null, 30);
+
+//         // 4) If we know the expected title, assert it in the content panel as well.
+//         if (($expect['title'] ?? '') !== '') {
+//             $c->waitFor('#page-title-node-content', 10);
+//             $title = trim((string) $wd->findElement(WebDriverBy::cssSelector('#page-title-node-content'))->getText());
+//             if ($title !== trim((string) $expect['title'])) {
+//                 // Rare race in slow environments: try one refresh click.
+//                 $this->guardedClick($this->locateNavClickable($expect));
+//                 $this->waitUntil(fn () => (bool) $c->executeScript(
+//                     'const h=document.querySelector("#page-title-node-content");return !!h && h.textContent?.trim()===String(arguments[0]).trim();',
+//                     [$expect['title']]
+//                 ), 10);
+//             }
+//         }
+//     }
+
+/**
+ * Selects a node in the tree and waits until the content panel is truly ready.
+ * - If $node is null/root: uses current selected or the first nav-element.
+ * - If $node has id: selects by [nav-id] clicking ".nav-element-text".
+ * - Otherwise selects by exact title.
+ * Then:
+ * - Waits selection (id/title) and content readiness (overlay(s) hidden + node-selected sync + optional title).
+ */
+public function selectNode(?Node $node = null): void
+{
+    $c  = $this->client;
+    $wd = $c->getWebDriver();
+
+    $this->waitForLoadingScreenToDisappear();
+    $c->waitFor('#nav_list .nav-element', 20);
+
+    // Normalize expected identity (id may be numeric or string like "root")
+    $expect = $this->resolveExpectedNode($node);
+
+    // 1) Wait target to exist and be clickable; expand ancestors if collapsed.
+    $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+      const exp = arguments[0];
+
+      const byId = (id) => document.querySelector(`.nav-element[nav-id="${id}"] .nav-element-text`);
+      const byTitle = (t) => {
+        const spans = Array.from(document.querySelectorAll('#nav_list .node-text-span'));
+        const span = spans.find(s => s?.textContent?.trim() === String(t ?? '').trim());
+        return span ? span.closest('.nav-element')?.querySelector('.nav-element-text') : null;
+      };
+
+      let el = (exp.id ?? null) !== null ? byId(exp.id) : null;
+      if (!el && exp.title) el = byTitle(exp.title);
+      if (!el) return false;
+
+      let navEl = el.closest('.nav-element');
+      let collapsed = navEl?.closest('.nav-element.toggle-off[is-parent="true"]')
+                    ?? navEl?.closest('.nav-element[is-parent="true"].toggle-off');
+      if (collapsed) {
+        collapsed.querySelector('.nav-element-toggle')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+        return false;
+      }
+
+      const r = el.getBoundingClientRect();
+      if (r.bottom <= 0 || r.top >= innerHeight) {
+        el.scrollIntoView({block:'center'});
+        return false;
+      }
+
+      const cx = Math.floor(r.left + r.width/2);
+      const cy = Math.floor(r.top + r.height/2);
+      const topEl = document.elementFromPoint(cx, cy);
+      return !!topEl && (topEl === el || el.contains(topEl));
+    JS, [$expect]), 15);
+
+    // 2) Click with resolver (re-locate element on every attempt → no stale)
+    $this->guardedClick(fn () => $this->locateNavClickable($expect));
+
+    // 3) Wait selection (by id/title)
+    $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+      const exp = arguments[0];
+      const sel = document.querySelector('.nav-element.selected');
+      if (!sel) return false;
+
+      if (exp.id !== null && exp.id !== undefined) {
+        const sid = sel.getAttribute('nav-id');
+        if (String(sid) !== String(exp.id)) return false;
+      }
+      if (exp.title) {
+        const t = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
+        if (t !== String(exp.title).trim()) return false;
+      }
+      return true;
+    JS, [$expect]), 20);
+
+    // 4) Wait content panel truly ready (all overlays hidden + node-selected sync + optional title)
+    $this->waitNodeContentReady($expect['title'] ?? null, 30);
+
+    // 5) Optional: if we know the expected title, assert it also in the panel (rare race fix below)
+    if (($expect['title'] ?? '') !== '') {
+        $c->waitFor('#page-title-node-content', 10);
+        $title = trim((string) $wd->findElement(WebDriverBy::cssSelector('#page-title-node-content'))->getText());
+        if ($title !== trim((string) $expect['title'])) {
+            // One refresh click for very slow environments
+            $this->guardedClick(fn () => $this->locateNavClickable($expect));
+            $this->waitUntil(fn () => (bool) $c->executeScript(
+                'const h=document.querySelector("#page-title-node-content");return !!h && h.textContent?.trim()===String(arguments[0]).trim();',
+                [$expect['title']]
+            ), 10);
         }
     }
+}
+
 
     public function selectRootNode(): void
     {
@@ -287,22 +408,53 @@ JS, [$expect]), 20);
           return true;
 JS, [$nodeTitle]), 20);
 
-        // Select the created node explicitly (click on ".nav-element-text")
-        $this->guardedClick($this->locateNavClickable(['id' => null, 'title' => $nodeTitle]));
+//         // Select the created node explicitly (click on ".nav-element-text")
+//         $this->guardedClick($this->locateNavClickable(['id' => null, 'title' => $nodeTitle]));
 
-        // Wait selection and content readiness using the same rules as selectNode()
-        $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
-          const t = String(arguments[0]).trim();
-          const sel = document.querySelector('.nav-element.selected');
-          if (!sel) return false;
-          const label = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
-          if (label !== t) return false;
+// //         // Wait selection and content readiness using the same rules as selectNode()
+// //         $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+// //           const t = String(arguments[0]).trim();
+// //           const sel = document.querySelector('.nav-element.selected');
+// //           if (!sel) return false;
+// //           const label = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
+// //           if (label !== t) return false;
 
-          const overlay = document.querySelector('#load-screen-node-content');
-          const hidden  = !overlay || overlay.classList.contains('hide') || overlay.classList.contains('hidden')
-                          || getComputedStyle(overlay).display === 'none';
-          return hidden;
+// //           const overlay = document.querySelector('#load-screen-node-content');
+// //           const hidden  = !overlay || overlay.classList.contains('hide') || overlay.classList.contains('hidden')
+// //                           || getComputedStyle(overlay).display === 'none';
+// //           return hidden;
+// // JS, [$nodeTitle]), 20);
+
+//         // Wait selection (label must match)
+//         $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+//           const t = String(arguments[0]).trim();
+//           const sel = document.querySelector('.nav-element.selected');
+//           if (!sel) return false;
+//           const label = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
+//           return label === t;
+//         JS, [$nodeTitle]), 20);
+
+
+
+//         // Content panel synchronized (overlays + node-selected + title)
+//         $this->waitNodeContentReady($nodeTitle, 30);
+
+// Select the created node explicitly (click on ".nav-element-text")
+$this->guardedClick(fn () => $this->locateNavClickable(['id' => null, 'title' => $nodeTitle]));
+
+// Wait selection (label must match)
+$this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+  const t = String(arguments[0]).trim();
+  const sel = document.querySelector('.nav-element.selected');
+  if (!sel) return false;
+  const label = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
+  return label === t;
 JS, [$nodeTitle]), 20);
+
+// Content panel synchronized (overlays + node-selected + title)
+$this->waitNodeContentReady($nodeTitle, 30);
+
+
 
         // Read the assigned id (numeric or string like "root")
         $id = $c->executeScript(<<<'JS'
@@ -690,18 +842,48 @@ JS, [$nodeTitle]), 20);
         return $wd->findElement(WebDriverBy::xpath($xpath));
     }
 
-    /** Guarded click that falls back to DOM click in case of overlays or stale refs. */
-    private function guardedClick(WebDriverElement $el): void
-    {
-        $wd = $this->client->getWebDriver();
+    // /** Guarded click that falls back to DOM click in case of overlays or stale refs. */
+    // private function guardedClick(WebDriverElement $el): void
+    // {
+    //     $wd = $this->client->getWebDriver();
+    //     try {
+    //         // Move pointer first to help some UIs
+    //         try { (new WebDriverActions($wd))->moveToElement($el)->perform(); } catch (\Throwable) {}
+    //         $el->click();
+    //     } catch (ElementClickInterceptedException|StaleElementReferenceException) {
+    //         $wd->executeScript('arguments[0].click();', [$el]);
+    //     }
+    // }
+
+/**
+ * Click with retries and re-location to defeat stale/intercepted issues.
+ * Pass a resolver that returns a fresh clickable element on every attempt.
+ *
+ * @param callable():WebDriverElement $resolver
+ */
+private function guardedClick(callable $resolver, int $maxTries = 8): void
+{
+    $wd = $this->client->getWebDriver();
+
+    for ($i = 0; $i < $maxTries; $i++) {
         try {
-            // Move pointer first to help some UIs
+            $el = $resolver(); // always re-locate fresh element
             try { (new WebDriverActions($wd))->moveToElement($el)->perform(); } catch (\Throwable) {}
             $el->click();
-        } catch (ElementClickInterceptedException|StaleElementReferenceException) {
-            $wd->executeScript('arguments[0].click();', [$el]);
+            return;
+        } catch (StaleElementReferenceException|ElementClickInterceptedException) {
+            try {
+                $el = $resolver();
+                $wd->executeScript('arguments[0].click();', [$el]);
+                return;
+            } catch (\Throwable $e) {
+                if ($i === $maxTries - 1) { throw $e; }
+            }
         }
     }
+}
+
+
 
     /** Normalizes expected node identity: supports numeric id, string ids ("root"), or title-based selection. */
     private function resolveExpectedNode(?Node $node): array
@@ -740,6 +922,54 @@ JS, [$nodeTitle]), 20);
         }
         return $out . ')';
     }
+
+
+/**
+ * Wait until the content panel is truly ready:
+ *  - ALL #load-screen-node-content overlays are hidden (no "loading"/"hiding"; display:none or class hide/hidden),
+ *  - #node-content[node-selected] matches the selected nav-element page-id,
+ *  - AND (optional) #page-title-node-content equals $expectedTitle.
+ */
+private function waitNodeContentReady(?string $expectedTitle, int $timeoutSec = 30): void
+{
+    $c = $this->client;
+
+    $this->waitUntil(static function () use ($c, $expectedTitle): bool {
+        return (bool) $c->executeScript(<<<'JS'
+          const t = (arguments[0] ?? '').trim();
+
+          // 1) All overlays must be hidden (handle multiple and state transitions)
+          const overlays = Array.from(document.querySelectorAll('#load-screen-node-content'));
+          const overlaysHidden = overlays.every(ov => {
+            if (!ov) return true;
+            const cls = ov.className || '';
+            const s   = getComputedStyle(ov);
+            const byClass = cls.includes('hide') && (cls.includes('hidden') || !cls.includes('loading')) && !cls.includes('hiding');
+            const byStyle = s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0';
+            return byClass || byStyle;
+          });
+          if (!overlaysHidden) return false;
+
+          // 2) node-selected in panel must match page-id of selected nav element
+          const sel = document.querySelector('.nav-element.selected');
+          if (!sel) return false;
+          const selectedPid = sel.getAttribute('page-id') ?? '';
+          const nc = document.querySelector('#node-content');
+          const panelPid = nc?.getAttribute('node-selected') ?? '';
+          if (!selectedPid || !panelPid || String(selectedPid) !== String(panelPid)) return false;
+
+          // 3) Optional: content title
+          if (t) {
+            const h = document.querySelector('#page-title-node-content');
+            if (!h || (h.textContent?.trim() !== t)) return false;
+          }
+          return true;
+        JS, [$expectedTitle]);
+    }, $timeoutSec);
+}
+
+
+
 }
 
 
