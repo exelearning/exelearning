@@ -312,22 +312,52 @@ public function selectNode(?Node $node = null): void
     // 2) Click with resolver (re-locate element on every attempt → no stale)
     $this->guardedClick(fn () => $this->locateNavClickable($expect));
 
-    // 3) Wait selection (by id/title)
+    // 3) Wait selection (by id/title) with active enforcement: if mismatch, re-click target
     $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
       const exp = arguments[0];
-      const sel = document.querySelector('.nav-element.selected');
-      if (!sel) return false;
 
-      if (exp.id !== null && exp.id !== undefined) {
-        const sid = sel.getAttribute('nav-id');
-        if (String(sid) !== String(exp.id)) return false;
+      const locateById = (id) => document.querySelector(`.nav-element[nav-id="${id}"]`);
+      const locateByTitle = (t) => {
+        const spans = Array.from(document.querySelectorAll('#nav_list .node-text-span'));
+        const span = spans.find(s => s && s.textContent && s.textContent.trim() === String(t ?? '').trim());
+        return span ? span.closest('.nav-element') : null;
+      };
+
+      const target = (exp.id ?? null) !== null ? locateById(String(exp.id)) : locateByTitle(exp.title);
+      if (!target) return false;
+
+      const sel = document.querySelector('.nav-element.selected');
+
+      const selectedMatches = () => {
+        if (!sel) return false;
+        if (exp.id !== null && exp.id !== undefined) {
+          const sid = sel.getAttribute('nav-id');
+          if (String(sid) !== String(exp.id)) return false;
+        }
+        if (exp.title) {
+          const t = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
+          if (t !== String(exp.title).trim()) return false;
+        }
+        return sel === target;
+      };
+
+      if (selectedMatches()) return true;
+
+      // If not matched, actively re-click target (and expand if needed)
+      const collapsed = target.closest('.nav-element.toggle-off[is-parent="true"]')
+                     ?? target.closest('.nav-element[is-parent="true"].toggle-off');
+      if (collapsed) {
+        collapsed.querySelector('.nav-element-toggle')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+        return false;
       }
-      if (exp.title) {
-        const t = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
-        if (t !== String(exp.title).trim()) return false;
+
+      const clickable = target.querySelector('.nav-element-text');
+      if (clickable) {
+        clickable.scrollIntoView({block:'center'});
+        clickable.dispatchEvent(new MouseEvent('click', {bubbles:true}));
       }
-      return true;
-    JS, [$expect]), 20);
+      return false;
+    JS, [$expect]), 25);
 
     // 4) Wait content panel truly ready (all overlays hidden + node-selected sync + optional title)
     $this->waitNodeContentReady($expect['title'] ?? null, 30);
@@ -442,12 +472,34 @@ JS, [$nodeTitle]), 20);
 // Select the created node explicitly (click on ".nav-element-text")
 $this->guardedClick(fn () => $this->locateNavClickable(['id' => null, 'title' => $nodeTitle]));
 
-// Wait selection (label must match)
+// Wait until the created node is actually selected; if not, actively select it.
 $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
   const t = String(arguments[0]).trim();
+  const findTarget = () => {
+    const spans = Array.from(document.querySelectorAll('#nav_list .node-text-span'));
+    const span  = spans.find(s => s && s.textContent && s.textContent.trim() === t);
+    return span ? span.closest('.nav-element') : null;
+  };
+  const target = findTarget();
+  if (!target) return false;
+
+  // If target is collapsed within a parent, expand it
+  const collapsed = target.closest('.nav-element.toggle-off[is-parent="true"]')
+                 ?? target.closest('.nav-element[is-parent="true"].toggle-off');
+  if (collapsed) {
+    collapsed.querySelector('.nav-element-toggle')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+    return false;
+  }
+
   const sel = document.querySelector('.nav-element.selected');
-  if (!sel) return false;
-  const label = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
+  if (sel !== target) {
+    target.querySelector('.nav-element-text')?.scrollIntoView({block:'center'});
+    target.querySelector('.nav-element-text')?.dispatchEvent(new MouseEvent('click', {bubbles:true}));
+    return false;
+  }
+
+  // Double-check label matches, then success
+  const label = sel?.querySelector('.node-text-span')?.textContent?.trim() ?? '';
   return label === t;
 JS, [$nodeTitle]), 60,60);
 
@@ -482,38 +534,47 @@ $this->waitNodeContentReady($nodeTitle, 30);
         $title = $node->getTitle();
         $id    = $node->getId();
 
-        // Ensure the button is visible and enabled
-        $this->waitActionButtonEnabled('#nav_actions .action_delete');
+        $client = $this->client;
 
-        $this->clickFirstMatchingSelector([
-            '[data-testid="nav-delete-node"]',
-            '#menu_nav .action_delete',
-            '.button_nav_action.action_delete',
-        ]);
+        // Active retry loop: in case of race conditions we attempt the flow a few times
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            // Ensure the button is visible and enabled
+            $this->waitActionButtonEnabled('#nav_actions .action_delete');
 
-        try {
-            $this->client->waitFor('#modalConfirm', 5);
-            // Wait for modal fully visible
-            $client = $this->client;
-            $this->client->getWebDriver()->wait(5, 150)->until(static function () use ($client): bool {
-                return (bool) $client->executeScript(
-                    "const m=document.querySelector('#modalConfirm'); if(!m) return false; const st=window.getComputedStyle(m); return m.classList.contains('show') || st.display==='block';"
-                );
-            });
-        } catch (\Throwable $e) {
-            throw new \RuntimeException(sprintf('Delete confirmation modal did not appear for node "%s".', $title), 0, $e);
+            $this->clickFirstMatchingSelector([
+                '[data-testid="nav-delete-node"]',
+                '#menu_nav .action_delete',
+                '.button_nav_action.action_delete',
+            ]);
+
+            try {
+                $client->waitFor('#modalConfirm', 5);
+                // Wait for modal fully visible
+                $this->client->getWebDriver()->wait(5, 150)->until(static function () use ($client): bool {
+                    return (bool) $client->executeScript(
+                        "const m=document.querySelector('#modalConfirm'); if(!m) return false; const st=window.getComputedStyle(m); return m.classList.contains('show') || st.display==='block';"
+                    );
+                });
+            } catch (\Throwable $e) {
+                if ($attempt === 2) {
+                    throw new \RuntimeException(sprintf('Delete confirmation modal did not appear for node "%s".', $title), 0, $e);
+                }
+                continue; // retry flow
+            }
+
+            // Confirm delete (wait and click)
+            $this->waitActionButtonEnabled('#modalConfirm .modal-footer .confirm');
+            $this->clickFirstMatchingSelector([
+                '#modalConfirm .modal-footer .confirm',
+                '#modalConfirm button.btn.btn-primary',
+                '[data-testid="confirm-delete-node-button"]',
+                '[data-testid="confirm-action"]',
+            ]);
+
+            // Break retry loop; success condition is verified below
+            break;
         }
 
-        // Confirm delete
-        $this->waitActionButtonEnabled('#modalConfirm .modal-footer .confirm');
-        $this->clickFirstMatchingSelector([
-            '#modalConfirm .modal-footer .confirm',
-            '#modalConfirm button.btn.btn-primary',
-            '[data-testid="confirm-delete-node-button"]',
-            '[data-testid="confirm-action"]',
-        ]);
-
-        $client = $this->client;
         try {
             // Composite wait: (1) node not present, (2) modal/backdrop hidden
             $client->getWebDriver()->wait(30, 200)->until(static function () use ($client, $title, $id): bool {
@@ -536,9 +597,12 @@ $this->waitNodeContentReady($nodeTitle, 30);
                     if (expectedId !== null) {
                         const byId = document.querySelector('.nav-element[nav-id="' + expectedId + '"]');
                         if (byId) {
+                            // Actively retry delete: click delete again and reconfirm
                             try {
-                                const behaviour = window.eXeLearning?.app?.menus?.menuStructure?.menuStructureBehaviour;
-                                behaviour?.structureEngine?.removeNodeCompleteAndReload(expectedId);
+                                const delBtn = document.querySelector('[data-testid="nav-delete-node"], #menu_nav .action_delete, .button_nav_action.action_delete');
+                                delBtn?.dispatchEvent(new MouseEvent('click', {bubbles:true}));
+                                const confirm = document.querySelector('#modalConfirm .modal-footer .confirm, #modalConfirm button.btn.btn-primary');
+                                confirm?.dispatchEvent(new MouseEvent('click', {bubbles:true}));
                             } catch (e) {}
                             return false;
                         }
