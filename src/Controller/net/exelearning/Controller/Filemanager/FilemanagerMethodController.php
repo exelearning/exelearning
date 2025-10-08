@@ -21,6 +21,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mime\MimeTypes;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -41,9 +42,16 @@ class FilemanagerMethodController extends DefaultApiController
 
     private $translator;
 
-    public function __construct(EntityManagerInterface $entityManager, FileHelper $fileHelper, Filesystem $storage, TmpfsInterface $tmpfs, LoggerInterface $logger, TranslatorInterface $translator)
-    {
-        parent::__construct($entityManager, $logger);
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        FileHelper $fileHelper,
+        Filesystem $storage,
+        TmpfsInterface $tmpfs,
+        LoggerInterface $logger,
+        TranslatorInterface $translator,
+        SerializerInterface $serializer,
+    ) {
+        parent::__construct($entityManager, $logger, $serializer);
 
         $this->tmpfs = $tmpfs;
         $this->storage = $storage;

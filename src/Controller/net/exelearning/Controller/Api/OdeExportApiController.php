@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/api/ode-export')]
@@ -42,6 +43,7 @@ class OdeExportApiController extends DefaultApiController
         UserHelper $userHelper,
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
         TranslatorInterface $translator,
+        SerializerInterface $serializer,
     ) {
         $this->fileHelper = $fileHelper;
         $this->odeService = $odeService;
@@ -51,7 +53,7 @@ class OdeExportApiController extends DefaultApiController
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->translator = $translator;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     #[Route('/{odeSessionId}/{exportType}/download', methods: ['GET'], name: 'api_ode_export_download')]

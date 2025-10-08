@@ -58,8 +58,13 @@ jobs:
           set -euo pipefail
           REPO="${{ github.repository }}"
 
-          REL_JSON=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-                     "https://api.github.com/repos/${REPO}/releases/latest")
+          # Try to fetch the latest release JSON
+          if ! REL_JSON=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+                         "https://api.github.com/repos/${REPO}/releases/latest"); then
+            echo "No releases found (404)."
+            echo "has_release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           TAG=$(echo "$REL_JSON" | jq -r '.tag_name // empty')
           if [ -z "${TAG:-}" ]; then
@@ -276,5 +281,114 @@ jobs:
           path: site
 
       - name: Deploy to GitHub Pages
+        if: github.repository == 'exelearning/exelearning'
         id: deployment
         uses: actions/deploy-pages@v4
+
+  publish-chocolatey:
+    if: github.event_name == 'release' && github.event.action == 'released'
+    runs-on: windows-latest
+    steps:
+      - name: Download release metadata
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $Headers = @{ Authorization = "Bearer $env:GH_TOKEN" }
+          $rel = Invoke-RestMethod -Headers $Headers -Uri "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.event.release.tag_name }}"
+          # Select the NSIS Setup-*.exe
+          $asset = $rel.assets | Where-Object { $_.name -match '^eXeLearning-Setup-.*\.exe$' } | Select-Object -First 1
+          if (-not $asset) { Write-Error "No NSIS installer found"; exit 1 }
+          iwr $asset.browser_download_url -OutFile installer.exe
+          $sha256 = (Get-FileHash installer.exe -Algorithm SHA256).Hash
+          "URL=$($asset.browser_download_url)"       | Out-File -FilePath env.props -Encoding utf8
+          "SHA256=$sha256"                           | Add-Content env.props
+          "VERSION=$(${{ github.event.release.tag_name }} -replace '^v','')" | Add-Content env.props
+
+      - name: Load env
+        shell: pwsh
+        id: envs
+        run: |
+          Get-Content env.props | ForEach-Object {
+            $k,$v = $_.Split('=',2)
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "$k=$v"
+          }
+
+      - name: Create nuspec + tools
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path tools | Out-Null
+
+          @"
+          <?xml version="1.0"?>
+          <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+            <metadata>
+              <id>exelearning</id>
+              <version>${{ steps.envs.outputs.VERSION }}</version>
+              <title>eXeLearning</title>
+              <authors>exelearning</authors>
+              <owners>exelearning</owners>
+              <projectUrl>https://exelearning.net</projectUrl>
+              <licenseUrl>https://www.gnu.org/licenses/agpl-3.0.html</licenseUrl>
+              <requireLicenseAcceptance>false</requireLicenseAcceptance>
+              <description>eXeLearning is an open source authoring tool to create educational resources (Web, SCORM, ePub...).</description>
+              <summary>Authoring tool for educational content</summary>
+              <tags>education authoring elearning exelearning</tags>
+              <iconUrl>https://raw.githubusercontent.com/exelearning/exelearning/refs/heads/main/public/exelearning.png</iconUrl>
+              <packageSourceUrl>https://github.com/exelearning/exelearning</packageSourceUrl>
+              <projectSourceUrl>https://github.com/exelearning/exelearning</projectSourceUrl>
+              <docsUrl>https://exelearning.net</docsUrl>
+              <bugTrackerUrl>https://github.com/exelearning/exelearning/issues</bugTrackerUrl>
+            </metadata>
+          </package>
+          "@ | Out-File exelearning.nuspec -Encoding utf8
+
+          @"
+          $ErrorActionPreference = 'Stop'
+          $packageName  = 'exelearning'
+          $url          = '${{ steps.envs.outputs.URL }}'
+          $checksum     = '${{ steps.envs.outputs.SHA256 }}'
+          $checksumType = 'sha256'
+
+          Install-ChocolateyPackage `
+            -PackageName $packageName `
+            -FileType 'exe' `
+            -SilentArgs '/S' `
+            -Url64bit $url `
+            -Checksum64 $checksum `
+            -ChecksumType64 $checksumType
+          "@ | Out-File tools\chocolateyinstall.ps1 -Encoding utf8
+
+      - name: Install Chocolatey
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy Bypass -Scope Process -Force
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+      - name: Pack nupkg
+        shell: pwsh
+        run: choco pack exelearning.nuspec
+
+      - name: Push to Chocolatey
+        shell: pwsh
+        env:
+          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+        run: |
+          choco apikey --key $env:CHOCO_API_KEY --source https://push.chocolatey.org/
+          choco push "exelearning.${{ steps.envs.outputs.VERSION }}.nupkg" --source https://push.chocolatey.org/ --force
+
+  publish-winget:
+    if: github.event_name == 'release' && github.event.action == 'released'
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    steps:
+      - uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: Exelearning.Exelearning
+          # Only select the NSIS installer Setup-*.exe from the release"
+          installers-regex: 'eXeLearning-Setup-.*\.exe$'
+          # Optional: if you want to force the version instead of using the tag without the "v" prefix
+          # version: ${{ github.event.release.tag_name }}          
+          token: ${{ secrets.WINGET_TOKEN }}
+          fork-user: exelearning

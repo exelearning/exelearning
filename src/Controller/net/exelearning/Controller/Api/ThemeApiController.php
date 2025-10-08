@@ -15,6 +15,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/theme-management/themes')]
 class ThemeApiController extends DefaultApiController
@@ -29,12 +30,13 @@ class ThemeApiController extends DefaultApiController
         ThemeHelper $themeHelper,
         UserHelper $userHelper,
         FileHelper $fileHelper,
+        SerializerInterface $serializer,
     ) {
         $this->themeHelper = $themeHelper;
         $this->userHelper = $userHelper;
         $this->fileHelper = $fileHelper;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     #[Route('/installed', methods: ['GET'], name: 'api_themes_installed')]
@@ -297,6 +299,8 @@ class ThemeApiController extends DefaultApiController
     #[Route('/{themeDirName}/edit', methods: ['PUT'], name: 'api_themes_edit')]
     public function editTheme(Request $request, $themeDirName)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = [];
 
         $user = $this->getUser();

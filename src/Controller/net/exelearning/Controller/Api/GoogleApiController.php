@@ -17,6 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/google')]
 class GoogleApiController extends DefaultApiController
@@ -28,14 +29,21 @@ class GoogleApiController extends DefaultApiController
     private $odeService;
     private $userHelper;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, UrlGeneratorInterface $router, FileHelper $fileHelper, OdeServiceInterface $odeService, UserHelper $userHelper)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        UrlGeneratorInterface $router,
+        FileHelper $fileHelper,
+        OdeServiceInterface $odeService,
+        UserHelper $userHelper,
+        SerializerInterface $serializer,
+    ) {
         $this->router = $router;
         $this->fileHelper = $fileHelper;
         $this->odeService = $odeService;
         $this->userHelper = $userHelper;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer);
     }
 
     #[Route('/oauth/login/url/get', methods: ['GET'], name: 'api_google_oauth_login_url_get')]

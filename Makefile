@@ -235,7 +235,7 @@ create-user: check-docker check-env upd
 	@read -p "Enter email: " email; \
 	read -p "Enter password: " password; \
 	read -p "Enter username: " username; \
-	@docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
+	docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
 
 # Grant an arbitrary role to a user
 # Usage: make grant-role EMAIL=user@example.com ROLE=ROLE_MANAGER
