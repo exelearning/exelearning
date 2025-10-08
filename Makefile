@@ -154,7 +154,7 @@ test-e2e: check-docker check-env
 	@echo "Starting e2e test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
-	@docker compose --profile e2e run --rm -e APP_ENV=test -e CORS_ALLOWED_ORIGINS="*" exelearning composer --no-cache phpunit-e2e
+	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e
 
 # Run just e2e-realtime tests with PHPUnit
 test-e2e-realtime: check-docker check-env
