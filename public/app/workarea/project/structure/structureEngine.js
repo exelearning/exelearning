@@ -179,7 +179,14 @@ export default class structureEngine {
         let parentsToCheck = [null];
         while (parentsToCheck.length > 0) {
             let searchedParent = parentsToCheck.pop();
-            this.dataGroupByParent[searchedParent].children.forEach((node) => {
+            const group = this.dataGroupByParent[searchedParent];
+            if (!group || !Array.isArray(group.children)) {
+                continue;
+            }
+            group.children.forEach((node) => {
+                if (!node || !node.id) {
+                    return;
+                }
                 orderData.push(node);
                 parentsToCheck.push(node.id);
             });
@@ -766,9 +773,11 @@ export default class structureEngine {
         if (node) {
             ancestors.push(node.parent);
             while (ancestors[ancestors.length - 1]) {
-                let lastAncestor = this.getNode(
-                    ancestors[ancestors.length - 1]
-                );
+                const lastId = ancestors[ancestors.length - 1];
+                const lastAncestor = this.getNode(lastId);
+                if (!lastAncestor) {
+                    break;
+                }
                 ancestors.push(lastAncestor.parent);
             }
         }
@@ -787,7 +796,7 @@ export default class structureEngine {
             );
         pagesElements.forEach((pageElement) => {
             let pageNode = this.getNode(pageElement.getAttribute('nav-id'));
-            if (pageNode.id != 'root') {
+            if (pageNode && pageNode.id !== 'root') {
                 this.nodesOrderByView.push(pageNode);
             }
         });
@@ -799,8 +808,12 @@ export default class structureEngine {
      * @param {*} id
      */
     getPosInNodesOrderByView(id) {
+        if (!Array.isArray(this.nodesOrderByView)) {
+            return false;
+        }
         for (let i = 0; i < this.nodesOrderByView.length; i++) {
-            if (this.nodesOrderByView[i].id == node.id) {
+            const item = this.nodesOrderByView[i];
+            if (item && item.id === id) {
                 return i;
             }
         }
