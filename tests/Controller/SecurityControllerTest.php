@@ -7,6 +7,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
@@ -74,7 +75,8 @@ protected function tearDown(): void
 
     public function testLoginPageLoadsSuccessfully(): void
     {
-        $this->client->request('GET', '/login');
+        $loginPath = static::getContainer()->get('router')->generate('app_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $this->client->request('GET', $loginPath);
         $this->assertResponseIsSuccessful();
         $this->assertSelectorExists('form#login-form');
     }
@@ -82,7 +84,8 @@ protected function tearDown(): void
     public function testLoginFailsWithInvalidCredentials(): void
     {
         $this->client->followRedirects(true);
-        $crawler = $this->client->request('GET', '/login');
+        $loginPath = static::getContainer()->get('router')->generate('app_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $crawler = $this->client->request('GET', $loginPath);
 
         $this->assertSelectorExists('form[name="login"]');
 
@@ -101,7 +104,8 @@ protected function tearDown(): void
     public function testLoginSucceedsWithValidCredentials(): void
     {
         $this->client->followRedirects(true);
-        $crawler = $this->client->request('GET', '/login');
+        $loginPath = static::getContainer()->get('router')->generate('app_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $crawler = $this->client->request('GET', $loginPath);
 
         // Ensure the login form exists on the page
         $this->assertSelectorExists('form[name="login"]');
@@ -146,13 +150,15 @@ protected function tearDown(): void
 
     public function testCasLoginRedirectsToCorrectUrl(): void
     {
-        $this->client->request('GET', '/login/cas');
+        $casLoginPath = static::getContainer()->get('router')->generate('cas_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $this->client->request('GET', $casLoginPath);
         $this->assertResponseRedirects();
     }
 
     public function testOpenIdLoginRedirectsToCorrectUrl(): void
     {
-        $this->client->request('GET', '/login/openid');
+        $openidPath = static::getContainer()->get('router')->generate('openid_connect', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $this->client->request('GET', $openidPath);
         $this->assertResponseRedirects();
     }
 
@@ -187,13 +193,15 @@ protected function tearDown(): void
         );
 
         // Now simulate the OpenID callback request
-        $this->client->request('GET', '/login/openid/callback', [
+        $callbackPath = static::getContainer()->get('router')->generate('openid_connect_callback', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $this->client->request('GET', $callbackPath, [
             'state' => 'random-state-value',
             'code'  => 'valid-auth-code'
         ]);
 
         // Ensure the response redirects correctly
-        $this->assertResponseRedirects('/workarea?access_token=valid-access-token');
+        $workareaPath = static::getContainer()->get('router')->generate('workarea', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $this->assertResponseRedirects($workareaPath.'?access_token=valid-access-token');
 
     }
 
@@ -202,11 +210,13 @@ protected function tearDown(): void
         $user = $this->getTestUser();
         $this->client->loginUser($user);
 
-        $this->client->request('GET', '/logout');
-
-        $this->assertResponseRedirects('/logout/redirect');
+        $logoutPath = static::getContainer()->get('router')->generate('app_logout', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $this->client->request('GET', $logoutPath);
+        $logoutRedirectPath = static::getContainer()->get('router')->generate('app_logout_redirect', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $this->assertResponseRedirects($logoutRedirectPath);
         $this->client->followRedirect();
-        $this->assertResponseRedirects('/workarea');
+        $workareaPath = static::getContainer()->get('router')->generate('workarea', [], UrlGeneratorInterface::ABSOLUTE_PATH);
+        $this->assertResponseRedirects($workareaPath);
 
     }
 }
