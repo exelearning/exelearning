@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace App\Tests\E2E\Offline;
 
-use App\Tests\E2E\ExelearningE2EBase;
+use App\Tests\E2E\Support\BaseE2ETestCase;
 use Facebook\WebDriver\WebDriverBy;
 use Symfony\Component\Panther\Client;
 
-class MenuOfflineFunctionalityTest extends ExelearningE2EBase
+class MenuOfflineFunctionalityTest extends BaseE2ETestCase
 {
     /**
      * Injects the mock Electron API into the browser window.
@@ -101,7 +101,7 @@ class MenuOfflineFunctionalityTest extends ExelearningE2EBase
 
     private function initOfflineClientWithMock(): Client
     {
-        $client = $this->createTestClient();
+        $client = $this->makeClient();
         $client->request('GET', '/workarea');
         $client->waitForInvisibility('#load-screen-main', 30);
         $this->injectMockElectronApi($client);
@@ -123,6 +123,19 @@ class MenuOfflineFunctionalityTest extends ExelearningE2EBase
         } while ($elapsed < $timeoutMs);
 
         $this->fail(sprintf('Timed out waiting for mock call %s >= %d', $method, $minCalls));
+    }
+
+    private function createNewDocument(Client $client): void
+    {
+        $client->waitForVisibility('#dropdownFile', 5);
+        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
+        $client->waitForVisibility('#navbar-button-new', 5);
+        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-new'))->click();
+        try {
+            $client->waitFor('#modalSessionLogout', 2);
+            $client->executeScript("document.querySelector('.session-logout-without-save')?.click();");
+        } catch (\Throwable) {}
+        $client->waitFor('#properties-node-content-form', 10);
     }
 
     public function testOpenOfflineUsesElectronDialogs(): void

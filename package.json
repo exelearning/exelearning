@@ -167,13 +167,13 @@
             "icon": "public/icons"
         },
         "deb": {
-          "afterInstall": "packaging/deb/after-install.sh",
-          "afterRemove": "packaging/deb/after-remove.sh"
+            "afterInstall": "packaging/deb/after-install.sh",
+            "afterRemove": "packaging/deb/after-remove.sh"
         },
         "rpm": {
-          "afterInstall": "packaging/rpm/after-install.sh",
-          "afterRemove": "packaging/rpm/after-remove.sh"
-        },        
+            "afterInstall": "packaging/rpm/after-install.sh",
+            "afterRemove": "packaging/rpm/after-remove.sh"
+        },
         "mac": {
             "category": "public.app-category.education",
             "hardenedRuntime": false,

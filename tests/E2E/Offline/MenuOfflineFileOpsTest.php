@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace App\Tests\E2E\Offline;
 
-use App\Tests\E2E\ExelearningE2EBase;
+use App\Tests\E2E\Support\BaseE2ETestCase;
 use Facebook\WebDriver\WebDriverBy;
 use Symfony\Component\Panther\Client;
 
-class MenuOfflineFileOpsTest extends ExelearningE2EBase
+class MenuOfflineFileOpsTest extends BaseE2ETestCase
 {
     private function injectMockElectronApi(Client $client): void
     {
@@ -57,11 +57,35 @@ class MenuOfflineFileOpsTest extends ExelearningE2EBase
                 ['openElp','readFile','save','saveAs'].forEach(wrap);
             })();
         JS);
+
+        // Speed up export/download API so Save/Save As (offline) reach electronAPI quickly
+        $client->executeScript(<<<'JS'
+            (function(){
+                try {
+                    let patched = false;
+                    const tryPatch = function(){
+                        try {
+                            if (patched) return;
+                            const api = window.eXeLearning && window.eXeLearning.app && window.eXeLearning.app.api;
+                            if (api) {
+                                api.getOdeExportDownload = async function(odeSessionId, type){
+                                    const name = (type === 'elp') ? 'document.elp' : `export-${type}.zip`;
+                                    return { responseMessage: 'OK', urlZipFile: '/fake/download/url', exportProjectName: name };
+                                };
+                                api.getFileResourcesForceDownload = async function(url){ return { url: url }; };
+                                patched = true; clearInterval(iv);
+                            }
+                        } catch (e) {}
+                    };
+                    const iv = setInterval(tryPatch, 50); tryPatch();
+                } catch (e) {}
+            })();
+        JS);
     }
 
     private function initOfflineClientWithMock(): Client
     {
-        $client = $this->createTestClient();
+        $client = $this->makeClient();
         $client->request('GET', '/workarea');
         $client->waitForInvisibility('#load-screen-main', 30);
         $this->injectMockElectronApi($client);
@@ -107,4 +131,3 @@ class MenuOfflineFileOpsTest extends ExelearningE2EBase
         $this->waitForMockCall($client, 'saveAs');
     }
 }
-

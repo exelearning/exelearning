@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace App\Tests\E2E\Offline;
 
-use App\Tests\E2E\ExelearningE2EBase;
+use App\Tests\E2E\Support\BaseE2ETestCase;
 use Facebook\WebDriver\WebDriverBy;
 use Symfony\Component\Panther\Client;
 
-class MenuOfflineExportsPackagesTest extends ExelearningE2EBase
+class MenuOfflineExportsPackagesTest extends BaseE2ETestCase
 {
     private function inject(Client $client): void
     {
@@ -66,7 +66,7 @@ class MenuOfflineExportsPackagesTest extends ExelearningE2EBase
 
     private function client(): Client
     {
-        $c = $this->createTestClient();
+        $c = $this->makeClient();
         $c->request('GET', '/workarea');
         $c->waitForInvisibility('#load-screen-main', 30);
         $this->inject($c);
@@ -134,4 +134,3 @@ class MenuOfflineExportsPackagesTest extends ExelearningE2EBase
         $this->waitSaveAs($client);
     }
 }
-

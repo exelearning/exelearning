@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace App\Tests\E2E\Offline;
 
-use App\Tests\E2E\ExelearningE2EBase;
+use App\Tests\E2E\Support\BaseE2ETestCase;
 use Facebook\WebDriver\WebDriverBy;
 use Symfony\Component\Panther\Client;
 
-class MenuOfflineVisibilityTest extends ExelearningE2EBase
+class MenuOfflineVisibilityTest extends BaseE2ETestCase
 {
     /**
      * Injects the mock Electron API into the browser window.
@@ -31,7 +31,7 @@ class MenuOfflineVisibilityTest extends ExelearningE2EBase
     public function testFileMenuItemsVisibleInOfflineMode(): void
     {
         // In offline suite, backend should start in offline mode (APP_ONLINE_MODE=0)
-        $client = $this->createTestClient();
+        $client = $this->makeClient();
         $client->request('GET', '/workarea');
         // Wait for the loading overlay to disappear before interacting
         $client->waitForInvisibility('#load-screen-main', 30);
