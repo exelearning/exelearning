@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class SecurityControllerTest extends WebTestCase
 {
@@ -50,6 +51,16 @@ class SecurityControllerTest extends WebTestCase
             ->findOneBy(['email' => $this->email]);
     }
 
+    private function getAuthMethods(): array
+    {
+        $params = static::getContainer()->get(ParameterBagInterface::class);
+        $methods = $params->get('app.auth_methods');
+        if (\is_string($methods)) {
+            $methods = array_filter(array_map('trim', explode(',', $methods)));
+        }
+        return \is_array($methods) ? $methods : [];
+    }
+
 protected function tearDown(): void
 {
     parent::tearDown();
@@ -78,11 +89,16 @@ protected function tearDown(): void
         $loginPath = static::getContainer()->get('router')->generate('app_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
         $this->client->request('GET', $loginPath);
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorExists('form#login-form');
+        if (\in_array('password', $this->getAuthMethods(), true)) {
+            $this->assertSelectorExists('form#login-form');
+        }
     }
 
     public function testLoginFailsWithInvalidCredentials(): void
     {
+        if (!\in_array('password', $this->getAuthMethods(), true)) {
+            $this->markTestSkipped('Password login is disabled.');
+        }
         $this->client->followRedirects(true);
         $loginPath = static::getContainer()->get('router')->generate('app_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
         $crawler = $this->client->request('GET', $loginPath);
@@ -103,6 +119,9 @@ protected function tearDown(): void
 
     public function testLoginSucceedsWithValidCredentials(): void
     {
+        if (!\in_array('password', $this->getAuthMethods(), true)) {
+            $this->markTestSkipped('Password login is disabled.');
+        }
         $this->client->followRedirects(true);
         $loginPath = static::getContainer()->get('router')->generate('app_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
         $crawler = $this->client->request('GET', $loginPath);
@@ -150,6 +169,9 @@ protected function tearDown(): void
 
     public function testCasLoginRedirectsToCorrectUrl(): void
     {
+        if (!\in_array('cas', $this->getAuthMethods(), true)) {
+            $this->markTestSkipped('CAS authentication is disabled.');
+        }
         $casLoginPath = static::getContainer()->get('router')->generate('cas_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
         $this->client->request('GET', $casLoginPath);
         $this->assertResponseRedirects();
@@ -157,6 +179,9 @@ protected function tearDown(): void
 
     public function testOpenIdLoginRedirectsToCorrectUrl(): void
     {
+        if (!\in_array('openid', $this->getAuthMethods(), true)) {
+            $this->markTestSkipped('OpenID authentication is disabled.');
+        }
         $openidPath = static::getContainer()->get('router')->generate('openid_connect', [], UrlGeneratorInterface::ABSOLUTE_PATH);
         $this->client->request('GET', $openidPath);
         $this->assertResponseRedirects();
@@ -164,6 +189,9 @@ protected function tearDown(): void
 
     public function testOpenIdCallbackHandlesValidResponse(): void
     {
+        if (!\in_array('openid', $this->getAuthMethods(), true)) {
+            $this->markTestSkipped('OpenID authentication is disabled.');
+        }
         // Ensure a fresh kernel so we can replace services
         static::ensureKernelShutdown();
 
