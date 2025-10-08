@@ -330,6 +330,9 @@ update: check-docker check-env upd
 translations: check-docker check-env upd
 	docker compose exec exelearning composer --no-cache translations:extract
 
+tmp-cleanup: check-docker check-env upd
+	docker compose exec exelearning composer --no-cache tmp-cleanup
+
 # Start the local environment with specific commands
 up-local: check-env
 	@echo "\033[31mWarning: Running in local environment may cause unexpected behavior. Use at your own risk.\033[0m"
@@ -577,6 +580,7 @@ help:
 	@echo "  smoke-api-v2          - Quick smoke test for /api/v2/users (uses admin JWT)"
 	@echo "  make-migration        - Generate a new Symfony migration (make:migration)"
 	@echo "  migrate               - Run pending Symfony migrations (doctrine:migrations:migrate)"
+	@echo "  tmp-cleanup           - Run temprary files cleanup"
 	@echo ""
 	@echo "Testing:"
 	@echo ""
