@@ -37,6 +37,17 @@ final class BasePathRoutingTest extends WebTestCase
             $_ENV['BASE_PATH'] = $basePath;
             $_SERVER['BASE_PATH'] = $basePath;
 
+            // Important in CI: the test cache may be pre-warmed by setup scripts,
+            // which bakes the routing prefix. Clear the cache so routes are rebuilt
+            // with the new BASE_PATH for this dataset.
+            $projectDir = \dirname(__DIR__, 2); // repo root
+            $cacheDir = $projectDir.'/var/cache/test';
+            if (is_dir($cacheDir)) {
+                // Use the project's FileUtil for a robust recursive remove
+                require_once $projectDir.'/src/Util/net/exelearning/Util/FileUtil.php';
+                \App\Util\net\exelearning\Util\FileUtil::removeDir($cacheDir);
+            }
+
             $client = self::createClient();
 
             $container = self::getContainer();
