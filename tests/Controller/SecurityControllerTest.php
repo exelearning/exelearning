@@ -7,10 +7,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 class SecurityControllerTest extends WebTestCase
 {
@@ -51,16 +49,6 @@ class SecurityControllerTest extends WebTestCase
             ->findOneBy(['email' => $this->email]);
     }
 
-    private function getAuthMethods(): array
-    {
-        $params = static::getContainer()->get(ParameterBagInterface::class);
-        $methods = $params->get('app.auth_methods');
-        if (\is_string($methods)) {
-            $methods = array_filter(array_map('trim', explode(',', $methods)));
-        }
-        return \is_array($methods) ? $methods : [];
-    }
-
 protected function tearDown(): void
 {
     parent::tearDown();
@@ -86,22 +74,15 @@ protected function tearDown(): void
 
     public function testLoginPageLoadsSuccessfully(): void
     {
-        $loginPath = static::getContainer()->get('router')->generate('app_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $this->client->request('GET', $loginPath);
+        $this->client->request('GET', '/login');
         $this->assertResponseIsSuccessful();
-        if (\in_array('password', $this->getAuthMethods(), true)) {
-            $this->assertSelectorExists('form#login-form');
-        }
+        $this->assertSelectorExists('form#login-form');
     }
 
     public function testLoginFailsWithInvalidCredentials(): void
     {
-        if (!\in_array('password', $this->getAuthMethods(), true)) {
-            $this->markTestSkipped('Password login is disabled.');
-        }
         $this->client->followRedirects(true);
-        $loginPath = static::getContainer()->get('router')->generate('app_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $crawler = $this->client->request('GET', $loginPath);
+        $crawler = $this->client->request('GET', '/login');
 
         $this->assertSelectorExists('form[name="login"]');
 
@@ -119,12 +100,8 @@ protected function tearDown(): void
 
     public function testLoginSucceedsWithValidCredentials(): void
     {
-        if (!\in_array('password', $this->getAuthMethods(), true)) {
-            $this->markTestSkipped('Password login is disabled.');
-        }
         $this->client->followRedirects(true);
-        $loginPath = static::getContainer()->get('router')->generate('app_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $crawler = $this->client->request('GET', $loginPath);
+        $crawler = $this->client->request('GET', '/login');
 
         // Ensure the login form exists on the page
         $this->assertSelectorExists('form[name="login"]');
@@ -169,29 +146,18 @@ protected function tearDown(): void
 
     public function testCasLoginRedirectsToCorrectUrl(): void
     {
-        if (!\in_array('cas', $this->getAuthMethods(), true)) {
-            $this->markTestSkipped('CAS authentication is disabled.');
-        }
-        $casLoginPath = static::getContainer()->get('router')->generate('cas_login', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $this->client->request('GET', $casLoginPath);
+        $this->client->request('GET', '/login/cas');
         $this->assertResponseRedirects();
     }
 
     public function testOpenIdLoginRedirectsToCorrectUrl(): void
     {
-        if (!\in_array('openid', $this->getAuthMethods(), true)) {
-            $this->markTestSkipped('OpenID authentication is disabled.');
-        }
-        $openidPath = static::getContainer()->get('router')->generate('openid_connect', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $this->client->request('GET', $openidPath);
+        $this->client->request('GET', '/login/openid');
         $this->assertResponseRedirects();
     }
 
     public function testOpenIdCallbackHandlesValidResponse(): void
     {
-        if (!\in_array('openid', $this->getAuthMethods(), true)) {
-            $this->markTestSkipped('OpenID authentication is disabled.');
-        }
         // Ensure a fresh kernel so we can replace services
         static::ensureKernelShutdown();
 
@@ -221,15 +187,13 @@ protected function tearDown(): void
         );
 
         // Now simulate the OpenID callback request
-        $callbackPath = static::getContainer()->get('router')->generate('openid_connect_callback', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $this->client->request('GET', $callbackPath, [
+        $this->client->request('GET', '/login/openid/callback', [
             'state' => 'random-state-value',
             'code'  => 'valid-auth-code'
         ]);
 
         // Ensure the response redirects correctly
-        $workareaPath = static::getContainer()->get('router')->generate('workarea', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $this->assertResponseRedirects($workareaPath.'?access_token=valid-access-token');
+        $this->assertResponseRedirects('/workarea?access_token=valid-access-token');
 
     }
 
@@ -238,13 +202,11 @@ protected function tearDown(): void
         $user = $this->getTestUser();
         $this->client->loginUser($user);
 
-        $logoutPath = static::getContainer()->get('router')->generate('app_logout', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $this->client->request('GET', $logoutPath);
-        $logoutRedirectPath = static::getContainer()->get('router')->generate('app_logout_redirect', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $this->assertResponseRedirects($logoutRedirectPath);
+        $this->client->request('GET', '/logout');
+
+        $this->assertResponseRedirects('/logout/redirect');
         $this->client->followRedirect();
-        $workareaPath = static::getContainer()->get('router')->generate('workarea', [], UrlGeneratorInterface::ABSOLUTE_PATH);
-        $this->assertResponseRedirects($workareaPath);
+        $this->assertResponseRedirects('/workarea');
 
     }
 }
