@@ -1,21 +1,21 @@
-<div class="modal exe-modal-fade" tabindex="-1" id="modalAbout" role="dialog" aria-labelledby="modalAboutCenterTitle" aria-hidden="true">
+<div class="modal exe-modal-fade" tabindex="-1" id="modalAbout" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">{{ "About eXeLearning" | trans }}</h5>
+                <div class="modal-title">{{ "About eXeLearning" | trans }}</div>
                 <button type="button" class="close" data-dismiss="modal" aria-label="{{ "Close" | trans }}">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body help-modal help-modal-with-logo">
                 <div class="help-modal-top">
-                    <img src="style/workarea/images/exelearning.png" class="exe-logo content">
+                    <img src="style/workarea/images/exelearning.svg" class="exe-logo content" alt="Logo ExeLearning">
                 </div>
                 <div class="help-modal-content">
-                    <h3 class="lead mb-4">eXeLearning {{ app_version }}</h3>
+                    <h1 class="lead mb-4">eXeLearning {{ app_version }}</h1>
                     {% if '-' in app_version %}
                     <p class="alert alert-warning mb-4">
-                        <strong>{{ "This is a demo version!" | trans }}</strong> 
+                        <strong>{{ "This is a demo version!" | trans }}</strong>
                         {{ "This software is provided as a preview and should not be distributed. It is under development and is subject to substantial change. Consider the included information incomplete and use it with caution." | trans }}
                     </p>
                     {% endif %}

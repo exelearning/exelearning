@@ -1,6 +1,7 @@
 ###> symfony/framework-bundle ###
 .env
 /.env
+/.env.dist
 /.env.local
 /.env.local.php
 /.env.*.local
@@ -91,3 +92,4 @@ data_persistent/
 
 symfony.lock
 .phpunit.cache
+.idea/

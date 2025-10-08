@@ -1,0 +1,33 @@
+.user-editing-overlay {
+    .user-editing-message {
+        display: flex;
+        flex-flow: row wrap;
+        justify-content: center;
+        padding: 5px;
+        border: 1px solid var(--delete);
+        border-radius: 5px;
+        .user-editing-description,
+        .user-editing-email,
+        .user-editing-time {
+            font-size: 12px;
+            margin-right: 3px;
+            font-weight: normal;
+        }
+        .user-editing-description {
+
+        }
+        .user-editing-email {
+            font-weight: bold;
+        }
+        .user-editing-time {
+            margin-right: 3px;
+        }
+    }
+}
+
+.article-disabled.editing-article {
+    pointer-events: none !important;
+    .idevice-element-in-content {
+        opacity: .7 !important;
+    }
+}

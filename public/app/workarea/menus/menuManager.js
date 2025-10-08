@@ -21,7 +21,7 @@ export default class MenuManager {
         this.menuIdevices.load();
         // Set navbar menu events
         this.navbar.load();
-        // Floating menus engine events
+        // Menus engine events
         this.menuEngine.behaviour();
     }
 

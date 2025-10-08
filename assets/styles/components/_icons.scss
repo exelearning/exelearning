@@ -1,0 +1,240 @@
+/* Icon size */
+.micro-icon {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+.small-icon {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+.medium-icon {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+.large-icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+
+/* Icon symbol */
+.arrow-left-icon {
+    background-image: url("images/icons/exe-arrow-icon.svg");
+
+}
+.arrow-right-icon {
+    background-image: url("images/icons/exe-arrow-icon.svg");
+    transform: rotate(180deg);
+}
+.arrow-up-icon {
+    background-image: url("images/icons/exe-arrow-icon.svg");
+    transform: rotate(90deg);
+}
+.arrow-down-icon {
+    background-image: url("images/icons/exe-arrow-icon.svg");
+    transform: rotate(-90deg);
+}
+.arrow-left-icon-green {
+    background-image: url("images/icons/exe-arrow-icon-green.svg");
+    transform: rotate(90deg);
+}
+.arrow-right-icon-green {
+    background-image: url("images/icons/exe-arrow-icon-green.svg");
+    transform: rotate(-90deg);
+}
+.arrow-up-icon-green {
+    background-image: url("images/icons/exe-arrow-icon-green.svg");
+    transform: rotate(180deg);
+}
+.arrow-down-icon-green {
+    background-image: url("images/icons/exe-arrow-icon-green.svg");
+}
+.chevron-down-icon {
+    background-image: url("images/icons/exe-chevron-icon.svg");
+}
+.chevron-down-icon-green {
+    background-image: url("images/icons/exe-chevron-icon-green.svg");
+}
+.chevron-left-icon {
+    background-image: url("images/icons/exe-chevron-icon.svg");
+    transform: rotate(90deg);
+}
+.chevron-right-icon {
+    background-image: url("images/icons/exe-chevron-icon.svg");
+    transform: rotate(-90deg);
+}
+.chevron-up-icon {
+    background-image: url("images/icons/exe-chevron-icon.svg");
+    transform: rotate(180deg);
+}
+.chevron-up-icon-green {
+    background-image: url("images/icons/exe-chevron-icon-green.svg");
+    transform: rotate(180deg);
+}
+.close-icon {
+    background-image: url("images/icons/exe-close-icon.svg");
+}
+.close-icon-white {
+    background-image: url("images/icons/exe-close-icon-white.svg");
+}
+.colors-icon-green {
+    background-image: url("images/icons/exe-colors-icon-green.svg");
+}
+.delete-icon {
+    background-image: url("images/icons/exe-delete-icon.svg");
+}
+.delete-icon-green {
+    background-image: url("images/icons/exe-delete-icon-green.svg");
+}
+.delete-icon-red {
+    background-image: url("images/icons/exe-delete-icon-red.svg");
+}
+.dots-menu-vertical-icon {
+    background-image: url("images/icons/exe-dots-menu-vertical-icon.svg");
+}
+.dots-menu-vertical-icon-green {
+    background-image: url("images/icons/exe-dots-menu-vertical-icon-green.svg");
+}
+.dots-menu-horizontal-icon {
+    background-image: url("images/icons/exe-dots-menu-vertical-icon.svg");
+    transform: rotate(90deg);
+}
+.dots-menu-horizontal-icon-green {
+    background-image: url("images/icons/exe-dots-menu-vertical-icon-green.svg");
+    transform: rotate(90deg);
+}
+.download-icon {
+    background-image: url("images/icons/exe-download-icon.svg");
+}
+.download-icon-disabled {
+    background-image: url("images/icons/exe-download-icon-disabled.svg");
+}
+.download-icon-green {
+    background-image: url("images/icons/exe-download-icon-green.svg");
+}
+.duplicate-icon {
+    background-image: url("images/icons/exe-duplicate-icon.svg");
+}
+.duplicate-icon-green {
+    background-image: url("images/icons/exe-duplicate-icon-green.svg");
+}
+.duplicate-icon-green {
+    background-image: url("images/icons/exe-duplicate-icon-green.svg");
+}
+.edit-icon {
+    background-image: url("images/icons/exe-edit-icon.svg");
+}
+.edit-icon-green {
+    background-image: url("images/icons/exe-edit-icon-green.svg");
+}
+.image-icon-green {
+    background-image: url("images/icons/exe-image-icon-green.svg");
+}
+.image-compact-icon-green {
+    background-image: url("images/icons/exe-image-compact-icon-green.svg");
+}
+.import-icon {
+    background-image: url("images/icons/exe-import-icon.svg");
+}
+.import-icon-green {
+    background-image: url("images/icons/exe-import-icon-green.svg");
+}
+.info-icon-green {
+    background-image: url("images/icons/exe-info-icon-green.svg");
+}
+.info-icon-solid-green {
+    background-image: url("images/icons/exe-info-icon-solid-green.svg");
+}
+.link-icon {
+    background-image: url("images/icons/exe-link-icon.svg");
+}
+.menu-icon {
+    background-image: url("images/icons/exe-menu-icon.svg");
+}
+.move-icon {
+    background-image: url("images/icons/exe-move-icon.svg");
+}
+.move-icon-green {
+    background-image: url("images/icons/exe-move-icon-green.svg");
+}
+.new-icon {
+    background-image: url("images/icons/exe-new-icon.svg");
+}
+.open-icon {
+    background-image: url("images/icons/exe-open-icon.svg");
+}
+.page-icon {
+    background-image: url("images/icons/exe-page-icon.svg");
+}
+.page-icon-green {
+    background-image: url("images/icons/exe-page-icon-green.svg");
+}
+.palette-icon-green {
+    background-image: url("images/icons/exe-palette-icon-green.svg");
+}
+.preview-icon-white {
+    background-image: url("images/icons/exe-preview-icon-white.svg");
+}
+.preview-icon-green {
+    background-image: url("images/icons/exe-preview-icon-green.svg");
+}
+.recent-icon-green {
+    background-image: url("images/icons/exe-recent-icon-green.svg");
+}
+.report-icon-green {
+    background-image: url("images/icons/exe-report-icon-green.svg");
+}
+.save-icon {
+    background-image: url("images/icons/exe-save-icon.svg");
+}
+.save-icon-green {
+    background-image: url("images/icons/exe-save-icon-green.svg");
+}
+.save-icon-white {
+    background-image: url("images/icons/exe-save-icon-white.svg");
+}
+.search-icon {
+    background-image: url("images/icons/exe-search-icon.svg");
+}
+.settings-icon {
+    background-image: url("images/icons/exe-settings-icon.svg");
+}
+.settings-icon-green {
+    background-image: url("images/icons/exe-settings-icon-green.svg");
+}
+.share-icon {
+    background-image: url("images/icons/exe-share-icon.svg");
+}
+.styles-icon {
+    background-image: url("images/icons/exe-styles-icon.svg");
+}
+.undo-icon {
+    background-image: url("images/icons/exe-undo-icon.svg");
+}
+.undo-icon-green {
+    background-image: url("images/icons/exe-undo-icon-green.svg");
+}
+.upload-cloud-icon {
+    background-image: url("images/icons/exe-upload-cloud-icon.svg");
+}
+.upload-cloud-icon-green {
+    background-image: url("images/icons/exe-upload-cloud-icon-green.svg");
+}
+.user-made-icon {
+    background-image: url("images/icons/exe-user-made-icon.svg");
+}
+.concurrent-users-icon {
+    background-image: url("images/icons/exe-concurrent-users-icon.svg");
+}

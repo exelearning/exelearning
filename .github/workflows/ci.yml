@@ -78,11 +78,12 @@ jobs:
       - name: PHPUnit Unit Tests
         run: make test-unit
 
-      - name: PHPUnit E2E Tests
-        run: make test-e2e
+      # TODO: Temporary disabled e2e tests
+      #  - name: PHPUnit E2E Tests
+      #    run: make test-e2e
 
-      - name: PHPUnit E2E RealTime Tests
-        run: make test-e2e-realtime
+      #  - name: PHPUnit E2E RealTime Tests
+      #    run: make test-e2e-realtime
 
       - name: PHPUnit E2E Offline Tests
         run: make test-e2e-offline

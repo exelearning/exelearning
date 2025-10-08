@@ -1,16 +1,16 @@
-<div class="modal exe-modal-fade" tabindex="-1" id="modalSessionLogout" role="dialog" aria-labelledby="modalSessionLogoutCenterTitle" aria-hidden="true">
+<div class="modal exe-modal-fade" tabindex="-1" id="modalSessionLogout" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-session-logout" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"></h5>
+                <div class="modal-title"></div>
                 <button type="button" class="close" data-dismiss="modal" aria-label="{{ "Close" | trans }}">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body"></div>
             <div class="modal-footer">
-                <button type="button" class="session-logout-save btn btn-primary"></button>
-                <button type="button" class="session-logout-without-save btn btn-primary"></button>
+                <button type="button" class="session-logout-save btn btn-primary"><span class="hidden d-none">{{ "Save and exit" | trans }}</span></button>
+                <button type="button" class="session-logout-without-save btn btn-primary"><span class="hidden d-none">{{ "Exit without saving" | trans }}</span></button>
                 <button type="button" class="close btn btn-secondary" data-dismiss="modal">{{ "Cancel" | trans }}</button>
             </div>
         </div>

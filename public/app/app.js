@@ -429,8 +429,8 @@ class App {
             return;
         }
 
-        $('#eXeLearningNavbar > ul').append(
-            '<li class="nav-item"><a class="nav-link text-danger" href="#" id="eXeToDoWarning" hreflang="es"><i class="auto-icon" aria-hidden="true">warning</i>' +
+        $('#eXeLearningNavbar nav div > ul').append(
+            '<li class="nav-item"><a class="nav-link text-danger" href="#" id="eXeToDoWarning" hreflang="es"><span class="auto-icon" aria-hidden="true">warning</span>' +
                 _('Warning') +
                 '</a></li>'
         );

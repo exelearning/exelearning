@@ -821,6 +821,23 @@ export default class ApiCallManager {
      * @returns
      */
     async getComponentsByPage(odeNavStructureSyncId) {
+        // Collaborative Init
+        const existingOverlay = document.querySelector('.user-editing-overlay');
+
+        if (existingOverlay) {
+            // Search elements with classes to remove
+            const elementsWithEditingClass = document.querySelectorAll(
+                '.editing-article, .article-disabled'
+            );
+
+            elementsWithEditingClass.forEach((element) => {
+                element.classList.remove('editing-article', 'article-disabled');
+            });
+
+            existingOverlay.remove();
+        }
+        // Collaborative End
+
         let url = this.endpoints.api_idevices_list_by_page.path;
         url = url.replace('{odeNavStructureSyncId}', odeNavStructureSyncId);
         return await this.func.get(url);
@@ -1092,6 +1109,16 @@ export default class ApiCallManager {
     async getIdevicesBySessionId(odeSessionId) {
         let url = this.endpoints.api_games_session_idevices.path;
         url = url.replace('{odeSessionId}', odeSessionId);
+        return await this.func.get(url);
+    }
+
+    /**
+     * Get the resource lock timeout duration in seconds
+     *
+     * @returns
+     */
+    async getResourceLockTimeout() {
+        let url = this.endpoints.api_resource_lock_timeout.path;
         return await this.func.get(url);
     }
 }
