@@ -11,10 +11,28 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class TmpCleanupController extends AbstractController
 {
+    private readonly string $cleanupKey;
+
     public function __construct(
         private readonly TmpFilesCleanupService $cleanupService,
-        #[Autowire('%app.tmp_cleanup_key%')] private readonly string $cleanupKey,
+        #[Autowire('%app.tmp_cleanup_key%')] ?string $cleanupKey = null,
     ) {
+        // Normalize configured key; prefer first non-empty among DI param, getenv, then $_SERVER
+        $normalized = is_string($cleanupKey) ? trim($cleanupKey) : '';
+        if ('' === $normalized) {
+            $fromGetenv = getenv('TMP_CLEANUP_KEY');
+            if (is_string($fromGetenv) && '' !== trim($fromGetenv)) {
+                $normalized = trim($fromGetenv);
+            }
+        }
+        if ('' === $normalized && isset($_ENV['TMP_CLEANUP_KEY']) && '' !== trim((string) $_ENV['TMP_CLEANUP_KEY'])) {
+            $normalized = trim((string) $_ENV['TMP_CLEANUP_KEY']);
+        }
+        if ('' === $normalized && isset($_SERVER['TMP_CLEANUP_KEY']) && '' !== trim((string) $_SERVER['TMP_CLEANUP_KEY'])) {
+            $normalized = trim((string) $_SERVER['TMP_CLEANUP_KEY']);
+        }
+
+        $this->cleanupKey = $normalized;
     }
 
     #[Route('/maintenance/tmp/cleanup', name: 'maintenance_tmp_cleanup', methods: ['POST', 'GET'])]
