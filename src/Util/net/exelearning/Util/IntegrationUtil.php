@@ -324,7 +324,10 @@ class IntegrationUtil
         if (isset($payload['provider_id'])) {
             return $payload['provider_id'];
         }
-
+        // Legacy format: provider object as stdClass
+        if (isset($payload['provider']) && is_object($payload['provider'])) {
+            $payload['provider'] = (array) $payload['provider'];
+        }
         // Legacy format: provider object with name
         if (isset($payload['provider']['name'])) {
             // Convert provider name to a normalized ID
