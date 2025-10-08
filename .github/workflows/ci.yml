@@ -82,8 +82,8 @@ jobs:
       - name: PHPUnit Unit Tests
         run: make test-unit
 
-      - name: PHPUnit E2E Tests
-        run: make test-e2e
+      # - name: PHPUnit E2E Tests
+      #   run: make test-e2e
 
       - name: PHPUnit E2E Tests
         run: make test-e2e

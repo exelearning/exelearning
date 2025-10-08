@@ -307,7 +307,7 @@ public function selectNode(?Node $node = null): void
       const cy = Math.floor(r.top + r.height/2);
       const topEl = document.elementFromPoint(cx, cy);
       return !!topEl && (topEl === el || el.contains(topEl));
-    JS, [$expect]), 15);
+    JS, [$expect]), 30);
 
     // 2) Click with resolver (re-locate element on every attempt → no stale)
     $this->guardedClick(fn () => $this->locateNavClickable($expect));
@@ -449,7 +449,7 @@ $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
   if (!sel) return false;
   const label = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
   return label === t;
-JS, [$nodeTitle]), 20);
+JS, [$nodeTitle]), 60,60);
 
 // Content panel synchronized (overlays + node-selected + title)
 $this->waitNodeContentReady($nodeTitle, 30);

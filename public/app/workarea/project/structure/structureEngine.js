@@ -852,7 +852,8 @@ export default class structureEngine {
      * @returns {String}
      */
     getSelectNodeNavId() {
-        return this.getSelectedNode().id;
+        const selected = this.getSelectedNode();
+        return selected ? selected.id : null;
     }
 
     /**
@@ -860,7 +861,8 @@ export default class structureEngine {
      * @returns {String}
      */
     getSelectNodePageId() {
-        return this.getSelectedNode().pageId;
+        const selected = this.getSelectedNode();
+        return selected ? selected.pageId : null;
     }
 
     /**
