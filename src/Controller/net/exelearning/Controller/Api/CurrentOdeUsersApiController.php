@@ -19,10 +19,9 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Mercure\HubInterface;
-use App\Service\net\exelearning\Service\Api\ResourceLockService;
 
 #[Route('/api/current-ode-users-management/current-ode-user')]
 class CurrentOdeUsersApiController extends DefaultApiController
@@ -119,7 +118,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $responseData = [];
 
         // Debug the incoming request
-        $this->logger->info('Force Unlock Debug - Request payload: ' . json_encode($request->request->all()));
+        $this->logger->info('Force Unlock Debug - Request payload: '.json_encode($request->request->all()));
 
         // Get parameters with proper type casting
         $odeComponentFlag = $request->get('odeComponentFlag');
@@ -155,11 +154,10 @@ class CurrentOdeUsersApiController extends DefaultApiController
             'resourceId' => $request->get('blockId'),
             'user' => $user,
             'odeSessionId' => $odeSessionId,
-            'forceUnlock' => ($odeComponentFlag === false) // Explicit force flag
+            'forceUnlock' => (false === $odeComponentFlag), // Explicit force flag
         ];
 
         try {
-
             // Check current_idevice of concurrent users
             $isIdeviceFree = $this->currentOdeUsersService->checkIdeviceCurrentOdeUsers(
                 $odeSessionId,
@@ -172,19 +170,19 @@ class CurrentOdeUsersApiController extends DefaultApiController
                 // Update CurrentOdeUsers
                 $this->currentOdeUsersService->updateCurrentIdevice($odeNavStructureSync, $odeBlockId, $odeIdeviceId, $databaseUser, $odeCurrentUsersFlags);
 
-                $expiresAt = (new \DateTime())->modify('+' . Constants::RESOURCE_LOCK_TIMEOUT_SECONDS . ' seconds')->getTimestamp();
+                $expiresAt = (new \DateTime())->modify('+'.Constants::RESOURCE_LOCK_TIMEOUT_SECONDS.' seconds')->getTimestamp();
 
-                $message =  'blockId:' . $odeBlockId .
-                            ',odeIdeviceId:' . $odeIdeviceId .
-                            ',odeComponentFlag:' . $odeComponentFlag .
-                            ',user:' . $databaseUser->getUserIdentifier() .
-                            ',editing:true' .
-                            ',timeIdeviceEditing:' . time() .
-                            ',actionType:' . $actionType .
-                            ',pageId:' . $pageId.
-                            ',collaborativeMode:' . Settings::COLLABORATIVE_BLOCK_LEVEL;
+                $message = 'blockId:'.$odeBlockId.
+                            ',odeIdeviceId:'.$odeIdeviceId.
+                            ',odeComponentFlag:'.$odeComponentFlag.
+                            ',user:'.$databaseUser->getUserIdentifier().
+                            ',editing:true'.
+                            ',timeIdeviceEditing:'.time().
+                            ',actionType:'.$actionType.
+                            ',pageId:'.$pageId.
+                            ',collaborativeMode:'.Settings::COLLABORATIVE_BLOCK_LEVEL;
 
-                if ($odeComponentFlag !== 'true') {
+                if ('true' !== $odeComponentFlag) {
                     $message .= ',editing:false';
                 }
 
@@ -194,10 +192,9 @@ class CurrentOdeUsersApiController extends DefaultApiController
             } else {
                 $responseData['responseMessage'] = 'An user has an idevice open on this block';
             }
-
         } catch (\Exception $e) {
             // Make sure to release the lock in case of error
-            $this->logger->error('Error updating user flag: ' . $e->getMessage());
+            $this->logger->error('Error updating user flag: '.$e->getMessage());
 
             return new JsonResponse(
                 ['responseMessage' => 'Internal server error'],
@@ -455,17 +452,17 @@ class CurrentOdeUsersApiController extends DefaultApiController
         string $userEmail,
         ?string $odeComponentFlag = null,
         ?string $timeIdeviceEditing,
-        ?string $pageId = null // Collaborative
+        ?string $pageId = null, // Collaborative
     ): void {
         $this->publish(
             $odeSessionId,
-            'blockId:' . $odeBlockId .
-            ',odeIdeviceId:' . $odeIdeviceId .
-            ',actionType:' . $actionType .
-            ',user:' . $userEmail .
-            ',odeComponentFlag:' . $odeComponentFlag .
-            ',timeIdeviceEditing:' . $timeIdeviceEditing .
-            ',pageId:'. $pageId // Collaborative
+            'blockId:'.$odeBlockId.
+            ',odeIdeviceId:'.$odeIdeviceId.
+            ',actionType:'.$actionType.
+            ',user:'.$userEmail.
+            ',odeComponentFlag:'.$odeComponentFlag.
+            ',timeIdeviceEditing:'.$timeIdeviceEditing.
+            ',pageId:'.$pageId // Collaborative
         );
     }
 }
