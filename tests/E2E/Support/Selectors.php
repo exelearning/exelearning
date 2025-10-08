@@ -28,6 +28,32 @@ final class Selectors
     public const BOX_TITLE        = 'article.box > header .box-title';
     public const IDEVICE_NODE     = '.idevice_node';
     public const IDEVICE_TEXT     = '.idevice_node.text';
+    public const IDEVICE_NODE_EDITING = '.idevice_node[mode="edition"]';
+
+    // iDevice action buttons (scoped within a single iDevice container)
+    public const IDEVICE_ACTIONS_SCOPE    = '.idevice_actions';
+    public const IDEVICE_BTN_EDIT         = '.btn-edit-idevice';
+    public const IDEVICE_BTN_SAVE         = '.btn-save-idevice';
+    public const IDEVICE_BTN_UNDO         = '.btn-undo-idevice';
+    public const IDEVICE_BTN_DELETE       = '.btn-delete-idevice';
+    public const IDEVICE_BTN_MOVE_UP      = '.btn-move-up-idevice';
+    public const IDEVICE_BTN_MOVE_DOWN    = '.btn-move-down-idevice';
+    public const IDEVICE_BTN_MORE_ACTIONS = 'button[id^="dropdownMenuButtonIdevice"]';
+    public const IDEVICE_MENU_CLONE       = 'button[id^="cloneIdevice"]';
+
+    // Text iDevice content and editor
+    public const IDEVICE_TEXT_CONTENT   = '.textIdeviceContent';
+    public const TINYMCE_IFRAME         = 'iframe.tox-edit-area__iframe, iframe[id$="_ifr"]';
+    public const TINYMCE_CONTAINER      = '.tox.tox-tinymce';
+
+    // Generic modal alert used when an iDevice is already being edited
+    public const MODAL_ALERT            = '.modal-alert, .modal.modal-alert.show, .modal-dialog.modal-alert';
+    public const MODAL_ALERT_CLOSE_BTN  = '.modal-alert .modal-footer .btn, .modal-alert .close, .modal-dialog.modal-alert .close';
+
+    // iDevices menu (left sidebar/panel)
+    public const IDEVICES_MENU          = '#menu_idevices';
+    public const IDEVICES_MENU_LIST     = '#list_menu_idevices';
+    public const IDEVICES_MENU_TEXT     = '#list_menu_idevices #text.idevice_item';
 
     /**
      * XPath for a node in the nav tree by its visible name.

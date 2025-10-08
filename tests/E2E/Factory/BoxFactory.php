@@ -23,4 +23,17 @@ final class BoxFactory
         $workarea->client()->getWebDriver()->findElement(WebDriverBy::cssSelector(Selectors::BOX_ARTICLE));
         Wait::settleDom(200);
     }
+
+    /** Shortcut to add another Text iDevice (creates a new Box if needed). */
+    public static function addAnotherTextIDevice(WorkareaPage $workarea): void
+    {
+        self::createWithTextIDevice($workarea);
+    }
+
+    /** Returns how many boxes are currently rendered in the content area. */
+    public static function countBoxes(WorkareaPage $workarea): int
+    {
+        $els = $workarea->client()->getWebDriver()->findElements(WebDriverBy::cssSelector(Selectors::BOX_ARTICLE));
+        return \count($els);
+    }
 }

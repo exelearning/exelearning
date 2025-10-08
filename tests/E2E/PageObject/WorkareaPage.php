@@ -50,8 +50,57 @@ final class WorkareaPage
     /** Clicks the "Add Text" convenience button inside the node content. */
     public function clickAddTextButton(): void
     {
-        $this->client->getWebDriver()->findElement(WebDriverBy::cssSelector(Selectors::ADD_TEXT_BUTTON))->click();
-        Wait::css($this->client, Selectors::IDEVICE_TEXT, 6000);
+        $wd = $this->client->getWebDriver();
+        $c  = $this->client;
+
+        // Try quick button if present
+        $quick = $wd->findElements(WebDriverBy::cssSelector(Selectors::ADD_TEXT_BUTTON));
+        if (\count($quick) > 0) {
+            try {
+                $quick[0]->click();
+            } catch (\Facebook\WebDriver\Exception\ElementClickInterceptedException) {
+                $wd->executeScript('arguments[0].click();', [$quick[0]]);
+            }
+            Wait::css($c, Selectors::IDEVICE_TEXT, 6000);
+            return;
+        }
+
+        // Fallback: use iDevices menu (click the "Texto" item)
+        $this->addTextIDeviceViaMenu();
+    }
+
+    /** Fallback flow: add Text iDevice using the iDevices menu on the left. */
+    private function addTextIDeviceViaMenu(): void
+    {
+        $c  = $this->client;
+        $wd = $this->client->getWebDriver();
+
+        // Count before to assert an insertion actually occurred
+        $before = \count($wd->findElements(WebDriverBy::cssSelector(Selectors::IDEVICE_TEXT)));
+
+        // Ensure the menu is present and menu list is attached
+        try { $c->waitFor(Selectors::IDEVICES_MENU, 8); } catch (\Throwable) {}
+        try { $c->waitFor(Selectors::IDEVICES_MENU_LIST, 8); } catch (\Throwable) {}
+
+        $items = $wd->findElements(WebDriverBy::cssSelector(Selectors::IDEVICES_MENU_TEXT));
+        if (\count($items) === 0) {
+            throw new \RuntimeException('Unable to locate "Text" iDevice in the iDevices menu');
+        }
+
+        $el = $items[0];
+        try {
+            $wd->executeScript('arguments[0].scrollIntoView({block:"center"});', [$el]);
+            usleep(120_000);
+            $el->click();
+        } catch (\Facebook\WebDriver\Exception\ElementClickInterceptedException|\Facebook\WebDriver\Exception\ElementNotInteractableException) {
+            $wd->executeScript('arguments[0].click();', [$el]);
+        }
+
+        // Wait until we detect one more Text iDevice than before
+        $wd->wait(6, 150)->until(function () use ($wd, $before) {
+            return \count($wd->findElements(WebDriverBy::cssSelector(Selectors::IDEVICE_TEXT))) > $before;
+        });
+        Wait::settleDom(200);
     }
 
     /** Returns the title of the first box present in node content. */
@@ -867,4 +916,3 @@ private function waitNodeContentReady(?string $expectedTitle, int $timeoutSec = 
 
 
 }
-
