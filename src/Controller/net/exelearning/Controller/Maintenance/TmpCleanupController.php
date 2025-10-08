@@ -14,7 +14,7 @@ class TmpCleanupController extends AbstractController
 {
     public function __construct(
         private readonly TmpFilesCleanupService $cleanupService,
-        #[Autowire('%app.tmp_cleanup_key%')] private readonly string $cleanupKey
+        #[Autowire('%app.tmp_cleanup_key%')] private readonly string $cleanupKey,
     ) {
     }
 

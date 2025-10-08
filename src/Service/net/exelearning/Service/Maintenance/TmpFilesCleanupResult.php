@@ -10,7 +10,7 @@ final class TmpFilesCleanupResult
         private readonly int $removedFiles,
         private readonly int $removedDirectories,
         private readonly int $skipped,
-        private readonly array $failures
+        private readonly array $failures,
     ) {
     }
 

@@ -13,7 +13,7 @@ class TmpFilesCleanupService
     public function __construct(
         private readonly FileHelper $fileHelper,
         private readonly Filesystem $filesystem,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
     ) {
     }
 

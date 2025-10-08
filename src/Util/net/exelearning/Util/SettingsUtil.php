@@ -83,8 +83,6 @@ class SettingsUtil
 
     /**
      * Converts FILE_UPLOAD_MAX_SIZE from MB to Bytes.
-     *
-     * @return int
      */
     public static function getFileMaxUploadSizeInBytes(): int
     {

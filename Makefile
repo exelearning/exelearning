@@ -132,9 +132,9 @@ test: check-docker check-env
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit $(if $(TEST),test: $(TEST) $(EXTRA),suite: all)"
 	@if [ -n "$(TEST)" ]; then \
-		docker compose exec exelearning vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always $(TEST) $(EXTRA); \
+		docker compose exec -e APP_ENV=test exelearning vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always $(TEST) $(EXTRA); \
 	else \
-		docker compose exec exelearning composer --no-cache phpunit; \
+		docker compose exec -e APP_ENV=test exelearning composer --no-cache phpunit; \
 	fi
 	@echo "Stopping test environment..."
 	@docker compose --profile e2e down > /dev/null 2>&1
@@ -142,13 +142,11 @@ test: check-docker check-env
 # Run just unit tests with PHPUnit
 test-unit: check-docker check-env
 	@echo "Running PHPUnit tests..."
-	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
-	@docker compose run --rm --no-deps -e XDEBUG_MODE=off -e memory_limit=512M -e APP_ENV=test exelearning composer --no-cache phpunit-unit
+	@docker compose run --rm --no-deps -e XDEBUG_MODE=off -e memory_limit=512M -e APP_ENV=test  exelearning composer --no-cache phpunit-unit
 
 # Run unit tests in parallel using "paratest"
 test-unit-parallel: check-docker check-env
 	@echo "Running PHPUnit tests..."
-	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
 	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit-parallel
 
 # Run just e2e tests with PHPUnit
@@ -330,9 +328,6 @@ update: check-docker check-env upd
 translations: check-docker check-env upd
 	docker compose exec exelearning composer --no-cache translations:extract
 
-tmp-cleanup: check-docker check-env upd
-	docker compose exec exelearning composer --no-cache tmp-cleanup
-
 # Start the local environment with specific commands
 up-local: check-env
 	@echo "\033[31mWarning: Running in local environment may cause unexpected behavior. Use at your own risk.\033[0m"
@@ -382,6 +377,10 @@ migration: check-docker check-env upd
 # Execute Symfony migrations
 migrate: check-docker check-env upd
 	docker compose exec exelearning php bin/console doctrine:migrations:migrate --no-interaction
+
+# Clean temporary folder
+tmp-cleanup: check-docker check-env upd
+	docker compose exec exelearning composer --no-cache tmp-cleanup
 
 # Convert an ELP file via Docker using STDIN
 # Usage: make convert-elp INPUT=path/to/input.elp OUTPUT=path/to/output.elp [DEBUG=debug]
@@ -580,7 +579,7 @@ help:
 	@echo "  smoke-api-v2          - Quick smoke test for /api/v2/users (uses admin JWT)"
 	@echo "  make-migration        - Generate a new Symfony migration (make:migration)"
 	@echo "  migrate               - Run pending Symfony migrations (doctrine:migrations:migrate)"
-	@echo "  tmp-cleanup           - Run temprary files cleanup"
+	@echo "  tmp-cleanup           - Clean temporary folder"
 	@echo ""
 	@echo "Testing:"
 	@echo ""
@@ -611,4 +610,3 @@ help:
 
 # Set help as the default goal if no target is specified
 .DEFAULT_GOAL := help
-
