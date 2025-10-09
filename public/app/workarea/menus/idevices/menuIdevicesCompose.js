@@ -158,7 +158,9 @@ export default class MenuIdevicesCompose {
 
         if (icon !== 'imported') {
             ideviceData.forEach((ideviceData) => {
-                nodeDivIdevices.append(this.elementDivIdevice(ideviceData));
+                if (ideviceData.id != 'example') {
+                    nodeDivIdevices.append(this.elementDivIdevice(ideviceData));
+                }
             });
         }
 
