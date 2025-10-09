@@ -108,14 +108,18 @@ class TreeValidationTest extends WebTestCase
         $container = $client->getContainer();
         $filesDir  = (string) $container->getParameter('filesdir');
         $target = rtrim($filesDir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'apitests'.DIRECTORY_SEPARATOR.'basic-example.elp';
+        @mkdir(\dirname($target), 0777, true);
         copy(__DIR__ . '/../../Fixtures/basic-example.elp', $target);
         $client->request('POST', '/api/v2/projects', server: [ 'HTTP_Authorization' => 'Bearer '.$jwt, 'CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json' ], content: json_encode(['path' => $target]));
+        $this->assertSame(201, $client->getResponse()->getStatusCode(), $client->getResponse()->getContent());
         $project = json_decode($client->getResponse()->getContent(), true);
         $projectId = $project['id'];
 
         $client->request('POST', "/api/v2/projects/$projectId/pages", [], [], $auth, json_encode(['title' => 'N']));
+        $this->assertSame(201, $client->getResponse()->getStatusCode(), $client->getResponse()->getContent());
         $n = json_decode($client->getResponse()->getContent(), true);
         $client->request('POST', "/api/v2/projects/$projectId/pages/{$n['id']}/blocks", [], [], $auth, json_encode(['type' => 'text']));
+        $this->assertSame(201, $client->getResponse()->getStatusCode(), $client->getResponse()->getContent());
         $block = json_decode($client->getResponse()->getContent(), true);
 
         $client->request('PATCH', "/api/v2/projects/$projectId/pages/{$n['id']}/blocks/{$block['blockId']}/move", [], [], $auth, json_encode(['newPageId' => 'missing']));
