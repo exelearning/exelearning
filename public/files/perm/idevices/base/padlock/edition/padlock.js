@@ -102,7 +102,7 @@ var $exeDevice = {
             path = $exeDevice.idevicePath,
             html = `
             <div id="candadoIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible">
+                <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_('Create activities with a password protected feedback.')} 
                     <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/candado.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
@@ -115,58 +115,87 @@ var $exeDevice = {
                             <input id="candadoERetro" type="radio" name="dsfDesRet" value="1" />
                             <label for="candadoERetro">${msgs.msgEREtroalimatacion}</label>
                         </p>
-                        <p id="divCandadoInstructions">
+                        <div id="divCandadoInstructions" class="mb-3">
                             <label for="candadoEDescription" class="sr-av">${_('Instructions')}:</label>
-                            <textarea id="candadoEDescription" class="exe-html-editor"></textarea>
-                        </p>
-                        <p id="divCandadoFeebBack">
+                            <textarea id="candadoEDescription" class="exe-html-editor form-control" rows="6"></textarea>
+                        </div>
+                        <div id="divCandadoFeebBack" class="mb-3">
                             <label for="candadoEFeedBack" class="sr-av">${_('Feedback')}:</label>
-                            <textarea id="candadoEFeedBack" class="exe-html-editor"></textarea>
-                        </p>
-                        <p class="candado-EDataAccess">
-                            <label for="candadoEDSolution">${msgs.msgCodeAccess}:</label>
-                            <input type="text" id="candadoEDSolution"/>
-                            <label id="candadolblEDTime" for="candadoEDTime">${msgs.msgTime}:</label>
-                            <select id="candadoEDTime">
-                                <option value="0"></option>
-                                <option value="1">1m</option>
-                                <option value="3">3m</option>
-                                <option value="5">5m</option>
-                                <option value="10" selected>10m</option>
-                                <option value="15">15m</option>
-                                <option value="20">20m</option>
-                                <option value="25">25m</option>
-                                <option value="30">30m</option>
-                                <option value="35">35m</option>
-                                <option value="40">40m</option>
-                                <option value="45">45m</option>
-                                <option value="50">50m</option>
-                                <option value="55">55m</option>
-                                <option value="60">60m</option>
-                            </select>
-                            <input type="checkbox" id="candadoEShowMinimize"/>
-                            <label for="candadoEShowMinimize">${msgs.msgEShowMinimize}</label>
-                            <input type="checkbox" id="candadoEReboot" checked/>
-                            <label for="candadoEReboot">${msgs.msgERebootActivity}</label>
-                        </p>
-                        <p class="candado-EDataAccess">
-                            <label for="candadoEAttemps">${msgs.msgNumFaildedAttemps}:</label>
-                            <input type="number" name="candadoEAttemps" id="candadoEAttemps" value="0" min="0" max="10" step="1" required />
-                            <label for="candadoEErrorMessage">${msgs.msgCustomMessage}:</label>
-                            <input type="text" disabled id="candadoEErrorMessage" />
-                        </p>
-                        <p class="Games-Reportdiv">
+                            <textarea id="candadoEFeedBack" class="exe-html-editor form-control" rows="6"></textarea>
+                        </div>
+                        <div class="candado-EDataAccess mb-3 d-flex flex-wrap align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="candadoEDSolution" class="mb-0">${msgs.msgCodeAccess}:</label>
+                                <input type="text" id="candadoEDSolution" class="form-control" />
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label id="candadolblEDTime" for="candadoEDTime">${msgs.msgTime}:</label>
+                                <select id="candadoEDTime" class="form-select form-select-sm">
+                                    <option value="0"></option>
+                                    <option value="1">1m</option>
+                                    <option value="3">3m</option>
+                                    <option value="5">5m</option>
+                                    <option value="10" selected>10m</option>
+                                    <option value="15">15m</option>
+                                    <option value="20">20m</option>
+                                    <option value="25">25m</option>
+                                    <option value="30">30m</option>
+                                    <option value="35">35m</option>
+                                    <option value="40">40m</option>
+                                    <option value="45">45m</option>
+                                    <option value="50">50m</option>
+                                    <option value="55">55m</option>
+                                    <option value="60">60m</option>
+                                </select>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="candadoEShowMinimize" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="candadoEShowMinimize" class="toggle-label mb-0">${msgs.msgEShowMinimize}</label>
+                                </span>
+                                <span class="toggle-item" role="switch" aria-checked="true">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="candadoEReboot" class="toggle-input" checked />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="candadoEReboot" class="toggle-label mb-0">${msgs.msgERebootActivity}</label>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="candado-EDataAccess mb-3 d-flex flex-wrap align-items-center gap-2">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="candadoEAttemps" class="mb-0">${msgs.msgNumFaildedAttemps}:</label>
+                                <input type="number" name="candadoEAttemps" id="candadoEAttemps" value="0" min="0" max="10" step="1" required class="form-control" style="width:7ch" />
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap" style="flex:1 1 auto; min-width:250px;">
+                                <label for="candadoEErrorMessage" class="mb-0">${msgs.msgCustomMessage}:</label>
+                                <input type="text" disabled id="candadoEErrorMessage" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="Games-Reportdiv d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="candadoEEvaluation" class="toggle-input" />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label for="candadoEEvaluation" class="toggle-label mb-0">${_('Progress report')}.</label>
+                            </span>
+                            <span class="d-flex align-items-center gap-1 flex-nowrap">
+                                <label for="candadoEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                <input type="text" id="candadoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
+                            </span>
                             <strong class="GameModeLabel">
                                 <a href="#candadoEEvaluationHelp" id="candadoEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/>
+                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
                                 </a>
                             </strong>
-                            <input type="checkbox" id="candadoEEvaluation"/><label for="candadoEEvaluation">${_('Progress report')}.</label>
-                            <label for="candadoEEvaluationID">${_('Identifier')}:</label><input type="text" id="candadoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                        </p>
-                        <div id="candadoEEvaluationHelp" class="candado-TypeGameHelp exe-block-info">
-                            <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
                         </div>
+                        <p id="candadoEEvaluationHelp" class="candado-TypeGameHelp exe-block-info">
+                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                        </p>
                     </div>
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
@@ -179,6 +208,15 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.tabs.init('candadoIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
+
+        // Inicializar toggles accesibles
+        $('.toggle-input').each(function(){
+            const $i=$(this), $item=$i.closest('.toggle-item');
+            $item.attr('aria-checked',$i.is(':checked'));
+            $i.on('change.padlockToggle',function(){
+                $item.attr('aria-checked',$i.is(':checked'));
+            });
+        });
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -281,8 +319,8 @@ var $exeDevice = {
         dataGame.msgs = i18n;
         let json = JSON.stringify(dataGame);
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
-    let html = '<div class="candado-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="candado-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="candado-version js-hidden">' +
             $exeDevice.candadoVersion +

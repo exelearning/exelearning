@@ -1,6 +1,5 @@
 /* eslint-disable no-undef */
 /**
-/**
  * SeleccionaMedias Activity iDevice (edition code)
  * Version: 1.5
  * Released under Attribution-ShareAlike 4.0 International License.
@@ -40,11 +39,9 @@ var $exeDevice = {
             '&percnt;',
             '%',
         );
-
         this.setMessagesInfo();
         this.createForm();
     },
-
     refreshTranslations: function () {
         this.ci18n = {
             msgSubmit: c_('Submit'),
@@ -138,64 +135,100 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
-                            <p>
-                                <label for="slcmEShowMinimize"><input type="checkbox" id="slcmEShowMinimize">${_('Show minimized.')}</label>
-                            </p>
-                            <p>
-                                <label for="slcmETime">${_('Time to complete the game')}(m):</label>
-                                <input type="number" name="slcmETime" id="slcmETime" value="0" min="0" max="120" step="1" />
-                            </p>
-                            <p>
-                                <label for="slcmEAttemptsNumber">${_('Number of attempts')}:
-                                <input type="number" name="slcmEAttemptsNumber" id="slcmEAttemptsNumber" value="1" min="1" max="9" /> </label>
-                            </p>
-                            <p>
-                                <label for="slcmEShowSolution"><input type="checkbox" checked id="slcmEShowSolution">${_('Show solutions')}. </label>
-                            </p>
-                            <p id="slcmTimeShowDiv">
-                                <label for="slcmETimeShowSolution">${_('Time while the cards will be shown (seconds)')}:
-                                <input type="number" name="slcmETimeShowSolution" id="slcmETimeShowSolution" value="4" min="1" max="999" /> </label>
-                            </p>
-                            <p>
-                                <label for="slcmEPercentajeQuestions">${_('% Activities')}:</label>
-                                <input type="number" name="slcmEPercentajeQuestions" id="slcmEPercentajeQuestions" value="100" min="1" max="100" />
-                                <span id="slcmENumeroPercentaje">1/1</span>
-                            </p>
-                            <p id="slcmEANumberMaxDiv">
-                                <label for="slcmEANumberMaxCard">${_('Maximum number of cards')}:
-                                <input type="number" name="slcmEANumberMaxCard" id="slcmEANumberMaxCard" value="30" min="1" max="30" /> </label>
-                            </p>
-                            <p id="slcmECustomMessagesDiv">
-                                <label for="slcmECustomMessages"><input type="checkbox" id="slcmECustomMessages">${_('Custom messages')}.</label>
-                            </p>
-                            <p>
-                                <label for="slcmEModeTable"><input type="checkbox" id="slcmEModeTable">${_('Table mode')}. </label>
-                            </p>
-                            <p>
-                                <label for="slcmEHasFeedBack"><input type="checkbox" id="slcmEHasFeedBack">${_('Feedback')}. </label>
-                                <label for="slcmEPercentajeFB"></label>
-                                <input type="number" name="slcmEPercentajeFB" id="slcmEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                            </p>
-                            <p id="slcmEFeedbackP" class="SLCME-EFeedbackP">
-                                <textarea id="slcmEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </p>
-                            <p>
-                                <label for="slcmEAuthor">${_('Authorship')}: </label><input id="slcmEAuthor" type="text" />
-                            </p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#slcmEEvaluationHelp" id="slcmEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                               <input type="checkbox" id="slcmEEvaluation"><label for="slcmEEvaluation">${_('Progress report')}. </label>
-                                <label for="slcmEEvaluationID">${_('Identifier')}:</label><input type="text" id="slcmEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/> 
-                            </p>
-                            <div id="slcmEEvaluationHelp" class="SLCME-TypeGameHelp exe-block-info">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                            <div class="toggle-item mb-3">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="slcmEShowMinimize" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label mb-0" for="slcmEShowMinimize">${_('Show minimized.')}</label>
                             </div>
+                            <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                <label for="slcmETime" class="mb-0">${_('Time to complete the game')}(m):</label>
+                                <input type="number" name="slcmETime" id="slcmETime" value="0" min="0" max="120" step="1" class="form-control" />
+                            </div>
+                            <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                <label for="slcmEAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
+                                <input type="number" name="slcmEAttemptsNumber" id="slcmEAttemptsNumber" value="1" min="1" max="9" class="form-control" />
+                            </div>
+                            <div class="toggle-item mb-3">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="slcmEShowSolution" class="toggle-input" checked />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label mb-0" for="slcmEShowSolution">${_('Show solutions')}.</label>
+                            </div>
+                            <div id="slcmTimeShowDiv" class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                <label for="slcmETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
+                                <input type="number" name="slcmETimeShowSolution" id="slcmETimeShowSolution" value="4" min="1" max="999" class="form-control" />
+                            </div>
+                            <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                <label for="slcmEPercentajeQuestions" class="mb-0">${_('% Activities')}:</label>
+                                <input type="number" name="slcmEPercentajeQuestions" id="slcmEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
+                                <span id="slcmENumeroPercentaje">1/1</span>
+                            </div>
+                            <div id="slcmEANumberMaxDiv" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                <label for="slcmEANumberMaxCard" class="mb-0">${_('Maximum number of cards')}:</label>
+                                <input type="number" name="slcmEANumberMaxCard" id="slcmEANumberMaxCard" value="30" min="1" max="30" class="form-control" />
+                            </div>
+                            <div id="slcmECustomMessagesDiv" class="toggle-item mb-3">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="slcmECustomMessages" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label mb-0" for="slcmECustomMessages">${_('Custom messages')}.</label>
+                            </div>
+                            <div class="toggle-item mb-3">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="slcmEModeTable" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label mb-0" for="slcmEModeTable">${_('Table mode')}.</label>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                <div class="toggle-item mb-0">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="slcmEHasFeedBack" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label mb-0" for="slcmEHasFeedBack">${_('Feedback')}.</label>
+                                </div>
+                                <div class="d-flex flex-nowrap align-items-center gap-2">
+                                    <label for="slcmEPercentajeFB" class="mb-0"></label>
+                                    <input type="number" name="slcmEPercentajeFB" id="slcmEPercentajeFB" value="100" min="5" max="100" step="5" class="form-control" disabled />
+                                </div>
+                            </div>
+                            <div id="slcmEFeedbackP" class="SLCME-EFeedbackP mb-3">
+                                <textarea id="slcmEFeedBackEditor" class="exe-html-editor"></textarea>
+                            </div>
+                            <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                                <label for="slcmEAuthor" class="mb-0">${_('Authorship')}:</label>
+                                <input id="slcmEAuthor" type="text" class="form-control" />
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 Games-Reportdiv">
+                                <div class="toggle-item mb-0">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="slcmEEvaluation" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label mb-0" for="slcmEEvaluation">${_('Progress report')}.</label>
+                                </div>
+                                <div class="d-flex flex-nowrap align-items-center gap-2">
+                                    <label for="slcmEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                    <input type="text" id="slcmEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
+                                </div>
+                                <a href="#slcmEEvaluationHelp" id="slcmEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
+                                </a>
+                            </div>
+                            <p id="slcmEEvaluationHelp" class="SLCME-TypeGameHelp exe-block-info d-none">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
                         <legend><a href="#">${_('Activities')}</a></legend>
                         <div class="SLCME-EPanel" id="slcmEPanel">
-                            <div class="SLCME-ENavigationButtons" id="slcmButtonsPrhaseDiv">
+                            <div class="SLCME-ENavigationButtons d-flex flex-wrap align-items-center justify-content-center gap-2 mb-3" id="slcmButtonsPrhaseDiv">
                                 <a href="#" id="slcmEAdd" class="SLCME-ENavigationButton" title="${_('Add an activity')}"><img src="${path}quextIEAdd.png" alt="${_('Add an activity')}" class="SLCME-EButtonImage b-add" /></a>
                                 <a href="#" id="slcmEFirst" class="SLCME-ENavigationButton" title="${_('First activity')}"><img src="${path}quextIEFirst.png" alt="${_('First activity')}" class="SLCME-EButtonImage b-first" /></a>
                                 <a href="#" id="slcmEPrevious" class="SLCME-ENavigationButton" title="${_('Previous activity')}"><img src="${path}quextIEPrev.png" alt="${_('Previous activity')}" class="SLCME-EButtonImage b-prev" /></a>
@@ -207,49 +240,56 @@ var $exeDevice = {
                                 <a href="#" id="slcmECut" class="SLCME-ENavigationButton" title="${_('Cut activity')}"><img src="${path}quextIECut.png" alt="${_('Cut activity')}" class="SLCME-EButtonImage b-cut" /></a>
                                 <a href="#" id="slcmEPaste" class="SLCME-ENavigationButton" title="${_('Paste activity')}"><img src="${path}quextIEPaste.png" alt="${_('Paste activity')}" class="SLCME-EButtonImage b-paste" /></a>
                             </div>
-                            <p class="SLCME-ENumActivity" id="slcmActivityNumberDiv">${_('Activity')} <span id="slcmActivityNumber">1</span></p>
-                            <div id="slcmEImageDefinitionDiv" style="display:none">
-                                <p class="SLCME-EImageDefinition">
+                            <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mb-3" id="slcmActivityNumberDiv">${_('Activity')} <span id="slcmActivityNumber">1</span></div>
+                            <div id="slcmEImageDefinitionDiv" class="d-none mb-3">
+                                <div class="SLCME-EImageDefinition d-flex align-items-center justify-content-center">
                                     <img class="SLCME-EImageEnu" id="slcmEImageDefinition" src="${path}quextIEImagex.png" alt="${_('No image')}" />
-                                </p>
-                            </div>
-                            <p class="SLCME-ECustomMessageDef" id="slcmEDefinitionDiv">
-                                <label for="slcmEDefinition">${_('Statement')}:</label><input type="text" id="slcmEDefinition">
-                            </p>
-                            <div>
-                                <p class="SLCME-EDefinitioMedia">
-                                    <label>${_('Image')}:</label>
-                                    <input type="text" id="slcmEURLImageDefinition" class="exe-file-picker"  />
-                                    <a href="#" id="slcmEPlayImageDefinition" class="SLCME-ENavigationButton SLCME-EPlayVideo" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage b-play" /></a>
-                                    <a href="#" id="slcmEShowMoreDefinition" class="SLCME-ENavigationButton SLCME-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="SLCME-EButtonImage b-play" /></a>
-                                </p>
-                                <div style="margin:0;padding:0;display:none" id="slcmEDefinitionAltAuthor">
-                                    <p class="SLCME-EDefinitionAltAuthor">
-                                        <label>${_('Authorship')}:</label><input id="slcmEAuthorDefinition" type="text" class="SLCME-EAuthor" />
-                                        <label>${_('Alternative text')}:</label><input id="slcmEAltDefinition" type="text" class="SLCME-EAlt" />
-                                    </p>
                                 </div>
                             </div>
-                            <p class="SLCME-ECustomMessageAudio">
-                                <label>${_('Audio')}:</label>
-                                <input type="text" id="slcmEURLAudioDefinition" class="exe-file-picker SLCME-EURLAudio"  />
-                                <a href="#" id="slcmEPlayAudioDefinition" class="SLCME-ENavigationButton SLCME-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage b-play" /></a>
-                            </p>
-                            <p class="SLCME-ECustomMessageDiv" id="slcmCustomMessageOKDiv">
-                                <label for="slcmEMessageOK">${_('Success')}:</label><input type="text" id="slcmEMessageOK"/>
-                                <label>${_('Audio')}:</label>
-                                <input type="text" id="slcmEURLAudioOK" class="exe-file-picker SLCME-EURLAudio"  />
-                                <a href="#" id="slcmEPlayAudioOK" class="SLCME-ENavigationButton SLCME-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage b-play" /></a>
-                            </p>
-                            <p class="SLCME-ECustomMessageDiv" id="slcmCustomMessageKODiv">
-                                <label for="slcmEMessageKO">${_('Error')}:</label><input type="text" id="slcmEMessageKO"/>
-                                <label>${_('Audio')}:</label>
-                                <input type="text" id="slcmEURLAudioKO" class="exe-file-picker SLCME-EURLAudio"  />
-                                <a href="#" id="slcmEPlayAudioKO" class="SLCME-ENavigationButton SLCME-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage b-play" /></a>
-                            </p>
-                            <p class="SLCME-EPhrase" id="slcmEPhrase"></p>
+                            <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="slcmEDefinitionDiv">
+                                <label for="slcmEDefinition" class="mb-0">${_('Statement')}:</label>
+                                <input type="text" id="slcmEDefinition" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <div class="d-flex flex-nowrap align-items-center gap-2 mb-3 SLCME-EDefinitioMedia">
+                                    <label class="mb-0">${_('Image')}:</label>
+                                    <input type="text" id="slcmEURLImageDefinition" class="exe-file-picker form-control me-0 w-100" />
+                                    <a href="#" id="slcmEPlayImageDefinition" class="SLCME-ENavigationButton" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
+                                    <a href="#" id="slcmEShowMoreDefinition" class="SLCME-ENavigationButton SLCME-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="SLCME-EButtonImage" /></a>
+                                </div>
+                                <div id="slcmEDefinitionAltAuthor" class="d-none flex-nowrap align-items-center gap-2">
+                                    <div class="d-flex flex-nowrap align-items-center gap-2 w-50">
+                                        <label for="slcmEAuthorDefinition" class="mb-0">${_('Authorship')}:</label>
+                                        <input id="slcmEAuthorDefinition" type="text" class="form-control w-100 me-0" />
+                                    </div>
+                                    <div class="d-flex flex-nowrap align-items-center gap-2 w-50">
+                                        <label for="slcmEAltDefinition" class="mb-0">${_('Alt')}:</label>
+                                        <input id="slcmEAltDefinition" type="text" class="form-control w-100 me-0" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="SLCME-ECustomMessageAudio d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                <label class="mb-0">${_('Audio')}:</label>
+                                <input type="text" id="slcmEURLAudioDefinition" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
+                                <a href="#" id="slcmEPlayAudioDefinition" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
+                            </div>
+                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3"">
+                                <label for="slcmEMessageOK" class="mb-0">${_('Success')}:</label>
+                                <input type="text" id="slcmEMessageOK" class="form-control" />
+                                <label class="mb-0">${_('Audio')}:</label>
+                                <input type="text" id="slcmEURLAudioOK" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
+                                <a href="#" id="slcmEPlayAudioOK" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
+                            </div>
+                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" >
+                                <label for="slcmEMessageKO" class="mb-0">${_('Error')}:</label>
+                                <input type="text" id="slcmEMessageKO" class="form-control" />
+                                <label class="mb-0">${_('Audio')}:</label>
+                                <input type="text" id="slcmEURLAudioKO" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
+                                <a href="#" id="slcmEPlayAudioKO" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-start justify-content-start mb-3 justify-content-start" id="slcmEPhrase"></div>
                             <div class="SLCME-EContents" id="slcmButtonCardDiv">
-                                <div class="SLCME-ENavigationButtons">
+                                <div class="SLCME-ENavigationButtons d-flex flex-wrap align-items-center justify-content-center gap-2 mb-3">
                                     <a href="#" id="slcmEAddC" class="SLCME-ENavigationButton" title="${_('Add a card')}"><img src="${path}quextIEAdd.png" alt="${_('Add a card')}" class="SLCME-EButtonImage b-add" /></a>
                                     <a href="#" id="slcmEDeleteC" class="SLCME-ENavigationButton" title="${_('Delete card')}"><img src="${path}quextIEDelete.png" alt="${_('Delete card')}" class="SLCME-EButtonImage b-delete" /></a>
                                     <a href="#" id="slcmECopyC" class="SLCME-ENavigationButton" title="${_('Copy card')}"><img src="${path}quextIECopy.png" alt="${_('Copy card')}" class="SLCME-EButtonImage b-copy" /></a>
@@ -257,8 +297,8 @@ var $exeDevice = {
                                     <a href="#" id="slcmEPasteC" class="SLCME-ENavigationButton" title="${_('Paste card')}"><img src="${path}quextIEPaste.png" alt="${_('Paste card')}" class="SLCME-EButtonImage b-paste" /></a>
                                 </div>
                             </div>
-                            <div class="SLCME-ENumPhrasesDiv" id="slcmENumPhrasesDiv">
-                                <div class="SLCME-ENumPhraseS"><span class="sr-av">${_('Phrases:')}</span></div> <span class="SLCME-ENumPhrases" id="slcmENumPhrases">1</span>
+                            <div class="SLCME-ENumPhrasesDiv d-flex flex-nowrap align-items-center gap-2" id="slcmENumPhrasesDiv">
+                                <div class="SLCME-ENumPhraseS"><span class="sr-av">${_('Phrases:')}</span></div><span class="SLCME-ENumPhrases" id="slcmENumPhrases">1</span>
                             </div>
                         </div>
                     </fieldset>
@@ -270,10 +310,10 @@ var $exeDevice = {
             </div>
             `;
 
-        this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
-        this.enableForm();
+    this.ideviceBody.innerHTML = html;
+    $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+    $exeDevicesEdition.iDevice.gamification.scorm.init();
+    this.enableForm();
     },
 
     removeCard: function () {
@@ -298,20 +338,20 @@ var $exeDevice = {
             $('#slcmEDatosCarta-' + $exeDevice.activeID).addClass(
                 'SLCME-EActive',
             );
-            $('#slcmEPasteC').hide();
+            $exeDevice.hideFlex($('#slcmEPasteC'));
         }
     },
 
     copyCard: function () {
         $exeDevice.typeEditC = 0;
         $exeDevice.idPaste = $exeDevice.activeID;
-        $('#slcmEPasteC').show();
+    $exeDevice.showFlex($('#slcmEPasteC'));
     },
 
     cutCard: function () {
         $exeDevice.typeEditC = 1;
         $exeDevice.idPaste = $exeDevice.activeID;
-        $('#slcmEPasteC').show();
+    $exeDevice.showFlex($('#slcmEPasteC'));
     },
 
     pasteCard: function () {
@@ -324,7 +364,7 @@ var $exeDevice = {
             $cardactive.after($exeDevice.jsonToCard(dataCard, true));
             $exeDevice.activeID = dataCard.id;
         } else if ($exeDevice.typeEditC == 1) {
-            $('#slcmEPasteC').hide();
+            $exeDevice.hideFlex($('#slcmEPasteC'));
             $exeDevice.typeEditC = -1;
             const $cardcopy = $('#slcmEDatosCarta-' + $exeDevice.idPaste),
                 $cardactive = $('#slcmEDatosCarta-' + $exeDevice.activeID);
@@ -336,30 +376,41 @@ var $exeDevice = {
 
     jsonToCard: function (p, inload) {
         const $card = $exeDevice.addCard(!inload);
+        // Valores seguros (retrocompatibilidad con versiones antiguas sin color/fondo)
+        const safe = {
+            author: p?.author || '',
+            alt: p?.alt || '',
+            url: p?.url || '',
+            audio: p?.audio || '',
+            eText: p?.eText || '',
+            color: p?.color || '#000000',
+            backcolor: p?.backcolor || '#ffffff',
+            state: !!p?.state,
+        };
 
-        $card.find('.SLCME-EAuthor').eq(0).val(p.author);
-        $card.find('.SLCME-EAlt').eq(0).val(p.alt);
-        $card.find('.SLCME-EURLImage').eq(0).val(p.url);
-        $card.find('.SLCME-EURLAudio').eq(0).val(p.audio);
-        $card.find('.SLCME-EText').eq(0).val(p.eText);
-        $card.find('.SLCME-ETextDiv').eq(0).text(p.eText);
-        $card.find('.SLCME-EColor').eq(0).val(p.color);
-        $card.find('.SLCME-EBackColor').eq(0).val(p.backcolor);
-        $card.find('.SLCME-EState').eq(0).prop('checked', p.state);
+        $card.find('.SLCME-EAuthor').eq(0).val(safe.author);
+        $card.find('.SLCME-EAlt').eq(0).val(safe.alt);
+        $card.find('.SLCME-EURLImage').eq(0).val(safe.url);
+        $card.find('.SLCME-EURLAudio').eq(0).val(safe.audio);
+        $card.find('.SLCME-EText').eq(0).val(safe.eText);
+        $card.find('.SLCME-ETextDiv').eq(0).text(safe.eText);
+        $card.find('.SLCME-EColor').eq(0).val(safe.color);
+        $card.find('.SLCME-EBackColor').eq(0).val(safe.backcolor);
+        $card.find('.SLCME-EState').eq(0).prop('checked', safe.state);
 
         $exeDevice.showImage($exeDevice.activeID);
-        if (p.eText.trim().length > 0) {
-            $card.find('.SLCME-ETextDiv').show();
+    if (safe.eText.trim().length > 0) {
+            $exeDevice.showFlex($card.find('.SLCME-ETextDiv'));
         } else {
-            $card.find('.SLCME-ETextDiv').hide();
+            $exeDevice.hideFlex($card.find('.SLCME-ETextDiv'));
         }
 
         $card
             .find('.SLCME-ETextDiv')
             .eq(0)
             .css({
-                color: p.color,
-                'background-color': $exeDevice.hexToRgba(p.backcolor, 0.7),
+                color: safe.color,
+                'background-color': $exeDevice.hexToRgba(safe.backcolor, 0.7),
             });
         return $card;
     },
@@ -412,8 +463,8 @@ var $exeDevice = {
         $('#slcmEAltDefinition').val(phrase.alt);
         $('#slcmEAuthorDefinition').val(phrase.author);
         $('#slcmEImageDefinition').attr('src', phrase.url);
-        $('#slcmEImageDefinitionDiv').hide();
-        if (phrase.url.trim().length > 4) $('#slcmEImageDefinitionDiv').show();
+    $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
+        if (phrase.url.trim().length > 4) $('#slcmEImageDefinitionDiv').removeClass('d-none').addClass('d-flex');
         $('#slcmEMessageOK').val(phrase.msgHit);
         $('#slcmEMessageKO').val(phrase.msgError);
         $('#slcmEDefinition').val(phrase.definition);
@@ -430,82 +481,76 @@ var $exeDevice = {
         $exeDevice.active = 0;
         $exeDevice.phrasesGame.push($exeDevice.getPhraseDefault());
         $exeDevice.addCard(false);
-        $('.SLCME-ECustomMessageDiv').hide();
+        $('.SLCME-ECustomMessageDiv').removeClass('d-flex').addClass('d-none');
     },
 
     addCard: function (clone) {
         $exeDevice.activeID = $exeDevice.getID();
-        $('#slcmEPhrase')
-            .find('div.SLCME-EDatosCarta')
-            .removeClass('SLCME-EActive');
-
+        $('#slcmEPhrase').find('div.SLCME-EDatosCarta').removeClass('SLCME-EActive');
         const path = $exeDevice.idevicePath,
             card = `
             <div class="SLCME-EDatosCarta SLCME-EActive" id="slcmEDatosCarta-${$exeDevice.activeID}" data-id="${$exeDevice.activeID}">
-                <div class="SLCME-EMultimedia">
-                    <div class="SLCME-ECard">
+                <div class="SLCME-EMultimedia d-flex align-items-center justify-content-center mb-3 mt-2">
+                    <div class="SLCME-ECard position-relative">
                         <img id="slcmEImage-${$exeDevice.activeID}" src="${path}quextIEImage.png" alt="${_('No image')}" />
                         <img class="SLCME-ECursor" id="slcmECursor-${$exeDevice.activeID}" src="${path}quextIECursor.gif" alt="" />
                         <img id="slcmENoImage-${$exeDevice.activeID}" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                        <div class="SLCME-ETextDiv" id="slcmETextDiv-${$exeDevice.activeID}"></div>
+                        <div class="SLCME-ETextDiv d-none" id="slcmETextDiv-${$exeDevice.activeID}"></div>
                     </div>
                 </div>
                 <span class="SLCME-ETitleText" id="slcmETitleText-${$exeDevice.activeID}">${_('Text')}</span>
-                <div class="SLCME-EInputText" id="slcmEInputText-${$exeDevice.activeID}">
+                <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="slcmEInputText-${$exeDevice.activeID}">
                     <label class="sr-av">${_('Text')}</label>
-                    <input type="text" id="slcmEText-${$exeDevice.activeID}" class="SLCME-EText" />
-                    <label id="slcmELblColor-${$exeDevice.activeID}" class="SLCME-LblColor">${_('Color')}: </label>
-                    <input id="slcmEColor-${$exeDevice.activeID}" type="color" class="SLCME-EColor" value="#000000">
-                    <label id="slcmELblBgColor-${$exeDevice.activeID}" class="SLCME-LblBgColor">${_('Background')}: </label>
-                    <input id="slcmEBgColor-${$exeDevice.activeID}" type="color" class="SLCME-EBackColor" value="#ffffff">
+                    <input type="text" id="slcmEText-${$exeDevice.activeID}" class="SLCME-EText form-control w-100 me-0" />
+                    <label id="slcmELblColor-${$exeDevice.activeID}">${_('Color')}:</label>
+                    <input id="slcmEColor-${$exeDevice.activeID}" type="color" class="SLCME-EColor form-control" value="#000000">
+                    <label id="slcmELblBgColor-${$exeDevice.activeID}">${_('Background')}:</label>
+                    <input id="slcmEBgColor-${$exeDevice.activeID}" type="color" class="SLCME-EBackColor form-control" value="#ffffff">
                 </div>
                 <span class="SLCME-ETitleImage" id="slcmETitleImage-${$exeDevice.activeID}">${_('Image')}</span>
-                <div class="SLCME-EInputImage" id="slcmEInputImage-${$exeDevice.activeID}">
+                <div class="SLCME-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="slcmEInputImage-${$exeDevice.activeID}">
                     <label class="sr-av">URL</label>
-                    <input type="text" id="slcmEURLImage-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLImage" />
-                    <a href="#" id="slcmEPlayImage-${$exeDevice.activeID}" class="SLCME-ENavigationButton SLCME-EPlayVideo" title="${_('Show')}">
-                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SLCME-EButtonImage b-play" />
+                    <input type="text" id="slcmEURLImage-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLImage form-control me-0 w-100" />
+                    <a href="#" id="slcmEPlayImage-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Show')}">
+                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SLCME-EButtonImage" />
                     </a>
                     <a href="#" id="slcmEShowMore-${$exeDevice.activeID}" class="SLCME-ENavigationButton SLCME-EShowMore" title="${_('More')}">
-                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="SLCME-EButtonImage b-play" />
+                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="SLCME-EButtonImage" />
                     </a>
                 </div>
-                <div class="SLCME-EAuthorAlt" id="slcmEAuthorAlt-${$exeDevice.activeID}">
-                    <div class="SLCME-EInputAuthor">
+        <div class="d-none flex-nowrap align-items-center gap-2 mb-3" id="slcmEAuthorAlt-${$exeDevice.activeID}">
+                    <div class="d-flex w-50 flex-nowrap align-items-center gap-2">
                         <label>${_('Authorship')}</label>
-                        <input type="text" class="SLCME-EAuthor" />
+            <input type="text" class="form-control me-0 w-100 SLCME-EAuthor" />
                     </div>
-                    <div class="SLCME-EInputAlt">
-                        <label>${_('Alternative text')}</label>
-                        <input type="text" class="SLCME-EAlt" />
+                    <div class="d-flex w-50 flex-nowrap align-items-center gap-2">
+                        <label>${_('Alt')}</label>
+            <input type="text" class="form-control me-0 w-100 SLCME-EAlt" />
                     </div>
                 </div>
                 <span>${_('Audio')}</span>
-                <div class="SLCME-EInputAudio">
+                <div class="SLCME-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-3">
                     <label class="sr-av">URL</label>
-                    <input type="text" id="slcmEURLAudio-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLAudio" />
-                    <a href="#" id="slcmEPlayAudio-${$exeDevice.activeID}" class="SLCME-ENavigationButton SLCME-EPlayVideo" title="${_('Audio')}">
-                        <img src="${path}quextIEPlay.png" alt="Play" class="SLCME-EButtonImage b-play" />
+                    <input type="text" id="slcmEURLAudio-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
+                    <a href="#" id="slcmEPlayAudio-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Audio')}">
+                        <img src="${path}quextIEPlay.png" alt="Play" class="SLCME-EButtonImage" />
                     </a>
                 </div>
-                <p>
-                    <label for="slcmState-${$exeDevice.activeID}">${_('Correct answer')}: <input type="checkbox" id="slcmState-${$exeDevice.activeID}" class="SLCME-EState"></label>
-                </p>
+                <div class="toggle-item mb-3">
+                    <span class="toggle-control">
+                        <input type="checkbox" id="slcmState-${$exeDevice.activeID}" class="SLCME-EState toggle-input" />
+                        <span class="toggle-visual"></span>
+                    </span>
+                    <label class="toggle-label mb-0" for="slcmState-${$exeDevice.activeID}">${_('Correct answer')}:</label>
+                </div>
             </div>`;
-
         $('#slcmEPhrase').append(card);
-
         if (clone) {
             $exeDevice.addPickerButton($exeDevice.activeID);
         }
-
         const $card = $('#slcmEPhrase').find('div.SLCME-EDatosCarta').last();
-
         $exeDevice.addEventCard($exeDevice.activeID);
         $exeDevice.showImage($exeDevice.activeID);
-
-        $('#slcmETextDiv-' + $exeDevice.activeID).hide();
-
         return $card;
     },
 
@@ -619,7 +664,7 @@ var $exeDevice = {
     },
 
     addEventCard: function (id) {
-        $('#slcmEAuthorAlt-' + id).hide();
+        $('#slcmEAuthorAlt-' + id).removeClass('d-flex').addClass('d-none');
 
         $('#slcmEURLImage-' + id).on('change', function () {
             $exeDevice.loadImage(id);
@@ -641,16 +686,20 @@ var $exeDevice = {
         });
 
         $('#slcmEShowMore-' + id).on('click', function (e) {
-            e.preventDefault();
-            $('#slcmEAuthorAlt-' + id).slideToggle();
+            e.preventDefault()
+            if ($('#slcmEAuthorAlt-' + id).hasClass('d-none')) {
+                $('#slcmEAuthorAlt-' + id).removeClass('d-none').addClass('d-flex')
+            } else {
+                $('#slcmEAuthorAlt-' + id).removeClass('d-flex').addClass('d-none')
+            }
         });
 
         $('#slcmEText-' + id).on('keyup', function () {
             $('#slcmETextDiv-' + id).text($(this).val());
             if ($(this).val().trim().length > 0) {
-                $('#slcmETextDiv-' + $exeDevice.activeID).show();
+                $('#slcmETextDiv-' + $exeDevice.activeID).removeClass('d-flex').addClass('d-none');;
             } else {
-                $('#slcmETextDiv-' + $exeDevice.activeID).hide();
+                $('#slcmETextDiv-' + $exeDevice.activeID).removeClass('d-none').addClass('d-flex');
             }
         });
 
@@ -724,17 +773,21 @@ var $exeDevice = {
     },
 
     hexToRgba: function (hex, opacity) {
-        return (
-            'rgba(' +
-            (hex = hex.replace('#', ''))
-                .match(new RegExp('(.{' + hex.length / 3 + '})', 'g'))
-                .map(function (l) {
-                    return parseInt(hex.length % 2 ? l + l : l, 16);
-                })
-                .concat(isFinite(opacity) ? opacity : 1)
-                .join(',') +
-            ')'
-        );
+        try {
+            if (typeof hex !== 'string' || hex.trim() === '') hex = '#ffffff';
+            hex = hex.trim();
+            if (hex[0] !== '#') {
+                if (/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(hex)) hex = '#' + hex; else hex = '#ffffff';
+            }
+            const raw = hex.replace('#', '');
+            const parts = raw.match(new RegExp('(.{' + raw.length / 3 + '})', 'g')).map(function (l) {
+                return parseInt(raw.length % 2 ? l + l : l, 16);
+            });
+            const alpha = isFinite(opacity) ? opacity : 1;
+            return 'rgba(' + parts.concat(alpha).join(',') + ')';
+        } catch (e) {
+            return 'rgba(255,255,255,' + (isFinite(opacity) ? opacity : 1) + ')';
+        }
     },
 
     getPhraseDefault: function () {
@@ -1179,9 +1232,9 @@ var $exeDevice = {
             alt = $('#slcmEAlt-' + id).val(),
             url = $('#slcmEURLImage-' + id).val();
 
-        $image.hide();
+    $exeDevice.hideFlex($image);
         $image.attr('alt', alt);
-        $nimage.show();
+    $exeDevice.showFlex($nimage);
         $image
             .prop('src', url)
             .on('load', function () {
@@ -1198,8 +1251,8 @@ var $exeDevice = {
                         this.naturalHeight,
                     );
                     $exeDevice.drawImage(this, mData);
-                    $image.show();
-                    $nimage.hide();
+                    $exeDevice.showFlex($image);
+                    $exeDevice.hideFlex($nimage);
                     return true;
                 }
             })
@@ -1237,7 +1290,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        $('#slcmEPasteC').hide();
+    $exeDevice.hideFlex($('#slcmEPasteC'));
 
         $('#slcmEAddC').on('click', function (e) {
             e.preventDefault();
@@ -1270,7 +1323,7 @@ var $exeDevice = {
             $(this).addClass('SLCME-EActive');
         });
 
-        $('#slcmEPaste').hide();
+    $exeDevice.hideFlex($('#slcmEPaste'));
         $('#slcmEAdd').on('click', function (e) {
             e.preventDefault();
             $exeDevice.addPhrase();
@@ -1317,7 +1370,7 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport').show();
+            $exeDevice.showFlex($('#eXeGameExportImport'));
             $('#eXeGameImportGame').on('change', function (e) {
                 const file = e.target.files[0];
                 if (!file) {
@@ -1337,7 +1390,7 @@ var $exeDevice = {
                 );
             });
         } else {
-            $('#eXeGameExportImport').hide();
+            $exeDevice.hideFlex($('#eXeGameExportImport'));
         }
 
         $('#slcmEHasFeedBack').on('change', function () {
@@ -1351,13 +1404,11 @@ var $exeDevice = {
         });
 
         $('#slcmECustomMessages').on('change', function () {
-            const messages = $(this).is(':checked');
-            if (messages) {
-                $('.SLCME-ECustomMessageDiv').slideDown();
-            } else {
-                $('.SLCME-ECustomMessageDiv').slideUp();
-            }
-        });
+            const messages = $(this).is(':checked')
+            $('.SLCME-ECustomMessageDiv')
+                .toggleClass('d-none', !messages)
+                .toggleClass('d-flex', messages)
+        })
 
         $('#slcmEPercentajeQuestions').on('keyup', function () {
             let v = this.value;
@@ -1466,15 +1517,23 @@ var $exeDevice = {
             $('#slcmEEvaluationID').prop('disabled', !marcado);
         });
 
-        $('#slcmEEvaluationHelpLnk').click(function () {
-            $('#slcmEEvaluationHelp').toggle();
-            return false;
-        });
+        $('#slcmEEvaluationHelpLnk').on('click', function (e) {
+            e.preventDefault()
+            if ($('#slcmEEvaluationHelp').hasClass('d-none')) {
+                $('#slcmEEvaluationHelp').removeClass('d-none').addClass('d-flex')
+            } else {
+                $('#slcmEEvaluationHelp').removeClass('d-flex').addClass('d-none')
+            }
+        })
 
         $('#slcmEShowMoreDefinition').on('click', function (e) {
-            e.preventDefault();
-            $('#slcmEDefinitionAltAuthor').toggle();
-        });
+            e.preventDefault()
+            if ($('#slcmEDefinitionAltAuthor').hasClass('d-none')) {
+                $('#slcmEDefinitionAltAuthor').removeClass('d-none').addClass('d-flex')
+            } else {
+                $('#slcmEDefinitionAltAuthor').removeClass('d-flex').addClass('d-none')
+            }
+        })
 
         $('#slcmEURLImageDefinition').on('change', function () {
             $exeDevice.loadImageDefinition();
@@ -1507,7 +1566,7 @@ var $exeDevice = {
             url = $('#slcmEURLImageDefinition').val(),
             ext = url.split('.').pop().toLowerCase();
         if (url.trim().length < 4) {
-            $('#slcmEImageDefinitionDiv').hide();
+            $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
             return false;
         }
         if (
@@ -1519,7 +1578,7 @@ var $exeDevice = {
             );
             return false;
         }
-        $('#slcmEImageDefinitionDiv').show();
+    $exeDevice.showFlex($('#slcmEImageDefinitionDiv'));
         $('#slcmEImageDefinition').attr('src', url);
     },
 
@@ -1558,7 +1617,7 @@ var $exeDevice = {
         $('#slcmEAuthorDefinition').val('');
         $('#slcmEImageDefinition').attr('src', '');
         $('#slcmEURLAudioDefinition').attr('src', '');
-        $('#slcmEImageDefinitionDiv').hide();
+    $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
     },
 
     addPhrase: function () {
@@ -1574,7 +1633,7 @@ var $exeDevice = {
             $exeDevice.active = $exeDevice.phrasesGame.length - 1;
             $('#slcmENumberPhrase').text($exeDevice.phrasesGame.length);
             $exeDevice.typeEdit = -1;
-            $('#slcmEPaste').hide();
+            $exeDevice.hideFlex($('#slcmEPaste'));
             $('#slcmENumPhrases').text($exeDevice.phrasesGame.length);
             $('#slcmActivityNumber').text($exeDevice.phrasesGame.length);
             $exeDevice.updateQuestionsNumber();
@@ -1591,7 +1650,7 @@ var $exeDevice = {
             }
             $exeDevice.showPhrase($exeDevice.active);
             $exeDevice.typeEdit = -1;
-            $('#slcmEPaste').hide();
+            $exeDevice.hideFlex($('#slcmEPaste'));
             $('#slcmENumPhrases').text($exeDevice.phrasesGame.length);
             $('#slcmENumberPhrase').text($exeDevice.active + 1);
             $('#slcmActivityNumber').text($exeDevice.active + 1);
@@ -1604,7 +1663,7 @@ var $exeDevice = {
             $exeDevice.clipBoard = JSON.parse(
                 JSON.stringify($exeDevice.phrasesGame[$exeDevice.active]),
             );
-            $('#slcmEPaste').show();
+            $exeDevice.showFlex($('#slcmEPaste'));
         }
     },
 
@@ -1612,7 +1671,7 @@ var $exeDevice = {
         if ($exeDevice.validatePhrase()) {
             $exeDevice.numberCutCuestion = $exeDevice.active;
             $exeDevice.typeEdit = 1;
-            $('#slcmEPaste').show();
+            $exeDevice.showFlex($('#slcmEPaste'));
         }
     },
 
@@ -1628,7 +1687,7 @@ var $exeDevice = {
             $exeDevice.showPhrase($exeDevice.active);
             $('#slcmENumPhrases').text($exeDevice.phrasesGame.length);
         } else if ($exeDevice.typeEdit == 1) {
-            $('#slcmEPaste').hide();
+            $exeDevice.hideFlex($('#slcmEPaste'));
             $exeDevice.typeEdit = -1;
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.phrasesGame,
@@ -1791,5 +1850,38 @@ var $exeDevice = {
         let wrapper = $('<div></div>');
         wrapper.html(str);
         return wrapper.text();
+    },
+    showFlex: function ($el) {
+        if ($el && $el.length) {
+            if ($el.hasClass('d-none')) {
+                $el.removeClass('d-none').addClass('d-flex');
+            } else if (!$el.hasClass('d-flex') && !$el.hasClass('d-none')) {
+                $el.show();
+            }
+        }
+    },
+    hideFlex: function ($el) {
+        if ($el && $el.length) {
+            if ($el.hasClass('d-flex')) {
+                $el.removeClass('d-flex').addClass('d-none');
+            } else if (!$el.hasClass('d-flex') && !$el.hasClass('d-none')) {
+                $el.hide();
+            }
+        }
+    },
+    toggleFlex: function ($el) {
+        if ($el && $el.length) {
+            if ($el.hasClass('d-none')) {
+                $el.removeClass('d-none').addClass('d-flex');
+            } else if ($el.hasClass('d-flex')) {
+                $el.removeClass('d-flex').addClass('d-none');
+            } else {                
+                if ($el.is(':visible')) {
+                    $el.hide();
+                } else {
+                    $el.show();
+                }
+            }
+        }
     },
 };

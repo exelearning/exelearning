@@ -157,48 +157,28 @@ var $exeDevice = {
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgEProvideDefinition = _('Please provide the definition of the word or phrase');
-        msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image',
-        );
+        msgs.msgEURLValid = _('You must upload or indicate the valid URL of an image');
         msgs.msgECompletePoint = _('You have to complete the question');
-        msgs.msgECompleteAllOptions = _(
-            'You have to complete all the selected options',
-        );
+        msgs.msgECompleteAllOptions = _('You have to complete all the selected options');
         msgs.msgESelectSolution = _('Choose the right answer');
         msgs.msgECompleteURLYoutube = _('Please type or paste a valid URL.');
-        msgs.msgEStartEndVideo = _(
-            'You have to indicate the start and the end of the video that you want to show',
-        );
-        msgs.msgEStartEndIncorrect = _(
-            'The video end value must be higher than the start one',
-        );
+        msgs.msgEStartEndVideo = _('You have to indicate the start and the end of the video that you want to show');
+        msgs.msgEStartEndIncorrect = _('The video end value must be higher than the start one');
         msgs.msgWriteText = _('You have to type a text in the editor');
-        msgs.msgTypeChoose = _(
-            'Please check all the answers in the right order',
-        );
+        msgs.msgTypeChoose = _('Please check all the answers in the right order');
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideFB = _('Message to display when passing the game');
-        msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
-        );
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
-        );
+        msgs.msgNoSuportBrowser = _('Your browser is not compatible with this tool.');
+        msgs.msgESelectFile = _('The selected file does not contain a valid game');
         msgs.msgEProvideWord = _('Please provide one word or phrase');
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgEUnavailableVideo = _('This video is not currently available');
         msgs.msgECompleteQuestion = _('You have to complete the question');
-        msgs.msgSilentPoint = _(
-            'The silence time is wrong. Check the video duration.',
-        );
+        msgs.msgSilentPoint = _('The silence time is wrong. Check the video duration.');
         msgs.msgProvideSolution = _('Please write the solution');
         msgs.msgEDefintion = _('Please provide the definition of the word or phrase');
-        msgs.msgNotHitCuestion = _(
-            'The question marked as next in case of success does not exist.',
-        );
-        msgs.msgNotErrorCuestion = _(
-            'The question marked as next in case of error does not exist.',
-        );
+        msgs.msgNotHitCuestion = _('The question marked as next in case of success does not exist.');
+        msgs.msgNotErrorCuestion = _('The question marked as next in case of error does not exist.');
         msgs.msgProvideTitle = _('You must indicate a title for this point.');
         msgs.msgMarkPoint = _('You must mark a point on the map.');
         msgs.msgDrawArea = _('You must draw an area on the map.');
@@ -206,22 +186,12 @@ var $exeDevice = {
         msgs.msgSelectAudio = _('Select an audio file.');
         msgs.msgErrorPointMap = _('Error in the submap.');
         msgs.msgEOnePoint = _('You must indicate one point at least.');
-        msgs.msgCloseMap = _(
-            'You must close all the edited maps before saving the activity.',
-        );
-        msgs.msgCloseSlide = _(
-            'You must close the edited presentation before saving the activity.',
-        );
-        msgs.msgEOneSlide = _(
-            'There must be at least one slide in the presentation.',
-        );
+        msgs.msgCloseMap = _('You must close all the edited maps before saving the activity.');
+        msgs.msgCloseSlide = _('You must close the edited presentation before saving the activity.');
+        msgs.msgEOneSlide = _('There must be at least one slide in the presentation.');
         msgs.msgWriteLink = _('Please type or paste a valid URL.');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
-        );
-        msgs.msgSolutionOrder = _(
-            'Indicate, using commas, the correct order in which points must be clicked',
-        );
+        msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
+        msgs.msgSolutionOrder = _('Indicate, using commas, the correct order in which points must be clicked');
         msgs.msgWriteAnswer = _('You have to complete the question');
     },
 
@@ -240,93 +210,125 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Click on the active areas or image icons.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <p>
+                        <div id="mapaEOptions" class="mb-3">
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
                                 <span>${_('Assessment')}:</span>
-                                <input class="MQE-TypeEvaluation" checked id="mapaEEvaluationPoints" type="radio" name="mpevaluation" value="0" />
-                                <label for="mapaEEvaluationPoints">${_('Visited points')}</label>
-                                <input class="MQE-TypeEvaluation" id="mapaEEvaluationSearch" type="radio" name="mpevaluation" value="2" />
-                                <label for="mapaEEvaluationIdentify">${_('Identify')}</label>
-                                <input class="MQE-TypeEvaluation" id="mapaEEvaluationIdentify" type="radio" name="mpevaluation" value="3" />
-                                <label for="mapaEEvaluationSearch">${_('Find')}</label>
-                                <input class="MQE-TypeEvaluation" id="mapaEEvaluationTX" type="radio" name="mpevaluation" value="1" />
-                                <label for="mapaEEvaluationTX">${_('Identify Spot')}</label>
-                                <input class="MQE-TypeEvaluation" id="mapaEEvaluationTest" type="radio" name="mpevaluation" value="4" />
-                                <label for="mapaEEvaluationTest">${_('Quiz')}</label>
-                                <input class="MQE-TypeEvaluation" id="mapaEEvaluationOrder" type="radio" name="mpevaluation" value="5" />
-                                <label for="mapaEEvaluationOrder">${_('Order')}</label>
-                            </p>
-                            <p>
-                                <label for="mapaEShowMinimize">
-                                    <input type="checkbox" id="mapaEShowMinimize">${_('Show minimized.')}
-                                </label>
-                            </p>
-                            <p>
-                                <label for="mapaEHideScoreBar">
-                                    <input type="checkbox" id="mapaEHideScoreBar">${_('Hide score bar')}
-                                </label>
-                            </p>
-                             <p>
-                                <label for="mapaEHideAreas">
-                                    <input type="checkbox" id="mapaEHideAreas">${_('Hide areas')}
-                                </label>
-                            </p>
-                            <p class="MQE-EHide" id="mapaSolutionOrderDiv">
+                                <div class="form-check form-check-inline m-0 p-0">
+                                    <input class="form-check-input MQE-TypeEvaluation" checked id="mapaEEvaluationPoints" type="radio" name="mpevaluation" value="0" />
+                                    <label class="form-check-label" for="mapaEEvaluationPoints">${_('Visited points')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0 p-0">
+                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationSearch" type="radio" name="mpevaluation" value="2" />
+                                    <label class="form-check-label" for="mapaEEvaluationSearch">${_('Identify')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0 p-0">
+                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationIdentify" type="radio" name="mpevaluation" value="3" />
+                                    <label class="form-check-label" for="mapaEEvaluationIdentify">${_('Find')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0 p-0">
+                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationTX" type="radio" name="mpevaluation" value="1" />
+                                    <label class="form-check-label" for="mapaEEvaluationTX">${_('Identify Spot')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0 p-0">
+                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationTest" type="radio" name="mpevaluation" value="4" />
+                                    <label class="form-check-label" for="mapaEEvaluationTest">${_('Quiz')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0 p-0">
+                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationOrder" type="radio" name="mpevaluation" value="5" />
+                                    <label class="form-check-label" for="mapaEEvaluationOrder">${_('Order')}</label>
+                                </div>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="mapaEShowMinimize">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="mapaEShowMinimize" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="mapaEShowMinimize">${_('Show minimized.')}</label>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="mapaEHideScoreBar">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="mapaEHideScoreBar" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="mapaEHideScoreBar">${_('Hide score bar')}</label>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="mapaEHideAreas">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="mapaEHideAreas" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="mapaEHideAreas">${_('Hide areas')}</label>
+                            </div>
+                            <div class="MQE-EHide mb-3  align-items-center flex-nowrap" id="mapaSolutionOrderDiv">
                                 <label for="mapaSolutionOrder">${_('Solution')}:</label>
-                                <input type="text" id="mapaSolutionOrder" />
-                            </p>
-                            <p class="MQE-EHide" id="mapaNumOptionsData">
+                                <input type="text" id="mapaSolutionOrder" class="form-control" />
+                            </div>
+                            <div class="MQE-EHide align-items-center mb-3 gap-2" id="mapaNumOptionsData">
                                 <label for="mapaNumOptions">${_('Options Number')}:</label>
-                                <input type="number" name="mapaNumOptions" id="mapaNumOptions" value="0" min="0" max="100" />
-                            </p>
-                            <p class="MQE-EHide" id="mapaSolutionData">
-                                <label for="mapaEShowSolution">
-                                    <input type="checkbox" checked id="mapaEShowSolution">${_('Show solutions')}.
-                                </label>
-                                <label for="mapaETimeShowSolution">${_('Show solution time (seconds)')}:</label>
-                                <input type="number" name="mapaETimeShowSolution" id="mapaETimeShowSolution" value="3" min="1" max="9" />
-                            </p>
-                            <div class="MQE-EHide" id="mapaEvaluationData">
-                                <p>
+                                <input type="number" name="mapaNumOptions" id="mapaNumOptions" value="0" min="0" max="100" class="form-control" />
+                            </div>
+                            <div class="MQE-EHide align-items-center flex-wrap gap-2 mb-3" id="mapaSolutionData">
+                                <div class="toggle-item toggle-related m-0 d-flex align-items-center" data-target="mapaEShowSolution">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" checked id="mapaEShowSolution" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="mapaEShowSolution">${_('Show solutions')}.</label>
+                                </div>
+                                <label for="mapaETimeShowSolution" class="mb-0 d-flex align-items-center gap-1">${_('Show solution time (seconds)')}:</label>
+                                <input type="number" name="mapaETimeShowSolution" id="mapaETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:70px" />
+                            </div>
+                            <div class="MQE-EHide mb-3" id="mapaEvaluationData">
+                                <div class="d-flex align-items-center gap-2 mb-3">
                                     <label for="mapaPercentajeShowQ">${_('Percentage of visited contents necessary to be able to carry out the activity questionnaire')}: </label>
-                                    <input type="number" name="mapaPercentajeShowQ" id="mapaPercentajeShowQ" value="100" min="1" max="100" />
+                                    <input type="number" name="mapaPercentajeShowQ" id="mapaPercentajeShowQ" value="100" min="1" max="100" class="form-control" />
                                     <span id="mapaPShowQuestions">1/1</span>
-                                </p>
-                                <p>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 mb-0">
                                     <label for="mapaPercentajeQuestions">${_('Percentage of questionnaire questions')}: </label>
-                                    <input type="number" name="mapaPercentajeQuestions" id="mapaPercentajeQuestions" value="100" min="1" max="100" />
+                                    <input type="number" name="mapaPercentajeQuestions" id="mapaPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
                                     <span id="mapaNumberQuestions">1/1</span>
-                                </p>
+                                </div>
                             </div>
-                            <p class="MQE-EHide" id="mapaEvaluationIdentify">
+                            <div class="MQE-EHide mb-3 align-items-center gap-2" id="mapaEvaluationIdentify">
                                 <label for="mapaPercentajeIdentify">${_('Percentage of questions')}: </label>
-                                <input type="number" name="mapaPercentajeIdentify" id="mapaPercentajeIdentify" value="100" min="1" max="100" />
+                                <input type="number" name="mapaPercentajeIdentify" id="mapaPercentajeIdentify" value="100" min="1" max="100" class="form-control" />
                                 <span id="mapaNumberPercentaje">1/1</span>
-                            </p>
-                            <p id="mapaEAutoShowDiv">
-                                <label for="mapaEAutoShow">
-                                    <input type="checkbox" id="mapaEAutoShow">${_('Show when the mouse is over the icon or active area')}.
-                                </label>
-                            </p>
-                            <p id="mapaEAutoAudioDiv" class="MQE-EHide">
-                                <label for="mapaEAutoAudio">
-                                    <input type="checkbox" id="mapaEAutoAudio" checked>${_('Play the sound when scrolling the mouse over the points.')}.
-                                </label>
-                            </p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel">
-                                    <a href="#mapaEEvaluationHelp" id="mapaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" />
-                                    </a>
-                                </strong>                                
-                                <input type="checkbox" id="mapaEEvaluation"><label for="mapaEEvaluation">${_('Progress report')}.</label>
-                                <label for="mapaEEvaluationID">${_('Identifier')}:</label><input type="text" id="mapaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </p>
-                            <div id="mapaEEvaluationHelp" class="MQE-TypeGameHelp exe-block-info">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
                             </div>
+                            <div id="mapaEAutoShowDiv" class="toggle-item mb-3" data-target="mapaEAutoShow">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="mapaEAutoShow" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="mapaEAutoShow">${_('Show when the mouse is over the icon or active area')}.</label>
+                            </div>
+                            <div id="mapaEAutoAudioDiv" class="MQE-EHide toggle-item mb-3" data-target="mapaEAutoAudio">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="mapaEAutoAudio" checked />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="mapaEAutoAudio">${_('Play the sound when scrolling the mouse over the points.')}.</label>
+                            </div>
+                            <div class="d-flex flex-nowrap align-items-center gap-2">
+                                <div class="toggle-item m-0" data-target="mapaEEvaluation">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="mapaEEvaluation" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="mapaEEvaluation">${_('Progress report')}.</label>
+                                </div>
+                                <label for="mapaEEvaluationID">${_('Identifier')}:</label>
+                                <input type="text" id="mapaEEvaluationID" disabled class="form-control" style="max-width:200px" value="${eXeLearning.app.project.odeId || ''}" />
+                                <a href="#mapaEEvaluationHelp" id="mapaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
+                                </a>
+                            </div>
+                            <p id="mapaEEvaluationHelp" class="MQE-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
+                    
                     <fieldset class="exe-fieldset MQE-FieldPanel">
                         <legend><a href="#">${_('Map')}</a></legend>
                         <div class="MQE-EPanel" id="mapaEPanel">
@@ -336,31 +338,31 @@ var $exeDevice = {
                                         <img src="${path}mapacerrarventana.svg" class="MQE-ENavigationButton MQE-EActivo" alt="" />
                                     </a>
                                 </p>
-                                <p class="MQE-EFlex">
-                                    <label for="mapaURLImageMap">${_('Image')}:</label>
-                                    <input type="text" id="mapaURLImageMap" class="MQE-IURLImage exe-file-picker" />
-                                    <a href="#" id="mapaShowImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Show image')}"></a>
-                                    <a href="#" id="mapaMoreImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-More" title="${_('More')}"></a>
-                                </p>
-                                <p class="MQE-EFlex MQE-EHide" id="mapaMoreImage">
+                                <div class="d-flex align-items-center gap-2 mb-4 w-100" style="width:100%">
+                                    <label for="mapaURLImageMap" class="m-0">${_('Image')}:</label>
+                                    <input type="text" id="mapaURLImageMap" class="form-control exe-file-picker me-0" style="flex:1 1 auto; min-width:0;" />
+                                    <a href="#" id="mapaShowImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-Play flex-shrink-0" title="${_('Show image')}"></a>
+                                    <a href="#" id="mapaMoreImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-More flex-shrink-0" title="${_('More')}"></a>
+                                </div>
+                                <div class="MQE-EHide align-items-center gap-2 mb-4 w-100" id="mapaMoreImage" style="width:100%">
                                     <label for="mapaAuthorImageMap">${_('Authorship')}:</label>
-                                    <input id="mapaAuthorImageMap" type="text" />
+                                    <input id="mapaAuthorImageMap" type="text" class="form-control" />
                                     <label for="mapaAltImageMap">${_('Alt')}:</label>
-                                    <input id="mapaAltImageMap" type="text" />
-                                </p>
-                                <p class="MQE-EFlex MQE-EHide">
+                                    <input id="mapaAltImageMap" type="text" class="form-control me-0" />
+                                </div>
+                                <div class="MQE-EFlex MQE-EHide">
                                     <label for="mapaX">X:</label>
-                                    <input id="mapaX" type="text" value="0" />
+                                    <input id="mapaX" type="text" value="0" class="form-control" />
                                     <label for="mapaY">Y:</label>
-                                    <input id="mapaY" type="text" value="0" />
+                                    <input id="mapaY" type="text" value="0" class="form-control" />
                                     <label for="mapaX1">X1:</label>
-                                    <input id="mapaX1" type="text" value="0" />
+                                    <input id="mapaX1" type="text" value="0" class="form-control" />
                                     <label for="mapaY1">Y1:</label>
-                                    <input id="mapaY1" type="text" value="0" />
-                                </p>
+                                    <input id="mapaY1" type="text" value="0" class="form-control" />
+                                </div>
                             </div>
-                            <div class="MQE-EMultimedias">
-                                <div class="MQE-EMediaContainer">
+                            <div class="MQE-EMultimedias mb-4">
+                                <div class="d-flex align-items-center justify-content-center gap-2 mb-4 w-100">
                                     <div class="MQE-EMultimedia">
                                         <img id="mapaImage" class="MQE-EImage" src="${path}quextIEImage.png" alt="" />
                                         <div class="MQE-ECursorPoint" id="mapaCursor"></div>
@@ -371,10 +373,10 @@ var $exeDevice = {
                                         <canvas id="mapaCanvas" style="display:none"></canvas>
                                     </div>
                                 </div>
-                                <div id="mapaControls" style="display:none">
-                                    <button id="mapaClearButton">Limpiar</button>
-                                    <button id="mapaRedoButton">Rehacer</button>
-                                    <button id="mapaUndoButton">Deshacer</button>
+                                <div id="mapaControls" style="display:none" class="align-items-center justify-content-center gap-2 mb-4">
+                                    <button class="btn btn-primary" id="mapaClearButton">Limpiar</button>
+                                    <button class="btn btn-primary" id="mapaRedoButton">Rehacer</button>
+                                    <button class="btn btn-primary" id="mapaUndoButton">Deshacer</button>
                                 </div>
                                 ${$exeDevice.getMultimediaPoint(path)}
                                 ${$exeDevice.getSlide(path)}
@@ -382,68 +384,68 @@ var $exeDevice = {
 
                             </div>
                             ${$exeDevice.getSelectType()}
-                            <div id="mapaDataImage">
-                                <p class="MQE-EFlex">
+                            <div id="mapaDataImage" class="mb-4">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="mapaURLImage">${_('Image')}:</label>
-                                    <input type="text" id="mapaURLImage" class="MQE-IURLImage exe-file-picker" />
+                                    <input type="text" id="mapaURLImage" class="exe-file-picker form-control me-0"  />
                                     <a href="#" id="mapaShowImage" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Show image')}"></a>
-                                </p>
+                                </div>
                             </div>
-                            <div id="mapaDataVideo" class="MQE-EHide">
-                                <p class="MQE-EFlex">
+                            <div id="mapaDataVideo" class="MQE-EHide mb-4">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="mapaURLYoutube">${_('URL:')}</label>
-                                    <input type="text" id="mapaURLYoutube" class="MQE-IURLImage" />
+                                    <input type="text" id="mapaURLYoutube" class="form-control" />
                                     <a href="#" id="mapaPlayVideo" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play video')}"></a>
-                                </p>
+                                </div>
                             </div>
-                            <div id="mapaDataLink" class="MQE-EHide">
-                                <p class="MQE-EFlex">
+                            <div id="mapaDataLink" class="MQE-EHide  mb-4">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="mapaLink">${_('Link')}</label>
-                                    <input type="text" id="mapaLink" class="MQE-IURLImage" />
-                                </p>
+                                    <input type="text" id="mapaLink" class="form-control" />
+                                </div>
                             </div>
-                            <div id="mapaDataAudio" class="MQE-EHide">
-                                <p class="MQE-EFlex">
+                            <div id="mapaDataAudio" class="MQE-EHide mb-4">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="mapaURLAudio">${_('Audio')}:</label>
-                                    <input type="text" id="mapaURLAudio" class="MQE-IURLImage exe-file-picker" />
+                                    <input type="text" id="mapaURLAudio" class="exe-file-picker form-control me-0" />
                                     <a href="#" id="mapaEPlayAudio" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play audio')}"></a>
-                                </p>
+                                </div>
                             </div>
-                            <div id="mapaDataFooter" class="MQE-EHide">
-                                <p class="MQE-EFlex">
+                            <div id="mapaDataFooter" class="MQE-EHide  mb-4">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="mapaFooter">${_('Footer')}:</label>
-                                    <input type="text" id="mapaFooter" class="MQE-IURLImage" />
-                                </p>
+                                    <input type="text" id="mapaFooter" class="form-control" />
+                                </div>
                             </div>
-                            <div id="mapaDataToolTip" class="MQE-EHide">
+                            <div id="mapaDataToolTip" class="MQE-EHide  mb-4">
                                 <label for="mapaToolTip">${_('Text')}</label>
                                 <textarea id="mapaToolTip" class="MQE-EText"></textarea>
                             </div>
-                            <div id="mapaDataText" class="MQE-EHide">
+                            <div id="mapaDataText" class="MQE-EHide mb-4 ">
                                 <label for="mapaText">${_('Text')}</label>
-                                <textarea id="mapaText" class="exe-html-editor MQE-EText"></textarea>
+                                <textarea id="mapaText" class="exe-html-editor MQE-EText form-control"></textarea>
                             </div>
-                            <div id="mapaDataIdentifica" class="MQE-EHide">
-                                <p class="MQE-EFlex">
+                            <div id="mapaDataIdentifica" class="MQE-EHide mb-4">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
                                     <label for="mapaIdentify">${_('Identify')}:</label>
-                                    <input type="text" id="mapaIdentify" class="MQE-IURLImage" />
+                                    <input type="text" id="mapaIdentify" class="form-control" />
                                     <a href="#" id="mapaIdentifyMoreAudio" class="MQE-ENavigationButton MQE-EActivo MQE-More" title="${_('Audio')}"></a>
-                                </p>
-                                <div id="mapaDataIdentifyAudio" class="MQE-EHide">
-                                    <p class="MQE-EFlex">
+                                </div>
+                                <div id="mapaDataIdentifyAudio" class="MQE-EHide mb-4">
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap">
                                         <label for="mapaURLAudioIdentify">${_('Audio')}:</label>
-                                        <input type="text" id="mapaURLAudioIdentify" class="MQE-IURLImage exe-file-picker" />
+                                        <input type="text" id="mapaURLAudioIdentify" class="form-control exe-file-picker me-0" />
                                         <a href="#" id="mapaPlayAudioIdentify" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play audio')}"></a>
-                                    </p>
+                                    </div>
                                 </div>
                             </div>
                             <div class="MQE-EContents">
-                                <div class="MQE-ENavigationButtons">
+                                <div class="MQE-ENavigationButtons gap-1">
                                     <a href="#" id="mapaEAdd" class="MQE-ENavigationButton MQE-EActivo MQE-Add" title="${_('Add point')}"></a>
                                     <a href="#" id="mapaEFirst" class="MQE-ENavigationButton MQE-EActivo MQE-First" title="${_('First point')}"></a>
                                     <a href="#" id="mapaEPrevious" class="MQE-ENavigationButton MQE-EActivo MQE-Previous" title="${_('Previous point')}"></a>
                                     <label class="sr-av" for="mapaNumberPoint">${_('Point number')}:</label>
-                                    <input type="text" class="MQE-NumberPoint" id="mapaNumberPoint" value="1" />
+                                    <input type="text" class="MQE-NumberPoint form-control" id="mapaNumberPoint" value="1" />
                                     <a href="#" id="mapaENext" class="MQE-ENavigationButton MQE-EActivo MQE-Next" title="${_('Next Point')}"></a>
                                     <a href="#" id="mapaELast" class="MQE-ENavigationButton MQE-EActivo MQE-Last" title="${_('Last point')}"></a>
                                     <a href="#" id="mapaEDelete" class="MQE-ENavigationButton MQE-EActivo MQE-Delete" title="${_('Delete point')}"></a>
@@ -502,71 +504,32 @@ var $exeDevice = {
     },
 
     getSelectType: function () {
-        const html =
-            `
-            <div id="mapaMutimediaType">
-                <div class="MQE-EFlexCenter">
+        return `
+            <div id="mapaMutimediaType" class="mb-4">
+                <div class="flex-nowrap align-items-center gap-2" style="display:flex;width:100%">
                     ${$exeDevice.getDrowpBox()}
-                    <label for="mapaTitle">` +
-            _('Title') +
-            `:</label>
-                    <input id="mapaTitle" type="text" />    
-                    <div class="MQE-EFlexN">
-                        <label for="mapaTypePointSelect">` +
-            _('Type') +
-            `:</label>
-                        <select id="mapaTypePointSelect" name="mapaTypePointSelect">
-                            <option value="4">` +
-            _('None') +
-            `</option>
-                            <option value="0">` +
-            _('Image') +
-            `</option>
-                            <option value="1">` +
-            _('Video') +
-            `</option>
-                            <option value="2">` +
-            _('Text') +
-            `</option>
-                            <option value="3">` +
-            _('Audio') +
-            `</option>
-                            <option value="7">` +
-            _('Simple') +
-            `</option>
-                            <option value="8">` +
-            _('Link') +
-            `</option>
-                            <option value="9">` +
-            _('Questionnaire') +
-            `</option>
-                            <option value="5">` +
-            _('Map') +
-            `</option>
-                            <option value="6">` +
-            _('Presentation') +
-            `</option>
-                        </select>    
-                        <a href="#" id="mapaEditPointsMap" class="MQE-EditPointsMap" title="` +
-            _('Edit map points') +
-            `">` +
-            _('Edit') +
-            `</a>
-                        <a href="#" id="mapaEditSlide" class="MQE-EditPointsMap" title="` +
-            _('Edit presentation points') +
-            `">` +
-            _('Edit') +
-            `</a>
-                        <a href="#" id="mapaEditPointTest" class="MQE-EditPointsMap" title="` +
-            _('Editar cuestionario') +
-            `">` +
-            _('Edit') +
-            `</a>
+                    <label for="mapaTitle" class="m-0">${_('Title')}:</label>
+                    <input id="mapaTitle" type="text" class="form-control" />
+                    <div class="d-flex justify-content-start flex-nowrap align-items-center gap-2">
+                        <label for="mapaTypePointSelect" class="m-0">${_('Type')}:</label>
+                        <select id="mapaTypePointSelect" name="mapaTypePointSelect" class="form-select">
+                            <option value="4">${_('None')}</option>
+                            <option value="0">${_('Image')}</option>
+                            <option value="1">${_('Video')}</option>
+                            <option value="2">${_('Text')}</option>
+                            <option value="3">${_('Audio')}</option>
+                            <option value="7">${_('Simple')}</option>
+                            <option value="8">${_('Link')}</option>
+                            <option value="9">${_('Questionnaire')}</option>
+                            <option value="5">${_('Map')}</option>
+                            <option value="6">${_('Presentation')}</option>
+                        </select>
+                        <button type="button" id="mapaEditPointsMap" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Edit map points')}">${_('Edit')}</button>
+                        <button type="button" id="mapaEditSlide" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Edit presentation points')}">${_('Edit')}</button>
+                        <button type="button" id="mapaEditPointTest" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Editar cuestionario')}">${_('Edit')}</button>
                     </div>
                 </div>
-            </div>
-        `;
-        return html;
+            </div>`;
     },
 
     getIDMediaTeca: function (url) {
@@ -621,50 +584,50 @@ var $exeDevice = {
         const html = `
             <div class="MQE-EPointContainer" id="mapaPContainer">
                 <div class="MQE-EPointMultimedia">
-                    <p class="MQE-EFlex">
-                        <label for="mapaPTitle">${_('Title')}:</label>
-                        <input id="mapaPTitle" type="text" />
+                    <div class="d-flex align-items-center mb-4 flex-nowrap gap-2">
+                        <label for="mapaPTitle" >${_('Title')}:</label>
+                        <input id="mapaPTitle" type="text" class="form-control" />
                         <a href="#" id="mapaPClose" class="MQE-ENavigationButton MQE-EActivo MQE-Close" title="${_('Close')}"></a>
-                    </p>
-                    <div id="mapaPImageContainer" class="MQE-PointImageContainer">
+                    </div>
+                    <div id="mapaPImageContainer" class="MQE-PointImageContainer mb-3">
                         <img id="mapaPImage" class="MQE-EImage" src="${path}quextIEImage.png" alt="" />
                         <img id="mapaPNoImage" class="MQE-EImageCover" src="${path}quextIEImage.png" alt="" />
                         <img class="MQE-EImageCover" src="${path}quextIENoVideo.png" id="mapaPNoVideo" alt="" />
                         <div id="mapaPVideo" class="MQE-EImageCover"></div>
                         <video class="MQE-EImageCover" id="mapaEVideoLocal" preload="auto" controls></video>
                     </div>
-                    <div id="mapaPDataImage">
-                        <p class="MQE-EFlex">
+                    <div id="mapaPDataImage" class="mb-3">
+                        <div class="d-flex align-items-center mb-3 flex-nowrap gap-2">
                             <label for="mapaPURLImage">${_('Image')}:</label>
-                            <input type="text" id="mapaPURLImage" class="MQE-IURLImage exe-file-picker" />
+                            <input type="text" id="mapaPURLImage" class="form-control exe-file-picker me-0" />
                             <a href="#" id="mapaPShowImage" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Show image')}"></a>
-                        </p>
-                        <p class="MQE-EFlex">
+                        </div>
+                        <div class="d-flex align-items-center flex-nowrap gap-2">
                             <label for="mapaPAuthorImage">${_('Authorship')}:</label>
-                            <input id="mapaPAuthorImage" type="text" />
+                            <input id="mapaPAuthorImage" type="text" class="form-control me-2"/>
                             <label for="mapaPAltImage">${_('Alt')}:</label>
-                            <input id="mapaPAltImage" type="text" />
-                        </p>
+                            <input id="mapaPAltImage" type="text" class="form-control me-0"/>
+                        </div>
                     </div>
-                    <div id="mapaPDataVideo" class="MQE-EHide">
-                        <p class="MQE-EFlex">
-                            <label>${_('URL:')}</label>
-                            <input type="text" id="mapaPURLYoutube" class="MQE-IURLImage" />
+                    <div id="mapaPDataVideo" class="MQE-EHide mb-3">
+                        <div class="d-flex align-items-center mb-3 flex-nowrap gap-2">
+                            <label for="mapaPURLYoutube">${_('URL:')}</label>
+                            <input type="text" id="mapaPURLYoutube" class="form-control" />
                             <a href="#" id="mapaPPlayVideo" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play video')}"></a>
-                        </p>
-                        <p class="MQE-EFlex" id="mapaEPointInputOptionsVideo">
+                        </div>
+                        <div class="d-flex align-items-center flex-nowrap mb-0" id="mapaEPointInputOptionsVideo">
                             <label for="mapaPInitVideo">${_('Start')}:</label>
-                            <input id="mapaPInitVideo" type="text" value="00:00:00" maxlength="8" />
+                            <input id="mapaPInitVideo" type="text" value="00:00:00" maxlength="8" class="form-control me-2"/>
                             <label for="mapaPEndVideo">${_('End')}:</label>
-                            <input id="mapaPEndVideo" type="text" value="00:00:00" maxlength="8" />
-                            <button class="MQE-EMediaTime" id="mapaPVideoTime" type="button">00:00:00</button>
-                        </p>
+                            <input id="mapaPEndVideo" type="text" value="00:00:00" maxlength="8" class="form-control me-2"/>
+                            <button class="btn btn-primary" id="mapaPVideoTime">00:00:00</button>
+                        </div>
                     </div>
-                    <div id="mapaPDataFooter">
-                        <p class="MQE-EFlex">
+                    <div id="mapaPDataFooter" class="mb-0">
+                        <div class="d-flex align-items-center flex-nowrap gap-2">
                             <label for="mapaPFooter">${_('Footer')}: </label>
-                            <input type="text" id="mapaPFooter" class="MQE-IURLImage" />
-                        </p>
+                            <input type="text" id="mapaPFooter" class="form-control" />
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -675,41 +638,41 @@ var $exeDevice = {
         const html = `
             <div class="MQE-ESlideContainer" id="mapaSContainer">
                 <div class="MQE-ESlideMultimedia">
-                    <p class="MQE-EFlex">
+                    <div class="d-flex align-items-center mb-3 gap-2">
                         <label for="mapaSTitle">${_('Title')}:</label>
-                        <input id="mapaSTitle" type="text" />
+                        <input id="mapaSTitle" type="text" class="form-control" />
                         <a href="#" id="mapaSClose" class="MQE-ENavigationButton MQE-EActivo MQE-Close" title="${_('Close')}"></a>
-                    </p>
+                    </div>
                     <div id="mapaSImageContainer" class="MQE-PointImageContainer">
                         <img id="mapaSImage" class="MQE-EImage" src="${path}quextIEImage.png" alt="" />
                         <img id="mapaSNoImage" class="MQE-EImageCover" src="${path}quextIEImage.png" alt="" />
                     </div>
                     <div id="mapaSDataImage">
-                        <p class="MQE-EFlex">
+                        <div class="d-flex align-items-center mb-3 gap-2">
                             <label for="mapaSURLImage">${_('Image')}:</label>
-                            <input type="text" id="mapaSURLImage" class="MQE-IURLImage exe-file-picker" />
+                            <input type="text" id="mapaSURLImage" class="form-control exe-file-picker me-0" />
                             <a href="#" id="mapaSShowImage" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Show image')}"></a>
-                        </p>
-                        <p class="MQE-EFlex">
+                        </div>
+                        <div class="d-flex align-items-center mb-3">
                             <label for="mapaSAuthorImage">${_('Authorship')}:</label>
-                            <input id="mapaSAuthorImage" type="text" />
+                            <input id="mapaSAuthorImage" type="text" class="form-control" />
                             <label for="mapaSAltImage">${_('Alt')}:</label>
-                            <input id="mapaSAltImage" type="text" />
-                        </p>
+                            <input id="mapaSAltImage" type="text" class="form-control me-0" />
+                        </div>
                     </div>
                     <div id="mapaSDataFooter">
-                        <p class="MQE-EFlex">
+                        <div class="d-flex align-items-center mb-3">
                             <label for="mapaSFooter">${_('Footer')}: </label>
-                            <input type="text" id="mapaSFooter" class="MQE-IURLImage" />
-                        </p>
+                            <input type="text" id="mapaSFooter" class="form-control" />
+                        </div>
                     </div>
                     <div class="MQE-EContents">
-                        <div class="MQE-ENavigationButtons">
+                        <div class="MQE-ENavigationButtons gap-1">
                             <a href="#" id="mapaEAddSlide" class="MQE-ENavigationButton MQE-EActivo MQE-Add" title="${_('Add a slide')}"></a>
                             <a href="#" id="mapaEFirstSlide" class="MQE-ENavigationButton MQE-EActivo MQE-First" title="${_('First slide')}"></a>
                             <a href="#" id="mapaEPreviousSlide" class="MQE-ENavigationButton MQE-EActivo MQE-Previous" title="${_('Previous slide')}"></a>
                             <label class="sr-av" for="mapaNumberSlide">${_('Slide number')}:</label>
-                            <input type="text" class="MQE-NumberPoint" id="mapaNumberSlide" value="1" />
+                            <input type="text" class="MQE-NumberPoint form-control" id="mapaNumberSlide" value="1" />
                             <a href="#" id="mapaENextSlide" class="MQE-ENavigationButton MQE-EActivo MQE-Next" title="${_('Next slide')}"></a>
                             <a href="#" id="mapaELastSlide" class="MQE-ENavigationButton MQE-EActivo MQE-Last" title="${_('Last slide')}"></a>
                             <a href="#" id="mapaEDeleteSlide" class="MQE-ENavigationButton MQE-EActivo MQE-Delete" title="${_('Delete slide')}"></a>
@@ -726,88 +689,98 @@ var $exeDevice = {
     getPointTest: function () {
         const html = `
             <div class="MQE-ESTestPointContainer" id="mapaTContainer">
-               <p class="MQE-EFlexSolution">
-                        <label for="mapaPTitle">${_('Questionnaire')}:</label>
-                        <a href="#" id="mapaPTClose" class="MQE-ENavigationButton MQE-EActivo MQE-Close" title="${_('Close')}"></a>
-                </p>
+               <div class="MQE-EFlexSolution mb-3">
+                    <label class="m-0" for="mapaPTClose">${_('Questionnaire')}:</label>
+                    <a href="#" id="mapaPTClose" class="MQE-ENavigationButton MQE-EActivo MQE-Close" title="${_('Close')}"></a>
+                </div>
                 <div class="MQE-EContents">
-                    <div id="mapaDataQuestion1" class="MQE-EFlexSolution">
-                        <div class="MQE-PEInputType">
+                    <div id="mapaDataQuestion1" class="MQE-EFlexSolution mb-3 flex-wrap align-items-center">
+                        <div class="d-flex flex-nowrap align-items-center m-0 gap-2">
                             <span>${_('Type')}:</span>
-                            <input class="MQE-PTypeSelect" checked id="mapaTypeChoose1" type="radio" name="mptypeselect1" value="0" />
-                            <label for="mapaTypeSelect1">${_('Select')}</label>
-                            <input class="MQE-PTypeSelect" id="mapaTypeOrders1" type="radio" name="mptypeselect1" value="1" />
-                            <label for="mapaTypeOrders1">${_('Order')}</label>
-                            <input class="MQE-PTypeSelect" id="mapaTypeWord1" type="radio" name="mptypeselect1" value="2" />
-                            <label for="mapaTypeWord1">${_('Word')}</label>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input MQE-PTypeSelect" checked id="mapaTypeSelect1" type="radio" name="mptypeselect1" value="0" />
+                                <label class="form-check-label" for="mapaTypeSelect1">${_('Select')}</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input MQE-PTypeSelect" id="mapaTypeOrders1" type="radio" name="mptypeselect1" value="1" />
+                                <label class="form-check-label" for="mapaTypeOrders1">${_('Order')}</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input MQE-PTypeSelect" id="mapaTypeWord1" type="radio" name="mptypeselect1" value="2" />
+                                <label class="form-check-label" for="mapaTypeWord1">${_('Word')}</label>
+                            </div>
                         </div>
-                        <div id="mapaPercentageLetters1">
-                            <label for="mapaPercentageShow1">${_('Percentage of letters to show (%)')}:</label>
-                            <input type="number" id="mapaPercentageShow1" value="35" min="0" max="100" step="5" />
+                        <div id="mapaPercentageLetters1" class="MQE-EHide align-items-center flex-nowrap gap-3">
+                            <label class="m-0" for="mapaPercentageShow1">${_('Percentage of letters to show (%)')}:</label>
+                            <input type="number" id="mapaPercentageShow1" value="35" min="0" max="100" step="5" class="form-control" style="width:110px" />
                         </div>
-                        <div id="mapaOptionsNumberA1">
-                            <span id="mapaOptionsNumberSpan1">${_('Options Number')}:</span>
-                            <span class="MQE-EInputNumbers" id="mapaEInputNumbers1">
-                                <input class="MQE-PNumber" id="numQ21" type="radio" name="mpnumber1" value="2" />
-                                <label for="numQ21">2</label>
-                                <input class="MQE-PNumber" id="numQ31" type="radio" name="mpnumber1" value="3" />
-                                <label for="numQ31">3</label>
-                                <input class="MQE-PNumber" id="numQ41" type="radio" name="mpnumber1" value="4" checked="checked" />
-                                <label for="numQ41">4</label>
-                            </span>
+                        <div id="mapaOptionsNumberA1" class="d-flex align-items-center flex-nowrap gap-2">
+                            <span id="mapaOptionsNumberSpan1" class="m-0">${_('Options Number')}:</span>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input MQE-PNumber" id="numQ21" type="radio" name="mpnumber1" value="2" />
+                                <label class="form-check-label" for="numQ21">2</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input MQE-PNumber" id="numQ31" type="radio" name="mpnumber1" value="3" />
+                                <label class="form-check-label" for="numQ31">3</label>
+                            </div>
+                             <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input MQE-PNumber" id="numQ41" type="radio" name="mpnumber1" value="4" checked="checked" />
+                                <label class="form-check-label" for="numQ41">4</label>
+                            </div>
                         </div>
-                        <div id="mapaESolitionOptions1">
+                        <div id="mapaESolitionOptions1" class="MQE-EHiden">
                             <span>${_('Solution')}:</span>
                             <span id="mapaESolutionSelect1"></span>
                         </div>
                     </div>
-                    <div class="MQE-EQuestionDiv1" id="mapaEQuestionDiv1">
+                    <div class="MQE-EQuestionDiv1 mb-4" id="mapaEQuestionDiv1">
                         <label class="sr-av">${_('Question')}:</label>
-                        <input type="text" class="MQE-EQuestion" id="mapaEQuestion1">
+                        <input type="text" class="MQE-EQuestion form-control" id="mapaEQuestion1">
                     </div>
-                    <div class="MQE-EAnswers" id="mapaEAnswers1">
-                        <div class="MQE-PEOptionDiv">
+                    <div class="MQE-EAnswers mb-4" id="mapaEAnswers1">
+                        <div class="MQE-PEOptionDiv d-flex align-items-center mb-3 flex-nowrap">
                             <label class="sr-av">${_('Solution')} A:</label>
-                            <input type="checkbox" class="MQE-PESolution" name="mpsolution1" id="mapaESolution01" value="A" />
+                            <input type="checkbox" class="MQE-PESolution form-check-input" name="mpsolution1" id="mapaESolution01" value="A" />
                             <label>A</label>
-                            <input type="text" class="MQE-EOption0 MQE-PEAnwersOptions" id="mapaEOption01">
+                            <input type="text" class="MQE-EOption0 MQE-PEAnwersOptions form-control" id="mapaEOption01">
                         </div>
-                        <div class="MQE-PEOptionDiv">
+                        <div class="MQE-PEOptionDiv d-flex align-items-center mb-3 flex-nowrap">
                             <label class="sr-av">${_('Solution')} B:</label>
-                            <input type="checkbox" class="MQE-PESolution" name="mpsolution1" id="mapaESolution11" value="B" />
+                            <input type="checkbox" class="MQE-PESolution form-check-input" name="mpsolution1" id="mapaESolution11" value="B" />
                             <label>B</label>
-                            <input type="text" class="MQE-EOption1 MQE-PEAnwersOptions" id="mapaEOption11">
+                            <input type="text" class="MQE-EOption1 MQE-PEAnwersOptions form-control" id="mapaEOption11">
                         </div>
-                        <div class="MQE-PEOptionDiv">
+                        <div class="MQE-PEOptionDiv d-flex align-items-center mb-3 flex-nowrap">
                             <label class="sr-av">${_('Solution')} C:</label>
-                            <input type="checkbox" class="MQE-PESolution" name="mpsolution1" id="mapaESolution21" value="C" />
+                            <input type="checkbox" class="MQE-PESolution form-check-input" name="mpsolution1" id="mapaESolution21" value="C" />
                             <label>C</label>
-                            <input type="text" class="MQE-EOption2 MQE-PEAnwersOptions" id="mapaEOption21">
+                            <input type="text" class="MQE-EOption2 MQE-PEAnwersOptions form-control" id="mapaEOption21">
                         </div>
-                        <div class="MQE-PEOptionDiv">
+                        <div class="MQE-PEOptionDiv d-flex align-items-center mb-3 flex-nowrap">
                             <label class="sr-av">${_('Solution')} D:</label>
-                            <input type="checkbox" class="MQE-PESolution" name="mpsolution1" id="mapaESolution31" value="D" />
+                            <input type="checkbox" class="MQE-PESolution form-check-input" name="mpsolution1" id="mapaESolution31" value="D" />
                             <label>D</label>
-                            <input type="text" class="MQE-EOption3 MQE-PEAnwersOptions" id="mapaEOption31">
+                            <input type="text" class="MQE-EOption3 MQE-PEAnwersOptions form-control" id="mapaEOption31">
                         </div>
                     </div>
-                    <div class="MQE-EWordDiv MQE-DP" id="mapaEWordDiv1">
-                        <div class="MQE-ESolutionWord">
-                            <label for="mapaESolutionWord1">${_('Word/Phrase')}: </label>
-                            <input type="text" id="mapaESolutionWord1" />
+                    <div class="MQE-EWordDiv MQE-DP mb-4" id="mapaEWordDiv1">
+                        <div class="MQE-ESolutionWord d-flex align-items-center mb-4 flex-nowrap">
+                            <label for="mapaESolutionWord1" class="m-0">${_('Word/Phrase')}: </label>
+                            <input type="text" id="mapaESolutionWord1" class="form-control" />
                         </div>
-                        <div class="MQE-ESolutionWord">
-                            <label for="mapaEDefinitionWord1">${_('Definition')}:</label>
-                            <input type="text" id="mapaEDefinitionWord1" />
+                        <div class="MQE-ESolutionWord d-flex align-items-center flex-nowrap">
+                            <label for="mapaEDefinitionWord1" class="m-0">${_('Definition')}:</label>
+                            <input type="text" id="mapaEDefinitionWord1" class="form-control" />
                         </div>
                     </div>
                 </div>
-                <div class="MQE-ENavigationButtons">
+                <div class="MQE-ENavigationButtons gap-1">
                     <a href="#" id="mapaEAddQ1" class="MQE-ENavigationButton MQE-EActivo MQE-Add" title="${_('Add question')}"></a>
                     <a href="#" id="mapaEFirstQ1" class="MQE-ENavigationButton MQE-EActivo MQE-First" title="${_('First question')}"></a>
                     <a href="#" id="mapaEPreviousQ1" class="MQE-ENavigationButton MQE-EActivo MQE-Previous" title="${_('Previous question')}"></a>
                     <label class="sr-av" for="mapaENumberQuestionQ1">${_('Question number')}:</label>
-                    <input type="text" class="MQE-NumberPoint" id="mapaENumberQuestionQ1" value="1" />
+                    <input type="text" class="MQE-NumberPoint form-control" id="mapaENumberQuestionQ1" value="1" />
                     <a href="#" id="mapaENextQ1" class="MQE-ENavigationButton MQE-EActivo MQE-Next" title="${_('Next question')}"></a>
                     <a href="#" id="mapaELastQ1" class="MQE-ENavigationButton MQE-EActivo MQE-Last" title="${_('Last question')}"></a>
                     <a href="#" id="mapaEDeleteQ1" class="MQE-ENavigationButton MQE-EActivo MQE-Delete" title="${_('Delete question')}"></a>
@@ -816,7 +789,7 @@ var $exeDevice = {
                     <a href="#" id="mapaEPasteQ1" class="MQE-ENavigationButton MQE-EActivo MQE-Paste" title="${_('Paste question')}"></a>
                 </div>
                 <div class="MQE-PENumQuestionDiv">
-                    <div class="MQE-ENumQ"><span class="sr-av">${_('Number of questions')};</span></div>
+                    <div class="MQE-ENumQ"><span class="sr-av">${_('Number of questions')}:</span></div>
                     <span class="MQE-ENumQuestions" id="mapaENumQuestions1">0</span>
                 </div>
             </div>`;
@@ -828,74 +801,86 @@ var $exeDevice = {
             <fieldset class="exe-fieldset exe-fieldset-closed" id="mapaFQuestions">
                 <legend><a href="#">${_('Questionnaire')}</a></legend>
                 <div class="MQE-EContents">
-                    <div id="mapaDataQuestion" class="MQE-EFlexSolution">
-                        <div class="MQE-EInputType">
+                    <div id="mapaDataQuestion" class="MQE-EFlexSolution mb-3 ">
+                        <div class="MQE-EInputType d-flex flex-nowrap align-items-center">
                             <span>${_('Type')}:</span>
-                            <input class="MQE-TypeSelect" checked id="mapaTypeChoose" type="radio" name="mptypeselect" value="0" />
-                            <label for="mapaTypeSelect">${_('Select')}</label>
-                            <input class="MQE-TypeSelect" id="mapaTypeOrders" type="radio" name="mptypeselect" value="1" />
-                            <label for="mapaTypeOrders">${_('Order')}</label>
-                            <input class="MQE-TypeSelect" id="mapaTypeWord" type="radio" name="mptypeselect" value="2" />
-                            <label for="mapaTypeWord">${_('Word')}</label>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input MQE-TypeSelect" checked id="mapaTypeSelect" type="radio" name="mptypeselect" value="0" />
+                                <label class="form-check-label" for="mapaTypeSelect">${_('Select')}</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input MQE-TypeSelect" id="mapaTypeOrders" type="radio" name="mptypeselect" value="1" />
+                                <label class="form-check-label" for="mapaTypeOrders">${_('Order')}</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input MQE-TypeSelect" id="mapaTypeWord" type="radio" name="mptypeselect" value="2" />
+                                <label class="form-check-label" for="mapaTypeWord">${_('Word')}</label>
+                            </div>
                         </div>
-                        <div id="mapaPercentageLetters">
-                            <label for="mapaPercentageShow">${_('Percentage of letters to show (%)')}:</label>
-                            <input type="number" id="mapaPercentageShow" value="35" min="0" max="100" step="5" />
+                        <div id="mapaPercentageLetters" class="MQE-EHide align-items-center flex-nowrap">
+                            <label for="mapaPercentageShow" class="m-0">${_('Percentage of letters to show (%)')}:</label>
+                            <input type="number" id="mapaPercentageShow" value="35" min="0" max="100" step="5" class="form-control" style="width:110px" />
                         </div>
-                        <div id="mapaOptionsNumberA">
-                            <span id="mapaOptionsNumberSpan">${_('Options Number')}:</span>
-                            <span class="MQE-EInputNumbers" id="mapaEInputNumbers">
-                                <input class="MQE-Number" id="numQ2" type="radio" name="mpnumber" value="2" />
-                                <label for="numQ2">2</label>
-                                <input class="MQE-Number" id="numQ3" type="radio" name="mpnumber" value="3" />
-                                <label for="numQ3">3</label>
-                                <input class="MQE-Number" id="numQ4" type="radio" name="mpnumber" value="4" checked="checked" />
-                                <label for="numQ4">4</label>
-                            </span>
+                        <div id="mapaOptionsNumberA" class="align-items-center flex-nowrap justify-content-start gap-2" style="display:flex ">
+                            <span id="mapaOptionsNumberSpan" class="m-0">${_('Options Number')}:</span>
+                            <div class="MQE-EInputNumbers d-flex align-items-center gap-2" id="mapaEInputNumbers">
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input MQE-Number" id="numQ2" type="radio" name="mpnumber" value="2" />
+                                    <label class="form-check-label" for="numQ2">2</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input MQE-Number" id="numQ3" type="radio" name="mpnumber" value="3" />
+                                    <label class="form-check-label" for="numQ3">3</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input MQE-Number" id="numQ4" type="radio" name="mpnumber" value="4" checked="checked" />
+                                    <label class="form-check-label" for="numQ4">4</label>
+                                </div>
+                            </div>
                         </div>
-                        <div id="mapaESolitionOptions">
+                        <div id="mapaESolutionOptions">
                             <span>${_('Solution')}:</span>
                             <span id="mapaESolutionSelect"></span>
                         </div>
                     </div>
                     <div class="MQE-EQuestionDiv" id="mapaEQuestionDiv">
                         <label class="sr-av">${_('Question')}:</label>
-                        <input type="text" class="MQE-EQuestion" id="mapaEQuestion">
+                        <input type="text" class="MQE-EQuestion form-control" id="mapaEQuestion">
                     </div>
                     <div class="MQE-EAnswers" id="mapaEAnswers">
-                        <div class="MQE-EOptionDiv">
+                        <div class="MQE-EOptionDiv d-flex align-items-center gap-2 mb-2 flex-nowrap">
                             <label class="sr-av">${_('Solution')} A:</label>
                             <input type="checkbox" class="MQE-ESolution" name="mpsolution" id="mapaESolution0" value="A" />
                             <label>A</label>
-                            <input type="text" class="MQE-EOption0 MQE-EAnwersOptions" id="mapaEOption0">
+                            <input type="text" class="MQE-EOption0 MQE-EAnwersOptions form-control" id="mapaEOption0">
                         </div>
-                        <div class="MQE-EOptionDiv">
+                        <div class="MQE-EOptionDiv d-flex align-items-center gap-2 mb-2 flex-nowrap">
                             <label class="sr-av">${_('Solution')} B:</label>
                             <input type="checkbox" class="MQE-ESolution" name="mpsolution" id="mapaESolution1" value="B" />
                             <label>B</label>
-                            <input type="text" class="MQE-EOption1 MQE-EAnwersOptions" id="mapaEOption1">
+                            <input type="text" class="MQE-EOption1 MQE-EAnwersOptions form-control" id="mapaEOption1">
                         </div>
-                        <div class="MQE-EOptionDiv">
+                        <div class="MQE-EOptionDiv d-flex align-items-center gap-2 mb-2 flex-nowrap">
                             <label class="sr-av">${_('Solution')} C:</label>
                             <input type="checkbox" class="MQE-ESolution" name="mpsolution" id="mapaESolution2" value="C" />
                             <label>C</label>
-                            <input type="text" class="MQE-EOption2 MQE-EAnwersOptions" id="mapaEOption2">
+                            <input type="text" class="MQE-EOption2 MQE-EAnwersOptions form-control" id="mapaEOption2">
                         </div>
-                        <div class="MQE-EOptionDiv">
+                        <div class="MQE-EOptionDiv d-flex align-items-center gap-2 mb-2 flex-nowrap">
                             <label class="sr-av">${_('Solution')} D:</label>
                             <input type="checkbox" class="MQE-ESolution" name="mpsolution" id="mapaESolution3" value="D" />
                             <label>D</label>
-                            <input type="text" class="MQE-EOption3 MQE-EAnwersOptions" id="mapaEOption3">
+                            <input type="text" class="MQE-EOption3 MQE-EAnwersOptions form-control" id="mapaEOption3">
                         </div>
                     </div>
                     <div class="MQE-EWordDiv MQE-DP" id="mapaEWordDiv">
                         <div class="MQE-ESolutionWord">
                             <label for="mapaESolutionWord">${_('Word/Phrase')}: </label>
-                            <input type="text" id="mapaESolutionWord" />
+                            <input type="text" id="mapaESolutionWord" class="form-control" />
                         </div>
                         <div class="MQE-ESolutionWord">
                             <label for="mapaEDefinitionWord">${_('Definition')}:</label>
-                            <input type="text" id="mapaEDefinitionWord" />
+                            <input type="text" id="mapaEDefinitionWord" class="form-control" />
                         </div>
                     </div>
                 </div>
@@ -904,21 +889,21 @@ var $exeDevice = {
                         <span class="sr-av">${_('Hit')}</span>
                         <span class="MQE-EHit"></span>
                         <label for="mapaEMessageOK">${_('Message')}:</label>
-                        <input type="text" id="mapaEMessageOK">
+                        <input type="text" id="mapaEMessageOK" class="form-control">
                     </div>
                     <div class="MQE-ECustomMessage">
                         <span class="sr-av">${_('Error')}</span>
                         <span class="MQE-EError"></span>
                         <label for="mapaEMessageKO">${_('Message')}:</label>
-                        <input type="text" id="mapaEMessageKO">
+                        <input type="text" id="mapaEMessageKO" class="form-control">
                     </div>
                 </div>
-                <div class="MQE-ENavigationButtons">
+                <div class="MQE-ENavigationButtons gap-1">
                     <a href="#" id="mapaEAddQ" class="MQE-ENavigationButton MQE-EActivo MQE-Add" title="${_('Add question')}"></a>
                     <a href="#" id="mapaEFirstQ" class="MQE-ENavigationButton MQE-EActivo MQE-First" title="${_('First question')}"></a>
                     <a href="#" id="mapaEPreviousQ" class="MQE-ENavigationButton MQE-EActivo MQE-Previous" title="${_('Previous question')}"></a>
                     <label class="sr-av" for="mapaENumberQuestionQ">${_('Question number')}:</label>
-                    <input type="text" class="MQE-NumberPoint" id="mapaENumberQuestionQ" value="1" />
+                    <input type="text" class="MQE-NumberPoint form-control" id="mapaENumberQuestionQ" value="1" />
                     <a href="#" id="mapaENextQ" class="MQE-ENavigationButton MQE-EActivo MQE-Next" title="${_('Next question')}"></a>
                     <a href="#" id="mapaELastQ" class="MQE-ENavigationButton MQE-EActivo MQE-Last" title="${_('Last question')}"></a>
                     <a href="#" id="mapaEDeleteQ" class="MQE-ENavigationButton MQE-EActivo MQE-Delete" title="${_('Delete question')}"></a>
@@ -1577,7 +1562,6 @@ var $exeDevice = {
                 $tooltipLinks,
             );
             $exeDevice.updateFieldGame(dataGame);
-
             let instructions = $('.mapa-instructions', wrapper);
             if (instructions.length == 1) {
                 instructions = instructions.html() || '';
@@ -1876,10 +1860,6 @@ var $exeDevice = {
         let medias = $exeDevice.saveMedias(dataGame.points),
             json = JSON.stringify(dataGame);
 
-
-
-
-
         medias =
             medias.maps +
             medias.images +
@@ -1888,8 +1868,8 @@ var $exeDevice = {
             medias.slides +
             medias.tooltips;
 
-    let html = '<div class="mapa-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="mapa-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="mapa-version js-hidden">' +
             $exeDevice.version +
@@ -3271,7 +3251,31 @@ var $exeDevice = {
 
         $('#mapaMoreImageMap').on('click', function (e) {
             e.preventDefault();
-            $('#mapaMoreImage').slideToggle();
+            const $el = $('#mapaMoreImage');
+            $el.stop(true, true);
+            if ($el.is(':visible')) {
+
+                const hActual = $el.outerHeight();
+                $el.css({ height: hActual + 'px', overflow: 'hidden' });
+                $el.animate(
+                    { height: 0, opacity: 0 },
+                    100,
+                    function () {
+                        $el.css({ display: 'none', height: '', opacity: '', overflow: '' });
+                    },
+                );
+            } else {
+                $el.css({ display: 'flex', height: 'auto', opacity: 1 });
+                const hDestino = $el.outerHeight();
+                $el.css({ height: 0, opacity: 0, overflow: 'hidden' });
+                $el.animate(
+                    { height: hDestino, opacity: 1 },
+                    100,
+                    function () {
+                        $el.css({ height: '', opacity: '', overflow: '' });
+                    },
+                );
+            }
         });
 
         $('#mapaIdentifyMoreAudio').on('click', function (e) {
@@ -3380,7 +3384,7 @@ var $exeDevice = {
             'input.MQE-TypeEvaluation',
             function () {
                 const type = parseInt($(this).val());
-                $('#mapaSolutionData').show();
+                $('#mapaSolutionData').css('display', 'flex');
                 if (type == 4) {
                     $('#mapaFQuestions').show();
                     $('#mapaEvaluationData').show();
@@ -3399,7 +3403,7 @@ var $exeDevice = {
                 }
                 $('#mapaSolutionOrderDiv').hide();
                 if (type == 5) {
-                    $('#mapaSolutionOrderDiv').show();
+                    $('#mapaSolutionOrderDiv').css('display', 'flex');
                     $('#mapaSolutionData').hide();
                 }
                 $('#mapaEAutoAudioDiv').hide();
@@ -3407,7 +3411,7 @@ var $exeDevice = {
 
                 $('#mapaNumOptionsData').hide();
                 if (type == 1) {
-                    $('#mapaNumOptionsData').show();
+                    $('#mapaNumOptionsData').css('display', 'flex');
                 }
                 if (type == 0 || type == 4) {
                     $('#mapaEAutoShowDiv').show();
@@ -3424,7 +3428,7 @@ var $exeDevice = {
                 }
                 $('#mapaEvaluationIdentify').hide();
                 if (type == 2 || type == 3) {
-                    $('#mapaEvaluationIdentify').show();
+                    $('#mapaEvaluationIdentify').css('display', 'flex');
                 }
                 if (type == 0 || type == 6) {
                     $('#mapaSolutionData').hide();
@@ -3957,23 +3961,23 @@ var $exeDevice = {
     getDrowpBox() {
         const select = `
             <div class="MQP-Dropdown">
-                <div style="display:flex; align-items:center">
+                <div class="d-flex align-items-center gap-2">
                     <div>Icono:</div>
                     <div id="mapaBtnDrop" class="MQP-Dropbtn" data-value="0">
                         <div class="MQE-P0"></div>
-                        ${_('Magnifying glass')}
+                        ${_('Magnifier')}
                     </div>
                     <div class="MQE-TextLinkDiv" id="mapaTextLinkDiv">
                         <label for="mapaColorTitle" style="margin-left:0.4em">${_('Color')}:</label>
                         <input type="color" id="mapaColorTitle" value="#000000">
                         <label for="mapaFontSizeTitle" style="margin-left:0.4em">${_('Font size')} (px):</label>
-                        <input type="number" id="mapaFontSizeTitle" placeholder="" value="14" min="10" max="40">
+                        <input type="number" id="mapaFontSizeTitle" placeholder="" value="14" min="10" max="40" class="form-control">
                     </div>
                 </div>
                 <ul class="MQP-DropdownContent">
                     <li data-value="1"><div class="MQE-P1" title="${_('Invisible area')}"></div></li>
                     <li data-value="84"><div class="MQE-P84" title="${_('Title')}"></div></li>
-                    <li data-value="0"><div class="MQE-P0" title="${_('Magnifying glass')}"></div></li>
+                    <li data-value="0"><div class="MQE-P0" title="${_('Magnifier')}"></div></li>
                     <li data-value="7"><div class="MQE-P7" title="${_('Map marker')}"></div></li>
                     <li data-value="2"><div class="MQE-P2" title="${_('Audio')}"></div></li>
                     <li data-value="3"><div class="MQE-P3" title="${_('Image')}"></div></li>
@@ -3993,7 +3997,7 @@ var $exeDevice = {
                     <li data-value="17"><div class="MQE-P17" title="${_('Arrow')} 7"></div></li>
                     <li data-value="18"><div class="MQE-P18" title="${_('Arrow')} 8"></div></li>
                     <li data-value="19"><div class="MQE-P19" title="${_('Point')}"></div></li>
-                    <li data-value="20"><div class="MQE-P20" title="${_('Magnifying glass')}"></div></li>
+                    <li data-value="20"><div class="MQE-P20" title="${_('Magnifier')}"></div></li>
                     <li data-value="27"><div class="MQE-P27" title="${_('Map marker')}"></div></li>
                     <li data-value="22"><div class="MQE-P22" title="${_('Audio')}"></div></li>
                     <li data-value="23"><div class="MQE-P23" title="${_('Image')}"></div></li>
@@ -4012,7 +4016,7 @@ var $exeDevice = {
                     <li data-value="36"><div class="MQE-P36" title="${_('Arrow')} 6"></div></li>
                     <li data-value="37"><div class="MQE-P37" title="${_('Arrow')} 7"></div></li>
                     <li data-value="38"><div class="MQE-P38" title="${_('Arrow')} 8"></div></li>
-                    <li data-value="40"><div class="MQE-P40" title="${_('Magnifying glass')}"></div></li>
+                    <li data-value="40"><div class="MQE-P40" title="${_('Magnifier')}"></div></li>
                     <li data-value="47"><div class="MQE-P47" title="${_('Map marker')}"></div></li>
                     <li data-value="42"><div class="MQE-P42" title="${_('Audio')}"></div></li>
                     <li data-value="43"><div class="MQE-P43" title="${_('Image')}"></div></li>
@@ -4031,7 +4035,7 @@ var $exeDevice = {
                     <li data-value="56"><div class="MQE-P56" title="${_('Arrow')} 6"></div></li>
                     <li data-value="57"><div class="MQE-P57" title="${_('Arrow')} 7"></div></li>
                     <li data-value="58"><div class="MQE-P58" title="${_('Arrow')} 8"></div></li>
-                    <li data-value="60"><div class="MQE-P60" title="${_('Magnifying glass')}"></div></li>
+                    <li data-value="60"><div class="MQE-P60" title="${_('Magnifier')}"></div></li>
                     <li data-value="67"><div class="MQE-P67" title="${_('Map marker')}"></div></li>
                     <li data-value="62"><div class="MQE-P62" title="${_('Audio')}"></div></li>
                     <li data-value="63"><div class="MQE-P63" title="${_('Image')}"></div></li>
@@ -4050,7 +4054,7 @@ var $exeDevice = {
                     <li data-value="76"><div class="MQE-P76" title="${_('Arrow')} 6"></div></li>
                     <li data-value="77"><div class="MQE-P77" title="${_('Arrow')} 7"></div></li>
                     <li data-value="78"><div class="MQE-P78" title="${_('Arrow')} 8"></div></li>
-                    <li data-value="85"><div class="MQE-P85" title="${_('Magnifying glass')}"></div></li>
+                    <li data-value="85"><div class="MQE-P85" title="${_('Magnifier')}"></div></li>
                     <li data-value="92"><div class="MQE-P92" title="${_('Map marker')}"></div></li>
                     <li data-value="87"><div class="MQE-P87" title="${_('Audio')}"></div></li>
                     <li data-value="88"><div class="MQE-P88" title="${_('Image')}"></div></li>
@@ -4069,7 +4073,7 @@ var $exeDevice = {
                     <li data-value="101"><div class="MQE-P101" title="${_('Arrow')} 6"></div></li>
                     <li data-value="102"><div class="MQE-P102" title="${_('Arrow')} 7"></div></li>
                     <li data-value="103"><div class="MQE-P103" title="${_('Arrow')} 8"></div></li>
-                    <li data-value="105"><div class="MQE-P105" title="${_('Magnifying glass')}"></div></li>
+                    <li data-value="105"><div class="MQE-P105" title="${_('Magnifier')}"></div></li>
                     <li data-value="112"><div class="MQE-P112" title="${_('Map marker')}"></div></li>
                     <li data-value="107"><div class="MQE-P107" title="${_('Audio')}"></div></li>
                     <li data-value="108"><div class="MQE-P108" title="${_('Image')}"></div></li>
@@ -4626,17 +4630,14 @@ var $exeDevice = {
             $('#mapaEWordDiv1').show();
             $('#mapaOptionsNumberA1').hide();
             $('#mapaESolitionOptions1').hide();
-            $('#mapaPercentageLetters1').show();
-            $('#mapaPercentageLetters1').show();
+            $('#mapaPercentageLetters1').css('display', 'flex').show();
         } else {
-            $('#mapaEAnswers1').css('display', 'flex');
-            $('#mapaEAnswers1').show();
+            $('#mapaEAnswers1').show()
             $('#mapaEQuestionDiv1').show();
-            $('.MQE-PESolutionSelect').show();
             $('#mapaEWordDiv1').hide();
             $('#mapaPercentageLetters1').hide();
             $('#mapaESolitionOptions1').show();
-            $('#mapaOptionsNumberA1').show();
+            $('#mapaOptionsNumberA1').css('display', 'flex').show();
         }
     },
 
@@ -4808,20 +4809,17 @@ var $exeDevice = {
         if (type == 2) {
             $('#mapaEAnswers').hide();
             $('#mapaEQuestionDiv').hide();
-            $('.MQE-ESolutionSelect').hide();
             $('#mapaEWordDiv').show();
             $('#mapaOptionsNumberA').hide();
-            $('#mapaESolitionOptions').hide();
-            $('#mapaPercentageLetters').show();
+            $('#mapaESolutionOptions').hide();
+            $('#mapaPercentageLetters').css('display', 'flex').show();
         } else {
-            $('#mapaEAnswers').css('display', 'flex');
             $('#mapaEAnswers').show();
             $('#mapaEQuestionDiv').show();
-            $('.MQE-ESolutionSelect').show();
             $('#mapaEWordDiv').hide();
             $('#mapaPercentageLetters').hide();
-            $('#mapaESolitionOptions').show();
-            $('#mapaOptionsNumberA').show();
+            $('#mapaESolutionOptions').show();
+            $('#mapaOptionsNumberA').css('display', 'flex').show();
         }
     },
 
@@ -5235,14 +5233,14 @@ var $exeDevice = {
             "']",
         ).prop('checked', true);
         $('#mapaEvaluationData').hide();
-        $('#mapaSolutionData').show();
+        $('#mapaSolutionData').css('display', 'flex');
         $('#mapaNumOptionsData').hide();
         $('#mapaSolutionOrder').val(game.order);
         $('#mapaEAutoAudioDiv').hide();
         $('#mapaEAutoShowDiv').hide();
 
         if (game.evaluationG == 1) {
-            $('#mapaNumOptionsData').show();
+            $('#mapaNumOptionsData').css('display', 'flex');
         }
 
         if (game.evaluationG == 4 || game.evaluationG == 0) {
@@ -5252,7 +5250,7 @@ var $exeDevice = {
 
         $('#mapaEvaluationIdentify').hide();
         if (game.evaluationG == 2 || game.evaluationG == 3) {
-            $('#mapaEvaluationIdentify').show();
+            $('#mapaEvaluationIdentify').css('display', 'flex');
         }
 
         $exeDevice.showQuestion($exeDevice.qActive);
@@ -5287,7 +5285,7 @@ var $exeDevice = {
 
         $('#mapaSolutionOrderDiv').hide();
         if (game.evaluationG == 5) {
-            $('#mapaSolutionOrderDiv').show();
+            $('#mapaSolutionOrderDiv').css('display', 'flex');
             $('#mapaSolutionData').hide();
         }
         $exeDevice.updateQuestionsNumber();

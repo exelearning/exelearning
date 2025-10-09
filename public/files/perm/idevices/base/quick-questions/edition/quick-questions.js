@@ -63,6 +63,7 @@ var $exeDevice = {
         $exeDevice.addEvents();
     },
 
+
     refreshTranslations: function () {
         this.ci18n = {
             msgStartGame: c_('Click here to start'),
@@ -868,16 +869,14 @@ var $exeDevice = {
     },
 
     changeTypeQuestion: function (type) {
-        $('#quextETitleAltImage').hide();
-        $('#quextEAuthorAlt').hide();
+        $('#quextETitleAltImage').removeClass('d-flex').addClass('d-none');
+        $('#quextEAuthorAlt').removeClass('d-flex').addClass('d-none');
         $('#quextETitleImage').hide();
-        $('#quextEInputImage').hide();
+        $('#quextEInputImage').removeClass('d-flex').addClass('d-none');
         $('#quextETitleVideo').hide();
-        $('#quextEInputVideo').hide();
-        $('#quextEInputAudio').show();
+        $('#quextEInputVideo').removeClass('d-flex').addClass('d-none');
+        $('#quextEInputAudio').removeClass('d-none').addClass('d-flex');
         $('#quextETitleAudio').show();
-        $('#quextEInputOptionsVideo').hide();
-        $('#quextInputOptionsImage').hide();
         if (tinyMCE.get('quextEText')) {
             tinyMCE.get('quextEText').hide();
         }
@@ -890,6 +889,7 @@ var $exeDevice = {
         $('#quextECursor').hide();
         $('#quextENoImageVideo').hide();
         $('#quextENoVideo').hide();
+        $('#quextEInputOptionsVideo').hide();
         switch (type) {
             case 0:
                 $('#quextECover').show();
@@ -897,10 +897,10 @@ var $exeDevice = {
             case 1:
                 $('#quextENoImage').show();
                 $('#quextETitleImage').show();
-                $('#quextEInputImage').show();
-                $('#quextEAuthorAlt').show();
+                $('#quextEInputImage').removeClass('d-none').addClass('d-flex');
+                $('#quextEAuthorAlt').removeClass('d-none').addClass('d-flex');
                 $('#quextECursor').show();
-                $('#quextInputOptionsImage').show();
+
                 $exeDevice.showImage(
                     $('#quextEURLImage').val(),
                     $('#quextEXImage').val(),
@@ -912,11 +912,11 @@ var $exeDevice = {
             case 2:
                 $('#quextEImageVideo').show();
                 $('#quextETitleVideo').show();
-                $('#quextEInputVideo').show();
+                $('#quextEInputVideo').removeClass('d-none').addClass('d-flex');
                 $('#quextENoVideo').show();
                 $('#quextEVideo').show();
                 $('#quextEInputOptionsVideo').show();
-                $('#quextEInputAudio').hide();
+                $('#quextEInputAudio').removeClass('d-flex').addClass('d-none');
                 $('#quextETitleAudio').hide();
                 break;
             case 3:
@@ -962,54 +962,130 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
-                            <p><label for="quextEShowMinimize"><input type="checkbox" id="quextEShowMinimize">${_('Show minimized.')}</label></p>
-                            <p>
-                                <label for="quextEQuestionsRamdon"><input type="checkbox" id="quextEQuestionsRamdon">${_('Random questions')}</label>
-                                <label for="quextEAnswersRamdon" class="QXTE-inlineOption"><input type="checkbox" id="quextEAnswersRamdon">${_('Random options')}</label>
-                            </p>
-                            <p><label for="quextECustomMessages"><input type="checkbox" id="quextECustomMessages">${_('Custom messages')}.</label></p>
-                            <p>
-                                <label for="quextEShowSolution"><input type="checkbox" checked id="quextEShowSolution">${_('Show solutions')}.</label>
-                                <label for="quextETimeShowSolution">${_('Show solution time (seconds)')} <input type="number" name="quextETimeShowSolution" id="quextETimeShowSolution" value="3" min="1" max="9" /></label>
-                            </p>
-                            <p><label for="quextECustomScore"><input type="checkbox" id="quextECustomScore">${_('Custom score')}.</label></p>
-                            <p>
-                                <strong class="GameModeLabel"><a href="#quextEGameModeHelp" id="quextEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a>${_('Score')}:</strong>
-                                <input class="QXTE-TypeGame" checked="checked" id="quextETypeActivity" type="radio" name="qxtgamemode" value="1" />
-                                <label for="quextETypeActivity">${_('From 0 to 10')}</label>
-                                <input class="QXTE-TypeGame" id="quextEGameMode" type="radio" name="qxtgamemode" value="0" />
-                                <label for="quextEGameMode">${_('Points and lives')}</label>
-                                <input class="QXTE-TypeGame" id="quextETypeReto" type="radio" name="qxtgamemode" value="2" />
-                                <label for="quextETypeReto">${_('No score')}</label>
-                            </p>
-                            <div id="quextEGameModeHelp" class="QXTE-TypeGameHelp exe-block-info">
-                                <p>
-                                    <ul>
-                                        <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
-                                        <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
-                                        <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
-                                    </ul>
-                                </p>
+                            <div class=" d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="quextEShowMinimize" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="quextEShowMinimize" class="toggle-label">${_('Show minimized.')}</label>
+                                </div>
                             </div>
-                            <p>
-                                <input type="checkbox" checked id="quextEUseLives"> <label for="quextEUseLives"><label for="quextEHasFeedBack">${_('Use lives')}.</label>
-                                <label for="quextENumberLives">${_('Number of lives')}:</label><input type="number" name="quextENumberLives" id="quextENumberLives" value="3" min="1" max="5" />
-                            </p>
-                            <p>
-                                <input type="checkbox" id="quextEHasFeedBack">${_('Feedback')}.</label>
-                               <input type="number" name="quextEPercentajeFB" id="quextEPercentajeFB" value="100" min="5" max="100" step="5" disabled /> <label for="quextEPercentajeFB">${_('% right to see the feedback')}</label>
-                            </p>
-                            <p id="quextEFeedbackP" class="QXTE-EFeedbackP"><textarea id="quextEFeedBackEditor" class="exe-html-editor"></textarea></p>
-                            <p class="QXTE-Flex"><label>${_('Video Intro')}:</label><input type="text" id="quextEVideoIntro" /><a href="#" class="QXTE-ButtonLink" id="quextEVideoIntroPlay" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="Play" class="QXTE-EButtonImage" /></a></p>
-                            <p><label for="quextEPercentajeQuestions">%${_('Questions')}:</label><input type="number" name="quextEPercentajeQuestions" id="quextEPercentajeQuestions" value="100" min="1" max="100" /><span id="quextENumeroPercentaje">1/1</span></p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#quextEEvaluationHelp" id="quextEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                                <input type="checkbox" id="quextEEvaluation"><label for="quextEEvaluation">${_('Progress report')}.</label>
-                                <label for="quextEEvaluationID">${_('Identifier')}:</label><input type="text" id="quextEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </p>
-                            <div id="quextEEvaluationHelp" class="QXTE-TypeGameHelp exe-block-info">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="quextEQuestionsRamdon" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="quextEQuestionsRamdon" class="toggle-label">${_('Random questions')}</label>
+                                </div>
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="quextEAnswersRamdon" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="quextEAnswersRamdon" class="toggle-label">${_('Random options')}</label>
+                                </div>
                             </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control">
+                                    <input type="checkbox" id="quextECustomMessages" class="toggle-input"/>
+                                    <span class="toggle-visual"></span></span>
+                                    <label for="quextECustomMessages" class="toggle-label">${_('Custom messages')}.</label>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" checked id="quextEShowSolution" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="quextEShowSolution" class="toggle-label">${_('Show solutions')}.</label>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="quextETimeShowSolution" class="sr-av">${_('Show solution time (seconds)')}</label>
+                                    <input type="number" class="form-control" name="quextETimeShowSolution" id="quextETimeShowSolution" value="3" min="1" max="9" />
+                                    <span>${_('seconds')}</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="quextECustomScore" class="toggle-input"/>
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label for="quextECustomScore" class="toggle-label">${_('Custom score')}.</label>
+                                </div>
+                            </div>
+                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                ${_('Score')}:
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="QXTE-TypeGame form-check-input" checked="checked" id="quextETypeActivity" type="radio" name="qxtgamemode" value="1" />
+                                    <label for="quextETypeActivity">${_('From 0 to 10')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="QXTE-TypeGame form-check-input" id="quextEGameMode" type="radio" name="qxtgamemode" value="0" />
+                                    <label for="quextEGameMode">${_('Points and lives')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="QXTE-TypeGame form-check-input" id="quextETypeReto" type="radio" name="qxtgamemode" value="2" />
+                                    <label for="quextETypeReto">${_('No score')}</label>
+                                </div>
+                                <strong class="GameModeLabel">
+                                    <a href="#quextEGameModeHelp" id="quextEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
+                                    </a>
+                                </strong>
+                            </div>
+                            <div id="quextEGameModeHelp" class="QXTE-TypeGameHelp exe-block-info pt-3" style="display:none" aria-hidden="true">
+                                <ul role="list">
+                                    <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
+                                    <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
+                                    <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
+                                </ul>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" checked id="quextEUseLives" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="quextEUseLives" class="toggle-label">${_('Use lives')}.</label>
+                                </div>
+                                <div class="QXTE-LivesNumber">
+                                    <label for="quextENumberLives" class="sr-av">${_('Number of lives')}</label>
+                                    <input type="number" class="form-control" name="quextENumberLives" id="quextENumberLives" value="3" min="1" max="5" />
+                                    <span>${_('lives')}</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="quextEHasFeedBack" class="toggle-input"/><span class="toggle-visual"></span></span>
+                                    <label for="quextEHasFeedBack" class="toggle-label">${_('Feedback')}.</label>
+                                </div>
+                                <div class="QXTE-FeedbackPercent">
+                                    <label for="quextEPercentajeFB" class="sr-av">${_('% right to see the feedback')}</label>
+                                    <input type="number" class="form-control" name="quextEPercentajeFB" id="quextEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
+                                    <span>%</span>
+                                </div>
+                            </div>
+                            <div id="quextEFeedbackP" style="display:none" class="mb-3">
+                                <textarea id="quextEFeedBackEditor" class="exe-html-editor"></textarea>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <label>${_('Video Intro')}:</label>
+                                <input type="text" id="quextEVideoIntro" />
+                                <a href="#" class="QXTE-ButtonLink" id="quextEVideoIntroPlay" title="${_('Play the introduction video')}">
+                                    <img src="${path}quextIEPlay.png" alt="Play" class="QXTE-ENavigationButton" />
+                                </a>
+                            </div>
+                           <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="quextEPercentajeQuestions">%${_('Questions')}:</label>
+                                <input type="number" class="form-control" name="quextEPercentajeQuestions" id="quextEPercentajeQuestions" value="100" min="1" max="100" />
+                                <span id="quextENumeroPercentaje">1/1</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">                                
+                                <div class="toggle-item">
+                                    <span class="toggle-control"><input type="checkbox" id="quextEEvaluation" class="toggle-input"/>
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label for="quextEEvaluation" class="toggle-label">${_('Progress report')}.</label>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap ">
+                                    <label for="quextEEvaluationID" class="sr-av">${_('Identifier')}</label>
+                                    <input type="text" id="quextEEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                                </div>
+                                <strong class="GameModeLabel"><a href="#quextEEvaluationHelp" id="quextEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
+                            </div>
+                            <p id="quextEEvaluationHelp" class="QXTE-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -1017,179 +1093,214 @@ var $exeDevice = {
                         <div class="QXTE-EPanel" id="quextEPanel">
                             <div class="QXTE-EOptionsMedia">
                                 <div class="QXTE-EOptionsGame">
-                                    <p>
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3"> 
                                         <span>${_('Multimedia Type')}:</span>
-                                        <span class="QXTE-EInputMedias">
-                                            <input class="QXTE-Type" checked="checked" id="quextMediaNormal" type="radio" name="qxtype" value="0" disabled />
-                                            <label for="quextMediaNormal">${_('None')}</label>
-                                            <input class="QXTE-Type" id="quextMediaImage" type="radio" name="qxtype" value="1" disabled />
-                                            <label for="quextMediaImage">${_('Image')}</label>
-                                            <input class="QXTE-Type" id="quextMediaVideo" type="radio" name="qxtype" value="2" disabled />
-                                            <label for="quextMediaVideo">${_('Video')}</label>
-                                            <input class="QXTE-Type" id="quextMediaText" type="radio" name="qxtype" value="3" disabled />
-                                            <label for="quextMediaText">${_('Text')}</label>
+                                        <span class="QXTE-EInputMedias d-flex align-items-center gap-2 flex-nowrap ">
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Type form-check-input" checked="checked" id="quextMediaNormal" type="radio" name="qxtype" value="0" disabled />
+                                                <label for="quextMediaNormal">${_('None')}</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Type form-check-input" id="quextMediaImage" type="radio" name="qxtype" value="1" disabled />
+                                                <label for="quextMediaImage">${_('Image')}</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Type form-check-input" id="quextMediaVideo" type="radio" name="qxtype" value="2" disabled />
+                                                <label for="quextMediaVideo">${_('Video')}</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Type form-check-input" id="quextMediaText" type="radio" name="qxtype" value="3" disabled />
+                                                <label for="quextMediaText">${_('Text')}</label>
+                                            </div>
                                         </span>
-                                    </p>
-                                    <p>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3"> 
                                         <span>${_('Options Number')}:</span>
-                                        <span class="QXTE-EInputNumbers">
-                                            <input class="QXTE-Number" id="numQ2" type="radio" name="qxtnumber" value="2" />
-                                            <label for="numQ2">2</label>
-                                            <input class="QXTE-Number" id="numQ3" type="radio" name="qxtnumber" value="3" />
-                                            <label for="numQ3">3</label>
-                                            <input class="QXTE-Number" id="numQ4" type="radio" name="qxtnumber" value="4" checked="checked" />
-                                            <label for="numQ4">4</label>
+                                        <span class="QXTE-EInputNumbers d-flex align-items-center gap-2 flex-nowrap ">
+                                            <div class="form-check form-check-inline m-0">    
+                                                <input class="QXTE-Number form-check-input" id="numQ2" type="radio" name="qxtnumber" value="2" />
+                                                <label for="numQ2">2</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Number form-check-input" id="numQ3" type="radio" name="qxtnumber" value="3" />
+                                                <label for="numQ3">3</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Number form-check-input" id="numQ4" type="radio" name="qxtnumber" value="4" checked="checked" />
+                                                <label for="numQ4">4</label>
+                                            </div>
                                         </span>
-                                    </p>
-                                    <p>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3"> 
                                         <span>${_('Time per question')}:</span>
-                                        <span class="QXTE-EInputTimes">
-                                            <input class="QXTE-Times" checked="checked" id="q15s" type="radio" name="qxttime" value="0" />
-                                            <label for="q15s">15s</label>
-                                            <input class="QXTE-Times" id="q30s" type="radio" name="qxttime" value="1" />
-                                            <label for="q30s">30s</label>
-                                            <input class="QXTE-Times" id="q1m" type="radio" name="qxttime" value="2" />
-                                            <label for="q1m">1m</label>
-                                            <input class="QXTE-Times" id="q3m" type="radio" name="qxttime" value="3" />
-                                            <label for="q3m">3m</label>
-                                            <input class="QXTE-Times" id="q5m" type="radio" name="qxttime" value="4" />
-                                            <label for="q5m">5m</label>
-                                            <input class="QXTE-Times" id="q10m" type="radio" name="qxttime" value="5" />
+                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Times form-check-input" checked="checked" id="q15s" type="radio" name="qxttime" value="0" />
+                                                <label for="q15s">15s</label>
+                                            </div>
+                                                <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Times form-check-input" id="q30s" type="radio" name="qxttime" value="1" />
+                                                <label for="q30s">30s</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Times form-check-input" id="q1m" type="radio" name="qxttime" value="2" />
+                                                <label for="q1m">1m</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Times form-check-input" id="q3m" type="radio" name="qxttime" value="3" />
+                                                <label for="q3m">3m</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="QXTE-Times form-check-input" id="q5m" type="radio" name="qxttime" value="4" />
+                                                <label for="q5m">5m</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                            <input class="QXTE-Times form-check-input" id="q10m" type="radio" name="qxttime" value="5" />
                                             <label for="q10m">10m</label>
+                                            </div>
                                         </span>
-                                    </p>
-                                    <p id="quextEScoreQuestionDiv" class="QXTE-ScoreQuestionDiv">
+                                    </div>
+                                    <div id="quextEScoreQuestionDiv" class="d-none align-items-center gap-2 flex-nowrap mb-3">
                                         <label for="quextEScoreQuestion">${_('Score')}:</label>
-                                        <input type="number" name="quextEScoreQuestion" id="quextEScoreQuestion" value="1" min="0" max="100" step="0.05"/>
-                                    </p>
-                                    <span class="QXTE-ETitleImage" id="quextETitleImage">${_('Image URL')}</span>
-                                    <div class="QXTE-Flex QXTE-EInputImage" id="quextEInputImage">
+                                        <input type="number" class="form-control" name="quextEScoreQuestion" id="quextEScoreQuestion" value="1" min="0" max="100" step="0.05"/>
+                                    </div>
+                                    <span id="quextETitleImage"  style="display:none">${_('Image URL')}</span>
+                                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="quextEInputImage">
                                         <label class="sr-av" for="quextEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker QXTE-EURLImage" id="quextEURLImage"/>
-                                        <a href="#" id="quextEPlayImage" class="QXTE-ENavigationButton QXTE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="QXTE-EButtonImage b-play" /></a>
+                                        <input type="text" class="exe-file-picker w-100 form-control me-0" id="quextEURLImage"/>
+                                        <a href="#" id="quextEPlayImage" class="QXTE-ENavigationButton " title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="QXTE-ENavigationButton " /></a>
                                     </div>
-                                    <div class="QXTE-EInputOptionsImage" id="quextInputOptionsImage">
-                                        <div class="QXTE-ECoord">
-                                            <label for="quextEXImage">X:</label>
-                                            <input id="quextEXImage" type="text" value="0" />
-                                            <label for="quextEXImage">Y:</label>
-                                            <input id="quextEYImage" type="text" value="0" />
-                                        </div>
+                                    <div class="d-none">
+                                        <label for="quextEXImage">X:</label>
+                                        <input id="quextEXImage" class="form-control" type="text" value="0" />
+                                        <label for="quextEYImage">Y:</label>
+                                        <input id="quextEYImage" class="form-control" type="text" value="0" />
                                     </div>
-                                    <span class="QXTE-ETitleVideo" id="quextETitleVideo">${_('URL')}</span>
-                                    <div class="QXTE-Flex QXTE-EInputVideo" id="quextEInputVideo">
+                                    <span id="quextETitleVideo" style="display:none" >${_('URL')}</span>
+                                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="quextEInputVideo">
                                         <label class="sr-av" for="quextEURLYoutube">${_('YouTube URL')}</label>
-                                        <input id="quextEURLYoutube" type="text" />
-                                        <a href="#" id="quextEPlayVideo" class="QXTE-ENavigationButton QXTE-EPlayVideo" title="${_('Play video')}"><img src="${path}quextIEPlay.png" alt="${_('Play video')}" class="QXTE-EButtonImage" /></a>
+                                        <input id="quextEURLYoutube" class="form-control w-100" type="text" />
+                                        <a href="#" id="quextEPlayVideo" class="QXTE-ENavigationButton " title="${_('Play video')}"><img src="${path}quextIEPlay.png" alt="${_('Play video')}" class="QXTE-ENavigationButton" /></a>
                                     </div>
-                                    <div class="QXTE-EInputOptionsVideo" id="quextEInputOptionsVideo">
-                                        <div>
+                                    <div style="display:none" id="quextEInputOptionsVideo">
+                                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                             <label for="quextEInitVideo">${_('Start')}:</label>
-                                            <input id="quextEInitVideo" type="text" value="00:00:00" maxlength="8" />
+                                            <input id="quextEInitVideo" class="form-control" type="text" value="00:00:00" maxlength="8" />
                                             <label for="quextEEndVideo">${_('End')}:</label>
-                                            <input id="quextEEndVideo" type="text" value="00:00:00" maxlength="8" />
-                                            <button class="QXTE-EVideoTime" id="quextEVideoTime" type="button">00:00:00</button>
+                                            <input id="quextEEndVideo" class="form-control" type="text" value="00:00:00" maxlength="8" />
+                                            <button class="bnt btn-primary" id="quextEVideoTime" type="button">00:00:00</button>
                                         </div>
-                                        <div>
+                                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                             <label for="quextESilenceVideo">${_('Silence')}:</label>
-                                            <input id="quextESilenceVideo" type="text" value="00:00:00" required="required" maxlength="8" />
+                                            <input id="quextESilenceVideo" class="form-control" type="text" value="00:00:00" required="required" maxlength="8" />
                                             <label for="quextETimeSilence">${_('Time (s)')}:</label>
-                                            <input type="number" name="quextETimeSilence" id="quextETimeSilence" value="0" min="0" max="120" />
+                                            <input type="number" class="form-control" name="quextETimeSilence" id="quextETimeSilence" value="0" min="0" max="120" />
                                         </div>
-                                        <div>
-                                            <label for="quextECheckSoundVideo">${_('Audio')}:</label>
-                                            <input id="quextECheckSoundVideo" type="checkbox" checked="checked" />
-                                            <label for="quextECheckImageVideo">${_('Image')}:</label>
-                                            <input id="quextECheckImageVideo" type="checkbox" checked="checked" />
+                                        <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
+                                            <div class="toggle-item">
+                                                <span class="toggle-control">
+                                                    <input id="quextECheckSoundVideo" type="checkbox" class="toggle-input" checked="checked" />
+                                                    <span class="toggle-visual"></span>
+                                                </span>
+                                                <label for="quextECheckSoundVideo" class="toggle-label">${_('Audio')}</label>
+                                            </div>
+                                            <div class="toggle-item">
+                                                <span class="toggle-control">
+                                                    <input id="quextECheckImageVideo" type="checkbox" class="toggle-input" checked="checked" />
+                                                    <span class="toggle-visual"></span>
+                                                </span>
+                                                <label for="quextECheckImageVideo" class="toggle-label">${_('Image')}</label>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="QXTE-EAuthorAlt" id="quextEAuthorAlt">
-                                        <div class="QXTE-EInputAuthor" id="quextInputAuthor">
+                                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="quextEAuthorAlt">
+                                        <div id="quextInputAuthor" class="wp-50">
                                             <label for="quextEAuthor">${_('Authorship')}</label>
-                                            <input id="quextEAuthor" type="text" />
+                                            <input id="quextEAuthor" class="form-control w-100" type="text" />
                                         </div>
-                                        <div class="QXTE-EInputAlt" id="quextInputAlt">
+                                        <div id="quextInputAlt"  class="wp-50">
                                             <label for="quextEAlt">${_('Alternative text')}</label>
-                                            <input id="quextEAlt" type="text" />
+                                            <input id="quextEAlt" class="form-control w-100" type="text" />
                                         </div>
                                     </div>
                                     <span id="quextETitleAudio">${_('Audio')}</span>
-                                    <div class="QXTE-EInputAudio" id="quextEInputAudio">
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="quextEInputAudio">
                                         <label class="sr-av" for="quextEURLAudio">${_('URL')}</label>
-                                        <input type="text" class="exe-file-picker QXTE-EURLAudio" id="quextEURLAudio"/>
-                                        <a href="#" id="quextEPlayAudio" class="QXTE-ENavigationButton QXTE-EPlayVideo" title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="QXTE-EButtonImage b-play" /></a>
+                                        <input type="text" class="exe-file-picker w-100 form-control  me-0" id="quextEURLAudio"/>
+                                        <a href="#" id="quextEPlayAudio" class="QXTE-ENavigationButton " title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="QXTE-ENavigationButton " /></a>
                                     </div>
                                 </div>
                                 <div class="QXTE-EMultiMediaOption">
                                     <div class="QXTE-EMultimedia" id="quextEMultimedia">
-                                        <textarea id="quextEText"></textarea>
-                                        <img class="QXTE-EMedia" src="${path}quextIEImage.png" id="quextEImage" alt="${_('Image')}" />
-                                        <img class="QXTE-EMedia" src="${path}quextIEImage.png" id="quextENoImage" alt="${_('No image')}" />
-                                        <div class="QXTE-EMedia" id="quextEVideo"></div>
-                                        <video class="QXTE-EMedia" id="quextEVideoLocal" preload="auto" controls></video>
-                                        <img class="QXTE-EMedia" src="${path}quextIENoImageVideo.png" id="quextENoImageVideo" alt="" />
-                                        <img class="QXTE-EMedia" src="${path}quextIENoVideo.png" id="quextENoVideo" alt="" />
-                                        <img class="QXTE-ECursor" src="${path}quextIECursor.gif" id="quextECursor" alt="" />
-                                        <img class="QXTE-EMedia" src="${path}quextIECoverQuExt.png" id="quextECover" alt="${_('No image')}" />
-                                    </div>
+                                        
+                                        <div class="QXTE-EMedia" id="quextEVideo" style="display:none;"></div>
+                                        <video class="QXTE-EMedia" id="quextEVideoLocal" preload="auto" controls style="display:none;"></video>
+                                        <img class="QXTE-EMedia" src="${path}quextIENoImageVideo.png" id="quextENoImageVideo style="display:none;"" alt="" />
+                                        <img class="QXTE-EMedia" src="${path}quextIENoVideo.png" id="quextENoVideo" alt="" style="display:none;" />
+                                        <img class="QXTE-ECursor" src="${path}quextIECursor.gif" id="quextECursor" alt="" style="display:none;" />
+                                        <img class="QXTE-EMedia" src="${path}quextIECoverQuExt.png" id="quextECover" alt="${_('No image')}" style="display:none;"/>
+                                        <img class="QXTE-EMedia" src="${path}quextIEImage.png" id="quextEImage" alt="${_('Image')}" style="display:none;" />
+                                        <img class="QXTE-EMedia" src="${path}quextIEImage.png" id="quextENoImage" alt="${_('No image')}" style="display:none;" />
+                                        <textarea id="quextEText" style="display:none;"></textarea>
+                                     </div>
                                 </div>
                             </div>
                             <div class="QXTE-EContents">
-                                <span>${_('Question')}</span>
+                                <span class="d-none">${_('Question')}</span>
                                 <div class="QXTE-EQuestionDiv">
                                     <label class="sr-av">${_('Question')}:</label>
-                                    <input type="text" class="QXTE-EQuestion" id="quextEQuestion">
+                                    <input type="text" class="QXTE-EQuestion form-control" id="quextEQuestion">
                                 </div>
                                 <div class="QXTE-EAnswers">
                                     <div class="QXTE-EOptionDiv">
                                         <label class="sr-av">${_('Solution')} A:</label>
-                                        <input type="radio" class="QXTE-ESolution" name="qxsolution" id="quextESolution0" value="0" checked="checked" />
+                                        <input type="radio" class="QXTE-ESolution form-check-input" name="qxsolution" id="quextESolution0" value="0" checked="checked" />
                                         <label class="sr-av">${_('Option')} A:</label>
-                                        <input type="text" class="QXTE-EOption0 QXTE-EAnwersOptions" id="quextEOption0">
+                                        <input type="text" class="QXTE-EOption0 QXTE-EAnwersOptions form-control" id="quextEOption0">
                                     </div>
                                     <div class="QXTE-EOptionDiv">
                                         <label class="sr-av">${_('Solution')} B:</label>
-                                        <input type="radio" class="QXTE-ESolution" name="qxsolution" id="quextESolution1" value="1" />
+                                        <input type="radio" class="QXTE-ESolution form-check-input" name="qxsolution" id="quextESolution1" value="1" />
                                         <label class="sr-av">${_('Option')} B:</label>
-                                        <input type="text" class="QXTE-EOption1 QXTE-EAnwersOptions" id="quextEOption1">
+                                        <input type="text" class="QXTE-EOption1 QXTE-EAnwersOptions form-control" id="quextEOption1">
                                     </div>
                                     <div class="QXTE-EOptionDiv">
                                         <label class="sr-av">${_('Solution')} C:</label>
-                                        <input type="radio" class="QXTE-ESolution" name="qxsolution" id="quextESolution2" value="2" />
+                                        <input type="radio" class="QXTE-ESolution form-check-input" name="qxsolution" id="quextESolution2" value="2" />
                                         <label class="sr-av">${_('Option')} C:</label>
-                                        <input type="text" class="QXTE-EOption2 QXTE-EAnwersOptions" id="quextEOption2">
+                                        <input type="text" class="QXTE-EOption2 QXTE-EAnwersOptions form-control" id="quextEOption2">
                                     </div>
                                     <div class="QXTE-EOptionDiv">
                                         <label class="sr-av">${_('Solution')} D:</label>
-                                        <input type="radio" class="QXTE-ESolution" name="qxsolution" id="quextESolution3" value="3" />
+                                        <input type="radio" class="QXTE-ESolution form-check-input" name="qxsolution" id="quextESolution3" value="3" />
                                         <label class="sr-av">${_('Option')} D:</label>
-                                        <input type="text" class="QXTE-EOption3 QXTE-EAnwersOptions" id="quextEOption3">
+                                        <input type="text" class="QXTE-EOption3 QXTE-EAnwersOptions form-control" id="quextEOption3">
                                     </div>
                                 </div>
                             </div>
                             <div class="QXTE-EOrders" id="quextEOrder">
-                                <div class="QXTE-ECustomMessage">
+                                <div class="QXTE-ECustomMessage gap-2">
                                     <span class="sr-av">${_('Hit')}</span><span class="QXTE-EHit"></span>
                                     <label for="quextEMessageOK">${_('Message')}:</label>
-                                    <input type="text" id="quextEMessageOK">
+                                    <input type="text"  class="form-control" id="quextEMessageOK">
                                 </div>
-                                <div class="QXTE-ECustomMessage">
+                                <div class="QXTE-ECustomMessage gap-2">
                                     <span class="sr-av">${_('Error')}</span><span class="QXTE-EError"></span>
                                     <label for="quextEMessageKO">${_('Message')}:</label>
-                                    <input type="text" id="quextEMessageKO">
+                                    <input type="text"  class="form-control" id="quextEMessageKO">
                                 </div>
                             </div>
-                            <div class="QXTE-ENavigationButtons">
-                                <a href="#" id="quextEAdd" class="QXTE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="QXTE-EButtonImage" /></a>
-                                <a href="#" id="quextEFirst" class="QXTE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="QXTE-EButtonImage" /></a>
-                                <a href="#" id="quextEPrevious" class="QXTE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="QXTE-EButtonImage" /></a>
-                                <label class="sr-av" for="quextENumberQuestion">${_('Question number:')}:</label><input type="text" class="QXTE-NumberQuestion" id="quextENumberQuestion" value="1"/>
-                                <a href="#" id="quextENext" class="QXTE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="QXTE-EButtonImage" /></a>
-                                <a href="#" id="quextELast" class="QXTE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="QXTE-EButtonImage" /></a>
-                                <a href="#" id="quextEDelete" class="QXTE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="QXTE-EButtonImage" /></a>
-                                <a href="#" id="quextECopy" class="QXTE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="QXTE-EButtonImage" /></a>
-                                <a href="#" id="quextECut" class="QXTE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="QXTE-EButtonImage" /></a>
-                                <a href="#" id="quextEPaste" class="QXTE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="QXTE-EButtonImage" /></a>
+                            <div class="QXTE-ENavigationButtons gap-2">
+                                <a href="#" id="quextEAdd" class="QXTE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="QXTE-ENavigationButton" /></a>
+                                <a href="#" id="quextEFirst" class="QXTE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="QXTE-ENavigationButton" /></a>
+                                <a href="#" id="quextEPrevious" class="QXTE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="QXTE-ENavigationButton" /></a>
+                                <label class="sr-av" for="quextENumberQuestion">${_('Question number:')}:</label><input type="text" class="QXTE-NumberQuestion form-control" id="quextENumberQuestion" value="1"/>
+                                <a href="#" id="quextENext" class="QXTE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="QXTE-ENavigationButton" /></a>
+                                <a href="#" id="quextELast" class="QXTE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="QXTE-ENavigationButton" /></a>
+                                <a href="#" id="quextEDelete" class="QXTE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="QXTE-ENavigationButton" /></a>
+                                <a href="#" id="quextECopy" class="QXTE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="QXTE-ENavigationButton" /></a>
+                                <a href="#" id="quextECut" class="QXTE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="QXTE-ENavigationButton" /></a>
+                                <a href="#" id="quextEPaste" class="QXTE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="QXTE-ENavigationButton" /></a>
                             </div>
                             <div class="QXTE-EVIDiv" id="quextEVIDiv">
                                 <div class="QXTE-EVIV">
@@ -1201,12 +1312,12 @@ var $exeDevice = {
                                 </div>
                                 <div class="QXTE-EVIOptions">
                                     <label for="quextEVIURL">${_('URL')}:</label>
-                                    <input id="quextEVIURL" type="text" />
-                                    <a href="#" id="quextEVIPlayI" class="QXTE-ENavigationButton QXTE-EPlayVideo" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="QXTE-EButtonImage b-playintro" /></a>
+                                    <input id="quextEVIURL"  class="form-control"  type="text" />
+                                    <a href="#" id="quextEVIPlayI" class="QXTE-ENavigationButton " title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="QXTE-ENavigationButton intro" /></a>
                                     <label for="quextEVIStart">${_('Start')}:</label>
-                                    <input id="quextEVIStart" type="text" value="00:00:00" readonly />
+                                    <input id="quextEVIStart"  class="form-control" type="text" value="00:00:00" readonly />
                                     <label for="quextEVIEnd">${_('End')}:</label>
-                                    <input id="quextEVIEnd" type="text" value="00:00:00" readonly />
+                                    <input id="quextEVIEnd"  class="form-control" type="text" value="00:00:00" readonly />
                                     <button class="QXTE-EVideoTime" id="quextEVITime" type="button">00:00:00</button>
                                 </div>
                                 <input type="button" class="QXTE-EVIClose" id="quextEVIClose" value="${_('Close')}" />
@@ -1230,7 +1341,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         tinymce.init({
             selector: '#quextEText',
-            height: 200,
+            height: 220,
             language: 'all',
             width: 400,
             plugins: ['code paste textcolor link'],
@@ -1250,10 +1361,8 @@ var $exeDevice = {
     },
 
     initQuestions: function () {
-        $('#quextEInputVideo, #quextEInputImage').css('display', 'flex');
-        $(
-            '#quextMediaNormal, #quextMediaImage, #quextMediaText, #quextMediaVideo',
-        ).prop('disabled', false);
+        $('#quextEInputVideo, #quextEInputImage').removeClass('d-flex').addClass('d-none');
+        $('#quextMediaNormal, #quextMediaImage, #quextMediaText, #quextMediaVideo', ).prop('disabled', false);
 
         if ($exeDevice.questionsGame.length === 0) {
             const question = $exeDevice.getCuestionDefault();
@@ -1440,7 +1549,7 @@ var $exeDevice = {
             ),
         );
         $('#quextECustomScore').prop('checked', game.customScore);
-        $('#quextEScoreQuestionDiv').hide();
+        $('#quextEScoreQuestionDiv').removeClass('d-flex').addClass('d-none');
         $('#quextEHasFeedBack').prop('checked', game.feedBack);
         $('#quextEPercentajeFB').val(game.percentajeFB);
         $(
@@ -1472,7 +1581,7 @@ var $exeDevice = {
         });
 
         if (game.customScore) {
-            $('#quextEScoreQuestionDiv').show();
+            $('#quextEScoreQuestionDiv').removeClass('d-none').addClass('d-flex');
         }
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
@@ -1552,8 +1661,8 @@ var $exeDevice = {
             linksImages = $exeDevice.createlinksImage(dataGame.questionsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.questionsGame);
 
-    let html = '<div class="quext-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="quext-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html += `<div class="quext-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="quext-feedback-game">${textFeedBack}</div>`;
@@ -2129,6 +2238,18 @@ var $exeDevice = {
     addEvents: function () {
         $('#quextEPaste').hide();
 
+        $('#gameQEIdeviceForm').on('click', '.toggle-item', function (e) {
+            const target = e.target;
+            if (target.closest('input, a, button, select, textarea')) return;
+            if (target.tagName === 'LABEL') return;
+            const $container = $(this);
+            const $input = $container.find('input.toggle-input').first();
+            if ($input.length === 0 || $input.prop('disabled')) return;
+
+            const newVal = !$input.prop('checked');
+            $input.prop('checked', newVal).trigger('change');
+        });
+
         $('#quextEUseLives').on('change', function () {
             const marcado = $(this).is(':checked');
             $('#quextENumberLives').prop('disabled', !marcado);
@@ -2411,9 +2532,12 @@ var $exeDevice = {
         });
 
         $('#quextECustomScore').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#quextEScoreQuestionDiv').toggle(marcado);
-        });
+            const $div = $('#quextEScoreQuestionDiv')
+            if ($(this).is(':checked'))
+                $div.removeClass('d-none').addClass('d-flex')
+            else
+                $div.removeClass('d-flex').addClass('d-none')
+        })
 
         $('#quextEURLImage').on('change', function () {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
@@ -2515,8 +2639,12 @@ var $exeDevice = {
             $exeDevice.updateGameMode(gm, fb, ul);
         });
 
-        $('#quextEGameModeHelpLnk').on('click', function () {
-            $('#quextEGameModeHelp').toggle();
+        $('#quextEGameModeHelpLnk').on('click', function (e) {
+            e.preventDefault();
+            const $panel = $('#quextEGameModeHelp');
+            $panel.toggle();
+            const isVisible = $panel.is(':visible');
+            $panel.attr('aria-hidden', isVisible ? 'false' : 'true');
             return false;
         });
 

@@ -138,133 +138,239 @@ var $exeDevice = {
     createForm: function () {
         const path = $exeDevice.idevicePath,
             html = `
-            <div id="gameQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create interactive activities in which players will have to order cards with images, texts and/or sounds.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/ordena.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each letter to its correct position'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <p>
-                                <span>${_('Type')}:</span>
-                                <span class="ODNE-EInputColumns">
-                                    <input class="ODNE-EType" id="odntype0" checked type="radio" name="odntype" value="0" />
-                                    <label for="odntype0">${_('Phrases')}</label>
-                                    <input class="ODNE-EType" id="odntype1" type="radio" name="odntype" value="1" />
-                                    <label for="odntype1">${_('Multimedia')}</label>
-                                </span>
-                            </p>
-                            <p><label for="ordenaEShowMinimize">
-                                <input type="checkbox" id="ordenaEShowMinimize">${_('Show minimized.')}</label>
-                            </p>
-                            <p id="ordenaTimeShowDiv" class="ODNE-Hide">
-                                <label for="ordenaETimeShowSolution">${_('Time while the cards will be shown (seconds)')}<input type="number" name="ordenaETimeShowSolution" id="ordenaETimeShowSolution" value="3" min="1" max="999" /></label>
-                            </p>
-                            <p id="ordenaECustomMessagesDiv" class="ODNE-Hide">
-                                <label for="ordenaECustomMessages"><input type="checkbox" id="ordenaECustomMessages">${_('Custom messages')}.</label>
-                            </p>
-                            <p>
-                                <label for="ordenaETime">${_('Time (minutes)')}<input type="number" name="ordenaETime" id="ordenaETime" value="0" min="0" max="120" step="1" /></label>
-                            </p>
-                            <p>
-                                <label for="ordenaEShowSolution"><input type="checkbox" checked id="ordenaEShowSolution">${_('Show solutions')}.</label>
-                            </p>
-                            <p>
-                                <label for="ordenaEHasFeedBack"><input type="checkbox" id="ordenaEHasFeedBack">${_('Feedback')}</label><label for="ordenaEPercentajeFB"></label><input type="number" name="ordenaEPercentajeFB" id="ordenaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                            </p>
-                            <p id="ordenaEFeedbackP" class="ODNE-EFeedbackP">
-                                <textarea id="ordenaEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </p>
-                            <p>
-                                <label for="ordenaEPercentajeQuestions">${_('% Activities')}<input type="number" name="ordenaEPercentajeQuestions" id="ordenaEPercentajeQuestions" value="100" min="1" max="100" /></label><span id="ordenaENumeroPercentaje">1/1</span></p>
-                            <p>
-                                <label for="ordenaEAuthor">${_('Author')}:</label><input id="ordenaEAuthor" type="text" />
-                            </p>
-                            <p id="ordenaColumnsDiv" class="ODNE-Hide">
-                                <span>${_('Columns')}</span><span class="ODNE-EInputColumns"><input class="ODNE-EColumns" id="odn0" checked type="radio" name="odncolumns" value="0" /><label for="odn0">No</label><input class="ODNE-EColumns" id="odn1" type="radio" name="odncolumns" value="1" /><label for="odn1">1</label><input class="ODNE-EColumns" id="odn2" type="radio" name="odncolumns" value="2" /><label for="odn2">2</label><input class="ODNE-EColumns" id="odn3" type="radio" name="odncolumns" value="3" /><label for="odn3">3</label><input class="ODNE-EColumns" id="odn4" type="radio" name="odncolumns" value="4" /><label for="odn4">4</label><input class="ODNE-EColumns" id="odn5" type="radio" name="odncolumns" value="5" /><label for="odn5">5</label></span>
-                            </p>
-                            <p id="ordenaCustomizeCard" style="display:none;">
-                                <label for="ordenaMaxWidth"><input type="checkbox" checked id="ordenaMaxWidth">${_('Maximum width')}.</label><label for="ordenaCardHeight">${_('Height (px)')}<input type="number" name="ordenaCardHeight" id="ordenaCardHeight" value="200" min="0" max="1000" /></label>
-                            </p>
-                            <p id="ordenaFixedHeaders" style="display:none;">
-                                <label for="ordenaOrderedColumns"><input type="checkbox" id="ordenaOrderedColumns">${_('Fixed headers')}.</label>
-                            </p>
-                            <p id="ordenaStartAutomaticallyDiv" style="display:none;">
-                                <label for="ordenaStartAutomatically"><input type="checkbox" id="ordenaStartAutomatically">${_('Automatic start')}.</label>
-                            </p>                            
-                            <div id="ordenaEBackDiv" style="display:none">
-                                <p class="ODNE-EInputImageBack">
-                                    <label for="ordenaEURLImgCard">${_('Image back')}: </label>
-                                    <input type="text" class="exe-file-picker ODNE-EURLImage" id="ordenaEURLImgCard"/>
-                                    <a href="#" id="ordenaEPlayCard" class="ODNE-ENavigationButton ODNE-EPlayVideo" title="${_('Show')}">
-                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ODNE-EButtonImage b-play" />
-                                    </a>
-                                </p>
-                                <p id="ordenaEbackground" class="ODNE-Back">
-                                    <img class="ODNE-EImageBack" src="" id="ordenaECard" alt="${_('Image')}" style="display:none" />
-                                    <img class="ODNE-EImageBack" src="${path}ordenaHome.png" id="ordenaENoCard" alt="${_('No image')}" />
-                                </p>
-                            </div> 
-                            <p id="ordenaEWordBorderDiv">
-                                <label for="ordenaEWordBorder"><input type="checkbox" checked id="ordenaEWordBorder">${_('Word border')}.</label>
-                            </p> 
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#ordenaEEvaluationHelp" id="ordenaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="14" height="14" alt="${_('Help')}"/></a></strong>
-                                <input type="checkbox" id="ordenaEEvaluation"><label for="ordenaEEvaluation">${_('Progress report')}.</label>
-                                <label for="ordenaEEvaluationID">${_('Identifier')}</label><input type="text" id="ordenaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </p>
-                            <div id="ordenaEEvaluationHelp" class="ODNE-TypeGameHelp exe-block-info">
-                               <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+    <div id="gameQEIdeviceForm">
+        <p class="exe-block-info exe-block-dismissible" style="position:relative">
+            ${_('Create interactive activities in which players will have to order cards with images, texts and/or sounds.')}
+            <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/ordena.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
+            <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
+        </p>
+        <div class="exe-form-tab" title="${_('General settings')}">
+            ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each letter to its correct position'))}
+            <fieldset class="exe-fieldset exe-fieldset-closed">
+                <legend><a href="#">${_('Options')}</a></legend>
+                <div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="mb-0">${_('Type')}:</span>
+                        <span class="ODNE-EInputColumns d-flex align-items-center gap-2 flex-wrap">
+                            <div class="form-check form-check-inline m-0">
+                                <input class="ODNE-EType form-check-input" id="odntype0" checked type="radio" name="odntype" value="0" />
+                                <label for="odntype0" class="mb-0">${_('Phrases')}</label>
                             </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="ODNE-EType form-check-input" id="odntype1" type="radio" name="odntype" value="1" />
+                                <label for="odntype1" class="mb-0">${_('Multimedia')}</label>
+                            </div>
+                        </span>
+                    </div>
+                    <div class="toggle-item mb-3">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="ordenaEShowMinimize" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label class="toggle-label" for="ordenaEShowMinimize">${_('Show minimized.')}</label>
+                    </div>
+                    <div id="ordenaTimeShowDiv" class="ODNE-Hide flex-wrap align-items-center gap-2 mb-3">
+                        <label for="ordenaETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
+                        <input type="number" class="form-control" name="ordenaETimeShowSolution" id="ordenaETimeShowSolution" value="3" min="1" max="999" />
+                    </div>
+                    <div id="ordenaECustomMessagesDiv" class="ODNE-Hide toggle-item mb-3">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="ordenaECustomMessages" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label class="toggle-label" for="ordenaECustomMessages">${_('Custom messages')}.</label>
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="ordenaETime" class="mb-0">${_('Time (minutes)')}:</label>
+                        <input type="number" class="form-control" name="ordenaETime" id="ordenaETime" value="0" min="0" max="120" step="1" />
+                    </div>
+                    <div class="toggle-item mb-3">
+                        <span class="toggle-control">
+                            <input type="checkbox" checked id="ordenaEShowSolution" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label class="toggle-label" for="ordenaEShowSolution">${_('Show solutions')}.</label>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <div class="toggle-item mb-0">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="ordenaEHasFeedBack" class="toggle-input" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label" for="ordenaEHasFeedBack">${_('Feedback')}</label>
                         </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Activities')}</a></legend>
-                        <div class="ODNE-EPanel" id="ordenaEPanel">
-                            <p class="ODNE-EPhraseDivI" id="ordenaEPĥraseIDiv">
-                                <label for="ordenaEPraseI">${_('Phrase')}:</label><input type="text" id="ordenaEPraseI">                               
-                            </p>
-                            <div class="ODNE-ENavigationButtons" id="ordenaButtonsPrhaseDiv">
-                                <a href="#" id="ordenaEAdd" class="ODNE-ENavigationButton" title="${_('Add an activity')}"><img src="${path}quextIEAdd.png" alt="${_('Add an activity')}" class="ODNE-EButtonImage b-add" /></a>
-                                <a href="#" id="ordenaEFirst" class="ODNE-ENavigationButton" title="${_('First activity')}"><img src="${path}quextIEFirst.png" alt="${_('First activity')}" class="ODNE-EButtonImage b-first" /></a>
-                                <a href="#" id="ordenaEPrevious" class="ODNE-ENavigationButton" title="${_('Previous activity')}"><img src="${path}quextIEPrev.png" alt="${_('Previous activity')}" class="ODNE-EButtonImage b-prev" /></a>
-                                <span class="sr-av">${_('Activity number:')}</span><span class="ODNE-NumberPhrase" id="ordenaENumberPhrase">1</span>
-                                <a href="#" id="ordenaENext" class="ODNE-ENavigationButton" title="${_('Next activity')}"><img src="${path}quextIENext.png" alt="${_('Next activity')}" class="ODNE-EButtonImage b-next" /></a>
-                                <a href="#" id="ordenaELast" class="ODNE-ENavigationButton" title="${_('Last activity')}"><img src="${path}quextIELast.png" alt="${_('Last activity')}" class="ODNE-EButtonImage b-last" /></a>
-                                <a href="#" id="ordenaEDelete" class="ODNE-ENavigationButton" title="${_('Delete activity')}"><img src="${path}quextIEDelete.png" alt="${_('Delete activity')}" class="ODNE-EButtonImage b-delete" /></a>
-                                <a href="#" id="ordenaECopy" class="ODNE-ENavigationButton" title="${_('Copy activity')}"><img src="${path}quextIECopy.png" alt="${_('Copy activity')}" class="ODNE-EButtonImage b-copy" /></a>
-                                <a href="#" id="ordenaECut" class="ODNE-ENavigationButton" title="${_('Cut activity')}"><img src="${path}quextIECut.png" alt="${_('Cut activity')}" class="ODNE-EButtonImage b-copy" /></a>
-                                <a href="#" id="ordenaEPaste" class="ODNE-ENavigationButton" title="${_('Paste activity')}"><img src="${path}quextIEPaste.png" alt="${_('Paste activity')}" class="ODNE-EButtonImage b-paste" /></a>
+                        <label for="ordenaEPercentajeFB" class="mb-0"></label>
+                        <input type="number" class="form-control" name="ordenaEPercentajeFB" id="ordenaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
+                    </div>
+                    <div id="ordenaEFeedbackP" class="ODNE-EFeedbackP mb-3">
+                        <textarea id="ordenaEFeedBackEditor" class="exe-html-editor"></textarea>
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="ordenaEPercentajeQuestions" class="mb-0">${_('% Activities')}:</label>
+                        <input type="number" class="form-control" name="ordenaEPercentajeQuestions" id="ordenaEPercentajeQuestions" value="100" min="1" max="100" />
+                        <span id="ordenaENumeroPercentaje">1/1</span>
+                    </div>
+                    <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="ordenaEAuthor" class="mb-0">${_('Author')}:</label>
+                        <input id="ordenaEAuthor" type="text" class="form-control" />
+                    </div>
+                    <div id="ordenaColumnsDiv" class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                        <span>${_('Columns')}:</span>
+                        <span class="ODNE-EInputColumns d-flex align-items-center gap-2 flex-wrap">
+                            <div class="form-check form-check-inline m-0">
+                                <input class="ODNE-EColumns form-check-input" id="odn0" checked type="radio" name="odncolumns" value="0" />
+                                <label for="odn0" class="mb-0">No</label>
                             </div>
-                            <p class="ODNE-ENumActivity ODNE-Hide" id="ordenaActivityNumberDiv">${_('Activity')} <span id="ordenaActivityNumber">1</span></p>
-                            <p class="ODNE-ECustomMessageDef ODNE-Hide" id="ordenaEDefinitionDiv"><label for="ordenaEDefinition">${_('Statement')}</label><input type="text" id="ordenaEDefinition"><label>${_('Audio')}</label><input type="text" id="ordenaEURLAudioDefinition" class="exe-file-picker ODNE-EURLAudio" /><a href="#" id="ordenaEPlayAudioDefinition" class="ODNE-ENavigationButton ODNE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="ODNE-EButtonImage b-play" /></a></p>
-                            <p class="ODNE-ECustomMessageDiv" id="ordenaCustomMessageOKDiv"><label for="ordenaEMessageOK">${_('Success')}</label><input type="text" id="ordenaEMessageOK"><label>${_('Audio')}</label><input type="text" id="ordenaEURLAudioOK" class="exe-file-picker ODNE-EURLAudio" /><a href="#" id="ordenaEPlayAudioOK" class="ODNE-ENavigationButton ODNE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="ODNE-EButtonImage b-play" /></a></p>
-                            <p class="ODNE-ECustomMessageDiv" id="ordenaCustomMessageKODiv"><label for="ordenaEMessageKO">${_('Error')}</label><input type="text" id="ordenaEMessageKO"><label>${_('Audio')}</label><input type="text" id="ordenaEURLAudioKO" class="exe-file-picker ODNE-EURLAudio" /><a href="#" id="ordenaEPlayAudioKO" class="ODNE-ENavigationButton ODNE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="ODNE-EButtonImage b-play" /></a></p>
-                            <p class="ODNE-EPhrase ODNE-Hide" id="ordenaEPhrase"></p>
-                            <div class="ODNE-EContents ODNE-Hide" id="ordenaButtonCardDiv">
-                                <div class="ODNE-ENavigationButtons">
-                                    <a href="#" id="ordenaEAddC" class="ODNE-ENavigationButton" title="${_('Add a card')}"><img src="${path}quextIEAdd.png" alt="${_('Add a card')}" class="ODNE-EButtonImage b-add" /></a>
-                                    <a href="#" id="ordenaEDeleteC" class="ODNE-ENavigationButton" title="${_('Delete card')}"><img src="${path}quextIEDelete.png" alt="${_('Delete card')}" class="ODNE-EButtonImage b-delete" /></a>
-                                    <a href="#" id="ordenaECopyC" class="ODNE-ENavigationButton" title="${_('Copy card')}"><img src="${path}quextIECopy.png" alt="${_('Copy card')}" class="ODNE-EButtonImage b-copy" /></a>
-                                    <a href="#" id="ordenaECutC" class="ODNE-ENavigationButton" title="${_('Cut card')}"><img src="${path}quextIECut.png" alt="${_('Cut card')}" class="ODNE-EButtonImage b-cut" /></a>
-                                    <a href="#" id="ordenaEPasteC" class="ODNE-ENavigationButton" title="${_('Paste card')}"><img src="${path}quextIEPaste.png" alt="${_('Paste card')}" class="ODNE-EButtonImage b-paste" /></a>
-                                </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="ODNE-EColumns form-check-input" id="odn1" type="radio" name="odncolumns" value="1" />
+                                <label for="odn1" class="mb-0">1</label>
                             </div>
-                            <div class="ODNE-ENumPhrasesDiv" id="ordenaENumPhrasesDiv">
-                                <div class="ODNE-ENumPhraseS"><span class="sr-av">${_('Phrases:')}</span></div><span class="ODNE-ENumPhrases" id="ordenaENumPhrases">1</span>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="ODNE-EColumns form-check-input" id="odn2" type="radio" name="odncolumns" value="2" />
+                                <label for="odn2" class="mb-0">2</label>
                             </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="ODNE-EColumns form-check-input" id="odn3" type="radio" name="odncolumns" value="3" />
+                                <label for="odn3" class="mb-0">3</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="ODNE-EColumns form-check-input" id="odn4" type="radio" name="odncolumns" value="4" />
+                                <label for="odn4" class="mb-0">4</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="ODNE-EColumns form-check-input" id="odn5" type="radio" name="odncolumns" value="5" />
+                                <label for="odn5" class="mb-0">5</label>
+                            </div>
+                        </span>
+                    </div>
+                    <div id="ordenaCustomizeCard" class="d-none flex-wrap align-items-center gap-2 mb-3">
+                        <div class="toggle-item mb-0">
+                            <span class="toggle-control">
+                                <input type="checkbox" checked id="ordenaMaxWidth" class="toggle-input" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label" for="ordenaMaxWidth">${_('Maximum width')}.</label>
                         </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+                        <label for="ordenaCardHeight" class="mb-0">${_('Height (px)')}:</label>
+                        <input type="number" class="form-control" name="ordenaCardHeight" id="ordenaCardHeight" value="200" min="0" max="1000" />
+                    </div>
+                    <div id="ordenaFixedHeaders" class="d-none flex-wrap align-items-center gap-2 mb-3">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="ordenaOrderedColumns" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label class="toggle-label" for="ordenaOrderedColumns">${_('Fixed headers')}.</label>
+                    </div>
+                    <div id="ordenaStartAutomaticallyDiv" style="display:none;" class="toggle-item mb-3">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="ordenaStartAutomatically" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label class="toggle-label" for="ordenaStartAutomatically">${_('Automatic start')}.</label>
+                    </div>
+                    <div id="ordenaEBackDiv" style="display:none" class="mb-3">
+                        <div class="ODNE-EInputImageBack d-flex flex-nowrap align-items-center gap-2 mb-2">
+                            <label for="ordenaEURLImgCard" class="mb-0">${_('Image back')}:</label>
+                            <input type="text" class="exe-file-picker form-control me-0 w-100 ODNE-EURLImage" id="ordenaEURLImgCard"/>
+                            <a href="#" id="ordenaEPlayCard" class="ODNE-ENavigationButton" title="${_('Show')}">
+                                 <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ODNE-ENavigationButton" />
+                            </a>
+                        </div>
+                        <div id="ordenaEbackground" class="ODNE-Back">
+                            <img class="ODNE-EImageBack" src="" id="ordenaECard" alt="${_('Image')}" style="display:none" />
+                            <img class="ODNE-EImageBack" src="${path}ordenaHome.png" id="ordenaENoCard" alt="${_('No image')}" />
+                        </div>
+                    </div>
+                    <div id="ordenaEWordBorderDiv" class="toggle-item mb-3">
+                        <span class="toggle-control">
+                            <input type="checkbox" checked id="ordenaEWordBorder" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label class="toggle-label" for="ordenaEWordBorder">${_('Word border')}.</label>
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <div class="toggle-item mb-0">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="ordenaEEvaluation" class="toggle-input" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label" for="ordenaEEvaluation">${_('Progress report')}.</label>
+                        </div>
+                        <div class="d-flex flex-nowrap align-items-center gap-2">
+                            <label for="ordenaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                            <input type="text" class="form-control" id="ordenaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                        </div>
+                        <a href="#ordenaEEvaluationHelp" id="ordenaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                            <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
+                        </a>
+                    </div>
+                    <p id="ordenaEEvaluationHelp" class="ODNE-TypeGameHelp exe-block-info">
+                        ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                    </p>
                 </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            </div>`;
+            </fieldset>
+            <fieldset class="exe-fieldset">
+                <legend><a href="#">${_('Activities')}</a></legend>
+                <div class="ODNE-EPanel" id="ordenaEPanel">
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mt-4 mb-3" id="ordenaEPĥraseIDiv">
+                        <label for="ordenaEPraseI" class="mb-0">${_('Phrase')}:</label>
+                        <input type="text" id="ordenaEPraseI" class="form-control w-100"/>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mb-3" id="ordenaButtonsPrhaseDiv">
+                        <a href="#" id="ordenaEAdd" class="ODNE-ENavigationButton" title="${_('Add an activity')}"><img src="${path}quextIEAdd.png" alt="${_('Add an activity')}" class="ODNE-ENavigationButtonb-add" /></a>
+                        <a href="#" id="ordenaEFirst" class="ODNE-ENavigationButton" title="${_('First activity')}"><img src="${path}quextIEFirst.png" alt="${_('First activity')}" class="ODNE-ENavigationButtonb-first" /></a>
+                        <a href="#" id="ordenaEPrevious" class="ODNE-ENavigationButton" title="${_('Previous activity')}"><img src="${path}quextIEPrev.png" alt="${_('Previous activity')}" class="ODNE-ENavigationButtonb-prev" /></a>
+                        <span class="sr-av">${_('Activity number:')}</span><span class="ODNE-NumberPhrase" id="ordenaENumberPhrase">1</span>
+                        <a href="#" id="ordenaENext" class="ODNE-ENavigationButton" title="${_('Next activity')}"><img src="${path}quextIENext.png" alt="${_('Next activity')}" class="ODNE-ENavigationButtonb-next" /></a>
+                        <a href="#" id="ordenaELast" class="ODNE-ENavigationButton" title="${_('Last activity')}"><img src="${path}quextIELast.png" alt="${_('Last activity')}" class="ODNE-ENavigationButtonb-last" /></a>
+                        <a href="#" id="ordenaEDelete" class="ODNE-ENavigationButton" title="${_('Delete activity')}"><img src="${path}quextIEDelete.png" alt="${_('Delete activity')}" class="ODNE-ENavigationButtonb-delete" /></a>
+                        <a href="#" id="ordenaECopy" class="ODNE-ENavigationButton" title="${_('Copy activity')}"><img src="${path}quextIECopy.png" alt="${_('Copy activity')}" class="ODNE-ENavigationButtonb-copy" /></a>
+                        <a href="#" id="ordenaECut" class="ODNE-ENavigationButton" title="${_('Cut activity')}"><img src="${path}quextIECut.png" alt="${_('Cut activity')}" class="ODNE-ENavigationButtonb-copy" /></a>
+                        <a href="#" id="ordenaEPaste" class="ODNE-ENavigationButton" title="${_('Paste activity')}"><img src="${path}quextIEPaste.png" alt="${_('Paste activity')}" class="ODNE-ENavigationButtonb-paste" /></a>
+                    </div>
+                    <div class="d-none flex-wrap align-items-center justify-content-center gap-2 mb-3" id="ordenaActivityNumberDiv">${_('Activity')} 
+                        <span id="ordenaActivityNumber">1</span>
+                    </div>
+                    <div class="ODNE-ECustomMessageDef d-none flex-nowrap align-items-center gap-2 mb-3" id="ordenaEDefinitionDiv">
+                        <label for="ordenaEDefinition">${_('Statement')}:</label>
+                        <input type="text" id="ordenaEDefinition" class="form-control w-100 me-0"/>
+                        <label >${_('Audio')}</label>
+                        <input type="text" id="ordenaEURLAudioDefinition" class="exe-file-picker form-control me-0 w-100" />
+                        <a href="#" id="ordenaEPlayAudioDefinition" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="ODNE-ENavigationButton" /></a>
+                    </div>
+                    <div class="ODNE-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3"">
+                        <label for="ordenaEMessageOK" >${_('Success')}:</label>
+                        <input type="text" id="ordenaEMessageOK" class="form-control w-100 me-0"/>
+                        <label >${_('Audio')}</label>
+                        <input type="text" id="ordenaEURLAudioOK" class="exe-file-picker form-control me-0 w-100" />
+                        <a href="#" id="ordenaEPlayAudioOK" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="${_('Audio')}" class="ODNE-ENavigationButton" /></a>
+                    </div>
+                    <div class="ODNE-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" >
+                        <label for="ordenaEMessageKO" >${_('Error')}:</label>
+                        <input type="text" id="ordenaEMessageKO" class="form-control w-100 me-0"/>
+                        <label >${_('Audio')}</label>
+                        <input type="text" id="ordenaEURLAudioKO" class="exe-file-picker form-control me-0 w-100" />
+                        <a href="#" id="ordenaEPlayAudioKO" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="${_('Audio')}" class="ODNE-ENavigationButton" /></a>
+                    </div>
+                    <div class="d-none flex-wrap align-items-center mb-3 justify-content-start" id="ordenaEPhrase"></div>
+                    <div class="d-none flex-wrap align-items-center justify-content-center mb-3 gap-3" id="ordenaButtonCardDiv">
+                        <a href="#" id="ordenaEAddC" class="ODNE-ENavigationButton" title="${_('Add a card')}"><img src="${path}quextIEAdd.png" alt="${_('Add a card')}" class="ODNE-ENavigationButtonb-add" /></a>
+                        <a href="#" id="ordenaEDeleteC" class="ODNE-ENavigationButton" title="${_('Delete card')}"><img src="${path}quextIEDelete.png" alt="${_('Delete card')}" class="ODNE-ENavigationButtonb-delete" /></a>
+                        <a href="#" id="ordenaECopyC" class="ODNE-ENavigationButton" title="${_('Copy card')}"><img src="${path}quextIECopy.png" alt="${_('Copy card')}" class="ODNE-ENavigationButtonb-copy" /></a>
+                        <a href="#" id="ordenaECutC" class="ODNE-ENavigationButton" title="${_('Cut card')}"><img src="${path}quextIECut.png" alt="${_('Cut card')}" class="ODNE-ENavigationButtonb-cut" /></a>
+                        <a href="#" id="ordenaEPasteC" class="ODNE-ENavigationButton" title="${_('Paste card')}"><img src="${path}quextIEPaste.png" alt="${_('Paste card')}" class="ODNE-ENavigationButtonb-paste" /></a>
+                    </div>
+                    <div class="ODNE-ENumPhrasesDiv" id="ordenaENumPhrasesDiv">
+                        <div class="ODNE-ENumPhraseS"><span class="sr-av">${_('Phrases:')}</span></div><span class="ODNE-ENumPhrases" id="ordenaENumPhrases">1</span>
+                    </div>
+                </div>
+            </fieldset>
+            ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+        </div>
+        ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+        ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+        ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+    </div>`;
 
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
@@ -274,47 +380,40 @@ var $exeDevice = {
 
     showTypeGame: function (type) {
         if (type == 0) {
-            $('#ordenaTimeShowDiv').hide();
-            $('#ordenaColumnsDiv').hide();
-            $('#ordenaActivityNumberDiv').hide();
-            $('#ordenaEDefinitionDiv').hide();
-            $('#ordenaEPhrase').hide();
-            $('#ordenaButtonCardDiv').hide();
-            $('#ordenaCustomizeCard').hide();
+            $('#ordenaTimeShowDiv, #ordenaColumnsDiv, #ordenaActivityNumberDiv, #ordenaEDefinitionDiv, #ordenaEPhrase, #ordenaButtonCardDiv, #ordenaCustomizeCard,  #ordenaStartAutomaticallyDiv, #ordenaECustomMessagesDiv, #ordenaFixedHeaders')
+                .removeClass('d-flex').addClass('d-none');
             $('#ordenaEBackDiv').hide();
-            $('#ordenaEWordBorderDiv').show();
-            $('#ordenaStartAutomaticallyDiv').hide();
-            $('#ordenaECustomMessagesDiv').hide();
-            $('#ordenaFixedHeaders').hide();
+            $('#ordenaEWordBorderDiv, #ordenaEPĥraseIDiv')
+                .removeClass('d-none').addClass('d-flex');
+
             $('#ordenaECustomMessages').prop('checked', false);
-            $('#ordenaEPĥraseIDiv').show();
             $('#ordenaButtonsPrhaseDiv').insertBefore('#ordenaEPhrase');
         } else {
-            $('#ordenaTimeShowDiv').show();
-            $('#ordenaColumnsDiv').show();
-            $('#ordenaActivityNumberDiv').show();
-            $('#ordenaEDefinitionDiv').css({ display: 'flex' });
-            $('#ordenaEPhrase').css({ display: 'flex' });
-            $('#ordenaButtonCardDiv').show();
-            $('#ordenaCustomizeCard').show();
-            $('#ordenaFixedHeaders').show();
-            $('#ordenaEBackDiv').show();
-            $('#ordenaStartAutomaticallyDiv').show();
-            $('#ordenaEPĥraseIDiv').hide();
-            $('#ordenaEWordBorderDiv').hide();
-            $('#ordenaECustomMessagesDiv').show();
-            $('#ordenaButtonsPrhaseDiv').insertBefore(
-                'ordenaActivityNumberDiv',
-            );
-        }
+            $('#ordenaTimeShowDiv, #ordenaColumnsDiv, #ordenaActivityNumberDiv, #ordenaButtonCardDiv, #ordenaCustomizeCard, #ordenaFixedHeaders, #ordenaStartAutomaticallyDiv, #ordenaECustomMessagesDiv')
+                .removeClass('d-none').addClass('d-flex');
 
+            $('#ordenaEBackDiv').show();
+
+            $('#ordenaEDefinitionDiv, #ordenaEPhrase')
+                .removeClass('d-none').addClass('d-flex');
+
+            $('#ordenaEPĥraseIDiv, #ordenaEWordBorderDiv')
+                .removeClass('d-flex').addClass('d-none');
+
+            $('#ordenaButtonsPrhaseDiv').insertBefore('#ordenaActivityNumberDiv');
+        }
         const customMessages = $('#ordenaECustomMessages').is(':checked');
 
         if (customMessages) {
-            $('.ODNE-ECustomMessageDiv').slideDown();
+            $('.ODNE-ECustomMessageDiv')
+                .removeClass('d-none')
+                .addClass('d-flex');
         } else {
-            $('.ODNE-ECustomMessageDiv').slideUp();
+            $('.ODNE-ECustomMessageDiv')
+                .removeClass('d-flex')
+                .addClass('d-none');
         }
+
     },
 
     removeCard: function () {
@@ -378,21 +477,33 @@ var $exeDevice = {
 
     jsonToCard: function (p, inload) {
         const $card = $exeDevice.addCard(!inload);
+        // Valores por defecto seguros para versiones antiguas sin color/fondo
+        const safe = {
+            x: typeof p.x === 'number' ? p.x : 0,
+            y: typeof p.y === 'number' ? p.y : 0,
+            author: p.author || '',
+            alt: p.alt || '',
+            url: p.url || '',
+            audio: p.audio || '',
+            eText: p.eText || '',
+            color: p.color || '#000000',
+            backcolor: p.backcolor || '#ffffff',
+        };
 
-        $card.find('.ODNE-EX').eq(0).val(p.x);
-        $card.find('.ODNE-EY').eq(0).val(p.y);
-        $card.find('.ODNE-EAuthor').eq(0).val(p.author);
-        $card.find('.ODNE-EAlt').eq(0).val(p.alt);
-        $card.find('.ODNE-EURLImage').eq(0).val(p.url);
-        $card.find('.ODNE-EURLAudio').eq(0).val(p.audio);
-        $card.find('.ODNE-EText').eq(0).val(p.eText);
-        $card.find('.ODNE-ETextDiv').eq(0).text(p.eText);
-        $card.find('.ODNE-EColor').eq(0).val(p.color);
-        $card.find('.ODNE-EBackColor').eq(0).val(p.backcolor);
+        $card.find('.ODNE-EX').eq(0).val(safe.x);
+        $card.find('.ODNE-EY').eq(0).val(safe.y);
+        $card.find('.ODNE-EAuthor').eq(0).val(safe.author);
+        $card.find('.ODNE-EAlt').eq(0).val(safe.alt);
+        $card.find('.ODNE-EURLImage').eq(0).val(safe.url);
+        $card.find('.ODNE-EURLAudio').eq(0).val(safe.audio);
+        $card.find('.ODNE-EText').eq(0).val(safe.eText);
+        $card.find('.ODNE-ETextDiv').eq(0).text(safe.eText);
+        $card.find('.ODNE-EColor').eq(0).val(safe.color);
+        $card.find('.ODNE-EBackColor').eq(0).val(safe.backcolor);
 
         $exeDevice.showImage($exeDevice.activeID);
 
-        if (p.eText.trim().length > 0) {
+        if (safe.eText.trim().length > 0) {
             $card.find('.ODNE-ETextDiv').show();
         } else {
             $card.find('.ODNE-ETextDiv').hide();
@@ -401,8 +512,8 @@ var $exeDevice = {
             .find('.ODNE-ETextDiv')
             .eq(0)
             .css({
-                color: p.color,
-                'background-color': $exeDevice.hexToRgba(p.backcolor, 0.7),
+                color: safe.color,
+                'background-color': $exeDevice.hexToRgba(safe.backcolor, 0.7),
             });
         return $card;
     },
@@ -470,7 +581,7 @@ var $exeDevice = {
         $exeDevice.active = 0;
         $exeDevice.phrasesGame.push($exeDevice.getPhraseDefault());
         $exeDevice.addCard(false);
-        $('.ODNE-ECustomMessageDiv').hide();
+        $('.ODNE-ECustomMessageDiv').removeClass('d-flex').addClass('d-none');
     },
 
     getPhraseDefault: function () {
@@ -508,7 +619,7 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath,
             card = `
             <div class="ODNE-EDatosCarta ODNE-EActive" id="ordenaEDatosCarta-${$exeDevice.activeID}" data-id="${$exeDevice.activeID}">
-               <div class="ODNE-EMultimedia">
+               <div class="ODNE-EMultimedia  mb-2 mt-2">
                     <div class="ODNE-ECard">
                         <img class="ODNE-EHideODNE-EImage" id="ordenaEImage-${$exeDevice.activeID}" src="${path}quextIEImage.png" alt="${_('No image')}" />
                         <img class="ODNE-ECursor" id="ordenaECursor-${$exeDevice.activeID}" src="${path}quextIECursor.gif" alt="" />
@@ -517,37 +628,40 @@ var $exeDevice = {
                     </div>
                 </div>
                <span class="ODNE-ETitleText" id="ordenaETitleText-${$exeDevice.activeID}">${_('Text')}</span>
-               <div class="ODNE-EInputText" id="ordenaEInputText-${$exeDevice.activeID}">
-                    <label class="sr-av">${_('Text')}</label><input type="text" id="ordenaEText-${$exeDevice.activeID}" class="ODNE-EText" />
-                    <label id="ordenaELblColor-${$exeDevice.activeID}" class="ODNE-LblColor">${_('Color')}: </label><input id="ordenaEColor-${$exeDevice.activeID}" type="color" class="ODNE-EColor" value="#000000">
-                    <label id="ordenaELblBgColor-${$exeDevice.activeID}" class="ODNE-LblBgColor">${_('Background')}: </label><input id="ordenaEBgColor-${$exeDevice.activeID}" type="color" class="ODNE-EBackColor" value="#ffffff">
+               <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="ordenaEInputText-${$exeDevice.activeID}">
+                    <label class="sr-av">${_('Text')}</label>
+                    <input type="text" id="ordenaEText-${$exeDevice.activeID}" class="ODNE-EText form-control w-100 me-0" />
+                    <label id="ordenaELblColor-${$exeDevice.activeID}">${_('Color')}: </label>
+                    <input id="ordenaEColor-${$exeDevice.activeID}" type="color" class="ODNE-EColor form-control form-control-color" value="#000000">
+                    <label id="ordenaELblBgColor-${$exeDevice.activeID}">${_('Background')}: </label>
+                    <input id="ordenaEBgColor-${$exeDevice.activeID}" type="color" class="ODNE-EBackColor form-control form-control-color" value="#ffffff">
                 </div>
                <span class="ODNE-ETitleImage" id="ordenaETitleImage-${$exeDevice.activeID}">${_('Image')}</span>
-               <div class="ODNE-EInputImage" id="ordenaEInputImage-${$exeDevice.activeID}">
+               <div class="ODNE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="ordenaEInputImage-${$exeDevice.activeID}">
                    <label class="sr-av">URL</label>
-                   <input type="text" id="ordenaEURLImage-${$exeDevice.activeID}" class="exe-file-picker ODNE-EURLImage"/>
-                   <a href="#" id="ordenaEPlayImage-${$exeDevice.activeID}" class="ODNE-ENavigationButton ODNE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ODNE-EButtonImage b-play" /></a>
-                   <a href="#" id="ordenaEShowMore-${$exeDevice.activeID}" class="ODNE-ENavigationButton ODNE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="ODNE-EButtonImage b-play" /></a>
+                   <input type="text" id="ordenaEURLImage-${$exeDevice.activeID}" class="ODNE-EURLImage exe-file-picker form-control me-0 w-100"/>
+                   <a href="#" id="ordenaEPlayImage-${$exeDevice.activeID}" class="ODNE-ENavigationButton " title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ODNE-ENavigationButton" /></a>
+                   <a href="#" id="ordenaEShowMore-${$exeDevice.activeID}" class="ODNE-ENavigationButton ODNE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="ODNE-ENavigationButton" /></a>
                </div>
-               <div class="ODNE-ECoord">
-                   <label>X:</label>
-                   <input id="ordenaEX-${$exeDevice.activeID}" class="ODNE-EX" type="text" value="0" />
-                   <label>Y:</label>
-                   <input id="ordenaEY-${$exeDevice.activeID}" class="ODNE-EY" type="text" value="0" />
+               <div class="d-none flex-wrap align-items-center gap-2 mb-3">
+                   <label class="mb-0">X:</label>
+                   <input id="ordenaEX-${$exeDevice.activeID}" class="ODNE-EX form-control" type="text" value="0" />
+                   <label class="mb-0">Y:</label>
+                   <input id="ordenaEY-${$exeDevice.activeID}" class="ODNE-EY form-control" type="text" value="0" />
                </div>
-               <div class="ODNE-EAuthorAlt" id="ordenaEAuthorAlt-${$exeDevice.activeID}">
-                   <div class="ODNE-EInputAuthor">
-                       <label>${_('Author')}</label><input type="text" class="ODNE-EAuthor" />
+               <div class="d-none flex-wrap align-items-center gap-2 mb-3" id="ordenaEAuthorAlt-${$exeDevice.activeID}">
+                   <div class=" d-flex flex-wrap align-items-center w-100 gap-2">
+                       <label class="mb-0">${_('Author')}</label><input type="text" class="ODNE-EAuthor w-100 form-control" />
                    </div>
-                   <div class="ODNE-EInputAlt">
-                       <label>${_('Alternative text')}</label><input type="text" class="ODNE-EAlt" />
+                   <div class=" d-flex flex-wrap align-items-center w-100 gap-2">
+                       <label class="mb-0">${_('Alternative text')}</label><input type="text" class="ODNE-EAlt w-100 form-control" />
                    </div>
                </div>
                <span>${_('Audio')}</span>
-               <div class="ODNE-EInputAudio">
+               <div class="ODNE-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-2">
                    <label class="sr-av">URL</label>
-                   <input type="text" id="ordenaEURLAudio-${$exeDevice.activeID}" class="exe-file-picker ODNE-EURLAudio" />
-                   <a href="#" id="ordenaEPlayAudio-${$exeDevice.activeID}" class="ODNE-ENavigationButton ODNE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="ODNE-EButtonImage b-play" /></a>
+                   <input type="text" id="ordenaEURLAudio-${$exeDevice.activeID}" class="ODNE-EURLAudio exe-file-picker form-control me-0 w-100" />
+                   <a href="#" id="ordenaEPlayAudio-${$exeDevice.activeID}" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="ODNE-ENavigationButton" /></a>
                </div>
            </div>`;
         $('#ordenaEPhrase').append(card);
@@ -671,7 +785,7 @@ var $exeDevice = {
     },
 
     addEventCard: function (id) {
-        $('#ordenaEAuthorAlt-' + id).hide();
+        $('#ordenaEAuthorAlt-' + id).removeClass('d-flex').addClass('d-none');
 
         $('#ordenaEURLImage-' + id).on('change', function () {
             $exeDevice.loadImage(id);
@@ -694,7 +808,10 @@ var $exeDevice = {
 
         $('#ordenaEShowMore-' + id).on('click', function (e) {
             e.preventDefault();
-            $('#ordenaEAuthorAlt-' + id).slideToggle();
+            const $box = $('#ordenaEAuthorAlt-' + id);
+            const show = $box.hasClass('d-none');
+            $box.toggleClass('d-none', !show)
+                .toggleClass('d-flex', show);
         });
 
         $('#ordenaEText-' + id).on('keyup', function () {
@@ -803,17 +920,29 @@ var $exeDevice = {
     },
 
     hexToRgba: function (hex, opacity) {
-        return (
-            'rgba(' +
-            (hex = hex.replace('#', ''))
-                .match(new RegExp('(.{' + hex.length / 3 + '})', 'g'))
+        try {
+            // Fallback seguro si hex no viene definido o no es string
+            if (typeof hex !== 'string' || hex.trim() === '') hex = '#ffffff';
+            hex = hex.trim();
+            if (hex[0] !== '#') {
+                // Permitir formatos sin '#', añadirla si parece válido
+                if (/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(hex)) {
+                    hex = '#' + hex;
+                } else {
+                    hex = '#ffffff';
+                }
+            }
+            const raw = hex.replace('#', '');
+            const parts = raw
+                .match(new RegExp('(.{' + raw.length / 3 + '})', 'g'))
                 .map(function (l) {
-                    return parseInt(hex.length % 2 ? l + l : l, 16);
-                })
-                .concat(isFinite(opacity) ? opacity : 1)
-                .join(',') +
-            ')'
-        );
+                    return parseInt(raw.length % 2 ? l + l : l, 16);
+                });
+            const alpha = isFinite(opacity) ? opacity : 1;
+            return 'rgba(' + parts.concat(alpha).join(',') + ')';
+        } catch (e) {
+            return 'rgba(255,255,255,' + (isFinite(opacity) ? opacity : 1) + ')';
+        }
     },
 
     loadPreviousValues: function () {
@@ -970,8 +1099,8 @@ var $exeDevice = {
         let linksImages = $exeDevice.createlinksImage(dataGame.phrasesGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.phrasesGame);
 
-    let html = '<div class="ordena-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="ordena-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += '<div class="ordena-feedback-game">' + textFeedBack + '</div>';
         html += divContent;
         html += '<div class="ordena-DataGame js-hidden">' + json + '</div>';
@@ -1376,21 +1505,19 @@ var $exeDevice = {
 
         $('#ordenaEHasFeedBack').on('change', function () {
             const marcado = $(this).is(':checked');
-            if (marcado) {
-                $('#ordenaEFeedbackP').slideDown();
-            } else {
-                $('#ordenaEFeedbackP').slideUp();
-            }
+
+            $('#ordenaEFeedbackP')
+                .toggleClass('d-none', !marcado)
+                .toggleClass('d-flex', marcado);
+
             $('#ordenaEPercentajeFB').prop('disabled', !marcado);
         });
 
         $('#ordenaECustomMessages').on('change', function () {
             const messages = $(this).is(':checked');
-            if (messages) {
-                $('.ODNE-ECustomMessageDiv').slideDown();
-            } else {
-                $('.ODNE-ECustomMessageDiv').slideUp();
-            }
+            $('.ODNE-ECustomMessageDiv')
+                .toggleClass('d-none', !messages)
+                .toggleClass('d-flex', messages);
         });
 
         $('#ordenaEPercentajeQuestions').on('keyup', function () {
@@ -1496,25 +1623,20 @@ var $exeDevice = {
             'change',
             'input.ODNE-EColumns',
             function () {
-                const number = parseInt($(this).val()),
+                const number = parseInt($(this).val(), 10),
                     ordered = $('#ordenaOrderedColumns').is(':checked');
-                if (number == 0) {
-                    $('#ordenaCustomizeCard').hide();
-                } else {
-                    $('#ordenaCustomizeCard').show();
-                }
-                if (number > 1) {
-                    $('#ordenaFixedHeaders').show();
-                } else {
-                    $('#ordenaFixedHeaders').hide();
-                }
-                const type = parseInt(
-                    $('input.ODNE-EType[name=odntype]:checked').val(),
-                );
-                if (type == 1) {
-                    $exeDevice.resizePanel(ordered, number);
-                }
-            },
+
+                $('#ordenaCustomizeCard')
+                    .toggleClass('d-none', number === 0)
+                    .toggleClass('d-flex', number !== 0);
+
+                $('#ordenaFixedHeaders')
+                    .toggleClass('d-none', !(number > 1))
+                    .toggleClass('d-flex', (number > 1));
+
+                const type = parseInt($('input.ODNE-EType[name=odntype]:checked').val(), 10);
+                if (type === 1) $exeDevice.resizePanel(ordered, number);
+            }
         );
 
         $('#gameQEIdeviceForm').on('change', 'input.ODNE-EType', function () {
@@ -1851,19 +1973,21 @@ var $exeDevice = {
         $exeDevice.showTypeGame(game.type);
 
         if (game.type == 1 && game.customMessages) {
-            $('.ODNE-ECustomMessageDiv').slideDown();
+            $('.ODNE-ECustomMessageDiv').removeClass('d-none').addClass('d-flex');
         } else {
-            $('.ODNE-ECustomMessageDiv').slideUp();
+            $('.ODNE-ECustomMessageDiv').removeClass('d-flex').addClass('d-none');
         }
+
         if (game.type == 1 && game.gameColumns > 0) {
-            $('#ordenaCustomizeCard').show();
+            $('#ordenaCustomizeCard').removeClass('d-none').addClass('d-flex');
         } else {
-            $('#ordenaCustomizeCard').hide();
+            $('#ordenaCustomizeCard').removeClass('d-flex').addClass('d-none');
         }
+
         if (game.type == 1 && game.gameColumns > 1) {
-            $('#ordenaFixedHeaders').show();
+            $('#ordenaFixedHeaders').removeClass('d-none').addClass('d-flex');
         } else {
-            $('#ordenaFixedHeaders').hide();
+            $('#ordenaFixedHeaders').removeClass('d-flex').addClass('d-none');
         }
     },
 

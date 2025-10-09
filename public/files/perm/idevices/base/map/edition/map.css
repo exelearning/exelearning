@@ -1,15 +1,3 @@
-#gameQEIdeviceForm input[type="number"] {
-    width: 4em;
-}
-
-
-#gameQEIdeviceForm label {
-    margin-right: 0.1em !important;
-}
-
-#gameQEIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-    margin-right: 0.15em !important;
-}
 
 #gameQEIdeviceForm input[type="radio"],
 #gameQEIdeviceForm input[type="checkbox"],
@@ -17,7 +5,13 @@
     cursor: pointer;
 }
 
-/*Panel preguntas */
+
+#gameQEIdeviceForm input[type="button"],
+#gameQEIdeviceForm input[type="color"] {
+    margin-right: 0 !important;
+}
+
+
 .MQE-EMultimedias {
     width: 100%;
     position: relative;
@@ -55,7 +49,6 @@
 .MQE-EPointContainer,
 .MQE-ESlideContainer {
     z-index: 1000;
-    cursor: pointer;
     top: 0;
     left: 0;
     display: flex;
@@ -66,6 +59,7 @@
     height: 100%;
     background-color: white;
     display: none;
+    padding-top: 1em;
 
 }
 
@@ -98,17 +92,14 @@
 
 .MQE-EPointMultimedia,
 .MQE-ESlideMultimedia {
-    padding: 0.6em 1em;
+    padding:2em 1.5em;
     background-color: white;
     border-radius: 0.5em;
     box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.20), 0 3px 6px 0 rgba(0, 0, 0, 0.19);
     width: 50%;
-    min-width: 580px;
+    min-width: 600px;
 }
 
-.MQE-EPointMultimedia input[type=text] {
-    margin-right: 0.3em;
-}
 
 .MQE-EPanel p {
     margin: 0.5em auto;
@@ -125,7 +116,7 @@
 
 .MQE-PointImageContainer {
     border-radius: 0.6em;
-    margin: 0.3em auto;
+    margin: 0.5rem auto;
     position: relative;
     width: 560px;
     height: 315px;
@@ -173,19 +164,8 @@
     background-color: rgba(255, 255, 255, 0.01);
 }
 
-#mapaControls {
-    display: flex;
-    justify-content: center;
-    padding: .6em;
-    gap: 0.2em
-}
 
-#mapaControls button {
-    font-size: 1em;
-    padding: 4px 10px;
-    color: #333333;
-    cursor: pointer
-}
+
 
 .MQE-EArea {
     position: absolute;
@@ -242,6 +222,7 @@
     justify-content: flex-start;
     min-width: 100px;
     width: 100%;
+    gap:0.5rem;
 }
 
 .MQE-EFlexCenter {
@@ -252,6 +233,8 @@
     min-width: 100px;
     width: 100%;
     margin-top: 1em;
+    gap:0.5rem;
+    
 }
 
 
@@ -261,6 +244,7 @@
     display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;
+    gap:0.5rem
 }
 
 .MQE-IconType {
@@ -283,7 +267,8 @@
     display: flex;
     flex-wrap: nowrap;
     justify-content: space-between;
-    margin: 0.5em auto;
+    align-items: center;
+    
 }
 
 .MQE-EFlexN span {
@@ -302,12 +287,9 @@
 }
 
 .MQE-NumberPoint {
-    font-weight: bold;
-    height: 1.5em;
-    line-height: 1.5em;
     text-align: center;
     vertical-align: middle;
-    width: 2em;
+    width: 3em;
 }
 
 .MQE-EditPointsMap {
@@ -382,25 +364,22 @@
     align-items: center;
     display: flex;
     justify-content: center;
-    margin-top: 1em;
+    margin-top: 1.5em;
     width: 100%;
 }
 
 .MQE-ENavigationButton {
-    width: 1.5em;
-    height: 1.5em;
+    width: 1.7em;
+    height: 1.7em;
     background-size: 100% 100%;
-    margin: 0.3em;
 }
 
 .MQE-EActivo {
     -moz-transition: transform 0.3s;
     -ms-transition: transform 0.3s;
     -o-transition: transform 0.3s;
-    -webkit-filter: drop-shadow(.12em .12em .12em rgba(0, 0, 0, 0.5));
     -webkit-transition: transform 0.3s;
-    cursor: pointer;
-    filter: drop-shadow(.12em .12em .12em rgba(0, 0, 0, 0.5));
+    cursor: pointer;    
     transition: transform 0.3s;
 }
 
@@ -429,15 +408,25 @@
 }
 
 .MQP-Dropbtn {
-    background-color: white;
-    color: black;
-    padding: 0 0 0 2px;
-    cursor: pointer;
+    background-color: #fff;
+    color: #212529;
     position: relative;
-    min-width: 150px;
-    border-radius: 3px;
-    border: 1px solid #8F8F9D;
+    min-width: 180px;
     margin-left: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    cursor: pointer;
+    /* Apariencia similar a .form-control */
+    padding: 0.375rem 2rem 0.375rem 0.5rem; /* espacio para el icono flecha */
+    font-size: 0.95rem;
+    line-height: 1.5;
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    background-clip: padding-box;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out, background-color .15s ease-in-out;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.04);
 }
 
 .MQP-Dropbtn::after {
@@ -447,6 +436,25 @@
     right: 10px;
     top: 50%;
     transform: translateY(-50%);
+    pointer-events: none;
+}
+
+/* Hover / focus para simular select Bootstrap */
+.MQP-Dropbtn:hover {
+    border-color: #86b7fe;
+}
+
+.MQP-Dropbtn:focus,
+.MQP-Dropbtn:focus-visible,
+.MQP-Dropbtn.is-open {
+    outline: 0;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13,110,253,.25);
+}
+
+/* Estado activo (cuando se pulsa) */
+.MQP-Dropbtn:active {
+    background-color: #e9ecef;
 }
 
 .MQP-Dropdown {
@@ -1025,11 +1033,11 @@ ul.MQP-DropdownContent {
 }
 
 .MQP-Dropbtn {
+    /* Consolidado arriba: aquí solo reforzamos layout sin sobreescribir padding/border */
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 5px;
-    cursor: pointer;
+    gap: 6px; /* mismo gap que definición principal */
 }
 
 .MQP-Dropbtn div {
@@ -1077,6 +1085,7 @@ a.MQE-Paste {
 
 a.MQE-Play {
     background-image: url(quextIEPlay.png);
+    min-width: 1.7em;
 }
 
 a.MQE-Close {
@@ -1097,12 +1106,9 @@ a.MQE-More {
 }
 
 .MQE-NumberQuestion {
-    font-weight: bold;
-    height: 1.5em;
-    line-height: 1.5em;
     text-align: center;
     vertical-align: middle;
-    width: 2em;
+    width: 4em;
 }
 
 /* Video introdución */
@@ -1491,7 +1497,7 @@ label[for=MQE-ActivitySCORM] {
 #gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 
@@ -1581,10 +1587,7 @@ label[for=gameQEActivitySCORM] {
     padding: 0;
 }
 
-.GameModeHelpLink {
-    margin: 0 2px;
-    vertical-align: middle;
-}
+
 
 .GameModeLabel {
     font-weight: normal
@@ -1592,13 +1595,6 @@ label[for=gameQEActivitySCORM] {
 
 .MQE-TypeGameHelp {
     display: none;
-    margin-bottom: 2em;
     font-size: .95em
 }
 
-.Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
-}

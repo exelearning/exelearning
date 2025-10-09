@@ -293,10 +293,7 @@ var $exeDevice = {
                 : num;
 
         $('#desafioENumQuestionDiv').show();
-        $('#desafiolblEDTime').hide();
-        $('#desafioEDTime').hide();
-        $('#desafiolblEDType').hide();
-        $('#desafioEDType').hide();
+        $('#desafioSelects').hide();
         $('label[for=desafioEDSolution], #desafioEDSolution').hide();
         $('label[for=desafioEDTitle], #desafioEDTitle').hide();
         $('label[for=desafioECTitle], #desafioECTitle').show();
@@ -334,44 +331,63 @@ var $exeDevice = {
                 <fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
-                        <p>
-                            <label for="desafioEShowMinimize"><input type="checkbox" id="desafioEShowMinimize">${_('Show minimized.')}</label>
-                        </p>
-                        <p class="Games-Reportdiv">
-                            <strong class="GameModeLabel"><a href="#desafioEEvaluationHelp" id="desafioEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                            <label for="desafioEEvaluation"><input type="checkbox" id="desafioEEvaluation">${_('Progress report')}. </label>
-                            <label for="desafioEEvaluationID">${_('Identifier')}: </label><input type="text" id="desafioEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                       </p>
-                        <div id="desafioEEvaluationHelp" class="desafioTypeGameHelp">
-                            <p class="exe-block-info exe-block-dismissible">${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                        <div class="mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="desafioEShowMinimize" aria-label="${_('Show minimized.')}" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="desafioEShowMinimize">${_('Show minimized.')}</label>
+                            </span>
                         </div>
+                        <div class="Games-Reportdiv  d-flex align-items-center gap-2 flex-nowrap">
+                            <span class="toggle-item mb-0" data-target="desafioEEvaluationIDWrapper" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="desafioEEvaluation" class="toggle-input" aria-label="${_('Progress report')}" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="desafioEEvaluation">${_('Progress report')}.</label>
+                            </span>
+                            <span id="desafioEEvaluationIDWrapper" class="d-inline-flex align-items-center gap-1">
+                                <label for="desafioEEvaluationID" class="mb-0">${_('Identifier')}: </label>
+                                <input type="text" id="desafioEEvaluationID" class="form-control form-control-sm" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                            </span>
+                            <strong class="GameModeLabel"><a href="#desafioEEvaluationHelp" id="desafioEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
+                        </div>
+                        <p id="desafioEEvaluationHelp" class="desafioTypeGameHelp exe-block-info">
+                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                        </p>
                     </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
                     <legend><a href="#">${_('Questions')}</a></legend>
                     <div class="desafio-EPanel" id="desafioEPanel">
-                        <div class="desafioToggle">
-                            <input class="desafio-Type" checked="checked" id="desafioEDesafio" type="radio" name="dsfDesRet" value="0" />
-                            <label for="desafioEDesafio">${_('Challenge')}</label>
-                            <input class="desafio-Type" id="desafioEReto" type="radio" name="dsfDesRet" value="1" />
-                            <label for="desafioEReto">${_('Trials')}</label>
-                        </div>
+                        <div class="desafioToggle d-flex align-items-center mb-3">
+                            <div class="form-check form-check-inline m-0">
+                                <input class="desafio-Type" checked="checked" id="desafioEDesafio" type="radio" name="dsfDesRet" value="0" />
+                                <label  for="desafioEDesafio">${_('Challenge')}</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="desafio-Type" id="desafioEReto" type="radio" name="dsfDesRet" value="1" />
+                                <label  for="desafioEReto">${_('Trials')}</label>
+                            </div>
+                            </div>
                         <div class="desafio-EDAtaGame">
                             <div class="desafio-EDataChallenger">
-                                <p class="desafio-DataDesafio">
-                                    <label for="desafioEDTitle">${_('Title')}:</label><input type="text" id="desafioEDTitle" />
-                                    <label for="desafioEDSolution">${_('Solution')}:</label><input type="text" id="desafioEDSolution" />
-                                    <label for="desafioECTitle">${_('Title')}:</label><input type="text" id="desafioECTitle" />
-                                    <label for="desafioECSolution">${_('Solution')}:</label><input type="text" id="desafioECSolution" />
-                                </p>
-                                <p>
+                                <div class="desafio-DataDesafio mb-3 gap-2">
+                                    <label for="desafioEDTitle">${_('Title')}:</label><input type="text" id="desafioEDTitle" class="form-control form-control-sm" />
+                                    <label for="desafioEDSolution">${_('Solution')}:</label><input type="text" id="desafioEDSolution" class="form-control form-control-sm" />
+                                    <label for="desafioECTitle">${_('Title')}:</label><input type="text" id="desafioECTitle" class="form-control form-control-sm" />
+                                    <label for="desafioECSolution">${_('Solution')}:</label><input type="text" id="desafioECSolution" class="form-control form-control-sm" />
+                                </div>
+                                <div id="desafioSelects" class="align-items-center gap-2 flex-nowrap justify-flex-start mb-3">
                                     <label id="desafiolblEDType" for="desafioEDType">${_('Type')}: </label>
-                                    <select id="desafioEDType">
+                                    <select id="desafioEDType" class="form-select form-select-sm">
                                         <option value="0">Lineal</option>
                                         <option value="1">Libre</option>
                                     </select>
                                     <label id="desafiolblEDTime" for="desafioEDTime">${_('Max time')}: </label>
-                                    <select id="desafioEDTime">
+                                    <select id="desafioEDTime" class="form-select form-select-sm">
                                         <option value="1">1m</option>
                                         <option value="10">10m</option>
                                         <option value="15">15m</option>
@@ -393,7 +409,7 @@ var $exeDevice = {
                                         <option value="210">210m</option>
                                         <option value="240">240m</option>
                                     </select>
-                                </p>
+                                </div>
                             </div>
                             <div class="desafio-EInputMedias">
                                 <span>${_('Description')}:</span>
@@ -401,7 +417,7 @@ var $exeDevice = {
                                     <label for="desafioEDescription" class="sr-av">${_('Instructions')}":</label>
                                     <textarea id="desafioEDescription" class="exe-html-editor"></textarea>
                                 </div>
-                                <div id="desafioEChallenges">
+                                <div id="desafioEChallenges" class="mb-3">
                                     ${this.getDivChallenges(10)}
                                 </div>
                                 <div class="desafio-EClues" id="desafioEClues">
@@ -409,7 +425,7 @@ var $exeDevice = {
                                 </div>
                             </div>
                         </div>
-                        <div class="desafio-ENavigationButtons" id="desafioENavigationButtons">
+                        <div class="desafio-ENavigationButtons gap-2" id="desafioENavigationButtons">
                             <a href="#" id="desafioEAdd" class="desafio-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="desafio-EButtonImage b-add" /></a>
                             <a href="#" id="desafioEFirst" class="desafio-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="desafio-EButtonImage b-first" /></a>
                             <a href="#" id="desafioEPrevious" class="desafio-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="desafio-EButtonImage b-prev" /></a>
@@ -450,6 +466,30 @@ var $exeDevice = {
         $('#desafioENavigationButtons').hide();
         $('#desafioEPaste').hide();
         $('#desafioENumQuestionDiv').hide();
+
+        // Toggle switches: sync aria-checked and optional target visibility
+        $('#desafioIdeviceForm').on('change', '.toggle-input', function () {
+            const $toggle = $(this).closest('.toggle-item');
+            const checked = $(this).is(':checked');
+            $toggle.attr('aria-checked', checked ? 'true' : 'false');
+            const target = $toggle.data('target');
+            if (target) {
+                $('#' + target).toggle(checked);
+            }
+        });
+        // Initialize toggle states
+        const initToggle = function (inputSelector) {
+            const $input = $(inputSelector);
+            const $toggle = $input.closest('.toggle-item');
+            const checked = $input.is(':checked');
+            $toggle.attr('aria-checked', checked ? 'true' : 'false');
+            const target = $toggle.data('target');
+            if (target) {
+                $('#' + target).toggle(checked);
+            }
+        };
+        initToggle('#desafioEShowMinimize');
+        initToggle('#desafioEEvaluation');
 
         $('#desafioEUseLives').on('change', function () {
             const marcado = $(this).is(':checked');
@@ -582,10 +622,10 @@ var $exeDevice = {
     },
 
     getDivClues: function () {
-        const chs = ` <p class="desafio-EClue">
-            <label for="desafioEClue1">${_('Help')} 1:</label><input type="text" id="desafioEClue1" />
+        const chs = ` <div class="desafio-EClue gap-2 mb-3">
+            <label for="desafioEClue1">${_('Help')} 1:</label><input type="text" id="desafioEClue1" class="form-control form-control-sm" />
             <label id="desafiolblECTime1" for="desafioECTime1" class="sr-av">${_('Time')}:</label>
-            <select id="desafioECTime1">
+            <select id="desafioECTime1" class="form-select form-select-sm">
                 <option value="1">1m</option>
                 <option value="3">3m</option>
                 <option value="5" selected>5m</option>
@@ -615,11 +655,11 @@ var $exeDevice = {
                 <option value="210">210m</option>
                 <option value="240">240m</option>
             </select>
-        </p>
-        <p class="desafio-EClue">
-            <label for="desafioEClue2">${_('Help')} 2:</label><input type="text" id="desafioEClue2" />
+        </div>
+        <div class="desafio-EClue gap-2 mb-3">
+            <label for="desafioEClue2">${_('Help')} 2:</label><input type="text" id="desafioEClue2" class="form-control form-control-sm" />
             <label id="desafiolblECTime2" for="desafioECTime2" class="sr-av">${_('Time')}:</label>
-            <select id="desafioECTime2">
+            <select id="desafioECTime2" class="form-select form-select-sm">
                 <option value="1">1m</option>
                 <option value="3">3m</option>
                 <option value="5">5m</option>
@@ -649,11 +689,11 @@ var $exeDevice = {
                 <option value="210">210m</option>
                 <option value="240">240m</option>
             </select>
-        </p>
-        <p class="desafio-EClue">
-            <label for="desafioEClue3">${_('Help')} 3:</label><input type="text" id="desafioEClue3" />
+        </div>
+        <p class="desafio-EClue ">
+            <label for="desafioEClue3">${_('Help')} 3:</label><input type="text" id="desafioEClue3" class="form-control form-control-sm" />
             <label id="desafiolblECTime3" for="desafioECTime3" class="sr-av">${_('Time')}:</label>
-            <select id="desafioECTime3">
+            <select id="desafioECTime3" class="form-select form-select-sm">
                <option value="3">3m</option>
                 <option value="5" selected>5m</option>
                 <option value="10">10m</option>
@@ -817,8 +857,8 @@ var $exeDevice = {
                 '<div class="desafio-instructions">' + instructions + '</div>';
         }
 
-    let html = '<div class="desafio-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="desafio-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html +=
             '<div class="desafio-version js-hidden">' +
@@ -1035,10 +1075,7 @@ var $exeDevice = {
 
     showDesafio: function () {
         $exeDevice.typeActive = 0;
-        $('#desafiolblEDTime').show();
-        $('#desafioEDTime').show();
-        $('#desafiolblEDType').show();
-        $('#desafioEDType').show();
+        $('#desafioSelects').css('display','flex');
         $('#desafioENavigationButtons').hide();
         $('label[for=desafioECSolution], #desafioECSolution').hide();
         $('label[for=desafioECTitle], #desafioECTitle').hide();
