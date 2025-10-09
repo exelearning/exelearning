@@ -21,7 +21,7 @@ class OdePagStructureSyncProperties extends BaseEntity
     protected ?string $description = null;
 
     #[ORM\ManyToOne(targetEntity: 'OdePagStructureSync', inversedBy: 'odePagStructureSyncProperties')]
-    #[ORM\JoinColumn(name: 'ode_pag_structure_sync_id', referencedColumnName: 'id')]
+    #[ORM\JoinColumn(name: 'ode_pag_structure_sync_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     protected OdePagStructureSync $odePagStructureSync;
 
     public function getKey(): ?string
