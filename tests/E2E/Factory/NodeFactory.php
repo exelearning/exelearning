@@ -10,7 +10,7 @@ use App\Tests\E2E\Model\Node;
  * UI-first Node factory.
  * Uses WorkareaPage's createNewNode() under the hood and keeps track of created nodes.
  */
-final class NodeFactory implements FactoryInterface
+final class NodeFactory
 {
     /** @var array<string, Node> */
     private array $createdNodes = [];

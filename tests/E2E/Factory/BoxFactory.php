@@ -24,12 +24,6 @@ final class BoxFactory
         Wait::settleDom(200);
     }
 
-    /** Shortcut to add another Text iDevice (creates a new Box if needed). */
-    public static function addAnotherTextIDevice(WorkareaPage $workarea): void
-    {
-        self::createWithTextIDevice($workarea);
-    }
-
     /** Returns how many boxes are currently rendered in the content area. */
     public static function countBoxes(WorkareaPage $workarea): int
     {
