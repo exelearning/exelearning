@@ -562,48 +562,78 @@ $this->waitNodeContentReady($nodeTitle, 30);
 
     public function duplicateSelectedNode(): self
     {
-
+        // 1) Trigger clone action
         $this->clickFirstMatchingSelector([
             '[data-testid="nav-clone"]',
             '#menu_nav .action_clone',
             '.button_nav_action.action_clone',
         ]);
 
+        $c = $this->client;
 
-        // In some cases a rename modal appears
+        // 2) Handle the two-step modal flow robustly:
+        //    a) Clone confirmation (content-id: clone-node-modal)
+        //    b) Rename modal (content-id: rename-node-modal)
+
+        // Small helper to detect current modal content-id
+        $currentModalId = fn() => (string) $c->executeScript(<<<'JS'
+            const m = document.querySelector('#modalConfirm[data-open="true"]');
+            if (!m) return '';
+            return m.querySelector('.modal-header')?.getAttribute('modal-content-id') || '';
+        JS);
+
+        // Wait until any confirm modal opens
+        try { $c->waitFor('[data-testid="modal-confirm"][data-open="true"]', 6); } catch (\Throwable) {}
+
+        // If the first modal is the clone confirmation, confirm it
         try {
-            $this->client->waitFor('#modalConfirm', 5);
-            // If present, propose a "(copy)" suffix
-            try {
-                $this->client->waitFor('#input-rename-node', 2);
-                $this->client->executeScript(<<<'JS'
-                    const input = document.querySelector('#input-rename-node');
-                    const current = (document.querySelector('.nav-element.selected .node-text-span')?.textContent || '').trim();
-                    if (input) {
-                        const proposal = current ? current + ' (copy)' : input.value + ' (copy)';
-                        input.value = proposal;
-                        input.dispatchEvent(new Event('input', {bubbles:true}));
-                        input.dispatchEvent(new Event('change', {bubbles:true}));
-                    }
-                JS);
-            } catch (\Throwable) {
-                // Might not appear; continue.
+            $id = $currentModalId();
+            if ($id === 'clone-node-modal' || $id === '') {
+                $this->clickFirstMatchingSelector([
+                    '[data-testid="confirm-action"]',
+                    '#modalConfirm .confirm',
+                    '#modalConfirm button.btn.button-primary',
+                ]);
             }
-
-            $this->clickFirstMatchingSelector([
-                '#modalConfirm button.btn.btn-primary',
-                '[data-testid="confirm-action"]',
-                '#modalConfirm .confirm',
-            ]);
-
-            try { $this->client->waitForInvisibility('#modalConfirm', 5); } catch (\Throwable) {}
-            try { $this->client->waitForInvisibility('.modal-backdrop', 3); } catch (\Throwable) {}
         } catch (\Throwable) {
-            // No modal, proceed.
+            // ignore and continue to rename step
         }
 
-        $this->client->waitFor('.nav-element.selected', 10);
-        Wait::settleDom(250);
+        // 3) Wait for the rename modal and set a disambiguating name
+        try {
+            // Wait until the rename modal is visible
+            $c->getWebDriver()->wait(8, 150)->until(function () use ($currentModalId) {
+                return $currentModalId() === 'rename-node-modal';
+            });
+
+            // Fill input with "+ (copy)" suffix and confirm
+            $c->waitFor('#input-rename-node', 5);
+            $c->executeScript(<<<'JS'
+                const input = document.querySelector('#input-rename-node');
+                const current = (document.querySelector('.nav-element.selected .node-text-span')?.textContent || '').trim();
+                if (input) {
+                    const proposal = current ? current + ' (copy)' : (input.value || 'Page') + ' (copy)';
+                    input.value = proposal;
+                    input.dispatchEvent(new Event('input', {bubbles:true}));
+                    input.dispatchEvent(new Event('change', {bubbles:true}));
+                }
+            JS);
+            $this->clickFirstMatchingSelector([
+                '[data-testid="confirm-action"]',
+                '#modalConfirm .confirm',
+                '#modalConfirm button.btn.button-primary',
+            ]);
+        } catch (\Throwable) {
+            // If the rename modal never appeared, proceed — duplicate may keep the same title.
+        }
+
+        // 4) Ensure no confirm modal/backdrop remains visible
+        try { $c->waitForInvisibility('#modalConfirm', 8); } catch (\Throwable) {}
+        try { $c->waitForInvisibility('.modal-backdrop', 4); } catch (\Throwable) {}
+
+        // 5) Wait for selection and a short settle
+        $c->waitFor('.nav-element.selected', 10);
+        Wait::settleDom(300);
 
         return $this;
     }
