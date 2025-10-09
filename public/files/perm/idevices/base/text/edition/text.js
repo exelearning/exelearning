@@ -77,10 +77,9 @@ var $exeDevice = {
      */
     save: function () {
 
-        // Ensure ideviceBody exists and is a valid element
-        if (!this.ideviceBody || !(this.ideviceBody instanceof HTMLElement)) {
-            console.error('Error: ideviceBody is undefined or invalid.');
-            return false;
+        // Avoid crash when ideviceBody is undefined (deleted or not yet loaded)
+        if (!this.ideviceBody || typeof this.ideviceBody === 'undefined') {
+            return;
         }
 
         let dataElements = this.ideviceBody.querySelectorAll(`[id^="text"]`);
@@ -156,6 +155,11 @@ var $exeDevice = {
     loadPreviousValues: function () {
         function isValid(val) {
             return val != null && !(typeof val === 'string' && val.trim() === '');
+        }
+        
+        // Avoid crash when idevicePreviousData is undefined (deleted or not yet loaded)
+        if (!this.idevicePreviousData || typeof this.idevicePreviousData === 'undefined') {
+            return;
         }
 
         const data = this.idevicePreviousData;
