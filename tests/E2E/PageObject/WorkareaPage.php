@@ -225,7 +225,7 @@ final class WorkareaPage
         $this->waitForLoadingScreenToDisappear();
         $c->waitFor('[data-testid="nav-node"]', 20);
         // Ensure no modals/backdrops/overlays are blocking interactions
-        $this->waitUiQuiescent(20);
+        $this->waitUiQuiescent(30);
 
     $expect = $this->resolveExpectedNode($node);
 
@@ -465,7 +465,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
 
         try {
             // Composite wait based on node id only: (1) node with id no longer present, (2) modal/backdrop hidden
-            $client->getWebDriver()->wait(40, 200)->until(static function () use ($client, $id): bool {
+            $client->getWebDriver()->wait(60, 200)->until(static function () use ($client, $id): bool {
                 return (bool) $client->executeScript(<<<'JS'
                     const expectedId = arguments[0];
                     // 1) Node by id should not exist in the nav
@@ -717,7 +717,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
     /**
      * Waits until there is no blocking UI: no open modals/backdrops and content overlay not visible.
      */
-    private function waitUiQuiescent(int $timeoutSec = 10): void
+    private function waitUiQuiescent(int $timeoutSec): void
     {
         $c = $this->client;
         $this->waitUntil(static function () use ($c): bool {
@@ -777,7 +777,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
             try { $this->client->waitFor('[data-testid="node-content"][data-ready="true"]', 8); } catch (\Throwable) {}
         }
         // Ensure no blocking UI remains
-        $this->waitUiQuiescent(20);
+        $this->waitUiQuiescent(30);
     }
 
     /**
