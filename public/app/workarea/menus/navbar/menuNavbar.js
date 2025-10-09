@@ -48,7 +48,7 @@ export default class MenuNavbar {
     addNavbarEvents() {
         this.file.setEvents();
         this.utilities.setEvents();
-        this.styles.setEvents();
+        this.styles.setStyleManagerEvent();
         this.help.setEvents();
     }
 }

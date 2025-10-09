@@ -168,4 +168,7 @@ class Settings
 
     // User recent ode files amount
     public const USER_RECENT_ODE_FILES_AMOUNT = 3;
+
+    // Blocking level: "page" blocks entire pages, "idevice" blocks individual devices
+    public const COLLABORATIVE_BLOCK_LEVEL = 'idevice';
 }

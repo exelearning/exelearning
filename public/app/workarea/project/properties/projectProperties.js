@@ -149,7 +149,7 @@ export default class ProjectProperties {
         await this.apiLoadProperties();
         this.formProperties.reloadValues();
         // Update interface
-        this.updateTitlePropertiesStructureNode();
+        //this.updateTitlePropertiesStructureNode();
         this.updateTitlePropertiesMenuTop();
         // Send update sync change to the BBDD
         eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(

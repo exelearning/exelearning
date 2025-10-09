@@ -85,10 +85,13 @@ export default class ConcurrentUsers {
      */
     addConcurrentUsersToElement() {
         const titleElement = this.concurrentUsersElement.querySelector(
-            '#title-exe-concurrent-users'
+            '#button-more-exe-concurrent-users'
         );
         const numUsers = this.currentUsers ? this.currentUsers.length : 1;
-        titleElement.textContent = `${_('Users online')} (${numUsers})`;
+        titleElement.setAttribute(
+            'title',
+            `${_('Users online')} (${numUsers})`
+        );
         this.getConcurrentUsersElementsList().forEach(
             (concurrentUserElement) => {
                 this.concurrentUsersElement.append(concurrentUserElement);
@@ -118,7 +121,11 @@ export default class ConcurrentUsers {
                 let nodeConcurrentUser = document.createElement('div');
                 nodeConcurrentUser.classList.add('user-current-letter-icon');
                 nodeConcurrentUser.classList.add('exe-top-icons');
-                nodeConcurrentUser.setAttribute('title', username);
+                nodeConcurrentUser.setAttribute('data-username', username);
+
+                let usernameElement = document.createElement('span');
+                usernameElement.classList.add('username');
+                usernameElement.innerHTML = username;
 
                 if (user.gravatarUrl) {
                     // Inject a img element with the gravatar url
@@ -130,8 +137,10 @@ export default class ConcurrentUsers {
                     img.width = 50;
 
                     nodeConcurrentUser.appendChild(img);
+                    nodeConcurrentUser.appendChild(usernameElement);
                 } else {
                     nodeConcurrentUser.innerText = initials;
+                    nodeConcurrentUser.appendChild(usernameElement);
                 }
 
                 concurrentUsersElements.push(nodeConcurrentUser);
@@ -149,8 +158,10 @@ export default class ConcurrentUsers {
             '#button-more-exe-concurrent-users'
         );
         if (this.currentUsers.length > 1) {
+            buttonMore.classList.add('d-flex');
             buttonMore.style.display = 'block';
         } else {
+            buttonMore.classList.remove('d-flex');
             buttonMore.style.display = 'none';
         }
         buttonMore.title = `${_('Users online')} (${this.currentUsers.length})`;
@@ -159,10 +170,6 @@ export default class ConcurrentUsers {
             eXeLearning.app.modals.info.show({
                 title: `${_('Users online')} (${this.currentUsers.length})`,
                 body: this.makeBodyHTMLConcurrentUsersModal(),
-            });
-            // Add tooltips
-            $('#modalInfo').on('shown.bs.modal', function () {
-                $('.exe-concurrent-users > div').tooltip();
             });
         });
     }

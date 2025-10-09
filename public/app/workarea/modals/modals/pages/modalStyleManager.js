@@ -1,3 +1,4 @@
+// TODO delete this file when finish navbarStyles.js.
 import Modal from '../modal.js';
 
 export default class ModalStyleManager extends Modal {
@@ -769,7 +770,7 @@ export default class ModalStyleManager extends Modal {
     makeElementInfoThemeTableRowKey(text, config) {
         let rowTdKeyTableInfo = document.createElement('td');
         rowTdKeyTableInfo.classList.add('theme-info-key');
-        rowTdKeyTableInfo.innerHTML = `${config.title}:`;
+        rowTdKeyTableInfo.innerHTML = `${config.title}`;
 
         return rowTdKeyTableInfo;
     }

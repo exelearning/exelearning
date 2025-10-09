@@ -1,0 +1,188 @@
+
+.properties-body-container.form-properties {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 36px !important;
+    border-radius: var(--radius) !important;
+    background: white;
+    &.loading {
+        opacity: .6;
+        pointer-events: none;
+        user-select: none;
+    }
+}
+.exe-properties-form-content {
+    .exe-table-content {
+        .properties-body-container.form-properties {
+            margin-bottom: 24px;
+            .properties-group-title {
+                margin-bottom: 1rem;
+                h2 span {
+                    font-size: 19px;
+                    font-weight: 700;
+                    color: var(--text);
+                }
+                .title {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    flex-direction: row;
+                    margin-bottom: 0;
+                    &::after {
+                        width: 18px;
+                        height: 18px;
+                        content: "";
+                        background-image: url("images/icons/exe-compress-icon.svg");
+                        background-repeat: no-repeat;
+                        background-size: 18px;
+                        transition: var(--bs-accordion-btn-icon-transition);
+                    }
+                }
+                &.collapsed {
+                    margin-bottom: 0;
+                    .title {
+                        margin-bottom: 0;
+                        &::after {
+                            width: 18px;
+                            height: 18px;
+                            content: "";
+                            background-image: url("images/icons/exe-expand-icon-green.svg");
+                            background-repeat: no-repeat;
+                            background-size: 18px;
+                            transition: var(--bs-accordion-btn-icon-transition);
+                        }
+                    }
+                }
+            } 
+
+            .property-row {
+                padding: 8px 0;
+                width: 100%;
+                display: flex;
+                justify-content: flex-start;
+                align-items: stretch;
+                flex-direction: column;
+                .form-label {
+                    color: var(--text);
+                    font-weight: 600;
+                    font-size: 1em;
+                }
+                .content-field {
+                    flex-grow: 1;
+                    position: relative;
+                    .form-control,
+                    .form-select,
+                    .form-check-input,
+                    textarea {
+                        border-radius: 6px;
+                    }
+                    .form-control.is-invalid,
+                    .form-select.is-invalid {
+                        box-shadow: 0 0 0 3px var(--shadow-level-1);
+                        border-color: var(--system-red);
+                    }
+                    .form-control:focus,
+                    .form-select:focus,
+                    .form-check-input:focus {
+                        outline: none;
+                        border-color: transparent;
+                    }
+                    .exe-form-help {
+                        user-select: none;
+                        position: absolute;
+                        right: 6px;
+                        .form-help-exe-icon {
+                            font-family: var(--icons-ff);
+                            font-size: 1.5em;
+                        }
+                    }
+                }
+                .form-check {
+                    padding-left: 28px;
+                    display: flex;
+                    flex-flow: row nowrap;
+                    justify-content: flex-start;
+                    align-items: center;
+                    .form-check-input {
+                        appearance: auto;
+                        width: 16px;
+                        height: 16px;
+                        margin-left: -28px;
+                        margin-top: 4px;
+                        border-radius: 3px;
+                        accent-color: var(--brand-primary-700);
+                    }
+                    .form-check-label {
+                        font-weight: 500;
+                    }
+                }
+
+                [property="pp_title"],
+                [property="pp_lang"],
+                [property="pp_author"],
+                [property="pp_extraHeadContent"],
+                [property="footer"] {
+                    padding-right: 36px !important;
+                }
+                [property="pp_lang"] {
+                    padding-right: 48px !important;
+                }
+                &[property="pp_lang"] {
+                    .form-help-exe-icon {
+                        right: 18px;
+                    }
+                }
+                .form-help-exe-icon {
+                    cursor: pointer;
+                    display: block;
+                    height: 16px;
+                    width: 16px;
+                    background-size: 16px;
+                    background-repeat: no-repeat;
+                    position: relative;
+                    top: 1px;
+                    left: -26px;
+                }
+                .help-content {
+                    font-size: 14px;
+                    background-color: hsla(0, 0%, 15%, .9);
+                    color: var(--white);
+                    border-radius: 6px;
+                    padding: 6px 9px;
+                    max-width: 56ch;
+                }
+                &.help-content-active {
+                    .form-help-exe-icon {
+                        color: var(--brand-primary-400);
+                    }
+                }
+                &[property="exportSource"],
+                &[property="pp_addExeLink"],
+                &[property="pp_exportElp"],
+                &[property="pp_addPagination"],
+                &[property="pp_addSearchBox"],
+                &[property="pp_addAccessibilityToolbar"] {
+                    display: flex;
+                    flex-direction: row;
+                    justify-content: flex-start;
+                    align-items: center;
+                    .form-help-exe-icon {
+                        right: 25px;
+                        top: 1px;
+                    }
+                }
+            }
+        }
+    }
+    .footer {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 4px;
+        margin-top: 20px;
+    }
+}
+.property-row .form-control,
+.property-row .form-select {
+    transition: box-shadow .15s ease, border-color .15s ease, background-color .15s ease;
+}

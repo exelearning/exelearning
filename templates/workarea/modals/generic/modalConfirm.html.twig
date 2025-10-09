@@ -1,16 +1,16 @@
-<div class="modal exe-modal-fade" tabindex="-1" id="modalConfirm" role="dialog" aria-labelledby="modalConfirmCenterTitle" aria-hidden="true">
+<div class="modal exe-modal-fade" tabindex="-1" id="modalConfirm" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"></h5>
+                <div class="modal-title"></div>
                 <button type="button" class="close" data-dismiss="modal" aria-label="{{ "Close" | trans }}">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body"></div>
             <div class="modal-footer">
-                <button type="button" class="confirm btn btn-primary"></button>
-                <button type="button" class="cancel btn btn-secondary" data-dismiss="modal">{{ "Close" | trans }}</button>
+                <button type="button" class="confirm btn button-primary"><span class="hidden d-none">{{ "Confirm" | trans }}</span></button>
+                <button type="button" class="cancel btn button-tertiary" data-dismiss="modal">{{ "Close" | trans }}</button>
             </div>
         </div>
     </div>
