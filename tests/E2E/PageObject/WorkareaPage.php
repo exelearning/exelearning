@@ -285,11 +285,73 @@ final class WorkareaPage
         $this->selectNode(Node::createRoot($this));
     }
 
+// En el archivo: tests/E2E/PageObject/WorkareaPage.php
+
+public function createNewNode(Node $parentNode, string $nodeTitle): Node
+{
+    $c = $this->client;
+    
+    // 1. Asegurarse de que la UI está estable antes de empezar
+    $this->waitUiQuiescent(15);
+    if ($parentNode->isRoot()) {
+        $this->openProjectSettings();
+    } else {
+        $this->selectNode($parentNode);
+    }
+
+    // 2. Abrir el diálogo para añadir una nueva página
+    $this->clickFirstMatchingSelector([
+        '[data-testid="nav-add-page"]',
+        '#menu_nav .action_add',
+    ]);
+
+    // 3. Esperar a que el modal sea visible y rellenar el título
+    $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+        const m=document.querySelector('[data-testid="modal-confirm"], #modalConfirm');
+        if(!m) return false; const s=getComputedStyle(m);
+        return (m.getAttribute('data-open')==='true') || m.classList.contains('show') || s.display==='block';
+    JS), 8);
+    $c->waitFor('#input-new-node', 5);
+    $input = $c->getWebDriver()->findElement(WebDriverBy::cssSelector('#input-new-node'));
+    $input->clear();
+    $input->sendKeys($nodeTitle);
+
+    // 4. Confirmar la creación
+    $this->clickFirstMatchingSelector([
+        '[data-testid="confirm-action"]',
+        '#modalConfirm .modal-footer .confirm',
+    ]);
+
+    // 5. [ESPERA ROBUSTA 1] Esperar hasta que el nodo aparezca en el árbol de navegación.
+    // Esta es la espera más importante. Solo verificamos su existencia.
+    $this->waitUntil(function () use ($c, $nodeTitle) {
+        return $this->findNodeIdByTitle($nodeTitle) !== null;
+    }, 30);
+
+    // 6. Ahora que sabemos que existe, lo seleccionamos explícitamente.
+    // Usamos el método `selectNode` que ya es robusto.
+    $newNode = new Node($nodeTitle, $this);
+    $this->selectNode($newNode);
+    
+    // 7. [ESPERA ROBUSTA 2] `selectNode` ya contiene `waitNodeContentReady`, 
+    // así que tenemos la garantía de que la UI está completamente sincronizada.
+
+    // 8. Recuperar el ID asignado para devolver un objeto Node completo.
+    $id = $this->findNodeIdByTitle($nodeTitle);
+    
+    return new Node(
+        $nodeTitle,
+        $this,
+        is_numeric($id) ? (int) $id : null,
+        $parentNode
+    );
+}
+
     /**
      * Creates a new node as a child of $parentNode using the modal flow, then selects it.
      * Returns the created Node with best-effort id (numeric or string) and the given title.
      */
-    public function createNewNode(Node $parentNode, string $nodeTitle): Node
+    public function createNewNode2(Node $parentNode, string $nodeTitle): Node
     {
         // Ensure appropriate context: if "root", open project settings instead of selecting a tree node
         if ($parentNode->isRoot()) {
