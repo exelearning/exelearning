@@ -36,8 +36,6 @@ class SqlitePragmaMiddleware implements Middleware
                     $connection->exec('PRAGMA synchronous = NORMAL');
                     // Retries for ~5s curb transient "database is locked" errors when writers race.
                     $connection->exec('PRAGMA busy_timeout = 5000');
-                    // Doctrine disables foreign keys by default for SQLite; force them back on.
-                    $connection->exec('PRAGMA foreign_keys = ON');
                     // Temp tables and sorting spill to memory to avoid disk-backed temp files.
                     $connection->exec('PRAGMA temp_store = MEMORY');
                     // Negative cache size sets ~4MB memory caching for hot pages (no disk persistence).
