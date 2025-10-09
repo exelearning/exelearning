@@ -411,6 +411,73 @@ $this->waitNodeContentReady($nodeTitle, 30);
         );
     }
 
+
+/**
+     * Waits until the given node is really gone from the tree (by id or by title)
+     * and no blocking UI remains. Also ensures the selected item is not the deleted one.
+     */
+    private function waitNodeDeleted(string|int|null $id, ?string $title, int $timeoutSec): void
+    {
+        $c = $this->client;
+
+        // First make sure the UI is not blocked
+        $this->waitUiQuiescent(min($timeoutSec, 12));
+
+        $this->client->getWebDriver()->wait($timeoutSec, 200)->until(function () use ($c, $id, $title): bool {
+            return (bool) $c->executeScript(<<<'JS'
+                const expectedId = arguments[0] == null ? null : String(arguments[0]);
+                const expectedTitle = String(arguments[1] ?? '').trim();
+
+                // 1) Node by id not present
+                let byId = null;
+                if (expectedId !== null) {
+                    byId = document.querySelector('[data-testid="nav-node"][data-node-id="' + expectedId + '"]')
+                        || document.querySelector('.nav-element[nav-id="' + expectedId + '"]');
+                }
+
+                // 2) Node by exact title not present
+                let byTitle = false;
+                if (expectedTitle) {
+                    const spans = Array.from(document.querySelectorAll('#nav_list .node-text-span'));
+                    byTitle = spans.some(s => (s.textContent || '').trim() === expectedTitle);
+                }
+
+                // 3) Selected node isn't the one we are deleting
+                let sel = document.querySelector('[data-testid="nav-node"][data-selected="true"]');
+                if (!sel) {
+                    const inner = document.querySelector('.nav-element .nav-element-text.selected');
+                    if (inner) sel = inner.closest('.nav-element');
+                }
+                if (!sel) sel = document.querySelector('.nav-element.selected');
+
+                let selectedIsDeleted = false;
+                if (sel && expectedId !== null) {
+                    const sid = sel.getAttribute('data-node-id') || sel.getAttribute('nav-id');
+                    selectedIsDeleted = String(sid) === expectedId;
+                }
+                if (sel && !selectedIsDeleted && expectedTitle) {
+                    const label = sel.querySelector('.node-text-span');
+                    if (label && label.textContent) {
+                        selectedIsDeleted = label.textContent.trim() === expectedTitle;
+                    }
+                }
+
+                // 4) No modal/backdrop visible
+                const modal = document.querySelector('#modalConfirm, [data-testid="modal-confirm"][data-open="true"]');
+                const modalVisible =
+                    !!(modal && ((modal.getAttribute('data-open') === 'true') ||
+                                 modal.classList.contains('show') ||
+                                 getComputedStyle(modal).display !== 'none'));
+                const backdrop = document.querySelector('.modal-backdrop.show');
+                const backdropVisible = !!backdrop;
+
+                return !byId && !byTitle && !selectedIsDeleted && !modalVisible && !backdropVisible;
+            JS, [$id, $title]);
+        });
+        Wait::settleDom(300);
+    }
+
+
     public function deleteSelectedNode(Node $node): self
     {
         $title = $node->getTitle();
@@ -504,7 +571,14 @@ $this->waitNodeContentReady($nodeTitle, 30);
             throw new \RuntimeException(sprintf('Node "%s" still appears after confirming deletion.', $title), 0, $e);
         }
 
-        Wait::settleDom(400);
+
+        try {
+            $this->waitNodeDeleted($id, $title, 400);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(sprintf('Node "%s" still appears after confirming deletion.', $title), 0, $e);
+        }
+
+        // Wait::settleDom(400);
 
         return $this;
     }

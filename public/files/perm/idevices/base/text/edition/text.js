@@ -76,6 +76,13 @@ var $exeDevice = {
      * @return {String}
      */
     save: function () {
+
+        // Ensure ideviceBody exists and is a valid element
+        if (!this.ideviceBody || !(this.ideviceBody instanceof HTMLElement)) {
+            console.error('Error: ideviceBody is undefined or invalid.');
+            return false;
+        }
+
         let dataElements = this.ideviceBody.querySelectorAll(`[id^="text"]`);
 
         dataElements.forEach(e => {
@@ -93,7 +100,7 @@ var $exeDevice = {
             }
         });
 
-        // Check if the values ​​are valid
+        // Check if the values are valid
         if (this.checkFormValues()) {
             return this.getDataJson();
         } else {
@@ -114,12 +121,12 @@ var $exeDevice = {
         this.ideviceBody.innerHTML = html;
         // Set behaviour to elements of form
         this.setBehaviour();
-        // Load the previous values ​​of the idevice data from eXe
+        // Load the previous values of the idevice data from eXe
         this.loadPreviousValues();
     },
 
     /**
-     * Check if the form values ​​are correct
+     * Check if the form values are correct
      *
      * @returns {Boolean}
      */
