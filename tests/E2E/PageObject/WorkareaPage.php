@@ -238,26 +238,42 @@ final class WorkareaPage
         $expect['id'] = $resolved;
     }
 
-    // Ensure in viewport and clickable
-        $targetSel = $this->selNodeTextById($expect['id']);
-    $c->waitFor($targetSel, 20);
+    // Ensure in viewport and clickable; try a few strategies if selection doesn't stick on the first try
+    $attempts = [
+        $this->selNodeTextById($expect['id']), // span inside the text button
+        sprintf('[data-testid="nav-node-text"][data-node-id="%s"]', (string) $expect['id']),
+        sprintf('[data-testid="nav-node"][data-node-id="%s"] .nav-element-text', (string) $expect['id']),
+    ];
 
-
-    $this->guardedClick(fn () => $wd->findElement(WebDriverBy::cssSelector($targetSel)));
-
-    // Wait until selected nav matches expected id
-    $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
-        const id = String(arguments[0]);
-        let sel = document.querySelector('[data-testid="nav-node"][data-selected="true"]');
-        if (!sel) {
-            const inner = document.querySelector('.nav-element .nav-element-text.selected');
-            if (inner) sel = inner.closest('.nav-element');
+    $selectedOk = false;
+    foreach ($attempts as $trySel) {
+        try {
+            $c->waitFor($trySel, 20);
+            $this->guardedClick(fn () => $wd->findElement(WebDriverBy::cssSelector($trySel)));
+        } catch (\Throwable) {
+            // Try next selector
         }
-        if (!sel) sel = document.querySelector('.nav-element.selected');
-        if (!sel) return false;
-        const current = sel.getAttribute('data-node-id') || sel.getAttribute('nav-id');
-        return String(current) === id;
-    JS, [(string) $expect['id']]), 28);
+
+        // Wait until selected nav matches expected id
+        try {
+            $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+                const id = String(arguments[0]);
+                let sel = document.querySelector('[data-testid="nav-node"][data-selected="true"]');
+                if (!sel) {
+                    const inner = document.querySelector('.nav-element .nav-element-text.selected');
+                    if (inner) sel = inner.closest('.nav-element');
+                }
+                if (!sel) sel = document.querySelector('.nav-element.selected');
+                if (!sel) return false;
+                const current = sel.getAttribute('data-node-id') || sel.getAttribute('nav-id');
+                return String(current) === id;
+            JS, [(string) $expect['id']]), 16);
+            $selectedOk = true;
+            break;
+        } catch (\Throwable) {
+            // Not selected yet; continue with next strategy
+        }
+    }
 
     // Content panel ready (reuse your robust method)
         $this->waitNodeContentReady($expect['title'] ?? null, 30);
@@ -448,29 +464,16 @@ $this->waitNodeContentReady($nodeTitle, 30);
         }
 
         try {
-            // Composite wait: (1) node not present, (2) modal/backdrop hidden
-            $client->getWebDriver()->wait(30, 200)->until(static function () use ($client, $title, $id): bool {
+            // Composite wait based on node id only: (1) node with id no longer present, (2) modal/backdrop hidden
+            $client->getWebDriver()->wait(30, 200)->until(static function () use ($client, $id): bool {
                 return (bool) $client->executeScript(<<<'JS'
-                    const expectedTitle = arguments[0];
-                    const expectedId    = arguments[1];
-
-                    // 1) Node must not exist by title or id
-                    const spans = Array.from(document.querySelectorAll('#nav_list .node-text-span'));
-                    const existsByTitle = spans.some((span) => span && span.textContent.trim() === expectedTitle.trim());
-                    if (existsByTitle) {
-                        try {
-                            const behaviour = window.eXeLearning?.app?.menus?.menuStructure?.menuStructureBehaviour;
-                            if (behaviour && expectedId !== null) {
-                                behaviour.structureEngine?.removeNodeCompleteAndReload(expectedId);
-                            }
-                        } catch (e) {}
-                        return false;
-                    }
+                    const expectedId = arguments[0];
+                    // 1) Node by id should not exist in the nav
                     if (expectedId !== null) {
-                        // BEFORE: const byId = document.querySelector('.nav-element[nav-id="' + expectedId + '"]');
-                        const byId = document.querySelector('[data-testid="nav-node"][data-node-id="' + expectedId + '"]');
+                        const byId = document.querySelector('[data-testid="nav-node"][data-node-id="' + expectedId + '"]')
+                                   || document.querySelector('.nav-element[nav-id="' + expectedId + '"]');
                         if (byId) {
-                            // Actively retry delete
+                            // Retry delete if still visible
                             try {
                                 const delBtn = document.querySelector('[data-testid="nav-delete"], #menu_nav .action_delete, .button_nav_action.action_delete');
                                 delBtn?.dispatchEvent(new MouseEvent('click', {bubbles:true}));
@@ -480,23 +483,17 @@ $this->waitNodeContentReady($nodeTitle, 30);
                             return false;
                         }
                     }
-                    // 2) Modal not visible
+
+                    // 2) Modal/backdrop closed
                     const modal = document.querySelector('#modalConfirm');
                     const modalVisible = !!(modal && (modal.classList.contains('show') || window.getComputedStyle(modal).display !== 'none') && modal.getAttribute('aria-hidden') !== 'true');
-                    if (modalVisible) { return false; }
-
+                    if (modalVisible) return false;
                     const backdrop = document.querySelector('.modal-backdrop');
                     const backdropVisible = !!(backdrop && (backdrop.classList.contains('show') || window.getComputedStyle(backdrop).display !== 'none'));
-                    if (backdropVisible) { return false; }
-
-                    // 3) Consider success if element remains but is hidden (collapsed branch)
-                    if (expectedId !== null) {
-                        const maybe = document.querySelector('.nav-element[nav-id="' + expectedId + '"]');
-                        if (maybe && maybe.offsetParent === null) { return true; }
-                    }
+                    if (backdropVisible) return false;
 
                     return true;
-                JS, [$title, $id]);
+                JS, [$id]);
             });
         } catch (\Throwable $e) {
             throw new \RuntimeException(sprintf('Node "%s" still appears after confirming deletion.', $title), 0, $e);

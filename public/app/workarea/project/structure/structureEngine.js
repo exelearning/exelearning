@@ -617,7 +617,15 @@ export default class structureEngine {
      * @param {String} id
      */
     removeNodeCompleteAndReload(id) {
-        this.removeNode(id);
+        // Defensive: ignore invalid/unknown ids to avoid runtime errors
+        if (!id) {
+            return;
+        }
+        const node = this.getNode(id);
+        if (node && typeof node.remove === 'function') {
+            this.removeNode(id);
+        }
+        // Always refresh structure to reflect current state
         this.resetStructureData(false);
     }
 
@@ -626,7 +634,12 @@ export default class structureEngine {
      * @param {number} id
      */
     removeNode(id) {
-        this.getNode(id).remove();
+        const node = this.getNode(id);
+        if (!node || typeof node.remove !== 'function') {
+            return false;
+        }
+        node.remove();
+        return true;
     }
 
     /**
@@ -635,7 +648,10 @@ export default class structureEngine {
      */
     removeNodes(nodeList) {
         nodeList.forEach((id) => {
-            this.getNode(id).remove();
+            const node = this.getNode(id);
+            if (node && typeof node.remove === 'function') {
+                node.remove();
+            }
         });
     }
 
