@@ -20,6 +20,18 @@ class Kernel extends BaseKernel
     }
 
     /**
+     * Explicitly define the project root directory.
+     *
+     * This prevents rare mis-detection scenarios (e.g. when composer.json
+     * isn't visible during certain exec contexts) that could make Symfony
+     * treat "src" as the project root and write caches under "src/var".
+     */
+    public function getProjectDir(): string
+    {
+        return \dirname(__DIR__);
+    }
+
+    /**
      * Use host-provided writable cache dir (e.g. ~/.config/exelearning/cache).
      */
     public function getCacheDir(): string
