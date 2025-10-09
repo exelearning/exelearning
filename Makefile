@@ -98,7 +98,7 @@ pull: check-docker check-env
 
 # Build or rebuild Docker containers
 build: check-docker check-env
-	docker compose build
+	docker compose build --pull
 
 # Run the linter to check PHP and JS code style
 lint: lint-php lint-js

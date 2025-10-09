@@ -86,6 +86,7 @@ You can configure the app either:
 Common knobs (all supported by the example files):
 
 * **Application:** `APP_ENV`, `APP_DEBUG`, `APP_SECRET`, `APP_PORT`, `APP_ONLINE_MODE`
+* **Base path (subdirectory installs):** `BASE_PATH`
 * **Database:** `DB_DRIVER`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_CHARSET`, engine-specific version flags
 * **Files:** `FILES_DIR` (default: `/mnt/data/`)
 * **Auth:** `APP_AUTH_METHODS`, `AUTH_CREATE_USERS`, plus optional test user (`TEST_USER_*`)
@@ -95,6 +96,39 @@ Common knobs (all supported by the example files):
 (See the embedded Compose files for the full set.)    
 
 > **Important:** Always set strong secrets (`APP_SECRET`, `MERCURE_JWT_SECRET_KEY`, DB passwords) via `.env` or environment overrides—never commit them. 
+
+---
+
+### Subdirectory deployment (BASE_PATH)
+
+You can deploy eXeLearning under a subdirectory (e.g., `https://example.org/exelearning`) by setting `BASE_PATH`.
+
+- Do not include a trailing slash.
+- Can be multi-level.
+
+Examples:
+
+```env
+# Install at root
+BASE_PATH=
+
+# One level
+BASE_PATH=/exelearning
+
+# Multi-level
+BASE_PATH=/web/exelearning
+```
+
+What it does:
+
+- Prefixes all application routes with `BASE_PATH` (e.g., `/exelearning/workarea`).
+- Keeps `/healthcheck` working: requests to `/healthcheck` are redirected to `%BASE_PATH%/healthcheck` when `BASE_PATH` is set.
+- Inside the container, Nginx rewrites `^$BASE_PATH/(.*)$` to `/$1` so the app sees clean paths. The rewrite is generated automatically from `subdir.conf.template` by `02-configure-symfony.sh` when `BASE_PATH` is set.
+
+Verification:
+
+- Visit `https://your-host%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
+- If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `%BASE_PATH%/healthcheck`.
 
 ---
 

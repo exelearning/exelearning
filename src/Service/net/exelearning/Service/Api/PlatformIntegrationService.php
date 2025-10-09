@@ -55,6 +55,7 @@ class PlatformIntegrationService implements PlatformIntegrationServiceInterface
         } catch (Exception $e) {
             /* TODO: send error message */
             $this->logger->error('Exception:'.$e->getMessage());
+            $content['error'] = 'There was a problem with the upload';
             /* Stop the application */
         }
 
@@ -83,7 +84,7 @@ class PlatformIntegrationService implements PlatformIntegrationServiceInterface
             ]);
 
             $content = $response->toArray();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('platform upload error:'.$e->getMessage(), ['className' => get_class($e), 'file:' => $this, 'line' => __LINE__]);
             $content['error'] = 'There was a problem with the upload';
         }
