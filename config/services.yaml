@@ -191,6 +191,8 @@ services:
         tags:
             - { name: 'api_platform.doctrine.orm.query_extension.collection', priority: -999999 }
 
+    App\Doctrine\Middleware\SqlitePragmaMiddleware:
+        tags: ['doctrine.middleware']
 
     decorating_translator:
         class:     App\Translation\net\exelearning\Translation\Translator

@@ -31,7 +31,7 @@ class OdeComponentsSync extends BaseEntity
     protected string $odeIdeviceTypeName;
 
     #[ORM\ManyToOne(targetEntity: 'OdePagStructureSync', inversedBy: 'odeComponentsSyncs')]
-    #[ORM\JoinColumn(name: 'ode_pag_structure_sync_id', referencedColumnName: 'id')]
+    #[ORM\JoinColumn(name: 'ode_pag_structure_sync_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     protected OdePagStructureSync $odePagStructureSync;
 
     #[ORM\Column(name: 'html_view', type: 'text', nullable: true)]

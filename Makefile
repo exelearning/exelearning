@@ -98,7 +98,7 @@ pull: check-docker check-env
 
 # Build or rebuild Docker containers
 build: check-docker check-env
-	docker compose build
+	docker compose build --pull
 
 # Run the linter to check PHP and JS code style
 lint: lint-php lint-js
@@ -132,9 +132,9 @@ test: check-docker check-env
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit $(if $(TEST),test: $(TEST) $(EXTRA),suite: all)"
 	@if [ -n "$(TEST)" ]; then \
-		docker compose exec exelearning vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always $(TEST) $(EXTRA); \
+		docker compose exec -e APP_ENV=test exelearning vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always $(TEST) $(EXTRA); \
 	else \
-		docker compose exec exelearning composer --no-cache phpunit; \
+		docker compose exec -e APP_ENV=test exelearning composer --no-cache phpunit; \
 	fi
 	@echo "Stopping test environment..."
 	@docker compose --profile e2e down > /dev/null 2>&1
@@ -142,13 +142,11 @@ test: check-docker check-env
 # Run just unit tests with PHPUnit
 test-unit: check-docker check-env
 	@echo "Running PHPUnit tests..."
-	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
-	@docker compose run --rm --no-deps -e XDEBUG_MODE=off -e memory_limit=512M -e APP_ENV=test exelearning composer --no-cache phpunit-unit
+	@docker compose run --rm --no-deps -e XDEBUG_MODE=off -e memory_limit=512M -e APP_ENV=test  exelearning composer --no-cache phpunit-unit
 
 # Run unit tests in parallel using "paratest"
 test-unit-parallel: check-docker check-env
 	@echo "Running PHPUnit tests..."
-	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
 	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit-parallel
 
 # Run just e2e tests with PHPUnit
@@ -235,7 +233,7 @@ create-user: check-docker check-env upd
 	@read -p "Enter email: " email; \
 	read -p "Enter password: " password; \
 	read -p "Enter username: " username; \
-	@docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
+	docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
 
 # Grant an arbitrary role to a user
 # Usage: make grant-role EMAIL=user@example.com ROLE=ROLE_MANAGER
@@ -607,4 +605,3 @@ help:
 
 # Set help as the default goal if no target is specified
 .DEFAULT_GOAL := help
-
