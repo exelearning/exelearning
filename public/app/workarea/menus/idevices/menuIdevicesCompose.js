@@ -33,7 +33,7 @@ export default class MenuIdevicesCompose {
         this.categoriesTitle.games,
         this.categoriesTitle.interactive,
         this.categoriesTitle.science,
-        this.categoriesTitle.imported,
+        // this.categoriesTitle.imported, // To do (see #381)
     ];
 
     /**
