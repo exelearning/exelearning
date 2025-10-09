@@ -68,7 +68,7 @@ final class AddBoxAndIDeviceTest extends BaseE2ETestCase
         IDeviceFactory::addText($page);           // third
 
 
-        $this->markTestIncomplete('This test is still incomplete.');
+        // $this->markTestIncomplete('This test is still incomplete.');
 
 
         $this->assertGreaterThanOrEqual(3, IDeviceFactory::countText($page), 'Expected at least 3 Text iDevices');

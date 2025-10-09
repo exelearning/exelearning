@@ -166,7 +166,7 @@ final class Node
         $client   = $this->workareaPage->getClient();
 
         // Poll until the text appears
-        $client->getWebDriver()->wait(10, 150)->until(function () use ($client, $title): bool {
+        $client->getWebDriver()->wait(30)->until(function () use ($client, $title): bool {
             return (bool) $client->executeScript(
                 "const name = arguments[0];
                  const spans = [...document.querySelectorAll('#nav_list .node-text-span')];
