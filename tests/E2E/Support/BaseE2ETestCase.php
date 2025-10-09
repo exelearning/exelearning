@@ -230,13 +230,21 @@ abstract class BaseE2ETestCase extends PantherTestCase
         $this->assertStringContainsString('/workarea', $client->getCurrentURL(), 'Expected to reach /workarea after guest login');
         $client->waitForInvisibility('#load-screen-main', 30);
 
-        // Step 3: extract user ID from top-right avatar
-        $client->waitFor('.user-current-letter-icon', 10);
-        $email = $client->executeScript("return document.querySelector('.user-current-letter-icon')?.getAttribute('title');");
+        // Step 3: extract current user ID from data attribute
+        $client->waitFor('[data-testid="user-menu"][data-user-email]', 10);
+        $crawler = $client->getCrawler();
 
-        if ($email && str_ends_with((string)$email, '@guest.local')) {
-            $this->currentUserId = str_replace('@guest.local', '', $email);
+        $email = $crawler->filter('[data-testid="user-menu"]')->attr('data-user-email');
+
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->fail(sprintf('User email not found or invalid. Got: %s', var_export($email, true)));
         }
+
+        /**
+         * Always remove the domain part to get a clean user identifier.
+         * Example: "guest_123@guest.local" → "guest_123"
+         */
+        $this->currentUserId = strstr($email, '@', true);
 
         return $client;
     }

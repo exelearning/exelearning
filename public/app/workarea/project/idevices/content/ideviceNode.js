@@ -2804,6 +2804,11 @@ export default class IdeviceNode {
         loadScreen.style.left = '0';
         loadScreen.classList.remove('hide', 'hidden');
         loadScreen.classList.add('loading');
+        // Testing: explicit visibility flag and content readiness
+        loadScreen.setAttribute('data-visible', 'true');
+        document
+            .getElementById('node-content')
+            ?.setAttribute('data-ready', 'false');
     }
 
     unlockScreen(delay = 1000) {
@@ -2818,6 +2823,11 @@ export default class IdeviceNode {
             loadScreen.style.position = 'absolute';
             delete loadScreen.style.top;
             delete loadScreen.style.left;
+            // Testing: explicit visibility flag and content readiness
+            loadScreen.setAttribute('data-visible', 'false');
+            document
+                .getElementById('node-content')
+                ?.setAttribute('data-ready', 'true');
         }, delay);
     }
 

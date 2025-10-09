@@ -128,7 +128,8 @@ final class IDeviceFactory
         self::ensureReadyForNewAction($workarea);
         $idevice = self::findTextIdeviceAt($workarea, $index1);
         self::clickIn(Selectors::IDEVICE_BTN_MOVE_UP, $idevice, $workarea);
-        Wait::settleDom(250);
+        // Wait for content to settle (overlay off + data-ready=true)
+        self::waitContentReady($workarea, 10);
     }
 
     /** Moves the i-th Text iDevice one position down. */
@@ -137,7 +138,7 @@ final class IDeviceFactory
         self::ensureReadyForNewAction($workarea);
         $idevice = self::findTextIdeviceAt($workarea, $index1);
         self::clickIn(Selectors::IDEVICE_BTN_MOVE_DOWN, $idevice, $workarea);
-        Wait::settleDom(250);
+        self::waitContentReady($workarea, 10);
     }
 
     /** Duplicates the i-th Text iDevice using the overflow menu. */
@@ -173,11 +174,58 @@ final class IDeviceFactory
         $before = self::countText($workarea);
         $idevice = self::findTextIdeviceAt($workarea, $index1);
         self::clickIn(Selectors::IDEVICE_BTN_DELETE, $idevice, $workarea);
-        // Heuristic: count decreases
-        $workarea->client()->getWebDriver()->wait(5, 150)->until(function () use ($workarea, $before) {
+
+        $driver = $workarea->client()->getWebDriver();
+
+        // If a confirmation modal appears, confirm deletion (may appear twice)
+        for ($i = 0; $i < 2; $i++) {
+            $confirmShown = false;
+            try {
+                $driver->wait(2, 150)->until(function () use ($workarea): bool {
+                    return (bool) $workarea->client()->executeScript(<<<'JS'
+                        const m = document.querySelector('[data-testid="modal-confirm"][data-open="true"], #modalConfirm.show');
+                        return !!m;
+                    JS);
+                });
+                $confirmShown = true;
+            } catch (\Throwable) {
+                // no modal currently shown
+            }
+
+            if ($confirmShown) {
+                // Click confirm
+                try {
+                    $btns = $driver->findElements(WebDriverBy::cssSelector('[data-testid="confirm-action"], #modalConfirm .confirm'));
+                    if (\count($btns) > 0) {
+                        self::safeClick($btns[0], $workarea);
+                        Wait::settleDom(150);
+                    }
+                } catch (\Throwable) {}
+            } else {
+                // No confirm visible; break
+                break;
+            }
+        }
+
+        // Wait until one Text iDevice less is visible
+        $driver->wait(8, 150)->until(function () use ($workarea, $before): bool {
             return self::countText($workarea) < $before;
         });
-        Wait::settleDom(150);
+
+        // If a second confirm (delete empty box) still lingers, confirm it and continue
+        try {
+            $driver->wait(2, 150)->until(function () use ($workarea): bool {
+                return (bool) $workarea->client()->executeScript(<<<'JS'
+                    const m = document.querySelector('[data-testid="modal-confirm"][data-open="true"], #modalConfirm.show');
+                    return !!m;
+                JS);
+            });
+            $btns = $driver->findElements(WebDriverBy::cssSelector('[data-testid="confirm-action"], #modalConfirm .confirm'));
+            if (\count($btns) > 0) { self::safeClick($btns[0], $workarea); }
+        } catch (\Throwable) {}
+
+        // Content settles
+        self::waitContentReady($workarea, 10);
     }
 
     // ------------------------------------------------------------------
@@ -276,5 +324,27 @@ final class IDeviceFactory
                 }
             }
         }
+    }
+
+    /** Waits for content overlay to be hidden and node-content to be ready. */
+    private static function waitContentReady(WorkareaPage $workarea, int $timeoutSec = 8): void
+    {
+        $driver = $workarea->client()->getWebDriver();
+        try {
+            $driver->wait($timeoutSec, 150)->until(function () use ($workarea): bool {
+                return (bool) $workarea->client()->executeScript(<<<'JS'
+                    const ov = document.querySelector('[data-testid="loading-content"]');
+                    if (ov && ov.getAttribute('data-visible') === 'true') return false;
+                    const nc = document.querySelector('[data-testid="node-content"]') || document.querySelector('#node-content');
+                    if (!nc) return false;
+                    const ready = nc.getAttribute('data-ready');
+                    if (ready && ready !== 'true') return false;
+                    return true;
+                JS);
+            });
+        } catch (\Throwable) {
+            // soft-fail, continue
+        }
+        Wait::settleDom(200);
     }
 }

@@ -20,9 +20,9 @@ export default class MenuStructureBehaviour {
     /**
      *
      */
-    behaviour(firtsTime) {
+    behaviour(firstTime) {
         // Button related events are only loaded once
-        if (firtsTime) {
+        if (firstTime) {
             this.addEventNavNewNodeOnclick();
             this.addEventNavPropertiesNodeOnclick();
             this.addEventNavRemoveNodeOnclick();
@@ -34,12 +34,40 @@ export default class MenuStructureBehaviour {
             this.addEventNavMovUpOnClick();
             this.addEventNavMovDownOnClick();
         }
+        this.addNavTestIds();
         // Nav elements drag&drop events
         this.addEventNavElementOnclick();
         this.addEventNavElementOnDbclick();
         this.addEventNavElementIconOnclick();
         this.addEventNavElementOnMenuIconClic();
         this.addDragAndDropFunctionalityToNavElements();
+    }
+
+    /**
+     * Add data-testid attributes to nav nodes after they are rendered.
+     */
+    addNavTestIds() {
+        const nodes = this.menuNav.querySelectorAll('.nav-element[nav-id]');
+        nodes.forEach((nav) => {
+            const id = nav.getAttribute('nav-id');
+            nav.setAttribute('data-testid', 'nav-node');
+            nav.setAttribute('data-node-id', id);
+            const textBtn = nav.querySelector('.nav-element-text');
+            if (textBtn) {
+                textBtn.setAttribute('data-testid', 'nav-node-text');
+                textBtn.setAttribute('data-node-id', id);
+            }
+            const menuBtn = nav.querySelector('.node-menu-button');
+            if (menuBtn) {
+                menuBtn.setAttribute('data-testid', 'nav-node-menu');
+                menuBtn.setAttribute('data-node-id', id);
+            }
+            const toggle = nav.querySelector('.exe-icon');
+            if (toggle) {
+                toggle.setAttribute('data-testid', 'nav-node-toggle');
+                toggle.setAttribute('data-node-id', id);
+            }
+        });
     }
 
     /*******************************************************************************
@@ -121,11 +149,21 @@ export default class MenuStructureBehaviour {
                     navElement.classList.add('toggle-off');
                     element.innerHTML = 'keyboard_arrow_right';
                     node.open = false;
+                    // Testing: explicit expanded state
+                    navElement.setAttribute('data-expanded', 'false');
+                    if (navElement.getAttribute('is-parent') === 'true') {
+                        navElement.setAttribute('aria-expanded', 'false');
+                    }
                 } else {
                     navElement.classList.remove('toggle-off');
                     navElement.classList.add('toggle-on');
                     element.innerHTML = 'keyboard_arrow_down';
                     node.open = true;
+                    // Testing: explicit expanded state
+                    navElement.setAttribute('data-expanded', 'true');
+                    if (navElement.getAttribute('is-parent') === 'true') {
+                        navElement.setAttribute('aria-expanded', 'true');
+                    }
                 }
             });
         });
@@ -876,6 +914,14 @@ export default class MenuStructureBehaviour {
         this.setNodeIdToNodeContentElement();
         this.createAddTextBtn();
         this.enabledActionButtons();
+
+        // Testing: explicit selected state on nav nodes and ARIA sync
+        const allNodes = this.menuNav.querySelectorAll('.nav-element[nav-id]');
+        allNodes.forEach((n) => {
+            const isSel = n === this.nodeSelected;
+            n.setAttribute('data-selected', isSel ? 'true' : 'false');
+            n.setAttribute('aria-selected', isSel ? 'true' : 'false');
+        });
     }
 
     /**
@@ -915,7 +961,7 @@ export default class MenuStructureBehaviour {
         );
         var addTextBtn = `
             <div class="text-center" id="eXeAddContentBtnWrapper">
-                <button>${txt}</button>
+                <button data-testid="add-text-quick">${txt}</button>
             </div>
         `;
         $('#node-content').append(addTextBtn);

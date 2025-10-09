@@ -53,19 +53,47 @@ final class WorkareaPage
         $wd = $this->client->getWebDriver();
         $c  = $this->client;
 
-        // Try quick button if present
+        // 1) Preferred: bottom quickbar button (data-testid)
+        try {
+            $c->waitFor(Selectors::QUICK_IDEVICE_TEXT, 2);
+            $el = $wd->findElement(WebDriverBy::cssSelector(Selectors::QUICK_IDEVICE_TEXT));
+            try {
+                $wd->executeScript('arguments[0].scrollIntoView({block:"center"});', [$el]);
+            } catch (\Throwable) {}
+            try {
+                $el->click();
+            } catch (\Facebook\WebDriver\Exception\ElementNotInteractableException|\Facebook\WebDriver\Exception\ElementClickInterceptedException) {
+                $wd->executeScript('arguments[0].click();', [$el]);
+            }
+            Wait::css($c, Selectors::IDEVICE_TEXT, 6000);
+            return;
+        } catch (\Throwable) {
+            // not present, continue
+        }
+
+        // 2) Content convenience button (if present on empty pages)
         $quick = $wd->findElements(WebDriverBy::cssSelector(Selectors::ADD_TEXT_BUTTON));
         if (\count($quick) > 0) {
             try {
                 $quick[0]->click();
-            } catch (\Facebook\WebDriver\Exception\ElementClickInterceptedException) {
+            } catch (\Facebook\WebDriver\Exception\ElementClickInterceptedException|\Facebook\WebDriver\Exception\ElementNotInteractableException) {
                 $wd->executeScript('arguments[0].click();', [$quick[0]]);
             }
             Wait::css($c, Selectors::IDEVICE_TEXT, 6000);
             return;
         }
 
-        // Fallback: use iDevices menu (click the "Texto" item)
+        // 3) Fallback: use left iDevices menu (prefer testid if available)
+        try {
+            $c->waitFor(Selectors::IDEVICE_TEXT_TESTID, 2);
+            $el = $wd->findElement(WebDriverBy::cssSelector(Selectors::IDEVICE_TEXT_TESTID));
+            try { $wd->executeScript('arguments[0].scrollIntoView({block:"center"});', [$el]); } catch (\Throwable) {}
+            try { $el->click(); } catch (\Throwable) { $wd->executeScript('arguments[0].click();', [$el]); }
+            Wait::css($c, Selectors::IDEVICE_TEXT, 6000);
+            return;
+        } catch (\Throwable) {}
+
+        // 4) Legacy fallback method (original left menu selector)
         $this->addTextIDeviceViaMenu();
     }
 
@@ -123,11 +151,13 @@ final class WorkareaPage
         $input->clear();
         $input->sendKeys($title);
 
+        // Click the "Save" button in properties modal/form (not the nav add page)
         $this->clickFirstMatchingSelector([
+            '[data-testid="save-properties-button"]',
             '#properties-node-content-form .footer button.confirm.btn.btn-primary',
             '#properties-node-content-form button.confirm.btn.btn-primary',
-            '[data-testid="save-properties-button"]',
         ]);
+
 
         $this->dismissPropertiesAlertIfPresent();
         $this->waitForLoadingScreenToDisappear();
@@ -179,127 +209,51 @@ final class WorkareaPage
         ])->getAttribute('value'));
     }
 
-/**
- * Selects a node in the tree and waits until the content panel is truly ready.
- * - If $node is null/root: uses current selected or the first nav-element.
- * - If $node has id: selects by [nav-id] clicking ".nav-element-text".
- * - Otherwise selects by exact title.
- * Then:
- * - Waits selection (id/title) and content readiness (overlay(s) hidden + node-selected sync + optional title).
- */
-public function selectNode(?Node $node = null): void
-{
-    $c  = $this->client;
-    $wd = $c->getWebDriver();
+    /**
+     * Selects a node in the tree and waits until the content panel is truly ready.
+     * - If $node is null/root: uses current selected or the first nav-element.
+     * - If $node has id: selects by [nav-id] clicking ".nav-element-text".
+     * - Otherwise selects by exact title.
+     * Then:
+     * - Waits selection (id/title) and content readiness (overlay(s) hidden + node-selected sync + optional title).
+     */
+    public function selectNode(?Node $node = null): void
+    {
+        $c  = $this->client;
+        $wd = $c->getWebDriver();
 
-    $this->waitForLoadingScreenToDisappear();
-    $c->waitFor('#nav_list .nav-element', 20);
+        $this->waitForLoadingScreenToDisappear();
+        $c->waitFor('[data-testid="nav-node"]', 20);
+        // Ensure no modals/backdrops/overlays are blocking interactions
+        $this->waitUiQuiescent(12);
 
-    // Normalize expected identity (id may be numeric or string like "root")
     $expect = $this->resolveExpectedNode($node);
 
-    // 1) Wait target to exist and be clickable; expand ancestors if collapsed.
-    $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
-      const exp = arguments[0];
-
-      const byId = (id) => document.querySelector(`.nav-element[nav-id="${id}"] .nav-element-text`);
-      const byTitle = (t) => {
-        const spans = Array.from(document.querySelectorAll('#nav_list .node-text-span'));
-        const span = spans.find(s => s?.textContent?.trim() === String(t ?? '').trim());
-        return span ? span.closest('.nav-element')?.querySelector('.nav-element-text') : null;
-      };
-
-      let el = (exp.id ?? null) !== null ? byId(exp.id) : null;
-      if (!el && exp.title) el = byTitle(exp.title);
-      if (!el) return false;
-
-      let navEl = el.closest('.nav-element');
-      let collapsed = navEl?.closest('.nav-element.toggle-off[is-parent="true"]')
-                    ?? navEl?.closest('.nav-element[is-parent="true"].toggle-off');
-      if (collapsed) {
-        collapsed.querySelector('.nav-element-toggle')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
-        return false;
-      }
-
-      const r = el.getBoundingClientRect();
-      if (r.bottom <= 0 || r.top >= innerHeight) {
-        el.scrollIntoView({block:'center'});
-        return false;
-      }
-
-      const cx = Math.floor(r.left + r.width/2);
-      const cy = Math.floor(r.top + r.height/2);
-      const topEl = document.elementFromPoint(cx, cy);
-      return !!topEl && (topEl === el || el.contains(topEl));
-    JS, [$expect]), 30);
-
-    // 2) Click with resolver (re-locate element on every attempt → no stale)
-    $this->guardedClick(fn () => $this->locateNavClickable($expect));
-
-    // 3) Wait selection (by id/title) with active enforcement: if mismatch, re-click target
-    $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
-      const exp = arguments[0];
-
-      const locateById = (id) => document.querySelector(`.nav-element[nav-id="${id}"]`);
-      const locateByTitle = (t) => {
-        const spans = Array.from(document.querySelectorAll('#nav_list .node-text-span'));
-        const span = spans.find(s => s && s.textContent && s.textContent.trim() === String(t ?? '').trim());
-        return span ? span.closest('.nav-element') : null;
-      };
-
-      const target = (exp.id ?? null) !== null ? locateById(String(exp.id)) : locateByTitle(exp.title);
-      if (!target) return false;
-
-      const sel = document.querySelector('.nav-element.selected');
-
-      const selectedMatches = () => {
-        if (!sel) return false;
-        if (exp.id !== null && exp.id !== undefined) {
-          const sid = sel.getAttribute('nav-id');
-          if (String(sid) !== String(exp.id)) return false;
+    // If we only got a title, resolve id once.
+    if (($expect['id'] ?? null) === null && ($expect['title'] ?? '') !== '') {
+        $resolved = $this->findNodeIdByTitle((string) $expect['title']);
+        if ($resolved === null) {
+            throw new \RuntimeException(sprintf('Node "%s" not found.', (string) $expect['title']));
         }
-        if (exp.title) {
-          const t = sel.querySelector('.node-text-span')?.textContent?.trim() ?? '';
-          if (t !== String(exp.title).trim()) return false;
-        }
-        return sel === target;
-      };
-
-      if (selectedMatches()) return true;
-
-      // If not matched, actively re-click target (and expand if needed)
-      const collapsed = target.closest('.nav-element.toggle-off[is-parent="true"]')
-                     ?? target.closest('.nav-element[is-parent="true"].toggle-off');
-      if (collapsed) {
-        collapsed.querySelector('.nav-element-toggle')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
-        return false;
-      }
-
-      const clickable = target.querySelector('.nav-element-text');
-      if (clickable) {
-        clickable.scrollIntoView({block:'center'});
-        clickable.dispatchEvent(new MouseEvent('click', {bubbles:true}));
-      }
-      return false;
-    JS, [$expect]), 25);
-
-    // 4) Wait content panel truly ready (all overlays hidden + node-selected sync + optional title)
-    $this->waitNodeContentReady($expect['title'] ?? null, 30);
-
-    // 5) Optional: if we know the expected title, assert it also in the panel (rare race fix below)
-    if (($expect['title'] ?? '') !== '') {
-        $c->waitFor('#page-title-node-content', 10);
-        $title = trim((string) $wd->findElement(WebDriverBy::cssSelector('#page-title-node-content'))->getText());
-        if ($title !== trim((string) $expect['title'])) {
-            // One refresh click for very slow environments
-            $this->guardedClick(fn () => $this->locateNavClickable($expect));
-            $this->waitUntil(fn () => (bool) $c->executeScript(
-                'const h=document.querySelector("#page-title-node-content");return !!h && h.textContent?.trim()===String(arguments[0]).trim();',
-                [$expect['title']]
-            ), 10);
-        }
+        $expect['id'] = $resolved;
     }
-}
+
+    // Ensure in viewport and clickable
+        $targetSel = $this->selNodeTextById($expect['id']);
+    $c->waitFor($targetSel, 20);
+
+
+    $this->guardedClick(fn () => $wd->findElement(WebDriverBy::cssSelector($targetSel)));
+
+    // Wait until selected nav matches expected id
+    $this->waitUntil(fn () => (bool) $c->executeScript(
+        'const id=String(arguments[0]); const sel=document.querySelector(".nav-element.selected"); return !!sel && String(sel.getAttribute("data-node-id"))===id;',
+        [(string) $expect['id']]
+    ), 20);
+
+    // Content panel ready (reuse your robust method)
+        $this->waitNodeContentReady($expect['title'] ?? null, 30);
+    }
 
 
     public function selectRootNode(): void
@@ -313,22 +267,29 @@ public function selectNode(?Node $node = null): void
      */
     public function createNewNode(Node $parentNode, string $nodeTitle): Node
     {
-        // Ensure parent is selected and content is ready
-        $this->selectNode($parentNode);
+        // Ensure appropriate context: if "root", open project settings instead of selecting a tree node
+        if ($parentNode->isRoot()) {
+            $this->openProjectSettings();
+        } else {
+            $this->selectNode($parentNode);
+        }
 
         // Open "new page" action (toolbar)
         $this->clickFirstMatchingSelector([
-            '[data-testid="nav-add-node"]',
+            '[data-testid="nav-add-page"]',
             '#menu_nav .action_add',
             '.button_nav_action.action_add',
         ]);
 
         // Wait modal to be really visible
         $c = $this->client;
-        $c->waitFor('#modalConfirm', 8);
-        $this->waitUntil(fn () => (bool) $c->executeScript(
-            'const m=document.querySelector("#modalConfirm"); if(!m) return false; const s=getComputedStyle(m); return m.classList.contains("show") || s.display==="block";'
-        ), 8);
+        try { $c->waitFor('[data-testid="modal-confirm"][data-open="true"]', 8); }
+        catch (\Throwable) { $c->waitFor('#modalConfirm', 8); }
+        $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+            const m=document.querySelector('[data-testid="modal-confirm"], #modalConfirm');
+            if(!m) return false; const s=getComputedStyle(m);
+            return (m.getAttribute('data-open')==='true') || m.classList.contains('show') || s.display==='block';
+        JS), 8);
 
         // Fill node title via WebDriver (fires native events)
         $c->waitFor('#input-new-node', 5);
@@ -338,6 +299,7 @@ public function selectNode(?Node $node = null): void
 
         // Confirm create
         $this->clickFirstMatchingSelector([
+            '[data-testid="confirm-action"]',
             '#modalConfirm .modal-footer .confirm',
             '#modalConfirm button.btn.btn-primary',
             '#modalConfirm .confirm',
@@ -399,8 +361,6 @@ JS, [$nodeTitle]), 60,60);
 // Content panel synchronized (overlays + node-selected + title)
 $this->waitNodeContentReady($nodeTitle, 30);
 
-
-
         // Read the assigned id (numeric or string like "root")
         $id = $c->executeScript(<<<'JS'
             const t = String(arguments[0]).trim();
@@ -432,28 +392,34 @@ $this->waitNodeContentReady($nodeTitle, 30);
         // Active retry loop: in case of race conditions we attempt the flow a few times
         for ($attempt = 0; $attempt < 3; $attempt++) {
             // Ensure the button is visible and enabled
-            $this->waitActionButtonEnabled('#nav_actions .action_delete');
-
+            $this->waitActionButtonEnabled('[data-testid="nav-delete"]');
             $this->clickFirstMatchingSelector([
-                '[data-testid="nav-delete-node"]',
+                '[data-testid="nav-delete"]',
                 '#menu_nav .action_delete',
                 '.button_nav_action.action_delete',
             ]);
 
-            try {
-                $client->waitFor('#modalConfirm', 5);
-                // Wait for modal fully visible
-                $this->client->getWebDriver()->wait(5, 150)->until(static function () use ($client): bool {
-                    return (bool) $client->executeScript(
-                        "const m=document.querySelector('#modalConfirm'); if(!m) return false; const st=window.getComputedStyle(m); return m.classList.contains('show') || st.display==='block';"
-                    );
-                });
-            } catch (\Throwable $e) {
-                if ($attempt === 2) {
-                    throw new \RuntimeException(sprintf('Delete confirmation modal did not appear for node "%s".', $title), 0, $e);
-                }
-                continue; // retry flow
+
+        try {
+            // Prefer explicit state via data-open
+            try { $client->waitFor('[data-testid="modal-confirm"][data-open="true"]', 5); } catch (\Throwable) { $client->waitFor('#modalConfirm', 5); }
+            // Wait for modal fully visible (data-open or legacy .show)
+            $this->client->getWebDriver()->wait(5, 150)->until(static function () use ($client): bool {
+                return (bool) $client->executeScript(<<<'JS'
+                    const m = document.querySelector('[data-testid="modal-confirm"], #modalConfirm');
+                    if (!m) return false;
+                    const opened = m.getAttribute('data-open') === 'true';
+                    const st = getComputedStyle(m);
+                    const legacy = (m.classList.contains('show') || st.display === 'block') && m.getAttribute('aria-hidden') !== 'true';
+                    return opened || legacy;
+                JS);
+            });
+        } catch (\Throwable $e) {
+            if ($attempt === 2) {
+                throw new \RuntimeException(sprintf('Delete confirmation modal did not appear for node "%s".', $title), 0, $e);
             }
+            continue; // retry flow
+        }
 
             // Confirm delete (wait and click)
             $this->waitActionButtonEnabled('#modalConfirm .modal-footer .confirm');
@@ -488,11 +454,12 @@ $this->waitNodeContentReady($nodeTitle, 30);
                         return false;
                     }
                     if (expectedId !== null) {
-                        const byId = document.querySelector('.nav-element[nav-id="' + expectedId + '"]');
+                        // BEFORE: const byId = document.querySelector('.nav-element[nav-id="' + expectedId + '"]');
+                        const byId = document.querySelector('[data-testid="nav-node"][data-node-id="' + expectedId + '"]');
                         if (byId) {
-                            // Actively retry delete: click delete again and reconfirm
+                            // Actively retry delete
                             try {
-                                const delBtn = document.querySelector('[data-testid="nav-delete-node"], #menu_nav .action_delete, .button_nav_action.action_delete');
+                                const delBtn = document.querySelector('[data-testid="nav-delete"], #menu_nav .action_delete, .button_nav_action.action_delete');
                                 delBtn?.dispatchEvent(new MouseEvent('click', {bubbles:true}));
                                 const confirm = document.querySelector('#modalConfirm .modal-footer .confirm, #modalConfirm button.btn.btn-primary');
                                 confirm?.dispatchEvent(new MouseEvent('click', {bubbles:true}));
@@ -500,7 +467,6 @@ $this->waitNodeContentReady($nodeTitle, 30);
                             return false;
                         }
                     }
-
                     // 2) Modal not visible
                     const modal = document.querySelector('#modalConfirm');
                     const modalVisible = !!(modal && (modal.classList.contains('show') || window.getComputedStyle(modal).display !== 'none') && modal.getAttribute('aria-hidden') !== 'true');
@@ -596,11 +562,13 @@ $this->waitNodeContentReady($nodeTitle, 30);
 
     public function duplicateSelectedNode(): self
     {
+
         $this->clickFirstMatchingSelector([
-            '[data-testid="nav-clone-node"]',
+            '[data-testid="nav-clone"]',
             '#menu_nav .action_clone',
             '.button_nav_action.action_clone',
         ]);
+
 
         // In some cases a rename modal appears
         try {
@@ -691,6 +659,39 @@ $this->waitNodeContentReady($nodeTitle, 30);
     }
 
     /**
+     * Waits until there is no blocking UI: no open modals/backdrops and content overlay not visible.
+     */
+    private function waitUiQuiescent(int $timeoutSec = 10): void
+    {
+        $c = $this->client;
+        $this->waitUntil(static function () use ($c): bool {
+            return (bool) $c->executeScript(<<<'JS'
+                // Best-effort: close any open modals politely
+                const openModals = Array.from(document.querySelectorAll('.modal[data-open="true"]'));
+                for (const m of openModals) {
+                    // Try cancel/close buttons
+                    const btn = m.querySelector('.modal-footer .cancel, .modal-header .close, .modal-footer .close');
+                    if (btn) { btn.dispatchEvent(new MouseEvent('click', {bubbles:true})); }
+                    // Fallback to Bootstrap hide API
+                    try { const inst = bootstrap?.Modal?.getOrCreateInstance?.(m); inst?.hide?.(); } catch(e) {}
+                }
+                if (openModals.length > 0) return false;
+
+                // No modal backdrop visible and body not locked
+                const backdrop = document.querySelector('.modal-backdrop.show');
+                if (backdrop) return false;
+                if (document.body.classList.contains('modal-open')) return false;
+
+                // Content overlay not visible (if present)
+                const contentOverlay = document.querySelector('[data-testid="loading-content"]');
+                if (contentOverlay && contentOverlay.getAttribute('data-visible') === 'true') return false;
+
+                return true;
+            JS);
+        }, $timeoutSec, 150);
+    }
+
+    /**
      * Small helper to wait arbitrary predicates using WebDriverWait.
      * Use this for JS-based conditions; Panther's waitFor() only accepts selectors.
      */
@@ -701,6 +702,26 @@ $this->waitNodeContentReady($nodeTitle, 30);
             ->until(static function () use ($predicate): bool {
                 return (bool) $predicate();
             });
+    }
+
+    /** Opens project settings (root-level context) and waits until properties form is ready. */
+    private function openProjectSettings(): void
+    {
+        // Click the top settings button
+        $this->clickFirstMatchingSelector([
+            '#head-top-settings-button',
+        ]);
+
+        // Wait for settings/properties to load in the content panel
+        try {
+            $this->client->waitFor('#properties-node-content-form', 8);
+        } catch (\Throwable) {
+            // Fallback: wait until content overlay is hidden and node-content is ready
+            try { $this->client->waitFor('[data-testid="loading-content"][data-visible="false"]', 8); } catch (\Throwable) {}
+            try { $this->client->waitFor('[data-testid="node-content"][data-ready="true"]', 8); } catch (\Throwable) {}
+        }
+        // Ensure no blocking UI remains
+        $this->waitUiQuiescent(8);
     }
 
     /**
@@ -780,24 +801,29 @@ $this->waitNodeContentReady($nodeTitle, 30);
         ));
     }
 
-    /** Returns a fresh clickable element (.nav-element-text) by id or by exact title. */
-    private function locateNavClickable(array $expect): WebDriverElement
-    {
-        $wd = $this->client->getWebDriver();
+/** Returns clickable ".nav-element-text" using data-testid. */
+private function locateNavClickable(array $expect): WebDriverElement
+{
+    $wd = $this->client->getWebDriver();
 
-        if (($expect['id'] ?? null) !== null) {
-            return $wd->findElement(WebDriverBy::cssSelector(
-                sprintf('.nav-element[nav-id="%s"] .nav-element-text', (string) $expect['id'])
-            ));
-        }
-
-        $xpath = sprintf(
-            '//*[@id="nav_list"]//span[contains(@class,"node-text-span") and normalize-space(.)=%s]'
-          . '/ancestor::div[contains(@class,"nav-element")][1]//span[contains(@class,"nav-element-text")]',
-            $this->xpathLiteral((string) ($expect['title'] ?? ''))
-        );
-        return $wd->findElement(WebDriverBy::xpath($xpath));
+    // Prefer id path
+    if (($expect['id'] ?? null) !== null) {
+        return $wd->findElement(WebDriverBy::cssSelector(
+            $this->selNodeTextById($expect['id'])
+        ));
     }
+
+    // Title → resolve to id once, then click by id selector
+    $title = (string) ($expect['title'] ?? '');
+    $id = $this->findNodeIdByTitle($title);
+    if ($id === null) {
+        throw new \RuntimeException(sprintf('Node with title "%s" not found.', $title));
+    }
+
+    return $wd->findElement(WebDriverBy::cssSelector(
+        $this->selNodeTextById($id)
+    ));
+}
 
 
 /**
@@ -828,27 +854,24 @@ private function guardedClick(callable $resolver, int $maxTries = 8): void
     }
 }
 
+/** Normalizes expected node identity using data-node-id first. */
+private function resolveExpectedNode(?Node $node): array
+{
+    $id    = $node?->getId();
+    $title = $node?->getTitle();
 
-
-    /** Normalizes expected node identity: supports numeric id, string ids ("root"), or title-based selection. */
-    private function resolveExpectedNode(?Node $node): array
-    {
-        $id    = $node?->getId();
-        $title = $node?->getTitle();
-
-        // Root or neutral case: use currently selected or the first element as destination
-        if ($node?->isRoot()
-            || $id === 0 || $id === '0' || $id === 'root' || $id === null) {
-            $current = $this->client->executeScript(
-                'return (document.querySelector("#nav_list .nav-element.selected")?.getAttribute("nav-id")
-                      ?? document.querySelector("#nav_list .nav-element")?.getAttribute("nav-id")
-                      ?? null);'
-            );
-            return ['id' => $current, 'title' => null];
-        }
-
-        return ['id' => $id, 'title' => $title];
+    // Root or null → use selected or the first rendered node
+    if ($node?->isRoot() || $id === null || $id === 0 || $id === '0' || $id === 'root') {
+        $current = $this->client->executeScript(
+            'return (document.querySelector(".nav-element.selected")?.getAttribute("data-node-id")
+                  ?? document.querySelector("[data-testid=\'nav-node\']")?.getAttribute("data-node-id")
+                  ?? "root");'
+        );
+        return ['id' => $current, 'title' => null];
     }
+
+    return ['id' => $id, 'title' => $title];
+}
 
     /** Escapes a literal for XPath (handles both single and double quotes). */
     private function xpathLiteral(string $s): string
@@ -883,23 +906,17 @@ private function waitNodeContentReady(?string $expectedTitle, int $timeoutSec = 
         return (bool) $c->executeScript(<<<'JS'
           const t = (arguments[0] ?? '').trim();
 
-          // 1) All overlays must be hidden (handle multiple and state transitions)
-          const overlays = Array.from(document.querySelectorAll('#load-screen-node-content'));
-          const overlaysHidden = overlays.every(ov => {
-            if (!ov) return true;
-            const cls = ov.className || '';
-            const s   = getComputedStyle(ov);
-            const byClass = cls.includes('hide') && (cls.includes('hidden') || !cls.includes('loading')) && !cls.includes('hiding');
-            const byStyle = s.display === 'none' || s.visibility === 'hidden' || s.opacity === '0';
-            return byClass || byStyle;
-          });
-          if (!overlaysHidden) return false;
+          // 1) Content overlay must not be visible; content should be ready
+          const ov = document.querySelector('[data-testid="loading-content"]');
+          if (ov && ov.getAttribute('data-visible') === 'true') return false;
+          const nc = document.querySelector('[data-testid="node-content"]') || document.querySelector('#node-content');
+          if (!nc) return false;
+          if (nc.getAttribute('data-ready') && nc.getAttribute('data-ready') !== 'true') return false;
 
           // 2) node-selected in panel must match page-id of selected nav element
           const sel = document.querySelector('.nav-element.selected');
           if (!sel) return false;
           const selectedPid = sel.getAttribute('page-id') ?? '';
-          const nc = document.querySelector('#node-content');
           const panelPid = nc?.getAttribute('node-selected') ?? '';
           if (!selectedPid || !panelPid || String(selectedPid) !== String(panelPid)) return false;
 
@@ -914,5 +931,51 @@ private function waitNodeContentReady(?string $expectedTitle, int $timeoutSec = 
 }
 
 
+/** Builds stable selectors for nav nodes by id (click on inner span to avoid nested button issues). */
+private function selNodeTextById(string|int $id): string
+{
+    // before: [data-testid="nav-node-text"][data-node-id="%s"]
+    return sprintf('[data-testid="nav-node-text"][data-node-id="%s"] .node-text-span', (string) $id);
+}
+
+private function selNodeById(string|int $id): string
+{
+    return sprintf('[data-testid="nav-node"][data-node-id="%s"]', (string) $id);
+}
+
+private function selNodeMenuById(string|int $id): string
+{
+    return sprintf('[data-testid="nav-node-menu"][data-node-id="%s"]', (string) $id);
+}
+
+private function selNodeToggleById(string|int $id): string
+{
+    return sprintf('[data-testid="nav-node-toggle"][data-node-id="%s"]', (string) $id);
+}
+
+/**
+ * Finds a node-id by exact title text using the rendered tree.
+ * Returns string|int node-id or null if not found.
+ */
+private function findNodeIdByTitle(string $title): string|int|null
+{
+    $id = $this->client->executeScript(<<<'JS'
+        const t = String(arguments[0] ?? '').trim();
+        const nodes = Array.from(document.querySelectorAll('[data-testid="nav-node"]'));
+        for (const nav of nodes) {
+          const span = nav.querySelector('.node-text-span');
+          if (span && span.textContent && span.textContent.trim() === t) {
+            return nav.getAttribute('data-node-id') ?? nav.getAttribute('nav-id') ?? null;
+          }
+        }
+        return null;
+    JS, [$title]);
+
+    // normalize numeric ids
+    if (is_string($id) && ctype_digit($id)) {
+        return (int) $id;
+    }
+    return $id ?: null;
+}
 
 }

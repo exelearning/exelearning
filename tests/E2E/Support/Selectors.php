@@ -22,6 +22,10 @@ final class Selectors
 
     // Add Text quick button inside node content
     public const ADD_TEXT_BUTTON  = '#eXeAddContentBtnWrapper > button';
+    // Quickbar iDevice buttons
+    public const QUICK_IDEVICE_TEXT = '[data-testid="quick-idevice-text"]';
+    // Left menu iDevice testid (fallback)
+    public const IDEVICE_TEXT_TESTID = '[data-testid="idevice-text"]';
 
     // Box and iDevice containers
     public const BOX_ARTICLE      = 'article.box';

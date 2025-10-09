@@ -35,6 +35,13 @@ trait OfflineMenuActionsTrait
     try {
         if (window.eXeLearning?.app?.project) {
             window.eXeLearning.app.project.checkOpenIdevice = function(){ return false; };
+            // Stub collaborative notifier in offline runs so toolbar Save click doesn't throw
+            if (!window.eXeLearning.app.project.realTimeEventNotifier) {
+                window.eXeLearning.app.project.realTimeEventNotifier = {
+                    notify: function(){ /* no-op */ },
+                    getSubscription: function(){ return { close: function(){} }; }
+                };
+            }
         }
         const alertModal = document.querySelector('#modalAlert');
         if (alertModal?.classList.contains('show')) {

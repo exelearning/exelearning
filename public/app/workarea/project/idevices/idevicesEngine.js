@@ -939,9 +939,22 @@ export default class IdevicesEngine {
                 }
                 if (this.clickIdeviceMenuEnabled) {
                     let ideviceData = { odeIdeviceTypeName: element.id };
+                    // Prefer to add inside the first existing block (test-friendly),
+                    // otherwise fallback to the page content container
+                    let targetContainer = this.nodeContentElement;
+                    if (
+                        this.components &&
+                        Array.isArray(this.components.blocks) &&
+                        this.components.blocks.length > 0
+                    ) {
+                        const firstBlock = this.components.blocks[0];
+                        if (firstBlock && firstBlock.blockContent) {
+                            targetContainer = firstBlock.blockContent;
+                        }
+                    }
                     let ideviceNode = await this.createIdeviceInContent(
                         ideviceData,
-                        this.nodeContentElement
+                        targetContainer
                     );
                     // Send operation log action to bbdd
                     let additionalData = {};
@@ -1653,6 +1666,9 @@ export default class IdevicesEngine {
         this.nodeContentLoadScreenElement.classList.add('loading');
         this.nodeContentLoadScreenElement.classList.remove('hidden');
         this.nodeContentLoadScreenElement.classList.remove('hiding');
+        // Testing: explicit visibility flag and content readiness
+        this.nodeContentLoadScreenElement.setAttribute('data-visible', 'true');
+        this.nodeContentElement?.setAttribute('data-ready', 'false');
         // Clear timeout loading screen
         if (this.hideNodeContanerLoadScreenTimeout) {
             clearTimeout(this.hideNodeContanerLoadScreenTimeout);
@@ -1669,6 +1685,12 @@ export default class IdevicesEngine {
         this.hideNodeContanerLoadScreenTimeout = setTimeout(() => {
             this.nodeContentLoadScreenElement.classList.add('hidden');
             this.nodeContentLoadScreenElement.classList.remove('hiding');
+            // Testing: explicit visibility flag and content readiness
+            this.nodeContentLoadScreenElement.setAttribute(
+                'data-visible',
+                'false'
+            );
+            this.nodeContentElement?.setAttribute('data-ready', 'true');
         }, ms);
     }
 
