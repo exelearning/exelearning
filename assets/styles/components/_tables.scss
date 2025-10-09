@@ -1,0 +1,32 @@
+/*Tables Restyling*/
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) {
+    thead {
+        vertical-align: middle;
+    }
+
+    th {
+        font-weight: 500;
+    }
+
+    tr {
+        td {
+            max-width: 280px;
+            word-wrap: break-word;
+            font-size: 14px;
+            padding: var(--margin-s) var(--margin-m);
+        }
+
+        th {
+            padding: var(--margin-s) var(--margin-m);
+            border-bottom: 2px solid var(--dark-exe-color);
+        }
+
+        :is(td, th):last-child {
+            border-right: none;
+        }
+
+        &:last-child td {
+            border-bottom: none;
+        }
+    }
+}

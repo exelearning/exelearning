@@ -1,0 +1,84 @@
+#node-content .box-head .exe-icon.box-icon:hover img {
+    background: none;
+}
+
+.page-content-template #node-content {
+    min-height: var(--min-node-content-height);
+    border-radius: var(--radius);
+    padding: var(--margin-s);
+    margin: var(--margin-s);
+    min-height: calc(100% - var(--margin-s) * 4);
+    height: auto;
+}
+
+/*
+:root {
+    --dark-exe-color: rgba(112, 163, 0, 1);
+    --dark-exe-color-text: #577e02;
+    --dark-exe-color-08: rgba(112, 163, 0, 0.8);
+    --dark-exe-color-06: rgba(112, 163, 0, 0.6);
+    --dark-exe-color-04: rgba(112, 163, 0, 0.4);
+}
+    */
+
+body {
+    /*
+    font-family: "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    */
+}
+
+
+.form-control,
+.form-properties,
+.properties-body-container.form-properties .exe-properties-form-content .exe-table-content .property-row .content-field .form-control, 
+.properties-body-container.form-properties .exe-properties-form-content .exe-table-content .property-row .content-field .form-select, 
+.properties-body-container.form-properties .exe-properties-form-content .exe-table-content .property-row .content-field .form-check-input, 
+.properties-body-container.form-properties .exe-properties-form-content .exe-table-content .property-row .content-field textarea {
+    border-color: var(--gray-border) !important;
+
+    &:focus,
+    &:focus-visible {
+        border-color: var(--brand-primary-300) !important;
+    }
+}
+
+
+.form-control {
+    font-size: 14px;
+    padding: 3px 12px !important;
+    &:focus,
+    &:active {
+        box-shadow: 0 0 0 2px var(--brand-primary-400);
+    }
+}
+.form-control:not(textarea) {
+    height: 36px;
+}
+.form-select {
+    height: 36px;
+    font-size: 14px;
+    padding: 3px 12px !important;
+    &:focus,
+    &:active {
+        box-shadow: 0 0 0 2px var(--brand-primary-400);
+    }
+}
+ 
+.nav-link {
+    color: var(--gray-600);
+    font-weight: 400;
+}
+
+a {
+    color: var(--brand-primary);
+    &:hover {
+        color: var(--brand-primary-dark);
+    }
+}
+.modal-content .modal-body .exe-table-content div > input[type=checkbox] {
+    margin-left: 0%;
+    margin-top: 4px;
+    accent-color: var(--brand-primary-700);
+}

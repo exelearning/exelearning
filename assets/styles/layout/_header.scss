@@ -1,0 +1,290 @@
+#head {
+    font-family: "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    height: var(--head-height);
+    margin: 22px 20px 19px 20px;
+    z-index: 1000;
+    position: relative;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 1px 6px 0 rgba(0, 0, 0, 0.07);
+    .navbar {
+        width: 100%;
+        padding: 0 10px;
+        height: 100%;
+        .top {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            .main-menu {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                width: 100%;
+                [aria-labelledby="exeUserMenuToggler"] {
+                    left: -120px;
+                }
+                #exe-last-edition {
+                    visibility: hidden;
+                }
+                .main-menu-left,
+                .main-menu-right {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .main-menu-left .navbar-nav {
+                    gap: 4px;
+                }
+                #exe-last-edition {
+                    padding: 0 .35em;
+                    position: relative;
+                    top: 3px;
+                    margin-left: 3px;
+                    height: 33px;
+                }
+                > #exe-title {
+                    margin-right: auto;
+                }
+                > .head-bottom-right-elements {
+                    margin-left: auto;
+                }
+                #exe-logo {
+                    .content {
+                        margin-top: 0;
+                        width: var(--logo-width);
+                    }
+                }
+                #exe-title {
+                    max-width: 30%;
+                    .content {
+                        max-width: 600px;
+                        margin-bottom: 0;
+                        font-size: var(--h3-fs);
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
+                }
+                > * {
+                    display: flex;
+                    font-size: var(--body-fs);
+                    gap: var(--margin-s);
+                    justify-content: space-between;
+                }
+                > :not(.exe-logo) {
+
+                }
+                #head-bottom-user-logged {
+                    img {
+                        border-color: var(--bold-gray);
+                    }
+                }
+
+                #head-bottom-preview {
+                    margin-right: 4px;
+                }
+
+                #head-top-download-button,
+                #exe-last-edition,
+                #navbar-button-preview,
+                #navbar-button-idevice-manager {
+                    display: none;
+
+                }
+
+                .auto-icon {
+                    position: relative;
+                }
+                #head-top-save-button {
+                    position: relative;
+                    margin-right: 6px;
+
+                    &.unsaved:before {
+                        content: "";
+                        display: block;
+                        width: 10px;
+                        height: 10px;
+                        background: var(--system-red);
+                        position: absolute;
+                        border-radius: 50%;
+                        bottom: 5px;
+                        left: 7px;
+                        border: 2px solid #fff;
+                    }
+                    &:disabled {
+                        background-color: var(--gray-600);
+                    }
+                }
+                .small-icon.image-icon-green {
+                    height: 18px;
+                    width: 18px;
+                    margin-left: -1px;
+                }
+            }
+        }
+        .bottom {
+            height: var(--head-height-bottom);
+            background-color: var(--head-bottom-bg-color);
+            display: none;
+            justify-content: flex-start;
+            align-items: center;
+            gap: var(--margin-m);
+            padding-inline: 7px;
+
+            #button_menu_idevices {
+                margin-right: .4em;
+            }
+            .navbar {
+                background-color: transparent !important;
+                li {
+                    a {
+                        color: var(--body-text-color);
+                        padding-left: 1em;
+                        padding-right: 1em;
+
+                        &:hover,
+                        &:focus,
+                        .dropdown-item:active {
+                            color: var(--dark-exe-color-text);
+                        }
+                    }
+                    > a.show:after {
+                        transition: var(--tr-02);
+                        transform: rotate(180deg);
+                    }
+                }
+                .dropdown-menu {
+                    padding-top: 0;
+                    padding-bottom: 0;
+                    .dropdown-item,
+                    .dropdown-toggle {
+                        &:active,
+                        &:focus,
+                        &:hover {
+                            background-color: var(--head-bottom-bg-color-light);
+                        }
+                    }
+                    .dropdown-item.dropdown-toggle {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                }
+                .dropdown-divider {
+                    margin: 0;
+                }
+            }
+        }
+        ul[aria-labelledby="dropdownFile"] {
+            .dropdown-item.dropdown-toggle {
+                padding: 8px 72px 8px 24px !important;
+            }
+        }
+    }
+    #head-bottom-user-logged img {
+        width: 40px;
+        height: auto;
+        position: relative;
+        border-radius: 50%;
+        border: 1px solid var(--head-icon-border-color);
+    }
+
+    #exe-concurrent-users {
+        > .user-current-letter-icon {
+            font-size: var(--h4-fs);
+        }
+        #head-bottom-user-logged span.exe-avatar {
+            background-color: var(--head-icon-bg-color);
+            border: 1px solid var(--head-icon-border-color);
+            font-size: 18px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 500;
+            transition: var(--tr-04);
+            margin: 6px -1px 0 -1px;
+            scale: 110%
+        }
+
+        #button-more-exe-concurrent-users .auto-icon,
+        #exe-last-edition .auto-icon {
+            color: #5b6286;
+            font-size: var(--h1-fs);
+            opacity: .7;
+            position: relative;
+            top: -4px;
+        }
+        #button-more-exe-concurrent-users:hover .auto-icon,
+        #button-more-exe-concurrent-users:focus .auto-icon,
+        #exe-last-edition:hover .auto-icon,
+        #exe-last-edition:focus .auto-icon {
+            opacity: 1;
+        }
+        #button-more-exe-concurrent-users:hover .auto-icon,
+        #button-more-exe-concurrent-users:focus .auto-icon,
+        #exe-last-edition:hover .auto-icon,
+        #head-bottom-logout-button:focus .auto-icon {
+            opacity: 1;
+            color: var(--dark-exe-color);
+        }
+        #exe-last-edition .auto-icon {
+            cursor: help;
+        }
+        .exe-top-icons:is(.user-current-letter-icon, #user-logged-letter-icon):not(:empty) {
+            background-color: var(--head-icon-bg-color);
+            border: 2px solid var(--head-icon-border-color);
+            font-size: var(--h2-fs);
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            margin: 0 4px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-weight: 500;
+            transition: var(--tr-04);
+        }
+        #exe-concurrent-users {
+            &[num="1"] {
+                display: none;
+            }
+            &[show-more-button="false"] {
+                #button-more-exe-concurrent-users {
+                    display: block;
+                }
+            }
+            /* To review (Why 8?) */
+            > .user-current-letter-icon:nth-child(n + 8) {
+                display: none;
+            }
+        }
+        > .user-current-letter-icon {
+            display: none;
+        }
+    }
+
+    .dropend {
+        .dropdown-toggle::after {
+            top: 9px;
+            right: 11px;
+        }
+    }
+    #navbar-dropdown-menu-recent-projects {
+        li {
+            min-height: 2em;
+        }
+    }
+    #eXeToDoWarning span {
+        position: relative;
+        top: 2px;
+        left: -2px;
+    }
+}
+

@@ -55,26 +55,86 @@
     <script class="exe" type="module" src="{{ asset('app/app.js') }}"></script>
 {% endblock %}
 
+{% block id %}main{% endblock %}
 {% block body %}
-    <div id="main">
-        <div id="load-screen-main" class="load-screen loading"><span>eXeLearning {{ constant('App\\Constants::APP_VERSION' )}}</span></div>
-        <div id="head">
-            {% include 'workarea/menus/menuHeadTop.html.twig' %}
-            {% include 'workarea/menus/menuHeadBottom.html.twig' %}
-        </div>
-        <div id="workarea">
-            {% include 'workarea/menus/menuStructure.html.twig' %}
-            {% include 'workarea/menus/menuIdevices.html.twig' %}
-            <div id="node-content-container" class="exe-content js">
-                <div id="load-screen-node-content" class="load-screen hide"></div>
-                <div id="node-content" class="content" drop='["idevice","box"]'>
-                    <header>
-                        <div id="header-node-content" class="header"></div>
-                        <h1 id="page-title-node-content" class="page-title"></h1>
-                    </header>
+    <div id="load-screen-main" class="load-screen loading position-fixed top-0 start-0 w-100 h-100 align-items-center justify-content-center bg-white" style="z-index: 1050;">
+        <span>eXeLearning {{ constant('App\\Constants::APP_VERSION') }}</span>
+    </div>
+    <div id="workarea" class="container-fluid d-flex flex-nowrap">
+        <aside class="asideleft col-md-4 col-lg-3 bg-light vh-100">
+            <div class="content-info">
+                <!--div id="exe-logo">
+                    <img src="style/workarea/images/exelearning.svg" class="exe-logo content" alt="eXeLearning">
+                </div-->
+                <div id="exe-title" class="title-not-editing">
+                    <h2 class="exe-title content" id="change_title">...</h2>
+                    <button class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-original-title="{{ "Change title" | trans }}" aria-label="{{ "Change title" | trans }}">
+                        <span class="exe-icon small-icon edit-icon-green"></span>
+                    </button>
                 </div>
             </div>
-        </div>
+            <div class="accordion" id="menus_content">
+                {% include 'workarea/menus/menuStructure.html.twig' %}
+                {% include 'workarea/menus/menuIdevices.html.twig' %}
+            </div>
+        </aside>
+        <main>
+            <header id="head">
+                <nav class="navbar bg-transparent">
+                    {% include 'workarea/menus/menuHeadTop.html.twig' %}
+                    {% include 'workarea/menus/menuHeadBottom.html.twig' %}
+                </nav>
+            </header>
+            <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
+                <div id="load-screen-node-content" class="load-screen hide"></div>
+                <div id="node-content" class="content" drop='["idevice","box"]'>
+                    <div>
+                        <div id="header-node-content" class="header"></div>
+                        <h1 id="page-title-node-content" class="page-title"></h1>
+                    </div>
+                </div>
+                {# Idevices bottom menu #}
+                <div id="idevices-bottom" class="idevices-bottom-menu">
+
+                </div>
+            </section>
+        </main>
+    </div>
+    {# styles sidebar #}
+    <div id="stylessidenav-content" class="relative z-50 navbar-menu">
+        <div id="sidenav-overlay"  class="sidenav-overlay"></div>
+        <aside id="stylessidenav" class="sidenav" role="complementary">
+            <div class="content-styles-header">
+                <h1 class="styles-title">
+                    {{ "Styles" | trans }}
+                </h1>
+                <div id="stylessidenavclose" class="navbar-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="content-tabs">
+                <ul class="nav nav-tabs" id="styleslist" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab" data-bs-target="#exestylescontent" type="button" role="tab" aria-controls="exestylescontent" aria-selected="true">
+                            {{ "System" | trans }}
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="importedstylescontent-tab" data-bs-toggle="tab" data-bs-target="#importedstylescontent" type="button" role="tab" aria-controls="importedstylescontent" aria-selected="false">
+                            {{ "Imported" | trans }}
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="tab-content mt-3" id="styleslistContent">
+                <div class="tab-pane fade show active" id="exestylescontent" role="tabpanel" aria-labelledby="exestylescontent-tab" tabindex="0">
+                </div>
+                <div class="tab-pane fade" id="importedstylescontent" role="tabpanel" aria-labelledby="importedstylescontent-tab">
+                </div>
+            </div>
+        </aside>
     </div>
 
     {# Modals #}
