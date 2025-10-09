@@ -929,16 +929,22 @@ export default class MenuStructureBehaviour {
      *
      */
     setNodeIdToNodeContentElement() {
-        document
-            .querySelector('#node-content')
-            .removeAttribute('node-selected');
+        const nodeContent = document.querySelector('#node-content');
+        if (!nodeContent) return;
+
+        nodeContent.removeAttribute('node-selected');
+
         if (this.nodeSelected) {
-            let node = this.structureEngine.getNode(
+            const node = this.structureEngine.getNode(
                 this.nodeSelected.getAttribute('nav-id')
             );
-            document
-                .querySelector('#node-content')
-                .setAttribute('node-selected', node.pageId);
+
+            // Avoid crash when node is undefined (deleted or not yet loaded)
+            if (!node || typeof node.pageId === 'undefined') {
+                return;
+            }
+
+            nodeContent.setAttribute('node-selected', node.pageId);
         }
     }
 

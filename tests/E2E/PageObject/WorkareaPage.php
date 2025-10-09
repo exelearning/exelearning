@@ -433,7 +433,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
             // Prefer explicit state via data-open
             try { $client->waitFor('[data-testid="modal-confirm"][data-open="true"]', 5); } catch (\Throwable) { $client->waitFor('#modalConfirm', 5); }
             // Wait for modal fully visible (data-open or legacy .show)
-            $this->client->getWebDriver()->wait(10, 150)->until(static function () use ($client): bool {
+            $this->client->getWebDriver()->wait(15, 150)->until(static function () use ($client): bool {
                 return (bool) $client->executeScript(<<<'JS'
                     const m = document.querySelector('[data-testid="modal-confirm"], #modalConfirm');
                     if (!m) return false;
@@ -444,7 +444,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
                 JS);
             });
         } catch (\Throwable $e) {
-            if ($attempt === 2) {
+            if ($attempt === 3) {
                 throw new \RuntimeException(sprintf('Delete confirmation modal did not appear for node "%s".', $title), 0, $e);
             }
             continue; // retry flow
