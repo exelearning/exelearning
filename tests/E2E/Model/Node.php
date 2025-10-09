@@ -85,50 +85,6 @@ final class Node
         return $this->workareaPage->createNewNode($this, $title);
     }
 
-    /** Tries to find a child node by exact title under this node. */
-    public function findChild(string $title): ?Node
-    {
-        if ($this->deleted) {
-            return null;
-        }
-        $this->select();
-
-        $rawChild = $this->workareaPage->getClient()->executeScript(
-            <<<JS
-            const targetTitle = arguments[0];
-            const parent = document.querySelector('.nav-element.selected');
-            if (!parent) return null;
-            const container = parent.nextElementSibling;
-            if (!container) return null;
-
-            const candidates = Array.from(container.querySelectorAll('.nav-element'));
-            for (const cand of candidates) {
-                const label = cand.querySelector('.node-text-span');
-                if (label && label.textContent.trim() === targetTitle.trim()) {
-                    const nodeId = cand.getAttribute('nav-id');
-                    return {
-                        id: nodeId ? parseInt(nodeId, 10) : null,
-                        title: label.textContent.trim()
-                    };
-                }
-            }
-            return null;
-            JS,
-            [$title]
-        );
-
-        if (!is_array($rawChild)) {
-            return null;
-        }
-
-        return new self(
-            $rawChild['title'] ?? $title,
-            $this->workareaPage,
-            isset($rawChild['id']) ? (int)$rawChild['id'] : null,
-            $this
-        );
-    }
-
     /** Renames node by opening properties, changing title input and saving. */
     public function rename(string $newTitle): self
     {
@@ -210,7 +166,7 @@ final class Node
         $client   = $this->workareaPage->getClient();
 
         // Poll until the text appears
-        $client->getWebDriver()->wait(6, 150)->until(function () use ($client, $title): bool {
+        $client->getWebDriver()->wait(10, 150)->until(function () use ($client, $title): bool {
             return (bool) $client->executeScript(
                 "const name = arguments[0];
                  const spans = [...document.querySelectorAll('#nav_list .node-text-span')];

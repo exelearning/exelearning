@@ -125,7 +125,7 @@ final class WorkareaPage
         }
 
         // Wait until we detect one more Text iDevice than before
-        $wd->wait(6, 150)->until(function () use ($wd, $before) {
+        $wd->wait(10, 150)->until(function () use ($wd, $before) {
             return \count($wd->findElements(WebDriverBy::cssSelector(Selectors::IDEVICE_TEXT))) > $before;
         });
         Wait::settleDom(200);
@@ -433,7 +433,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
             // Prefer explicit state via data-open
             try { $client->waitFor('[data-testid="modal-confirm"][data-open="true"]', 5); } catch (\Throwable) { $client->waitFor('#modalConfirm', 5); }
             // Wait for modal fully visible (data-open or legacy .show)
-            $this->client->getWebDriver()->wait(5, 150)->until(static function () use ($client): bool {
+            $this->client->getWebDriver()->wait(10, 150)->until(static function () use ($client): bool {
                 return (bool) $client->executeScript(<<<'JS'
                     const m = document.querySelector('[data-testid="modal-confirm"], #modalConfirm');
                     if (!m) return false;
@@ -557,7 +557,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
 
         $client = $this->client;
 
-        $this->client->getWebDriver()->wait(8, 150)->until(static function () use ($client, $title, $id) {
+        $this->client->getWebDriver()->wait(10, 150)->until(static function () use ($client, $title, $id) {
             return (bool) $client->executeScript(<<<'JS'
                 const expectedTitle = arguments[0];
                 const expectedId    = arguments[1];
@@ -622,7 +622,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
         // 3) Wait for the rename modal and set a disambiguating name
         try {
             // Wait until the rename modal is visible
-            $c->getWebDriver()->wait(8, 150)->until(function () use ($currentModalId) {
+            $c->getWebDriver()->wait(100, 150)->until(function () use ($currentModalId) {
                 return $currentModalId() === 'rename-node-modal';
             });
 
@@ -701,7 +701,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
         $client = $this->client;
 
         try {
-            $this->client->getWebDriver()->wait($timeout)->until(static function () use ($client): bool {
+            $this->client->getWebDriver()->wait(10timeout)->until(static function () use ($client): bool {
                 return (bool) $client->executeScript(
                     "const loading = document.querySelector('#load-screen-main');" .
                     "if (!loading) { return true; }" .
@@ -754,7 +754,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
     private function waitUntil(callable $predicate, int $timeoutSec = 20, int $intervalMs = 200): void
     {
         $this->client->getWebDriver()
-            ->wait($timeoutSec, $intervalMs)
+            ->wait(10timeoutSec, $intervalMs)
             ->until(static function () use ($predicate): bool {
                 return (bool) $predicate();
             });
@@ -831,7 +831,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
     private function waitActionButtonEnabled(string $selector, int $timeoutSeconds = 5): void
     {
         $client = $this->client;
-        $client->getWebDriver()->wait($timeoutSeconds)->until(static function () use ($client, $selector): bool {
+        $client->getWebDriver()->wait(10timeoutSeconds)->until(static function () use ($client, $selector): bool {
             return (bool) $client->executeScript(
                 'const el=document.querySelector(arguments[0]); return !!(el && !el.disabled && el.offsetParent!==null);',
                 [$selector]

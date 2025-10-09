@@ -166,56 +166,6 @@ class IDevice
     }
     
     /**
-     * Find a child node by title
-     *
-     * @param string $title Title of the child node to find
-     * @return Node|null The child node or null if not found
-     */
-    public function findChild(string $title): ?Node
-    {
-        // Simplified method - could be improved with a real DOM search
-        // For a complete implementation, we would need to get the real
-        // information from the DOM using the WebDriver client
-        
-        try {
-            // Select this node to view its children
-            $this->select();
-            
-            // JavaScript to find the child node by title
-            $childExists = $this->workareaPage->getClient()->executeScript("
-                const parentNode = document.querySelector('.nav-element.selected');
-                if (!parentNode) return false;
-                
-                const childrenContainer = parentNode.nextElementSibling;
-                if (!childrenContainer) return false;
-                
-                const children = childrenContainer.querySelectorAll('.node-text-span');
-                for (const child of children) {
-                    if (child.textContent === '$title') {
-                        return true;
-                    }
-                }
-                
-                return false;
-            ");
-            
-            if ($childExists) {
-                return new Node(
-                    $title,
-                    $this->workareaPage,
-                    null, // nodeId not available
-                    $this,
-                    $this->factory
-                );
-            }
-        } catch (\Exception $e) {
-            // Ignore errors
-        }
-        
-        return null;
-    }
-    
-    /**
      * Static method to create a root node
      *
      * @param WorkareaPage $workareaPage
