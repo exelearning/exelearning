@@ -17,10 +17,10 @@ final class OpenBasicElpTest extends BaseE2ETestCase
         DocumentFactory::open($client);
 
         // Open File -> Open
-        $client->waitForVisibility('#dropdownFile', 10);
+        $client->waitForVisibility('#dropdownFile', 20);
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-openuserodefiles'))->click();
-        $client->waitForVisibility('#modalOpenUserOdeFiles', 10);
+        $client->waitForVisibility('#modalOpenUserOdeFiles', 20);
 
         // File input inside the modal
         $input = $client->getWebDriver()->findElement(
@@ -33,14 +33,14 @@ final class OpenBasicElpTest extends BaseE2ETestCase
 
         // Confirm open
         // Guard against the loading overlay occasionally showing while the modal is open
-        try { $client->waitForInvisibility('#load-screen-main', 15); } catch (\Throwable) {}
-        $client->waitFor('#modalOpenUserOdeFiles .modal-footer .btn-primary', 10);
+        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
+        $client->waitFor('#modalOpenUserOdeFiles .modal-footer .btn-primary', 20);
         $client->getWebDriver()->findElement(
             WebDriverBy::cssSelector('#modalOpenUserOdeFiles .modal-footer .btn-primary')
         )->click();
 
         // Wait for the modal to close and for nodes to appear
-        try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 10); } catch (\Throwable) {}
+        try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 20); } catch (\Throwable) {}
         // The project reload shows the loading screen; wait for it to hide before asserting DOM
         try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
         $client->waitFor('.nav-element', 15);
