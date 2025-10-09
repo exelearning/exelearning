@@ -19,7 +19,7 @@ class OdeNavStructureSyncProperties extends BaseEntity
     protected ?string $description = null;
 
     #[ORM\ManyToOne(targetEntity: 'OdeNavStructureSync', inversedBy: 'odeNavStructureSyncProperties')]
-    #[ORM\JoinColumn(name: 'ode_nav_structure_sync_id', referencedColumnName: 'id')]
+    #[ORM\JoinColumn(name: 'ode_nav_structure_sync_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     protected OdeNavStructureSync $odeNavStructureSync;
 
     public function getKey(): ?string
