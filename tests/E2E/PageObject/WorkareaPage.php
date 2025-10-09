@@ -246,10 +246,18 @@ final class WorkareaPage
     $this->guardedClick(fn () => $wd->findElement(WebDriverBy::cssSelector($targetSel)));
 
     // Wait until selected nav matches expected id
-    $this->waitUntil(fn () => (bool) $c->executeScript(
-        'const id=String(arguments[0]); const sel=document.querySelector(".nav-element.selected"); return !!sel && String(sel.getAttribute("data-node-id"))===id;',
-        [(string) $expect['id']]
-    ), 20);
+    $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
+        const id = String(arguments[0]);
+        let sel = document.querySelector('[data-testid="nav-node"][data-selected="true"]');
+        if (!sel) {
+            const inner = document.querySelector('.nav-element .nav-element-text.selected');
+            if (inner) sel = inner.closest('.nav-element');
+        }
+        if (!sel) sel = document.querySelector('.nav-element.selected');
+        if (!sel) return false;
+        const current = sel.getAttribute('data-node-id') || sel.getAttribute('nav-id');
+        return String(current) === id;
+    JS, [(string) $expect['id']]), 28);
 
     // Content panel ready (reuse your robust method)
         $this->waitNodeContentReady($expect['title'] ?? null, 30);
@@ -346,7 +354,12 @@ $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
     return false;
   }
 
-  const sel = document.querySelector('.nav-element.selected');
+  let sel = document.querySelector('[data-testid="nav-node"][data-selected="true"]');
+  if (!sel) {
+    const inner = document.querySelector('.nav-element .nav-element-text.selected');
+    if (inner) sel = inner.closest('.nav-element');
+  }
+  if (!sel) sel = document.querySelector('.nav-element.selected');
   if (sel !== target) {
     target.querySelector('.nav-element-text')?.scrollIntoView({block:'center'});
     target.querySelector('.nav-element-text')?.dispatchEvent(new MouseEvent('click', {bubbles:true}));
@@ -542,14 +555,19 @@ $this->waitNodeContentReady($nodeTitle, 30);
 
         $client = $this->client;
 
-        $this->client->getWebDriver()->wait(5, 150)->until(static function () use ($client, $title, $id) {
+        $this->client->getWebDriver()->wait(8, 150)->until(static function () use ($client, $title, $id) {
             return (bool) $client->executeScript(<<<'JS'
                 const expectedTitle = arguments[0];
                 const expectedId    = arguments[1];
-                const selected = document.querySelector('.nav-element.selected');
+                let selected = document.querySelector('[data-testid="nav-node"][data-selected="true"]');
+                if (!selected) {
+                    const inner = document.querySelector('.nav-element .nav-element-text.selected');
+                    if (inner) selected = inner.closest('.nav-element');
+                }
+                if (!selected) selected = document.querySelector('.nav-element.selected');
                 if (!selected) { return false; }
                 if (expectedId !== null && expectedId > 0) {
-                    const navId = selected.getAttribute('nav-id');
+                    const navId = selected.getAttribute('nav-id') || selected.getAttribute('data-node-id');
                     if (!navId || parseInt(navId, 10) !== expectedId) {
                         return false;
                     }
@@ -610,7 +628,13 @@ $this->waitNodeContentReady($nodeTitle, 30);
             $c->waitFor('#input-rename-node', 5);
             $c->executeScript(<<<'JS'
                 const input = document.querySelector('#input-rename-node');
-                const current = (document.querySelector('.nav-element.selected .node-text-span')?.textContent || '').trim();
+                let sel = document.querySelector('[data-testid="nav-node"][data-selected="true"]');
+                if (!sel) {
+                    const inner = document.querySelector('.nav-element .nav-element-text.selected');
+                    if (inner) sel = inner.closest('.nav-element');
+                }
+                if (!sel) sel = document.querySelector('.nav-element.selected');
+                const current = (sel?.querySelector('.node-text-span')?.textContent || '').trim();
                 if (input) {
                     const proposal = current ? current + ' (copy)' : (input.value || 'Page') + ' (copy)';
                     input.value = proposal;
@@ -944,7 +968,12 @@ private function waitNodeContentReady(?string $expectedTitle, int $timeoutSec = 
           if (nc.getAttribute('data-ready') && nc.getAttribute('data-ready') !== 'true') return false;
 
           // 2) node-selected in panel must match page-id of selected nav element
-          const sel = document.querySelector('.nav-element.selected');
+          let sel = document.querySelector('[data-testid="nav-node"][data-selected="true"]');
+          if (!sel) {
+            const inner = document.querySelector('.nav-element .nav-element-text.selected');
+            if (inner) sel = inner.closest('.nav-element');
+          }
+          if (!sel) sel = document.querySelector('.nav-element.selected');
           if (!sel) return false;
           const selectedPid = sel.getAttribute('page-id') ?? '';
           const panelPid = nc?.getAttribute('node-selected') ?? '';

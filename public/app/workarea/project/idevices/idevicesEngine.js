@@ -939,22 +939,9 @@ export default class IdevicesEngine {
                 }
                 if (this.clickIdeviceMenuEnabled) {
                     let ideviceData = { odeIdeviceTypeName: element.id };
-                    // Prefer to add inside the first existing block (test-friendly),
-                    // otherwise fallback to the page content container
-                    let targetContainer = this.nodeContentElement;
-                    if (
-                        this.components &&
-                        Array.isArray(this.components.blocks) &&
-                        this.components.blocks.length > 0
-                    ) {
-                        const firstBlock = this.components.blocks[0];
-                        if (firstBlock && firstBlock.blockContent) {
-                            targetContainer = firstBlock.blockContent;
-                        }
-                    }
                     let ideviceNode = await this.createIdeviceInContent(
                         ideviceData,
-                        targetContainer
+                        this.nodeContentElement
                     );
                     // Send operation log action to bbdd
                     let additionalData = {};
