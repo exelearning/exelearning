@@ -477,8 +477,74 @@ $this->waitNodeContentReady($nodeTitle, 30);
         Wait::settleDom(300);
     }
 
+// En el archivo: tests/E2E/PageObject/WorkareaPage.php
 
     public function deleteSelectedNode(Node $node): self
+    {
+        $title = $node->getTitle();
+        $id    = $node->getId();
+        $client = $this->client;
+
+        // Bucle de reintento activo para el flujo de clics:
+        // 1. Clic en el botón de borrar
+        // 2. Esperar y verificar que el modal de confirmación aparece
+        // 3. Clic en el botón de confirmar en el modal
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            try {
+                // Asegurarse de que el botón de borrar está visible y habilitado
+                $this->waitActionButtonEnabled('[data-testid="nav-delete"]');
+                $this->clickFirstMatchingSelector([
+                    '[data-testid="nav-delete"]',
+                    '#menu_nav .action_delete',
+                    '.button_nav_action.action_delete',
+                ]);
+
+                // Esperar a que el modal de confirmación esté completamente visible
+                $this->waitUntil(static function () use ($client): bool {
+                    return (bool) $client->executeScript(<<<'JS'
+                        const m = document.querySelector('[data-testid="modal-confirm"], #modalConfirm');
+                        if (!m) return false;
+                        const opened = m.getAttribute('data-open') === 'true';
+                        const st = getComputedStyle(m);
+                        const legacy = (m.classList.contains('show') || st.display === 'block') && m.getAttribute('aria-hidden') !== 'true';
+                        return opened || legacy;
+                    JS);
+                }, 15);
+
+                // Hacer clic en el botón de confirmación final
+                $this->waitActionButtonEnabled('#modalConfirm .modal-footer .confirm');
+                $this->clickFirstMatchingSelector([
+                    '[data-testid="confirm-action"]',
+                    '#modalConfirm .modal-footer .confirm',
+                    '#modalConfirm button.btn.btn-primary',
+                ]);
+
+                // Si todos los clics tuvieron éxito, salimos del bucle de reintentos
+                break;
+
+            } catch (\Throwable $e) {
+                if ($attempt === 2) { // Si falla en el último intento, lanzamos la excepción
+                    throw new \RuntimeException(sprintf('No se pudo completar el flujo de borrado para el nodo "%s".', $title), 0, $e);
+                }
+                // Esperar un poco antes de reintentar para dar tiempo a la UI a estabilizarse
+                usleep(300_000);
+            }
+        }
+
+        // Ahora, y solo ahora, realizamos UNA única espera robusta para verificar que el nodo ha desaparecido.
+        try {
+            // Usamos tu método `waitNodeDeleted` que ya es bastante bueno, con un timeout generoso.
+            $this->waitNodeDeleted($id, $title, 60);
+        } catch (\Throwable $e) {
+            // Si después de 60 segundos el nodo sigue ahí, ahora sí que es un error real.
+            $errorMessage = sprintf('El nodo "%s" (ID: %s) sigue apareciendo después de confirmar su eliminación.', $title, (string)$id);
+            throw new \RuntimeException($errorMessage, 0, $e);
+        }
+
+        return $this;
+    }
+
+    public function deleteSelectedNode2(Node $node): self
     {
         $title = $node->getTitle();
         $id    = $node->getId();

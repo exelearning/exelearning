@@ -32,8 +32,6 @@ final class OpenBasicElpTest extends BaseE2ETestCase
         $input->sendKeys($path);
 
         // Confirm open
-        // Guard against the loading overlay occasionally showing while the modal is open
-        // try { $client->waitForInvisibility('#load-screen-main', 60); } catch (\Throwable) {}
         $client->waitFor('#modalOpenUserOdeFiles .modal-footer .btn-primary', 20);
         $client->getWebDriver()->findElement(
             WebDriverBy::cssSelector('#modalOpenUserOdeFiles .modal-footer .btn-primary')
