@@ -15,6 +15,7 @@ doctrine:
         # Specific configuration for the database (distinguish between databases)
         mapping_types:
             enum: string
+        use_savepoints: true
     orm:
         enable_native_lazy_objects: true
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
