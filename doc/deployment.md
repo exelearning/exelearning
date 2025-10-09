@@ -130,8 +130,6 @@ Verification:
 - Visit `https://your-host%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
 - If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `%BASE_PATH%/healthcheck`.
 
-Tip: The automated test suite includes an integration test that exercises several `BASE_PATH` values (one-level and multi-level) to prevent regressions.
-
 ---
 
 ## Reverse proxy & TLS
