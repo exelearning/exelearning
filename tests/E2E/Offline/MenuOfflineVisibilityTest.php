@@ -4,11 +4,12 @@ declare(strict_types=1);
 namespace App\Tests\E2E\Offline;
 
 use App\Tests\E2E\Support\BaseE2ETestCase;
-use Facebook\WebDriver\WebDriverBy;
 use Symfony\Component\Panther\Client;
 
 class MenuOfflineVisibilityTest extends BaseE2ETestCase
 {
+    use OfflineMenuActionsTrait;
+
     /**
      * Injects the mock Electron API into the browser window.
      */
@@ -40,8 +41,7 @@ class MenuOfflineVisibilityTest extends BaseE2ETestCase
         $this->injectMockElectronApi($client);
 
         // Open File dropdown
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
+        $this->openOfflineFileMenu($client);
 
         $jsIsVisible = <<<'JS'
             (sel) => {

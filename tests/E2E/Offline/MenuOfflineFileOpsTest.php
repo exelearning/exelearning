@@ -4,11 +4,12 @@ declare(strict_types=1);
 namespace App\Tests\E2E\Offline;
 
 use App\Tests\E2E\Support\BaseE2ETestCase;
-use Facebook\WebDriver\WebDriverBy;
 use Symfony\Component\Panther\Client;
 
 class MenuOfflineFileOpsTest extends BaseE2ETestCase
 {
+    use OfflineMenuActionsTrait;
+
     private function injectMockElectronApi(Client $client): void
     {
         $mockApiPath = __DIR__ . '/../../../public/app/workarea/mock-electron-api.js';
@@ -106,9 +107,8 @@ class MenuOfflineFileOpsTest extends BaseE2ETestCase
     public function testOpenOfflineUsesElectronDialogs(): void
     {
         $client = $this->initOfflineClientWithMock();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-open-offline'))->click();
+        $this->openOfflineFileMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-open-offline');
         $this->waitForMockCall($client, 'openElp');
         $this->waitForMockCall($client, 'readFile');
     }
@@ -116,18 +116,16 @@ class MenuOfflineFileOpsTest extends BaseE2ETestCase
     public function testSaveOfflineUsesElectronSave(): void
     {
         $client = $this->initOfflineClientWithMock();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-save-offline'))->click();
+        $this->openOfflineFileMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-save-offline');
         $this->waitForMockCall($client, 'save');
     }
 
     public function testSaveAsOfflineUsesElectronSaveAs(): void
     {
         $client = $this->initOfflineClientWithMock();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-save-as-offline'))->click();
+        $this->openOfflineFileMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-save-as-offline');
         $this->waitForMockCall($client, 'saveAs');
     }
 }

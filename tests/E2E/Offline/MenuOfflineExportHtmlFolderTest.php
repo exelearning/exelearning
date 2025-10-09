@@ -4,11 +4,12 @@ declare(strict_types=1);
 namespace App\Tests\E2E\Offline;
 
 use App\Tests\E2E\Support\BaseE2ETestCase;
-use Facebook\WebDriver\WebDriverBy;
 use Symfony\Component\Panther\Client;
 
 class MenuOfflineExportHtmlFolderTest extends BaseE2ETestCase
 {
+    use OfflineMenuActionsTrait;
+
     private function inject(Client $client): void
     {
         $mockApiPath = __DIR__ . '/../../../public/app/workarea/mock-electron-api.js';
@@ -88,20 +89,16 @@ class MenuOfflineExportHtmlFolderTest extends BaseE2ETestCase
     public function testExportAsHtml5OfflineUsesElectronSaveAs(): void
     {
         $client = $this->client();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAsOffline'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-exportas-html5'))->click();
+        $this->openOfflineExportMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-exportas-html5');
         $this->wait($client, 'saveAs');
     }
 
     public function testExportHtml5ToFolderOfflineUsesElectronFolderPicker(): void
     {
         $client = $this->client();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAsOffline'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-exportas-html5-folder'))->click();
+        $this->openOfflineExportMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-exportas-html5-folder');
         $this->wait($client, 'exportToFolder');
     }
 
@@ -111,10 +108,8 @@ class MenuOfflineExportHtmlFolderTest extends BaseE2ETestCase
         $client->executeScript(<<<'JS'
             (function(){ if (window.electronAPI) window.electronAPI.exportToFolder = async function(){ return { ok:false, canceled:true }; }; })();
         JS);
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAsOffline'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-exportas-html5-folder'))->click();
+        $this->openOfflineExportMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-exportas-html5-folder');
         // Just ensure no crash and API was invoked
         $calls = (int) $client->executeScript('return (window.__MockElectronCalls && window.__MockElectronCalls.exportToFolder) || 0;');
         $this->assertGreaterThanOrEqual(0, $calls);
