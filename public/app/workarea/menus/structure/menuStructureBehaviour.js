@@ -994,41 +994,43 @@ export default class MenuStructureBehaviour {
             let node = this.structureEngine.getNode(
                 this.nodeSelected.getAttribute('nav-id')
             );
-            if (node.id == 'root') {
-                // Enabled only "New node" button
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_add'
-                ).disabled = false;
-            } else {
-                // Enabled all buttons
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_add'
-                ).disabled = false;
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_properties'
-                ).disabled = false;
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_delete'
-                ).disabled = false;
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_clone'
-                ).disabled = false;
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_import_idevices'
-                ).disabled = false;
-                //this.menuNav.querySelector(".button_nav_action.action_check_broken_links").disabled = false;
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_move_prev'
-                ).disabled = false;
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_move_next'
-                ).disabled = false;
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_move_up'
-                ).disabled = false;
-                this.menuNav.querySelector(
-                    '.button_nav_action.action_move_down'
-                ).disabled = false;
+            if (node) {
+                if (node.id == 'root') {
+                    // Enabled only "New node" button
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_add'
+                    ).disabled = false;
+                } else {
+                    // Enabled all buttons
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_add'
+                    ).disabled = false;
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_properties'
+                    ).disabled = false;
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_delete'
+                    ).disabled = false;
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_clone'
+                    ).disabled = false;
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_import_idevices'
+                    ).disabled = false;
+                    //this.menuNav.querySelector(".button_nav_action.action_check_broken_links").disabled = false;
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_move_prev'
+                    ).disabled = false;
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_move_next'
+                    ).disabled = false;
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_move_up'
+                    ).disabled = false;
+                    this.menuNav.querySelector(
+                        '.button_nav_action.action_move_down'
+                    ).disabled = false;
+                }
             }
         }
     }

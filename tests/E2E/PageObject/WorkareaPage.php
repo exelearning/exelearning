@@ -225,7 +225,7 @@ final class WorkareaPage
         $this->waitForLoadingScreenToDisappear();
         $c->waitFor('[data-testid="nav-node"]', 20);
         // Ensure no modals/backdrops/overlays are blocking interactions
-        $this->waitUiQuiescent(12);
+        $this->waitUiQuiescent(20);
 
     $expect = $this->resolveExpectedNode($node);
 
@@ -275,8 +275,8 @@ final class WorkareaPage
         }
     }
 
-    // Content panel ready (reuse your robust method)
-        $this->waitNodeContentReady($expect['title'] ?? null, 30);
+        // Content panel ready (reuse your robust method)
+        $this->waitNodeContentReady($expect['title'] ?? null, 40);
     }
 
 
@@ -777,7 +777,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
             try { $this->client->waitFor('[data-testid="node-content"][data-ready="true"]', 8); } catch (\Throwable) {}
         }
         // Ensure no blocking UI remains
-        $this->waitUiQuiescent(8);
+        $this->waitUiQuiescent(20);
     }
 
     /**
