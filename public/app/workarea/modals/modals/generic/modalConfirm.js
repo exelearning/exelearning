@@ -8,10 +8,10 @@ export default class ModalConfirm extends Modal {
         this.confirmButtonDefaultText = _('Yes');
         this.cancelButtonDefaultText = _('No');
         this.confirmButton = this.modalElement.querySelector(
-            'button.btn.btn-primary'
+            'button.btn.button-primary'
         );
         this.cancelButton = this.modalElement.querySelector(
-            'button.cancel.btn.btn-secondary'
+            'button.cancel.btn.button-tertiary'
         );
     }
 

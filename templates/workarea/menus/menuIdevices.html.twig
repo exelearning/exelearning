@@ -1,9 +1,10 @@
-<div id="menu_idevices" class="menu long" size="long" pos="left" drag="menu">
-    <div id="menu_idevices_content" class="menu_content">
-        <div id="label_menu_idevices" class="label title-label showmin">
-            <div class="exe-icon" aria-hidden="true">dashboard_customize</div>
-            <h2>{{ "iDevices" | trans }}</h2>
-        </div>
+<div id="menu_idevices" class="menu long accordion-item" size="long" pos="left" drag="menu">
+    <h2 class="accordion-header" id="menu_idevices_header">
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#menu_idevices_content" aria-expanded="true" aria-controls="menu_idevices_content">
+            {{ "iDevices" | trans }}
+        </button>
+    </h2>
+    <div id="menu_idevices_content" class="menu_content accordion-collapse collapse show" aria-labelledby="menu_idevices_header">
         <div id="list_menu_idevices" class="list"></div>
     </div>
 </div>

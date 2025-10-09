@@ -1,0 +1,8 @@
+*:focus-visible {
+    border-radius: 4px !important;
+    box-shadow: 0 0 0 .125rem var(--brand-primary-300) !important;
+    outline: 0 !important;
+}
+*:focus {
+    outline: none !important;
+}

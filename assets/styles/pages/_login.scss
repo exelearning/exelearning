@@ -1,0 +1,127 @@
+body.login-page {
+    overflow:auto;
+    #login-tpl {
+        display: flex;
+        min-height: 100vh;
+        width: 100vw;
+        .login-left,
+        .login-right {
+            flex: 1 1 50%;
+        }
+        .login-left {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            @media (min-height: 768px) {
+                padding: 2rem;
+            }
+            .card-body {
+                max-width: 398px;
+                display: flex;
+                flex-direction: column;
+                padding: 2rem;
+            }
+            .logo {
+                width: auto;
+                max-width: 100%;  
+                height: clamp(74px, 16vh, 160px);
+                margin-bottom: 12px;
+                @media (min-height: 768px) {
+                    height: clamp(80px, 20vh, 200px);
+                    margin-bottom: 64px !important;
+                }
+            }
+            .sign-in {
+                font-weight: 600;
+                font-size: 24px;
+                line-height: 1.2;
+                color: #132032;
+                margin-bottom: 8px;
+            }
+            .hello-again {
+                color: hsla(216, 18%, 34%, 1);
+                font-size: 14px;
+                font-weight: 400;
+                margin-bottom: 16px;
+            }
+            input {
+                height: 36px;
+                font-size: 14px;
+                padding: 3px 12px !important;
+                border-color: hsla(217, 16%, 84%, 1) !important;
+                &:focus,
+                &:active {
+                    box-shadow: 0 0 0 2px #26DDC7;
+                }
+            }
+            label {
+                font-size: 13px;
+            }
+            .login-password {
+                margin-bottom: 30px;
+            }
+            .login-submit {
+               background-color: hsla(215, 45%, 14%, 1) !important;
+               border-color: hsla(215, 45%, 14%, 1) !important;
+               font-size: 14px;
+               box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+            }
+            .other-methods {
+                color: hsla(216, 18%, 34%, 1);
+                p {
+                    margin: 24px 0;
+                }
+                .other-methods-buttons a {
+                    width: 100%;
+                    border-color: hsla(217, 16%, 84%, 1) !important;
+                    background-color: var(--white) !important;
+                    box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+                    font-weight: 500;
+                    color: #132032;
+                    &:hover {
+                        background-color: var(--gray-100) !important;
+                    }
+                    &:active {
+                        background-color: var(--gray-200) !important;
+                    }
+                }
+            }
+            .lead {
+                font-size: 1.8em
+            }
+            #exe-version {
+                position: absolute;
+                bottom: 20px;
+                right: 28px;
+                color: var(--gray-500);
+                @media (min-width: 992px) {
+                    position: absolute;
+                    bottom: 22px;
+                    right: 30px;
+                    color: var(--white);
+                }
+            }
+            .logout-button {
+                line-height: 33px;
+            }
+        }
+        .login-right {
+            display: none;
+            @media (min-width: 992px) {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 2rem;
+                background: #f6f8fb;
+                background-image: url('images/exe-login-image.webp');
+                background-size: cover;
+                background-repeat: no-repeat;
+                background-position: center;
+                margin: 16px 16px 16px 0;
+                border-radius: 16px;
+            }
+            
+        }
+    }
+}

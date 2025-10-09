@@ -1,0 +1,41 @@
+.user-theme-empty-upload,
+.idevice-import-upload {
+    border: 2px dashed var(--gray-border-dark);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    color: var(--text-black);
+    background: var(--gray-05);
+    cursor: pointer;
+    margin-top: 1.5rem;
+    .upload-box-icon {
+        font-size: 24px;
+        color: var(--text-black);
+        margin-bottom: 12px;
+        border-radius: .5rem;
+        border: 1px solid #EAECF0;
+        box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+        max-width: 40px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .upload-box-text {
+        strong {
+            color: var(--brand-primary);
+            font-weight: 600;
+        }
+        p {
+            margin: 0;
+            font-size: 14px;
+        }
+    }
+    .hidden {
+        display: none;
+    }
+    &:hover {
+        border: 2px dashed var(--brand-primary);
+    }
+    &.dragover {
+        border: 2px dashed var(--brand-primary);
+    }
+}

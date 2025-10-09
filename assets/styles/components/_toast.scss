@@ -1,0 +1,47 @@
+.toasts-container {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    margin: 10px;
+    padding: 2px;
+    z-index: 998;
+    .toast {
+        margin-top: 2px;
+        color: var(--white);
+        background-color: hsla(0, 0%, 15%, 1);
+        border: none;
+        border-radius: 8px;
+        &.hiding {
+            opacity: 0;
+            transition: all 2s ease-in;
+        }
+        .exe-icon {
+            content: "menu";
+            font-family: var(--icons-ff);
+            float: left;
+            margin-right: var(--margin-m);
+            margin-top: -1px;
+            font-size: larger;
+        }
+        .toast-header {
+            background-color: transparent;
+            color: var(--white);
+            border-bottom: 0;
+            .btn-close {
+                background-image: url("data:image/svg+xml;charset=UTF-8, <svg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'><path d='M18 6L6 18M6 6L18 18' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+                opacity: .9;
+                position: relative;
+                top: -4px;
+                &:hover {
+                    opacity: 0.75;
+                }
+            }
+        }
+        .toast-body {
+            background-color: transparent;
+            padding-top: 0;
+            font-size: 12px;
+            font-weight: 500;
+        }
+    }
+}

@@ -1,0 +1,178 @@
+:root {
+    /* Text */
+    --body-text-color: rgb(34, 34, 34);
+    --body-text-font: "Catamaran", sans-serif;
+    --body-fs: clamp(0.875rem, 0.732142857142857rem + 0.223214285714286vw, 1rem);
+    --body-xs: clamp(0.675rem, 0.532142857142857rem + 0.223214285714286vw, 1rem);
+    --h1-fs: clamp(1.5rem, 1.35714285714286rem + 0.223214285714286vw, 1.625rem);
+    --h2-fs: clamp(1.375rem, 1.23214285714286rem + 0.223214285714286vw, 1.5rem);
+    --h3-fs: clamp(1.125rem, 0.839285714285714rem + 0.446428571428571vw, 1.375rem);
+    --h4-fs: clamp(1rem, 0.857142857142857rem + 0.223214285714286vw, 1.125rem);
+    --menu1-fs: clamp(1rem, 0.857142857142857rem + 0.223214285714286vw, 1.125rem);
+    --menu2-fs: clamp(0.875rem, 0.732142857142857rem + 0.223214285714286vw, 1rem);
+    --menu3-fs: clamp(0.75rem, 0.607142857142857rem + 0.223214285714286vw, 0.875rem);
+    --icons-ff: Material icons Round;
+    --menud-idevices-f: 13px;
+
+    /* Colors */
+    --white: hsl(0, 0%, 100%);
+    --gray-background: #f6f8fa;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #696d75;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --gray-border: var(--gray-300);
+    --gray-border-light: var(--gray-200);
+    --gray-border-dark: var(--gray-400);
+
+/*
+    --brand-primary-50: hsl(150, 61%, 96%);
+    --brand-primary-100: hsl(150, 61%, 93%);
+    --brand-primary-200: hsl(150, 61%, 90%);
+    --brand-primary-300: hsl(149 60% 87% / 1);
+    --brand-primary-400: hsl(150, 61%, 58%);
+    --brand-primary-500: hsl(150, 61%, 44%);
+    --brand-primary-600: hsl(150, 61%, 39%);
+    --brand-primary-700: hsl(150, 61%, 33%);
+    --brand-primary-800: hsl(150, 61%, 26%);
+    --brand-primary-900: hsl(150, 64%, 20%);
+*/
+
+    --brand-primary-25: #F6FCFE;
+    --brand-primary-50: #e3f8f9;
+    --brand-primary-100: #CCFBF7;
+    --brand-primary-150: #b9f9f1;
+    --brand-primary-200: #99F6EB;
+    --brand-primary-300: #5FE9D9;
+    --brand-primary-400: #2ED3CB;
+    --brand-primary-500: #15B7AF;
+    --brand-primary-600: #0BA1A1;
+    --brand-primary-700: #107275;
+    --brand-primary-800: #125B5D;
+    --brand-primary-900: #134E4E;
+    --brand-primary-950: #0A2926;
+
+    --brand-primary: var(--brand-primary-600);
+    --brand-primary-dark: var(--brand-primary-700);
+    --brand-primary-light: var(--brand-primary-500);
+
+    --brand-gradient: linear-gradient(180deg, #27A164 -89.36%, #63D47E 297.87%);
+    --brand-gradient-dark: linear-gradient(180deg, #228C57 -89.36%, #4BCE6B 297.87%);
+    --brand-secondary: #1652d5;
+    --brand-secondary-dark: #0b3ca7;
+    --system-red: rgb(227, 73, 76);
+    --bold-gray: var(--gray-500);
+    --text: var(--gray-700);
+    --info-background: #fafbfb;
+    --info-bordercolor: #c2c3c4;
+    --disabled: var(--gray-100);
+
+
+    /* Shadows */
+    --shadow-level-1: 0 4px 8px 0 rgba(0, 0, 0, 0.07);
+    --shadow-level-1-inverted: 0 -2px 8px 0 rgba(0, 0, 0, 0.07);
+
+    /* Bootstrap overrides */
+    --bs-btn-active-border-color:  hsl(210 20% 92% / 1);
+
+    --main-background-color: #fefefe;
+    --head-top-bg-color: rgb(255, 255, 255);
+    --head-bottom-bg-color: rgb(226 226 226);
+    --head-bottom-bg-color-light: rgb(239 239 239);
+    --head-icon-bg-color: #aebe82;
+    --head-icon-border-color: #80896a;
+    --work-area-bg-color: rgb(223, 223, 223);
+    /*
+    --dark-exe-color: #5a7f0c;
+    --dark-exe-color-text: #416600;
+    --light-exe-color: #eff5e4;
+    */
+    --dark-exe-color: var(--brand-primary);
+    --dark-exe-color-text: var(--brand-primary-dark);
+    --light-exe-color: var(--brand-primary-10);
+    --dark-exe-color-08: rgba(90, 127, 12, 0.8);
+    --dark-exe-color-06: rgba(90, 127, 12, 0.6);
+    --dark-exe-color-04: rgba(90, 127, 12, 0.4);
+    --medium-exe-color: #c0dd75;
+    --dragging-exe-color: #bcc7a1;
+    --node-content-bg-color: #EDFFDB;
+    --node-content-text-color: #377300;
+    --main-menu-hover: #c7c8c9;
+    --elements-hover: #dbdbdb;
+    --remove: rgba(255, 0, 0, 0.8);
+    --error-bg: rgba(255, 100, 100, 0.5);
+    --verde-cl: #d5dcc8;
+    --verde-cl-tr: rgba(213, 220, 200, 0.4);
+    --icon-gray: #716c57;
+    --icon-bg-gray: #b3b0a4;
+    --filter-black-to-green: invert(58%) sepia(87%) saturate(5976%) hue-rotate(58deg) brightness(93%) contrast(91%);
+    --bg-dark-gray: rgba(40, 40, 40, 0.8);
+    --bg-light-gray: #e9e9e9;
+    --bg-lighter-gray: #fdfdfd;
+    --file-odd: #f2f2f2;
+    --input-borders: #d0d5dd;
+    --corporative-color: #438606;
+    --main-background: #f7f7f7;
+    --border-buttons: #d8dae5;
+    --icon-primary: #6E9F41;
+    --node-menu-background: #252525;
+    --text-black: #333;
+    --menu-idevices-bg: #f4f4f5;
+    --delete: #C64143;
+
+    /* Sizes */
+    --min-node-content-height: 60px;
+    --head-height: 64px;
+    --head-height-top: 60%;
+    --head-height-bottom: 40%;
+    --logo-width: 40px;
+    --work-height: 100vh;
+    --menus-width: 250px;
+
+    /* Borders */
+    --radius: 8px;
+    --radius-top: var(--radius) var(--radius) 0 0;
+    --radius-bottom: 0 0 var(--radius) var(--radius);
+    --radius-left: var(--radius) 0 0 var(--radius);
+    --radius-right: 0 var(--radius) var(--radius) 0;
+    --radius-top-left: var(--radius) 0 0 0;
+    --radius-top-right: 0 var(--radius) 0 0;
+    --radius-bottom-right: 0 0 var(--radius) 0;
+    --radius-bottom-left: 0 0 0 var(--radius);
+    --radius-lg: 12px;
+
+    /* Margins */
+    --margin-s: 4px;
+    --margin-m: 10px;
+    --margin-l: 25px;
+    --margin-xl: 40px;
+    --margin-32: 32px;
+    --margin-din-l: clamp(0.625rem, 0.480769230769231rem + 0.641025641025641vw, 1.25rem);
+    --margin-din-xl: clamp(1.25rem, 0.961538461538462rem + 1.28205128205128vw, 2.5rem);
+
+    /* Iconos */
+    --idevice_item-height: 70px;
+    --idevice_item-width: 31%;
+    --icon-color: #d5d5d5;
+    --idevice_icon-fs: clamp(1.375rem, 1.28846153846154rem + 0.384615384615385vw, 1.75rem);
+
+    /* Transitions */
+    --tr-02: all 0.2s ease-in-out;
+    --tr-04: all 0.4s ease-in-out;
+    --sidebar: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Menu & nodecontent */
+    --menu-shadow: 2px 2px 6px 3px rgb(234, 225, 225);
+    --menu-shadow-light: 2px 2px 6px 3px rgb(234, 225, 225, 0.45);
+}
+
+/* Variables for TOC sidebar */
+$max-levels: 22;
+$step: 10px;
+$base-offset: 8px;
