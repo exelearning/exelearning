@@ -91,13 +91,6 @@ COPY --from=dunglas/mercure:latest /etc/caddy/dev.Caddyfile /etc/caddy/dev.Caddy
 # Create symbolic link to the php84 binary
 RUN ln -sf /usr/bin/php84 /usr/local/bin/php
 
-# NOTICE: Patch upstream Nginx default root location to avoid injecting "q" helper param
-# The base image sets: try_files $uri $uri/ /index.php?q=$uri&$args;
-# That breaks CAS/OIDC flows by altering the request query string.
-# Replace it with: /index.php$is_args$args (preserves the original query string without adding q)
-# This can be removed after https://github.com/erseco/alpine-php-webserver/issues/55
-RUN sed -i 's|/index.php?q=\$uri&\$args|/index.php\$is_args\$args|g' /etc/nginx/nginx.conf
-
 # Set up Mercure service
 COPY mercure.run /etc/service/mercure/run
 RUN chmod +x /etc/service/mercure/run && \
