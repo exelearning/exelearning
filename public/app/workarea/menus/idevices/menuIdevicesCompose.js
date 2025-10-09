@@ -345,8 +345,7 @@ export default class MenuIdevicesCompose {
         let errorText = resErrorText
             ? `<p>${defErrorText}:</p><p>&nbsp;${resErrorText}</p>`
             : `<p>${defErrorText}</p>`;
-        // TODO show modal error.
-        alert(resErrorText);
+        eXe.app.alert(errorText);
     }
 
     /**

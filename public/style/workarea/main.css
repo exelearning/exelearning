@@ -2935,127 +2935,38 @@ a:hover {
   min-height: 250px;
   max-height: 60vh;
 }
-#modalProperties .form-properties .exe-properties-form-content #identifier,
-#modalProperties .form-properties .exe-properties-form-content #cssClass,
-#modalProperties .form-properties .exe-properties-form-content #titleNode,
-#modalProperties .form-properties .exe-properties-form-content #titlePage,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml {
-  flex-direction: column;
-  align-items: flex-start;
-  max-width: calc(100% - 2px);
-  margin-left: 2px;
+#modalProperties .properties-body-container .exe-properties-form-content .exe-table-content {
+  display: table;
+  width: 100%;
 }
-#modalProperties .form-properties .exe-properties-form-content #identifier label,
-#modalProperties .form-properties .exe-properties-form-content #cssClass label,
-#modalProperties .form-properties .exe-properties-form-content #titleNode label,
-#modalProperties .form-properties .exe-properties-form-content #titlePage label,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml label {
-  color: var(--text);
-  font-weight: 600;
-  font-size: 1em;
-  margin-bottom: 2px !important;
+#modalProperties .form-properties[modal-content-id=page-properties] .properties-body-container .exe-properties-form-content .exe-table-content .property-row > :nth-child(1) {
+  text-align: right;
+  margin-right: 24px;
+  width: 20%;
 }
-#modalProperties .form-properties .exe-properties-form-content #identifier input,
-#modalProperties .form-properties .exe-properties-form-content #cssClass input,
-#modalProperties .form-properties .exe-properties-form-content #titleNode input,
-#modalProperties .form-properties .exe-properties-form-content #titlePage input,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml input {
-  max-width: calc(100% - 2px) !important;
-  height: 36px;
-  border-radius: 8px;
+#modalProperties .form-properties[modal-content-id=page-properties] .properties-body-container .exe-properties-form-content .exe-table-content .property-row > :nth-child(2) {
+  text-align: left;
+  width: 67%;
 }
-#modalProperties .form-properties .exe-properties-form-content #identifier input :focus,
-#modalProperties .form-properties .exe-properties-form-content #identifier input :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #cssClass input :focus,
-#modalProperties .form-properties .exe-properties-form-content #cssClass input :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #titleNode input :focus,
-#modalProperties .form-properties .exe-properties-form-content #titleNode input :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #titlePage input :focus,
-#modalProperties .form-properties .exe-properties-form-content #titlePage input :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml input :focus,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml input :focus-visible {
-  border-radius: 8px !important;
+#modalProperties .form-properties[modal-content-id=page-properties] .properties-body-container .exe-properties-form-content .exe-table-content .property-row input[type=checkbox] {
+  max-width: 20px;
+  width: 4% !important;
+  margin-left: 17.5%;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense {
-  flex-direction: column;
-  align-items: flex-start;
-  max-width: calc(100% - 2px);
-  margin-left: 2px;
+#modalProperties .form-properties[modal-content-id=preferences] .properties-body-container .exe-properties-form-content .exe-table-content .property-row > :nth-child(1) {
+  width: 30%;
+  max-width: none;
+  text-align: left;
+  margin-right: 24px;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta {
-  display: flex;
-  flex-direction: row;
-}
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta label,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta label {
-  color: var(--text);
-  font-weight: 600;
-  font-size: 1em;
-  margin-bottom: 2px !important;
+#modalProperties .form-properties[modal-content-id=preferences] .properties-body-container .exe-properties-form-content .exe-table-content .property-row > :nth-child(2) {
+  width: 60%;
   text-align: left;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta .exe-form-help,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta .exe-form-help {
-  border-left: 0;
-}
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta .exe-form-help .form-help-exe-icon,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta .exe-form-help .form-help-exe-icon {
-  cursor: pointer;
-  display: block;
-  height: 16px;
-  width: 16px;
-  background-size: 16px;
-  background-repeat: no-repeat;
-  color: transparent;
-}
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta .exe-form-help .form-help-exe-icon.auto-icon,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta .exe-form-help .form-help-exe-icon.auto-icon {
-  background-image: url("images/icons/exe-info-icon-solid-green.svg");
-  position: relative;
-  top: 7px;
-  left: -4px;
-}
-#modalProperties .form-properties .exe-properties-form-content #locale select,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense select {
-  max-width: calc(100% - 2px) !important;
-  height: 36px;
-  border-radius: 8px;
-}
-#modalProperties .form-properties .exe-properties-form-content #locale select :focus,
-#modalProperties .form-properties .exe-properties-form-content #locale select :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense select :focus,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense select :focus-visible {
-  border-radius: 8px !important;
-}
-#modalProperties .form-properties .exe-properties-form-content #locale select.property-value,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense select.property-value {
-  padding: 6px 12px;
-}
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta label {
-  --width: 250px;
-}
-#modalProperties .form-properties .exe-properties-form-content #description {
-  flex-direction: column;
-  align-items: flex-start;
-  max-width: calc(100% - 2px);
-  margin-left: 2px;
-}
-#modalProperties .form-properties .exe-properties-form-content #description label {
-  color: var(--text);
-  font-weight: 600;
-  font-size: 1em;
-  margin-bottom: 2px !important;
-}
-#modalProperties .form-properties .exe-properties-form-content #description textarea {
-  max-width: calc(100% - 2px) !important;
-  height: 36px;
-  border-radius: 8px;
-}
-#modalProperties .form-properties .exe-properties-form-content #description textarea :focus,
-#modalProperties .form-properties .exe-properties-form-content #description textarea :focus-visible {
-  border-radius: 8px !important;
+#modalProperties .form-properties[modal-content-id=preferences] .properties-body-container .exe-properties-form-content .exe-table-content .property-row .help-content {
+  top: 38px;
+  left: unset;
+  right: 0;
 }
 #modalProperties #versionControl {
   display: none;
@@ -3957,16 +3868,19 @@ Flexbox Bootstrap 5 helpers:
   display: flex;
   flex-flow: row wrap;
   justify-content: center;
-  padding: 5px;
-  border: 1px solid var(--delete);
-  border-radius: 5px;
+  padding: 12px;
+  margin: 12px 3px 12px 10px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--brand-primary-50) !important;
 }
 .user-editing-overlay .user-editing-message .user-editing-description,
 .user-editing-overlay .user-editing-message .user-editing-email,
 .user-editing-overlay .user-editing-message .user-editing-time {
-  font-size: 12px;
+  font-size: 14px;
   margin-right: 3px;
   font-weight: normal;
+  color: var(--brand-primary-900);
 }
 .user-editing-overlay .user-editing-message .user-editing-email {
   font-weight: bold;
@@ -4713,6 +4627,8 @@ Flexbox Bootstrap 5 helpers:
 
 #node-content-container.exe-content {
   padding: 0 20px 0 20px;
+  margin: 0 20px 0 20px;
+  border-radius: 8px;
 }
 #node-content-container.exe-content .box {
   border-radius: var(--radius);
