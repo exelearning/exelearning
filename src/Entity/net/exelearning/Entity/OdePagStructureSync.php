@@ -38,11 +38,11 @@ class OdePagStructureSync extends BaseEntity
     protected int $odePagStructureSyncOrder;
 
     #[ORM\ManyToOne(targetEntity: 'OdePagStructureSync')]
-    #[ORM\JoinColumn(name: 'ode_pag_structure_sync_id', referencedColumnName: 'id')]
+    #[ORM\JoinColumn(name: 'ode_pag_structure_sync_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     protected ?self $odePagStructureSync = null;
 
     #[ORM\ManyToOne(targetEntity: 'OdeNavStructureSync', inversedBy: 'odePagStructureSyncs')]
-    #[ORM\JoinColumn(name: 'ode_nav_structure_sync_id', referencedColumnName: 'id')]
+    #[ORM\JoinColumn(name: 'ode_nav_structure_sync_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     protected OdeNavStructureSync $odeNavStructureSync;
 
     #[ORM\OneToMany(targetEntity: 'OdeComponentsSync', mappedBy: 'odePagStructureSync', orphanRemoval: true)]

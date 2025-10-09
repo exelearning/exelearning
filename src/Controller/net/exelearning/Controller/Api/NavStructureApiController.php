@@ -539,6 +539,10 @@ class NavStructureApiController extends DefaultApiController
                         }
                     }
 
+                    foreach ($odeNavStructureSync->getOdeNavStructureSyncProperties() as $property) {
+                        $this->entityManager->remove($property);
+                    }
+
                     if (!$anyError) {
                         if ($odeNavStructureSync->getId() == $odeNavStructureSyncId) {
                             // Move element to delete to the last position
@@ -889,18 +893,16 @@ class NavStructureApiController extends DefaultApiController
      */
     private function getOdeNavStructureSyncsToDelete($odeNavStructureSync)
     {
-        $odeNavStructureSyncsToDelete = [];
-        $odeNavStructureSyncsToDelete[] = $odeNavStructureSync;
+        $entities = [];
 
         foreach ($odeNavStructureSync->getOdeNavStructureSyncs() as $childOdeNavStructureSync) {
-            if (!$childOdeNavStructureSync->getOdeNavStructureSyncs()->isEmpty()) {
-                $odeNavStructureSyncsToDelete = array_merge($odeNavStructureSyncsToDelete, $this->getOdeNavStructureSyncsToDelete($childOdeNavStructureSync));
-            } else {
-                $odeNavStructureSyncsToDelete[] = $childOdeNavStructureSync;
-            }
+            // Depth-first traversal: ensure descendants are deleted before the current node.
+            $entities = array_merge($entities, $this->getOdeNavStructureSyncsToDelete($childOdeNavStructureSync));
         }
 
-        return $odeNavStructureSyncsToDelete;
+        $entities[] = $odeNavStructureSync;
+
+        return $entities;
     }
 
     /**

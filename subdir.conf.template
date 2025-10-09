@@ -8,3 +8,16 @@ location ^~ $BASE_PATH/ {
     # the location / block already defined in nginx.conf is re-evaluated
     rewrite ^$BASE_PATH/(.*)$ /$1 last;
 }
+
+# If a BASE_PATH is configured, redirect the bare root to it (canonical URL)
+# e.g. GET /  ->  301 http://localhost:8080$BASE_PATH
+# Note: This file is only installed when BASE_PATH is non-empty, see 02-configure-symfony.sh
+location = / {
+    return 301 $scheme://$http_host$BASE_PATH;
+}
+
+# Handle requests to the base path without trailing slash
+# Redirect to a meaningful landing under the base path to avoid loops
+location = $BASE_PATH {
+    return 301 $scheme://$http_host$BASE_PATH/workarea;
+}
