@@ -229,7 +229,10 @@ class IntegrationUtil
      */
     private function isValidProvider(string $providerId): bool
     {
-        return in_array($providerId, $this->providerIds, true);
+        // Remove '_legacy' suffix if present
+        $normalizedId = str_ends_with($providerId, '_legacy') ? substr($providerId, 0, -strlen('_legacy')) : $providerId;
+
+        return in_array($normalizedId, $this->providerIds, true);
     }
 
     /**
@@ -324,7 +327,10 @@ class IntegrationUtil
         if (isset($payload['provider_id'])) {
             return $payload['provider_id'];
         }
-
+        // Legacy format: provider object as stdClass
+        if (isset($payload['provider']) && is_object($payload['provider'])) {
+            $payload['provider'] = (array) $payload['provider'];
+        }
         // Legacy format: provider object with name
         if (isset($payload['provider']['name'])) {
             // Convert provider name to a normalized ID
