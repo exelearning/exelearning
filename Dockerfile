@@ -9,6 +9,11 @@ LABEL org.opencontainers.image.description="eXeLearning Docker Image"
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
+# Use /bin/ash instead of /bin/sh to ensure compatibility with Alpine's BusyBox shell
+# Enable -e (exit immediately on error) and -o pipefail to fail properly when a piped command fails
+# This prevents silent build errors and satisfies Hadolint rule DL4006
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
 ENV VERSION=${VERSION} \
     LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
