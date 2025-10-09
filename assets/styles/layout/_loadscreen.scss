@@ -1,0 +1,61 @@
+#load-screen-main {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 100vw;
+    z-index: 99999;
+    opacity: 1;
+    background-color: #fff;
+    background-image: url('images/exe-text-logo.svg');
+    background-size: 250px;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-position: 50% 40%;
+    &.expired {
+        padding: 0 40px;
+
+        .alert {
+            text-align: center;
+            max-width: 700px;
+            margin: calc(25vh + 205px) auto 0 auto;
+        }
+    }
+    &.hide {
+        display: none;
+    }
+    &.hiding {
+        opacity: 0;
+        transition: var(--tr-04);
+    }
+    &.loading {
+        span {
+            display: block;
+            text-align: center;
+            opacity: .8;
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+            position: relative;
+            top: 92%;
+        }
+        &:after {
+            content: "";
+            display: block;
+            width: 96px;
+            height: 96px;
+            /*margin: 0 auto;*/
+            background-image: url(images/spinner.svg);
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 96px;
+            position: absolute;
+            left: calc(50vw - 50px);
+            top: calc(25vh + 200px);
+        }
+    }
+    span {
+        display: none;
+        white-space: nowrap;
+    }
+}

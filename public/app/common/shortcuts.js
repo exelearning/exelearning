@@ -32,7 +32,6 @@ export default class Shortcuts {
   init() {
     this.buildIndex();
     this.renderHints();
-    this.ensureHintCssOnce();
     window.addEventListener('keydown', this.boundHandler, { capture: true });
 
     window.addEventListener('load', () => {
@@ -109,18 +108,6 @@ export default class Shortcuts {
       span.textContent = this.humanLabel(firstCombo);
       el.appendChild(span);
     }
-  }
-
-  /** Inject minimal CSS once */
-  ensureHintCssOnce() {
-    if (document.getElementById('exe-shortcuts-hint-css')) return;
-    const style = document.createElement('style');
-    style.id = 'exe-shortcuts-hint-css';
-    style.textContent = `
-      .dropdown-item { display:flex; justify-content:space-between; align-items:center; }
-      .shortcut-hint { opacity:.65; font-size:.85em; }
-    `;
-    document.head.appendChild(style);
   }
 
   // ------------------------

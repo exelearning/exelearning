@@ -29,6 +29,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -55,6 +56,7 @@ class OdeApiController extends DefaultApiController
         CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService,
         TranslatorInterface $translator,
         SerializerInterface $serializer,
+        HubInterface $hub,
     ) {
         $this->fileHelper = $fileHelper;
         $this->odeService = $odeService;
@@ -64,7 +66,7 @@ class OdeApiController extends DefaultApiController
         $this->currentOdeUsersSyncChangesService = $currentOdeUsersSyncChangesService;
         $this->translator = $translator;
 
-        parent::__construct($entityManager, $logger, $serializer);
+        parent::__construct($entityManager, $logger, $serializer, $hub);
     }
 
     #[Route('/{odeId}/last-updated', methods: ['GET'], name: 'api_odes_last_updated')]
@@ -234,6 +236,11 @@ class OdeApiController extends DefaultApiController
         }
 
         $jsonData = $this->getJsonSerialized($responseData);
+
+        $this->publish(
+            $odeSessionId,
+            'save-menu-head-button'
+        );
 
         return new JsonResponse($jsonData, $this->status, [], true);
     }
@@ -1246,6 +1253,7 @@ class OdeApiController extends DefaultApiController
         }
 
         $this->entityManager->flush();
+        $this->publish($odeSessionId, 'new-content-published'); // 'structure-changed'
 
         $odePropertiesDtos = [];
         foreach ($propertiesData as $odeProperties) {

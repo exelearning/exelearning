@@ -19,6 +19,9 @@ export default class projectManager {
             );
             this.eventSource;
         }
+
+        // Collaborative
+        this.activeLocks = new Map(); // Map<pageId, { user, gravatar }>
     }
 
     /**
@@ -106,7 +109,8 @@ export default class projectManager {
      *
      * @param {*} pageid
      */
-    async updateUserPage(pageid) {
+    async updateUserPage(pageid, forceLoad = false) {
+        // Collaborative
         // Get page position
         let scroll = document.querySelector('.template-page');
         let scrollPos;
@@ -117,13 +121,16 @@ export default class projectManager {
                 '#node-content-container'
             ).scrollTop;
         }
+        // Collaborative Init
         // Load structure data
         await this.loadStructureData();
         // Load modals content
         await this.loadModalsContent();
-        this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected = false;
+        if (forceLoad)
+            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected = false;
         await this.structure.reloadStructureMenu(pageid);
         await this.initialiceProject();
+        // Collaborative End
         // Move to page location
         if (scroll !== null) {
             document.querySelector('.template-page').scrollTo(0, scrollPos);
@@ -132,6 +139,473 @@ export default class projectManager {
                 .querySelector('#node-content-container')
                 .scrollTo(0, scrollPos);
         }
+    }
+
+    cleanupCurrentIdeviceTimer() {
+        if (this.idevices?.cleanupCurrentIdeviceTimer) {
+            return this.idevices.cleanupCurrentIdeviceTimer();
+        }
+    }
+
+    getTimeIdeviceEditing() {
+        if (this.idevices?.getTimeIdeviceEditing) {
+            return this.idevices.getTimeIdeviceEditing();
+        }
+    }
+
+    getEditUnlockDevice() {
+        if (this.idevices?.getEditUnlockDevice) {
+            return this.idevices.getEditUnlockDevice();
+        }
+    }
+
+    lockPageContent(user, pageId, timeIdeviceEditing) {
+        const targetBlock = document.querySelector(
+            `[node-selected="${pageId}"]`
+        );
+        if (!targetBlock) return false;
+
+        // Relative position
+        if (getComputedStyle(targetBlock).position === 'static') {
+            targetBlock.style.position = 'relative';
+        }
+
+        // Locking overlay
+        const overlay = document.createElement('div');
+        const messageBox = document.createElement('div');
+        const description = document.createElement('div');
+        const emailElement = document.createElement('div');
+        const lockTime = document.createElement('div');
+
+        overlay.className = 'user-editing-overlay';
+        messageBox.className = 'user-editing-message';
+        description.className = 'user-editing-description';
+        emailElement.className = 'user-editing-email';
+        lockTime.className = 'user-editing-time';
+
+        description.textContent = _('This page is being edited by:');
+        emailElement.textContent = user;
+
+        const dateMilis = new Date(Number(timeIdeviceEditing));
+        const hours = String(dateMilis.getHours()).padStart(2, '0');
+        const minutes = String(dateMilis.getMinutes()).padStart(2, '0');
+        const seconds = String(dateMilis.getSeconds()).padStart(2, '0');
+
+        lockTime.textContent = `${_('at')} ${hours}:${minutes}:${seconds}`;
+
+        messageBox.appendChild(description);
+        messageBox.appendChild(emailElement);
+        messageBox.appendChild(lockTime);
+
+        overlay.appendChild(messageBox);
+        targetBlock.prepend(overlay);
+        targetBlock.classList.add('editing-article', 'article-disabled');
+
+        return true;
+    }
+
+    collaborativePageLock(
+        user,
+        pageId,
+        collaborativeMode,
+        timeIdeviceEditing = null
+    ) {
+        this.clearUserLocks(user); // Clear previous state
+
+        let lockTime = timeIdeviceEditing;
+
+        if (!lockTime) {
+            const existingLock = this.activeLocks.get(pageId);
+            // Locktime same as user
+            if (existingLock && existingLock.user === user) {
+                lockTime = existingLock.lockTime;
+            }
+        }
+
+        const pageLocked = document.querySelector(`[page-id="${pageId}"]`);
+
+        if (!pageLocked) return;
+
+        const buttons = pageLocked.querySelectorAll(
+            ':scope > button, :scope > .nav-element-text'
+        );
+
+        //pageLocked.setAttribute('title', `${user}`); // Add tooltip
+        if (collaborativeMode === 'page') {
+            buttons.forEach((button) => {
+                button.disabled = true;
+                button.style.pointerEvents = 'none';
+                button.style.opacity = '0.5';
+            });
+        }
+
+        const concurrentUsers =
+            eXeLearning.app.interface.concurrentUsers.getConcurrentUsersElementsList();
+        const dragOverBorder = pageLocked.querySelector('.drag-over-border');
+        const userGravatar = Array.from(concurrentUsers).find(
+            (e) => e.dataset.username.toLowerCase() === user.toLowerCase()
+        );
+        userGravatar.classList.add('user-inpage');
+        userGravatar.querySelector('.username').remove();
+
+        if (dragOverBorder && userGravatar) {
+            // Clone Gravatar to avoid duplicate DOM issues
+            const gravatarClone = userGravatar.cloneNode(true);
+            gravatarClone
+                .querySelector('.exe-gravatar')
+                .setAttribute('height', '30px');
+            gravatarClone
+                .querySelector('.exe-gravatar')
+                .setAttribute('width', '30px');
+            dragOverBorder.appendChild(gravatarClone);
+
+            // Save blocking by page and user
+            this.activeLocks.set(pageId, {
+                user,
+                gravatar: gravatarClone,
+                originalGravatar: userGravatar,
+                lockTime: timeIdeviceEditing,
+            });
+        }
+        if (collaborativeMode === 'page') {
+            this.lockPageContent(user, pageId, timeIdeviceEditing);
+        }
+    }
+
+    clearUserLocks(user) {
+        // Find all pages blocked by this user
+        for (let [pageId, lockInfo] of this.activeLocks.entries()) {
+            if (lockInfo.user === user) {
+                this.clearPageLock(pageId);
+            }
+        }
+    }
+
+    clearPageLock(pageId) {
+        const lockInfo = this.activeLocks.get(pageId);
+        if (!lockInfo) return;
+
+        const { user, gravatar } = lockInfo;
+
+        // Find previously blocked page
+        const pageElement = document.querySelector(`[page-id="${pageId}"]`);
+
+        if (pageElement) {
+            pageElement.removeAttribute('title'); // Remove tooltip
+
+            // Re-enable buttons
+            const buttons = pageElement.querySelectorAll(
+                ':scope > button, :scope > .nav-element-text'
+            );
+            buttons.forEach((button) => {
+                button.disabled = false;
+                button.style.pointerEvents = 'auto';
+                button.style.opacity = '1';
+            });
+
+            // Remove gravatar
+            const dragOverBorder =
+                pageElement.querySelector('.drag-over-border');
+            if (
+                dragOverBorder &&
+                gravatar &&
+                dragOverBorder.contains(gravatar)
+            ) {
+                dragOverBorder.removeChild(gravatar);
+            }
+        }
+
+        this.activeLocks.delete(pageId); // Clear record
+    }
+
+    /*
+    // Clear all locks (useful for reset)
+    clearAllLocks() {
+        for (let [pageId] of this.activeLocks.entries()) {
+            this.clearPageLock(pageId);
+        }
+    }
+
+    // Method when user disconnects
+    userDisconnected(user) {
+        this.clearUserLocks(user);
+    }
+
+    // Get active lock information
+    getActiveLocks() {
+        return Array.from(this.activeLocks.entries());
+    }
+    */
+
+    /**
+     * Handles the editing overlay for blocks with countdown
+     * @param {string} messageContent - Raw message content from server
+     * @param {string} currentUser - Email of the current user
+     */
+    handleBlockEditingOverlay(messageContent, currentUser) {
+        // Parse all message parameters
+        const params = {};
+        messageContent.split(',').forEach((pair) => {
+            const [key, value] = pair.split(':');
+            params[key] = value;
+        });
+
+        const user = params['user'];
+        const isNotSameEmail = (user && user !== currentUser) ?? false;
+
+        const pageId = params['pageId'] ?? ''; // Collaborative
+        const actionType = params['actionType'] ?? '';
+        const collaborativeMode = params['collaborativeMode'] ?? '';
+
+        const unlockKeywords = ['FORCE_UNLOCK', 'HIDE_UNLOCK_BUTTON'];
+
+        const isOdeComponentFlag = params['odeComponentFlag'] === 'true';
+        const shouldUnlock = unlockKeywords.some((keyword) =>
+            actionType?.includes(keyword)
+        );
+        const isEditingOrInactive =
+            actionType?.includes('EDIT') || shouldUnlock || isOdeComponentFlag;
+
+        if (!pageId) return;
+
+        const blockId = params['blockId'];
+        let targetBlock;
+        if (collaborativeMode === 'page') {
+            targetBlock = document.getElementById(blockId)?.parentElement;
+        } else {
+            targetBlock = document.getElementById(blockId);
+        }
+
+        const existingOverlay =
+            targetBlock?.querySelector('.user-editing-overlay') ?? null;
+
+        if (isEditingOrInactive && isNotSameEmail) {
+            const timeIdevice =
+                this.idevices?.ideviceActive?.timeIdeviceEditing;
+            const timeIdeviceEditing =
+                timeIdevice ?? this.getTimeIdeviceEditing();
+            this.collaborativePageLock(
+                user,
+                pageId,
+                collaborativeMode,
+                timeIdeviceEditing
+            );
+        } else if (actionType === 'UNDO_IDEVICE') {
+            this.clearPageLock(pageId);
+
+            if (existingOverlay) {
+                targetBlock.classList.remove(
+                    'editing-article',
+                    'article-disabled'
+                );
+                existingOverlay.remove();
+            }
+        }
+
+        if (
+            actionType === 'collaborative-page-lock' &&
+            collaborativeMode === 'page'
+        ) {
+            if (user && user !== currentUser) {
+                this.collaborativePageLock(user, pageId, collaborativeMode);
+            }
+            return;
+        }
+
+        if (actionType === 'SAVE_BLOCK') {
+            this.clearPageLock(pageId);
+        }
+
+        if (
+            !blockId ||
+            blockId === 'none' ||
+            !targetBlock ||
+            user === currentUser
+        )
+            return;
+
+        const elementId = params['elementId'];
+        const odeIdeviceId = params['odeIdeviceId'];
+        const timeIdeviceEditing = params['timeIdeviceEditing'] ?? 0;
+
+        const odeElementSave =
+            document.getElementById('saveIdevice' + odeIdeviceId) ?? null;
+        const disabledElements = document.querySelectorAll(
+            '[class*="article-disabled"]'
+        );
+
+        if (existingOverlay) {
+            targetBlock.classList.remove('editing-article', 'article-disabled');
+            existingOverlay.remove();
+        }
+
+        // Collaborative Init
+        if (
+            !disabledElements.length &&
+            actionType === 'DELETE' &&
+            isNotSameEmail &&
+            pageId
+        ) {
+            this.updateUserPage(pageId, true);
+        }
+
+        if (actionType === 'SAVE_STOP' && pageId) {
+            this.updateUserPage(pageId, true);
+            return;
+        }
+
+        if (
+            !document.querySelectorAll('[id^="saveIdevice"]').length > 0 &&
+            disabledElements.length === 1 &&
+            actionType === 'SAVE_BLOCK' &&
+            isNotSameEmail &&
+            pageId
+        ) {
+            console.log(`
+                odeElementSave: ${odeElementSave}
+                disabledElements.length; ${disabledElements.length}
+                isOdeComponentFlag: ${isOdeComponentFlag}
+                isNotSameEmail: ${isNotSameEmail}
+                odeIdeviceId: ${odeIdeviceId}
+                actionType: ${actionType}
+                pageId: ${pageId}
+            `);
+
+            eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
+                null,
+                null,
+                blockId,
+                odeIdeviceId,
+                'SAVE_STOP',
+                null,
+                null,
+                pageId
+            );
+            this.updateUserPage(pageId, true);
+            return;
+        }
+        // Collaborative End
+
+        if (actionType === 'UNLOCK_RESOURCE' && isNotSameEmail) {
+            this.cleanupCurrentIdeviceTimer();
+            odeElementSave.click();
+        }
+
+        if (actionType === 'LOADING' && isNotSameEmail && odeElementSave) {
+            const timeIdevice =
+                this.idevices?.ideviceActive?.timeIdeviceEditing;
+            const getTimeIdeviceEditing =
+                timeIdevice ?? this.getTimeIdeviceEditing();
+
+            const editUnlock = this.idevices?.ideviceActive?.editUnlockDevice;
+            const editUnlockDevice = editUnlock ?? 'EDIT';
+
+            setTimeout(() => {
+                this.app.api.postEditIdevice({
+                    odeSessionId: this.odeSession,
+                    odeNavStructureSyncId:
+                        this.app.project.structure.nodeSelected.getAttribute(
+                            'nav-id'
+                        ),
+                    blockId: blockId,
+                    odeIdeviceId: odeIdeviceId,
+                    actionType: editUnlockDevice,
+                    odeComponentFlag: true,
+                    timeIdeviceEditing: getTimeIdeviceEditing,
+                });
+            }, 1000);
+        }
+
+        if (isEditingOrInactive && isNotSameEmail) {
+            if (collaborativeMode !== 'page') {
+                const overlay = document.createElement('div');
+                const messageBox = document.createElement('div');
+                const description = document.createElement('div');
+                const emailElement = document.createElement('div');
+                const lockTime = document.createElement('div');
+
+                overlay.className = 'user-editing-overlay';
+                messageBox.className = 'user-editing-message';
+                description.className = 'user-editing-description';
+                emailElement.className = 'user-editing-email';
+                lockTime.className = 'user-editing-time';
+
+                description.textContent = _(
+                    'This resource is being edited by:'
+                );
+                emailElement.textContent = user;
+
+                const dateMilis = new Date(Number(timeIdeviceEditing));
+
+                const hours = String(dateMilis.getHours()).padStart(2, '0');
+                const minutes = String(dateMilis.getMinutes()).padStart(2, '0');
+                const seconds = String(dateMilis.getSeconds()).padStart(2, '0');
+
+                lockTime.textContent = `${_('at')} ${hours}:${minutes}:${seconds}`;
+
+                messageBox.appendChild(description);
+                messageBox.appendChild(emailElement);
+                messageBox.appendChild(lockTime);
+
+                overlay.appendChild(messageBox);
+                targetBlock.prepend(overlay);
+                targetBlock.classList.add(
+                    'editing-article',
+                    'article-disabled'
+                );
+            }
+            if (shouldUnlock) {
+                const unlockBtn = document.createElement('button');
+
+                unlockBtn.id = `unlock-btn-${elementId}`;
+                unlockBtn.className = 'user-editing-unlock-btn';
+                unlockBtn.textContent = _('Force Unlock');
+                unlockBtn.style.display = 'block';
+
+                messageBox.appendChild(unlockBtn);
+
+                unlockBtn.onclick = () =>
+                    this.unlockResource(blockId, odeIdeviceId);
+            }
+        }
+
+        if (actionType?.includes('HIDE_UNLOCK_BUTTON')) {
+            const buttonId = `unlock-btn-${elementId}`;
+            const existingBtn = document.getElementById(buttonId);
+
+            if (existingBtn) {
+                existingBtn.remove(); // Remove the unlock button
+            }
+        }
+    }
+
+    /**
+     * Unlocks the resource
+     */
+    unlockResource(blockId, odeIdeviceId) {
+        this.app.api
+            .postEditIdevice({
+                odeSessionId: this.odeSession,
+                odeNavStructureSyncId:
+                    this.app.project.structure.nodeSelected.getAttribute(
+                        'nav-id'
+                    ),
+                blockId: blockId,
+                odeIdeviceId: odeIdeviceId,
+                actionType: 'UNLOCK_RESOURCE',
+                odeComponentFlag: false,
+                timeIdeviceEditing: null,
+            })
+            .then((response) => {
+                if (response.responseMessage === 'OK') {
+                    this.showUnlockSuccess();
+                }
+            })
+            .catch((error) => {
+                if (error.status === 423 && error.data.forceUnlockAvailable) {
+                    this.showForceUnlockOption();
+                }
+            });
     }
 
     async subscribeToSessionAndNotify() {
@@ -165,11 +639,15 @@ export default class projectManager {
                 this.realTimeEventNotifier.setLastEventID(event.lastEventId);
             }
 
+            // Manage user editing
+            this.handleBlockEditingOverlay(message.name, this.app.user.name);
+
             // Server-Sent Event is translated to a local event. This way the SSE subscription is
             // made in one only place when app starts.
             localEvent = new CustomEvent(message.name, {
                 detail: { user: message.payload },
             });
+
             window.dispatchEvent(localEvent);
         };
 
@@ -191,6 +669,20 @@ export default class projectManager {
         window.addEventListener('structure-changed', (e) => {
             this.reloadStructure();
         });
+
+        window.addEventListener('save-menu-head-button', (e) => {
+            this.saveMenuHeadButton(e.detail.user || false);
+        });
+    }
+
+    async saveMenuHeadButton(disableButton) {
+        const saveMenuHeadButton = document.querySelector(
+            '#head-top-save-button'
+        );
+
+        if (!saveMenuHeadButton) return;
+
+        saveMenuHeadButton.disabled = disableButton;
     }
 
     async reloadStructure() {
@@ -1010,8 +1502,11 @@ export default class projectManager {
      * @param {*} pageId
      */
     async checkUserUpdateFlag(pageId) {
+        if (!pageId) {
+            return false;
+        }
         // Check if the user has an update
-        this.app.api.postCheckUserOdeUpdates().then((response) => {
+        this.app.api.postCheckUserOdeUpdates(pageId).then((response) => {
             if (response.responseMessage == 'OK') {
                 for (let syncChange of response.syncChanges) {
                     setTimeout(() => {
@@ -1259,7 +1754,7 @@ export default class projectManager {
     async deleteOdeComponent(odeComponentSyncId) {
         // Delete idevice
         let oldOdeComponent = document.getElementById(odeComponentSyncId);
-        oldOdeComponent.remove();
+        oldOdeComponent?.remove?.(); // Collaborative Init
     }
 
     /**
@@ -1269,7 +1764,7 @@ export default class projectManager {
     async deleteOdeBlock(odeBlockId) {
         // Delete block
         let oldOdeComponent = document.getElementById(odeBlockId);
-        oldOdeComponent.remove();
+        oldOdeComponent?.remove?.(); // Collaborative Init
     }
 
     /**
@@ -1505,7 +2000,9 @@ export default class projectManager {
         blockId,
         odeIdeviceId,
         actionType,
-        destPageId
+        destPageId,
+        timeIdeviceEditing = null,
+        pageId // Collaborative Init
     ) {
         let params = {
             odeSessionId: this.odeSession,
@@ -1515,6 +2012,8 @@ export default class projectManager {
             odeComponentFlag: odeComponentFlag,
             actionType: actionType,
             destinationPageId: destPageId,
+            timeIdeviceEditing: timeIdeviceEditing,
+            pageId: pageId, // Collaborative Init
         };
         let response =
             await this.app.api.postActivateCurrentOdeUsersUpdateFlag(params);
@@ -1534,7 +2033,10 @@ export default class projectManager {
         odeNavStructureSyncId,
         blockId,
         odeIdeviceId,
-        isIdeviceRemove = false
+        isIdeviceRemove = false,
+        timeIdeviceEditing = null,
+        actionType,
+        pageId = null
     ) {
         let params = {
             odeSessionId: this.odeSession,
@@ -1542,6 +2044,9 @@ export default class projectManager {
             blockId: blockId,
             odeNavStructureSyncId: odeNavStructureSyncId,
             odeComponentFlag: odeComponentFlag,
+            timeIdeviceEditing: timeIdeviceEditing,
+            actionType: actionType,
+            pageId: pageId,
         };
 
         // In case of multiple session and odeComponentFlag set to false wait for the clientIntervalUpdate

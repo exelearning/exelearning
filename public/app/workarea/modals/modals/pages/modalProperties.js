@@ -375,33 +375,37 @@ export default class ModalProperties extends Modal {
         propertyRow.id = property.id;
         propertyRow.setAttribute('category', property.category);
         propertyRow.classList.add('property-row');
+
+        const meta = document.createElement('div');
+        meta.classList.add('property-meta');
+
+        const valueWrap = document.createElement('div');
+        valueWrap.classList.add('property-value-wrap');
+
         // Label property
         let propertyTitle = this.makeRowElementLabel(
             propertyIdGenerated,
             property
         );
+
+        propertyTitle.classList.add('property-title');
+
         // Value property
         let propertyValue = this.makeRowValueElement(
             propertyIdGenerated,
             property.id,
             property
         );
+
         // Help
         let helpContainer = this.makeRowElementHelp(property);
 
-        // Add elements to row
-        // - Title and value
-        if (property.type == 'checkbox') {
-            propertyRow.append(propertyValue);
-            propertyRow.append(propertyTitle);
-        } else {
-            propertyRow.append(propertyTitle);
-            propertyRow.append(propertyValue);
-        }
-        // - Help element
-        if (helpContainer) {
-            propertyRow.append(helpContainer);
-        }
+        meta.append(propertyTitle);
+        if (helpContainer) meta.append(helpContainer);
+
+        valueWrap.append(propertyValue);
+        propertyRow.append(meta);
+        propertyRow.append(valueWrap);
 
         return propertyRow;
     }

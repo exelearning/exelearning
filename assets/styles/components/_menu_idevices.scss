@@ -1,0 +1,316 @@
+#menu_idevices {
+    border: none;
+    /* max-height: 50%; */
+    .accordion-button {
+        color: var(--text) !important;
+        justify-content: flex-start;
+        border: 0 !important;
+        background-color: #f3f4f7;
+        border-top: 1px solid #e4e5ee !important;
+        border-bottom: 1px solid #e4e5ee !important;
+        &:after {
+            display: none;
+        }
+        &:before {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            content: "";
+            background-image: url("images/icons/exe-chevron-icon-green.svg");
+            background-repeat: no-repeat;
+            background-size: 18px;
+            transition: var(--bs-accordion-btn-icon-transition);
+            transform: rotate(180deg);
+        }
+        &.collapsed {
+            padding: 16px 0 16px 20px;
+            border-radius: 0 !important;
+        }
+        &:not(.collapsed) {
+            padding: 12px 0 12px 20px;
+            background-color: #f3f4f7 !important;
+            &:before {
+                width: 18px;
+                height: 18px;
+                background-size: 18px;
+                transform: rotate(0deg);
+            }
+        }
+    }
+    #menu_idevices_content {
+        &.show {
+            display: flex;
+            flex-wrap: wrap;
+            height: 100%;
+        }
+        .menu_content {
+            padding: 12px;
+        }
+        #label_menu_idevices {
+            width: 100%;
+            height: 24px;
+            .exe-icon {
+                content: "select_all";
+                font-family: var(--icons-ff);
+                float: left;
+                margin-right: var(--margin-m);
+                margin-top: -2px;
+            }
+        }
+        #list_menu_idevices {
+            width: 100%;
+            align-items: flex-start;
+            height: calc(100% - 43px);
+            margin:0;
+            overflow-y: auto;
+            gap: 3px;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: nowrap;
+            overflow-x: hidden;
+            padding-top: 6px;
+            padding-bottom: 10px;
+            .idevice_category {
+                display: flex;
+                margin-bottom: 0;
+                width: 100%;
+                padding-top: 7px;
+                padding-bottom: 7px;
+                border: none;
+                position: relative;
+                border-left: 3px solid transparent;
+                &:last-of-type {
+                    margin-bottom: 5px;
+                }
+                &:hover {
+                    .idevice_item {
+                        border: 1px solid var(--elements-hover);
+                    }
+                    .idevice_category_name::before {
+                        background: var(--dark-exe-color);
+                    }
+                }
+                .label {
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    padding: 2px 16px 0;
+                    position: relative;
+                }
+                &.on {
+                    width: 100%;
+                    font-weight: 500;
+                    border: none;
+                    border-left: 3px solid var(--brand-primary-light);
+                    background-color: var(--brand-primary-100);
+                    flex-direction: column;
+                    .idevices {
+                        width: 360px;
+                        height: auto;
+                        max-height: 80%;
+                        bottom: 0;
+                        overflow-x: hidden;
+                        overflow-y: auto;
+                        display: flex;
+                        flex-flow: row wrap;
+                        justify-content: flex-start;
+                        align-items: flex-start;
+                        gap: 8px;
+                        border-radius: var(--radius);
+                        margin-top: 5px;
+                        margin-bottom: 5px;
+                        position: fixed;
+                        z-index: 1080;
+                        background: var(--gray-100);
+                        box-shadow: 0 0 6px 0 rgba(0, 0, 0, 0.15);
+                        padding: 10px;
+                        .idevices-category-title {
+                            color: var(--text);
+                            font-size: 1.125rem;
+                            margin: 10px 0 0 0;
+                            font-weight: bold;
+                        }
+                        .idevices-category-description {
+                            color: var(--text);
+                            font-size: .75rem;
+                            line-height: 130%;
+                            margin-bottom: .5rem;
+                        }
+                        .idevice_item {
+                            height: 100px;
+                            width: 31.6%;
+                            color: var(--text);
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: space-around;
+                            border: 1px solid #eaecf0;
+                            box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+                            border-radius: 12px;
+                            gap: 8px;
+                            cursor: grab;
+                            background-color: white;
+                            padding: 14px;
+                            &.dragging {
+                                cursor: grabbing;
+                            }
+                            .idevice_icon {
+                                font-family: var(--icons-ff);
+                                font-size: var(--idevice_icon-fs);
+                                line-height: 1;
+                                display: flex;
+                                color: inherit;
+                                height: auto;
+                                width: auto;
+                                margin: 0;
+                                justify-content: center;
+                                align-items: center;
+                                &.idevice-img-icon {
+                                    height: 30px;
+                                    width: 30px;
+                                }
+                            }
+                            &:hover {
+                                background-color: var(--gray-50);
+                            }
+                            .idevice_title {
+                                font-size: 12px;
+                                white-space: break-spaces;
+                                text-align: center;
+                                line-height: 1;
+                            }
+                            .dropdown {
+                                button {
+                                    margin-right: 6px;
+                                }
+                            }
+                        }
+                        .idevice-import-upload {
+                            display: flex;
+                            flex-flow: row nowrap;
+                            margin: 0 auto;
+                            justify-content: center;
+                            align-items: center;
+                            width: 100%;
+                            border: 1px solid var(--brand-primary);
+                            padding: 6px;
+                            border-radius: 6px;
+                            &:hover {
+                                background-color: var(--brand-primary-100);
+                            }
+                            p {
+                                font-size: 13px !important;
+                            }
+                            .upload-box-icon {
+                                margin-left: unset;
+                                margin-right: 6px;
+                                margin-bottom: unset;
+                                padding: 0 !important;
+                                box-shadow: none;
+                                background: none;
+                                border: none;
+                            }
+                        }
+                        &.type_imported {
+                            .useridevices-content {
+                                width: 100%;
+                                .idevice_item {
+                                    width: 100%;
+                                    height: 50px;
+                                    display: flex;
+                                    flex-flow: row nowrap;
+                                    justify-content: flex-start;
+                                    align-items: center;
+                                    padding-right: 0;
+                                    margin-bottom: 8px;
+                                    .dropdown {
+                                        margin-left: auto;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .idevice_category_name {
+                        &:after {
+                            transform: rotate(180deg);
+                        }
+                    }
+                    label {
+                        * {
+                            color: var(--dark-exe-color);
+                        }
+                    }
+                }
+                &.off {
+                    .idevices {
+                        display: none;
+                    }
+                }
+                .label {
+                    .icon-content {
+                        margin-right: 6px;
+                    }
+                    .idevice_category_name {
+                        width: 100%;
+                        display: flex;
+                        align-items: center;
+                        gap: var(--margin-s);
+                        font-size: var(--menud-idevices-f);
+                        font-weight: 400;
+                        white-space: nowrap;
+                        margin: 0;
+                        cursor: pointer;
+                        color: var(--text-black);
+                        flex-flow: row nowrap;
+                        justify-content: space-between;
+                        &:before {
+                            display: none;
+                        }
+                        &:after {
+                            content: "expand_more";
+                            font-family: var(--icons-ff);
+                            margin-top: -2px;
+                            background: transparent;
+                            border-radius: 50%;
+                            width: 12px;
+                            height: 12px;
+                            min-width: 12px;
+                            min-height: 12px;
+                            max-width: 12px;
+                            max-height: 12px;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            color: #5b6286;
+                            font-size: 18px;
+                            padding: calc(var(--margin-s) / 2);
+                            transition: var(--tr-02);
+                            text-transform: none;
+                            transform: rotate(270deg);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    .idevice_category.thick .idevice_item {
+        margin-block: 5px;
+    }
+}
+
+
+#menu_idevices {
+    #menu_idevices_content {
+        background-color: var(--white);
+        &.accordion-collapse {
+            transition: height 0.05s ease-out, opacity 0.05s ease-out;
+            opacity: 0;
+
+            &.show {
+                opacity: 1;
+            }
+        }
+    }
+}
+

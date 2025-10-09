@@ -148,13 +148,11 @@ export default class IdeviceBlockNode {
         if (newNode) {
             this.blockContent.appendChild(this.makeBlockHeadElement());
             this.addBehaviourChangeIcon();
-            this.addBehaviourChangeTitle();
         }
         // Properties attributes/classes
         this.setPropertiesClassesToElement();
         // Attribute mode
         this.updateMode();
-
         return this.blockContent;
     }
 
@@ -203,6 +201,7 @@ export default class IdeviceBlockNode {
      * @returns
      */
     makeBlockHeadElement() {
+        let idBlock = this.blockId;
         this.headElement = document.createElement('header');
         this.headElement.classList.add('box-head');
         this.headElement.classList.add('draggable');
@@ -210,9 +209,28 @@ export default class IdeviceBlockNode {
         this.headElement.setAttribute('draggable', true);
         this.headElement.setAttribute('drag', 'box');
         this.headElement.setAttribute('block-id', this.blockId);
+        const btn = document.createElement('button');
+        btn.className =
+            'btn-action-menu btn btn-light btn-toggle box-toggler box-toggle-on btn-expandblock';
+        btn.type = 'button';
+        btn.id = `toggleBox${idBlock}`;
+        btn.title = _('Hide');
+        const spanIcon = document.createElement('span');
+        spanIcon.className = 'auto-icon';
+        spanIcon.setAttribute('aria-hidden', 'true');
+        spanIcon.textContent = 'keyboard_arrow_down';
+        const spanHidden = document.createElement('span');
+        spanHidden.className = 'visually-hidden';
+        spanHidden.textContent = _('Hide');
+        btn.appendChild(spanIcon);
+        btn.appendChild(spanHidden);
+        this.headElement.appendChild(btn);
+
         this.headElement.appendChild(this.makeIconNameElement());
         this.headElement.appendChild(this.makeBlockTitleElementText());
         this.headElement.appendChild(this.makeBlockButtonsElement());
+
+        eXeLearning.app.common.initTooltips(this.headElement);
         // Drag event
         this.engine.addEventDragStartToContentBlock(this.headElement);
         this.engine.addEventDragEndToContentBlock(this.headElement);
@@ -230,7 +248,14 @@ export default class IdeviceBlockNode {
             ? this.iconElement
             : document.createElement('button');
         this.iconElement.classList.add('exe-icon');
-        this.iconElement.classList.add('box-icon');
+        this.iconElement.classList.add('box-icon', 'exe-app-tooltip');
+        this.iconElement.setAttribute('data-bs-toggle', 'tooltip');
+        this.iconElement.setAttribute(
+            'data-bs-original-title',
+            _('Select an icon')
+        );
+        this.iconElement.setAttribute('aria-label', _('Select an icon'));
+        this.iconElement.setAttribute('type', 'button');
         // Get actual theme icon based in icon-id
         let iconData = false;
         // Get icon id
@@ -242,12 +267,16 @@ export default class IdeviceBlockNode {
                 let newIconValue = this.makeIconValueElement(iconData);
                 this.iconElement.innerHTML = newIconValue.outerHTML;
                 this.iconElement.classList.remove('exe-no-icon');
+
                 this.iconElement.setAttribute('title', _('Select an icon'));
             }
         }
         // Check if icon is valid
         if (!iconData) {
-            this.iconElement.innerHTML = this.emptyIcon;
+            this.iconElement.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="0.5" y="0.5" width="39" height="39" rx="5.5" stroke="#9ca3af" stroke-dasharray="5 5"/>
+<path d="M20 13V27M13 20H27" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
             this.iconElement.classList.add('exe-no-icon');
             this.iconElement.setAttribute('title', _('No icon'));
         }
@@ -283,14 +312,91 @@ export default class IdeviceBlockNode {
      * @returns
      */
     makeBlockTitleElementText() {
+        const container = document.createElement('div');
+        container.classList.add('content-editable-title');
+
         this.blockNameElementText = document.createElement('h1');
         this.blockNameElementText.classList.add('box-title');
         this.blockNameElementText.classList.add('idevice-element-in-content');
         this.blockNameElementText.innerHTML = this.blockName;
+
+        const btnEdit = document.createElement('button');
+        btnEdit.classList.add(
+            'auto-icon',
+            'btn',
+            'btn-ternary',
+            'btn-edit-title',
+            'exe-app-tooltip'
+        );
+        btnEdit.title = _('Edit title');
+
+        const icon = document.createElement('span');
+        icon.classList.add('small-icon', 'edit-icon');
+
+        btnEdit.appendChild(icon);
+
+        btnEdit.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            eXeLearning.app.project
+                .isAvalaibleOdeComponent(this.blockId, null)
+                .then((response) => {
+                    if (response.responseMessage !== 'OK') {
+                        eXeLearning.app.modals.alert.show({
+                            title: _('iDevice error'),
+                            body: _(response.responseMessage),
+                            contentId: 'error',
+                        });
+                    } else {
+                        this.blockNameElementText.setAttribute(
+                            'contenteditable',
+                            'true'
+                        );
+                        this.blockNameElementText.focus();
+                        const range = document.createRange();
+                        range.selectNodeContents(this.blockNameElementText);
+                        range.collapse(false);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        btnEdit.style.display = 'none';
+                        let finished = false;
+                        const finishEditing = () => {
+                            if (finished) return;
+                            finished = true;
+                            this.blockNameElementText.removeAttribute(
+                                'contenteditable'
+                            );
+                            btnEdit.style.display = '';
+                            this.apiUpdateTitle(
+                                this.blockNameElementText.textContent.trim()
+                            );
+                        };
+                        const onKeydown = (e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                finishEditing();
+                            }
+                        };
+                        this.blockNameElementText.addEventListener(
+                            'blur',
+                            finishEditing
+                        );
+                        this.blockNameElementText.addEventListener(
+                            'keydown',
+                            onKeydown
+                        );
+                    }
+                });
+        });
+        container.appendChild(this.blockNameElementText);
+        container.appendChild(btnEdit);
+
+        eXeLearning.app.common.initTooltips(container);
+
         // Add event
         this.addBehaviourChangeIcon();
 
-        return this.blockNameElementText;
+        return container;
     }
 
     /**
@@ -310,18 +416,19 @@ export default class IdeviceBlockNode {
     makeBlockButtonsElement() {
         let id = this.blockId;
         let blockButtonsHTML = `
-        <div class="dropdown exe-actions-menu">
-            <button class="btn-action-menu btn btn-light btn-move-up" type="button" id=moveUp${id} title="${_('Move up')}"><span class="auto-icon" aria-hidden="true">keyboard_arrow_up</span><span class="visually-hidden">${_('Move up')}</span></button>
-            <button class="btn-action-menu btn btn-light btn-move-down" type="button" id=moveDown${id} title="${_('Move down')}"><span class="auto-icon" aria-hidden="true">keyboard_arrow_down</span><span class="visually-hidden">${_('Move down')}</span></button>
-            <button class="btn-action-menu btn btn-light btn-delete" type="button" id=deleteBlock${id} title="${_('Delete')}"><span class="auto-icon" aria-hidden="true">delete_forever</span><span class="visually-hidden">${_('Delete')}</span></button>
-            <button class="btn-action-menu btn btn-light exe-advanced" type="button" id="dropdownMenuButton${id}" data-bs-toggle="dropdown" aria-expanded="false" title="${_('Actions')}"><span class="auto-icon" aria-hidden="true">more_horiz</span><span class="visually-hidden">${_('Actions')}</span></button>
+        <div class="exe-actions-menu dropdown">
+            <button class="btn-action-menu btn button-tertiary button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up" type="button" id=moveUp${id} title="${_('Move up')}"><span class="small-icon arrow-up-icon"></span></button>
+            <button class="btn-action-menu btn button-tertiary button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down" type="button" id=moveDown${id} title="${_('Move down')}"><span class="small-icon arrow-down-icon"></span></button>
+            <button class="btn-action-menu btn button-tertiary button-square d-flex justify-content-center align-items-center exe-advanced" type="button" id="dropdownMenuButton${id}" data-bs-toggle="dropdown" aria-expanded="false" title="${_('Actions')}">
+                <span class="small-icon dots-menu-vertical-icon"></span>
+            </button>
             <ul class="dropdown-menu button-action-block exe-advanced" aria-labelledby="dropdownMenuButton${id}">
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-properties${id}"><span class="auto-icon" aria-hidden="true">settings</span>${_('Properties')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-clone${id}"><span class="auto-icon" aria-hidden="true">content_copy</span>${_('Clone')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-move${id}"><span class="auto-icon" aria-hidden="true">flip_to_back</span>${_('Move to')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export${id}"><span class="auto-icon" aria-hidden="true">file_download</span>${_('Export')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-properties${id}"><span class="small-icon settings-icon-green"></span>${_('Properties')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-clone${id}"><span class="small-icon duplicate-icon-green"></span>${_('Clone')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-move${id}"><span class="small-icon move-icon-green"></span>${_('Move to')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export${id}"><span class="small-icon download-icon-green"></span>${_('Export')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="deleteBlock${id}"><span class="small-icon delete-icon-red"></span><span>${_('Delete box')}</span></button></li>
              </ul>
-            <button class="btn-action-menu btn btn-light btn-toggle box-toggler box-toggle-on" type="button" id=toggleBox${id} title="${_('Hide')}"><span class="auto-icon" aria-hidden="true">compress</span><span class="visually-hidden">${_('Hide')}</span></button>
         </div>`;
         // Check links (disabled) <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-checkLinks${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
 
@@ -368,30 +475,6 @@ export default class IdeviceBlockNode {
                         });
                     } else {
                         this.showModalChangeIcon();
-                    }
-                });
-        });
-    }
-
-    /**
-     * Event to show modal to change title
-     *
-     */
-    addBehaviourChangeTitle() {
-        this.blockNameElementText.addEventListener('click', (event) => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            // Check odeComponent flag
-            eXeLearning.app.project
-                .isAvalaibleOdeComponent(this.blockId, null)
-                .then((response) => {
-                    if (response.responseMessage !== 'OK') {
-                        eXeLearning.app.modals.alert.show({
-                            title: _('iDevice error'),
-                            body: _(response.responseMessage),
-                            contentId: 'error',
-                        });
-                    } else {
-                        this.showModalChangeTitle();
                     }
                 });
         });
@@ -601,6 +684,7 @@ export default class IdeviceBlockNode {
                                 confirmButtonText: _('Yes'),
                                 confirmExec: () => {
                                     this.remove(true);
+                                    eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
                                 },
                             });
                         }
@@ -773,7 +857,7 @@ export default class IdeviceBlockNode {
      *
      */
     addBehaviourToggleBlockButton() {
-        this.toggleElement = this.blockButtons.querySelector(
+        this.toggleElement = this.headElement.querySelector(
             '#toggleBox' + this.blockId
         );
 
@@ -874,7 +958,8 @@ export default class IdeviceBlockNode {
         this.toggleElement.classList.add('box-toggle-off');
         this.toggleElement.classList.remove('box-toggle-on');
         this.toggleElement.setAttribute('title', _('Show'));
-        this.toggleElement.querySelector('span').innerHTML = 'expand';
+        this.toggleElement.querySelector('span').innerHTML =
+            'keyboard_arrow_up';
     }
 
     /**
@@ -886,7 +971,8 @@ export default class IdeviceBlockNode {
         this.toggleElement.classList.remove('box-toggle-off');
         this.toggleElement.classList.add('box-toggle-on');
         this.toggleElement.setAttribute('title', _('Hide'));
-        this.toggleElement.querySelector('span').innerHTML = 'compress';
+        this.toggleElement.querySelector('span').innerHTML =
+            'keyboard_arrow_down';
     }
 
     /*********************************
@@ -1061,74 +1147,6 @@ export default class IdeviceBlockNode {
         });
     }
 
-    /*********************************
-     * MODAL CHANGE TITLE */
-
-    /**
-     *
-     */
-    showModalChangeTitle() {
-        eXeLearning.app.modals.confirm.show({
-            title: _('Change title'),
-            body: this.makeModalChangeTitleBody().outerHTML,
-            confirmButtonText: _('Save'),
-            cancelButtonText: _('Cancel'),
-            focusFirstInputText: true,
-            confirmExec: () => {
-                this.saveTitleAction();
-            },
-            behaviour: () => {
-                this.addBehaviourToModalChangeTitleBody();
-            },
-        });
-    }
-
-    /**
-     *
-     */
-    saveTitleAction() {
-        let modalBody = eXeLearning.app.modals.confirm.modalElementBody;
-        let inputElement = modalBody.querySelector('#change-block-title-input');
-        let inputText = inputElement.value.trim();
-        this.apiUpdateTitle(inputText);
-    }
-
-    /**
-     *
-     */
-    makeModalChangeTitleBody() {
-        // Modal body
-        let modalBody = document.createElement('div');
-        modalBody.id = 'change-block-title-modal-content';
-        // Modal text
-        let modalText = document.createElement('p');
-        modalText.classList.add('text-info-change-title');
-        modalText.innerHTML = _('Write new title of the block:');
-        // Input
-        let input = document.createElement('input');
-        input.id = 'change-block-title-input';
-        input.setAttribute('type', 'text');
-        let titleText = this.blockName ? this.blockName : '';
-        input.setAttribute('value', titleText);
-
-        modalBody.appendChild(modalText);
-        modalBody.appendChild(input);
-
-        return modalBody;
-    }
-
-    /**
-     *
-     */
-    addBehaviourToModalChangeTitleBody() {
-        let modalBody = eXeLearning.app.modals.confirm.modalElementBody;
-        let inputElement = modalBody.querySelector('#change-block-title-input');
-        // Focus input title
-        setTimeout(() => {
-            this.focusTextInput(inputElement);
-        }, 500);
-    }
-
     /*******************************************************************************
      * GET
      *******************************************************************************/
@@ -1259,6 +1277,7 @@ export default class IdeviceBlockNode {
             if (response.responseMessage && response.responseMessage == 'OK') {
                 // Reset block content
                 this.generateBlockContentNode(false);
+                eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
                 // Reset idevices content
                 if (
                     inherit &&

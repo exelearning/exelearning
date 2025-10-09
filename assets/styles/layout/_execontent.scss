@@ -1,0 +1,295 @@
+#node-content-container.exe-content {
+    padding: 0 20px 0 20px;
+    .box {
+        border-radius: var(--radius);
+        opacity: 1;
+        min-height: 40px !important;
+        padding: 18px 36px;
+        border: 1px solid var(--gray-100) !important;
+        &.loading {
+            opacity: 0;
+        }
+        input {
+            &.box-title {
+                text-align: left;
+                font-weight: bold;
+                font-size: var(--h2-fs);
+                padding-left: var(--margin-s);
+            }
+        }
+    }
+    .box[mode='export'] {
+        &:hover {
+            box-shadow: var(--menu-shadow-light);
+        }
+        .box-head {
+            cursor: grab;
+        }
+    }
+    .box[mode="edition"] {
+        .box_actions,
+        .box-toggle {
+            visibility: hidden;
+        }
+    }
+    .box.dragging {
+        border: 0;
+        transform: scale(.95);
+        opacity: 0.3;
+        transition: none;
+        height: 10px;
+        min-height: 10px;
+        cursor: grabbing;
+    }
+    .box-head {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        max-width: 100%;
+        .btn-expandblock {
+            background: transparent;
+            box-shadow: none;
+            border: none;
+            font-weight: normal;
+            color: var(--text-black);
+            order: 1;
+            span {
+                font-size: 24px;
+            }
+        }
+        > {
+            .exe-icon.box-icon {
+                flex-shrink: 0;
+                color: var(--dark-exe-color);
+            }
+
+            h3 {
+                min-height: 24px;
+            }
+
+            .exe-icon.box-icon:empty {
+                min-width: 20px;
+            }
+
+            h3:empty {
+                width: 200px;
+                min-height: 21px;
+                margin-bottom: 3px;
+                border-radius: var(--radius);
+            }
+        }
+        :is(.box-icon, .exe-icon) {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .exe-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 30px;
+            border: 0;
+            background: none;
+            font-family: var(--icons-ff);
+            img {
+                width: auto;
+                height: 30px;
+            }
+            &.box-icon {
+                &:hover {
+                    img {
+                        background: none;
+                    }
+                }
+            }
+            &:not(.box-icon):hover {
+                background-color: var(--dark-exe-color);
+                color: white;
+                transition: var(--tr-02);
+            }
+            &:hover {
+                color: var(--dark-exe-color-text);
+                transition: var(--tr-02);
+                img {
+                    background-color: var(--dragging-exe-color);
+                    border-radius: var(--radius);
+                    transition: var(--tr-02);
+                }
+            }
+        }
+        .box_actions.idevice-element-in-content {
+            display: flex;
+            flex-flow: row nowrap;
+            justify-content: center;
+            align-items: center;
+            margin-left: auto;
+            flex-shrink: 0;
+            .exe-actions-menu {
+                display: flex;
+                flex-flow: row nowrap;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .exe-icon {
+                border: 1px solid var(--dark-exe-color);
+            }
+        }
+        .content-editable-title {
+            display: flex;
+            flex-flow: row nowrap;
+            justify-content: flex-start;
+            align-items: center;
+            .box-title {
+                color: var(--text);
+                font-size: 16px;
+                font-weight: 600;
+                padding: 4px 8px;
+                :empty {
+                    min-width: 50%;
+                    min-height: 24px;
+                }
+                &[contenteditable="true"] {
+                    outline: none;
+                    border: 1px solid var(--border-buttons);
+                    border-radius: 4px;
+                    background-color: #f9f9f9;
+                    transition: box-shadow 0.2s ease, background-color 0.2s ease;
+                    box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+                    max-width: 100%;
+                    overflow: hidden;
+                }
+            }
+            .btn-edit-title {
+                z-index: 10;
+                cursor: pointer;
+                .small-icon {
+                    width: 14px;
+                    height: 14px;
+                    position: relative;
+                    top: 1px;
+                }
+            }
+        }
+        &.dragging {
+            margin: 0 var(--margin-m);
+            margin-top: var(--margin-din-l);
+            margin-bottom: 5px;
+            border-radius: var(--radius);
+            border: 1px solid var(--dark-exe-color);
+            opacity: 0.8;
+            transition: none !important;
+        }
+        &.box-head {
+            .dragging-start {
+                border-radius: var(--radius);
+                border: 1px solid var(--dark-exe-color);
+                background-color: var(--dark-exe-color-04);
+                opacity: 0.8;
+                transition: none !important;
+            }
+        }
+        &.dragging {
+            &.out {
+                opacity: 0.3;
+            }
+            &.dragging-start {
+                opacity: 0.5 !important;
+            }
+            .box_actions,
+            .box-toggle {
+                opacity: 0;
+            }
+        }
+        &.dragging-start {
+            .box_actions,
+            .box-toggle {
+                opacity: 0;
+            }
+        }
+        .box-icon {
+            &:hover {
+                cursor: pointer;
+                .box-icon-value[type="img"] {
+                    padding: 2px;
+                }
+            }
+            &.exe-no-icon {
+                color: var(--icon-bg-gray);
+                opacity: 0.5;
+            }
+            &:not(.exe-no-icon) {
+                .box-icon-value {
+                    background-repeat: no-repeat;
+                    background-size: contain;
+                }
+            }
+            .box-icon-value[type="img"] {
+                transition: padding 0.1s ease-in;
+                padding: 0;
+            }
+        }
+        .button-remove-box {
+            .exe-icon {
+                &:hover {
+                    background-color: var(--remove);
+                    border: 1px solid var(--remove);
+                }
+            }
+        }
+        h3 {
+            &.box-title {
+                text-align: left;
+                font-weight: bold;
+                font-size: var(--h2-fs);
+                padding: var(--margin-m);
+                position: relative;
+            }
+            &.box-title {
+                &:hover {
+                    cursor: pointer;
+                }
+            }
+        }
+        .exe-actions-menu {
+            margin-left: 6px;
+            button {
+                .auto-icon {
+                    color: #666;
+                    font-size: 20px;
+                    margin: 0;
+                }
+                &.btn-delete {
+                    display: flex;
+                    span {
+                        font-size: 13px;
+                        &.delete-icon {
+                            margin-top: -2px;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    .hidden-idevices {
+        .box-head {
+            margin-bottom: 0;
+            border-bottom: 0;
+        }
+    }
+    article {
+        &.idevice-element-in-content {
+            &:first-of-type {
+                .btn-move-up {
+                    opacity: 0.5;
+                    pointer-events: none;
+                }
+            }
+            &:last-of-type {
+                .btn-move-down {
+                    opacity: 0.5;
+                    pointer-events: none;
+                }
+            }
+        }
+    }
+}

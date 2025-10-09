@@ -3,7 +3,7 @@
 	<name>example</name>
 	<title>Example</title>
 	<css-class>example</css-class>
-	<category>Example</category>
+	<category>Information and presentation</category>
 	<icon>lightbulb</icon>
 	<version>1.0</version>
 	<api-version>3.0</api-version>

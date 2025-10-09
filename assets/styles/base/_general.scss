@@ -1,0 +1,119 @@
+html {
+    scroll-behavior: smooth;
+}
+body {
+    margin: 0 auto;
+    /* font-family: var(--body-text-font); */
+    color: var(--text);
+    overflow: hidden;
+    font-size: var(--body-fs);
+    &.ajax-petition-on {
+        cursor: progress !important;
+        *:hover {
+            cursor: progress !important;
+        }
+    }
+}
+.exe-icon,
+.exe-top-icons {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+::selection {
+    background-color: var(--brand-primary-100);
+}
+* {
+    accent-color: var(--dark-exe-color);
+}
+body {
+    /*
+    font-family: "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    */
+    &#main {
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+    }
+    main {
+        transition: width var(--sidebar);
+        min-width: 67%;
+        width: calc(100% - 400px);
+        position: relative;
+        #node-content-container {
+            transition:
+                    left var(--sidebar),
+                    width var(--sidebar),
+                    margin-left var(--sidebar);
+            margin-left: 0;
+            margin-right: 0;
+            overflow: auto;
+            scroll-behavior: smooth;
+            height: calc(100% - var(--head-height) - 40px);
+            #node-content {
+                width: 100%;
+                padding: 0 !important;
+            }
+        }
+    }
+    &.left-column-hidden {
+        main {
+            transition: width var(--sidebar);
+            width: 100% !important;
+        }
+        .asideleft {
+            transition:
+                    width var(--sidebar),
+                    padding var(--sidebar);
+            width: 0 !important;
+            padding: 0 !important;
+            overflow: hidden;
+            min-width: 0;
+            z-index: 1;
+            .content-info,
+            #exe-logo,
+            #exe-title,
+            #menu_nav,
+            #menu_idevices {
+                transition: opacity var(--sidebar), visibility var(--sidebar) width var(--sidebar);
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+                width: 0 !important;
+            }
+            .main-menu {
+                transition: width var(--sidebar);
+                width: calc(100% - 20px);
+            }
+        }
+        #node-content-container {
+            transition:
+                    left var(--sidebar),
+                    width var(--sidebar),
+                    margin-left var(--sidebar);
+            width: calc(100% - 20px) !important;
+            margin-left: 0;
+            margin-right: 0;
+        }
+        #workarea:before {
+            transition: opacity var(--sidebar) width var(--sidebar);
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+        }
+    }
+}
+
+/*
+:root {
+    --dark-exe-color: rgba(112, 163, 0, 1);
+    --dark-exe-color-text: #577e02;
+    --dark-exe-color-08: rgba(112, 163, 0, 0.8);
+    --dark-exe-color-06: rgba(112, 163, 0, 0.6);
+    --dark-exe-color-04: rgba(112, 163, 0, 0.4);
+}
+    */
+
