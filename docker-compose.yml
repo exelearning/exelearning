@@ -39,7 +39,16 @@ services:
         echo "this is a test line 2"
         php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail
 
-  # The alpine-chromium image includes a browser configured to work with Chromedriver  
+  # Watches SCSS changes and compiles main.scss to main.css using sass
+  scss-watcher:
+    image: node:20-alpine
+    container_name: scss-watcher
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: sh -c "npm install sass && npx sass --watch assets/styles/main.scss:public/style/workarea/main.css"
+
+  # The alpine-chromium image includes a browser configured to work with Chromedriver
   chrome:
     image: ghcr.io/erseco/alpine-chromedriver
     container_name: chrome
