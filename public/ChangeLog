@@ -4,24 +4,24 @@
 
 ### Added
 
-- New User Interface
+- New user interface
 - New iDevice icons
 - Updated Spanish (es) translation
 - Build and test automation for Electron desktop installers
 - Secure code signing for macOS installers
 - Improved Electron build workflow and documentation
-- Jobs to build and publish the application to Chocolatey and Winget
-- Doctrine middleware to tune SQLite connections for better concurrent performance
+- New jobs to build and publish the application to Chocolatey and Winget
+- Doctrine middleware to improve SQLite connection performance under concurrent load
 - iDevice HTML revision
 
 ### Fixed
 
-- Publish on Moodle process
-- CAS authentication compatibility with different BASE_PATH values
-- Wrong iDevice order on pages
-- Handling of old lost iDevices in content.xml
-- Prevent "error: invalid data" on iDevice save
-- Standardize serialization across all controllers
+- Moodle publish process
+- CAS authentication compatibility with different `BASE_PATH` values
+- Incorrect iDevice order on pages
+- Handling of orphaned iDevices in `content.xml`
+- Prevent “invalid data” error when saving iDevices
+- Standardized serialization across all controllers
 - `make create-user` command on Windows
 
 ### Upgraded
@@ -39,7 +39,7 @@
 - symfony/debug-bundle: 7.3.0 → 7.3.4
 - symfony/framework-bundle: 7.3.3 → 7.3.4
 - symfony/intl: 7.3.3 → 7.3.4
-- symfony/serializer: 7.3.3 → 7.3.4 ******
+- symfony/serializer: 7.3.3 → 7.3.4
 - symfony/translation: 7.3.3 → 7.3.4
 - symfony/twig-bundle: 7.3.2 → 7.3.4
 
