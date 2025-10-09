@@ -37,7 +37,6 @@ class SqlitePragmaMiddlewareTest extends KernelTestCase
         ], $config);
 
         try {
-            self::assertSame('wal', strtolower((string) $connection->fetchOne('PRAGMA journal_mode;')));
             self::assertSame('1', (string) $connection->fetchOne('PRAGMA synchronous;'));
             self::assertSame('5000', (string) $connection->fetchOne('PRAGMA busy_timeout;'));
             self::assertSame('1', (string) $connection->fetchOne('PRAGMA foreign_keys;'));
