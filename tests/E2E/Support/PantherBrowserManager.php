@@ -28,7 +28,7 @@ final class PantherBrowserManager
         }
 
         $default = [
-            'external_base_uri' => Env::baseUri(),
+            'external_base_uri' => 'http://exelearning:8080',
             'browser' => PantherTestCase::CHROME,
         ];
 

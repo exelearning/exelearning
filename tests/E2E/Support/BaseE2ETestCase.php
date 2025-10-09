@@ -119,13 +119,6 @@ abstract class BaseE2ETestCase extends PantherTestCase
         // Always login as guest first
         $client = $this->login($client);
 
-        // Wait::css($client, Selectors::WORKAREA, 10000);
-        // Wait::css($client, Selectors::NODE_CONTENT, 10000);
-
-        // $url = Env::baseUri() . Env::workareaPath($documentId);
-        // $url = '/login';
-        // $client->request('GET', $url);
-
         // Wait for workarea elements to confirm readiness        
         Wait::css($client, Selectors::WORKAREA, 8000);
         Wait::css($client, Selectors::NODE_CONTENT, 8000);

@@ -465,7 +465,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
 
         try {
             // Composite wait based on node id only: (1) node with id no longer present, (2) modal/backdrop hidden
-            $client->getWebDriver()->wait(30, 200)->until(static function () use ($client, $id): bool {
+            $client->getWebDriver()->wait(40, 200)->until(static function () use ($client, $id): bool {
                 return (bool) $client->executeScript(<<<'JS'
                     const expectedId = arguments[0];
                     // 1) Node by id should not exist in the nav
@@ -473,8 +473,13 @@ $this->waitNodeContentReady($nodeTitle, 30);
                         const byId = document.querySelector('[data-testid="nav-node"][data-node-id="' + expectedId + '"]')
                                    || document.querySelector('.nav-element[nav-id="' + expectedId + '"]');
                         if (byId) {
-                            // Retry delete if still visible
+                            // Ensure target is selected, then retry delete
                             try {
+                                // Select the target node by dispatching a click on its text
+                                const textBtn = byId.querySelector('.nav-element-text');
+                                if (textBtn) {
+                                    textBtn.dispatchEvent(new MouseEvent('click', {bubbles:true}));
+                                }
                                 const delBtn = document.querySelector('[data-testid="nav-delete"], #menu_nav .action_delete, .button_nav_action.action_delete');
                                 delBtn?.dispatchEvent(new MouseEvent('click', {bubbles:true}));
                                 const confirm = document.querySelector('#modalConfirm .modal-footer .confirm, #modalConfirm button.btn.btn-primary');

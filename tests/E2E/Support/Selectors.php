@@ -59,24 +59,4 @@ final class Selectors
     public const IDEVICES_MENU_LIST     = '#list_menu_idevices';
     public const IDEVICES_MENU_TEXT     = '#list_menu_idevices #text.idevice_item';
 
-    /**
-     * XPath for a node in the nav tree by its visible name.
-     * Example: //span[contains(@class,'node-text-span') and normalize-space()='Nodo 2']
-     */
-    public static function navNodeByNameXPath(string $name): string
-    {
-        $safe = self::xpLiteral($name);
-        return sprintf("//span[contains(@class,'node-text-span') and normalize-space()=%s]", $safe);
-    }
-
-    private static function xpLiteral(string $s): string
-    {
-        if (!str_contains($s, "'")) {
-            return "'" . $s . "'";
-        }
-        if (!str_contains($s, '"')) {
-            return '"' . $s . '"';
-        }
-        return "concat('" . str_replace("'", "',\"'\",'", $s) . "')";
-    }
 }
