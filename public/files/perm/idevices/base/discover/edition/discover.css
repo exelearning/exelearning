@@ -2,17 +2,16 @@
     width: 100%;
 }
 
-#descubreQEIdeviceForm input[type=number] {
-    width: 4em;
+#descubreQEIdeviceForm input[type="color"] ,
+#descubreQEIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
 }
-
-#descubreQEIdeviceForm label {
-    margin-right: 0.1em !important;
+#descubreQEIdeviceForm input[type="color"] {
+    padding: .2rem !important;
+    height: 2em !important;
+    width: 3em !important;
 }
-
-#descubreQEIdeviceForm input:is([type="checkbox"], [type="radio"]) {
-    margin-right: 0.1em !important;
-}
+  
 
 
 #descubreQEIdeviceForm input[type="radio"],
@@ -263,10 +262,9 @@
 }
 
 .Descubre-ENavigationButton {
-    height: 1.5em;
-    margin: 0 .3em;
-    min-width: 1.5em;
-    width: 1.5em;
+    height: 1.7em;
+    min-width: 1.7em;
+    width: 1.7em;
 }
 
 .Descubre-EButtonImage {
@@ -281,12 +279,9 @@
 }
 
 .Descubre-NumberQuestion {
-    font-weight: bold;
-    height: 1.5em;
-    line-height: 1.5em;
     text-align: center;
     vertical-align: middle;
-    width: 2em;
+    width: 3em;
 }
 
 /* Video introdución */
@@ -351,7 +346,7 @@
 #descubreQEIdeviceForm #descubreQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 
@@ -455,6 +450,5 @@ label[for=gameQEActivitySCORM] {
 
 .Descubre-TypeGameHelp {
     display: none;
-    margin-bottom: 2em;
     font-size: .95em
 }

@@ -147,126 +147,173 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
-                            <p>
-                                <label for="puzzleERandomPuzzles"><input type="checkbox" id="puzzleERandomPuzzles">${_('Random puzzles.')}</label>
-                            </p>
-                            <p>
-                                <label for="puzzleEShowMinimize"><input type="checkbox" id="puzzleEShowMinimize">${_('Show minimized.')}</label>
-                            </p>
-                            <p>
-                                <label for="puzzleEPercentajeQuestions">${_('% Activities')}:</label>
-                                <input type="number" name="puzzleEPercentajeQuestions" id="puzzleEPercentajeQuestions" value="100" min="1" max="100" />
-                                <span id="puzzleENumeroPercentaje">1/1</span>
-                            </p>
-                            <p>
-                                <input type="checkbox" id="puzzleEHasFeedBack"><label for="puzzleEHasFeedBack">${_('Feedback')}.</label><label for="puzzleEPercentajeFB"></label> <input type="number" name="puzzleEPercentajeFB" id="puzzleEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                            </p>
-                            <p id="puzzleEFeedbackP" class="PZLE-EFeedbackP">
-                                <textarea id="puzzleEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </p>
-                            <p>
-                                <label for="puzzleEAuthor">${_('Authorship')}:</label><input id="puzzleEAuthor" type="text" />
-                            </p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#puzzleEEvaluationHelp" id="puzzleEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                                <input type="checkbox" id="puzzleEEvaluation"><label for="puzzleEEvaluation">${_('Progress report')}.</label>
-                                <label for="puzzleEEvaluationID">${_('Identifier')}:</label><input type="text" id="puzzleEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </p>
-                            <div id="puzzleEEvaluationHelp" class="PZLE-TypeGameHelp exe-block-info">
-                                <div>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</div>
+                            <div class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="puzzleERandomPuzzles" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="puzzleERandomPuzzles">${_('Random puzzles.')}</label>
+                                </span>
                             </div>
+                            <div class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="puzzleEShowMinimize" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="puzzleEShowMinimize">${_('Show minimized.')}</label>
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                                <label for="puzzleEPercentajeQuestions">${_('% Activities')}:</label>
+                                <input type="number" name="puzzleEPercentajeQuestions" id="puzzleEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                                <span id="puzzleENumeroPercentaje">1/1</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="puzzleEHasFeedBack" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="puzzleEHasFeedBack">${_('Feedback')}.</label>
+                                </span>
+                                <label for="puzzleEPercentajeFB" class="sr-av">${_('Percent')}</label>
+                                <input type="number" name="puzzleEPercentajeFB" id="puzzleEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
+                            </div>
+                            <div id="puzzleEFeedbackP" class="PZLE-EFeedbackP mb-3">
+                                <textarea id="puzzleEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
+                            </div>
+                            <div class="d-none align-items-center gap-2 flex-wrap mb-3">
+                                <label for="puzzleEAuthor">${_('Authorship')}:</label>
+                                <input id="puzzleEAuthor" type="text" class="form-control" />
+                            </div>
+                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="puzzleEEvaluation" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="puzzleEEvaluation">${_('Progress report')}.</label>
+                                </span>
+                                <label for="puzzleEEvaluationID">${_('Identifier')}:</label>
+                                <input type="text" id="puzzleEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" style="max-width:16ch" />
+                                <strong class="GameModeLabel"><a href="#puzzleEEvaluationHelp" id="puzzleEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
+
+                            </div>
+                            <p id="puzzleEEvaluationHelp" class="PZLE-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
                         <legend><a href="#">${_('Puzzles')}</a></legend>
                         <div class="PZLE-EPanel" id="puzzleEPanel">
-                            <p>
+                            <div class=" d-flex align-items-center gap-2 flex-nowrap mb-3">
                                 <span>${_('Type')}:</span>
-                                <span class="PZLP-EInputType">
-                                    <input class="PZLP-Type" checked id="puzzleESliding" type="radio" name="pzltype" value="0"/>
-                                    <label for="puzzleETypeShow">${_('Slide')}</label>
-                                    <input class="PZLP-Type" id="puzzleEChange" type="radio" name="pzltype" value="1"/>
-                                    <label for="puzzleETypeNavigation">${_('Swap')}</label>
-                                </span>
-                            </p>
-                            <p class="PZLE-FlexLeft PZLE-Gap10">
-                                <span>
-                                    <label for="puzzleERows">${_('Rows')}:</label>
-                                    <select id="puzzleERows">
-                                        <option>2</option>
-                                        <option selected>3</option>
-                                        <option>4</option>
-                                        <option>5</option>
-                                        <option>6</option>
-                                        <option>7</option>
-                                    </select>
-                                </span>
-                                <span>
-                                    <label for="puzzleEColumns">${_('Columns')}:</label>
-                                    <select id="puzzleEColumns">
-                                        <option>2</option>
-                                        <option selected>3</option>
-                                        <option>4</option>
-                                        <option>5</option>
-                                        <option>6</option>
-                                        <option>7</option>
-                                    </select>
-                                </span>
-                            </p>
-                            <p class="PZLE-FlexLeft PZLE-Gap10">
-                                <span>
-                                    <input type="checkbox" id="puzzleEShowImage"><label for="puzzleEShowImage">${_('Show image')}</label>
-                                </span>
-                                <span>
-                                    <input type="checkbox" id="puzzleEShowNumber"><label for="puzzleEShowNumber">${_('Show numbers')}</label>
-                                </span>
-                                <span>
-                                    <input type="checkbox" id="puzzleEShowTime"><label for="puzzleEShowTime">${_('Show time')}</label>
-                                </span>
-                                <span>
-                                    <input type="checkbox" id="puzzleEShowAttemps"><label for="puzzleEShowAttemps">${_('Show attempt')}</label>
-                                </span>
-                            </p>
-                            <div>
-                                <p class="PZLE-EDefinitioMedia">
-                                    <label>${_('Image')}:</label>
-                                    <input type="text" id="puzzleEURLImageDefinition" class="exe-file-picker" />
-                                    <a href="#" id="puzzleEPlayImageDefinition" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage b-play" /></a>
-                                    <a href="#" id="puzzleEShowMoreDefinition" class="PZLE-ENavigationButton PZLE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="PZLE-EButtonImage b-play" /></a>
-                                </p>
-                                <div style="margin:0;padding:0;display:none" id="puzzleEDefinitionAltAuthor">
-                                    <p class="PZLE-EDefinitionAltAuthor">
-                                        <label>${_('Authorship')}:</label>
-                                        <input id="puzzleEAuthorDefinition" type="text" class="PZLE-EAuthor" />
-                                        <label>${_('Alternative text')}:</label>
-                                        <input id="puzzleEAltDefinition" type="text" class="PZLE-EAlt" />
-                                    </p>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="PZLP-Type form-check-input" checked id="puzzleESliding" type="radio" name="pzltype" value="0" />
+                                    <label class="form-check-label" for="puzzleESliding">${_('Slide')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="PZLP-Type form-check-input" id="puzzleEChange" type="radio" name="pzltype" value="1" />
+                                    <label class="form-check-label" for="puzzleEChange">${_('Swap')}</label>
                                 </div>
                             </div>
-                            <div id="puzzleEImageDefinitionDiv">
+                            <div class="mb-3 d-flex align-items-center flex-nowrap gap-2">
+                                <span class="d-flex align-items-center flex-nowrap gap-2">
+                                     <label for="puzzleERows">${_('Rows')}:</label>
+                                    <select id="puzzleERows" class="form-select form-select-sm" style="min-width:8ch">
+                                        <option>2</option>
+                                        <option selected>3</option>
+                                        <option>4</option>
+                                        <option>5</option>
+                                        <option>6</option>
+                                        <option>7</option>
+                                    </select>  
+                                </span>
+                                <span class="d-flex align-items-center flex-nowrap gap-2">
+                                    <label for="puzzleEColumns">${_('Columns')}:</label>
+                                    <select id="puzzleEColumns" class="form-select form-select-sm" style="min-width:8ch">
+                                        <option>2</option>
+                                        <option selected>3</option>
+                                        <option>4</option>
+                                        <option>5</option>
+                                        <option>6</option>
+                                        <option>7</option>
+                                    </select> 
+                                </span>  
+                            </div>
+                            <div class="mb-3 d-flex flex-nowrap gap-2">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="puzzleEShowImage" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="puzzleEShowImage">${_('Show image')}</label>
+                                </span>
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="puzzleEShowNumber" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="puzzleEShowNumber">${_('Show numbers')}</label>
+                                </span>
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="puzzleEShowTime" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="puzzleEShowTime">${_('Show time')}</label>
+                                </span>
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="puzzleEShowAttemps" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="puzzleEShowAttemps">${_('Show attempt')}</label>
+                                </span>
+                            </div>
+                            <div>
+                                <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                                    <label>${_('Image')}:</label>
+                                    <input type="text" id="puzzleEURLImageDefinition" class="exe-file-picker form-control me-0" />
+                                    <a href="#" id="puzzleEPlayImageDefinition" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
+                                    <a href="#" id="puzzleEShowMoreDefinition" class="PZLE-ENavigationButton PZLE-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="PZLE-EButtonImage " /></a>
+                                </div>
+                                <div  id="puzzleEDefinitionAltAuthor" class="d-none">
+                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">                                        
+                                        <label>${_('Authorship')}:</label>
+                                        <input id="puzzleEAuthorDefinition" type="text" class="form-control" />
+                                        <label>${_('Alternative text')}:</label>
+                                        <input id="puzzleEAltDefinition" type="text" class="form-control" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="puzzleEImageDefinitionDiv" class="mb-3">
                                 <p class="PZLE-EImageDefinition">
                                     <img class="PZLE-EImageEnu" id="puzzleEImageDefinition" src="${path}quextIEImagen.png" alt="${_('No image')}" />
                                 </p>
                             </div>
-                            <p class="PZLE-ECustomMessageDef" id="puzzleEDefinitionDiv">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="puzzleEDefinitionDiv">
                                 <label for="puzzleEDefinition">${_('Statement')}:</label>
-                                <input type="text" id="puzzleEDefinition">
-                            </p>
-                            <p class="PZLE-ECustomMessageAudio">
+                                <input type="text" id="puzzleEDefinition" class="form-control" />
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap  mb-3">
                                 <label for="puzzleEURLAudioDefinition">${_('Audio')}:</label>
-                                <input type="text" id="puzzleEURLAudioDefinition" class="exe-file-picker PZLE-EURLAudio" />
-                                <a href="#" id="puzzleEPlayAudioDefinition" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage b-play" /></a>
-                            </p>
-                            <p class="PZLE-EClueDiv">
+                                <input type="text" id="puzzleEURLAudioDefinition" class="exe-file-picker PZLE-EURLAudio form-control me-0" />
+                                <a href="#" id="puzzleEPlayAudioDefinition" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap  mb-3">
                                 <label for="puzzleECluePuzzle">${_('Feedback/Solution')}:</label>
-                                <input type="text" id="puzzleECluePuzzle" class="PZLE-EURLAudio" />
-                            </p>
-                            <p class="PZLE-ECustomMessageAudio">
+                                <input type="text" id="puzzleECluePuzzle" class="PZLE-EURLAudio form-control" />
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="puzzleEURLAudioClue">${_('Audio')}:</label>
-                                <input type="text" id="puzzleEURLAudioClue" class="exe-file-picker PZLE-EURLAudio" />
-                                <a href="#" id="puzzleEPlayAudioClue" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage b-play" /></a>
-                            </p>
-                            <div class="PZLE-ENavigationButtons" id="puzzleButtonsPrhaseDiv">
+                                <input type="text" id="puzzleEURLAudioClue" class="exe-file-picker PZLE-EURLAudio form-control me-0" />
+                                <a href="#" id="puzzleEPlayAudioClue" class="PZLE-ENavigationButton PZLE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="PZLE-EButtonImage " /></a>
+                            </div>
+                            <div class="PZLE-ENavigationButtons gap-2" id="puzzleButtonsPrhaseDiv">
                                 <a href="#" id="puzzleEAdd" class="PZLE-ENavigationButton" title="${_('Add an activity')}"><img src="${path}quextIEAdd.png" alt="${_('Add an activity')}" class="PZLE-EButtonImage b-add" /></a>
                                 <a href="#" id="puzzleEFirst" class="PZLE-ENavigationButton" title="${_('First activity')}"><img src="${path}quextIEFirst.png" alt="${_('First activity')}" class="PZLE-EButtonImage b-first" /></a>
                                 <a href="#" id="puzzleEPrevious" class="PZLE-ENavigationButton" title="${_('Previous activity')}"><img src="${path}quextIEPrev.png" alt="${_('Previous activity')}" class="PZLE-EButtonImage b-prev" /></a>
@@ -297,6 +344,14 @@ var $exeDevice = {
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('puzzleIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
+        // Inicializar switches accesibles
+        $('.toggle-input').each(function () {
+            const $i = $(this), $item = $i.closest('.toggle-item');
+            $item.attr('aria-checked', $i.is(':checked'));
+            $i.on('change.puzzleToggle', function () {
+                $item.attr('aria-checked', $i.is(':checked'));
+            });
+        });
         this.enableForm();
     },
     enableForm: function () {
@@ -567,8 +622,8 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.puzzlesGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.puzzlesGame);
 
-    let html = '<div class="puzzle-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="puzzle-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += '<div class="puzzle-feedback-game">' + textFeedBack + '</div>';
         html += divContent;
         html += '<div class="puzzle-DataGame js-hidden">' + json + '</div>';
@@ -975,7 +1030,11 @@ var $exeDevice = {
 
         $('#puzzleEShowMoreDefinition').on('click', function (e) {
             e.preventDefault();
-            $('#puzzleEDefinitionAltAuthor').toggle();
+            if ($('#puzzleEDefinitionAltAuthor').hasClass('d-none')) {
+                $('#puzzleEDefinitionAltAuthor').removeClass('d-none').addClass('d-blok')
+            } else {
+                $('#puzzleEDefinitionAltAuthor').removeClass('d-block').addClass('d-none')
+            }
         });
 
         $('#puzzleEURLImageDefinition').on('change', function () {

@@ -1,24 +1,9 @@
-/* Rosco Activity iDevice (edition CSS) */
-
 #roscoIdeviceForm label {
     display: inline;
 }
 
-#roscoIdeviceForm label {
-    margin-right: 0.15em !important;
-}
-
-#roscoIdeviceForm input:is([type="checkbox"], [type="radio"]) {
-    margin-right: 0.15em !important;
-}
-
 #roscoIdeviceForm label[for='roscoShowSolution'] {
     margin-right: .5em;
-}
-
-#roscoIdeviceForm input,
-#roscoIdeviceForm select {
-    font-size: 1em;
 }
 
 #roscoIdeviceForm .roscoSeparation {
@@ -27,29 +12,19 @@
 }
 
 #roscoIdeviceForm .roscoLetterEdition {
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
     min-width: 20px;
-    background-color: #818181;
     border: none;
     color: white;
+    background-color: #818181;
     text-align: center;
     text-decoration: none;
-    line-height: 30px;
+    line-height: 36px;
     font-size: 16px;
     font-weight: bold;
     border-radius: 4px;
-    box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     margin: 0;
-}
-
-#roscoIdeviceForm .roscoLetterEditionBlue {
-    background-color: #0099cc;
-}
-
-#roscoIdeviceForm #roscoNumberTurns,
-#roscoIdeviceForm #roscoTimeShowSolution {
-    width: 60px;
 }
 
 #roscoIdeviceForm #roscoClue {
@@ -112,9 +87,9 @@
 #roscoIdeviceForm .roscoLinkSelectImage,
 #roscoIdeviceForm .roscoSelectImageEdition,
 #roscoIdeviceForm .roscoCloseImage {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
     margin: 0 3px;
 }
 
@@ -137,7 +112,6 @@
     padding: 0;
 }
 
-
 #roscoIdeviceForm .roscoHomeImagenEdition {
     width: 100%;
     position: absolute;
@@ -146,20 +120,12 @@
 }
 
 #roscoIdeviceForm .roscoWordEdition {
-    width: 15%;
-    height: 30px;
-    margin: 0 3px;
-}
-
-#roscoIdeviceForm .roscoWordEdition {
-    width: 20%;
-    height: 30px;
+    width: 100% !important;
     margin: 0 3px;
 }
 
 #roscoIdeviceForm .roscoDefinitionEdition {
-    width: 80%;
-    height: 30px;
+    width: 100% !important;
     margin: 0 3px;
 }
 
@@ -191,28 +157,14 @@
     position: absolute;
 }
 
-#roscoIdeviceForm .roscoCursorEdition {
-    position: absolute;
-    width: 24px;
-    height: 24px;
+#roscoIdeviceForm .roscoAuthorEdition {
+    width: 100%;
+    margin: 0 3px;
 }
 
-#roscoIdeviceForm .roscoWordMutimedia {
-    display: block;
-    width: 100%
-}
-
-#roscoIdeviceForm #roscoTimeShowSolution,
-#roscoIdeviceForm #roscoNumberTurns {
-    width: 40px;
-}
-
-#roscoIdeviceForm #roscoDuration {
-    width: 60px;
-}
-
-#roscoIdeviceForm .roscoImageBarEdition {
-    display: none
+#roscoIdeviceForm .roscoAlt {
+    width: 100%;
+    margin: 0 3px;
 }
 
 #roscoIdeviceForm .roscoBarEdition,
@@ -225,13 +177,46 @@
     width: 100%;
 }
 
+#roscoIdeviceForm .roscoMetaData .roscoMetaItem {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    width: 50%;
+}
+
+#roscoIdeviceForm .roscoMetaData .roscoMetaItem>label.form-label {
+    flex: 0 0 auto;
+    margin: 0;
+    max-width: 50%;
+}
+
+#roscoIdeviceForm .roscoMetaData .roscoMetaItem>input.form-control {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+}
+
+#roscoIdeviceForm div>label {
+    display: inline-block;
+    margin: 0 !important;
+    vertical-align: middle;
+}
+
+#roscoIdeviceForm div>input.form-control{
+    display: inline-block;
+    width: auto;
+    vertical-align: middle;
+}
+
+#roscoIdeviceForm .roscoImageBarEdition {
+    display: none
+}
+
 #roscoIdeviceForm .roscoAuthorEdition {
-    width: 40%;
     margin: 0 3px;
 }
 
 #roscoIdeviceForm .roscoAlt {
-    width: 60%;
     margin: 0 3px;
 }
 
@@ -241,12 +226,74 @@
     margin: 0 3px;
 }
 
+#roscoIdeviceForm .roscoImageInputWrapper {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: .5rem;
+}
+
+#roscoIdeviceForm .roscoImageInputWrapper>label {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+#roscoIdeviceForm .roscoImageInputWrapper>input.roscoURLImageEdition {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#roscoIdeviceForm .roscoImageInputWrapper>.exe-pick-any-file {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+#roscoIdeviceForm .roscoAudioInputWrapper {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: .5rem;
+}
+
+#roscoIdeviceForm .roscoAudioInputWrapper>label {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+#roscoIdeviceForm .roscoAudioInputWrapper>input.roscoURLAudioEdition {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+#roscoIdeviceForm .roscoAudioInputWrapper>.exe-pick-any-file {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+#roscoIdeviceForm .roscoAudioInputWrapper>a.roscoPlayAudio,
+#roscoIdeviceForm .roscoAudioInputWrapper>a.roscoLinkClose {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0 0 .35rem;
+}
+
+#roscoIdeviceForm fieldset.exe-fieldset-closed>div>div,
+#roscoIdeviceForm fieldset.exe-fieldset>div>div {
+    margin-bottom: .75rem;
+}
+
+#roscoIdeviceForm fieldset.exe-fieldset-closed>div>div:last-child,
+#roscoIdeviceForm fieldset.exe-fieldset>div>div:last-child {
+    margin-bottom: 0;
+}
+
 #roscoIdeviceForm .roscoYImageEdition,
 #roscoIdeviceForm .roscoXImageEdition {
     display: none;
 }
 
-/* To review */
 #roscoIdeviceForm .exe-block-info img {
     vertical-align: middle;
     margin-left: .2em
@@ -257,7 +304,6 @@
     top: 6px;
     right: 5px;
 }
-
 
 #roscoIdeviceFormTab3 p:first-child {
     margin-top: 0;
@@ -277,7 +323,6 @@
     flex: 0 0 100%;
 }
 
-
 @media screen and (max-width:720px) {
     #roscoIdeviceFormTab3>* {
         flex: 0 0 100%;
@@ -287,9 +332,7 @@
 #roscoIdeviceForm #roscoIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
-    font-weight: 500;
-    color: #5b810b;
+    color: #0BA1A1;
     font-weight: 500;
 }
 
@@ -297,9 +340,6 @@
     width: 100%;
 }
 
-
-
-/* Tabs (this should be common) */
 .exe-form-tabs {
     margin: 0 0 1.5em 0;
     padding: 0;
@@ -389,7 +429,6 @@ label[for=roscoActivitySCORM] {
 
 .roscoTypeGameHelp {
     display: none;
-    margin-bottom: 2em;
     font-size: .95em
 }
 
@@ -407,4 +446,68 @@ label[for=roscoActivitySCORM] {
 
 .GameModeLabel {
     font-weight: normal
+}
+
+/* Show solution row (extracted time input) */
+.roscoShowSolutionRow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .25rem;
+    margin-bottom: .5rem
+}
+
+.roscoShowSolutionTime input {
+    width: 4rem;
+    min-width: 4rem;
+    text-align: center
+}
+
+.roscoShowSolutionRow .roscoShowSolutionTime {
+    display: flex;
+    align-items: center;
+    line-height: 1.15;
+    padding: 0
+}
+
+.roscoShowSolutionRow .roscoShowSolutionTime span {
+    display: inline-flex;
+    align-items: center
+}
+
+#roscoIdeviceForm input[type="radio"]:checked.form-check-input {
+    background-color: var(--brand-primary, #0BA1A1);
+    border-color: var(--brand-primary, #0BA1A1);
+}
+
+.roscoImageBarEdition .roscoMetaData {
+    margin: 0 0 .5rem 0;
+}
+
+.roscoMetaData .roscoMetaItem label {
+    min-width: auto;
+}
+
+.roscoMetaData .roscoMetaItem input {
+    min-width: 0;
+}
+
+.roscoMetaData .roscoMetaItem {
+    flex: 0 0 50%;
+    max-width: 50%;
+    display: flex;
+    align-items: center;
+}
+
+.roscoMetaData .roscoMetaItem label {
+    margin-bottom: 0;
+    margin-right: .5rem;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+.roscoMetaData .roscoMetaItem input {
+    flex: 1 1 auto;
+    min-width: 0;
 }
