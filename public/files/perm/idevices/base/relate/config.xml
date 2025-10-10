@@ -5,7 +5,7 @@
     <category>Interactive activities</category>
     <icon>
         <name>relate.icon</name>
-        <url>relate-icon.png</url>
+        <url>relate-icon.svg</url>
         <type>img</type>
     </icon>
     <downloadable>0</downloadable>

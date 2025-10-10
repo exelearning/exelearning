@@ -2,17 +2,17 @@
 	width: 100%;
 }
 
-#relateQIdeviceForm input[type=number] {
-	width: 4em;
-}
 
-#relateQIdeviceForm label {
-	margin-right: 0.1em !important;
+#relateQIdeviceForm input[type="color"] ,
+#relateQIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
 }
-
-#relateQIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-	margin-right: 0.1em !important;
+#relateQIdeviceForm input[type="color"] {
+    padding: .2rem !important;
+    height: 2rem !important;
+    width: 3.5rm !important;
 }
+  
 
 #relateQIdeviceForm input[type="radio"],
 #relateQIdeviceForm input[type="checkbox"],
@@ -36,7 +36,6 @@
 	position: relative;
 	width: 50%;
 }
-
 
 .RLC-DEMultimedia {
 	background-color: #fff;
@@ -98,7 +97,7 @@
 	flex-wrap: nowrap;
 	justify-content: space-between;
 	display: none;
-	;
+
 }
 
 .RLC-DEAuthorAlt div {
@@ -152,11 +151,7 @@
 	flex-shrink: 0;
 }
 
-.RLC-EButtonImage {
-	height: 100%;
-	transition: all .3s ease-in-out;
-	width: 100%;
-}
+
 
 .RLC-DButtonImage:hover {
 	-webkit-transform: scale(1.05);
@@ -234,8 +229,7 @@
 	max-width: 450px;
 	min-width: 400px;
 	border-radius: 0.3em;
-	padding: 0.7em;
-	padding-bottom: 1.3em;
+	padding: 1em;
 	height: auto;
 	margin-right: 0.6em;
 	margin-top: 1em;
@@ -456,38 +450,14 @@
 
 .RLC-ENavigationButton {
 	height: 1.5em;
-	margin: 0 .3em;
 	min-width: 1.5em;
 	width: 1.5em;
 }
 
-.RLC-EButtonImage {
-	height: 100%;
-	transition: all .3s ease-in-out;
-	width: 100%;
-}
-
-.RLC-EButtonImage:hover {
-	-webkit-transform: scale(1.05);
-	transform: scale(1.05);
-}
-
 .RLC-NumberCard {
 	text-align: center;
-	width: 2em;
-}
-
-.RLC-EReverseFacces {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	width: 100%;
-}
-
-.RLC-EReverseFacces a {
-	text-align: center;
-	display: inline-block;
-	margin-right: 1em;
+    vertical-align: middle;
+    width: 3em;
 }
 
 .RLC-ECoord {
@@ -523,7 +493,7 @@
 #relateQIdeviceForm #relateQIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 
@@ -624,9 +594,7 @@ label[for=gameQEActivitySCORM] {
 }
 
 .RLC-TypeGameHelp {
-	padding-top: 0.8em;
 	display: none;
-	margin-bottom: 2em;
 	font-size: .95em
 }
 

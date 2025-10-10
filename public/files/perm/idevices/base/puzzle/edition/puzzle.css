@@ -6,30 +6,17 @@
 #node-content #puzzleIdeviceForm input:not(:only-of-type),
 #node-content #puzzleIdeviceForm input:is([type="checkbox"], [type="radio"]),
 #node-content #puzzleIdeviceForm input[type="button"] {
-    margin-right: 8px;
     cursor: pointer;
 }
 
-#node-content #puzzleIdeviceForm label {
-    cursor: default;
+#puzzleIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
 }
 
-#puzzleIdeviceForm input[type="number"] {
-    width: 4em;
-    margin-right: 3px;
-}
-
-#puzzleIdeviceForm .exe-form-tab label {
+#puzzleIdeviceForm .exe-form-tab {
     margin-right: 3px !important;
 }
 
-#puzzleIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"], [type="text"]) {
-    margin-right: 0.15em !important;
-}
-
-#puzzleIdeviceForm select {
-    width: 3em;
-}
 
 #puzzleIdeviceForm .PZLE-EPanel {
     padding: 0;
@@ -177,10 +164,9 @@
 }
 
 #puzzleIdeviceForm .PZLE-ENavigationButton {
-    height: 1.5em;
-    margin: 0 0.3em;
-    min-width: 1.5em;
-    width: 1.5em;
+	width: 1.7em;
+	height: 1.7em;
+	min-width: 1.7em;
 }
 
 #puzzleIdeviceForm .PZLE-EButtonImage {
@@ -220,8 +206,6 @@
 #puzzleIdeviceForm .PZLE-TypeGameHelp {
     display: none;
     font-size: 0.95em;
-    padding-top: 0.6em;
-    padding-bottom: 0.6em;
 }
 
 .Games-Reportdiv {
@@ -259,7 +243,7 @@
 #puzzleIdeviceForm #puzzleIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 

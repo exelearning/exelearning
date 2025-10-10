@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 /**
 /**
- * informe Activity iDevice (edition code)
+ * Checklist Activity iDevice (edition code)
  *
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: Manuel Narvaez Martinez y Javier Cayetano Rodríguez
@@ -66,25 +66,43 @@ var $exeDevice = {
                 <fieldset class="exe-fieldset">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
-                        <p style="display: flex; justify-content: flex-start; width: 100%; align-items:center; gap:0.1em">
+                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-4"
                             <label for="ctjTitle">${_('Title')}:</label>
-                            <input id="ctjTitle" type="text" style="flex-grow: 1" />
-                        </p>
-                        <p style="display: flex; justify-content: flex-start; width: 100%;align-items:center gap:0.1em"">
+                            <input id="ctjTitle" type="text" style="flex-grow: 1" class="form-control" />
+                        </div>
+                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-4"                            
                             <label for="ctjSubTitle">${_('Caption')}:</label>
-                            <input id="ctjSubTitle" type="text" style="flex-grow: 1;"/>
-                        </p>
-                        <p>
-                            <label for="ctjUserData"><input type="checkbox" id="ctjUserData" />${_('User data')}. </label>
-                        </p>
-                        <p>
-                            <label for="ctjSaveData"><input type="checkbox" id="ctjSaveData" />${_('Remember marked options')}. </label>
-                        </p>
-                        <p>
-                            <label for="ctjUseScore"><input type="checkbox" id="ctjUseScore" />${_('Assign scores')}. </label>
-                        </p>
-                        <p>${_('(*) Cells support formatted text')}.</p>
-                        <p class="CTJ-table-container">
+                            <input id="ctjSubTitle" type="text" style="flex-grow: 1;" class="form-control"/>
+                        </div>
+                        <div class="mb-4">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="ctjUserData" aria-label="${_('User data')}" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="ctjUserData">${_('User data')}.</label>
+                            </span>
+                        </div>
+                        <div class="mb-4">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="ctjSaveData" aria-label="${_('Remember marked options')}" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="ctjSaveData">${_('Remember marked options')}.</label>
+                            </span>
+                        </div>
+                        <div class="mb-4">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="ctjUseScore" aria-label="${_('Assign scores')}" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="ctjUseScore">${_('Assign scores')}.</label>
+                            </span>
+                        </div>
+                        <div>${_('(*) Cells support formatted text')}.</div>
+                        <div class="CTJ-table-container mb-4">
                             <table class="CTJ-Table">
                                 <thead>
                                     <tr class="CTJ-header-row">
@@ -100,7 +118,7 @@ var $exeDevice = {
                                 <tbody>
                                     <tr class="CTJ-data-row">
                                         <td class="CTJ-Types">
-                                            <select class="CTJ-Select">
+                                            <select class="CTJ-Select form-select">
                                                 <option value="0" selected>${_('Box')}</option>
                                                 <option value="1">${_('Text')}</option>
                                                 <option value="2">${_('Selection')}</option>
@@ -113,15 +131,23 @@ var $exeDevice = {
                                         <td class="CTJ-Level3 CTJ-Levels" contenteditable="true"></td>
                                         <td class="CTJ-Level4 CTJ-Levels" contenteditable="true"></td>
                                         <td class="CTJ-Editions">
-                                            <button class="CTJ-Add">${_('Add')}</button>
-                                            <button class="CTJ-Delete">${_('Delete')}</button>
+                                            <button class="CTJ-Add btn btn-primary btn-sm">${_('Add')}</button>
+                                            <button class="CTJ-Delete btn btn-primary btn-sm">${_('Delete')}</button>
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
-                        </p>
-                        <p>
-                            <div><label for="ctjCommunity"><input type="checkbox" id="ctjCommunity" />${_('(Left) Logo')}. </label> </div>
+                        </div>
+                        <div class="mb-4">
+                            <div>
+                                <span class="toggle-item" role="switch" aria-checked="false" data-target="ctjcommunitylogo">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="ctjCommunity" aria-label="${_('(Left) Logo')}" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="ctjCommunity">${_('(Left) Logo')}.</label>
+                                </span>
+                            </div>
                             <div id="ctjcommunitylogo" class="CTJ-Logo">
                                 <div class="CTJ-Images">
                                     <img class="CTJ-EMedia" src="${$exeDevice.idevicePath}codejocomunidad.png" id="ctjEImageCommunity" alt="${_('Image')}" />
@@ -129,13 +155,21 @@ var $exeDevice = {
                                 </div>
                                 <div class="CTJ-InputImage">
                                     <label class="sr-av" for="ctjEURLCommunity">${_('Community')}:</label>
-                                    <input type="text" class="exe-file-picker CTJ-EURLImage" id="ctjEURLCommunity"/>
-                                    <a href="#" id="ctjEPlayCommunity" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage b-play" /></a>
+                                    <input type="text" class="exe-file-picker CTJ-EURLImage form-control me-0" id="ctjEURLCommunity"/>
+                                    <a href="#" id="ctjEPlayCommunity" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage " /></a>
                                 </div>
                             </div>
-                        </p>
-                        <p>
-                            <div><label for="ctjLogo"><input type="checkbox" id="ctjLogo" />${_('(Right) Logo')}. </label> </div>
+                        </div>
+                        <div class="mb-4">
+                            <div>
+                                <span class="toggle-item" role="switch" aria-checked="false" data-target="ctjlogologo">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="ctjLogo" aria-label="${_('(Right) Logo')}" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="ctjLogo">${_('(Right) Logo')}.</label>
+                                </span>
+                            </div>
                             <div id="ctjlogologo" class="CTJ-Logo">
                                 <div class="CTJ-Images">
                                     <img class="CTJ-EMedia" src="${$exeDevice.idevicePath}cotejologo.png" id="ctjEImageLogo" alt="${_('Image')}" />
@@ -143,13 +177,21 @@ var $exeDevice = {
                                 </div>
                                 <div class="CTJ-InputImage">
                                     <label class="sr-av" for="ctjEURLLogo">${_('Logo')}:</label>
-                                    <input type="text" class="exe-file-picker CTJ-EURLImage" id="ctjEURLLogo"/>
-                                    <a href="#" id="ctjEPlayLogo" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage b-play" /></a>
+                                    <input type="text" class="exe-file-picker CTJ-EURLImage form-control me-0" id="ctjEURLLogo"/>
+                                    <a href="#" id="ctjEPlayLogo" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage " /></a>
                                 </div>
                             </div>
-                        </p>
-                        <p>
-                            <div><label for="ctjDecorative"><input type="checkbox" id="ctjDecorative" />${_('Decorative image')}. </label> </div>
+                        </div>
+                        <div class="mb-4">
+                            <div>
+                                <span class="toggle-item" role="switch" aria-checked="false" data-target="ctjdecorativelogo">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="ctjDecorative" aria-label="${_('Decorative image')}" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="ctjDecorative">${_('Decorative image')}.</label>
+                                </span>
+                            </div>
                             <div id="ctjdecorativelogo" class="CTJ-Logo">
                                 <div class="CTJ-Images">
                                     <img class="CTJ-EMedia" src="${$exeDevice.idevicePath}cotejodecorative.png" id="ctjEImageDecorative" alt="${_('Image')}" />
@@ -157,15 +199,15 @@ var $exeDevice = {
                                 </div>
                                 <div class="CTJ-InputImage">
                                     <label class="sr-av" for="ctjEURLDecorative">${_('Community')}:</label>
-                                    <input type="text" class="exe-file-picker CTJ-EURLImage" id="ctjEURLDecorative"/>
-                                    <a href="#" id="ctjEPlayDecorative" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage b-play" /></a>
+                                    <input type="text" class="exe-file-picker CTJ-EURLImage form-control me-0" id="ctjEURLDecorative"/>
+                                    <a href="#" id="ctjEPlayDecorative" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage " /></a>
                                 </div>
                             </div>
-                        </p>
-                        <p>
+                        </div>
+                        <div class="d-flex align-items-center flex-nowrap gap-2">
                             <label for="ctjFooter">${_('Footer')}:</label>
-                            <input id="ctjFooter" style="width:500px" type="text" CTJ-EURLImage" value="Esta <a href=https://es.wikipedia.org/wiki/Lista_de_comprobaci%C3%B3n>lista de cotejo</a> se encuentra bajo una licencia</br><a href=http://creativecommons.org/licenses/by-sa/4.0>Creative Commons Reconocimiento-Compartir igual 4.0 International License</a>"/>
-                        </p>
+                            <input id="ctjFooter" type="text" class="form-control" value="Esta <a href=https://es.wikipedia.org/wiki/Lista_de_comprobaci%C3%B3n>lista de cotejo</a> se encuentra bajo una licencia</br><a href=http://creativecommons.org/licenses/by-sa/4.0>Creative Commons Reconocimiento-Compartir igual 4.0 International License</a>"/>
+                        </div>
                     </div>
                 </fieldset>
                 ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
@@ -717,6 +759,33 @@ var $exeDevice = {
         });
     },
     addEvents() {
+        // Generic toggle handler: sync aria and show/hide target
+        $('#gameQEIdeviceForm').on('change', '.toggle-input', function () {
+            const $toggle = $(this).closest('.toggle-item');
+            const checked = $(this).is(':checked');
+            $toggle.attr('aria-checked', checked ? 'true' : 'false');
+            const target = $toggle.data('target');
+            if (target) {
+                $('#' + target).toggle(checked);
+            }
+        });
+        const initToggle = (selector) => {
+            const $input = $(selector);
+            if ($input.length === 0) return;
+            const $toggle = $input.closest('.toggle-item');
+            const checked = $input.is(':checked');
+            $toggle.attr('aria-checked', checked ? 'true' : 'false');
+            const target = $toggle.data('target');
+            if (target) {
+                $('#' + target).toggle(checked);
+            }
+        };
+        initToggle('#ctjUserData');
+        initToggle('#ctjSaveData');
+        initToggle('#ctjUseScore');
+        initToggle('#ctjCommunity');
+        initToggle('#ctjLogo');
+        initToggle('#ctjDecorative');
         const handleImageChange = (
             selectorInput,
             selectorImage,
