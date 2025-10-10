@@ -46,175 +46,141 @@ var $exeDevice = {
     // Create the form to insert HTML in the TEXTAREA
     createForm: function () {
         const str1 = _('Save score');
-        const instructions = _(
-            'Insert a GeoGebra activity from www.geogebra.org. It requires an Internet connection.',
-        ).replace(
-            ' www.geogebra.org',
-            ' <a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">www.geogebra.org</a>',
-        );
-
+        const instructions = _('Insert a GeoGebra activity from www.geogebra.org. It requires an Internet connection.').replace(' www.geogebra.org', ' <a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">www.geogebra.org</a>');
         const html = `
-			<div id="eXeAutoGeogebraForm">
-				<p class="exe-idevice-description exe-block-info exe-block-dismissible"  style="position:relative">
-                    ${instructions}
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
-				<fieldset class="exe-fieldset">
-					<legend><a href="#">${_('Instructions')}</a></legend>
-					<div class="exe-textarea-field">
-						<label for="geogebraActivityInstructions" class="sr-av">${_('Instructions')}: </label>
-						<textarea id="geogebraActivityInstructions" class="exe-html-editor"></textarea>
-					</div>
-				</fieldset>
-				<fieldset class="exe-fieldset">
-					<legend><a href="#">${_('General Settings')}</a></legend>
-					<div>
-						<p id="geogebraActivityURLS">
-							<label for="geogebraActivityURL">${_('URL or identifier (ID)')}: </label>
-							<input type="text" name="geogebraActivityURL" id="geogebraActivityURL" />
-							<a href="#" id="geogebraActivityPlayButton" title="${_('Load data')}">
-								<span class="sr-av">${_('Load data')}</span>
-							</a>
-							<label for="geogebraActivityURLexample">${_('Example')}: </label>
-							<input type="text" id="geogebraActivityURLexample" name="geogebraActivityURLexample" readonly value="${this.activityURLbase}VgHhQXCC" />
-						</p>
-						<p>
-							<span>${_('Title')}: </span>
-							<span id="geogebraActivityTitle">&hellip;</span>
-						</p>
-						<p>
-							<span>${_('Authorship')}: </span>
-							<span id="geogebraActivityAuthorURL">&hellip;</span>
-						</p>
-						<p id="geogebraActivitySize">
-							<label for="geogebraActivityWidth">${_('Width')}: </label>
-							<input type="text" max="1500" name="geogebraActivityWidth" id="geogebraActivityWidth" /><span> px</span>
-							<label for="geogebraActivityHeight">${_('Height')}: </label>
-							<input type="text" max="1500" name="geogebraActivityHeight" id="geogebraActivityHeight" /><span> px</span>
-						</p>
-					</div>
-				</fieldset>
-				<fieldset id="eXeAutoGeogebraAdvancedOptions" class="exe-fieldset exe-fieldset-closed exe-feedback-fieldset">
-					<legend><a href="#">${_('Advanced Options')}</a></legend>
-					<div>
-						<p id="geogebraActivityLangWrapper">
-							<label for="geogebraActivityLang">${_('Language')}: </label>
-							<input type="text" max="2" name="geogebraActivityLang" id="geogebraActivityLang" />
-							<span class="input-instructions">es, en, fr, de, ca, eu, gl...</span>
-							<label for="geogebraActivityBorderColor">${_('Border color')}: </label>
-							<input type="text" max="6" name="geogebraActivityBorderColor" id="geogebraActivityBorderColor" class="exe-color-picker" />
-							<label for="geogebraActivityScale">${_('Size')} (%): 
-								<input type="number" name="geogebraActivityScale" id="geogebraActivityScale" value="100" min="1" max="100" step="1" />
-							</label>
-						</p>
-						<div id="eXeAutoGeogebraCheckOptions">${this.getTrueFalseOptions()}</div>
-						<p id="geogebraActivitySCORMblock">
-							<label for="geogebraActivitySCORM">
-								<input type="checkbox" name="geogebraActivitySCORM" id="geogebraActivitySCORM" /> ${_('Save score button')}
-							</label>
-							<span id="geogebraActivitySCORMoptions">
-								<label for="geogebraActivitySCORMbuttonText">${_('Button text')}: </label>
-								<input type="text" max="100" name="geogebraActivitySCORMbuttonText" id="geogebraActivitySCORMbuttonText" value="${str1}" />
-							</span>
-						</p>
-						<div id="geogebraActivitySCORMinstructions">
-							<ul>
-								<li>${_('The button will only be displayed when exporting as SCORM and while editing in eXeLearning.')}</li>
-							</ul>
-						</div>
-						<p id="geogebraActivityWeightDiv" style="display:none">
-							<label for="geogebraActivityWeight">${_('Weight')} (%): 
-								<input type="number" name="geogebraActivityWeight" id="geogebraActivityWeight" value="100" min="1" max="100" step="1" />
-							</label>
-						</p>
-						<p>
-							<strong style="display:none" class="geogebractivityModeLabel">
-								<a href="#geogebraActivityEvaluationHelp" id="geogebraActivityEvaluationHelpLnk" class="geogebractivityModeHelpLink" title="${_('Help')}">
-									<img src="${$exeDevice.idevicePath}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" />
-								</a>
-							</strong>
-							<label for="geogebraActivityEvaluation">
-								<input type="checkbox" id="geogebraActivityEvaluation"> ${_('Progress report')}.
-							</label>
-							<label for="geogebraActivityEvaluationID">${_('Identifier')}: 
-                                <input type="text" id="geogebraActivityEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-							</label>
-						</p>
-						<div id="geogebraActivityEvaluationHelp" class="geogebractivityTypeGameHelp">
-							<p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
-						</div>
-					</div>
-				</fieldset>
-				${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-			</div>
-		`;
-
+        <div id="eXeAutoGeogebraForm">
+            <p class="exe-block-info exe-block-dismissible" style="position:relative">
+                ${instructions}
+                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
+            </p>
+            <div class="exe-form-tab" title="${_('General settings')}">
+                <fieldset class="exe-fieldset exe-fieldset-closed">
+                    <legend><a href="#">${_('Instructions')}</a></legend>
+                    <div>
+                        <div class="exe-textarea-field mb-3">
+                            <label for="geogebraActivityInstructions" class="sr-av mb-0">${_('Instructions')}:</label>
+                            <textarea id="geogebraActivityInstructions" class="exe-html-editor"></textarea>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset class="exe-fieldset">
+                    <legend><a href="#">${_('General Settings')}</a></legend>
+                    <div>
+                        <div id="geogebraActivityURLS" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                            <label for="geogebraActivityURL" class="mb-0">${_('URL or identifier (ID)')}:</label>
+                            <input type="text" name="geogebraActivityURL" id="geogebraActivityURL" class="form-control w-100" />
+                            <a href="#" id="geogebraActivityPlayButton" title="${_('Load data')}" class="flex-shrink-0"><span class="sr-av"${_('Load data')}</span></a>
+                            <label for="geogebraActivityURLexample" class="mb-0">${_('Example')}:</label>
+                            <input type="text" id="geogebraActivityURLexample" name="geogebraActivityURLexample" readonly value="${this.activityURLbase}VgHhQXCC" class="form-control w-100" />
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <span class="mb-0">${_('Title')}:</span>
+                            <span id="geogebraActivityTitle">&hellip;</span>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <span class="mb-0">${_('Authorship')}:</span>
+                            <span id="geogebraActivityAuthorURL">&hellip;</span>
+                        </div>
+                        <div id="geogebraActivitySize" class="d-none flex-wrap align-items-center gap-2 mb-3">
+                            <label for="geogebraActivityWidth" class="mb-0">${_('Width')}:</label>
+                            <input type="text" max="1500" name="geogebraActivityWidth" id="geogebraActivityWidth" class="form-control" /><span>px</span>
+                            <label for="geogebraActivityHeight" class="mb-0">${_('Height')}:</label>
+                            <input type="text" max="1500" name="geogebraActivityHeight" id="geogebraActivityHeight" class="form-control" /><span>px</span>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset id="eXeAutoGeogebraAdvancedOptions" class="exe-fieldset exe-fieldset-closed exe-feedback-fieldset">
+                    <legend><a href="#">${_('Advanced Options')}</a></legend>
+                    <div>
+                        <div id="geogebraActivityLangWrapper" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                            <label for="geogebraActivityLang" class="mb-0">${_('Language')}:</label>
+                            <input type="text" max="2" name="geogebraActivityLang" id="geogebraActivityLang" class="form-control" />
+                            <span class="input-instructions">es, en, fr, de, ca, eu, gl...</span>
+                            <label for="geogebraActivityBorderColor" class="mb-0">${_('Border color')}:</label>
+                            <input type="text" max="6" name="geogebraActivityBorderColor" id="geogebraActivityBorderColor" class="exe-color-picker form-control" />
+                            <label for="geogebraActivityScale" class="mb-0">${_('Size')} (%):</label>
+                            <input type="number" name="geogebraActivityScale" id="geogebraActivityScale" value="100" min="1" max="100" step="1" class="form-control" />
+                        </div>
+                        <div id="eXeAutoGeogebraCheckOptions" class="d-flex align-items-center flex-wrap gap-2 mb-3">${this.getTrueFalseOptions()}</div>
+                        <div id="geogebraActivitySCORMblock" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                            <div class="toggle-item mb-0">
+                                <span class="toggle-control">
+                                    <input type="checkbox" name="geogebraActivitySCORM" id="geogebraActivitySCORM" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label for="geogebraActivitySCORM" class="toggle-label mb-0">${_('Save score button')}</label>
+                            </div>
+                            <span id="geogebraActivitySCORMoptions" class="d-none d-flex flex-nowrap align-items-center gap-2">
+                                <label for="geogebraActivitySCORMbuttonText" class="mb-0">${_('Button text')}:</label>
+                                <input type="text" max="100" name="geogebraActivitySCORMbuttonText" id="geogebraActivitySCORMbuttonText" value="${str1}" class="form-control" />
+                            </span>
+                        </div>
+                        <div id="geogebraActivitySCORMinstructions" class="d-none mb-3">
+                            <ul class="mb-0">
+                                <li>${_('The button will only be displayed when exporting as SCORM and while editing in eXeLearning.')}</li>
+                            </ul>
+                        </div>
+                        <div id="geogebraActivityWeightDiv" class="d-none d-flex flex-nowrap align-items-center gap-2 mb-3">
+                            <label for="geogebraActivityWeight" class="mb-0">${_('Weight')} (%):</label>
+                            <input type="number" name="geogebraActivityWeight" id="geogebraActivityWeight" value="100" min="1" max="100" step="1" class="form-control" />
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <div class="toggle-item mb-0">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="geogebraActivityEvaluation" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label for="geogebraActivityEvaluation" class="toggle-label mb-0">${_('Progress report')}.</label>
+                            </div>
+                            <div class="d-flex flex-nowrap align-items-center gap-2">
+                                <label for="geogebraActivityEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                <input type="text" id="geogebraActivityEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
+                            </div>
+                            <a href="#geogebraActivityEvaluationHelp" id="geogebraActivityEvaluationHelpLnk" class="geogebractivityModeHelpLink" title="${_('Help')}">
+                                <img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
+                            </a>
+                        </div>
+                        <p id="geogebraActivityEvaluationHelp" class="geogebractivityTypeGameHelp exe-block-info d-none">
+                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                        </p>
+                    </div>
+                </fieldset>
+                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+            </div>
+    `;
         this.ideviceBody.innerHTML = html;
-
-        // Attach event listeners
-        $('#geogebraActivityURLexample').focus(function () {
-            this.select();
-        });
-
+        $('#geogebraActivityURLexample').focus(function () { this.select(); });
         $('#geogebraActivityPlayButton').on('click', (e) => {
             e.preventDefault();
-            const urlBase = this.activityURLbase,
-                url = $('#geogebraActivityURL').val(),
-                murl = url.replace('https://ggbm.at/', urlBase),
-                id = $exeDevice.getId(murl);
-            if (!url || !id) {
-                $exeDevice.errorMessage(true);
-                return;
-            }
+            const urlBase = this.activityURLbase, url = $('#geogebraActivityURL').val(), murl = url.replace('https://ggbm.at/', urlBase), id = $exeDevice.getId(murl);
+            if (!url || !id) { $exeDevice.errorMessage(true); return; }
             $exeDevice.loadData(id, murl);
         });
-
-        $('#geogebraActivityWidth, #geogebraActivityHeight').on(
-            'keyup',
-            function () {
-                this.value = this.value.replace(/\D/g, '').substring(0, 4);
-            },
-        );
-
-        $('#geogebraActivityLang').on('keyup', function () {
-            this.value = this.value.replace(/[^A-Za-z]/g, '').substring(0, 2);
-        });
-
-        $('#geogebraActivityScale').on('keyup', function () {
-            let v = this.value.replace(/\D/g, '');
-            this.value = Math.min(Math.max(v, 1), 100);
-        });
-
-        $('#geogebraActivityWeight').on('keyup', function () {
-            let v = this.value.replace(/\D/g, '');
-            this.value = Math.min(Math.max(v, 1), 100);
-        });
-
+        $('#geogebraActivityWidth, #geogebraActivityHeight').on('keyup', function () { this.value = this.value.replace(/\D/g, '').substring(0, 4); });
+        $('#geogebraActivityLang').on('keyup', function () { this.value = this.value.replace(/[^A-Za-z]/g, '').substring(0, 2); });
+        $('#geogebraActivityScale').on('keyup', function () { let v = this.value.replace(/\D/g, ''); this.value = Math.min(Math.max(v, 1), 100); });
+        $('#geogebraActivityWeight').on('keyup', function () { let v = this.value.replace(/\D/g, ''); this.value = Math.min(Math.max(v, 1), 100); });
         $('#geogebraActivitySCORM').change(function () {
-            const options = $(
-                '#geogebraActivitySCORMoptions, #geogebraActivitySCORMinstructions',
-            );
-            this.checked ? options.fadeIn() : options.hide();
-            this.checked
-                ? $('#geogebraActivityWeightDiv').fadeIn()
-                : $('#geogebraActivityWeightDiv').hide();
+            const $opts = $('#geogebraActivitySCORMoptions, #geogebraActivitySCORMinstructions');
+            if (this.checked) {
+                $opts.removeClass('d-none').addClass('d-flex');
+                $('#geogebraActivityWeightDiv').removeClass('d-none').addClass('d-flex');
+            }
+            else {
+                $opts.addClass('d-none').removeClass('d-flex');
+                $('#geogebraActivityWeightDiv').addClass('d-none').removeClass('d-flex');
+            }
         });
-
-        $('#geogebraActivityEvaluation').change(function () {
-            $('#geogebraActivityEvaluationID').prop('disabled', !this.checked);
-        });
-
+        $('#geogebraActivityEvaluation').change(function () { $('#geogebraActivityEvaluationID').prop('disabled', !this.checked); });
         $('#geogebraActivityEvaluationHelpLnk').click(function () {
-            $('#geogebraActivityEvaluationHelp').toggle();
+            if ($('#geogebraActivityEvaluationHelp').hasClass('d-none')) {
+                $('#geogebraActivityEvaluationHelp').removeClass('d-none').addClass('d-flex')
+            } else {
+                $('#geogebraActivityEvaluationHelp').removeClass('d-flex').addClass('d-none')
+            }
             return false;
         });
-
-         //eXe 3.0 Dismissible messages
-         $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
-
+        $('.exe-block-dismissible .exe-block-close').click(function () { $(this).parent().fadeOut(); return false; });
         this.loadPreviousValues();
     },
 
@@ -300,7 +266,7 @@ var $exeDevice = {
                                 : 'https://ggbm.at/' + id;
                     }
                     $('#geogebraActivityAuthorURL').text(author);
-                    $('#geogebraActivityTitle').html('<a href="'+murl+'">'+title+'</a>');
+                    $('#geogebraActivityTitle').html('<a href="' + murl + '">' + title + '</a>');
                 } else {
                     $exeDevice.errorMessage(false);
                 }
@@ -350,21 +316,17 @@ var $exeDevice = {
         let html = '';
         const opts = this.trueFalseOptions;
         for (let i in opts) {
-            let checked = '';
-            html += '<p>';
-            html += '<label for="geogebraActivity' + i + '">';
-            if (opts[i][1] == true) checked = ' checked="checked"';
-            html +=
-                '<input type="checkbox" id="geogebraActivity' +
-                i +
-                '"' +
-                checked +
-                ' /> ';
-            html += opts[i][0];
-            html += '</label>';
-            html += '</p>';
+            const checked = opts[i][1] ? ' checked="checked"' : '';
+            html += `
+                <div class="toggle-item mb-3" style="width:300px; max-width:300px">
+                    <span class="toggle-control">
+                        <input type="checkbox" id="geogebraActivity${i}" class="toggle-input"${checked} />
+                        <span class="toggle-visual"></span>
+                    </span>
+                    <label class="toggle-label mb-0" for="geogebraActivity${i}">${opts[i][0]}</label>
+                </div>
+            `;
         }
-
         return html;
     },
 
@@ -419,8 +381,8 @@ var $exeDevice = {
                     btn = btn.slice(0, -1);
                     $('#geogebraActivitySCORMbuttonText').val(btn);
                 }
-                $('#geogebraActivitySCORMoptions').show();
-                $('#geogebraActivitySCORMinstructions').show();
+                $('#geogebraActivitySCORMoptions').removeClass('d-none').addClass('d-flex');
+                $('#geogebraActivitySCORMinstructions').removeClass('d-none').addClass('d-flex');
             }
 
             let parts = css.split(' ');
@@ -479,9 +441,9 @@ var $exeDevice = {
             }
 
             if ($('#geogebraActivitySCORM').is(':checked')) {
-                $('#geogebraActivityWeightDiv').show();
+                $('#geogebraActivityWeightDiv').removeClass('d-none').addClass('d-flex');
             } else {
-                $('#geogebraActivityWeightDiv').hide();
+                $('#geogebraActivityWeightDiv').removeClass('d-flex').addClass('d-none');
             }
 
             // Instructions

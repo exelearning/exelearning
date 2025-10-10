@@ -1,20 +1,11 @@
-
-#ccgmQEIdeviceForm input[type=number] {
-	width: 4em;
-}
-
-#ccgmQEIdeviceForm label {
-	margin-right: 0.1em !important;
-}
-
-#ccgmQEIdeviceForm input:is([type="checkbox"], [type="radio"]) {
-	margin-right: 0.1em !important;
-}
-
 #ccgmQEIdeviceForm input[type="radio"],
 #ccgmQEIdeviceForm input[type="checkbox"],
 #ccgmQEIdeviceForm input[type=button] {
 	cursor: pointer;
+}
+
+#ccgmQEIdeviceForm input[type="button"] {
+	margin-right: 0 !important;
 }
 
 /*Panel preguntas */
@@ -72,7 +63,6 @@
 }
 
 /* Opciones */
-
 .CCGM-Back {
 	width: 200;
 	height: 200px;
@@ -88,7 +78,6 @@
 }
 
 .CCGM-InputImage1 {
-	margin-top: 10px;
 	align-items: center;
 	display: flex;
 	flex-wrap: nowrap;
@@ -108,7 +97,6 @@
 .CCGM-InputImage1 label {
 	white-space: nowrap;
 }
-
 
 .CCGM-EOptionsGame {
 	min-height: 300px;
@@ -192,19 +180,7 @@
 	flex-shrink: 0;
 }
 
-.CCGM-ButtonLink {
-	display: block;
-	height: 1.6em;
-	width: 1.6em;
-}
-
 /*Preguntas*/
-
-.CCGM-EQuestion {
-	width: 98%;
-}
-
-
 .CCGM-ESolutionWord {
 	align-items: center;
 	display: flex;
@@ -237,7 +213,6 @@
 	width: 1.5em;
 }
 
-/*Numero Preguntas */
 .CCGM-ENumQuestionDiv {
 	align-items: center;
 	display: flex;
@@ -276,10 +251,10 @@
 }
 
 .CCGM-ENavigationButton {
-	height: 1.5em;
+	width: 1.7em;
+	height: 1.7em;
+	min-width: 1.7em;
 	margin: 0 .3em;
-	min-width: 1.5em;
-	width: 1.5em;
 }
 
 .CCGM-EButtonImage {
@@ -294,12 +269,9 @@
 }
 
 .CCGM-NumberQuestion {
-	font-weight: bold;
-	height: 1.5em;
-	line-height: 1.5em;
 	text-align: center;
 	vertical-align: middle;
-	width: 2em;
+	width: 3em;
 }
 
 /* Ocutar elementos */
@@ -309,11 +281,9 @@
 	display: none;
 }
 
-
 #ccgmQEIdeviceForm .CCGM-EOptionDiv label {
 	margin-right: 0.2em;
 }
-
 
 label[for=ccgmQEScoreQuestion],
 input#ccgmQEScoreQuestion {
@@ -329,41 +299,39 @@ input#ccgmQEScoreQuestion {
 }
 
 #ccgmQEIdeviceFormTab3 p:first-child {
-    margin-top: 0;
+	margin-top: 0;
 }
 
 #ccgmQEIdeviceFormTab3 {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2%;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2%;
 }
 
 #ccgmQEIdeviceFormTab3>* {
-    flex: 0 0 48%;
+	flex: 0 0 48%;
 }
 
 #ccgmQEIdeviceFormTab3> :first-child {
-    flex: 0 0 100%;
+	flex: 0 0 100%;
 }
 
-
 @media screen and (max-width:720px) {
-    #ccgmQEIdeviceFormTab3>* {
-        flex: 0 0 100%;
-    }
+	#ccgmQEIdeviceFormTab3>* {
+		flex: 0 0 100%;
+	}
 }
 
 #ccgmQEIdeviceForm #ccgmQEIdeviceFormTab3 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #5b810b;
-    font-weight: 500;
+	display: block;
+	margin-bottom: .2em;
+	color: #0BA1A1;
+	font-weight: 500;
 }
 
 #ccgmQEIdeviceForm #ccgmQEIdeviceFormTab3 input {
-    width: 100%;
+	width: 100%;
 }
-
 
 .exe-form-tabs {
 	list-style: none;
@@ -458,99 +426,4 @@ label[for=ccgmQEActivitySCORM] {
 
 .CGM-TypeGameHelp {
 	display: none;
-}
-
-.eXeE-LightboxWindow {
-	background-color: #fff;
-	border-radius: 5px;
-	display: flex;
-	flex-direction: column;
-	border: 1px solid #ccc;
-	width: 100%;
-	max-width: 1200px;
-	position: relative;
-}
-
-.eXeE-LightboxTabs {
-	display: flex;
-	border-bottom: 1px solid #ccc;
-	align-items: center;
-	position: relative;
-}
-
-#ccgmQEIdeviceForm a.eXeE-TabButton,
-.eXeE-TabButton {
-	padding: 10px 15px;
-	cursor: pointer;
-	background: #f0f0f0;
-	border: none;
-	border-right: 1px solid #ccc;
-	font-size: 16px;
-	position: relative;
-	text-decoration: none !important;
-	color: black;
-}
-
-a.eXeE-TabButton:last-child {
-	border-right: none;
-}
-
-#ccgmQEIdeviceForm .eXeE-Active,
-.eXeE-Active {
-	background: #fff !important;
-	border-bottom: 2px solid #007BFF !important;
-	color: #5b810b !important;
-}
-
-.eXeE-LightboxContent {
-	padding: 10px;
-	display: flex;
-	flex-direction: column;
-}
-
-.eXeE-LightboxTextarea {
-	width: 100%;
-	height: 250px;
-	font-family: monospace;
-	font-size: 14px;
-}
-
-.eXeE-LightboxFooter {
-	display: flex;
-	justify-content: flex-end;
-	border-top: 1px solid #ccc;
-	padding: 10px;
-}
-
-.eXeE-LightboxFooter button {
-	margin-left: 10px;
-}
-
-.eXeE-InfoTooltip {
-	display: inline-block;
-	margin-left: 5px;
-	cursor: help;
-	border-radius: 50%;
-	background: #ccc;
-	width: 16px;
-	height: 16px;
-	text-align: center;
-	line-height: 16px;
-	font-size: 12px;
-	font-weight: bold;
-	position: relative;
-}
-
-.eXeE-InfoTooltip:hover::after {
-	content: attr(data-tooltip);
-	position: absolute;
-	top: 20px;
-	left: 0;
-	background: #333;
-	color: #fff;
-	padding: 5px 8px;
-	border-radius: 3px;
-	font-size: 12px;
-	white-space: nowrap;
-	z-index: 999;
 }

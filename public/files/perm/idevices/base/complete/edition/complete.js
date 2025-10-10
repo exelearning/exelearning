@@ -126,64 +126,121 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
-                            <p>
+                            <div class="mb-3 d-flex align-items-center gap-2">
                                 <span>${_('Type')}:</span>
-                                <span class="CMPT-ETypes">
-                                    <input class="CMPT-Type" checked="checked" id="cmpttype0" type="radio" name="cmpttype" value="0" />
-                                    <label for="cmpttype0">${_('Complete')}</label>
-                                    <input class="CMPT-Type" id="cmpttype1" type="radio" name="cmpttype" value="1" />
-                                    <label for="cmpttype1">${_('Drag and drop')}</label>
-                                    <input class="CMPT-Type" id="cmpttype2" type="radio" name="cmpttype" value="2" />
-                                    <label for="cmpttype2">${_('Select')}</label>
-                                </span>
-                            </p>
-                            <p id="cmptEWordsLimitDiv" class="CMPT-EWordsNo">
-                                <label for="cmptEWordsLimit"><input type="checkbox" id="cmptEWordsLimit">${_('Limit the words in each dropdown box. Write the possible options, starting with the correct one, separated by |')}</label>
-                            </p>
-                            <p id="cmptEWordsErrorsDiv" class="CMPT-EWordsNo">
-                                <label for="cmptEWordsErrors">${_('Wrong words')}: </label><input type="text" id="cmptEWordsErrors">
-                            </p>
-                            <p>
-                                <label for="cmptAttemptsNumber">${_('Number of attempts')}: 
-                                <input type="number" name="cmptAttemptsNumber" id="cmptAttemptsNumber" value="1" min="1" max="9" /></label>
-                            </p>
-                            <p>
-                                <label for="cmptETime">${_('Time (minutes)')}: 
-                                <input type="number" name="cmptETime" id="cmptETime" value="0" min="0" max="59" /></label>
-                            </p>
-                            <p>
-                                <label for="cmptEShowSolution"><input type="checkbox" id="cmptEShowSolution">${_('Show solutions')}.</label>
-                            </p>
-                            <p>
-                                <label for="cmptEEstrictCheck"><input type="checkbox" id="cmptEEstrictCheck">${_('Allow errors in typed words')}.</label>
-                                <span id="cmptEPercentajeErrorsDiv" class="CMPT-Hide">
-                                    <label for="cmptEPercentajeError">${_('Incorrect letters allowed (&percnt;)')}: <input type="number" name="cmptEPercentajeError" id="cmptEPercentajeError" value="20" min="0" max="100" step="5" /></label>
-                                </span>
-                            </p>
-                            <p id="cmptECaseSensitiveDiv">
-                                 <label for="cmptECaseSensitive"><input type="checkbox" id="cmptECaseSensitive">${_('Case sensitive')}.</label>
-                            </p>
-                            <p>
-                                <label for="cmptEWordsSize"><input type="checkbox" id="cmptEWordsSize">${_('Field width proportional to the words length')}.</label>
-                            </p>
-                            <p>
-                                <label for="cmptEShowMinimize"><input type="checkbox" id="cmptEShowMinimize">${_('Show minimized.')}</label>
-                            </p>
-                            <p>
-                                <label for="cmptEHasFeedBack"><input type="checkbox" id="cmptEHasFeedBack">${_('Feedback')}.</label> 
-                                <label for="cmptEPercentajeFB"><input type="number" name="cmptEPercentajeFB" id="cmptEPercentajeFB" value="100" min="5" max="100" step="5" disabled />${_('&percnt; right to see the feedback')}.</label>
-                            </p>
-                            <p id="cmptEFeedbackP" class="CMPT-EFeedbackP">
-                                <textarea id="cmptEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#cmptEEvaluationHelp" id="cmptEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${$exeDevice.idevicePath}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" /></a></strong>
-                                <label for="cmptEEvaluation"><input type="checkbox" id="cmptEEvaluation">${_('Progress report')}.</label> 
-                                <label for="cmptEEvaluationID">${_('Identifier')}:</label> <input type="text" id="cmptEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                            </p>
-                            <div id="cmptEEvaluationHelp" class="CMPT-TypeGameHelp">
-                                <p class="exe-block-info">${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="CMPT-Type form-check-input" checked="checked" id="cmpttype0" type="radio" name="cmpttype" value="0" />
+                                    <label class="form-check-label" for="cmpttype0">${_('Complete')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="CMPT-Type form-check-input" id="cmpttype1" type="radio" name="cmpttype" value="1" />
+                                    <label class="form-check-label" for="cmpttype1">${_('Drag and drop')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="CMPT-Type form-check-input" id="cmpttype2" type="radio" name="cmpttype" value="2" />
+                                    <label class="form-check-label" for="cmpttype2">${_('Select')}</label>
+                                </div>
                             </div>
+                            <div id="cmptEWordsLimitDiv" class="CMPT-EWordsNo mb-3">
+                                <span class="toggle-item">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="cmptEWordsLimit" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="cmptEWordsLimit" class="toggle-label">${_('Limit the words in each dropdown box. Write the possible options, starting with the correct one, separated by |')}</label>
+                                </span>
+                            </div>
+                            <div id="cmptEWordsErrorsDiv" class="CMPT-EWordsNo mb-3 align-items-center gap-2 flex-nowrap">
+                                <label for="cmptEWordsErrors">${_('Wrong words')}: </label><input type="text" id="cmptEWordsErrors" class="form-control">
+                            </div>
+                            <div id="cmptAttemptsNumberDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="cmptAttemptsNumber">${_('Number of attempts')}:</label> 
+                                <input type="number" name="cmptAttemptsNumber" id="cmptAttemptsNumber" value="1" min="1" max="9" class="form-control" />
+                            </div>
+                            <div id="cmptETimeDiv" class="d-flex mb-3 align-items-center gap-2 flex-nowrap">
+                                <label for="cmptETime">${_('Time (minutes)')}:</label> 
+                                <input type="number" name="cmptETime" id="cmptETime" value="0" min="0" max="59" class="form-control" />
+                            </div>
+                            <div class="mb-3">
+                                <span class="toggle-item">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="cmptEShowSolution" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="cmptEShowSolution" class="toggle-label">${_('Show solutions')}.</label>
+                                </span>
+                            </div>
+                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                                <span class="toggle-item ">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="cmptEEstrictCheck" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="cmptEEstrictCheck" class="toggle-label">${_('Allow errors in typed words')}.</label>
+                                </span>
+                                <span id="cmptEPercentajeErrorsDiv" class="CMPT-Hide  align-items-center gap-2 flex-nowrap">
+                                    <label for="cmptEPercentajeError">${_('Incorrect letters allowed (&percnt;)')}:</label><input type="number" name="cmptEPercentajeError" id="cmptEPercentajeError" value="20" min="0" max="100" step="5" class="form-control" />
+                                </span>
+                            </div>
+                            <div id="cmptECaseSensitiveDiv" class="mb-3">
+                                <span class="toggle-item">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="cmptECaseSensitive" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="cmptECaseSensitive" class="toggle-label">${_('Case sensitive')}.</label>
+                                </span>
+                            </div>
+                            <div class="mb-3">
+                                <span class="toggle-item mb-3">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="cmptEWordsSize" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="cmptEWordsSize" class="toggle-label">${_('Field width proportional to the words length')}.</label>
+                                </span>
+                            </div>
+                            <div class="mb-3">
+                                <span class="toggle-item">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="cmptEShowMinimize" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="cmptEShowMinimize" class="toggle-label">${_('Show minimized.')}</label>
+                                </span>
+                            </div>
+                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                                <span class="toggle-item">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="cmptEHasFeedBack" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="cmptEHasFeedBack" class="toggle-label">${_('Feedback')}.</label>
+                                </span>
+                                <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <input type="number" name="cmptEPercentajeFB" id="cmptEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" /><label for="cmptEPercentajeFB">${_('&percnt; right to see the feedback')}.</label>
+                                </span>
+                            </div>
+                            <div id="cmptEFeedbackP" class="CMPT-EFeedbackP mb-3">
+                                <textarea id="cmptEFeedBackEditor" class="exe-html-editor"></textarea>
+                            </div>
+                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap">
+                                <span class="toggle-item">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="cmptEEvaluation" class="toggle-input" data-target="#cmptEEvaluationIDWrapper" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="cmptEEvaluation" class="toggle-label">${_('Progress report')}.</label>
+                                </span>
+                                <span id="cmptEEvaluationIDWrapper" class="d-flex align-items-center flex-nograp gap-2">
+                                    <label for="cmptEEvaluationID">${_('Identifier')}:</label> <input type="text" id="cmptEEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}" />
+                                </span>
+                                <strong class="GameModeLabel"><a href="#cmptEEvaluationHelp" id="cmptEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" /></a></strong>
+
+                            </div>
+                            <p id="cmptEEvaluationHelp" class="CMPT-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -301,7 +358,7 @@ var $exeDevice = {
             $('#cmptEWordsErrorsDiv').css('display', 'flex').show();
         }
 
-        $('#cmptEPercentajeErrorsDiv').show();
+        $('#cmptEPercentajeErrorsDiv').css('display','flex');
         $('#cmptECaseSensitiveDiv').hide();
 
         if (!game.estrictCheck) {
@@ -492,6 +549,16 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        const $form = $('#completeQEIdeviceForm');
+
+        // Toggle genérico: sincroniza aria-checked y muestra/oculta el target si existe
+        $form.on('change', '.toggle-input', function () {
+            const checked = $(this).is(':checked');
+            $(this).attr('aria-checked', checked);
+            const target = $(this).data('target');
+            if (target) $(target).toggle(checked);
+        });
+
         $('#cmptEHasFeedBack').on('change', function () {
             const marcado = $(this).is(':checked');
             if (marcado) {
@@ -526,7 +593,7 @@ var $exeDevice = {
         $('#cmptEEstrictCheck').on('change', function () {
             const state = $(this).is(':checked');
             $('#cmptECaseSensitiveDiv').show();
-            $('#cmptEPercentajeErrorsDiv').hide();
+            $('#cmptEPercentajeErrorsDiv').css('display','flex');
             if (state) {
                 $('#cmptECaseSensitiveDiv').hide();
                 $('#cmptEPercentajeErrorsDiv').show();
@@ -569,7 +636,7 @@ var $exeDevice = {
                 this.value = val;
             });
 
-        $('#cmptEEvaluation').on('change', function () {
+    $('#cmptEEvaluation').on('change', function () {
             const marcado = $(this).is(':checked');
             $('#cmptEEvaluationID').prop('disabled', !marcado);
         });
@@ -580,6 +647,12 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+
+        // Inicialización de toggles con su estado actual
+        $form.find('.toggle-input').each(function () {
+            const checked = $(this).is(':checked');
+            $(this).attr('aria-checked', checked).trigger('change');
+        });
 
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').on('click', function () {

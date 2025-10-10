@@ -78,6 +78,7 @@ var $exeDevice = {
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Before/After'),
+            msgPlayStart: c_('Click here to play'),
         }
     },
 
@@ -108,39 +109,54 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>                            
-                            <p>
+                            <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="bfafEAuthory">${_('Authorship')}: </label>
-                                <input id="bfafEAuthory" type="text" />
-                            </p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#bfafEEvaluationHelp" id="bfafEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                                <input type="checkbox" id="bfafEEvaluation"><label for="bfafEEvaluation">${_('Progress report')}.</label>
-                                <label for="bfafEEvaluationID">${_('Identifier')}:</label><input type="text" id="bfafEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </p>
-                            <div id="bfafEEvaluationHelp" class="BFAFE-TypeGameHelp exe-block-info">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                                <input id="bfafEAuthory" type="text" class="form-control" />
                             </div>
+                            <div class="Games-Reportdiv d-flex align-items-center gap-2 mb-3 flex-wrap">
+                                <span class="toggle-item mb-0" data-target="bfafEEvaluationIDWrapper" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="bfafEEvaluation" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="bfafEEvaluation">${_('Progress report')}.</label>
+                                </span>
+                                <span id="bfafEEvaluationIDWrapper" class="d-flex align-items-center gap-1">
+                                    <label for="bfafEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                    <input type="text" id="bfafEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}" />
+                                </span>
+                                <strong class="GameModeLabel"><a href="#bfafEEvaluationHelp" id="bfafEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a></strong>
+                            </div>
+                            <p id="bfafEEvaluationHelp" class="BFAFE-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
                         <legend><a href="#">${_('Images')}</a></legend>
                         <div class="BFAFE-EPanel" id="bfafEPanel">
                             <p class="exe-block-info">${_('Both images should have a similar or proportional size.')}</p>
-                            <div id="bfafEArrowsDiv">\
-                                <p class="BFAFE-Description">
+                            <div id="bfafEArrowsDiv" >
+                                <div class="BFAFE-Description d-flex align-items-center gap-2 mb-3">
                                     <label for="bfafEDescription">${_('Description')}:</label>
-                                    <input id="bfafEDescription" type="text" />
-                                </p>
-                                <p>
-                                    <input type="checkbox" id="bfafEVertical"><label for="bfafEVertical">${_('Vertical orientation')}.</label>
-                                </p>
-                                <p>
+                                    <input id="bfafEDescription" type="text" class="form-control" />
+                                </div>
+                                <div class="mb-3">
+                                    <span class="toggle-item" role="switch" aria-checked="false" >
+                                        <span class="toggle-control">
+                                            <input type="checkbox" class="toggle-input" id="bfafEVertical" />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="bfafEVertical">${_('Vertical orientation')}.</label>
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
                                     <label for="bfafEPosition">${_('Position')}:</label>
-                                    <input type="number" name="bfafEPosition" id="bfafEPosition" value="50" min="0" max="100" step="2"/>
-                                </p>
-                                <div class="BFAFE-EPhrase" id="bfafEPhrase">
+                                    <input type="number" name="bfafEPosition" id="bfafEPosition" value="50" min="0" max="100" step="2" class="form-control" />
+                                </div>
+                                <div class="BFAFE-EPhrase mb-2" id="bfafEPhrase">
                                      <div class="BFAFE-EDatosCarta BFAFE-EBack" id="bfafEDatosCartaBack">
-                                        <p class="BFAFE-ETitleImage">${_('Before')}</p></span>
+                                        <div class="BFAFE-ETitleImage mb-3 mt-2">${_('Before')}</div></span>
                                         <div class="BFAFE-EMultimedia">
                                             <div class="BFAFE-ECard">
                                                 <img class="BFAFE-EHideBFAFE-EImage" id="bfafEImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
@@ -148,34 +164,34 @@ var $exeDevice = {
                                             </div>
                                         </div>
                                         <spanid="bfafETitleImageBack">${_('Image')}</span>
-                                        <div class="BFAFE-EInputImage" id="bfafEInputImageBack">
+                                        <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImageBack">
                                             <label class="sr-av">URL</label>
-                                            <input type="text" id="bfafEURLImageBack" class="exe-file-picker BFAFE-EURLImage"/>
+                                            <input type="text" id="bfafEURLImageBack" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
                                             <a href="#" id="bfafEPlayImageBack" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
-                                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage b-play" />
+                                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
                                             </a>
                                             <a href="#" id="bfafEShowMoreBack" class="BFAFE-ENavigationButton BFAFE-EShowMore" title="${_('More')}">
-                                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="BFAFE-EButtonImage b-play" />
+                                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="BFAFE-EButtonImage " />
                                             </a>
                                         </div>
                                         <div class="BFAFE-EAuthorAlt" id="bfafEAuthorAltBack">
                                             <div class="BFAFE-EInputAuthor">
                                                 <label for="bfafEAuthorBack">${_('Authorship')}</label>
-                                                <input id="bfafEAuthorBack" type="text" class="BFAFE-EAuthor" />
+                                                <input id="bfafEAuthorBack" type="text" class="BFAFE-EAuthor form-control" />
                                             </div>
                                             <div class="BFAFE-EInputAlt">
                                                 <label  for="bfafEAltBack">${_('Alternative text')}</label>
-                                                <input id="bfafEAltBack" type="text" class="BFAFE-EAlt" />
+                                                <input id="bfafEAltBack" type="text" class="BFAFE-EAlt form-control" />
                                             </div>
                                         </div>
                                         <span class="BFAFE-ETitleText" id="bfafETitleTextBack">${_('Title')}</span>
                                         <div class="BFAFE-EInputText" id="bfafEInputTextBack">
                                             <label class="sr-av">${_('Title')}</label>
-                                            <input type="text" id="bfafETextBack" class="BFAFE-EText" />
+                                            <input type="text" id="bfafETextBack" class="BFAFE-EText form-control" />
                                         </div>
                                     </div>
                                     <div class="BFAFE-EDatosCarta BFAFE-EFront" id="bfafEDatosCarta">
-                                        <p class="BFAFE-ETitleImage">${_('After')}</p>
+                                        <div class="BFAFE-ETitleImage mb-3 mt-2">${_('After')}</div>
                                         <div class="BFAFE-EMultimedia">
                                             <div class="BFAFE-ECard">
                                                 <img class="BFAFE-EHideBFAFE-EImage" id="bfafEImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
@@ -183,39 +199,39 @@ var $exeDevice = {
                                             </div>
                                         </div>
                                         <span id="bfafETitleImage">${_('Image')}</span>
-                                        <div class="BFAFE-EInputImage" id="bfafEInputImage">
+                                        <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImage">
                                             <label class="sr-av">URL</label>
-                                            <input type="text" id="bfafEURLImage" class="exe-file-picker BFAFE-EURLImage"/>
+                                            <input type="text" id="bfafEURLImage" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
                                             <a href="#" id="bfafEPlayImage" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
-                                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage b-play" />
+                                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
                                             </a>
                                             <a href="#" id="bfafEShowMore" class="BFAFE-ENavigationButton BFAFE-EShowMore" title="${_('More')}">
-                                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="BFAFE-EButtonImage b-play" />
+                                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="BFAFE-EButtonImage " />
                                             </a>
                                         </div>
                                          <div class="BFAFE-EAuthorAlt" id="bfafEAuthorAlt">
                                             <div class="BFAFE-EInputAuthor">
                                                 <label for="bfafEAuthor">${_('Authorship')}</label>
-                                                <input id="bfafEAuthor" type="text" class="BFAFE-EAuthor" />
+                                                <input id="bfafEAuthor" type="text" class="BFAFE-EAuthor form-control" />
                                             </div>
                                             <div class="BFAFE-EInputAlt">
                                                 <label for="bfafEAuthor">${_('Alternative text')}</label>
-                                                <input id="bfafEAlt" type="text" class="BFAFE-EAlt" />
+                                                <input id="bfafEAlt" type="text" class="BFAFE-EAlt form-control" />
                                             </div>
                                         </div>
                                         <span class="BFAFE-ETitleText" id="bfafETitleText">${_('Title')}</span>
                                         <div class="BFAFE-EInputText" id="bfafEInputText">
                                             <label class="sr-av">${_('Title')}</label>
-                                            <input type="text" id="bfafEText" class="BFAFE-EText" />
+                                            <input type="text" id="bfafEText" class="BFAFE-EText form-control" />
                                         </div>
                                     </div>                                    
                                 </div>
-                                 <div class="BFAFE-EReverseFacces">
+                                 <div class="BFAFE-EReverseFacces mt-3">
                                     <a href="#" id="bfafEReverseCard" title="${_('Flip down the card')}">${_('Flip down the card')}</a>
                                     <a href="#" id="bfafEReverseFaces" title="${_('Flip down all the cards')}">${_('Flip down all the cards')}</a>
                                 </div>
                             </div>                        
-                            <div class="BFAFE-ENavigationButtons">
+                            <div class="BFAFE-ENavigationButtons gap-2">
                                 <a href="#" id="bfafEAddC" class="BFAFE-ENavigationButton" title="${_("Add question")}">
                                     <img src="${path}quextIEAdd.png" alt="${_("Add question")}" class="BFAFE-EButtonImage" />
                                 </a>
@@ -227,7 +243,7 @@ var $exeDevice = {
                                     <img src="${path}quextIEPrev.png" alt="${_("Previous question")}" class="BFAFE-EButtonImage" />
                                 </a>
                                 <label class="sr-av" for="bfafENumberCard">${_("Question number:")}:</label>
-                                <input type="text" class="BFAFE-NumberCard" id="bfafENumberCard" value="1"/>
+                                <input type="text" class="BFAFE-NumberCard form-control" id="bfafENumberCard" value="1"/>
                                 <a href="#" id="bfafENextC" class="BFAFE-ENavigationButton" title="${_("Next question")}">
                                     <img src="${path}quextIENext.png" alt="${_("Next question")}" class="BFAFE-EButtonImage" />
                                 </a>
@@ -435,7 +451,8 @@ var $exeDevice = {
 
         $('#bfafEDescription').val(p.description);
         $('#bfafEPosition').val(p.position);
-        $('#bfafEVertical').prop('checked', p.vertical);
+    $('#bfafEVertical').prop('checked', p.vertical);
+    $('#bfafEVertical').closest('.toggle-item').attr('aria-checked', !!p.vertical);
 
         $exeDevice.showImage(0);
         $exeDevice.showImage(1);
@@ -775,15 +792,40 @@ var $exeDevice = {
             $exeDevice.reverseCard();
         });
 
-        $('#bfafEEvaluation').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#bfafEEvaluationID').prop('disabled', !marcado);
-        });
-
+        // Ayuda evaluación
         $('#bfafEEvaluationHelpLnk').on('click', function () {
             $('#bfafEEvaluationHelp').toggle();
             return false;
         });
+
+        $('#beforeAfterQIdeviceForm').on('change', '.toggle-input', function () {
+            const $input = $(this);
+            const checked = $input.is(':checked');
+            const $item = $input.closest('.toggle-item');
+            $item.attr('aria-checked', checked);
+            const target = $item.data('target');
+            if (target) {
+                const $targetEl = $('#' + target);
+                if ($targetEl.length) {
+                    $targetEl.toggle(checked);
+                }
+            }
+            if (this.id === 'bfafEEvaluation') {
+                $('#bfafEEvaluationID').prop('disabled', !checked);
+            } else if (this.id === 'bfafEVertical') {
+                if ($exeDevice.cardsGame[$exeDevice.active]) {
+                    $exeDevice.cardsGame[$exeDevice.active].vertical = checked;
+                }
+            }
+        });
+
+        (function initToggleStates() {
+            const evalChecked = $('#bfafEEvaluation').is(':checked');
+            $('#bfafEEvaluation').closest('.toggle-item').attr('aria-checked', evalChecked);
+            $('#bfafEEvaluationIDWrapper').toggle(evalChecked);
+            const vertChecked = $('#bfafEVertical').is(':checked');
+            $('#bfafEVertical').closest('.toggle-item').attr('aria-checked', vertChecked);
+        })();
 
 
 
