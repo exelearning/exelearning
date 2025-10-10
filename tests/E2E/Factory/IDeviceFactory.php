@@ -324,8 +324,7 @@ public static function editAndSaveTextAt(WorkareaPage $workarea, int $index1, st
         self::clickIn(Selectors::IDEVICE_BTN_MORE_ACTIONS, $idevice, $workarea);
         Wait::settleDom(150);
         // Click clone option
-        $menuItem = self::findWithin($idevice, Selectors::IDEVICE_MENU_CLONE, true);
-        self::safeClick($menuItem, $workarea);
+        self::clickIn(Selectors::IDEVICE_MENU_CLONE, $idevice, $workarea);
         // Wait count increases
         $workarea->client()->getWebDriver()->wait(5, 150)->until(function () use ($workarea, $before) {
             return self::countText($workarea) > $before;
@@ -465,16 +464,16 @@ public static function editAndSaveTextAt(WorkareaPage $workarea, int $index1, st
         $before = self::countTextInBox($workarea, $boxIndex1);
         $idevice = self::findTextIdeviceAtInBox($workarea, $boxIndex1, $ideviceIndex1);
         // Ensure read mode
-        $saveBtns = [];
-        try { $saveBtns = $idevice->findElements(WebDriverBy::cssSelector(Selectors::IDEVICE_BTN_SAVE)); } catch (\Throwable) {}
-        if (\count($saveBtns) > 0) {
-            self::safeClick($saveBtns[0], $workarea);
-            Wait::settleDom(250);
-        }
+        try {
+            $btns = $idevice->findElements(WebDriverBy::cssSelector(Selectors::IDEVICE_BTN_SAVE));
+            if (\count($btns) > 0) {
+                self::clickIn(Selectors::IDEVICE_BTN_SAVE, $idevice, $workarea);
+                Wait::settleDom(250);
+            }
+        } catch (\Throwable) {}
         self::clickIn(Selectors::IDEVICE_BTN_MORE_ACTIONS, $idevice, $workarea);
         Wait::settleDom(150);
-        $menuItem = self::findWithin($idevice, Selectors::IDEVICE_MENU_CLONE, true);
-        self::safeClick($menuItem, $workarea);
+        self::clickIn(Selectors::IDEVICE_MENU_CLONE, $idevice, $workarea);
         $workarea->client()->getWebDriver()->wait(6, 150)->until(function () use ($workarea, $boxIndex1, $before) {
             return self::countTextInBox($workarea, $boxIndex1) > $before;
         });
@@ -565,11 +564,30 @@ public static function editAndSaveTextAt(WorkareaPage $workarea, int $index1, st
         }
     }
 
-    /** Clicks a selector inside a container, with scroll + JS fallback. */
+    /** Clicks a selector inside a container with retries and fallbacks. */
     private static function clickIn(string $css, WebDriverElement $scope, WorkareaPage $workarea): void
     {
-        $el = self::findWithin($scope, $css, true);
-        self::safeClick($el, $workarea);
+        $driver = $workarea->client()->getWebDriver();
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            try {
+                $el = self::findWithin($scope, $css, true);
+                self::safeClick($el, $workarea);
+                return;
+            } catch (\Facebook\WebDriver\Exception\StaleElementReferenceException|\RuntimeException|\Throwable $e) {
+                // Try global lookup as a fallback (scope might have gone stale)
+                try {
+                    $candidates = $driver->findElements(WebDriverBy::cssSelector($css));
+                    if (\count($candidates) > 0) {
+                        self::safeClick($candidates[0], $workarea);
+                        return;
+                    }
+                } catch (\Throwable) {
+                    // ignore and retry
+                }
+                usleep(150_000);
+            }
+        }
+        throw new \RuntimeException("Unable to click selector '$css' after retries.");
     }
 
     private static function safeClick(WebDriverElement $el, WorkareaPage $workarea): void
