@@ -189,6 +189,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
                 if (null === $updated) {
                     $responseData['responseMessage'] = 'Unable to register the current edition session';
                     $jsonData = $this->getJsonSerialized($responseData);
+
                     return new JsonResponse($jsonData, JsonResponse::HTTP_CONFLICT, [], true);
                 }
 

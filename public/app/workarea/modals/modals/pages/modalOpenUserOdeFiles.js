@@ -870,7 +870,6 @@ export default class modalOpenUserOdeFiles extends Modal {
                 odeId: response.odeId,
             });
             return;
-            
         } else {
             setTimeout(() => {
                 eXeLearning.app.modals.alert.show({
