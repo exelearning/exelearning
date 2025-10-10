@@ -1,23 +1,24 @@
-#gameQEIdeviceForm input[type=number] {
-    width: 4em;
+#gameQEIdeviceForm input[type="color"] ,
+#gameQEIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
 }
-
-
-#gameQEIdeviceForm label {
-    margin-right: 0.15em !important;
+#gameQEIdeviceForm input[type="color"] {
+    padding: .2rem !important;
+    height: 2em !important;
+    width: 3em !important;
 }
-
-#gameQEIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-    margin-right: 0.15em !important;
-}
-
+  
 
 #gameQEIdeviceForm input[type="radio"],
+#gameQEIdeviceForm input[type="color"] ,
 #gameQEIdeviceForm input[type="checkbox"],
 #gameQEIdeviceForm input[type=button] {
     cursor: pointer;
 }
 
+#gameQEIdeviceForm input[type=number] {
+    max-width: 8ch;
+}
 /*Panel preguntas */
 .TRVLE-EPanel {
     margin: 0.7em auto;
@@ -81,14 +82,8 @@
     width: 100%;
 }
 
-.TRVLE-ENameTema input[type=text]:last-of-type {
-    width: 100%;
-    margin-left: 0.2em;
-}
 
-.TRVLE-ENameTema {
-    flex-wrap: nowrap;
-}
+
 
 .TRVLE-EOptionsGame {
     min-height: 300px;
@@ -113,7 +108,6 @@
 /* Ayuda */
 .TRVLE-TypeGameHelp {
     display: none;
-    margin-bottom: 2em;
     font-size: .95em
 }
 .Games-Reportdiv {
@@ -167,14 +161,6 @@
     width: 85%;
 }
 
-.TRVLE-EInputOptionsVideo>div {
-    margin-top: 0.6em;
-}
-
-.TRVLE-EInputOptionsVideo button {
-    font-size: 1em;
-    height: 1.6em;
-}
 
 /* Opciones audio */
 .TRVLE-EInputAudio {
@@ -202,7 +188,7 @@
 
 /*Preguntas*/
 .TRVLE-EQuestionDiv {
-    margin-bottom: .3em;
+    margin-bottom: 1em;
     width: 100%;
 }
 
@@ -224,7 +210,7 @@
     align-items: center;
     display: flex;
     justify-content: center;
-    margin: 3px 0;
+    margin-bottom: 1em;
     min-height: 35px;
     width: 49%;
     gap: 1px;
@@ -247,7 +233,7 @@
     display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    margin-bottom: 0.5em;
+    margin-bottom: 1em;
     width: 100%;
 }
 
@@ -375,30 +361,17 @@
 }
 
 .TRVLE-ENavigationButton {
-    height: 1.5em;
-    margin: 0 .3em;
-    min-width: 1.5em;
-    width: 1.5em;
+    height: 1.7em;
+    min-width: 1.7em;
+    width: 1.7em;
 }
 
-.TRVLE-EButtonImage {
-    height: 100%;
-    transition: all .3s ease-in-out;
-    width: 100%;
-}
 
-.TRVLE-EButtonImage:hover {
-    -webkit-transform: scale(1.05);
-    transform: scale(1.05);
-}
 
 .TRVLE-NumberQuestion {
-    font-weight: bold;
-    height: 1.5em;
-    line-height: 1.5em;
     text-align: center;
     vertical-align: middle;
-    width: 2em;
+    width: 3em;
 }
 
 /* Video introdución */
@@ -474,7 +447,7 @@
 }
 
 .TRVLE-EVIOptionsVQ {
-    margin-bottom: 0.6em;
+    margin-bottom: 1em;
 }
 
 .TRVLE-EVIOptionsVQ input[type=text] {
@@ -483,9 +456,6 @@
     margin-right: .2em;
 }
 
-.TRVLE-EVIOptionsVQ #vquextEVIURL {
-    width: 15em;
-}
 
 /* Ocutar elementos */
 .TRVLE-EInputOptionsVideo,
@@ -583,7 +553,7 @@ exe-block-dismissible{
 #gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 

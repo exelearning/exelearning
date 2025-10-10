@@ -28,18 +28,19 @@ class SqlitePragmaMiddleware implements Middleware
                     return $connection;
                 }
 
-                // WAL keeps readers and writers from blocking each other.
-                $connection->exec('PRAGMA journal_mode = WAL');
-                // NORMAL sync trims redundant fsyncs without losing crash safety on checkpoints.
-                $connection->exec('PRAGMA synchronous = NORMAL');
-                // Retries for ~5s curb transient "database is locked" errors when writers race.
-                $connection->exec('PRAGMA busy_timeout = 5000');
-                // Doctrine disables foreign keys by default for SQLite; force them back on.
-                $connection->exec('PRAGMA foreign_keys = ON');
-                // Temp tables and sorting spill to memory to avoid disk-backed temp files.
-                $connection->exec('PRAGMA temp_store = MEMORY');
-                // Negative cache size sets ~4MB memory caching for hot pages (no disk persistence).
-                $connection->exec('PRAGMA cache_size = -4000');
+                // Skip WAL and disk-related PRAGMAs for pure in-memory DBs.
+                if (!$this->isMemory($params)) {
+                    // WAL keeps readers and writers from blocking each other.
+                    $connection->exec('PRAGMA journal_mode = WAL');
+                    // NORMAL sync trims redundant fsyncs without losing crash safety on checkpoints.
+                    $connection->exec('PRAGMA synchronous = NORMAL');
+                    // Retries for ~5s curb transient "database is locked" errors when writers race.
+                    $connection->exec('PRAGMA busy_timeout = 5000');
+                    // Temp tables and sorting spill to memory to avoid disk-backed temp files.
+                    $connection->exec('PRAGMA temp_store = MEMORY');
+                    // Negative cache size sets ~4MB memory caching for hot pages (no disk persistence).
+                    $connection->exec('PRAGMA cache_size = -4000');
+                }
 
                 return $connection;
             }
@@ -66,6 +67,28 @@ class SqlitePragmaMiddleware implements Middleware
 
                 $url = $params['url'] ?? null;
                 if (is_string($url) && str_starts_with($url, 'sqlite')) {
+                    return true;
+                }
+
+                return false;
+            }
+
+            /**
+             * Detects in-memory SQLite (":memory:" or memory param).
+             *
+             * @param array<string, mixed> $params
+             */
+            private function isMemory(array $params): bool
+            {
+                if (!empty($params['memory'])) {
+                    return true;
+                }
+                $url = $params['url'] ?? null;
+                if (\is_string($url) && \str_contains($url, ':memory:')) {
+                    return true;
+                }
+                $path = $params['path'] ?? null;
+                if (\is_string($path) && ':memory:' === $path) {
                     return true;
                 }
 

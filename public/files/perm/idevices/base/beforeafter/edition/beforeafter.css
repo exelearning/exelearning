@@ -2,94 +2,68 @@
 	width: 100%;
 }
 
-#beforeAfterQIdeviceForm input[type=number] {
-	width: 4em;
-}
 
-#beforeAfterQIdeviceForm label {
-	margin-right: 0.1em !important;
-}
-
-#beforeAfterQIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-	margin-right: 0.1em !important;
-}
-
-#beforeAfterQIdeviceForm input[type="radio"],
-#beforeAfterQIdeviceForm input[type="checkbox"],
+#beforeAfterQIdeviceForm input[type=radio],
+#beforeAfterQIdeviceForm input[type=checkbox],
 #beforeAfterQIdeviceForm input[type=button] {
 	cursor: pointer;
 }
 
+#beforeAfterQIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
+}
+
+
 .BFAFE-EOptionsMedia {
-	align-items: center;
 	display: flex;
+	align-items: center;
 	justify-content: space-between;
 	margin-bottom: 1em;
 	width: 100%;
 }
 
-
-/* Medias */
 .BFAFE-EMultiMediaOption {
-	height: 100%;
-	min-height: 300px;
-	min-width: 400px;
 	position: relative;
 	width: 50%;
-}
-
-
-.BFAFE-EMultimedia {
-	background-color: #fff;
-	border-radius: .5em;
-	height: 227px;
-	margin: 40px auto auto auto;
-	position: relative;
-	width: 400px;
+	min-width: 400px;
+	min-height: 300px;
+	height: 100%;
 }
 
 .BFAFE-EMedia {
-	border: 1px solid #cccccc;
-	border-radius: .5em;
-	height: 100%;
-	left: 0;
 	position: absolute;
-	top: 0;
-	width: 100%;
+	inset: 0;
+	border: 1px solid #ccc;
+	border-radius: .5em;
 }
 
-.BFAFE-Description input {
-	width: 35%;
-	min-width: 400px;
-
-}
 
 .BFAFE-EOptionsGame {
-	min-height: 300px;
 	width: 50%;
+	min-height: 300px;
 }
 
 .BFAFE-EOptionsGame div {
-	margin-bottom: 0.7em;
+	margin-bottom: .7em;
 }
 
 .BFAFE-EOptionsGame input[type=text] {
-	margin-right: .2em;
 	width: 5em;
+	margin-right: .2em;
 }
 
 .BFAFE-EInputImage {
-	align-items: center;
 	display: flex;
+	align-items: center;
 	flex-wrap: nowrap;
 	justify-content: flex-start;
-	min-width: 100px;
 	width: 100%;
+	min-width: 100px;
 }
 
-#ccgmQEIdeviceForm .BFAFE-EInputImage input[type=text] {
-	flex-flow: 1;
-	margin-right: 0.2em;
+#beforeAfterQIdeviceForm .BFAFE-EInputImage input[type=text] {
+	flex: 1;
+	margin-right: .2em;
 	min-width: 100px;
 	width: 100%;
 }
@@ -98,25 +72,14 @@
 	flex-shrink: 0;
 }
 
+
 .BFAFE-EAuthorAlt {
-	align-items: center;
-	display: flex;
-	flex-wrap: nowrap;
-	justify-content: space-between;
 	display: none;
-	;
-}
-
-.BFAFE-EAuthorAlt div {
-	width: 49%;
-}
-
-.BFAFE-EAuthorAlt label {
-	display: block;
-}
-
-.BFAFE-EAuthorAlt input[type=text] {
-	width: 97%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: nowrap;
+	margin-bottom: 1em;
 }
 
 .BFAFE-EAuthorAlt div {
@@ -133,22 +96,15 @@
 
 .BFAFE-EInputAudio,
 .BFAFE-EInputImage {
-	align-items: center;
 	display: flex;
-	justify-content: flex-start;
-}
-
-.BFAFE-EInputAudio,
-.BFAFE-EInputImage {
 	align-items: center;
-	display: flex;
 	justify-content: flex-start;
 }
 
 .BFAFE-EInputAudio input[type=text],
 .BFAFE-EInputImage input[type=text] {
-	flex-flow: 1;
-	margin-right: 0.2em;
+	flex: 1;
+	margin-right: .2em;
 	min-width: 100px;
 	width: 100%;
 }
@@ -159,33 +115,29 @@
 }
 
 .BFAFE-EButtonImage {
+	width: 100%;
 	height: 100%;
 	transition: all .3s ease-in-out;
-	width: 100%;
 }
 
-.BFAFE-ButtonImage:hover {
-	-webkit-transform: scale(1.05);
+.BFAFE-EButtonImage:hover {
 	transform: scale(1.05);
 }
 
 #beforeAfterQIdeviceForm .BFAFE-EReport {
 	display: flex;
-	justify-content: flex-start;
 	align-items: center;
+	justify-content: flex-start;
 }
 
-/*Panel parejas */
 .BFAFE-EPanel {
-	padding: 0;
+	position: relative;
 	width: 100%;
 	max-width: 1200px;
-	position: relative;
-	padding-top: 1em;
+	padding: 1em 0 0;
 }
 
 .BFAFE-ETitleImage {
-	display: block;
 	display: flex;
 	justify-content: center;
 	font-weight: 600;
@@ -196,85 +148,76 @@
 }
 
 .BFAFE-EPhrase {
-	align-items: flex-start;
 	display: flex;
+	align-items: flex-start;
 	justify-content: center;
 	flex-wrap: nowrap;
 	width: 100%;
-
 }
 
 .BFAFE-EBack {
-	background-color: rgb(220, 242, 255);
-	border-radius: 0.3em;
-
+	background: #CCFBF7;
+	border-radius: .3em;
 }
 
 .BFAFE-EFront {
-	background-color: #eeeeee;
-	border-radius: 0.3em;
+	background: #eee;
+	border-radius: .3em;
 }
 
 .BFAFE-EMultimedia {
-	margin: 0 auto 0.6em auto;
 	position: relative;
 	width: 240px;
-	min-height: 240px;
 	height: 240px;
 	min-width: 240px;
+	min-height: 240px;
+	margin: 0 auto 1em;
 	overflow: hidden;
 	border: 1px solid rgb(3, 112, 116);
-	box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.20), 0 3px 6px 0 rgba(0, 0, 0, 0.19);
-	border-radius: 0.3em;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, .20), 0 3px 6px rgba(0, 0, 0, .19);
+	border-radius: .3em;
 }
 
 .BFAFE-ECard {
+	position: absolute;
 	top: 4px;
 	left: 4px;
 	width: 232px;
 	height: 232px;
 	min-width: 232px;
-	background-color: white;
-	position: absolute;
-
+	background: #fff;
 }
 
 .BFAFE-EMultimedia textarea {
+	position: absolute;
 	left: 0;
 	top: 0;
-	position: absolute;
-
 }
 
 .BFAFE-EDatosCarta {
 	width: 50%;
 	min-width: 400px;
-	border-radius: 0.3em;
-	padding: 0.7em;
-	padding-bottom: 1.3em;
-	height: auto;
-	margin-right: 0.6em;
-	margin-top: 1em;
+	border-radius: .3em;
+	padding: .7em .7em 1.3em;
+	margin: 1em .6em 0 0;
 	cursor: pointer;
 }
 
 .BFAFE-EDatosCarta input[type=text] {
-	margin-right: .2em;
 	width: 100%;
+	margin-right: .2em;
 }
 
-/* Medias */
-
 .BFAFE-EImageFit {
+	position: absolute;
 	width: 240px;
-	min-height: 240px;
 	height: 240px;
 	min-width: 240px;
+	min-height: 240px;
 	object-fit: contain;
 	object-position: center;
 	margin: auto;
-	background-color: white;
-	position: absolute;
+	background: #fff;
 }
 
 .BFAFE-EImage,
@@ -283,52 +226,29 @@
 }
 
 .BFAFE-ECursor {
+	position: absolute;
 	left: 0;
 	top: 0;
-	position: absolute;
 	display: none;
 }
-
-/* Opciones imagen */
-
-.BFAFE-EAuthorAlt {
-	align-items: center;
-	display: flex;
-	flex-wrap: nowrap;
-	justify-content: space-between;
-}
-
-.BFAFE-EAuthorAlt div {
-	width: 49%;
-}
-
-.BFAFE-EAuthorAlt label {
-	display: block;
-}
-
-.BFAFE-EAuthorAlt input[type=text] {
-	width: 97%;
-}
-
 
 .BFAFE-EInputAudio,
 .BFAFE-EInputImage,
 .BFAFE-EInputText {
-	align-items: center;
 	display: flex;
+	align-items: center;
 	justify-content: flex-start;
 	flex-wrap: nowrap;
-	min-width: 100px;
 	width: 100%;
+	min-width: 100px;
 }
 
 .BFAFE-EInputAudio input[type=text],
 .BFAFE-EInputImage input[type=text] {
-	flex-flow: 1;
-	margin-right: 0.2em;
+	flex: 1;
+	margin-right: .2em;
 	min-width: 100px;
 	width: 100%;
-
 }
 
 .BFAFE-EInputAudio input[type=button],
@@ -337,24 +257,21 @@
 }
 
 .BFAFE-ETextDiv {
+	position: absolute;
 	top: 0;
 	left: 0;
 	width: 100%;
 	height: 100%;
-	background-color: rgba(255, 255, 255, 0.7);
-	color: black;
-	position: absolute;
-	color: '#000000';
+	background: rgba(255, 255, 255, .7);
+	color: #000;
 	font-weight: bold;
 	display: flex;
 	justify-content: center;
 	flex-direction: column;
 	text-align: center;
-	-webkit-user-select: none;
-	-ms-user-select: none;
 	user-select: none;
 	border: 1px solid #ccc;
-	border-radius: 0.6em;
+	border-radius: .6em;
 	font-size: 1.3em;
 	word-wrap: break-word;
 	overflow-wrap: break-word;
@@ -366,25 +283,21 @@
 
 .BFAFE-ETextDiv * {
 	box-sizing: border-box;
-	margin-left: auto;
-	margin-right: auto;
+	margin: 0 auto;
 	word-wrap: break-word;
 	overflow-wrap: break-word;
 	-webkit-hyphens: auto;
 	-moz-hyphens: auto;
 	-ms-hyphens: auto;
 	hyphens: auto;
-
 }
 
-/* Itinerario */
 
 .BFAFE-EHit {
-	background-image: url(quextIEHit.png);
-	background-size: 100% 100%;
+	background: url(quextIEHit.png) 0 0/100% 100% no-repeat;
 	display: inline-block;
-	height: 1.5em;
 	width: 1.5em;
+	height: 1.5em;
 }
 
 .BFAFE-Hide {
@@ -393,133 +306,111 @@
 
 .BFAFE-ECustomMessageDiv,
 .BFAFE-ECustomMessageDef {
-	margin-top: 0.6em;
 	display: flex;
 	align-items: center;
 	justify-content: flex-start;
 	flex-wrap: nowrap;
+	margin-top: .6em;
 }
 
 .BFAFE-ECustomMessageDiv label,
 .BFAFE-ECustomMessageDef label {
 	white-space: nowrap;
-	margin-right: 0.1em;
+	margin-right: .1em;
 }
 
 .BFAFE-ECustomMessageDiv input[type=text],
 .BFAFE-ECustomMessageDef input[type=text] {
 	width: 100%;
 	max-width: 1000px;
-	margin-right: 0.2em;
+	margin-right: .2em;
 }
 
-/*Numero Preguntas */
 .BFAFE-ENumCardDiv {
-	align-items: center;
-	display: flex;
-	height: 1.5em;
-	justify-content: center;
 	position: absolute;
-	right: 0;
 	top: -1em;
+	right: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	width: 3em;
 	height: 3em;
 	z-index: 100;
-
 }
 
 .BFAFE-ENumCardsIcon {
-	background-image: url(quextIENumber.png);
-	background-size: 100% 100%;
+	background: url(quextIENumber.png) 0 0/100% 100% no-repeat;
 	display: inline-block;
-	height: 1.5em;
-	margin-right: 0px;
 	width: 1.5em;
+	height: 1.5em;
 }
 
 .BFAFE-ENumCards {
 	font-weight: bold;
+	width: 2em;
 	height: 1.5em;
 	text-align: center;
-	width: 2em;
 }
 
 .BFAFE-ECustomMessage {
-	align-items: center;
 	display: flex;
+	align-items: center;
 	justify-content: flex-start;
-	margin-top: 1em;
 	width: 100%;
+	margin-top: 1em;
 }
 
 .BFAFE-ECustomMessage input[type=text] {
 	width: 100%;
-	margin-right: 0.1em;
+	margin-right: .1em;
 }
 
 .BFAFE-ECustomMessage label {
-	margin: 0 0.1em;
+	margin: 0 .1em;
 }
 
 .Games-Reportdiv {
 	display: flex;
-	justify-content: flex-start;
 	align-items: center;
+	justify-content: flex-start;
 	gap: 2px;
-}
-
-.GameModeLabel {
-	font-weight: normal
 }
 
 #beforeAfterQIdeviceForm .BFAFE-TypeGameHelp {
 	display: none;
 	margin-bottom: 2em;
-	font-size: .95em
+	font-size: .95em;
 }
 
-/* barra edición */
 .BFAFE-ENavigationButtons {
-	align-items: center;
 	display: flex;
+	align-items: center;
 	justify-content: center;
-	margin-top: 1em;
 	width: 100%;
+	margin-top: 1em;
 }
 
 .BFAFE-ENavigationButton {
-	height: 1.5em;
-	margin: 0 .3em;
-	min-width: 1.5em;
-	width: 1.5em;
-}
-
-.BFAFE-EButtonImage {
-	height: 100%;
-	transition: all .3s ease-in-out;
-	width: 100%;
-}
-
-.BFAFE-EButtonImage:hover {
-	-webkit-transform: scale(1.05);
-	transform: scale(1.05);
+	width: 1.7em;
+	height: 1.7em;
+	min-width: 1.7em;
 }
 
 .BFAFE-NumberCard {
+	width: 3em;
 	text-align: center;
-	width: 2em;
 }
 
 .BFAFE-EReverseFacces {
 	display: flex;
-	justify-content: center;
 	align-items: center;
+	justify-content: center;
 	width: 100%;
 }
 
 .BFAFE-EReverseFacces a {
-	text-align: center;
 	display: inline-block;
+	text-align: center;
 	margin-right: 1em;
 }
 
@@ -527,87 +418,84 @@
 	display: none;
 }
 
-
 #beforeAfterQIdeviceForm .exe-block-info img {
 	margin-left: .2em;
 	vertical-align: middle;
 }
 
+
 #beforeAfterQIdeviceFormTab3 p:first-child {
-    margin-top: 0;
+	margin-top: 0;
 }
 
 #beforeAfterQIdeviceFormTab3 {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2%;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2%;
 }
 
 #beforeAfterQIdeviceFormTab3>* {
-    flex: 0 0 48%;
+	flex: 0 0 48%;
 }
 
-#beforeAfterQIdeviceFormTab3> :first-child {
-    flex: 0 0 100%;
+#beforeAfterQIdeviceFormTab3>:first-child {
+	flex: 0 0 100%;
 }
-
 
 @media screen and (max-width:720px) {
-    #beforeAfterQIdeviceFormTab3>* {
-        flex: 0 0 100%;
-    }
+	#beforeAfterQIdeviceFormTab3>* {
+		flex: 0 0 100%;
+	}
 }
 
 #beforeAfterQIdeviceForm #beforeAfterQIdeviceFormTab3 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #5b810b;
-    font-weight: 500;
+	display: block;
+	margin-bottom: .2em;
+	color: #0BA1A1;
+	font-weight: 500;
 }
 
 #beforeAfterQIdeviceForm #beforeAfterQIdeviceFormTab3 input {
-    width: 100%;
+	width: 100%;
 }
 
 
-/* Tabs (this should be common) */
-.exe-form-tabs {
+#beforeAfterQIdeviceForm .exe-form-tabs {
 	list-style: none;
-	margin: 0 0 1.5em 0;
+	margin: 0 0 1.5em;
 	padding: 0;
 }
 
-#main .exe-form-tabs li {
+#beforeAfterQIdeviceForm .exe-form-tabs li {
 	display: inline;
-	list-style: none;
-	list-style-image: none;
 	margin: 0;
 	padding: 0;
 }
 
-.exe-form-tabs li:first-child a {
-	border-bottom-left-radius: 4px;
+#beforeAfterQIdeviceForm .exe-form-tabs li:first-child a {
 	border-top-left-radius: 4px;
+	border-bottom-left-radius: 4px;
 }
 
-.exe-form-tabs li:last-child a {
-	border-bottom-right-radius: 4px;
+#beforeAfterQIdeviceForm .exe-form-tabs li:last-child a {
 	border-top-right-radius: 4px;
+	border-bottom-right-radius: 4px;
 }
 
-.exe-form-tabs a {
+#beforeAfterQIdeviceForm .exe-form-tabs a {
 	background: #F9F9F9;
 	border: 1px solid #CCC;
 	color: #666;
 	display: inline-block;
 	padding: .5em 1em;
+	text-decoration: none;
 }
 
-.exe-form-tabs li:not(:last-child) a {
+#beforeAfterQIdeviceForm .exe-form-tabs li:not(:last-child) a {
 	border-right: none;
 }
 
-.exe-form-tabs .exe-form-active-tab {
+#beforeAfterQIdeviceForm .exe-form-tabs .exe-form-active-tab {
 	background: #FFF;
 	color: #000;
 	font-weight: 500;
@@ -622,33 +510,23 @@ label[for=gameQEActivitySCORM] {
 	font-weight: bold;
 }
 
-#gameQESCORMinstructionsButton {
-	color: #777;
-	display: none;
-	margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsButton ul {
-	list-style: none;
-	margin: 1.5em 0 .7em 0;
-	padding: 0;
-}
-
-#gameQESCORMinstructionsButton ul li {
-	list-style-image: none;
-	margin: 0 0 .5em 0;
-	padding: 0;
-}
-
+#gameQESCORMinstructionsButton,
 #gameQESCORMinstructionsAuto {
-	color: #777;
 	display: none;
+	color: #777;
 	margin: 10px 0 0 25px;
 }
 
+#gameQESCORMinstructionsButton ul,
 #gameQESCORMinstructionsAuto ul {
 	list-style: none;
-	margin: 1.5em 0 .7em 0;
+	margin: 1.5em 0 .7em;
+	padding: 0;
+}
+
+#gameQESCORMinstructionsButton ul li,
+#gameQESCORMinstructionsAuto ul li {
+	margin: 0 0 .5em;
 	padding: 0;
 }
 
@@ -658,19 +536,12 @@ label[for=gameQEActivitySCORM] {
 }
 
 .GameModeLabel {
-	font-weight: normal
+	font-weight: normal;
 }
 
 .BFAFE-TypeGameHelp {
-	padding-top: 0.8em;
+	padding-top: .8em;
 	display: none;
 	margin-bottom: 2em;
-	font-size: .95em
-}
-
-.Games-Reportdiv {
-	display: flex;
-	justify-content: flex-start;
-	align-items: center;
-	gap: 2px;
+	font-size: .95em;
 }

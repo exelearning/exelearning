@@ -40,7 +40,6 @@ label[for=geogebraActivityHeight] {
 }
 
 #eXeAutoGeogebraCheckOptions {
-    overflow: auto;
     margin: 1em 0 .5em 0
 }
 
@@ -56,13 +55,6 @@ label[for=geogebraActivityHeight] {
     margin-top: 1em
 }
 
-#eXeAutoGeogebraCheckOptions p {
-    width: 300px;
-    float: left;
-    margin: 0;
-    line-height: 2.5em
-}
-
 .input-instructions {
     color: #999;
     margin-right: 1.5em
@@ -75,7 +67,6 @@ label[for=geogebraActivityHeight] {
 }
 
 #geogebraActivitySCORMinstructions ul {
-    margin: 1.5em 0 .7em 0;
     padding: 0;
     list-style: none
 }
@@ -109,7 +100,6 @@ label[for=geogebraActivityHeight] {
 
 #geogebraActivityPlayButton {
     display: inline-block;
-    ;
     width: 1.5em;
     height: 1.5em;
     background-image: url(geogegra-activity-playbutton.png);

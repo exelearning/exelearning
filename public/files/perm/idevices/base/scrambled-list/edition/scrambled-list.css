@@ -35,17 +35,12 @@
 }
 
 .scrambled-listIdevice #sortableListFormList ol>li.required:before {
+	content:"*"; color:#c00;
 	position: absolute;
 	top: 0;
 	left: 0;
 }
 
-.Games-Reportdiv {
-	display: flex;
-	justify-content: flex-start;
-	align-items: center;
-	gap: 2px;
-}
 
 .GameModeHelpLink {
 	margin: 0 2px;
@@ -55,10 +50,6 @@
 .GameModeLabel {
 	font-weight: normal
 }
-
-
-
-
 
 #scrambledlistIdeviceForm a.eXeE-TabButton,
 .eXeE-TabButton {
@@ -75,8 +66,6 @@
 a.eXeE-TabButton:last-child {
 	border-right: none;
 }
-
-
 
 
 .exe-block-info img {
@@ -118,7 +107,7 @@ a.eXeE-TabButton:last-child {
 #scrambledlistIdeviceFormTab1 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 
@@ -171,3 +160,4 @@ a.eXeE-TabButton:last-child {
 	background: #FFF;
 	font-weight: 500
 }
+

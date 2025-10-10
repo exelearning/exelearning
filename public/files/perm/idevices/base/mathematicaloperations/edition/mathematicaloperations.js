@@ -107,7 +107,7 @@ var $exeDevice = {
             msgTypeGame: c_('Math operations'),
         }
     },
-    
+
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgEProvideDefinition = _('Please provide the definition of the word or phrase');
@@ -165,101 +165,196 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
-                            <p id="eRMQFractionsDiv" style="display:none">
-                                <label for="eRMQFractions"><input id="eRMQFractions" type="checkbox" />${_('Fractions')}.</label>
-                            </p>
-                            <p>
-                                <label for="eRMQtype">${_('Choose what to guess:')}
-                                    <select id="eRMQtype">
-                                        <option value="result">${_('Result')}</option>
-                                        <option value="operator">${_('Operator')}</option>
-                                        <option value="operandA">${_('First operand')}</option>
-                                        <option value="operandB">${_('Second operand')}</option>
-                                        <option value="random">${_('Random')}</option>
-                                    </select>
-                                </label>
-                            </p>
-                            <p>
-                                <label for="eRMQnum">${_('Number of operations:')}
-                                    <input id="eRMQnum" type="text" style="width:80px" value="10" onkeyup="$exeDevice.onlyNumbers(this)" />
-                                </label>
-                                <label for="eRMQmin">${_('Smallest number:')}
-                                    <input id="eRMQmin" type="text" style="width:80px"  value="1" onkeyup="$exeDevice.onlyNumbers(this)" />
-                                </label>
-                                <label for="eRMQmax">${_('Biggest number:')}
-                                    <input id="eRMQmax" type="text" style="width:80px"  value="9" onkeyup="$exeDevice.onlyNumbers(this)" />
-                                </label>
-                            </p>
-                            <p id="eRMQdecimalsDiv">
-                                <label for="eRMQdecimals">${_('Number of decimals (operands):')}
-                                    <select id="eRMQdecimals" onchange="$exeDevice.setDecimalsInResults(this.value)">
-                                        <option value="0">0</option>
-                                        <option value="1">1</option>
-                                        <option value="2">2</option>
-                                    </select>
-                                </label>
-                            </p>
-                            <p>
-                                <strong>${_('Operations:')}</strong>
-                                <label for="eRMQadd"><input id="eRMQadd" type="checkbox" /> ${_('Addition')}</label>
-                                <label for="eRMQsubs"><input id="eRMQsubs" type="checkbox" /> ${_('Subtraction')}</label>
-                                <label for="eRMQmult"><input id="eRMQmult" type="checkbox" checked /> ${_('Multiplication')}</label>
-                                <label for="eRMQdiv"><input id="eRMQdiv" type="checkbox" /> ${_('Division')}</label>
-                            </p>
-                            <p id="eRMQdecimalsResultDiv">
-                                <label for="eRMQdecimalsInResults"><input id="eRMQdecimalsInResults" type="checkbox" /> ${_('Allow decimals in the results')}</label>
-                            </p>
-                            <p id="eRMQSolutionDiv" style="display:none">
-                                <label for="eRMQSolution"><input id="eRMQSolution" type="checkbox" checked/> ${_('Irreducible fraction.')}</label>
-                            </p>
-                            <p id="eRMQnegativeDiv">
-                                <label for="eRMQnegative"><input id="eRMQnegative" type="checkbox" /> ${_('Allow negative results')}</label>
-                            </p>
-                            <p id="eRMQNegativesFractionsDiv" style="display:none">
-                                <label for="eRMQNegativesFractions"><input id="eRMQNegativesFractions" type="checkbox" /> ${_('Allow negative')}.</label>
-                            </p>
-                            <p id="eRMQZeroDiv">
-                                <label for="eRMQzero"><input id="eRMQzero" type="checkbox" /> ${_('Allow zero as a result')}</label>
-                            </p>
-                            <p id="eRMQErrorRelativeDiv">
-                                <input class="MTOE-ErrorType" id="eRMQRelative" type="checkbox" name="eRMQtype" value="0" />
-                                <label for="eRMQRelative">${_('Relative error')}</label>
-                                <label for="eRMQPercentajeRelative" class="sr-av">${_('Relative error')}</label>
-                                <input type="number" name="eRMQPercentajeRelative" id="eRMQPercentajeRelative" value="0" min="0" max="1" step="0.01" style="display:none; width:70px"/>
-                            </p>
-                            <p id="eRMQErrorAbsoluteDiv">
-                                <input class="MTOE-ErrorType" id="eRMQAbsolute" type="checkbox" name="eRMQtype" value="1" />
-                                <label for="eRMQAbsolute">${_('Absolute error')}</label>
-                                <label for="eRMQPercentajeAbsolute" class="sr-av">${_('Absolute error')}</label>
-                                <input type="number" name="eRMQPercentajeAbsolute" id="eRMQPercentajeAbsolute" value="0" min="0" max="99.0" step="0.01" style="display:none; width:70px" />
-                            </p>
-                            <p>
-                                <label for="eRMQShowMinimize"><input type="checkbox" id="eRMQShowMinimize"> ${_('Show minimized.')}</label>
-                            </p>
-                            <p>
-                                <label for="eRMQTime">${_('Time (minutes)')}: 
-                                    <input type="number" name="eRMQTime" id="eRMQTime" value="0" min="0" max="59" />
-                                </label>
-                            </p>
-                            <p>
-                                <label for="eRMQHasFeedBack"><input type="checkbox" id="eRMQHasFeedBack"> ${_('Feedback')}. </label>
-                                <label for="eRMQPercentajeFB"><input type="number" name="eRMQPercentajeFB" id="eRMQPercentajeFB" value="100" min="5" max="100" step="5" disabled /> ${_('% right to see the feedback')}.</label>
-                            </p>
-                            <p id="eRMQFeedbackP" class="MTOE-EFeedbackP">
-                                <textarea id="eRMQFeedBackEditor" class="exe-html-editor"></textarea>
-                            </p>
-                            <p class="Games-Reportdiv">
+                            <div id="eRMQFractionsDiv" style="display:none" class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input id="eRMQFractions" type="checkbox" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQFractions" class="toggle-label">${_('Fractions')}.</label>
+                                </span>
+                            </div>
+                            <div class="mb-3 d-flex flex-wrap gap-3 align-items-center">
+                                <label for="eRMQtype" class="mb-0">${_('Choose what to guess:')}</label>
+                                <select id="eRMQtype" class="form-control" style="max-width:220px">
+                                    <option value="result">${_('Result')}</option>
+                                    <option value="operator">${_('Operator')}</option>
+                                    <option value="operandA">${_('First operand')}</option>
+                                    <option value="operandB">${_('Second operand')}</option>
+                                    <option value="random">${_('Random')}</option>
+                                </select>
+                            </div>
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="eRMQnum" class="mb-0">${_('Number of operations:')}</label>
+                                    <input id="eRMQnum" type="text" value="10" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch" />
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="eRMQmin" class="mb-0">${_('Smallest number:')}</label>
+                                    <input id="eRMQmin" type="text" value="1" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch" />
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="eRMQmax" class="mb-0">${_('Biggest number:')}</label>
+                                    <input id="eRMQmax" type="text" value="9" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch" />
+                                </div>
+                            </div>
+                            <div id="eRMQdecimalsDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="eRMQdecimals" class="mb-0">${_('Number of decimals (operands):')}</label>
+                                <select id="eRMQdecimals" onchange="$exeDevice.setDecimalsInResults(this.value)" class="form-control" style="width:6ch">
+                                    <option value="0">0</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <strong class="d-block mb-2">${_('Operations:')}</strong>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <span class="toggle-item" role="switch" aria-checked="false">
+                                        <span class="toggle-control">
+                                            <input id="eRMQadd" type="checkbox" class="toggle-input" />
+                                            <span class="toggle-visual" aria-hidden="true"></span>
+                                        </span>
+                                        <label for="eRMQadd" class="toggle-label">${_('Addition')}</label>
+                                    </span>
+                                    <span class="toggle-item" role="switch" aria-checked="false">
+                                        <span class="toggle-control">
+                                            <input id="eRMQsubs" type="checkbox" class="toggle-input" />
+                                            <span class="toggle-visual" aria-hidden="true"></span>
+                                        </span>
+                                        <label for="eRMQsubs" class="toggle-label">${_('Subtraction')}</label>
+                                    </span>
+                                    <span class="toggle-item" role="switch" aria-checked="true">
+                                        <span class="toggle-control">
+                                            <input id="eRMQmult" type="checkbox" class="toggle-input" checked />
+                                            <span class="toggle-visual" aria-hidden="true"></span>
+                                        </span>
+                                        <label for="eRMQmult" class="toggle-label">${_('Multiplication')}</label>
+                                    </span>
+                                    <span class="toggle-item" role="switch" aria-checked="false">
+                                        <span class="toggle-control">
+                                            <input id="eRMQdiv" type="checkbox" class="toggle-input" />
+                                            <span class="toggle-visual" aria-hidden="true"></span>
+                                        </span>
+                                        <label for="eRMQdiv" class="toggle-label">${_('Division')}</label>
+                                    </span>
+                                </div>
+                            </div>
+                            <div id="eRMQdecimalsResultDiv" class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input id="eRMQdecimalsInResults" type="checkbox" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQdecimalsInResults" class="toggle-label">${_('Allow decimals in the results')}</label>
+                                </span>
+                            </div>
+                            <div id="eRMQSolutionDiv" style="display:none" class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="true">
+                                    <span class="toggle-control">
+                                        <input id="eRMQSolution" type="checkbox" class="toggle-input" checked />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQSolution" class="toggle-label">${_('Irreducible fraction.')}</label>
+                                </span>
+                            </div>
+                            <div id="eRMQnegativeDiv" class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input id="eRMQnegative" type="checkbox" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQnegative" class="toggle-label">${_('Allow negative results')}</label>
+                                </span>
+                            </div>
+                            <div id="eRMQNegativesFractionsDiv" style="display:none" class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input id="eRMQNegativesFractions" type="checkbox" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQNegativesFractions" class="toggle-label">${_('Allow negative')}.</label>
+                                </span>
+                            </div>
+                            <div id="eRMQZeroDiv" class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input id="eRMQzero" type="checkbox" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQzero" class="toggle-label">${_('Allow zero as a result')}</label>
+                                </span>
+                            </div>
+                            <div id="eRMQErrorRelativeDiv" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input class="MTOE-ErrorType toggle-input" id="eRMQRelative" type="checkbox" name="eRMQtype" value="0" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQRelative" class="toggle-label">${_('Relative error')}</label>
+                                </span>
+                                <input type="number" name="eRMQPercentajeRelative" id="eRMQPercentajeRelative" value="0" min="0" max="1" step="0.01" class="form-control" style="display:none; width:7ch" />
+                            </div>
+                            <div id="eRMQErrorAbsoluteDiv" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input class="MTOE-ErrorType toggle-input" id="eRMQAbsolute" type="checkbox" name="eRMQtype" value="1" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQAbsolute" class="toggle-label">${_('Absolute error')}</label>
+                                </span>
+                                <input type="number" name="eRMQPercentajeAbsolute" id="eRMQPercentajeAbsolute" value="0" min="0" max="99.0" step="0.01" class="form-control" style="display:none; width:7ch" />
+                            </div>
+                            <div class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eRMQShowMinimize" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQShowMinimize" class="toggle-label"> ${_('Show minimized.')}</label>
+                                </span>
+                            </div>
+                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="eRMQTime" class="mb-0">${_('Time (minutes)')}:</label>
+                                <input type="number" name="eRMQTime" id="eRMQTime" value="0" min="0" max="59" class="form-control" style="width:6ch" />
+                            </div>
+                            <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eRMQHasFeedBack" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQHasFeedBack" class="toggle-label"> ${_('Feedback')}.</label>
+                                </span>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="eRMQPercentajeFB" class="mb-0">%FB</label>
+                                    <input type="number" name="eRMQPercentajeFB" id="eRMQPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
+                                    <span class="ms-2">${_('% right to see the feedback')}.</span>
+                                </div>
+                            </div>
+                            <div id="eRMQFeedbackP" class="MTOE-EFeedbackP mb-3">
+                                <textarea id="eRMQFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
+                            </div>
+                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eRMQEEvaluation" class="toggle-input" data-target="#eRMQEEvaluationIDWrapper" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eRMQEEvaluation" class="toggle-label">${_('Progress report')}.</label>
+                                </span>
+                                <span id="eRMQEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap" style="display:none;">
+                                    <label for="eRMQEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                    <input type="text" id="eRMQEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" /> 
+                                </span>
                                 <strong class="GameModeLabel">
                                     <a href="#eRMQEEvaluationHelp" id="eRMQEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${$exeDevice.idevicePath}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" />
+                                        <img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
                                     </a>
                                 </strong>
-                                <input type="checkbox" id="eRMQEEvaluation">  <label for="eRMQEEvaluation">${_('Progress report')}.</label>
-                                <label for="eRMQEEvaluationID"></label>${_('Identifier')}:<input type="text" id="eRMQEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/> 
-                            </p>
-                            <div id="eRMQEEvaluationHelp" class="MTOE-TypeGameHelp exe-block-info">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
                             </div>
+                            <p id="eRMQEEvaluationHelp" class="MTOE-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
@@ -500,8 +595,8 @@ var $exeDevice = {
                 dataGame.instructions +
                 '</div>';
 
-    let html = '<div class="mathoperations-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="mathoperations-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="mathoperations-version js-hidden">' +
             $exeDevice.version +
@@ -534,6 +629,22 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Inicialización de toggles (estado aria y targets)
+        const initToggle = function($input){
+            const checked = $input.is(':checked');
+            $input.closest('.toggle-item[role="switch"]').attr('aria-checked', checked);
+            const targetSel = $input.data('target');
+            if(targetSel){
+                const $target = $(targetSel);
+                if(checked){
+                    $target.css('display','flex');
+                }else{
+                    $target.hide();
+                }
+            }
+        };
+        $('.toggle-input').each(function(){ initToggle($(this)); });
+        $(document).on('change','.toggle-input',function(){ initToggle($(this)); });
         if (
             window.File &&
             window.FileReader &&

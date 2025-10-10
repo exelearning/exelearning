@@ -160,86 +160,112 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
-                            <p>
-                                <label for="descubreEShowMinimize">
-                                    <input type="checkbox" id="descubreEShowMinimize">${_('Show minimized.')}
-                                </label>
-                            </p>
-                            <p>
-                                <span>${_('Type')}:</span>
-                                <input class="Descubre-GameMode" checked id="descubreGame2" type="radio" name="qtxgamemode" value="0" />
-                                <label for="descubreGame2">${_('Pairs')}</label>
-                                <input class="Descubre-GameMode" id="descubreGame3" type="radio" name="qtxgamemode" value="1" />
-                                <label for="descubreGame3">${_('Trios')}</label>
-                                <input class="Descubre-GameMode" id="descubreGame4" type="radio" name="qtxgamemode" value="2" />
-                                <label for="descubreGame4">${_('Quartets')}</label>
-                            </p>
-                            <p>
-                                <span>${_('Difficulty levels')}:</span>
-                                <input class="Descubre-GameLevel" checked id="descubreL1" type="radio" name="qtxgamelevels" value="1" />
-                                <label for="descubreL1">1</label>
-                                <input class="Descubre-GameLevel" id="descubreL2" type="radio" name="qtxgamelevels" value="2" />
-                                <label for="descubreL2">2</label>
-                                <input class="Descubre-GameLevel" id="descubreL3" type="radio" name="qtxgamelevels" value="3" />
-                                <label for="descubreL3">3</label>
-                            </p>
-                            <p>
-                                <label for="descubreEShowCards">
-                                    <input type="checkbox" id="descubreEShowCards">${_('Visible cards')}.
-                                </label>
-                            </p>
-                            <p>
-                                <label for="descubreETimeShowSolution">${_('Time while the cards will be shown (seconds)')}: 
-                                    <input type="number" name="descubreETimeShowSolution" id="descubreETimeShowSolution" value="3" min="1" max="999" />
-                                </label>
-                            </p>
-                            <p>
-                                <label for="descubreECustomMessages">
-                                    <input type="checkbox" id="descubreECustomMessages">${_('Custom messages')}.
-                                </label>
-                            </p>
-                            <p>
-                                <label for="descubreETime">${_('Time (minutes)')}: 
-                                    <input type="number" name="descubreETime" id="descubreETime" value="0" min="0" max="120" step="1" />
-                                </label>
-                            </p>
-                            <p>
-                                <label for="descubreEAttempts">${_('Number of attempts')}: 
-                                    <input type="number" name="descubreEAttempts" id="descubreEAttempts" value="0" min="0" max="100" step="1" />
-                                </label>
-                            </p>
-                            <p>
-                                <label for="descubreEShowSolution">
-                                    <input type="checkbox" checked id="descubreEShowSolution">${_('Show solutions')}.
-                                </label>
-                            </p>
-                            <p>
-                                <label for="descubreEHasFeedBack">
-                                    <input type="checkbox" id="descubreEHasFeedBack">${_('Feedback')}.
-                                </label>
-                                <label for="descubreEPercentajeFB"></label>
-                                <input type="number" name="descubreEPercentajeFB" id="descubreEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                            </p>
-                            <p id="descubreEFeedbackP" class="Descubre-EFeedbackP">
-                                <textarea id="descubreEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </p>
-                            <p>
-                                <label for="descubreEPercentajeQuestions">
-                                    % ${_('Questions')}:
-                                    <input type="number" name="descubreEPercentajeQuestions" id="descubreEPercentajeQuestions" value="100" min="1" max="100" />
-                                    <span id="descubreENumeroPercentaje">1/1</span>
-                                </label>
-                            </p>
-                            <p>
-                                <label for="descubreEAuthor">${_('Authorship')}: </label>
-                                <input id="descubreEAuthor" type="text" />
-                            </p>
+                            <div class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="descubreEShowMinimize" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="descubreEShowMinimize">${_('Show minimized.')}</label>
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <span class="me-2">${_('Type')}:</span>
+                                <div class="form-check form-check-inline m-0">                               
+                                    <input class="Descubre-GameMode form-check-input" checked id="descubreGame2" type="radio" name="qtxgamemode" value="0" />
+                                    <label for="descubreGame2" class="form-check-label me-2">${_('Pairs')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0"> 
+                                    <input class="Descubre-GameMode form-check-input" id="descubreGame3" type="radio" name="qtxgamemode" value="1" />
+                                    <label for="descubreGame3" class="form-check-label me-2">${_('Trios')}</label>
+                                 </div>
+                                <div class="form-check form-check-inline m-0"> 
+                                    <input class="Descubre-GameMode form-check-input" id="descubreGame4" type="radio" name="qtxgamemode" value="2" />
+                                    <label for="descubreGame4" class="form-check-label">${_('Quartets')}</label>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <span class="me-2">${_('Difficulty levels')}:</span>
+                                <div class="form-check form-check-inline m-0"> 
+                                    <input class="Descubre-GameLevel form-check-input" checked id="descubreL1" type="radio" name="qtxgamelevels" value="1" />1
+                                    <label for="descubreL1" class="form-check-label me-2"></label>
+                                </div>
+                                <div class="form-check form-check-inline m-0"> 
+                                    <input class="Descubre-GameLevel form-check-input" id="descubreL2" type="radio" name="qtxgamelevels" value="2" />
+                                    <label for="descubreL2" class="form-check-label me-2">2</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0"> 
+                                    <input class="Descubre-GameLevel form-check-input" id="descubreL3" type="radio" name="qtxgamelevels" value="3" />
+                                    <label for="descubreL3" class="form-check-label">3</label>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="descubreEShowCards" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="descubreEShowCards">${_('Visible cards')}.</label>
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="descubreETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
+                                <input type="number" name="descubreETimeShowSolution" id="descubreETimeShowSolution" value="3" min="1" max="999" class="form-control" style="width:6ch" />
+                            </div>
+                            <div class="mb-2">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="descubreECustomMessages" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="descubreECustomMessages">${_('Custom messages')}.</label>
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="descubreETime" class="mb-0">${_('Time (minutes)')}:</label>
+                                <input type="number" name="descubreETime" id="descubreETime" value="0" min="0" max="120" step="1" class="form-control" style="width:6ch" />
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="descubreEAttempts" class="mb-0">${_('Number of attempts')}:</label>
+                                <input type="number" name="descubreEAttempts" id="descubreEAttempts" value="0" min="0" max="100" step="1" class="form-control" style="width:6ch" />
+                            </div>
+                            <div class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="true">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" checked id="descubreEShowSolution" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="descubreEShowSolution">${_('Show solutions')}.</label>
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="descubreEHasFeedBack" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="descubreEHasFeedBack">${_('Feedback')}.</label>
+                                </span>
+                                <label for="descubreEPercentajeFB" class="ms-2 mb-0"><input type="number" name="descubreEPercentajeFB" id="descubreEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" /></label>
+                            </div>
+                            <div id="descubreEFeedbackP" class="Descubre-EFeedbackP">
+                                <textarea id="descubreEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="descubreEPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
+                                <input type="number" name="descubreEPercentajeQuestions" id="descubreEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                                <span id="descubreENumeroPercentaje">1/1</span>
+                            </div>
+                            <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="descubreEAuthor" class="mb-0">${_('Authorship')}:</label>
+                                <input id="descubreEAuthor" type="text" class="form-control" />
+                            </div>
                             <div id="descubreEBackDiv">
-                                <p class="Descubre-EInputImageBack">
+                                <p class="Descubre-EInputImageBack gap-2">
                                     <label for="descubreEURLImgCard">${_('Image back')}: </label>
-                                    <input type="text" class="exe-file-picker Descubre-EURLImage" id="descubreEURLImgCard"/>
-                                    <a href="#" id="descubreEPlayCard" class="descubreE-ENavigationButton" title="${_('Show')}">
-                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="Descubre-EButtonImage b-play" />
+                                    <input type="text" class="exe-file-picker Descubre-EURLImage form-control me-0" id="descubreEURLImgCard"/>
+                                    <a href="#" id="descubreEPlayCard" class="Descubre-ENavigationButton" title="${_('Show')}">
+                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="Descubre-EButtonImage " />
                                     </a>
                                 </p>
                                 <p id="descubreEbackground" class="Descubre-Back">
@@ -247,18 +273,26 @@ var $exeDevice = {
                                     <img class="Descubre-EImageBack" src="${path}dcbHome.png" id="descubreENoCard" alt="${_('No image')}" />
                                 </p>
                             </div>   
-                           <p class="Games-Reportdiv">
+                           <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="descubreEEvaluation" class="toggle-input" data-target="#descubreEEvaluationIDWrapper" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label" for="descubreEEvaluation">${_('Progress report')}.</label>
+                                </span>
+                                <span id="descubreEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap">
+                                   <label for="descubreEEvaluationID" class="mb-0">${_('Identifier')}:</label><input type="text" id="descubreEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}" />
+                                </span>
                                 <strong class="GameModeLabel">
                                     <a href="#descubreEEvaluationHelp" id="descubreEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" />
+                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
                                     </a>
-                                </strong>                               
-                                <input type="checkbox" id="descubreEEvaluation"> <label for="descubreEEvaluation">${_('Progress report')}. </label>
-                                <label for="descubreEEvaluationID">${_('Identifier')}:</label><input type="text" id="descubreEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                            </p>
-                            <div id="descubreEEvaluationHelp" class="Descubre-TypeGameHelp">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                                </strong>
                             </div>
+                            <p id="descubreEEvaluationHelp" class="Descubre-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -276,7 +310,7 @@ var $exeDevice = {
                                         <input type="text" id="descubreEMessageOK" />
                                     </div>
                                 </div>
-                                <div class="Descubre-ENavigationButtons">
+                                <div class="Descubre-ENavigationButtons gap-2">
                                     <a href="#" id="descubreEAdd" class="Descubre-ENavigationButton" title="${_('Add question')}">
                                         <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="Descubre-EButtonImage b-add" />
                                     </a>
@@ -331,18 +365,24 @@ var $exeDevice = {
         for (let i = 0; i < num; i++) {
             const card = `
             <div class="Descubre-DatosCarta" id="descubreEDatosCarta-${i}">
-               <p class="Descubre-ECardHeader" style="display:none">
+               <div class="Descubre-ECardHeader mb-3" style="display:none">
                    <span>
-                      <span>Tipo:</span>
-                       <input class="Descubre-Type-${i}" checked id="descubreEMediaImage-${i}" type="radio" name="qxtmediatype-${i}" value="0" />
-                       <label for="descubreEMediaImage-${i}">${_('Image')}</label>
-                       <input class="Descubre-Type-${i}" id="descubreEMediaText-${i}" type="radio" name="qxtmediatype-${i}" value="1" />
-                       <label for="descubreEMediaText-${i}">${_('Text')}</label>
-                       <input class="Descubre-Type-${i}" id="descubreEMediaBoth-${i}" type="radio" name="qxtmediatype-${i}" value="2" />
-                       <label for="descubreEMediaBoth-${i}">${_('Both')}</label>
+                        <span>Tipo:</span>
+                        <div class="form-check form-check-inline m-0"> 
+                            <input class="Descubre-Type-${i} form-check-input" checked id="descubreEMediaImage-${i}" type="radio" name="qxtmediatype-${i}" value="0" />
+                            <label for="descubreEMediaImage-${i}">${_('Image')}</label>
+                       </div>
+                        <div class="form-check form-check-inline m-0"> 
+                            <input class="Descubre-Type-${i} form-check-input" id="descubreEMediaText-${i}" type="radio" name="qxtmediatype-${i}" value="1" />
+                            <label for="descubreEMediaText-${i}">${_('Text')}</label>
+                       </div>
+                        <div class="form-check form-check-inline m-0"> 
+                            <input class="Descubre-Type-${i} form-check-input" id="descubreEMediaBoth-${i}" type="radio" name="qxtmediatype-${i}" value="2" />
+                            <label for="descubreEMediaBoth-${i}">${_('Both')}</label>
+                       </div>
                     </span>
-               </p>
-               <div class="Descubre-EMultimedia" id="descubreEMultimedia-${i}">
+               </div>
+               <div class="Descubre-EMultimedia mb-3" id="descubreEMultimedia-${i}">
                     <div class="Descubre-Card">
                         <img class="Descubre-Hide Descubre-Image" src="${path}quextIEImage.png" id="descubreEImage-${i}" alt="${_('No image')}" />
                         <img class="Descubre-ECursor" src="${path}quextIECursor.gif" id="descubreECursor-${i}" alt="" />
@@ -351,37 +391,37 @@ var $exeDevice = {
                     </div>
                 </div>
                <span class="Descubre-ETitleText" id="descubreETitleText-${i}">${_('Text')}</span>
-               <div class="Descubre-EInputImage" id="descubreEInputText-${i}">
-                    <label for="descubreEText-${i}" class="sr-av">${_('Text')}</label><input id="descubreEText-${i}" type="text" />
-                    <label for="descubreEColor-${i}">${_('Color')}: </label><input type="color" id="descubreEColor-${i}" name="descubreEColor-${i}" value="#000000">
-                    <label for="descubreEBackColor-${i}">${_('Background')}: </label><input type="color" id="descubreEBackColor-${i}" name="descubreEBackColor-${i}" value="#ffffff">
+               <div class="Descubre-EInputImage  mb-3" id="descubreEInputText-${i}">
+                        <label for="descubreEText-${i}" class="sr-av">${_('Text')}</label><input id="descubreEText-${i}" type="text" class="form-control" />
+                        <label for="descubreEColor-${i}">${_('Color')}: </label><input type="color" id="descubreEColor-${i}" class="form-control form-control-color" name="descubreEColor-${i}" value="#000000">
+                        <label for="descubreEBackColor-${i}">${_('Background')}: </label><input type="color" id="descubreEBackColor-${i}" class="form-control form-control-color" name="descubreEBackColor-${i}" value="#ffffff">
                 </div>
                <span class="Descubre-ETitleImage" id="descubreETitleImage-${i}">${_('Image')}</span>
-               <div class="Descubre-EInputImage" id="descubreEInputImage-${i}">
+               <div class="Descubre-EInputImage mb-3 gap-2" id="descubreEInputImage-${i}">
                    <label class="sr-av" for="descubreEURLImage-${i}">URL</label>
-                   <input type="text" class="exe-file-picker Descubre-EURLImage" id="descubreEURLImage-${i}" />
-                   <a href="#" id="descubreEPlayImage-${i}" class="Descubre-ENavigationButton Descubre-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="Descubre-EButtonImage b-play" /></a>
-                   <a href="#" id="descubreShowAlt-${i}" class="Descubre-ENavigationButton Descubre-EPlayVideo" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="Descubre-EButtonImage b-play" /></a>
+                       <input type="text" class="exe-file-picker Descubre-EURLImage form-control me-0" id="descubreEURLImage-${i}" />
+                   <a href="#" id="descubreEPlayImage-${i}" class="Descubre-ENavigationButton Descubre-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="Descubre-EButtonImage " /></a>
+                   <a href="#" id="descubreShowAlt-${i}" class="Descubre-ENavigationButton Descubre-EPlayVideo" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="Descubre-EButtonImage " /></a>
                </div>
                <div class="Descubre-ECoord">
                        <label for="descubreEXImage-${i}">X:</label>
-                       <input id="descubreEXImage-${i}" type="text" value="0" />
+                           <input id="descubreEXImage-${i}" type="text" value="0" class="form-control" />
                        <label for="descubreEXImage-${i}">Y:</label>
-                       <input id="descubreEYImage-${i}" type="text" value="0" />
+                           <input id="descubreEYImage-${i}" type="text" value="0" class="form-control" />
                </div>
-               <div class="Descubre-EAuthorAlt" id="descubreEAuthorAlt-${i}">
+               <div class="Descubre-EAuthorAlt  mb-3" id="descubreEAuthorAlt-${i}">
                    <div class="Descubre-EInputAuthor" id="descubreEInputAuthor-${i}">
-                       <label for="descubreEAuthor-${i}">${_('Authorship')}</label><input id="descubreEAuthor-${i}" type="text" />
+                           <label for="descubreEAuthor-${i}">${_('Authorship')}</label><input id="descubreEAuthor-${i}" type="text" class="form-control" />
                    </div>
                    <div class="Descubre-EInputAlt" id="descubreEInputAlt-${i}">
-                       <label for="descubreEAlt-${i}">${_('Alternative text')}</label><input id="descubreEAlt-${i}" type="text" />
+                           <label for="descubreEAlt-${i}">${_('Alternative text')}</label><input id="descubreEAlt-${i}" type="text" class="form-control" />
                    </div>
                </div>
                <span id="descubreETitleAudio-${i}">${_('Audio')}</span>
-               <div class="Descubre-EInputAudio" id="descubreEInputAudio-${i}">
+               <div class="Descubre-EInputAudio gap-2" id="descubreEInputAudio-${i}">
                    <label class="sr-av" for="descubreEURLAudio-${i}">URL</label>
-                   <input type="text" class="exe-file-picker Descubre-EURLAudio" id="descubreEURLAudio-${i}" />
-                   <a href="#" id="descubreEPlayAudio-${i}" class="Descubre-ENavigationButton Descubre-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="Descubre-EButtonImage b-play" /></a>
+                       <input type="text" class="exe-file-picker Descubre-EURLAudio form-control me-0" id="descubreEURLAudio-${i}" />
+                   <a href="#" id="descubreEPlayAudio-${i}" class="Descubre-ENavigationButton Descubre-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="Descubre-EButtonImage " /></a>
                </div>
            </div>`;
             cards += card;
@@ -760,8 +800,8 @@ var $exeDevice = {
             imgCard = '';
         }
 
-    let html = '<div class="descubre-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="descubre-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="descubre-feedback-game">' + textFeedBack + '</div>';
         html += divContent;
@@ -1130,6 +1170,22 @@ var $exeDevice = {
     },
 
     addEvents: function () {
+        // Inicializar toggles (ARIA + data-target)
+        const initToggle = function ($input) {
+            const checked = $input.is(':checked');
+            $input.closest('.toggle-item[role="switch"]').attr('aria-checked', checked);
+            const targetSel = $input.data('target');
+            if (targetSel) {
+                const $target = $(targetSel);
+                if (checked) {
+                    $target.css('display', 'flex');
+                } else {
+                    $target.hide();
+                }
+            }
+        };
+        $('.toggle-input').each(function(){ initToggle($(this)); });
+        $(document).on('change', '.toggle-input', function(){ initToggle($(this)); });
         $('#descubreEPaste').hide();
         $('input.Descubre-GameMode').on('click', function () {
             $('#descubreEDatosCarta-2').hide();
