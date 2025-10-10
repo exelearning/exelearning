@@ -943,10 +943,10 @@ export default class IdevicesEngine {
                         ideviceData,
                         this.nodeContentElement
                     );
-                    // Send operation log action to bbdd
+                    // Send operation log action to db: source = new iDevice id, destination = its block
                     let additionalData = {};
                     eXeLearning.app.project.sendOdeOperationLog(
-                        null,
+                        ideviceNode.odeIdeviceId,
                         ideviceNode.blockId,
                         'ADD_IDEVICE',
                         additionalData

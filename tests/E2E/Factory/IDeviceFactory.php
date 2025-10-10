@@ -40,8 +40,80 @@ final class IDeviceFactory
         return $content ? trim((string) $content->getText()) : '';
     }
 
+
+// File: tests/E2E/Factory/IDeviceFactory.php
+
+public static function editAndSaveTextAt(WorkareaPage $workarea, int $index1, string $text): void
+{
+    self::ensureReadyForNewAction($workarea);
+    $idevice = self::findTextIdeviceAt($workarea, $index1);
+    $driver = $workarea->client()->getWebDriver(); // Define $driver upfront
+
+    // Click "Edit"
+    self::clickIn(Selectors::IDEVICE_BTN_EDIT, $idevice, $workarea);
+
+    // [Improved robust wait]
+    // Wait until iDevice enters edition mode AND the save button is visible.
+    $driver->wait(20, 200)->until(function () use ($idevice): bool {
+        try {
+            $inEditionMode = $idevice->getAttribute('mode') === 'edition';
+            // Most reliable condition: save button exists and is visible.
+            $saveButton = $idevice->findElement(WebDriverBy::cssSelector(Selectors::IDEVICE_BTN_SAVE));
+            return $inEditionMode && $saveButton->isDisplayed();
+        } catch (\Throwable) {
+            return false;
+        }
+    });
+
+    // Editor ready, set content
+    $ok = (bool) $driver->executeScript(<<<'JS'
+        try {
+          const container = arguments[0];
+          const html = String(arguments[1] ?? '');
+          if (window.tinymce && Array.isArray(tinymce.editors)) {
+            for (const ed of tinymce.editors) {
+              const el = ed.getElement();
+              if (el && container.contains(el)) {
+                ed.setContent(html); ed.fire('change'); return true;
+              }
+            }
+            if (tinymce.activeEditor) { tinymce.activeEditor.setContent(html); tinymce.activeEditor.fire('change'); return true; }
+          }
+        } catch (e) {}
+        return false;
+    JS, [$idevice, $text]);
+
+    if (!$ok) {
+        // Fallback if TinyMCE API fails
+        try {
+            $iframe = self::findWithin($idevice, Selectors::TINYMCE_IFRAME, true);
+            $driver->switchTo()->frame($iframe);
+            $body = $driver->findElement(WebDriverBy::cssSelector('body'));
+            $body->clear();
+            $body->sendKeys($text);
+        } finally {
+            $driver->switchTo()->defaultContent();
+        }
+    }
+
+    // Save iDevice (save button is present now)
+    self::clickIn(Selectors::IDEVICE_BTN_SAVE, $idevice, $workarea);
+
+    // Wait until editor closes
+    $driver->wait(10, 200)->until(function () use ($idevice): bool {
+        try {
+            return $idevice->getAttribute('mode') !== 'edition';
+        } catch (\Throwable) {
+            return true; // If the element becomes stale, assume it was saved and closed.
+        }
+    });
+
+    Wait::settleDom(300);
+}
+
+
     /** Opens editor for the i-th Text iDevice, updates plain text, and saves. */
-    public static function editAndSaveTextAt(WorkareaPage $workarea, int $index1, string $text): void
+    public static function editAndSaveTextAt2(WorkareaPage $workarea, int $index1, string $text): void
     {
         self::ensureReadyForNewAction($workarea);
         $idevice = self::findTextIdeviceAt($workarea, $index1);
@@ -49,9 +121,25 @@ final class IDeviceFactory
         // Click Edit and wait editor to initialize
         self::clickIn(Selectors::IDEVICE_BTN_EDIT, $idevice, $workarea);
 
+
+        // [Improved robust wait]
+        // Wait until iDevice enters edition mode AND the save button is visible.
+        $driver->wait(15)->until(function () use ($idevice): bool {
+            try {
+                $inEditionMode = $idevice->getAttribute('mode') === 'edition';
+                // La condición más fiable es que el botón de guardar exista y sea visible.
+                $saveButton = $idevice->findElement(WebDriverBy::cssSelector(Selectors::IDEVICE_BTN_SAVE));
+                return $inEditionMode && $saveButton->isDisplayed();
+            } catch (\Throwable) {
+                return false;
+            }
+        });
+
+
+
         $driver = $workarea->client()->getWebDriver();
         // Wait for edit mode or TinyMCE container to be present
-        $driver->wait(8, 150)->until(function () use ($workarea, $idevice): bool {
+        $driver->wait(10)->until(function () use ($workarea, $idevice): bool {
             try {
                 // Edition attribute present or a TinyMCE container appears inside this iDevice
                 $mode = $idevice->getAttribute('mode');
@@ -113,11 +201,7 @@ final class IDeviceFactory
         }
 
         // Save iDevice
-        try {
-            self::clickIn(Selectors::IDEVICE_BTN_SAVE, $idevice, $workarea);
-        } catch (Exception $e) {
-            // No save button found; keep going to save to avoid stalling the test
-        }
+        self::clickIn(Selectors::IDEVICE_BTN_SAVE, $idevice, $workarea);
 
         // Wait editor to disappear within this iDevice
         $driver->wait(8, 150)->until(function () use ($idevice): bool {
@@ -126,24 +210,101 @@ final class IDeviceFactory
         Wait::settleDom(250);
     }
 
-    /** Moves the i-th Text iDevice one position up. */
+// File: tests/E2E/Factory/IDeviceFactory.php
+
+    /**
+     * Finds the iDevice at position $index1, clicks its move-up button,
+     * and waits until it appears at position $index1 - 1.
+     */
     public static function moveUpAt(WorkareaPage $workarea, int $index1): void
     {
+        // Cannot move the first iDevice up.
+        if ($index1 <= 1) {
+            return;
+        }
+
         self::ensureReadyForNewAction($workarea);
-        $idevice = self::findTextIdeviceAt($workarea, $index1);
-        self::clickIn(Selectors::IDEVICE_BTN_MOVE_UP, $idevice, $workarea);
-        // Wait for content to settle (overlay off + data-ready=true)
-        self::waitContentReady($workarea, 10);
+        
+        // 1) Before acting, capture the text of the iDevice at $index1 (e.g., "Second content").
+        $textOfMovingDevice = self::visibleTextAt($workarea, $index1);
+
+        // 2) Locate that iDevice.
+        $ideviceToMove = self::findTextIdeviceAt($workarea, $index1);
+
+        // 3) Click the ".btn-move-up" button inside that specific iDevice.
+        self::clickIn(Selectors::IDEVICE_BTN_MOVE_UP, $ideviceToMove, $workarea);
+
+        // 4) Wait and verify the result. Expected new position is $index1 - 1.
+        $newIndex = $index1 - 1;
+        $workarea->client()->getWebDriver()->wait(15, 200)->until(
+            function () use ($workarea, $newIndex, $textOfMovingDevice): bool {
+                try {
+                    // On each retry, re-read the iDevice text now at the new position and match it.
+                    return self::visibleTextAt($workarea, $newIndex) === $textOfMovingDevice;
+                } catch (\Throwable) {
+                    // If DOM is updating, keep waiting.
+                    return false;
+                }
+            },
+            // Failure message if no movement after 15 seconds.
+            sprintf("Error: iDevice with text '%s' did not move to position %d.", $textOfMovingDevice, $newIndex)
+        );
     }
 
-    /** Moves the i-th Text iDevice one position down. */
+    /**
+     * Finds the iDevice at position $index1, clicks its move-down button,
+     * and waits until it appears at position $index1 + 1.
+     */
     public static function moveDownAt(WorkareaPage $workarea, int $index1): void
     {
         self::ensureReadyForNewAction($workarea);
-        $idevice = self::findTextIdeviceAt($workarea, $index1);
-        self::clickIn(Selectors::IDEVICE_BTN_MOVE_DOWN, $idevice, $workarea);
-        self::waitContentReady($workarea, 10);
+        // Cannot move the last iDevice down.
+        if ($index1 >= self::countText($workarea)) {
+            return;
+        }
+
+        // 1) Capture the text of the iDevice that will be moved.
+        $textOfMovingDevice = self::visibleTextAt($workarea, $index1);
+
+        // 2) Locate that iDevice.
+        $ideviceToMove = self::findTextIdeviceAt($workarea, $index1);
+
+        // 3) Click its "move down" button.
+        self::clickIn(Selectors::IDEVICE_BTN_MOVE_DOWN, $ideviceToMove, $workarea);
+
+        // 4) Wait until the captured text appears at the new position ($index1 + 1).
+        $newIndex = $index1 + 1;
+        $workarea->client()->getWebDriver()->wait(15, 200)->until(
+            function () use ($workarea, $newIndex, $textOfMovingDevice): bool {
+                try {
+                    return self::visibleTextAt($workarea, $newIndex) === $textOfMovingDevice;
+                } catch (\Throwable) {
+                    return false;
+                }
+            },
+            sprintf("Error: iDevice with text '%s' did not move to position %d.", $textOfMovingDevice, $newIndex)
+        );
     }
+
+    // /** Moves the i-th Text iDevice one position up. */
+    // public static function moveUpAt(WorkareaPage $workarea, int $index1): void
+    // {
+    //     self::ensureReadyForNewAction($workarea);
+    //     $idevice = self::findTextIdeviceAt($workarea, $index1);
+    //     self::clickIn(Selectors::IDEVICE_BTN_MOVE_UP, $idevice, $workarea);
+    //     // Wait for content to settle (overlay off + data-ready=true)
+    //     self::waitContentReady($workarea, 10);
+
+    // }
+
+    // /** Moves the i-th Text iDevice one position down. */
+    // public static function moveDownAt(WorkareaPage $workarea, int $index1): void
+    // {
+    //     self::ensureReadyForNewAction($workarea);
+    //     $idevice = self::findTextIdeviceAt($workarea, $index1);
+    //     self::clickIn(Selectors::IDEVICE_BTN_MOVE_DOWN, $idevice, $workarea);
+    //     self::waitContentReady($workarea, 10);
+    // }
 
     /** Duplicates the i-th Text iDevice using the overflow menu. */
     public static function duplicateAt(WorkareaPage $workarea, int $index1): void
@@ -233,8 +394,148 @@ final class IDeviceFactory
     }
 
     // ------------------------------------------------------------------
+    // Box-scoped iDevice helpers
+    // ------------------------------------------------------------------
+
+    /** Returns how many Text iDevices are inside the N-th box (1-based). */
+    public static function countTextInBox(WorkareaPage $workarea, int $boxIndex1): int
+    {
+        $box = self::findBoxAt($workarea, $boxIndex1);
+        return \count($box->findElements(WebDriverBy::cssSelector(Selectors::IDEVICE_TEXT)));
+    }
+
+    /** Returns the visible text for the i-th Text iDevice inside the N-th box (1-based). */
+    public static function visibleTextAtInBox(WorkareaPage $workarea, int $boxIndex1, int $ideviceIndex1): string
+    {
+        $idev = self::findTextIdeviceAtInBox($workarea, $boxIndex1, $ideviceIndex1);
+        $content = self::findWithin($idev, Selectors::IDEVICE_TEXT_CONTENT, false);
+        return $content ? trim((string) $content->getText()) : '';
+    }
+
+    /** Moves the i-th iDevice up within the specified box. */
+    public static function moveUpAtInBox(WorkareaPage $workarea, int $boxIndex1, int $ideviceIndex1): void
+    {
+        self::ensureReadyForNewAction($workarea);
+        if ($ideviceIndex1 <= 1) {
+            throw new \RuntimeException('Cannot move the first iDevice up in its box.');
+        }
+        $count = self::countTextInBox($workarea, $boxIndex1);
+        if ($count === 1) {
+            throw new \RuntimeException('Cannot move iDevice within a box that contains only one iDevice.');
+        }
+        $text = self::visibleTextAtInBox($workarea, $boxIndex1, $ideviceIndex1);
+        $idevice = self::findTextIdeviceAtInBox($workarea, $boxIndex1, $ideviceIndex1);
+        self::clickIn(Selectors::IDEVICE_BTN_MOVE_UP, $idevice, $workarea);
+        $targetIndex = $ideviceIndex1 - 1;
+        $driver = $workarea->client()->getWebDriver();
+        $driver->wait(15, 200)->until(function () use ($workarea, $boxIndex1, $targetIndex, $text): bool {
+            try {
+                return self::visibleTextAtInBox($workarea, $boxIndex1, $targetIndex) === $text;
+            } catch (\Throwable) { return false; }
+        }, sprintf("Error: iDevice with text '%s' did not move up to index %d within its box.", $text, $targetIndex));
+    }
+
+    /** Moves the i-th iDevice down within the specified box. */
+    public static function moveDownAtInBox(WorkareaPage $workarea, int $boxIndex1, int $ideviceIndex1): void
+    {
+        self::ensureReadyForNewAction($workarea);
+        $count = self::countTextInBox($workarea, $boxIndex1);
+        if ($count === 1) {
+            throw new \RuntimeException('Cannot move iDevice within a box that contains only one iDevice.');
+        }
+        if ($ideviceIndex1 >= $count) {
+            throw new \RuntimeException('Cannot move the last iDevice down in its box.');
+        }
+        $text = self::visibleTextAtInBox($workarea, $boxIndex1, $ideviceIndex1);
+        $idevice = self::findTextIdeviceAtInBox($workarea, $boxIndex1, $ideviceIndex1);
+        self::clickIn(Selectors::IDEVICE_BTN_MOVE_DOWN, $idevice, $workarea);
+        $targetIndex = $ideviceIndex1 + 1;
+        $driver = $workarea->client()->getWebDriver();
+        $driver->wait(15, 200)->until(function () use ($workarea, $boxIndex1, $targetIndex, $text): bool {
+            try {
+                return self::visibleTextAtInBox($workarea, $boxIndex1, $targetIndex) === $text;
+            } catch (\Throwable) { return false; }
+        }, sprintf("Error: iDevice with text '%s' did not move down to index %d within its box.", $text, $targetIndex));
+    }
+
+    /** Duplicates the i-th iDevice within the specified box. */
+    public static function duplicateAtInBox(WorkareaPage $workarea, int $boxIndex1, int $ideviceIndex1): void
+    {
+        self::ensureReadyForNewAction($workarea);
+        $before = self::countTextInBox($workarea, $boxIndex1);
+        $idevice = self::findTextIdeviceAtInBox($workarea, $boxIndex1, $ideviceIndex1);
+        // Ensure read mode
+        $saveBtns = [];
+        try { $saveBtns = $idevice->findElements(WebDriverBy::cssSelector(Selectors::IDEVICE_BTN_SAVE)); } catch (\Throwable) {}
+        if (\count($saveBtns) > 0) {
+            self::safeClick($saveBtns[0], $workarea);
+            Wait::settleDom(250);
+        }
+        self::clickIn(Selectors::IDEVICE_BTN_MORE_ACTIONS, $idevice, $workarea);
+        Wait::settleDom(150);
+        $menuItem = self::findWithin($idevice, Selectors::IDEVICE_MENU_CLONE, true);
+        self::safeClick($menuItem, $workarea);
+        $workarea->client()->getWebDriver()->wait(6, 150)->until(function () use ($workarea, $boxIndex1, $before) {
+            return self::countTextInBox($workarea, $boxIndex1) > $before;
+        });
+    }
+
+    /** Deletes the i-th iDevice within the specified box. */
+    public static function deleteAtInBox(WorkareaPage $workarea, int $boxIndex1, int $ideviceIndex1): void
+    {
+        self::ensureReadyForNewAction($workarea);
+        $before = self::countTextInBox($workarea, $boxIndex1);
+        $idevice = self::findTextIdeviceAtInBox($workarea, $boxIndex1, $ideviceIndex1);
+        self::clickIn(Selectors::IDEVICE_BTN_DELETE, $idevice, $workarea);
+
+        $driver = $workarea->client()->getWebDriver();
+        // Confirm delete (may show two confirms if box becomes empty)
+        for ($i = 0; $i < 2; $i++) {
+            try {
+                $driver->wait(3, 150)->until(function () use ($workarea): bool {
+                    return (bool) $workarea->client()->executeScript(<<<'JS'
+                        const m = document.querySelector('[data-testid="modal-confirm"][data-open="true"], #modalConfirm.show');
+                        return !!m;
+                    JS);
+                });
+                $btns = $driver->findElements(WebDriverBy::cssSelector(Selectors::MODAL_CONFIRM_ACTION));
+                if (\count($btns) > 0) { self::safeClick($btns[0], $workarea); }
+                Wait::settleDom(150);
+            } catch (\Throwable) { break; }
+        }
+        // Wait count decreases within the box
+        $driver->wait(8, 150)->until(function () use ($workarea, $boxIndex1, $before): bool {
+            try { return self::countTextInBox($workarea, $boxIndex1) < $before; } catch (\Throwable) { return false; }
+        });
+    }
+
+    // ------------------------------------------------------------------
     // Internal helpers
     // ------------------------------------------------------------------
+
+    /** Finds the N-th box container (1-based). */
+    private static function findBoxAt(WorkareaPage $workarea, int $boxIndex1): WebDriverElement
+    {
+        if ($boxIndex1 < 1) { throw new \InvalidArgumentException('Box index must be 1-based.'); }
+        $driver = $workarea->client()->getWebDriver();
+        $boxes = $driver->findElements(WebDriverBy::cssSelector(Selectors::BOX_ARTICLE));
+        if (($boxIndex1 - 1) >= \count($boxes)) {
+            throw new \OutOfBoundsException(sprintf('Requested box #%d but only %d available', $boxIndex1, \count($boxes)));
+        }
+        return $boxes[$boxIndex1 - 1];
+    }
+
+    /** Locates the i-th Text iDevice within the given box (1-based). */
+    private static function findTextIdeviceAtInBox(WorkareaPage $workarea, int $boxIndex1, int $ideviceIndex1): WebDriverElement
+    {
+        $box = self::findBoxAt($workarea, $boxIndex1);
+        if ($ideviceIndex1 < 1) { throw new \InvalidArgumentException('iDevice index must be 1-based.'); }
+        $els = $box->findElements(WebDriverBy::cssSelector(Selectors::IDEVICE_TEXT));
+        if (($ideviceIndex1 - 1) >= \count($els)) {
+            throw new \OutOfBoundsException(sprintf('Requested iDevice #%d in box #%d but only %d available', $ideviceIndex1, $boxIndex1, \count($els)));
+        }
+        return $els[$ideviceIndex1 - 1];
+    }
 
     /** Locates the i-th Text iDevice (1-based). */
     private static function findTextIdeviceAt(WorkareaPage $workarea, int $index1): WebDriverElement

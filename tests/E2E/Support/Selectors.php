@@ -30,6 +30,15 @@ final class Selectors
     // Box and iDevice containers
     public const BOX_ARTICLE      = 'article.box';
     public const BOX_TITLE        = 'article.box > header .box-title';
+    public const BOX_HEADER       = 'article.box > header';
+    public const BOX_BTN_MOVE_UP  = 'header .btn-move-up';
+    public const BOX_BTN_MOVE_DOWN= 'header .btn-move-down';
+    public const BOX_BTN_MORE     = 'header button[id^="dropdownMenuButton"]';
+    public const BOX_MENU_PROPERTIES = 'button[id^="dropdownBlockMore-button-properties"]';
+    public const BOX_MENU_CLONE      = 'button[id^="dropdownBlockMore-button-clone"]';
+    public const BOX_MENU_MOVE       = 'button[id^="dropdownBlockMore-button-move"]';
+    public const BOX_MENU_EXPORT     = 'button[id^="dropdownBlockMore-button-export"]';
+    public const BOX_MENU_DELETE     = 'button[id^="deleteBlock"]';
     public const IDEVICE_NODE     = '.idevice_node';
     public const IDEVICE_TEXT     = '.idevice_node.text';
     public const IDEVICE_NODE_EDITING = '.idevice_node[mode="edition"]';
@@ -53,6 +62,8 @@ final class Selectors
     // Generic modal alert used when an iDevice is already being edited
     public const MODAL_ALERT            = '.modal-alert, .modal.modal-alert.show, .modal-dialog.modal-alert';
     public const MODAL_ALERT_CLOSE_BTN  = '.modal-alert .modal-footer .btn, .modal-alert .close, .modal-dialog.modal-alert .close';
+    public const MODAL_CONFIRM_VISIBLE  = '[data-testid="modal-confirm"][data-open="true"], #modalConfirm.show, #modalConfirm[aria-hidden="false"]';
+    public const MODAL_CONFIRM_ACTION   = '[data-testid="confirm-action"], #modalConfirm .confirm, #modalConfirm .btn.btn-primary';
 
     // iDevices menu (left sidebar/panel)
     public const IDEVICES_MENU          = '#menu_idevices';

@@ -285,13 +285,13 @@ final class WorkareaPage
         $this->selectNode(Node::createRoot($this));
     }
 
-// En el archivo: tests/E2E/PageObject/WorkareaPage.php
+// File: tests/E2E/PageObject/WorkareaPage.php
 
 public function createNewNode(Node $parentNode, string $nodeTitle): Node
 {
     $c = $this->client;
     
-    // 1. Asegurarse de que la UI está estable antes de empezar
+    // 1) Ensure the UI is stable before starting
     $this->waitUiQuiescent(15);
     if ($parentNode->isRoot()) {
         $this->openProjectSettings();
@@ -299,13 +299,13 @@ public function createNewNode(Node $parentNode, string $nodeTitle): Node
         $this->selectNode($parentNode);
     }
 
-    // 2. Abrir el diálogo para añadir una nueva página
+    // 2) Open the dialog to add a new page
     $this->clickFirstMatchingSelector([
         '[data-testid="nav-add-page"]',
         '#menu_nav .action_add',
     ]);
 
-    // 3. Esperar a que el modal sea visible y rellenar el título
+    // 3) Wait for the modal to be visible and fill the title
     $this->waitUntil(fn () => (bool) $c->executeScript(<<<'JS'
         const m=document.querySelector('[data-testid="modal-confirm"], #modalConfirm');
         if(!m) return false; const s=getComputedStyle(m);
@@ -316,25 +316,25 @@ public function createNewNode(Node $parentNode, string $nodeTitle): Node
     $input->clear();
     $input->sendKeys($nodeTitle);
 
-    // 4. Confirmar la creación
+    // 4) Confirm creation
     $this->clickFirstMatchingSelector([
         '[data-testid="confirm-action"]',
         '#modalConfirm .modal-footer .confirm',
     ]);
 
-    // 5. [ESPERA ROBUSTA 1] Esperar hasta que el nodo aparezca en el árbol de navegación.
-    // Esta es la espera más importante. Solo verificamos su existencia.
+    // 5) [ROBUST WAIT 1] Wait until the node appears in the navigation tree.
+    // This is the most important wait. Only verify its existence.
     $this->waitUntil(function () use ($c, $nodeTitle) {
         return $this->findNodeIdByTitle($nodeTitle) !== null;
     }, 30);
 
-    // 6. Ahora que sabemos que existe, lo seleccionamos explícitamente.
-    // Usamos el método `selectNode` que ya es robusto.
+    // 6) Now that we know it exists, explicitly select it.
+    // Use the existing robust `selectNode` method.
     $newNode = new Node($nodeTitle, $this);
     $this->selectNode($newNode);
     
     // 7. [ESPERA ROBUSTA 2] `selectNode` ya contiene `waitNodeContentReady`, 
-    // así que tenemos la garantía de que la UI está completamente sincronizada.
+    // so we are guaranteed the UI is fully synchronized.
 
     // 8. Recuperar el ID asignado para devolver un objeto Node completo.
     $id = $this->findNodeIdByTitle($nodeTitle);
@@ -539,7 +539,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
         Wait::settleDom(300);
     }
 
-// En el archivo: tests/E2E/PageObject/WorkareaPage.php
+// File: tests/E2E/PageObject/WorkareaPage.php
 
     public function deleteSelectedNode(Node $node): self
     {
@@ -547,13 +547,13 @@ $this->waitNodeContentReady($nodeTitle, 30);
         $id    = $node->getId();
         $client = $this->client;
 
-        // Bucle de reintento activo para el flujo de clics:
-        // 1. Clic en el botón de borrar
-        // 2. Esperar y verificar que el modal de confirmación aparece
-        // 3. Clic en el botón de confirmar en el modal
+        // Retry loop for the click flow:
+        // 1) Click the delete button
+        // 2) Wait and verify that the confirmation modal appears
+        // 3) Click the confirm button in the modal
         for ($attempt = 0; $attempt < 3; $attempt++) {
             try {
-                // Asegurarse de que el botón de borrar está visible y habilitado
+                // Ensure the delete button is visible and enabled
                 $this->waitActionButtonEnabled('[data-testid="nav-delete"]');
                 $this->clickFirstMatchingSelector([
                     '[data-testid="nav-delete"]',
@@ -561,7 +561,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
                     '.button_nav_action.action_delete',
                 ]);
 
-                // Esperar a que el modal de confirmación esté completamente visible
+                // Wait until the confirmation modal is fully visible
                 $this->waitUntil(static function () use ($client): bool {
                     return (bool) $client->executeScript(<<<'JS'
                         const m = document.querySelector('[data-testid="modal-confirm"], #modalConfirm');
@@ -573,7 +573,7 @@ $this->waitNodeContentReady($nodeTitle, 30);
                     JS);
                 }, 15);
 
-                // Hacer clic en el botón de confirmación final
+                // Click the final confirmation button
                 $this->waitActionButtonEnabled('#modalConfirm .modal-footer .confirm');
                 $this->clickFirstMatchingSelector([
                     '[data-testid="confirm-action"]',
@@ -581,25 +581,25 @@ $this->waitNodeContentReady($nodeTitle, 30);
                     '#modalConfirm button.btn.btn-primary',
                 ]);
 
-                // Si todos los clics tuvieron éxito, salimos del bucle de reintentos
+                // If all clicks succeeded, exit the retry loop
                 break;
 
             } catch (\Throwable $e) {
-                if ($attempt === 2) { // Si falla en el último intento, lanzamos la excepción
-                    throw new \RuntimeException(sprintf('No se pudo completar el flujo de borrado para el nodo "%s".', $title), 0, $e);
+                if ($attempt === 2) { // If it fails on the last attempt, throw the exception
+                    throw new \RuntimeException(sprintf('Unable to complete delete flow for node "%s".', $title), 0, $e);
                 }
-                // Esperar un poco antes de reintentar para dar tiempo a la UI a estabilizarse
+                // Wait briefly before retrying to let the UI stabilize
                 usleep(300_000);
             }
         }
 
-        // Ahora, y solo ahora, realizamos UNA única espera robusta para verificar que el nodo ha desaparecido.
+        // Now perform a single robust wait to verify that the node has disappeared.
         try {
-            // Usamos tu método `waitNodeDeleted` que ya es bastante bueno, con un timeout generoso.
+            // Use the existing `waitNodeDeleted` helper with a generous timeout.
             $this->waitNodeDeleted($id, $title, 60);
         } catch (\Throwable $e) {
-            // Si después de 60 segundos el nodo sigue ahí, ahora sí que es un error real.
-            $errorMessage = sprintf('El nodo "%s" (ID: %s) sigue apareciendo después de confirmar su eliminación.', $title, (string)$id);
+            // If after 60 seconds the node still exists, consider it a real error.
+            $errorMessage = sprintf('Node "%s" (ID: %s) still appears after confirming deletion.', $title, (string)$id);
             throw new \RuntimeException($errorMessage, 0, $e);
         }
 

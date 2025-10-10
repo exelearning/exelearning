@@ -250,7 +250,7 @@ abstract class BaseE2ETestCase extends PantherTestCase
     protected function onNotSuccessfulTest(\Throwable $t): never
     {
         $descriptor = static::class;
-        // Asegura nombre del test para las capturas, compatible con PHPUnit 12
+        // Ensure test name for screenshots, compatible with PHPUnit 12
         try {
             $method = null;
             if (method_exists($this, 'name')) {

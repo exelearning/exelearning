@@ -879,7 +879,7 @@ export default class IdeviceBlockNode {
      *
      */
     addTooltips() {
-        $('button.btn-action-menu', this.blockButtons).addClass(
+        $('button.btn-action-menu:not([data-bs-toggle="dropdown"])', this.blockButtons).addClass(
             'exe-app-tooltip'
         );
         eXeLearning.app.common.initTooltips(this.blockButtons);

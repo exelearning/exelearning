@@ -32,10 +32,32 @@ export default class Common {
    * @returns {string}
    */
   initTooltips(elm) {
-    $(".exe-app-tooltip", elm).tooltip();
-    $('.exe-app-tooltip', elm).on('click mouseleave', function(){
+    try {
+      const scope = elm instanceof Element ? elm : document;
+      const elems = scope.querySelectorAll('.exe-app-tooltip');
+      elems.forEach((el) => {
+        // Idempotent initialization: only create if not already bound
+        const existing = window.bootstrap?.Tooltip?.getInstance
+          ? window.bootstrap.Tooltip.getInstance(el)
+          : null;
+        if (!existing && window.bootstrap?.Tooltip?.getOrCreateInstance) {
+          window.bootstrap.Tooltip.getOrCreateInstance(el);
+          // Hide on click/mouseleave like previous jQuery behavior
+          el.addEventListener('click', () => {
+            try { window.bootstrap.Tooltip.getInstance(el)?.hide(); } catch (_) {}
+          }, { passive: true });
+          el.addEventListener('mouseleave', () => {
+            try { window.bootstrap.Tooltip.getInstance(el)?.hide(); } catch (_) {}
+          }, { passive: true });
+        }
+      });
+    } catch (_) {
+      // Fallback to jQuery plugin if Bootstrap global is not available
+      $(".exe-app-tooltip", elm).tooltip();
+      $('.exe-app-tooltip', elm).on('click mouseleave', function(){
         $(this).tooltip('hide');
-    });
+      });
+    }
   }
 
   /**

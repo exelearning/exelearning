@@ -734,8 +734,10 @@ export default class IdeviceNode {
                                 odeIdeviceId: this.odeIdeviceId,
                             };
                             eXeLearning.app.project.sendOdeOperationLog(
-                                this.pageId, // Collaborative
-                                this.pageId, // Collaborative
+                                this.block?.pageId ??
+                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
+                                this.block?.pageId ??
+                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
                                 'EDIT_IDEVICE',
                                 additionalData
                             );
@@ -850,8 +852,10 @@ export default class IdeviceNode {
                                                 odeIdeviceId: this.odeIdeviceId,
                                             };
                                             eXeLearning.app.project.sendOdeOperationLog(
-                                                this.pageId, // Collaborative
-                                                this.pageId, // Collaborative
+                                                this.block?.pageId ??
+                                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
+                                                this.block?.pageId ??
+                                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
                                                 'REMOVE_IDEVICE',
                                                 additionalData
                                             );
@@ -1192,7 +1196,7 @@ export default class IdeviceNode {
      *
      */
     addTooltips() {
-        $('button.btn-action-menu', this.ideviceButtons).addClass(
+        $('button.btn-action-menu:not([data-bs-toggle="dropdown"])', this.ideviceButtons).addClass(
             'exe-app-tooltip'
         );
         eXeLearning.app.common.initTooltips(this.ideviceButtons);

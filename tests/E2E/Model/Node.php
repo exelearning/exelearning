@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Tests\E2E\Model;
 
 use App\Tests\E2E\PageObject\WorkareaPage;
+use App\Tests\E2E\Support\Wait;
 
 /**
  * Value object representing a navigation node inside the workarea tree.
@@ -73,6 +74,10 @@ final class Node
         }
         $this->select();
         $this->workareaPage->duplicateSelectedNode();
+
+        // It's a complicated task, we should wait
+        Wait::settleDom(500);
+
         return true;
     }
 
@@ -129,6 +134,63 @@ final class Node
         $this->clickAndSettle('#menu_nav .action_move_down');
         return $this;
     }
+
+
+  // /**
+  //    * Helper: Clicks a navigation action and waits for the UI to stabilize.
+  //    * Selects the node first, performs the click, and then waits for any loading screens.
+  //    */
+  //   private function clickNavActionAndWait(array $selectors): void
+  //   {
+  //       try {
+  //           // Use WorkareaPage's robust click helper
+  //           $this->workareaPage->clickFirstMatchingSelector($selectors);
+
+  //           // Movement actions can reload parts of the UI.
+  //           // Wait for any loading screen to disappear and the UI to be idle.
+  //           $this->workareaPage->waitForLoadingScreenToDisappear(15);
+  //           $this->workareaPage->waitUiQuiescent(15);
+  //       } catch (\Throwable) {
+  //           // Ignore the error if the button is disabled 
+  //           // (e.g., trying to move the first node up).
+  //       }
+  //   }
+    
+  //   /** Moves node up one position (previous sibling). */
+  //   public function moveUp(): self
+  //   {
+  //       $this->select();
+  //       $this->clickNavActionAndWait(['#menu_nav .action_move_prev']);
+  //       return $this;
+  //   }
+
+  //   /** Moves node down one position (next sibling). */
+  //   public function moveDown(): self
+  //   {
+  //       $this->select();
+  //       $this->clickNavActionAndWait(['#menu_nav .action_move_next']);
+  //       return $this;
+  //   }
+
+  //   /** Promotes node one level (outdent/move left). */
+  //   public function moveLeft(): self
+  //   {
+  //       $this->select();
+  //       // Note: CSS class '.action_move_up' corresponds to the left arrow (promote)
+  //       $this->clickNavActionAndWait(['#menu_nav .action_move_up']);
+  //       return $this;
+  //   }
+
+  //   /** Demotes node one level (indent/move right). */
+  //   public function moveRight(): self
+  //   {
+  //       $this->select();
+  //       // Note: CSS class '.action_move_down' corresponds to the right arrow (demote)
+  //       $this->clickNavActionAndWait(['#menu_nav .action_move_down']);
+  //       return $this;
+  //   }
+
+
 
     /** Helper: safe click with small settle time. */
     private function clickAndSettle(string $css): void
