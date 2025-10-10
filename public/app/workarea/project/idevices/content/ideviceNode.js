@@ -1196,9 +1196,10 @@ export default class IdeviceNode {
      *
      */
     addTooltips() {
-        $('button.btn-action-menu:not([data-bs-toggle="dropdown"])', this.ideviceButtons).addClass(
-            'exe-app-tooltip'
-        );
+        $(
+            'button.btn-action-menu:not([data-bs-toggle="dropdown"])',
+            this.ideviceButtons
+        ).addClass('exe-app-tooltip');
         eXeLearning.app.common.initTooltips(this.ideviceButtons);
     }
 
