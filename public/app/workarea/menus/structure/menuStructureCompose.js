@@ -88,12 +88,17 @@ export default class MenuStructureCompose {
         nodeDivElementNav.setAttribute('page-id', node.pageId);
         nodeDivElementNav.setAttribute('nav-parent', node.parent);
         nodeDivElementNav.setAttribute('order', node.order);
+        // Testing: stable identifiers and states
+        nodeDivElementNav.setAttribute('data-node-id', node.id);
+        nodeDivElementNav.setAttribute('data-selected', 'false');
 
         // Classes
         if (node.open) {
             nodeDivElementNav.classList.add('toggle-on');
+            nodeDivElementNav.setAttribute('data-expanded', 'true');
         } else {
             nodeDivElementNav.classList.add('toggle-off');
+            nodeDivElementNav.setAttribute('data-expanded', 'false');
         }
         // Properties attributes/classes
         this.setPropertiesClassesToElement(nodeDivElementNav, node);
@@ -266,6 +271,13 @@ export default class MenuStructureCompose {
         for (let [id, childNode] of Object.entries(this.data)) {
             if (childNode.parent === node.id) {
                 thisNodeElement.setAttribute('is-parent', true);
+                // Sync ARIA/data-expanded once we know it's a parent
+                thisNodeElement.setAttribute(
+                    'aria-expanded',
+                    thisNodeElement.classList.contains('toggle-on')
+                        ? 'true'
+                        : 'false'
+                );
                 this.buildTreeRecursive(
                     childNode,
                     childrenContainer,
