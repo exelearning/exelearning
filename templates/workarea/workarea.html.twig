@@ -51,10 +51,6 @@
     {# TinyMCE #}
     <script class="exe" src="{{ asset('libs/tinymce_5/js/tinymce/tinymce.min.js') }}" defer></script>
     <script class="exe" src="{{ asset('app/editor/tinymce_5_settings.js') }}" defer></script>
-    {# Electron mock API for offline E2E (load before app.js) #}
-    {% if config.isOfflineInstallation %}
-        <script class="exe" src="{{ asset('app/workarea/mock-electron-api.js') }}" defer></script>
-    {% endif %}
     {# eXeLearning app #}
     <script class="exe" type="module" src="{{ asset('app/app.js') }}"></script>
 {% endblock %}
