@@ -57,7 +57,7 @@
 
 {% block id %}main{% endblock %}
 {% block body %}
-    <div id="load-screen-main" class="load-screen loading position-fixed top-0 start-0 w-100 h-100 align-items-center justify-content-center bg-white" style="z-index: 1050;">
+    <div id="load-screen-main" class="load-screen loading position-fixed top-0 start-0 w-100 h-100 align-items-center justify-content-center bg-white" style="z-index: 1050;" data-testid="loading-main" data-visible="true">
         <span>eXeLearning {{ constant('App\\Constants::APP_VERSION') }}</span>
     </div>
     <div id="workarea" class="container-fluid d-flex flex-nowrap">
@@ -86,15 +86,15 @@
                 </nav>
             </header>
             <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
-                <div id="load-screen-node-content" class="load-screen hide"></div>
-                <div id="node-content" class="content" drop='["idevice","box"]'>
+                <div id="load-screen-node-content" class="load-screen hide" data-testid="loading-content" data-visible="false"></div>
+                <div id="node-content" class="content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
                     <div>
                         <div id="header-node-content" class="header"></div>
-                        <h1 id="page-title-node-content" class="page-title"></h1>
+                        <h1 id="page-title-node-content" class="page-title" data-testid="page-title"></h1>
                     </div>
                 </div>
                 {# Idevices bottom menu #}
-                <div id="idevices-bottom" class="idevices-bottom-menu">
+                <div id="idevices-bottom" class="idevices-bottom-menu" data-testid="idevices-quickbar">
 
                 </div>
             </section>
