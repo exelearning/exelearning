@@ -85,7 +85,7 @@
     margin-right: 0.15em !important;
 }
 
-#reportQEIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
+#reportQEIdeviceForm input:is([type="checkbox"],  [type="number"]) {
     margin-right: 0.15em !important;
 }
 

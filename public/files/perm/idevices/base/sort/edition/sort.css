@@ -3,10 +3,6 @@
     max-width: 1200px;
 }
 
-#gameQEIdeviceForm input[type=number] {
-    width:4em;
-}
-
 
 #gameQEIdeviceForm input[type="radio"],
 #gameQEIdeviceForm input[type="checkbox"],
@@ -14,13 +10,17 @@
     cursor: pointer;
 }
 
-#gameQEIdeviceForm label {
-    margin-right: 0.15em !important;
-}
+#gameQEIdeviceForm input[type="color"] ,
+#gameQEIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
 
-#gameQEIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-    margin-right: 0.15em !important;
 }
+#gameQEIdeviceForm input[type="color"] {
+    padding: .2rem !important;
+    height: 2em !important;
+    width: 3em !important;
+}
+  
 
 /*Panel preguntas */
 .ODNE-EPanel {
@@ -28,14 +28,6 @@
     position: relative;
     width: 100%;
     max-width: 1200px;
-}
-
-.ODNE-EPhrase {
-    align-items: flex-start;
-    display: flex;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    width: 100%;
 }
 
 .ODNE-ENumActivity {
@@ -81,11 +73,10 @@
 
 .ODNE-EDatosCarta {
     width: 45%;
-    max-width: 500px;
+    max-width: 550px;
     min-width: 450px;
     border-radius: 0.3em;
-    padding: 0.7em;
-    padding-bottom: 1.3em;
+    padding: 1em;
     height: auto;
     margin-right: 0.6em;
     margin-top: 1em;
@@ -93,7 +84,6 @@
 }
 
 .ODNE-EDatosCarta input[type=text] {
-    margin-right: .2em;
     width: 100%;
 }
 
@@ -166,7 +156,6 @@
 .ODNE-EInputAudio input[type=text],
 .ODNE-EInputImage input[type=text] {
     flex-flow: 1;
-    margin-right: 0.2em;
     min-width: 100px;
     width: 100%;
 }
@@ -216,8 +205,7 @@
     width: 1.5em;
 }
 
-.ODNE-ECustomMessageDiv,
-.ODNE-ECustomMessageDef {
+.ODNE-ECustomMessageDiv {
     margin-top: 0.6em;
     display: flex;
     align-items: center;
@@ -235,14 +223,12 @@
 }
 
 .ODNE-ECustomMessageDiv label,
-.ODNE-ECustomMessageDef label,
 .ODNE-EPhraseDivI label {
     white-space: nowrap;
     margin-right: 0.1em;
 }
 
 .ODNE-ECustomMessageDiv input[type=text],
-.ODNE-ECustomMessageDef input[type=text],
 .ODNE-EPhraseDivI input[type=text] {
     width: 100%;
     max-width: 1200px;
@@ -272,10 +258,9 @@
 }
 
 .ODNE-ENumPhrases {
-    font-weight: bold;
-    height: 1.5em;
     text-align: center;
-    width: 2em;
+    vertical-align: middle;
+    width: 3em;
 }
 
 .ODNE-ECustomMessage {
@@ -288,27 +273,23 @@
 
 .ODNE-ECustomMessage input[type=text] {
     width: 100%;
-    margin-right: 0.1em;
+
 }
 
 .ODNE-ECustomMessage label {
     margin: 0 0.1em;
 }
 
-/* barra edición */
-.ODNE-ENavigationButtons {
-    align-items: center;
-    display: flex;
-    justify-content: center;
-    margin-top: 1em;
-    width: 100%;
+.ODNE-NumberPhrase{
+    min-width: 3ch;
+    text-align: center;
 }
 
+
 .ODNE-ENavigationButton {
-    height: 1.5em;
-    margin: 0 .3em;
-    min-width: 1.5em;
-    width: 1.5em;
+    height: 1.7em;
+    min-width: 1.7em;
+    width: 1.7em;
 }
 
 .ODNE-EButtonImage {
@@ -391,7 +372,7 @@
 #gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 
@@ -492,8 +473,7 @@ label[for=gameQEActivitySCORM] {
 
 .ODNE-TypeGameHelp {
     display: none;
-    margin-bottom: 2em;
-    font-size: .95em;
+      font-size: .95em;
     width: 100%;
 }
 

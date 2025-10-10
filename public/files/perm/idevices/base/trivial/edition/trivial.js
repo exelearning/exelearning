@@ -38,7 +38,7 @@ var $exeDevice = {
     trivialID: 0,
     localPlayer: null,
     id: false,
-    ci18n: {},
+    ci18n: {},    
 
     getId: function () {
         return Math.round(new Date().getTime() + (Math.random() * 100));
@@ -61,7 +61,7 @@ var $exeDevice = {
         $exeDevice.addEvents();
         $exeDevice.loadYoutubeApi();
     },
-    
+
     refreshTranslations: function () {
         this.ci18n = {
             "msgStartGame": c_("Click here to start"),
@@ -356,7 +356,7 @@ var $exeDevice = {
             $exeDevice.activesQuestions[$exeDevice.activeTema] = $exeDevice.temas[$exeDevice.activeTema].length - 1;
             $('#trivialNumberQuestion').val($exeDevice.temas[$exeDevice.activeTema].length);
             $exeDevice.typeEdit = -1;
-            $('#trivialEPaste').hide();
+            $exeDevice.hideFlex($('#trivialEPaste'));
             $('#trivialENumQuestions').val($exeDevice.temas[$exeDevice.activeTema].length);
         }
     },
@@ -372,7 +372,7 @@ var $exeDevice = {
             }
             $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
             $exeDevice.typeEdit = -1;
-            $('#trivialEPaste').hide();
+            $exeDevice.hideFlex($('#trivialEPaste'));
             $('#trivialENumQuestions').text($exeDevice.temas[$exeDevice.activeTema].length);
             $('#trivialNumberQuestion').text($exeDevice.activesQuestions[$exeDevice.activeTema] + 1);
         }
@@ -383,7 +383,7 @@ var $exeDevice = {
             $exeDevice.typeEdit = 0;
             var active = $exeDevice.activesQuestions[$exeDevice.activeTema];
             $exeDevice.clipBoard = JSON.parse(JSON.stringify($exeDevice.temas[$exeDevice.activeTema][active]));
-            $('#trivialEPaste').show();
+            $exeDevice.showFlex($('#trivialEPaste'));
         }
     },
 
@@ -391,7 +391,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.numberCutCuestion = $exeDevice.activesQuestions[$exeDevice.activeTema];
             $exeDevice.typeEdit = 1;
-            $('#trivialEPaste').show();
+            $exeDevice.showFlex($('#trivialEPaste'));
         }
     },
 
@@ -401,7 +401,7 @@ var $exeDevice = {
             $exeDevice.temas[$exeDevice.activeTema].splice($exeDevice.activesQuestions[$exeDevice.activeTema], 0, $exeDevice.clipBoard);
             $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
         } else if ($exeDevice.typeEdit == 1) {
-            $('#trivialEPaste').hide();
+            $exeDevice.hideFlex($('#trivialEPaste'));
             $exeDevice.typeEdit = -1;
             $exeDevices.iDevice.gamification.helpers.arrayMove($exeDevice.temas[$exeDevice.activeTema], $exeDevice.numberCutCuestion, $exeDevice.activesQuestions[$exeDevice.activeTema]);
             $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
@@ -579,10 +579,10 @@ var $exeDevice = {
         $exeDevice.endSilent = $exeDevice.silentVideo + $exeDevice.tSilentVideo;
         if (fVideo <= iVideo) fVideo = 36000;
 
-        $('#trivialENoImageVideo').hide();
-        $('#trivialENoVideo').show();
-        $('#trivialEVideo').hide();
-        $('#trivialEVideoLocal').hide();
+    $exeDevice.hideFlex($('#trivialENoImageVideo'));
+    $exeDevice.showFlex($('#trivialENoVideo'));
+    $exeDevice.hideFlex($('#trivialEVideo'));
+    $exeDevice.hideFlex($('#trivialEVideoLocal'));
 
         if (id || idLocal) {
             if (id) {
@@ -590,14 +590,14 @@ var $exeDevice = {
             } else {
                 $exeDevice.startVideo(idLocal, iVideo, fVideo, 1);
             }
-            $('#trivialENoVideo').hide();
+            $exeDevice.hideFlex($('#trivialENoVideo'));
             if (imageVideo == 0) {
-                $('#trivialENoImageVideo').show();
+                $exeDevice.showFlex($('#trivialENoImageVideo'));
             } else {
                 if (type == 0) {
-                    $('#trivialEVideo').show();
+                    $exeDevice.showFlex($('#trivialEVideo'));
                 } else {
-                    $('#trivialEVideoLocal').show();
+                    $exeDevice.showFlex($('#trivialEVideoLocal'));
                 }
             }
             if (soundVideo == 0) {
@@ -607,7 +607,7 @@ var $exeDevice = {
             }
         } else {
             $exeDevice.showMessage($exeDevice.msgs.msgVideoNotAvailable);
-            $('#trivialENoVideo').show();
+            $exeDevice.showFlex($('#trivialENoVideo'));
         }
     },
 
@@ -623,10 +623,10 @@ var $exeDevice = {
     showImage: function (url, x, y, alt, type) {
         const $image = $('#trivialEImage'),
             $cursor = $('#trivialECursor');
-        $image.hide();
-        $cursor.hide();
+    $exeDevice.hideFlex($image);
+    $exeDevice.hideFlex($cursor);
         $image.attr('alt', alt);
-        $('#trivialENoImage').show();
+    $exeDevice.showFlex($('#trivialENoImage'));
         url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
         $image.attr('src', url)
             .on('load', function () {
@@ -638,8 +638,8 @@ var $exeDevice = {
                 } else {
                     var mData = $exeDevice.placeImageWindows(this, this.naturalWidth, this.naturalHeight);
                     $exeDevice.drawImage(this, mData);
-                    $image.show();
-                    $('#trivialENoImage').hide();
+            $exeDevice.showFlex($image);
+            $exeDevice.hideFlex($('#trivialENoImage'));
                     $exeDevice.paintMouse(this, $cursor, x, y);
                     return true;
                 }
@@ -652,7 +652,7 @@ var $exeDevice = {
     },
 
     paintMouse: function (image, cursor, x, y) {
-        $(cursor).hide();
+        $exeDevice.hideFlex($(cursor));
         if (x > 0 || y > 0) {
             var wI = $(image).width() > 0 ? $(image).width() : 1,
                 hI = $(image).height() > 0 ? $(image).height() : 1,
@@ -663,7 +663,7 @@ var $exeDevice = {
                 top: tI + 'px',
                 'z-index': 30
             });
-            $(cursor).show();
+            $exeDevice.showFlex($(cursor));
         }
     },
 
@@ -713,50 +713,50 @@ var $exeDevice = {
     },
 
     changeTypeQuestion: function (type) {
-        $('#trivialETitleAltImage').hide();
-        $('#trivialEAuthorAlt').hide();
-        $('#trivialETitleImage').hide();
-        $('#trivialEInputImage').hide();
-        $('#trivialETitleVideo').hide();
-        $('#trivialEInputVideo').hide();
-        $('#trivialEInputOptionsVideo').hide();
-        $('#trivialInputOptionsImage').hide();
-        $('#trivialEInputAudio').show();
-        $('#trivialETitleAudio').show();
+    $exeDevice.hideFlex($('#trivialETitleAltImage'));
+    $exeDevice.hideFlex($('#trivialEAuthorAlt'));
+    $exeDevice.hideFlex($('#trivialETitleImage'));
+    $exeDevice.hideFlex($('#trivialEInputImage'));
+    $exeDevice.hideFlex($('#trivialETitleVideo'));
+    $exeDevice.hideFlex($('#trivialEInputVideo'));
+    $exeDevice.hideFlex($('#trivialEInputOptionsVideo'));
+    $exeDevice.hideFlex($('#trivialInputOptionsImage'));
+    $exeDevice.showFlex($('#trivialEInputAudio'));
+    $exeDevice.showFlex($('#trivialETitleAudio'));
         if (tinyMCE.get('trivialEText')) {
             tinyMCE.get('trivialEText').hide();
         }
         $('#trivialEText').hide();
-        $('#trivialEVideo').hide();
-        $('#trivialEVideoLocal').hide();
-        $('#trivialEImage').hide();
-        $('#trivialENoImage').hide();
-        $('#trivialECover').hide();
-        $('#trivialECursor').hide();
-        $('#trivialENoImageVideo').hide();
-        $('#trivialENoVideo').hide();
+    $exeDevice.hideFlex($('#trivialEVideo'));
+    $exeDevice.hideFlex($('#trivialEVideoLocal'));
+    $exeDevice.hideFlex($('#trivialEImage'));
+    $exeDevice.hideFlex($('#trivialENoImage'));
+    $exeDevice.hideFlex($('#trivialECover'));
+    $exeDevice.hideFlex($('#trivialECursor'));
+    $exeDevice.hideFlex($('#trivialENoImageVideo'));
+    $exeDevice.hideFlex($('#trivialENoVideo'));
         switch (type) {
             case 0:
-                $('#trivialECover').show();
+        $exeDevice.showFlex($('#trivialECover'));
                 break;
             case 1:
-                $('#trivialENoImage').show();
-                $('#trivialETitleImage').show();
-                $('#trivialEInputImage').show();
-                $('#trivialEAuthorAlt').show();
-                $('#trivialECursor').show();
-                $('#trivialInputOptionsImage').show();
+        $exeDevice.showFlex($('#trivialENoImage'));
+        $exeDevice.showFlex($('#trivialETitleImage'));
+        $exeDevice.showFlex($('#trivialEInputImage'));
+        $exeDevice.showFlex($('#trivialEAuthorAlt'));
+        $exeDevice.showFlex($('#trivialECursor'));
+        $exeDevice.showFlex($('#trivialInputOptionsImage'));
                 $exeDevice.showImage($('#trivialEURLImage').val(), $('#trivialEXImage').val(), $('#trivialEYImage').val(), $('#trivialEAlt').val(), 0)
                 break;
             case 2:
-                $('#trivialEImageVideo').show();
-                $('#trivialETitleVideo').show();
-                $('#trivialEInputVideo').show();
-                $('#trivialENoVideo').show();
-                $('#trivialEVideo').show();
-                $('#trivialEInputOptionsVideo').show();
-                $('#trivialEInputAudio').hide();
-                $('#trivialETitleAudio').hide();
+        $exeDevice.showFlex($('#trivialEImageVideo'));
+        $exeDevice.showFlex($('#trivialETitleVideo'));
+        $exeDevice.showFlex($('#trivialEInputVideo'));
+        $exeDevice.showFlex($('#trivialENoVideo'));
+        $exeDevice.showFlex($('#trivialEVideo'));
+        $exeDevice.showFlex($('#trivialEInputOptionsVideo'));
+        $exeDevice.hideFlex($('#trivialEInputAudio'));
+        $exeDevice.hideFlex($('#trivialETitleAudio'));
                 break;
             case 3:
                 $('#trivialEText').show();
@@ -771,9 +771,9 @@ var $exeDevice = {
 
     showOptions: function (number) {
         $('.TRVLE-EOptionDiv').each(function (i) {
-            $(this).show();
+            $exeDevice.showFlex($(this));
             if (i >= number) {
-                $(this).hide();
+                $exeDevice.hideFlex($(this));
                 $exeDevice.showSolution('');
             }
         });
@@ -799,9 +799,7 @@ var $exeDevice = {
             <div id="gameQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
                     ${_("Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.")} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/triviext.html" hreflang="es" target="_blank">
-                        ${_("Usage Instructions")}
-                    </a>
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/triviext.html" hreflang="es" target="_blank">${_("Usage Instructions")}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
@@ -809,184 +807,249 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_("Options")}</a></legend>
                         <div>
-                            <p>
-                            ${_("Number of topics")}: 
-                                <input class="TRVLE-NumeroTemas" checked="checked" id="trivialNG2" type="radio" name="tvlnt" value="2" />
-                                <label>2</label>
-                                <input class="TRVLE-NumeroTemas" type="radio" name="tvlnt" value="3" />
-                                <label>3</label>
-                                <input class="TRVLE-NumeroTemas" type="radio" name="tvlnt" value="4" />
-                                <label>4</label>
-                                <input class="TRVLE-NumeroTemas" type="radio" name="tvlnt" value="5" />
-                                <label>5</label>
-                                <input class="TRVLE-NumeroTemas" type="radio" name="tvlnt" value="6" />
-                                <label>6</label>
-                            </p>
-                            <p>
-                                <label for="trivialEShowMinimize">
-                                    <input type="checkbox" id="trivialEShowMinimize">${_("Show minimized.")}
-                                </label>
-                            </p>
-                            <p>
-                                <label for="trivialEShowSolution">
-                                    <input type="checkbox" checked id="trivialEShowSolution">${_("Show solutions")}.
-                                </label>
-                                <label for="trivialETimeShowSolution">${_("Show solution time (seconds)")}
-                                    <input type="number" name="trivialETimeShowSolution" id="trivialETimeShowSolution" value="3" min="1" max="9" />
-                                </label>
-                            </p>
-                            <p>
-                                <label for="trivialModeBoard">
-                                    <input type="checkbox" id="trivialModeBoard">${_("Digital whiteboard mode")}
-                                </label>
-                            </p>
-                             <p class="Games-Reportdiv">
+                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
+                                <span class="mb-0">${_("Number of topics")}: </span>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="TRVLE-NumeroTemas form-check-input" checked id="trivialNG2" type="radio" name="tvlnt" value="2" />
+                                    <label for="trivialNG2" class="form-check-label mb-0">2</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="3" id="trivialNG3" />
+                                    <label for="trivialNG3" class="form-check-label mb-0">3</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="4" id="trivialNG4" />
+                                    <label for="trivialNG4" class="form-check-label mb-0">4</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="5" id="trivialNG5" />
+                                    <label for="trivialNG5" class="form-check-label mb-0">5</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="TRVLE-NumeroTemas form-check-input" type="radio" name="tvlnt" value="6" id="trivialNG6" />
+                                    <label for="trivialNG6" class="form-check-label mb-0">6</label>
+                                </div>
+                            </div>
+                            <div class="toggle-item mb-3">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="trivialEShowMinimize" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label mb-0" for="trivialEShowMinimize">${_("Show minimized.")}</label>
+                            </div>
+                            <div class="d-flex align-items-center flex-nowrap mb-3 gap-2 flex-wrap">
+                                <div class="toggle-item mb-0">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="trivialEShowSolution" class="toggle-input" checked />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label mb-0" for="trivialEShowSolution">${_("Show solutions")}.</label>
+                                </div>
+                                <label for="trivialETimeShowSolution" class="mb-0">${_("Show solution time (seconds)")}</label>
+                                <input type="number" name="trivialETimeShowSolution" id="trivialETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:6ch" />
+                            </div>
+                            <div class="toggle-item mb-3">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="trivialModeBoard" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label mb-0" for="trivialModeBoard">${_("Digital whiteboard mode")}</label>
+                            </div>
+                            <div class="Games-Reportdiv d-flex align-items-center flex-nowrap gap-2 mb-3 flex-wrap">
+                                <div class="toggle-item mb-0">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="trivialEEvaluation" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label mb-0" for="trivialEEvaluation">${_("Progress report")}.</label>
+                                </div>
+                                <div class="d-flex align-items-center flex-nowrap gap-2" id="trivialEEvaluationIDWrapper">
+                                    <label for="trivialEEvaluationID" class="mb-0">${_("Identifier")}:</label>
+                                    <input type="text" id="trivialEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
+                                </div>
                                 <strong class="GameModeLabel">
                                     <a href="#trivialEEvaluationHelp" id="trivialEEvaluationHelpLnk" class="GameModeHelpLink" title="${_("Help")}">
-                                        <img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_("Help")}"/>
+                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_("Help")}" />
                                     </a>
                                 </strong>
-                                <label for="trivialEEvaluation">
-                                    <input type="checkbox" id="trivialEEvaluation">${_("Progress report")}.
-                                </label>
-                                <label for="trivialEEvaluationID">${_("Identifier")}:
-                                    <input type="text" id="trivialEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                                </label>
-                            </p>
-                            <div id="trivialEEvaluationHelp" class="TRVLE-TypeGameHelp exe-block-info">
-                                <p>
-                                 ${_("You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.")}
-                                </p>
                             </div>
+                            <p id="trivialEEvaluationHelp" class="TRVLE-TypeGameHelp exe-block-info">
+                                ${_("You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.")}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
                         <legend><a href="#">${_("Questions")}</a></legend>
                         <div class="TRVLE-EPanel" id="trivialEPanel">
                             <div class="TRVLE-EOptionsMedia">
-                                <div class="TRVLE-EOptionsGame">
-                                    <span>${_("Topic")}:</span>
-                                    <div class="TRVLE-Flex TRVLE-ENameTema">
-                                        <label class="sr-av">${_("Topic number")}</label>
-                                        <input type="number" name="trivialNumberTema" id="trivialNumberTema" value="1" min="1" max="2" step="1" /> 
-                                        <label class="sr-av">${_("Topic number")}</label>
-                                        <input type="text" id="trivialNameTema" />
+                                <div class="TRVLE-EOptionsGame">                                    
+                                    <div class="TRVLE-ENameTema d-flex align-items-center flex-nowrap gap-2 mb-3">
+                                        <span>${_("Topic")}:</span>
+                                        <label class="sr-av" for="trivialNumberTema">${_("Topic number")}</label>
+                                         <input type="number" class="form-control" name="trivialNumberTema" id="trivialNumberTema" value="1" min="1" max="2" step="1" style="width:6ch" /> 
+                                        <label class="sr-av" for="trivialNameTema">${_("Topic number")}</label>
+                                        <input type="text" id="trivialNameTema" class="form-control w-100" />
                                     </div>
-                                    <span>${_("Load")}:</span>
-                                    <div>
-                                        <input type="file" name="trivialLoadGame" id="trivialLoadGame" accept=".json" />
-                                    </div>
-                                    <span>${_("Type")}:</span>
-                                    <div class="TRVLE-EInputType">
-                                        <input class="TRVLE-TypeSelect" checked id="trivialTypeChoose" type="radio" name="tvltypeselect" value="0"/>
-                                        <label for="trivialTypeChoose">${_("Select")}</label>
-                                        <input class="TRVLE-TypeSelect" id="trivialTypeOrders" type="radio" name="tvltypeselect" value="1"/>
-                                        <label for="trivialTypeOrders">${_("Order")}</label>
-                                        <input class="TRVLE-TypeSelect" id="trivialTypeWord" type="radio" name="tvltypeselect" value="2"/>
-                                        <label for="trivialTypeWord">${_("Word")}</label>
-                                        <input class="TRVLE-TypeSelect" id="trivialTypeOpen" type="radio" name="tvltypeselect" value="3"/>
-                                        <label for="trivialTypeOpen">${_("Free response")}</label>
-                                    </div>
-                                    <span>${_("Multimedia Type")}:</span>
-                                    <div class="TRVLE-EInputMedias">
-                                        <input class="TRVLE-Type" checked="checked" id="trivialMediaNormal" type="radio" name="tvlmediatype" value="0" disabled />
-                                        <label for="trivialMediaNormal">${_("None")}</label>
-                                        <input class="TRVLE-Type" id="trivialMediaImage" type="radio" name="tvlmediatype" value="1" disabled />
-                                        <label for="trivialMediaImage">${_("Image")}</label>
-                                        <input class="TRVLE-Type" id="trivialMediaVideo" type="radio" name="tvlmediatype" value="2" disabled />
-                                        <label for="trivialMediaVideo">${_("Video")}</label>
-                                        <input class="TRVLE-Type" id="trivialMediaText" type="radio" name="tvlmediatype" value="3" disabled />
-                                        <label for="trivialMediaText">${_("Text")}</label>
-                                    </div>
-                                    <span id="trivialOptionsNumberSpan">${_("Options Number")}:</span>
-                                    <div class="TRVLE-EInputNumbers" id="trivialEInputNumbers">
-                                        <input class="TRVLE-Number" id="numQ2" type="radio" name="tvlnumber" value="2" />
-                                        <label for="numQ2">2</label>
-                                        <input class="TRVLE-Number" id="numQ3" type="radio" name="tvlnumber" value="3" />
-                                        <label for="numQ3">3</label>
-                                        <input class="TRVLE-Number" id="numQ4" type="radio" name="tvlnumber" value="4" checked="checked" />
-                                        <label for="numQ4">4</label>
-                                    </div>
-                                    <span id="trivialPercentageSpan">${_("Percentage of letters to show (%)")}:</span>
-                                    <div class="TRVLE-EPercentage" id="trivialPercentage">
-                                        <input type="number" name="trivialPercentageShow" id="trivialPercentageShow" value="35" min="0" max="100" step="5" />
-                                    </div>
-                                    <span>${_("Time per question")}:</span>
-                                    <div class="TRVLE-EInputTimes">
-                                        <input class="TRVLE-Times" checked="checked" id="q15s" type="radio" name="tvltime" value="0" />
-                                        <label for="q15s">15s</label>
-                                        <input class="TRVLE-Times" id="q30s" type="radio" name="tvltime" value="1" />
-                                        <label for="q30s">30s</label>
-                                        <input class="TRVLE-Times" id="q1m" type="radio" name="tvltime" value="2" />
-                                        <label for="q1m">1m</label>
-                                        <input class="TRVLE-Times" id="q3m" type="radio" name="tvltime" value="3" />
-                                        <label for="q3m">3m</label>
-                                        <input class="TRVLE-Times" id="q5m" type="radio" name="tvltime" value="4" />
-                                        <label for="q5m">5m</label>
-                                        <input class="TRVLE-Times" id="q10m" type="radio" name="tvltime" value="5" />
-                                        <label for="q10m">10m</label>
-                                    </div>
-                                    <span class="TRVLE-ETitleImage" id="trivialETitleImage">${_("Image URL")}</span>
-                                    <div class="TRVLE-Flex TRVLE-EInputImage" id="trivialEInputImage">
-                                        <label class="sr-av" for="trivialEURLImage">${_("Image URL")}</label>
-                                        <input type="text" class="exe-file-picker TRVLE-EURLImage" id="trivialEURLImage"/>
-                                        <a href="#" id="trivialEPlayImage" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_("Play")}">
-                                            <img src="${path}quextIEPlay.png" alt="${_("Play")}" class="TRVLE-EButtonImage b-play" />
-                                        </a>
-                                    </div>
-                                    <div class="TRVLE-EInputOptionsImage" id="quextInputOptionsImage">
-                                        <div class="TRVLE-ECoord">
-                                            <label for="trivialEXImage">X:</label>
-                                            <input id="trivialEXImage" type="text" value="0" />
-                                            <label for="trivialEYImage">Y:</label>
-                                            <input id="trivialEYImage" type="text" value="0" />
+                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                        <span>${_("Load")}:</span><input type="file" name="trivialLoadGame" id="trivialLoadGame" accept=".json" />
+                                    </div>                                    
+                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                        <span>${_("Type")}:</span>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-TypeSelect form-check-input" checked id="trivialTypeChoose" type="radio" name="tvltypeselect" value="0"/>
+                                            <label for="trivialTypeChoose" class="form-check-label">${_("Select")}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-TypeSelect form-check-input" id="trivialTypeOrders" type="radio" name="tvltypeselect" value="1"/>
+                                            <label for="trivialTypeOrders" class="form-check-label">${_("Order")}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-TypeSelect form-check-input" id="trivialTypeWord" type="radio" name="tvltypeselect" value="2"/>
+                                            <label for="trivialTypeWord" class="form-check-label">${_("Word")}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-TypeSelect form-check-input" id="trivialTypeOpen" type="radio" name="tvltypeselect" value="3"/>
+                                            <label for="trivialTypeOpen" class="form-check-label">${_("Free response")}</label>
+                                        </div>
+                                    </div>                                    
+                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                        <span>${_("Multimedia Type")}:</span>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Type form-check-input" checked id="trivialMediaNormal" type="radio" name="tvlmediatype" value="0" disabled />
+                                            <label for="trivialMediaNormal" class="form-check-label">${_("None")}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Type form-check-input" id="trivialMediaImage" type="radio" name="tvlmediatype" value="1" disabled />
+                                            <label for="trivialMediaImage" class="form-check-label">${_("Image")}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Type form-check-input" id="trivialMediaVideo" type="radio" name="tvlmediatype" value="2" disabled />
+                                            <label for="trivialMediaVideo" class="form-check-label">${_("Video")}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Type form-check-input" id="trivialMediaText" type="radio" name="tvlmediatype" value="3" disabled />
+                                            <label for="trivialMediaText" class="form-check-label">${_("Text")}</label>
                                         </div>
                                     </div>
-                                    <span class="TRVLE-ETitleVideo" id="trivialETitleVideo">${_("URL")}</span>
-                                    <div class="TRVLE-Flex TRVLE-EInputVideo" id="trivialEInputVideo">
+                                   
+                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-3" id="trivialEInputNumbers">
+                                        <span id="trivialOptionsNumberSpan">${_("Options Number")}:</span>    
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Number form-check-input" id="numQ2" type="radio" name="tvlnumber" value="2" />
+                                            <label for="numQ2" class="form-check-label">2</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Number form-check-input" id="numQ3" type="radio" name="tvlnumber" value="3" />
+                                            <label for="numQ3" class="form-check-label">3</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Number form-check-input" id="numQ4" type="radio" name="tvlnumber" value="4" checked />
+                                            <label for="numQ4" class="form-check-label">4</label>
+                                        </div>
+                                    </div>                                    
+                                    <div class="d-none align-items-center flex-wrap gap-2 mb-3" id="trivialPercentage">
+                                        <span id="trivialPercentageSpan">${_("Percentage of letters to show (%)")}:</span>
+                                        <input type="number" name="trivialPercentageShow" id="trivialPercentageShow" value="35" min="0" max="100" step="5" />
+                                    </div>                                    
+                                    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                        <span>${_("Time per question")}:</span>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Times form-check-input" checked id="q15s" type="radio" name="tvltime" value="0" />
+                                            <label for="q15s" class="form-check-label">15s</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Times form-check-input" id="q30s" type="radio" name="tvltime" value="1" />
+                                            <label for="q30s" class="form-check-label">30s</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Times form-check-input" id="q1m" type="radio" name="tvltime" value="2" />
+                                            <label for="q1m" class="form-check-label">1m</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Times form-check-input" id="q3m" type="radio" name="tvltime" value="3" />
+                                            <label for="q3m" class="form-check-label">3m</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Times form-check-input" id="q5m" type="radio" name="tvltime" value="4" />
+                                            <label for="q5m" class="form-check-label">5m</label>
+                                        </div>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="TRVLE-Times form-check-input" id="q10m" type="radio" name="tvltime" value="5" />
+                                            <label for="q10m" class="form-check-label">10m</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputImage">
+                                        <span class="text-nowrap" id="trivialETitleImage">${_("URL")}</span>
+                                        <label class="sr-av" for="trivialEURLImage">${_("Image URL")}</label>
+                                        <input type="text" class="exe-file-picker TRVLE-EURLImage form-control me-0 w-100" id="trivialEURLImage"/>
+                                        <a href="#" id="trivialEPlayImage" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_("Play")}">
+                                            <img src="${path}quextIEPlay.png" alt="${_("Play")}" class="TRVLE-EButtonImage " />
+                                        </a>
+                                    </div>
+                                    <div class="d-none"  id="quextInputOptionsImage">
+                                        <div class="TRVLE-ECoord">
+                                            <label for="trivialEXImage">X:</label>
+                                            <input id="trivialEXImage" type="text" value="0" class="form-control" style="width:6ch" />
+                                            <label for="trivialEYImage">Y:</label>
+                                            <input id="trivialEYImage" type="text" value="0" class="form-control" style="width:6ch" />
+                                        </div>
+                                    </div>                                    
+                                    <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputVideo">
+                                        <span class="text-nowrap" id="trivialETitleVideo">${_("URL")}</span>    
                                         <label class="sr-av" for="trivialEURLYoutube">${_("URL")}</label>
-                                        <input id="trivialEURLYoutube" type="text" />
+                                        <input id="trivialEURLYoutube" type="text" class="form-control me-0 w-100" />
                                         <a href="#" id="trivialEPlayVideo" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_("Play video")}">
                                             <img src="${path}quextIEPlay.png" alt="${_("Play")}" class="TRVLE-EButtonImage" />
                                         </a>
                                     </div>
                                     <div class="TRVLE-EInputOptionsVideo" id="trivialEInputOptionsVideo">
-                                        <div>
+                                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
                                             <label for="trivialEInitVideo">${_("Start")}:</label>
-                                            <input id="trivialEInitVideo" type="text" value="00:00:00" maxlength="8" />
+                                            <input id="trivialEInitVideo" type="text" value="00:00:00" maxlength="8" class="form-control w-auto" style="min-width:10ch; max-width:10ch"/" />
                                             <label for="trivialEEndVideo">${_("End")}:</label>
-                                            <input id="trivialEEndVideo" type="text" value="00:00:00" maxlength="8" />
-                                            <button class="TRVLE-EVideoTime" id="trivialEVideoTime" type="button">00:00:00</button>
+                                            <input id="trivialEEndVideo" type="text" value="00:00:00" maxlength="8" class="form-control w-auto" style="min-width:10ch; max-width:10ch"/ />
+                                            <button class="btn btn-primary" id="trivialEVideoTime" type="button">00:00:00</button>
                                         </div>
-                                        <div>
+                                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
                                             <label for="trivialESilenceVideo">${_("Silence")}:</label>
-                                            <input id="trivialESilenceVideo" type="text" value="00:00:00" maxlength="8"/>
+                                            <input id="trivialESilenceVideo" type="text" value="00:00:00" maxlength="8" class="form-control" style="min-width:10ch; max-width:10ch"/>
                                             <label for="trivialETimeSilence">${_("Time (s)")}:</label>
-                                            <input type="number" name="trivialETimeSilence" id="trivialETimeSilence" value="0" min="0" max="120" />
+                                            <input type="number" name="trivialETimeSilence" id="trivialETimeSilence" value="0" min="0" max="120" class="form-control" />
                                         </div>
-                                        <div>
-                                            <label for="trivialECheckSoundVideo">${_("Audio")}:</label>
-                                            <input id="trivialECheckSoundVideo" type="checkbox" checked="checked" />
-                                            <label for="trivialECheckImageVideo">${_("Image")}:</label>
-                                            <input id="trivialECheckImageVideo" type="checkbox" checked="checked" />
+                                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                                            <div class="toggle-item mb-0">
+                                                <span class="toggle-control">
+                                                    <input id="trivialECheckSoundVideo" class="toggle-input" type="checkbox" checked="checked" />
+                                                    <span class="toggle-visual"></span>
+                                                </span>
+                                                <label class="toggle-label mb-0" for="trivialECheckSoundVideo">${_("Audio")}</label>
+                                            </div>
+                                            <div class="toggle-item mb-0">
+                                                <span class="toggle-control">
+                                                    <input id="trivialECheckImageVideo" class="toggle-input" type="checkbox" checked="checked" />
+                                                    <span class="toggle-visual"></span>
+                                                </span>
+                                                <label class="toggle-label mb-0" for="trivialECheckImageVideo">${_("Image")}</label>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="TRVLE-EAuthorAlt" id="trivialEAuthorAlt">
-                                        <div class="TRVLE-EInputAuthor" id="trivialInputAuthor">
+                                    <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="trivialEAuthorAlt">
+                                        <div class="TRVLE-EInputAuthor w-50" id="trivialInputAuthor">
                                             <label for="trivialEAuthor">${_("Authorship")}</label>
-                                            <input id="trivialEAuthor" type="text" />
+                                            <input id="trivialEAuthor" type="text" class="form-control w-100" />
                                         </div>
-                                        <div class="TRVLE-EInputAlt" id="trivialInputAlt">
+                                        <div class="TRVLE-EInputAlt w-50" id="trivialInputAlt">
                                             <label for="trivialEAlt">${_("Alternative text")}</label>
-                                            <input id="trivialEAlt" type="text" />
+                                            <input id="trivialEAlt" type="text" class="form-control w-100" />
                                         </div>
-                                    </div>
-                                    <span id="trivialETitleAudio">${_("Audio")}</span>
-                                    <div class="TRVLE-EInputAudio" id="trivialEInputAudio">
+                                    </div>                                    
+                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputAudio">
+                                        <span id="trivialETitleAudio">${_("Audio")}:</span>
                                         <label class="sr-av" for="trivialEURLAudio">${_("URL")}</label>
-                                        <input type="text" class="exe-file-picker TRVLE-EURLAudio" id="trivialEURLAudio"/>
+                                        <input type="text" class="exe-file-picker TRVLE-EURLAudio form-control w-100 me-0" id="trivialEURLAudio"/>
                                         <a href="#" id="trivialEPlayAudio" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_("Audio")}">
-                                            <img src="${path}quextIEPlay.png" alt="${_("Play")}" class="TRVLE-EButtonImage b-play" />
+                                            <img src="${path}quextIEPlay.png" alt="${_("Play")}" class="TRVLE-EButtonImage " />
                                         </a>
                                     </div>
                                 </div>
@@ -1014,46 +1077,46 @@ var $exeDevice = {
                                 </div>
                                 <div class="TRVLE-EQuestionDiv" id="trivialEQuestionDiv">
                                     <label class="sr-av">${_("Question")}:</label>
-                                    <input type="text" class="TRVLE-EQuestion" id="trivialEQuestion">
+                                    <input type="text" class="TRVLE-EQuestion form-control" id="trivialEQuestion">
                                 </div>
                                 <div class="TRVLE-EAnswers" id="trivialEAnswers">
                                     <div class="TRVLE-EOptionDiv">
                                         <label class="sr-av">${_("Solution")} A:</label>
                                         <input type="checkbox" class="TRVLE-ESolution" name="tvlsolution" id="trivialESolution0" value="A" />
                                         <label>A</label>
-                                        <input type="text" class="TRVLE-EOption0 TRVLE-EAnwersOptions" id="trivialEOption0">
+                                        <input type="text" class="TRVLE-EOption0 TRVLE-EAnwersOptions form-control" id="trivialEOption0">
                                     </div>
                                     <div class="TRVLE-EOptionDiv">
                                         <label class="sr-av">${_("Solution")} B:</label>
                                         <input type="checkbox" class="TRVLE-ESolution" name="tvlsolution" id="trivialESolution1" value="B" />
                                         <label>B</label>
-                                        <input type="text" class="TRVLE-EOption1 TRVLE-EAnwersOptions" id="trivialEOption1">
+                                        <input type="text" class="TRVLE-EOption1 TRVLE-EAnwersOptions form-control" id="trivialEOption1">
                                     </div>
                                     <div class="TRVLE-EOptionDiv">
                                         <label class="sr-av">${_("Solution")} C:</label>
                                         <input type="checkbox" class="TRVLE-ESolution" name="tvlsolution" id="trivialESolution2" value="C" />
                                         <label>C</label>
-                                        <input type="text" class="TRVLE-EOption2 TRVLE-EAnwersOptions" id="trivialEOption2">
+                                        <input type="text" class="TRVLE-EOption2 TRVLE-EAnwersOptions form-control" id="trivialEOption2">
                                     </div>
                                     <div class="TRVLE-EOptionDiv">
                                         <label class="sr-av">${_("Solution")} D:</label>
                                         <input type="checkbox" class="TRVLE-ESolution" name="tvlsolution" id="trivialESolution3" value="D" />
                                         <label>D</label>
-                                        <input type="text" class="TRVLE-EOption3 TRVLE-EAnwersOptions" id="trivialEOption3">
+                                        <input type="text" class="TRVLE-EOption3 TRVLE-EAnwersOptions form-control" id="trivialEOption3">
                                     </div>
                                 </div>
                                 <div class="TRVLE-EWordDiv TRVLE-DP" id="trivialEWordDiv">
                                     <div class="TRVLE-ESolutionWord">
                                         <label for="trivialESolutionWord">${_("Word/Phrase")}: </label>
-                                        <input type="text" id="trivialESolutionWord"/>
+                                        <input type="text" id="trivialESolutionWord" class="form-control"/>
                                     </div>
                                     <div class="TRVLE-ESolutionWord">
                                         <label for="trivialEDefinitionWord">${_("Definition")}: </label>
-                                        <input type="text" id="trivialEDefinitionWord"/>
+                                        <input type="text" id="trivialEDefinitionWord" class="form-control"/>
                                     </div>
                                 </div>
                             </div>
-                            <div class="TRVLE-ENavigationButtons">
+                            <div class="TRVLE-ENavigationButtons gap-2">
                                 <a href="#" id="trivialEAdd" class="TRVLE-ENavigationButton" title="${_("Add question")}">
                                     <img src="${path}quextIEAdd.png" alt="${_("Add question")}" class="TRVLE-EButtonImage b-add" />
                                 </a>
@@ -1064,7 +1127,7 @@ var $exeDevice = {
                                     <img src="${path}quextIEPrev.png" alt="${_("Previous question")}" class="TRVLE-EButtonImage b-prev" />
                                 </a>
                                 <label class="sr-av" for="trivialNumberQuestion">${_("Question number:")}:</label>
-                                <input type="text" class="TRVLE-NumberQuestion" id="trivialNumberQuestion" value="1"/>
+                                <input type="text" class="TRVLE-NumberQuestion form-control" id="trivialNumberQuestion" value="1" style="width:6ch"/>
                                 <a href="#" id="trivialENext" class="TRVLE-ENavigationButton" title="${_("Next question")}">
                                     <img src="${path}quextIENext.png" alt="${_("Next question")}" class="TRVLE-EButtonImage b-next" />
                                 </a>
@@ -1110,7 +1173,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         tinymce.init({
             selector: '#trivialEText',
-            height: 157,
+            height: 220,
             language: "all",
             width: 400,
             plugins: [
@@ -1410,8 +1473,8 @@ var $exeDevice = {
             linksAudios = $exeDevice.createlinksAudio(dataGame);
 
         let html = '<div class="trivial-IDevice">';
-    html += divIntrunstion;
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        html += divIntrunstion;
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += '<div class="trivial-DataGame js-hidden">' + $exeDevice.Encrypt(dataGame) + '</div>';
         html += linksImages;
         html += linksAudios;
@@ -2140,42 +2203,42 @@ var $exeDevice = {
 
     showTypeQuestion: function (type) {
         if (type >= 2) {
-            $('#trivialEAnswers').hide();
-            $('#trivialEQuestionDiv').hide();
-            $('#gameQEIdeviceForm .TRVLE-ESolutionSelect').hide();
-            $('#trivialOptionsNumberSpan').hide();
-            $('#trivialEInputNumbers').hide();
-            $('#trivialPercentageSpan').show();
-            $('#trivialPercentage').show();
-            $('#trivialESolutionWord').show();
-            $('#trivialEWordDiv').show();
+            $exeDevice.hideFlex($('#trivialEAnswers'));
+            $exeDevice.hideFlex($('#trivialEQuestionDiv'));
+            $exeDevice.hideFlex($('#gameQEIdeviceForm .TRVLE-ESolutionSelect'));
+            $exeDevice.hideFlex($('#trivialOptionsNumberSpan'));
+            $exeDevice.hideFlex($('#trivialEInputNumbers'));
+            $exeDevice.showFlex($('#trivialPercentageSpan'));
+            $exeDevice.showFlex($('#trivialPercentage'));
+            $exeDevice.showFlex($('#trivialESolutionWord'));
+            $exeDevice.showFlex($('#trivialEWordDiv'));
             $('label[for=trivialEDefinitionWord]').text(_('Definition'));
-            $('label[for=trivialESolutionWord]').show();
-            $('#trivialESolitionOptions').hide();
+            $exeDevice.showFlex($('label[for=trivialESolutionWord]'));
+            $exeDevice.hideFlex($('#trivialESolitionOptions'));
             $('label[for=trivialEDefinitionWord]').css({ 'width': '11em' })
             if (type == 3) {
                 $('label[for=trivialEDefinitionWord]').text(_('Question'));
-                $('label[for=trivialESolutionWord]').hide();
+                $exeDevice.hideFlex($('label[for=trivialESolutionWord]'));
                 $('label[for=trivialEDefinitionWord]').css({ 'width': 'auto' })
-                $('#trivialESolutionWord').hide();
+                $exeDevice.hideFlex($('#trivialESolutionWord'));
             }
         } else {
-            $('#trivialEAnswers').show();
-            $('#trivialEQuestionDiv').show();
-            $('#gameQEIdeviceForm .TRVLE-ESolutionSelect').show();
-            $('#trivialOptionsNumberSpan').show();
-            $('#trivialEInputNumbers').show();
-            $('#trivialPercentageSpan').hide();
-            $('#trivialPercentage').hide();
-            $('#trivialEWordDiv').hide();
-            $('#trivialESolitionOptions').show();
+            $exeDevice.showFlex($('#trivialEAnswers'));
+            $exeDevice.showFlex($('#trivialEQuestionDiv'));
+            $exeDevice.showFlex($('#gameQEIdeviceForm .TRVLE-ESolutionSelect'));
+            $exeDevice.showFlex($('#trivialOptionsNumberSpan'));
+            $exeDevice.showFlex($('#trivialEInputNumbers'));
+            $exeDevice.hideFlex($('#trivialPercentageSpan'));
+            $exeDevice.hideFlex($('#trivialPercentage'));
+            $exeDevice.hideFlex($('#trivialEWordDiv'));
+            $exeDevice.showFlex($('#trivialESolitionOptions'));
         }
     },
 
     addEvents: function () {
-        $('#trivialEPaste').hide();
+    $exeDevice.hideFlex($('#trivialEPaste'));
 
-        $('#trivialEInitVideo,#trivialEEndVideo,#trivialESilenceVideo').on('focusout', function () {
+    $('#trivialEInitVideo,#trivialEEndVideo,#trivialESilenceVideo').on('focusout', function () {
             if (!$exeDevice.validTime(this.value)) {
                 $(this).css({
                     'background-color': 'red',
@@ -2258,7 +2321,7 @@ var $exeDevice = {
             $exeDevice.cutQuestion()
         });
 
-        $('#trivialEPaste').on('click', function (e) {
+    $('#trivialEPaste').on('click', function (e) {
             e.preventDefault();
             $exeDevice.pasteQuestion()
         });
@@ -2508,11 +2571,11 @@ var $exeDevice = {
             $('#trivialEEvaluationID').prop('disabled', !marcado);
         });
         $("#trivialEEvaluationHelpLnk").click(function () {
-            $("#trivialEEvaluationHelp").toggle();
+            $exeDevice.toggleFlex($("#trivialEEvaluationHelp"));
             return false;
         });
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        //eX3 3.0 Dismissible messages
+
         $(".exe-block-dismissible .exe-block-close").click(function () {
             $(this).parent().fadeOut();
             return false;
@@ -2520,16 +2583,16 @@ var $exeDevice = {
     },
 
     showModeOpen: function (open) {
-        $('#trivialTypeChoose').show();
-        $('#trivialTypeOrders').show();
-        $('label[for=trivialTypeChoose]').show();
-        $('label[for=trivialTypeOrders]').show();
+        $exeDevice.showFlex($('#trivialTypeChoose'));
+        $exeDevice.showFlex($('#trivialTypeOrders'));
+        $exeDevice.showFlex($('label[for=trivialTypeChoose]'));
+        $exeDevice.showFlex($('label[for=trivialTypeOrders]'));
         if (open) {
             $('#trivialTypeWord').prop('checked', open);
-            $('#trivialTypeChoose').hide()
-            $('#trivialTypeOrders').hide()
-            $('label[for=trivialTypeChoose]').hide();
-            $('label[for=trivialTypeOrders]').hide();
+            $exeDevice.hideFlex($('#trivialTypeChoose'));
+            $exeDevice.hideFlex($('#trivialTypeOrders'));
+            $exeDevice.hideFlex($('label[for=trivialTypeChoose]'));
+            $exeDevice.hideFlex($('label[for=trivialTypeOrders]'));
         }
     },
 
@@ -2864,5 +2927,39 @@ var $exeDevice = {
             'width': mData.w + 'px',
             'height': mData.h + 'px'
         });
+    },
+
+    showFlex: function ($el) {
+        if ($el && $el.length) {
+            if ($el.hasClass('d-none')) {
+                $el.removeClass('d-none').addClass('d-flex');
+            } else if (!$el.hasClass('d-flex') && !$el.hasClass('d-none')) {
+                $el.show();
+            }
+        }
+    },
+    hideFlex: function ($el) {
+        if ($el && $el.length) {
+            if ($el.hasClass('d-flex')) {
+                $el.removeClass('d-flex').addClass('d-none');
+            } else if (!$el.hasClass('d-flex') && !$el.hasClass('d-none')) {
+                $el.hide();
+            }
+        }
+    },
+    toggleFlex: function ($el) {
+        if ($el && $el.length) {
+            if ($el.hasClass('d-none')) {
+                $el.removeClass('d-none').addClass('d-flex');
+            } else if ($el.hasClass('d-flex')) {
+                $el.removeClass('d-flex').addClass('d-none');
+            } else {                
+                if ($el.is(':visible')) {
+                    $el.hide();
+                } else {
+                    $el.show();
+                }
+            }
+        }
     },
 }

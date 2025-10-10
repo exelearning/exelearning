@@ -163,6 +163,8 @@ jobs:
       APP_BOOT_TIMEOUT: 300   # increase if needed
       APP_PORT: 41309         # the one used in Electron
       SCREENSHOT_DELAY: 20    # seconds before screenshots
+      INSTALL_POLL_TIMEOUT: 240   # seconds to wait for install
+      INSTALL_POLL_INTERVAL: 2    # seconds between checks
 
     needs: package
     runs-on: ${{ matrix.os }}
@@ -327,13 +329,23 @@ jobs:
           if (-not $exe) { Write-Error "No NSIS .exe installer found"; exit 1 }
           Start-Process $exe.FullName -ArgumentList "/S" -Wait -NoNewWindow
 
-          # Add wait to the NSIS installer to be finished
-          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 10)
+          # Actively poll for installed eXeLearning.exe until timeout
+          $timeoutSec = [int]($env:INSTALL_POLL_TIMEOUT ?? 240)
+          $intervalSec = [int]($env:INSTALL_POLL_INTERVAL ?? 2)
+          $deadline = (Get-Date).AddSeconds($timeoutSec)
+          do {
+            $found = $false
+            if (Test-Path "C:\Program Files\eXeLearning\eXeLearning.exe") { $found = $true }
+            elseif (Test-Path "C:\Program Files (x86)\eXeLearning\eXeLearning.exe") { $found = $true }
+            elseif (Test-Path (Join-Path $env:LOCALAPPDATA "Programs\eXeLearning\eXeLearning.exe")) { $found = $true }
+            if (-not $found) { Start-Sleep -Seconds $intervalSec }
+          } until ($found -or (Get-Date) -ge $deadline)
 
           $exePath = "C:\Program Files\eXeLearning\eXeLearning.exe"
           if (-not (Test-Path $exePath)) { $exePath = "C:\Program Files (x86)\eXeLearning\eXeLearning.exe" }
           if (-not (Test-Path $exePath)) { $exePath = Join-Path $env:LOCALAPPDATA "Programs\eXeLearning\eXeLearning.exe" }
           if (-not (Test-Path $exePath)) { Write-Error "eXeLearning.exe not found after install"; exit 1 }
+          Write-Host "Found eXeLearning.exe at: $exePath"
 
           $env:ALLOW_UI_IN_CI = "1"
 
