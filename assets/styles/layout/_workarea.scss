@@ -1,0 +1,11 @@
+#workarea {
+    padding: 0 !important;
+    height: var(--work-height);
+    width: 100%;
+    background-color: var(--gray-background);
+    &:before {
+        transition: opacity var(--sidebar);
+        opacity: 1;
+        pointer-events: auto;
+    }
+}

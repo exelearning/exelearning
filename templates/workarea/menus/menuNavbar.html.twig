@@ -1,31 +1,30 @@
 <nav class="navbar navbar-expand-md navbar-light">
-    <div class="collapse navbar-collapse" id="eXeLearningNavbar">
-        <button id="exe-panels-toggler" class="btn me-2 nav-link" title="{{ "Toggle panels" | trans }}" aria-hidden="true">
-            <span class="auto-icon">menu</span>
-            <span class="visually-hidden">{{ "Toggle panels" | trans }}</span>
+    <div class="collapse navbar-collapse">
+        <button id="exe-panels-toggler" class="btn me-2 nav-link" title="{{ "Toggle panels" | trans }}">
+            <div class="medium-icon menu-icon"></div>
         </button>
         <ul class="navbar-nav mr-auto">
-                    <li class="nav-item dropdown">
+            <li class="nav-item btn button-tertiary button-dropdown dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="dropdownFile" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     {{ "File" | trans }}
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="dropdownFile">
-                    <li><a class="dropdown-item" id="navbar-button-new" href="#" data-shortcut="Mod+Alt+N" aria-keyshortcuts="Control+Alt+N Meta+Alt+N">{{ "New" | trans }}</a></li>
-                    <li class="exe-online"><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O" >{{ "Open" | trans }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-new" href="#" data-shortcut="Mod+Alt+N" aria-keyshortcuts="Control+Alt+N Meta+Alt+N"><span class="small-icon new-icon"></span> {{ "New" | trans }}</a></li>
+                    <li class="exe-online"><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ "Open" | trans }}</a></li>
                     <li class="dropdown dropend exe-online">
                         <a class="dropdown-item dropdown-toggle" href="#" id="navbar-button-dropdown-recent-projects" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            {{ "Recent projects" | trans }}
+                            <span class="small-icon recent-icon-green"></span> {{ "Recent projects" | trans }}
                         </a>
                         <ul class="dropdown-menu" id="navbar-dropdown-menu-recent-projects" aria-labelledby="navbar-button-dropdown-recent-projects">
                             <li class="text-center">...</li>
                         </ul>
                     </li>
                     <li class="dropdown-divider exe-online"></li>
-                    <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S">{{ "Save" | trans }}</a></li>
-                    <li class="exe-online"><a id="navbar-button-save-as" class="dropdown-item" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S">{{ "Save as" | trans }}</a></li>
-                    <li class="dropdown-divider exe-online"></li>
+                    <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ "Save" | trans }}</a></li>
+                    {# Online-only Save As remains hidden as before #}
+                    <li class="d-none"><a id="navbar-button-save-as" class="dropdown-item exe-online" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S"><span class="small-icon new-icon"></span>{{ "Save as" | trans }}</a></li>
                     <li class="dropdown dropend exe-online">
-                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAs" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Download as..." | trans }}</a>
+                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAs" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon download-icon-green"></span> {{ "Download as..." | trans }}</a>
                         <ul class="dropdown-menu" aria-labelledby="dropdownExportAs">
                             <li><a class="dropdown-item exe-advanced" id="navbar-button-download-project" href="#">{{ "eXeLearning content" | trans }} ({{ constant('App\\Constants::FILE_EXTENSION_ELP' ) }})</a></li>
                             <li><a id="navbar-button-export-html5" class="dropdown-item" href="#">{{ "Website" | trans }}</a></li>
@@ -37,13 +36,12 @@
                         </ul>
                     </li>
                     {% if config.isOfflineInstallation %}
-                        <li><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O">{{ "Open" | trans }}</a></li>
-                        <li class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S">{{ "Save" | trans }}</a></li>
-                        <li><a class="dropdown-item" id="navbar-button-save-as-offline" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S">{{ "Save as" | trans }}</a></li>
-                        <li class="dropdown-divider"></li>
-                        <li class="dropdown dropend">
-                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Export as..." | trans }}</a>
+                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ "Open" | trans }}</a></li>
+                        <li class="dropdown-divider exe-offline"></li>
+                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ "Save" | trans }}</a></li>
+                        <li class="exe-offline"><a class="dropdown-item" id="navbar-button-save-as-offline" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S"><span class="small-icon save-icon"></span> {{ "Save as" | trans }}</a></li>
+                        <li class="dropdown dropend exe-offline">
+                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon download-icon-green"></span> {{ "Export as..." | trans }}</a>
                             <ul class="dropdown-menu" aria-labelledby="dropdownExportAsOffline">
                                 <li><a id="navbar-button-exportas-html5" class="dropdown-item" href="#">{{ "Website" | trans }}</a></li>
                                 <li><a id="navbar-button-exportas-html5-folder" class="dropdown-item" href="#">{{ "Export to Folder (Unzipped Website)" | trans }}</a></li>
@@ -61,18 +59,18 @@
                         <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
                             <li><a id="navbar-button-uploadtodrive" class="dropdown-item" href="#">{{ "Google Drive" | trans }}</a></li>
                             <li><a id="navbar-button-uploadtodropbox" class="dropdown-item" href="#">{{ "Dropbox" | trans }}</a></li>
-                            {% if config.platformIntegration %} 
+                            {% if config.platformIntegration %}
                                 <li><a id="navbar-button-uploadtoplatform" class="dropdown-item" href="#">{{ config.platformName | trans }}</a></li>
                             {% endif %}
                         </ul>
                     </li>#}
-                    {% if config.platformIntegration %} 
-                    <li class="dropdown dropend exe-advanced">
-                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Upload to" | trans }}</a>
-                        <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
-                            <li><a id="navbar-button-uploadtoplatform" class="dropdown-item" href="#">{{ config.platformName | trans }}</a></li>
-                        </ul>
-                    </li>
+                    {% if config.platformIntegration %}
+                        <li class="dropdown dropend exe-advanced">
+                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Upload to" | trans }}</a>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
+                                <li><a id="navbar-button-uploadtoplatform" class="dropdown-item" href="#">{{ config.platformName | trans }}</a></li>
+                            </ul>
+                        </li>
                     {% endif %}
                     <li class="dropdown dropend exe-advanced d-none">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownProperties" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Metadata" | trans }}</a>
@@ -83,21 +81,23 @@
                     </li>
                 </ul>
             </li>
-                    <li class="nav-item dropdown">
+            <li class="nav-item btn button-tertiary button-dropdown dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="dropdownUtilities" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     {{ "Utilities" | trans }}
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="dropdownUtilities">
                     {# <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ "Preferences" | trans }}</a></li> #}
-                    <li><a class="dropdown-item" id="navbar-button-preview" href="#" data-shortcut="Mod+P" aria-keyshortcuts="Control+P Meta+P">{{ "Preview" | trans }}</a></li>
+                    {# Hidden element - not deletable in HTML #}
+                    <li><a class="dropdown-item" id="navbar-button-preview" href="#">{{ "Preview" | trans }}</a></li>
+                    {# Hidden element - not deletable in HTML #}
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-idevice-manager" href="#">{{ "iDevice manager" | trans }}</a></li>
-                    <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#">{{ "Resources report" | trans }}</a></li>
-                    <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#">{{ "Link validation" | trans }}</a></li>
-                    <li><a class="dropdown-item exe-advanced" id="navbar-button-filemanager" href="#">{{ "File manager" | trans }}</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#"><span class="small-icon report-icon-green"></span> {{ "Resources report" | trans }}</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#"><span class="small-icon link-icon"></span>  {{ "Link validation" | trans }}</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-filemanager" href="#"><span class="small-icon image-icon-green"></span> {{ "File manager" | trans }}</a></li>
                 </ul>
             </li>
-            <li class="nav-item dropdown"><a class="nav-link dropdown-item" href="#" id="dropdownStyles">{{ "Styles" | trans }}</a></li>
-            <li class="nav-item dropdown">
+            {# Help menu can't be deleted, hidden instead #}
+            <li class="nav-item btn button-tertiary button-dropdown dropdown" id="dropdownHelpItem" >
                 <a class="nav-link dropdown-toggle" href="#" id="dropdownHelp" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     {{ "Help" | trans }}
                 </a>

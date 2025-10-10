@@ -24,6 +24,7 @@ use App\Service\net\exelearning\Service\Api\OdeComponentsSyncServiceInterface;
 use App\Service\net\exelearning\Service\Api\OdeServiceInterface;
 use App\Service\net\exelearning\Service\Api\PagStructureApiServiceInterface;
 use App\Service\net\exelearning\Service\Thumbnail\ThumbnailServiceInterface;
+use App\Settings;
 use App\Util\net\exelearning\Util\FileUtil;
 use App\Util\net\exelearning\Util\UrlUtil;
 use App\Util\net\exelearning\Util\Util;
@@ -265,6 +266,8 @@ class IdeviceApiController extends DefaultApiController
     #[Route('/{odeNavStructureSyncId}/list/page', methods: ['GET'], name: 'api_idevices_list_by_page')]
     public function getOdeComponentsSyncListByPageAction(Request $request, $odeNavStructureSyncId)
     {
+        $collaborativeBlockLevel = Settings::COLLABORATIVE_BLOCK_LEVEL ?? 'idevice';
+
         $responseData = null;
 
         // if odeNavStructureSyncId is set load data from database
@@ -479,6 +482,17 @@ class IdeviceApiController extends DefaultApiController
         $responseData = $this->saveOdeComponentsSync($request, 'saveOdeComponentsSyncData');
 
         $jsonData = $this->getJsonSerialized($responseData);
+        $collaborativeBlockLevel = Settings::COLLABORATIVE_BLOCK_LEVEL ?? 'idevice';
+        $odeNavStructureSync = array_values($responseData->getOdeComponentsSyncs());
+        if (isset($odeNavStructureSync[0]) && 'idevice' !== $collaborativeBlockLevel) {
+            $this->publish(
+                $odeNavStructureSync[0]->getOdeSessionId(),
+                'actionType:collaborative-page-lock'.
+                ',user:'.$user->getEmail().
+                ',pageId:'.$odeNavStructureSync[0]->getPageId().
+                ',collaborativeMode:'.$collaborativeBlockLevel
+            );
+        }
 
         return new JsonResponse($jsonData, $this->status, [], true);
     }

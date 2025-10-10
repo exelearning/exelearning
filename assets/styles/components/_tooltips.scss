@@ -1,0 +1,12 @@
+body > .tooltip {
+    z-index: 100000;
+}
+
+.tooltip.bs-tooltip-end .tooltip-inner {
+    position: relative;
+    top: 8px;
+}
+
+.tooltip-inner {
+    opacity: 1 !important;
+}

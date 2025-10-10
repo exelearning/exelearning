@@ -333,69 +333,86 @@ var $exeDevice = {
         msgs.msgEProvideID = _("Please provide the ID of this progress report");
     },
     createForm: function () {
-
         const html = `
-            <div id="reportQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_("It shows the result of the pupils in the activities linked to their average score.")} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/informe_de_progreso.html" hreflang="es" target="_blank">
-                        ${_("Usage Instructions")}
-                    </a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_("Options")}</a></legend>
-                        <div>
-                            <p>${_("The ID can be a number or word of more than five characters. You must use the same ID in all the activities you will assess in this progress report.")}</p>
-                            <p>
-                                <label for="informeEEvaluationID">${_("Identifier")}:</label> <input type="text" id="informeEEvaluationID" value="${eXeLearning.app.project.odeId || ''}"/>
-                                <button id="informeERefresh">${_("Refresh pages")}</button>
-                            </p>
-                            <p>                                
-                                <input type="checkbox" checked id="informeEShowDate"><label for="informeEShowDate">${_("Show date and time")}.</label>
-                            </p>
-                            <p>                             
-                                <label for="informeEShowTypeGame"><input type="checkbox"  checked id="informeEShowTypeGame">${_("Show type of iDevice")}.</label>
-                            </p>
-                            <p>                                
-                               <input type="checkbox" checked id="informeEActiveLinks"><label for="informeEActiveLinks">${_("Link report activities")}.</label>                                
-                            </p>
-                            <p>
-                                <input type="checkbox" checked id="informeEUserData"><label for="informeEUserData">${_("User data")}.</label>                               
-                            </p> 
-                            <p>
-                                <label>
-                                    <input type="radio" name="showtype" checked value="0">${_("All pages and iDevices")}                                    
-                                </label>
-                                <label>
-                                    <input type="radio" name="showtype" value="1">${_("All pages and only evaluable iDevices")}                                    
-                                </label>
-                                <label>
-                                    <input type="radio" name="showtype" value="2">${_("Only pages with evaluable activities")}                                    
-                                </label>
-                            </p>
-                            <div>    
-                                <span> <strong>${_("Available iDevices")}:</strong></span>                    
-                                <p id="informeEPages"></p>
-                            </div>
-                             <p class="exe-block-info">
-                                ${_("This iDevice is compatible with all game iDevices and all interactive activities.")}
-                            </p>
+        <div id="reportQEIdeviceForm">
+            <p class="exe-block-info exe-block-dismissible" style="position:relative">
+                ${_("It shows the result of the pupils in the activities linked to their average score.")}
+                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/informe_de_progreso.html" hreflang="es" target="_blank">${_("Usage Instructions")}</a>
+                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
+            </p>
+            <div class="exe-form-tab" title="${_('General settings')}">
+                <fieldset class="exe-fieldset">
+                    <legend><a href="#">${_("Options")}</a></legend>
+                    <div>
+                        <p class="exe-block-info mb-3">
+                            ${_("The ID can be a number or word of more than five characters. You must use the same ID in all the activities you will assess in this progress report.")}
+                        </p>
+                        <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                            <label for="informeEEvaluationID" class="mb-0">${_("Identifier")}:</label>
+                            <input type="text" id="informeEEvaluationID" value="${eXeLearning.app.project.odeId || ''}" style="max-width:250px;" class="form-control" />
+                            <button id="informeERefresh" class="btn btn-primary" type="button">${_("Refresh pages")}</button>
                         </div>
-                    </fieldset>
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                        <div class="toggle-item mb-3">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="informeEShowDate" class="toggle-input" checked />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="informeEShowDate">${_("Show date and time")}.</label>
+                        </div>
+                        <div class="toggle-item mb-3">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="informeEShowTypeGame" class="toggle-input" checked />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="informeEShowTypeGame">${_("Show type of iDevice")}.</label>
+                        </div>
+                        <div class="toggle-item mb-3">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="informeEActiveLinks" class="toggle-input" checked />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="informeEActiveLinks">${_("Link report activities")}.</label>
+                        </div>
+                        <div class="toggle-item mb-3">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="informeEUserData" class="toggle-input" checked />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="informeEUserData">${_("User data")}.</label>
+                        </div>
+                        <span class="mb-1">${_("Show")}:</span>
+                        <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                            <div class="form-check form-check-inline d-inline-flex align-items-center">
+                                <input type="radio" id="showtype0" name="showtype" class="form-check-input" value="0" checked>
+                                <label class="form-check-label mb-0 ms-1" for="showtype0">${_("All pages and iDevices")}</label>
+                            </div>
+                            <div class="form-check form-check-inline d-inline-flex align-items-center">
+                                <input type="radio" id="showtype1" name="showtype" class="form-check-input" value="1">
+                                <label class="form-check-label mb-0 ms-1" for="showtype1">${_("All pages and only evaluable iDevices")}</label>
+                            </div>
+                            <div class="form-check form-check-inline d-inline-flex align-items-center">
+                                <input type="radio" id="showtype2" name="showtype" class="form-check-input" value="2">
+                                <label class="form-check-label mb-0 ms-1" for="showtype2">${_("Only pages with evaluable activities")}</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <span><strong>${_("Available iDevices")}:</strong></span>
+                            <p id="informeEPages" class="mb-0"></p>
+                        </div>
+                        <p class="exe-block-info mb-0">
+                            ${_("This iDevice is compatible with all game iDevices and all interactive activities.")}
+                        </p>
+                    </div>
+                </fieldset>
             </div>
-        `;
-
+            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+        </div>
+    `;
         this.ideviceBody.innerHTML = html;
-
         $exeDevice.loadPreviousValues();
-
         $exeDevicesEdition.iDevice.tabs.init("reportQEIdeviceForm");
-
     },
+
 
     normalizeFileName: function (fileName) {
         const replacements = {
