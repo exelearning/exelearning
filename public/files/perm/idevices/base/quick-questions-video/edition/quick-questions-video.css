@@ -1,13 +1,5 @@
-#vquextQEIdeviceForm input[type=number] {
-    width: 4em;
-}
-
-#vquextQEIdeviceForm label {
-    margin-right: 0.15em !important;
-}
-
-#vquextQEIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-    margin-right: 0.15em !important;
+#vquextQEIdeviceForm input[type="button"] {
+    margin-right: 0 !important;
 }
 
 #vquextQEIdeviceForm input[type="radio"],
@@ -15,6 +7,11 @@
 #vquextQEIdeviceForm input[type=button] {
     cursor: pointer;
 }
+
+
+
+
+#vquextQEIdeviceForm #vquextQEIdeviceForm
 
 /*Panel preguntas */
 .VDQXTE-EPanel {
@@ -85,30 +82,12 @@
     flex-wrap: wrap;
     justify-content: flex-start;
     width: 100%;
-    gap: 6px;
 }
 
-.VDQXTE-ENameTema input[type=text]:last-of-type {
-    width: 100%;
-    margin-left: 0.2em;
-}
 
-.VDQXTE-ENameTema {
-    flex-wrap: nowrap;
-}
-
-.VDQXTE-EOptionsGame {
-    min-height: 300px;
-    width: 50%;
-}
-
-.VDQXTE-EOptionsGame div {
-    margin-bottom: 0.7em;
-}
-
-.VDQXTE-EOptionsGame input[type=text] {
-    margin-right: .2em;
-    width: 5em;
+.VDQXTE-EVideoX {
+    width: 7em;
+    text-align: center !important;
 }
 
 .VDQXTE-inlineOption,
@@ -120,8 +99,6 @@
 /* Ayuda */
 .VDQXTE-TypeGameHelp {
     display: none;
-    padding-top: 0.8em;
-    margin-bottom: 2em;
     font-size: .95em
 }
 
@@ -170,10 +147,10 @@
     align-items: center;
     display: flex;
     justify-content: center;
-    margin: 3px 0;
+    margin: 8px 0;
     min-height: 35px;
     width: 49%;
-    gap: 1px;
+
 }
 
 .VDQXTE-EAnwersOptions {
@@ -184,7 +161,7 @@
     align-items: center;
     display: flex;
     justify-content: center;
-    margin: .5em auto;
+    margin: 8px auto;
     width: 100%;
 }
 
@@ -193,7 +170,7 @@
     display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;
-    margin-bottom: 0.5em;
+    margin-bottom: 8px auto;
     width: 100%;
 }
 
@@ -321,10 +298,9 @@
 }
 
 .VDQXTE-ENavigationButton {
-    height: 1.5em;
-    margin: 0 .3em;
-    min-width: 1.5em;
-    width: 1.5em;
+    height: 1.7em;
+    min-width: 1.7em;
+    width: 1.7em;
 }
 
 .VDQXTE-EButtonImage {
@@ -339,12 +315,9 @@
 }
 
 .VDQXTE-NumberQuestion {
-    font-weight: bold;
-    height: 1.5em;
-    line-height: 1.5em;
     text-align: center;
     vertical-align: middle;
-    width: 2em;
+    width: 3em;
 }
 
 
@@ -401,9 +374,6 @@
     margin-right: .2em;
 }
 
-.VDQXTE-EVIOptionsVQ #vquextEVIURL {
-    width: 15em;
-}
 
 /* Ocutar elementos */
 .VDQXTE-EInputOptionsVideo,
@@ -462,7 +432,7 @@ input#gameQEScoreQuestion {
 #vquextQEIdeviceForm #vquextQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color: #0BA1A1;
     font-weight: 500;
 }
 
