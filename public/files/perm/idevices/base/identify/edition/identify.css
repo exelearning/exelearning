@@ -1,27 +1,14 @@
 
-#identifyQEIdeviceForm input[type=number] {
-    width: 4em;
-}
-
-#identifyQEIdeviceForm label {
-    margin-right: 0.1em;
-}
-
 #identifyQEIdeviceForm input[type="radio"],
 #identifyQEIdeviceForm input[type="checkbox"],
 #identifyQEIdeviceForm input[type=button] {
     cursor: pointer;
 }
 
-#identifyQEIdeviceForm label {
-    margin-right: 0.1em !important;
+#identifyQEIdeviceForm input[type="button"]{
+    margin-right: 0 !important;
 }
 
-#identifyQEIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-    margin-right: 0.15em !important;
-}
-
-/*Panel preguntas */
 .IDFE-EPanel {
     margin: 0.7em auto;
     padding: 0;
@@ -37,7 +24,7 @@
     width: 100%;
 }
 
-/* Medias */
+
 .IDFE-EMultiMediaClue {
     height: 100%;
     min-height: 300px;
@@ -207,8 +194,6 @@
     align-items: center;
     display: flex;
     justify-content: center;
-    margin: 3px 0;
-    min-height: 35px;
     width: 49%;
 }
 
@@ -353,10 +338,9 @@
 }
 
 .IDFE-ENavigationButton {
-    height: 1.5em;
-    margin: 0 .3em;
-    min-width: 1.5em;
-    width: 1.5em;
+    height: 1.7em;
+    min-width: 1.7em;
+    width: 1.7em;
 }
 
 .IDFE-EButtonImage {
@@ -371,12 +355,9 @@
 }
 
 .IDFE-NumberQuestion {
-    font-weight: bold;
-    height: 1.5em;
-    line-height: 1.5em;
     text-align: center;
     vertical-align: middle;
-    width: 2em;
+    width: 3em;
 }
 
 /* Ocutar elementos */
@@ -453,7 +434,7 @@ input#gameQEScoreQuestion {
 #identifyQEIdeviceForm #identifyQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 

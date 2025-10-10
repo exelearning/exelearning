@@ -47,7 +47,6 @@ var $exeDevice = {
             '&percnt;',
             '%',
         );
-
         this.setMessagesInfo();
         this.createForm();
     },
@@ -294,6 +293,17 @@ var $exeDevice = {
                 $exeDevice.endVideoQuExt,
             );
             $exeDevice.showPlayer();
+            // Si no hay fin establecido y ya tenemos duración, fijarlo
+            if (typeof $exeDevice.player.getDuration === 'function') {
+                const lduration = Math.floor($exeDevice.player.getDuration());
+                const currentEnd = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#vquextEVIEnd').val() || '00:00:00');
+                if (!isNaN(lduration) && lduration > 0 && currentEnd === 0) {
+                    const durationStr = $exeDevices.iDevice.gamification.helpers.secondsToHour(lduration);
+                    $('#vquextEVIEnd').val(durationStr);
+                    $exeDevice.durationVideo = lduration;
+                    $exeDevice.endVideoQuExt = lduration;
+                }
+            }
         }
     },
 
@@ -398,6 +408,14 @@ var $exeDevice = {
                     $exeDevice.durationVideo = lduration;
                     if ($exeDevice.endVideoQuExt < 1) {
                         $exeDevice.endVideoQuExt = $exeDevice.durationVideo;
+                        const currentEnd = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#vquextEVIEnd').val() || '00:00:00');
+                        if (currentEnd === 0) {
+                            $('#vquextEVIEnd').val(
+                                $exeDevices.iDevice.gamification.helpers.secondsToHour(
+                                    $exeDevice.durationVideo,
+                                ),
+                            );
+                        }
                     }
                 }
             }
@@ -445,11 +463,9 @@ var $exeDevice = {
                     $('#vquextEVIEnd').val(),
                 ) || 0;
             if (endVideo < 1) {
-                $('#vquextEVIEnd').val(
-                    $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                        $exeDevice.durationVideo,
-                    ),
-                );
+                const endStr = $exeDevices.iDevice.gamification.helpers.secondsToHour($exeDevice.durationVideo);
+                $('#vquextEVIEnd').val(endStr);
+                $exeDevice.endVideoQuExt = $exeDevice.durationVideo;
             }
         }
     },
@@ -759,157 +775,264 @@ var $exeDevice = {
                         <fieldset class="exe-fieldset exe-fieldset-closed">
                             <legend><a href="#">${_('Options')}</a></legend>
                             <div>
-                                <p>
-                                    <label for="vquextEShowMinimize"><input type="checkbox" id="vquextEShowMinimize">${_('Show minimized.')}</label>
-                                </p>
-                                <p>
-                                    <label for="vquextEAnswersRamdon"><input type="checkbox" id="vquextEAnswersRamdon">${_('Random options')}</label>
-                                </p>
-                                <p>
-                                    <label for="vquextECustomMessages"><input type="checkbox" id="vquextECustomMessages">${_('Custom messages')}.</label>
-                                </p>
-                                <p>
-                                    <label for="vquextEShowSolution"><input type="checkbox" checked id="vquextEShowSolution">${_('Show solutions')}.</label>
-                                    <label for="vquextETimeShowSolution">${_('Show solution time (seconds)')} <input type="number" name="vquextETimeShowSolution" id="vquextETimeShowSolution" value="3" min="1" max="9" /></label>
-                                </p>
-                                <p>
-                                    <strong class="GameModeLabel"><a href="#vquextEGameModeHelp" id="vquextEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a>${_('Score')}:</strong>
-                                    <input class="VDQXTE-TypeGame" checked="checked" id="vquextETypeActivity" type="radio" name="vqxtgamemode" value="1" />
-                                    <label for="vquextETypeActivity">${_('From 0 to 10')}</label>
-                                    <input class="VDQXTE-TypeGame" id="vquextEGameMode" type="radio" name="vqxtgamemode" value="0" />
-                                    <label for="vquextEGameMode">${_('Points and lives')}</label>
-                                    <input class="VDQXTE-TypeGame" id="vquextETypeReto" type="radio" name="vqxtgamemode" value="2" />
-                                    <label for="vquextETypeReto">${_('No score')}</label>
-                                </p>
-                                <div id="vquextEGameModeHelp" class="VDQXTE-TypeGameHelp exe-block-info">
+                                <div class="toggle-item mb-3">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="vquextEShowMinimize" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="vquextEShowMinimize">${_('Show minimized.')}</label>
+                                </div>
+                                <div class="toggle-item mb-3">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="vquextEAnswersRamdon" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="vquextEAnswersRamdon">${_('Random options')}</label>
+                                </div>
+                                <div class="toggle-item mb-3">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="vquextECustomMessages" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="vquextECustomMessages">${_('Custom messages')}.</label>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                    <div class="toggle-item">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="vquextEShowSolution" class="toggle-input" checked />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="vquextEShowSolution">${_('Show solutions')}.</label>
+                                    </div>
+                                    <label for="vquextETimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}</label><input class="form-control" type="number" name="vquextETimeShowSolution" id="vquextETimeShowSolution" value="3" min="1" max="9" />
+                                </div>
+                                <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                                    <span>${_('Score')}:</span>
+                                    <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                        <div class="form-check form-check-inline m-0">                                        
+                                            <input class="form-check-input VDQXTE-TypeGame" checked="checked" id="vquextETypeActivity" type="radio" name="vqxtgamemode" value="1" />
+                                            <label for="vquextETypeActivity">${_('From 0 to 10')}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input VDQXTE-TypeGame" id="vquextEGameMode" type="radio" name="vqxtgamemode" value="0" />
+                                            <label for="vquextEGameMode">${_('Points and lives')}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input VDQXTE-TypeGame" id="vquextETypeReto" type="radio" name="vqxtgamemode" value="2" />
+                                            <label for="vquextETypeReto">${_('No score')}</label>
+                                        </div>
+                                    </span>
+                                    <a href="#vquextEGameModeHelp" id="vquextEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a>
+                                </div>
+                                <div id="vquextEGameModeHelp" class="VDQXTE-TypeGameHelp exe-block-info pt-3">
                                     <ul>
                                         <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
                                         <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
                                         <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
                                     </ul>
                                 </div>
-                                <p>
-                                    <label for="vquextEUseLives"><input type="checkbox" checked id="vquextEUseLives">${_('Use lives')}.</label>
-                                    <label for="vquextENumberLives">${_('Number of lives')}:<input type="number" name="vquextENumberLives" id="vquextENumberLives" value="3" min="1" max="5" /></label>
-                                </p>
-                                <p>
-                                    <label for="vquextEHasFeedBack"><input type="checkbox" id="vquextEHasFeedBack">${_('Feedback')}.</label>
-                                    <label for="vquextEPercentajeFB"><input type="number" name="vquextEPercentajeFB" id="vquextEPercentajeFB" value="100" min="5" max="100" step="5" disabled />${_('&percnt; right to see the feedback')}</label>
-                                </p>
-                                <p id="vquextEFeedbackP" class="VDQXTE-EFeedbackP">
-                                    <textarea id="vquextEFeedBackEditor" class="exe-html-editor"></textarea>
-                                </p>
-                                <p>
-                                    <label for="vquextENavigable"><input type="checkbox" id="vquextENavigable">${_('Navigable')}.</label>
-                                    <label for="vquextERepeatQuestion"><input type="checkbox" id="vquextERepeatQuestion" disabled>${_('Repeat question')}.</label>
-                                </p>
-                                <p class="VDQXTE-Flex">
-                                    <label for="vquextEReloadQuestion"><input type="checkbox" id="vquextEReloadQuestion">${_('Reload video')}.</label>
-                                    <label for="vquextEPreviewQuestions"><input type="checkbox" id="vquextEPreviewQuestions">${_('Preview questions')}.</label>
-                                    <label for="vquextEPauseVideo"><input type="checkbox" id="vquextEPauseVideo">${_('Pause video')}.</label>
-                                </p>
-                                <p>
-                                    <label for="vquextEAuthor">${_('Authorship')}: </label><input id="vquextEAuthor" type="text" />
-                                </p>
-                                <p>
-                                    <label for="vquextEPercentajeQuestions">%${_('Questions')}: <input type="number" name="vquextEPercentajeQuestions" id="vquextEPercentajeQuestions" value="100" min="1" max="100" /></label>
-                                    <span id="vquextENumeroPercentaje">1/1</span>
-                                </p>
-                                <p>
-                                    <label for="vquextEModeBoard"><input type="checkbox" id="vquextEModeBoard">${_('Digital whiteboard mode')}</label>
-                                </p>
-                                <p class="Games-Reportdiv">
-                                    <strong class=""><a href="#vquextEEvaluationHelp" id="vquextEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                                   <input type="checkbox" id="vquextEEvaluation"> <label for="vquextEEvaluation">${_('Progress report')}.</label>
-                                    <label for="vquextEEvaluationID">${_('Identifier')}:</label><input type="text" id="vquextEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                                </p>
-                                <div id="vquextEEvaluationHelp" class="VDQXTE-TypeGameHelp exe-block-info">
-                                    <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                    <div class="toggle-item mb-0">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="vquextEUseLives" class="toggle-input" checked />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="vquextEUseLives">${_('Use lives')}.</label>
+                                    </div>
+                                    <label for="vquextENumberLives" >${_('Number of lives')}:</label>
+                                    <input class="form-control" type="number" name="vquextENumberLives" id="vquextENumberLives" value="3" min="1" max="5" />
                                 </div>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                    <div class="toggle-item mb-0">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="vquextEHasFeedBack" class="toggle-input" />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="vquextEHasFeedBack">${_('Feedback')}.</label>
+                                    </div>
+                                    <input class="form-control" type="number" name="vquextEPercentajeFB" id="vquextEPercentajeFB" value="100" min="5" max="100" step="5" disabled />  <label for="vquextEPercentajeFB" class="mb-0">${_('&percnt; right to see the feedback')}</label>
+                                </div>
+                                <div id="vquextEFeedbackP" class="VDQXTE-EFeedbackP mb-3">
+                                    <textarea id="vquextEFeedBackEditor" class="exe-html-editor"></textarea>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                    <div class="toggle-item mb-0">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="vquextENavigable" class="toggle-input" />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="vquextENavigable">${_('Navigable')}.</label>
+                                    </div>
+                                    <div class="toggle-item mb-0 d-none">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="vquextERepeatQuestion" class="toggle-input" disabled />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="vquextERepeatQuestion">${_('Repeat question')}.</label>
+                                    </div>
+                                </div>
+                                <div class="VDQXTE-Flex mb-3 gap-3">
+                                    <div class="toggle-item mb-0">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="vquextEReloadQuestion" class="toggle-input" />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="vquextEReloadQuestion">${_('Reload video')}.</label>
+                                    </div>
+                                    <div class="toggle-item mb-0">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="vquextEPreviewQuestions" class="toggle-input" />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="vquextEPreviewQuestions">${_('Preview questions')}.</label>
+                                    </div>
+                                    <div class="toggle-item mb-0">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="vquextEPauseVideo" class="toggle-input" />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="vquextEPauseVideo">${_('Pause video')}.</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3 d-none align-items-center gap-2 flex-nowrap">
+                                    <label for="vquextEAuthor">${_('Authorship')}: </label><input id="vquextEAuthor" class="form-control" type="text" />
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                    <label for="vquextEPercentajeQuestions" class="mb-0">%${_('Questions')}:</label><input class="form-control" type="number" name="vquextEPercentajeQuestions" id="vquextEPercentajeQuestions" value="100" min="1" max="100" />
+                                    <span id="vquextENumeroPercentaje">1/1</span>
+                                </div>
+                                <div class="toggle-item mb-3">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="vquextEModeBoard" class="toggle-input" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="vquextEModeBoard">${_('Digital whiteboard mode')}</label>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
+                                    <div class="toggle-item mb-0">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="vquextEEvaluation" class="toggle-input" />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label" for="vquextEEvaluation">${_('Progress report')}.</label>
+                                    </div>
+                                    <div class="d-flex align-items-center flex-nowrap gap-2">
+                                           <label for="vquextEEvaluationID">${_('Identifier')}:</label>
+                                           <input type="text" class="form-control" id="vquextEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                                    </div>
+                                    <a href="#vquextEEvaluationHelp" id="vquextEEvaluationHelpLnk" title="${_('Help')}">
+                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
+                                    </a>  
+                                </div>
+                                <p id="vquextEEvaluationHelp" class="VDQXTE-TypeGameHelp exe-block-info">
+                                    ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                                </p>
                             </div>
                         </fieldset>
                         <fieldset class="exe-fieldset">
                             <legend><a href="#">${_('Questions')}</a></legend>
                             <div class="VDQXTE-EPanel" id="vquextEPanel">
-                                <div class="VDQXTE-Flex VDQXTE-EVIOptionsVQ">
-                                    <div class="VDQXTE-EVILabel">
+                                <div class="d-flex align-items-center mb-3 flex-nowrap gap-2">                                    
                                         <label for="vquextEVIURL">URL:</label>
-                                        <input type="text" id="vquextEVIURL" class="exe-file-picker" />
+                                        <input type="text" id="vquextEVIURL" class="exe-file-picker w-100 form-control me-0" />
                                         <a href="#" id="vquextEPlayStart" class="VDQXTE-ENavigationButton VDQXTE-EPlayVideo" title="${_('Play video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="VDQXTE-EButtonImage" /></a>
-                                    </div>
-                                    <div class="VDQXTE-EVILabel">
                                         <label for="vquextEVIStart">${_('Start')}:</label>
-                                        <input id="vquextEVIStart" type="text" value="00:00:00" maxlength="8" />
-                                    </div>
-                                    <div class="VDQXTE-EVILabel">
+                                        <input id="vquextEVIStart" class="form-control VDQXTE-EVideoX " type="text" value="00:00:00" maxlength="8" />
                                         <label for="vquextEVIEnd">${_('End')}:</label>
-                                        <input id="vquextEVIEnd" type="text" value="00:00:00" maxlength="8"/>
+                                        <input id="vquextEVIEnd" class="form-control VDQXTE-EVideoX " type="text" value="00:00:00" maxlength="8"/>
                                     </div>
-                                </div>
                                 <div class="VDQXTE-EOptionsMedia">
                                     <div class="VDQXTE-EOptionsGame">
-                                        <p>
+                                        <div class="d-flex align-items-center mb-3 flex-nowrap gap-2">
                                             <span>${_('Type')}:</span>
-                                            <span class="VDQXTE-EInputType">
-                                                <input class="VDQXTE-TypeQuestion" checked id="vquextTypeTest" type="radio" name="vquexttypequestion" value="0"/>
-                                                <label for="vquextTypeTest">${_('Test')}</label>
-                                                <input class="VDQXTE-TypeQuestion" id="vquextTypeWord" type="radio" name="vquexttypequestion" value="1"/>
-                                                <label for="vquextTypeWord">${_('Word')}</label>
+                                            <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-TypeQuestion form-check-input" checked id="vquextTypeTest" type="radio" name="vquexttypequestion" value="0"/>
+                                                    <label for="vquextTypeTest">${_('Test')}</label>
+                                                </div>
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-TypeQuestion form-check-input" id="vquextTypeWord" type="radio" name="vquexttypequestion" value="1"/>
+                                                    <label for="vquextTypeWord">${_('Word')}</label>
+                                                </div>
                                             </span>
-                                        </p>
-                                        <p>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3 flex-nowrap gap-2">
                                             <span>${_('Question point')}:</span>
-                                            <span>
+                                            <span class="d-flex align-items-centerflex-nowrap gap-2">
                                                 <label class="sr-av" for="vquextPoint">${_('Question point')}</label>
-                                                <input id="vquextPoint" type="text" value="00:00:00" maxlength="8"/>
+                                                <input id="vquextPoint" class="form-control" type="text" value="00:00:00" maxlength="8" style="max-width:10ch"/>
                                             </span>
-                                        </p>
-                                        <p>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3 flex-nowrap gap-2">   
                                             <span>${_('Options Number')}:</span>
-                                            <span class="VDQXTE-EInputNumbers">
-                                                <input class="VDQXTE-Number" id="numQ2" type="radio" name="vqxnumber" value="2"/>
-                                                <label for="numQ2">2</label>
-                                                <input class="VDQXTE-Number" id="numQ3" type="radio" name="vqxnumber" value="3"/>
-                                                <label for="numQ3">3</label>
-                                                <input class="VDQXTE-Number" id="numQ4" type="radio" name="vqxnumber" value="4" checked="checked"/>
-                                                <label for="numQ4">4</label>
+                                            <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-Number form-check-input" id="numQ2" type="radio" name="vqxnumber" value="2"/>
+                                                    <label for="numQ2">2</label>
+                                                </div>
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-Number form-check-input" id="numQ3" type="radio" name="vqxnumber" value="3"/>
+                                                    <label for="numQ3">3</label>
+                                                </div>
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-Number form-check-input" id="numQ4" type="radio" name="vqxnumber" value="4" checked="checked"/>
+                                                    <label for="numQ4">4</label>
+                                                </div>
                                             </span>
-                                        </p>
-                                        <p>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3 flex-nowrap gap-2">
                                             <span>${_('Time per question')}:</span>
-                                            <span class="VDQXTE-EInputTimes">
-                                                <input class="VDQXTE-Times" checked="checked" id="q15s" type="radio" name="vqxtime" value="0"/>
-                                                <label for="q15s">15s</label>
-                                                <input class="VDQXTE-Times" id="q30s" type="radio" name="vqxtime" value="1"/>
-                                                <label for="q30s">30s</label>
-                                                <input class="VDQXTE-Times" id="q1m" type="radio" name="vqxtime" value="2"/>
-                                                <label for="q1m">1m</label>
-                                                <input class="VDQXTE-Times" id="q3m" type="radio" name="vqxtime" value="3"/>
-                                                <label for="q3m">3m</label>
-                                                <input class="VDQXTE-Times" id="q5m" type="radio" name="vqxtime" value="4"/>
-                                                <label for="q5m">5m</label>
-                                                <input class="VDQXTE-Times" id="q10m" type="radio" name="vqxtime" value="5"/>
-                                                <label for="q10m">10m</label>
+                                             <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-Times form-check-input" checked="checked" id="q15s" type="radio" name="vqxtime" value="0"/>
+                                                    <label for="q15s">15s</label>
+                                                </div>
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-Times form-check-input" id="q30s" type="radio" name="vqxtime" value="1"/>
+                                                    <label for="q30s">30s</label>
+                                                </div>
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-Times form-check-input" id="q1m" type="radio" name="vqxtime" value="2"/>
+                                                    <label for="q1m">1m</label>
+                                                </div>
+                                                <div class="form-check form-check-inline m-0">                                            
+                                                    <input class="VDQXTE-Times form-check-input" id="q3m" type="radio" name="vqxtime" value="3"/>
+                                                    <label for="q3m">3m</label>
+                                                </div>
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-Times form-check-input" id="q5m" type="radio" name="vqxtime" value="4"/>
+                                                    <label for="q5m">5m</label>
+                                                </div>
+                                                <div class="form-check form-check-inline m-0">
+                                                    <input class="VDQXTE-Times form-check-input" id="q10m" type="radio" name="vqxtime" value="5"/>
+                                                    <label for="q10m">10m</label>
+                                                </div>
+                                            </span>                                           
+                                        </div>
+                                        <div class="toggle-item mb-3">
+                                            <span class="toggle-control">
+                                                <input id="vquextECheckSoundVideo" type="checkbox" class="toggle-input" checked="checked" />
+                                                <span class="toggle-visual"></span>
                                             </span>
-                                        </p>
-                                        <p class="VDQXTE-EVIAudioLabel">
-                                            <label for="vquextECheckSoundVideo">${_('Audio')}:</label>
-                                            <input id="vquextECheckSoundVideo" type="checkbox" checked="checked"/>
-                                        </p>
-                                        <p class="VDQXTE-EVIAudioLabel">
-                                            <label for="vquextECheckImageVideo">${_('Image')}:</label>
-                                            <input id="vquextECheckImageVideo" type="checkbox" checked="checked"/>
-                                        </p>
-                                        <p class="VDQXTE-Flex">
+                                            <label class="toggle-label" for="vquextECheckSoundVideo">${_('Audio')}</label>
+                                        </div>
+                                        <div class="toggle-item mb-3">
+                                            <span class="toggle-control">
+                                                <input id="vquextECheckImageVideo" type="checkbox" class="toggle-input" checked="checked" />
+                                                <span class="toggle-visual"></span>
+                                            </span>
+                                            <label class="toggle-label" for="vquextECheckImageVideo">${_('Image')}</label>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-3 flex-nowrap gap-2">
                                             <label>${_('Preview question')}:</label>
                                             <a href="#" id="vquextEPlayVideo" class="VDQXTE-ENavigationButton VDQXTE-EPlayVideo" title="${_('Play video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="VDQXTE-EButtonImage"/></a>
-                                        </p>
+                                        </div>
                                     </div>
                                     <div class="VDQXTE-EMultiMediaOption">
                                         <div class="VDQXTE-EProgressBar" id="vquextEProgressBar">
                                             <div class="VDQXTE-EInterBar" id="vquextEInterBar"></div>
                                         </div>
-                                        <div class="VDQXTE-EMultiVideoQuExt VDQXTE-Flex" id="vquextEMultimedia">
+                                        <div class="VDQXTE-EMultiVideoQuExt VDQXTE-Flex mb-1" id="vquextEMultimedia">
                                             <img class="VDQXTE-EMedia" src="${path}quextIENoImageVideo.png" id="vquextENoImageVideo" alt="" />
                                             <div class="VDQXTE-EMedia" id="vquextEVideo"></div>
                                             <video class="VDQXTE-EMedia" id="vquextEVideoLocal" preload="auto" controls></video>
@@ -917,54 +1040,61 @@ var $exeDevice = {
                                             <img class="VDQXTE-EMedia" src="${path}quextECoverVideoQuExt.png" id="vquextECover" alt="${_('No image')}" />
                                         </div>
                                         <div class="VDQXTE-EMultimediaData" id="vquextEMultimediaData">
-                                            <button class="VDQXTE-EVideoTime" id="vquextEVITime" type="button">00:00:00</button>
+                                            <button class="btn btn-primary" id="vquextEVITime" type="button">00:00:00</button>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="VDQXTE-EContents">
+                                <div class="VDQXTE-EContents mb-3">
                                     <div class="VDQXTE-EQuestionDiv" id="vquextEQuestionDiv">
-                                        <label class="sr-av">${_('Question')}:</label><input type="text" class="VDQXTE-EQuestion" id="vquextEQuestion">
+                                        <label class="sr-av">${_('Question')}:</label>
+                                        <input type="text" class="VDQXTE-EQuestion form-control" id="vquextEQuestion">
                                     </div>
                                     <div class="VDQXTE-EAnswers" id="vquextEAnswers">
-                                        <div class="VDQXTE-EOptionDiv">
-                                            <label class="sr-av">${_('Solution')} A:</label><input type="radio" class="VDQXTE-ESolution" name="vqxsolution" id="vquextESolution0" value="0" checked="checked"/>
-                                            <label class="sr-av">${_('Option')} A:</label><input type="text" class="VDQXTE-EOption0 VDQXTE-EAnwersOptions" id="vquextEOption0">
+                                        <div class="VDQXTE-EOptionDiv gap-2">
+                                            <label class="sr-av">${_('Solution')} A:</label><input type="radio" class="VDQXTE-ESolution form-check-input" name="vqxsolution" id="vquextESolution0" value="0" checked="checked"/>
+                                            <label class="sr-av">${_('Option')} A:</label><input type="text" class="VDQXTE-EOption0 VDQXTE-EAnwersOptions form-control" id="vquextEOption0">
                                         </div>
-                                        <div class="VDQXTE-EOptionDiv">
-                                            <label class="sr-av">${_('Solution')} B:</label><input type="radio" class="VDQXTE-ESolution" name="vqxsolution" id="vquextESolution1" value="1"/>
-                                            <label class="sr-av">${_('Option')} B:</label><input type="text" class="VDQXTE-EOption1 VDQXTE-EAnwersOptions" id="vquextEOption1">
+                                        <div class="VDQXTE-EOptionDiv gap-2">
+                                            <label class="sr-av">${_('Solution')} B:</label><input type="radio" class="VDQXTE-ESolution form-check-input" name="vqxsolution" id="vquextESolution1" value="1"/>
+                                            <label class="sr-av">${_('Option')} B:</label><input type="text" class="VDQXTE-EOption1 VDQXTE-EAnwersOptions form-control" id="vquextEOption1">
                                         </div>
-                                        <div class="VDQXTE-EOptionDiv">
-                                            <label class="sr-av">${_('Solution')} C:</label><input type="radio" class="VDQXTE-ESolution" name="vqxsolution" id="vquextESolution2" value="2"/>
-                                            <label class="sr-av">${_('Option')} C:</label><input type="text" class="VDQXTE-EOption2 VDQXTE-EAnwersOptions" id="vquextEOption2">
+                                        <div class="VDQXTE-EOptionDiv gap-2">
+                                            <label class="sr-av">${_('Solution')} C:</label><input type="radio" class="VDQXTE-ESolution form-check-input" name="vqxsolution" id="vquextESolution2" value="2"/>
+                                            <label class="sr-av">${_('Option')} C:</label><input type="text" class="VDQXTE-EOption2 VDQXTE-EAnwersOptions form-control" id="vquextEOption2">
                                         </div>
-                                        <div class="VDQXTE-EOptionDiv">
-                                            <label class="sr-av">${_('Solution')} D:</label><input type="radio" class="VDQXTE-ESolution" name="vqxsolution" id="vquextESolution3" value="3"/>
-                                            <label class="sr-av">${_('Option')} D:</label><input type="text" class="VDQXTE-EOption3 VDQXTE-EAnwersOptions" id="vquextEOption3">
+                                        <div class="VDQXTE-EOptionDiv gap-2">
+                                            <label class="sr-av">${_('Solution')} D:</label><input type="radio" class="VDQXTE-ESolution form-check-input" name="vqxsolution" id="vquextESolution3" value="3"/>
+                                            <label class="sr-av">${_('Option')} D:</label><input type="text" class="VDQXTE-EOption3 VDQXTE-EAnwersOptions form-control" id="vquextEOption3">
                                         </div>
                                     </div>
-                                    <div class="VDQXTE-EWordDiv" id="vquextEWordDiv">
-                                        <div class="VDQXTE-ESolutionWord"><label for="vquextESolutionWord">${_('Word/Phrase')}: </label><input type="text" id="vquextESolutionWord"/></div>
-                                        <div class="VDQXTE-ESolutionWord"><label for="vquextEDefinitionWord">${_('Definition')}: </label><input type="text" id="vquextEDefinitionWord"/></div>
+                                    <div class="VDQXTE-EWordDiv mb-3" id="vquextEWordDiv">
+                                        <div class="VDQXTE-ESolutionWord d-flex align-item-center flex-nowrap gap-2 mb-3">
+                                            <label for="vquextESolutionWord">${_('Word/Phrase')}:</label>
+                                            <input type="text" class="form-control" id="vquextESolutionWord"/>
+                                        </div>
+                                        <div class="VDQXTE-ESolutionWord d-flex align-item-center flex-nowrap gap-2 mb-3">
+                                            <label for="vquextEDefinitionWord">${_('Definition')}:</label>
+                                            <input type="text" class="form-control" id="vquextEDefinitionWord"/>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="VDQXTE-EOrders" id="vquextEOrder">
                                     <div class="VDQXTE-ECustomMessage">
                                         <span class="sr-av">${_('Hit')}</span><span class="VDQXTE-EHit"></span>
                                         <label for="vquextEMessageOK">${_('Message')}:</label>
-                                        <input type="text" class="" id="vquextEMessageOK">
+                                        <input type="text" class="form-control" id="vquextEMessageOK">
                                     </div>
                                     <div class="VDQXTE-ECustomMessage">
                                         <span class="sr-av">${_('Error')}</span><span class="VDQXTE-EError"></span>
                                         <label for="vquextEMessageKO">${_('Message')}:</label>
-                                        <input type="text" class="" id="vquextEMessageKO">
+                                        <input type="text" class="form-control" id="vquextEMessageKO">
                                     </div>
                                 </div>
-                                <div class="VDQXTE-ENavigationButtons">
+                                <div class="VDQXTE-ENavigationButtons gap-1">
                                     <a href="#" id="vquextEAdd" class="VDQXTE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="VDQXTE-EButtonImage"/></a>
                                     <a href="#" id="vquextEFirst" class="VDQXTE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="VDQXTE-EButtonImage"/></a>
                                     <a href="#" id="vquextEPrevious" class="VDQXTE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="VDQXTE-EButtonImage"/></a>
-                                    <label class="sr-av" for="vquextNumberQuestion">${_('Question number:')}:</label><input type="text" class="VDQXTE-NumberQuestion" id="vquextNumberQuestion" value="1"/>
+                                    <label class="sr-av" for="vquextNumberQuestion">${_('Question number:')}:</label><input type="text" class="VDQXTE-NumberQuestion form-control" id="vquextNumberQuestion" value="1"/>
                                     <a href="#" id="vquextENext" class="VDQXTE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="VDQXTE-EButtonImage"/></a>
                                     <a href="#" id="vquextELast" class="VDQXTE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="VDQXTE-EButtonImage"/></a>
                                     <a href="#" id="vquextEDelete" class="VDQXTE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="VDQXTE-EButtonImage"/></a>
@@ -1136,7 +1266,6 @@ var $exeDevice = {
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#vquextEShowMinimize').prop('checked', game.showMinimize);
-        $('#vquextEQuestionsRamdon').prop('checked', game.optionsRamdon);
         $('#vquextEAnswersRamdon').prop('checked', game.answersRamdon);
         $('#vquextEReloadQuestion').prop('checked', game.reloadQuestion);
         $('#vquextEPreviewQuestions').prop('checked', game.previewQuestions);
@@ -1306,8 +1435,8 @@ var $exeDevice = {
 
 
 
-    let html = '<div class="vquext-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="vquext-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         if (instructions)
             html += `<div class="vquext-instructions">${instructions}</div>`;
         html += `<div class="vquext-version js-hidden">${$exeDevice.quextVersion}</div>`;

@@ -7,7 +7,6 @@
  * Author: Manuel Narvaez Martinez
  * License: http://creativecommons.org/licenses/by-sa/4.0/
  */
-
 var $exeDevice = {
     i18n: {
         category: _('Interactive activities'),
@@ -148,148 +147,191 @@ var $exeDevice = {
     createForm: function () {
         const path = this.idevicePath,
             html = `
-            <div id="clasificaQEIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create interactive activities in which players have to classify cards with images, texts and/or sounds.')}
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/clasifica.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each card to its container.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <p>
-                                <span>${_('Difficulty level')}:</span>
-                                <input class="CQE-ELevel" id="clasificaL1" type="radio" name="qtxgamelevel" value="0" />
-                                <label for="clasificaL1">${_('Essential')}</label>
-                                <input class="CQE-ELevel" id="clasificaL2" type="radio" name="qtxgamelevel" value="1" />
-                                <label for="clasificaL2">${_('Medium')}</label>
-                                <input class="CQE-ELevel" checked id="clasificaL3" type="radio" name="qtxgamelevel" value="2" />
-                                <label for="clasificaL3">${_('Advanced')}</label>
-                            </p>
-                            <p>
-                                <label for="clasificaECustomMessages"><input type="checkbox" id="clasificaECustomMessages">${_('Custom messages')}.</label>
-                            </p>
-                            <p>
-                                <span class="CQE-EInputMedias">
-                                    <span>${_('Number of categories')}:</span>
-                                    <input class="CQE-Number" checked="checked" id="quextNumber2" type="radio" name="qxtnumber" value="2" />
-                                    <label for="quextNumber2">2</label>
-                                    <input class="CQE-Number" id="quextNumber3" type="radio" name="qxtnumber" value="3" />
-                                    <label for="quextNumber3">3</label>
-                                    <input class="CQE-Number" id="quextNumber4" type="radio" name="qxtnumber" value="4" />
-                                    <label for="quextNumber4">4</label>
+        <div id="clasificaQEIdeviceForm">
+            <p class="exe-block-info exe-block-dismissible" style="position:relative">
+                ${_('Create interactive activities in which players have to classify cards with images, texts and/or sounds.')}
+                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/clasifica.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
+                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
+            </p>
+            <div class="exe-form-tab" title="${_('General settings')}">
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each card to its container.'))}
+                <fieldset class="exe-fieldset exe-fieldset-closed">
+                    <legend><a href="#">${_('Options')}</a></legend>
+                    <div>
+                        <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                            <span>${_('Difficulty level')}:</span>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input CQE-ELevel" id="clasificaL1" type="radio" name="qtxgamelevel" value="0" />
+                                <label class="form-check-label" for="clasificaL1">${_('Essential')}</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input CQE-ELevel" id="clasificaL2" type="radio" name="qtxgamelevel" value="1" />
+                                <label class="form-check-label" for="clasificaL2">${_('Medium')}</label>
+                            </div>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input CQE-ELevel" id="clasificaL3" type="radio" name="qtxgamelevel" value="2" checked />
+                                <label class="form-check-label" for="clasificaL3">${_('Advanced')}</label>
+                            </div>
+                        </div>
+                        <div id="clasificaECustomMessagesDiv" class="mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="clasificaECustomMessages" />
+                                    <span class="toggle-visual"></span>
                                 </span>
-                            </p>
-                            <p>
-                                <label for="clasificaTitle0">${_('Category')} 1:</label>
-                                <input type="text" id="clasificaTitle0" class="CQE-EGroup" value="${_('Group')} 1"/>
-                            </p>
-                            <p>
-                                <label for="clasificaTitle1">${_('Category')} 2:</label>
-                                <input type="text" id="clasificaTitle1" class="CQE-EGroup" value="${_('Group')} 2"/>
-                            </p>
-                            <p>
-                                <label for="clasificaTitle2">${_('Category')} 3:</label>
-                                <input type="text" id="clasificaTitle2" class="CQE-EGroup" value="${_('Group')} 3"/>
-                            </p>
-                            <p>
-                                <label for="clasificaTitle3">${_('Category')} 4:</label>
-                                <input type="text" id="clasificaTitle3" class="CQE-EGroup" value="${_('Group')} 4"/>
-                            </p>
-                            <p>
-                                <label for="clasificaEShowMinimize"><input type="checkbox" id="clasificaEShowMinimize">${_('Show minimized.')}</label>
-                            </p>
-                            <p>
-                                <label for="clasificaETime">${_('Time (minutes)')}</label>
-                                <input type="number" name="clasificaETime" id="clasificaETime" value="0" min="0" max="120" step="1" />
-                            </p>
-                            <p>
-                                <label for="clasificaEHasFeedBack"><input type="checkbox" id="clasificaEHasFeedBack">${_('Feedback')}.</label>
-                                <label for="clasificaEPercentajeFB"></label>
-                                <input type="number" name="clasificaEPercentajeFB" id="clasificaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />
-                            </p>
-                            <p id="clasificaEFeedbackP" class="CQE-EFeedbackP">
-                                <textarea id="clasificaEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </p>
-                            <p>
-                                <label for="clasificaEPercentajeQuestions">%${_('Questions')}</label>
-                                <input type="number" name="clasificaEPercentajeQuestions" id="clasificaEPercentajeQuestions" value="100" min="1" max="100" />
-                                <span id="clasificaENumeroPercentaje">1/1</span>
-                            </p>
-                            <p>
-                                <label for="clasificaEAuthor">${_('Authorship')}:</label>
-                                <input id="clasificaEAuthor" type="text" />
-                            </p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#clasificaEEvaluationHelp" id="clasificaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" /></a></strong>
-                                <input type="checkbox" id="clasificaEEvaluation"><label for="clasificaEEvaluation">${_('Progress report')}.</label>
-                                <label for="clasificaEEvaluationID"></label>${_('Identifier')}:<input type="text" id="clasificaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
-                            </p>
-                            <div id="clasificaEEvaluationHelp" class="CQE-TypeGameHelp  exe-block-info exe-block-dismissible">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
-                            </div>
-                            <div id="clasificaEBackDiv">
-                                <p class="CQE-EInputImageBack">
-                                    <label for="clasificaEURLImgCard">${_('Image back')}: </label>
-                                    <input type="text" class="exe-file-picker CQE-EURLImage" id="clasificaEURLImgCard"/>
-                                    <a href="#" id="clasificaEPlayCard" class="clasificaE-ENavigationButton clasificaEEPlayVideo" title="${_('Show')}">
-                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CQE-EButtonImage b-play" />
-                                    </a>
-                                </p>
-                                <p id="clasificaEbackground" class="CQE-Back">
-                                    <img class="CQE-EImageBack" src="" id="clasificaECard" alt="${_('Image')}" style="display:none" />
-                                    <img class="CQE-EImageBack" src="${path}clsfHome.png" id="clasificaENoCard" alt="${_('No image')}" />
-                                </p>
-                            </div>                            
+                                <label class="toggle-label" for="clasificaECustomMessages">${_('Custom messages')}.</label>
+                            </span>
                         </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Cards')}</a></legend>
-                        <div class="CQE-EPanel">
-                            <div class="CQE-Data">
-                                ${$exeDevice.createCards(1)}
-                                <div class="CQE-EOrders CQE-Hide" id="clasificaEOrder">
-                                    <div class="CQE-ECustomMessage">
-                                        <span class="sr-av">${_('Hit')}</span><span class="CQE-EHit"></span>
-                                        <label for="clasificaEMessageOK">${_('Message')}</label>
-                                        <input type="text" id="clasificaEMessageOK" />
-                                    </div>
-                                    <div class="CQE-ECustomMessage">
-                                        <span class="sr-av">${_('Error')}</span><span class="CQE-EError"></span>
-                                        <label for="clasificaEMessageKO">${_('Message')}</label>
-                                        <input type="text" id="clasificaEMessageKO" />
-                                    </div>
-                                </div>
-                                <div class="CQE-ENumQuestionDiv" id="clasificaENumQuestionDiv">
-                                    <div class="CQE-ENumQ"><span class="sr-av">${_('Question')}</span></div>
-                                    <span class="CQE-ENumQuestions" id="clasificaENumQuestions">0</span>
-                                </div>
+                        <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                            <span>${_('Number of categories')}:</span>
+                            <div id="quextNumber2Div" class="form-check form-check-inline m-0">
+                                <input class="form-check-input CQE-Number" id="quextNumber2" type="radio" name="qxtnumber" value="2" checked="checked" />
+                                <label class="form-check-label" for="quextNumber2">2</label>
                             </div>
-                            <div class="CQE-EContents">
-                                <div class="CQE-ENavigationButtons">
-                                    <a href="#" id="clasificaEAdd" class="CQE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="CQE-EButtonImage b-add" /></a>
-                                    <a href="#" id="clasificaEFirst" class="CQE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="CQE-EButtonImage b-first" /></a>
-                                    <a href="#" id="clasificaEPrevious" class="CQE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="CQE-EButtonImage b-prev" /></a>
-                                    <span class="sr-av">${_('Question number:')}</span><span class="CQE-NumberQuestion" id="clasificaENumberQuestion">1</span>
-                                    <a href="#" id="clasificaENext" class="CQE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="CQE-EButtonImage b-next" /></a>
-                                    <a href="#" id="clasificaELast" class="CQE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="CQE-EButtonImage b-last" /></a>
-                                    <a href="#" id="clasificaEDelete" class="CQE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="CQE-EButtonImage b-delete" /></a>
-                                    <a href="#" id="clasificaECopy" class="CQE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="CQE-EButtonImage b-copy" /></a>
-                                    <a href="#" id="clasificaEPaste" class="CQE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="CQE-EButtonImage b-paste" /></a>
-                                </div>
+                            <div id="quextNumber3Div" class="form-check form-check-inline m-0">
+                                <input class="form-check-input CQE-Number" id="quextNumber3" type="radio" name="qxtnumber" value="3" />
+                                <label class="form-check-label" for="quextNumber3">3</label>
+                            </div>
+                            <div id="quextNumber4Div" class="form-check form-check-inline m-0">
+                                <input class="form-check-input CQE-Number" id="quextNumber4" type="radio" name="qxtnumber" value="4" />
+                                <label class="form-check-label" for="quextNumber4">4</label>
                             </div>
                         </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle0" class="mb-0">${_('Category')} 1:</label>
+                            <input type="text" id="clasificaTitle0" class="CQE-EGroup form-control" value="${_('Group')} 1"/>
+                        </div>
+                        <div class="mb-3  align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle1" class="mb-0">${_('Category')} 2:</label>
+                            <input type="text" id="clasificaTitle1" class="CQE-EGroup form-control" value="${_('Group')} 2"/>
+                        </div>
+                        <div class="mb-3  align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle2" class="mb-0">${_('Category')} 3:</label>
+                            <input type="text" id="clasificaTitle2" class="CQE-EGroup form-control" value="${_('Group')} 3"/>
+                        </div>
+                        <div class="mb-3  align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle3" class="mb-0">${_('Category')} 4:</label>
+                            <input type="text" id="clasificaTitle3" class="CQE-EGroup form-control" value="${_('Group')} 4"/>
+                        </div>
+                        <div class="mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="clasificaEShowMinimize" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="clasificaEShowMinimize">${_('Show minimized.')}</label>
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                            <label for="clasificaETime" class="mb-0">${_('Time (minutes)')}</label>
+                            <input type="number" name="clasificaETime" id="clasificaETime" value="0" min="0" max="120" step="1" class="form-control" style="width:6ch" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="clasificaEHasFeedBack" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="clasificaEHasFeedBack">${_('Feedback')}.</label>
+                            </span>                              
+                            <label for="clasificaEPercentajeFB" class="mb-0">${_('Percent')}</label>
+                            <input type="number" name="clasificaEPercentajeFB" id="clasificaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
+                            <span>${_('&percnt; right to see the feedback')}</span>
+                        </div>
+                        <p id="clasificaEFeedbackP" class="CQE-EFeedbackP">
+                            <textarea id="clasificaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
+                        </p>
+                        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                            <label for="clasificaEPercentajeQuestions" class="mb-0">%${_('Questions')}</label>
+                            <input type="number" name="clasificaEPercentajeQuestions" id="clasificaEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                            <span id="clasificaENumeroPercentaje">1/1</span>
+                        </div>
+                       <div class="d-none align-items-center gap-2 mb-3 flex-wrap">
+                            <label for="clasificaEAuthor" class="mb-0">${_('Authorship')}:</label>
+                            <input id="clasificaEAuthor" type="text" class="form-control" />
+                        </div>                       
+                        <div id="clasificaEBackDiv">
+                            <div class="CQE-EInputImageBack d-flex align-items-center gap-2 mb-3">
+                                <label for="clasificaEURLImgCard" class="mb-0">${_('Image back')}: </label>
+                                <input type="text" class="exe-file-picker CQE-EURLImage form-control me-0" id="clasificaEURLImgCard"/>
+                                <a href="#" id="clasificaEPlayCard" class="clasificaE-ENavigationButton clasificaEEPlayVideo" title="${_('Show')}">
+                                     <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CQE-EButtonImage " />
+                                </a>
+                            </div>
+                            <div id="clasificaEbackground" class="CQE-Back mb-3">
+                                <img class="CQE-EImageBack" src="" id="clasificaECard" alt="${_('Image')}" style="display:none" />
+                                <img class="CQE-EImageBack" src="${path}clsfHome.png" id="clasificaENoCard" alt="${_('No image')}" />
+                            </div>
+                        </div>
+                        <div class="Games-Reportdiv d-flex align-items-center gap-2 mb-3 flex-wrap">
+                            <span class="toggle-item mb-0" data-target="clasificaEEvaluationIDWrapper" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="clasificaEEvaluation" class="toggle-input">
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="clasificaEEvaluation">${_('Progress report')}.</label>
+                            </span>
+                            <span id="clasificaEEvaluationIDWrapper" class="d-inline-flex align-items-center gap-1">
+                                <label for="clasificaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                <input type="text" id="clasificaEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}" />
+                            </span>
+                            <strong class="GameModeLabel">
+                                <a href="#clasificaEEvaluationHelp" id="clasificaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
+                                </a>
+                            </strong>
+                        </div>
+                        <p id="clasificaEEvaluationHelp" class="CQE-TypeGameHelp exe-block-info">
+                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                        </p>
                     </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 5)}
-            </div>
-        `;
+                </fieldset>
+                <fieldset class="exe-fieldset">
+                    <legend><a href="#">${_('Cards')}</a></legend>
+                    <div class="CQE-EPanel">
+                        <div class="CQE-Data">
+                            ${$exeDevice.createCards(1)}
+                            <div class="CQE-EOrders CQE-Hide" id="clasificaEOrder">
+                                <div class="CQE-ECustomMessage">
+                                    <span class="sr-av">${_('Hit')}</span><span class="CQE-EHit"></span>
+                                    <label for="clasificaEMessageOK">${_('Message')}</label>
+                                    <input type="text" id="clasificaEMessageOK" class="form-control" />
+                                </div>
+                                <div class="CQE-ECustomMessage">
+                                    <span class="sr-av">${_('Error')}</span><span class="CQE-EError"></span>
+                                    <label for="clasificaEMessageKO">${_('Message')}</label>
+                                    <input type="text" id="clasificaEMessageKO" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="CQE-ENumQuestionDiv" id="clasificaENumQuestionDiv">
+                                <div class="CQE-ENumQ"><span class="sr-av">${_('Question')}</span></div>
+                                <span class="CQE-ENumQuestions" id="clasificaENumQuestions">0</span>
+                            </div>
+                        </div>
+                        <div class="CQE-EContents">
+                            <div class="CQE-ENavigationButtons gap-2">
+                                <a href="#" id="clasificaEAdd" class="CQE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="CQE-EButtonImage b-add" /></a>
+                                <a href="#" id="clasificaEFirst" class="CQE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="CQE-EButtonImage b-first" /></a>
+                                <a href="#" id="clasificaEPrevious" class="CQE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="CQE-EButtonImage b-prev" /></a>
+                                <label class="sr-av" for="clasificaENumberQuestion">${_('Question number:')}</label><input type="text" class="CQE-NumberQuestion form-control" id="clasificaENumberQuestion" value="1"/>
+                                <a href="#" id="clasificaENext" class="CQE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="CQE-EButtonImage b-next" /></a>
+                                <a href="#" id="clasificaELast" class="CQE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="CQE-EButtonImage b-last" /></a>
+                                <a href="#" id="clasificaEDelete" class="CQE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="CQE-EButtonImage b-delete" /></a>
+                                <a href="#" id="clasificaECopy" class="CQE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="CQE-EButtonImage b-copy" /></a>
+                                <a href="#" id="clasificaECut" class="CQE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="CQE-EButtonImage b-cut" /></a>
+                                <a href="#" id="clasificaEPaste" class="CQE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="CQE-EButtonImage b-paste" /></a>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+                </div>
+            ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+            ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 5)}
+        </div>
+    `;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('clasificaQEIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
@@ -301,69 +343,78 @@ var $exeDevice = {
         const path = $exeDevice.idevicePath;
         for (let i = 0; i < num; i++) {
             let card = `
-            <div class="CQE-DatosCarta" id="clasificaEDatosCarta">
-               <p class="CQE-ECardHeader">
-                   <span>
-                      <span>${_('Type')}:</span>
-                       <input class="CQE-Type" checked id="clasificaEMediaImage" type="radio" name="qxtmediatype" value="0" />
-                       <label for="clasificaEMediaImage">${_('Image')}</label>
-                       <input class="CQE-Type" id="clasificaEMediaText" type="radio" name="qxtmediatype" value="1" />
-                       <label for="clasificaEMediaText">${_('Text')}</label>
-                       <input class="CQE-Type" id="clasificaEMediaBoth" type="radio" name="qxtmediatype" value="2" />
-                       <label for="clasificaEMediaBoth">${_('Both')}</label>
-                    </span>
-                    <span>
-                        <label for="clasificaEGroupSelect">${_('Group')}:</label>
-                        <select id="clasificaEGroupSelect">
-                            <option value="0">${_('Group')} 1</option>
-                            <option value="1">${_('Group')} 2</option>
-                            <option value="2">${_('Group')} 3</option>
-                            <option value="3">${_('Group')} 4</option>
-                        </select>
-                    </span>
-               </p>
-               <div class="CQE-EMultimedia" id="clasificaEMultimedia">
-                    <div class="CQE-Card">
-                        <img class="CQE-Hide CQE-Image" src="${path}quextIEImage.png" id="clasificaEImage" alt="${_('No image')}" />
-                        <img class="CQE-ECursor" src="${path}quextIECursor.gif" id="clasificaECursor" alt="" />
-                        <img class="CQE-Hide CQE-Image" src="${path}quextIEImage.png" id="clasificaENoImage" alt="${_('No image')}" />
-                        <div id="clasificaETextDiv" class="CQE-ETextDiv"></div>
-                    </div>
+        <div class="CQE-DatosCarta" id="clasificaEDatosCarta">
+           <p class="CQE-ECardHeader">
+               <span class="d-inline-flex align-items-center gap-2 flex-wrap">
+                  <span>${_('Type')}:</span>
+                  <span class="form-check form-check-inline m-0 d-inline-flex align-items-center">
+                      <input class="CQE-Type form-check-input" checked id="clasificaEMediaImage" type="radio" name="qxtmediatype" value="0" />
+                      <label class="form-check-label" for="clasificaEMediaImage">${_('Image')}</label>
+                  </span>
+                  <span class="form-check form-check-inline m-0 d-inline-flex align-items-center">
+                      <input class="CQE-Type form-check-input" id="clasificaEMediaText" type="radio" name="qxtmediatype" value="1" />
+                      <label class="form-check-label" for="clasificaEMediaText">${_('Text')}</label>
+                  </span>
+                  <span class="form-check form-check-inline m-0 d-inline-flex align-items-center">
+                      <input class="CQE-Type form-check-input" id="clasificaEMediaBoth" type="radio" name="qxtmediatype" value="2" />
+                      <label class="form-check-label" for="clasificaEMediaBoth">${_('Both')}</label>
+                  </span>
+                </span>
+                <span class="d-inline-flex align-items-center gap-2 flex-wrap">
+                    <label for="clasificaEGroupSelect" class="mb-0">${_('Group')}:</label>
+                    <select id="clasificaEGroupSelect" class="form-select form-select-sm">
+                        <option value="0">${_('Group')} 1</option>
+                        <option value="1">${_('Group')} 2</option>
+                        <option value="2">${_('Group')} 3</option>
+                        <option value="3">${_('Group')} 4</option>
+                    </select>
+                </span>
+           </p>
+           <div class="CQE-EMultimedia" id="clasificaEMultimedia">
+                <div class="CQE-Card">
+                    <img class="CQE-Hide CQE-Image" src="${path}quextIEImage.png" id="clasificaEImage" alt="${_('No image')}" />
+                    <img class="CQE-ECursor" src="${path}quextIECursor.gif" id="clasificaECursor" alt="" />
+                    <img class="CQE-Hide CQE-Image" src="${path}quextIEImage.png" id="clasificaENoImage" alt="${_('No image')}" />
+                    <div id="clasificaETextDiv" class="CQE-ETextDiv"></div>
                 </div>
-               <span class="CQE-ETitleText" id="clasificaETitleText">${_('Text')}</span>
-               <div class="CQE-EInputImage" id="clasificaEInputText">
-                    <label for="clasificaEText" class="sr-av">${_('Text')}</label><input id="clasificaEText" type="text" />
-                    <label for="clasificaEColor">${_('Color')}: </label><input type="color" id="clasificaEColor" name="clasificaEColor" value="#000000">
-                    <label for="clasificaEBackColor">${_('Background')}: </label><input type="color" id="clasificaEBackColor" name="clasificaEBackColor" value="#ffffff">
-                </div>
-               <span class="CQE-ETitleImage" id="clasificaETitleImage">${_('Image')}</span>
-               <div class="CQE-EInputImage" id="clasificaEInputImage">
-                   <label class="sr-av" for="clasificaEURLImage">URL</label>
-                   <input type="text" class="exe-file-picker CQE-EURLImage" id="clasificaEURLImage"/>
-                   <a href="#" id="clasificaEPlayImage" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CQE-EButtonImage b-play" /></a>
-                   <a href="#" id="clasificaShowAlt" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="CQE-EButtonImage b-play" /></a>
+            </div>
+           <span class="CQE-ETitleText" id="clasificaETitleText">${_('Text')}</span>
+           <div class="CQE-EInputImage gap-2 mb-3" id="clasificaEInputText">
+                <label for="clasificaEText" class="sr-av">${_('Text')}</label>
+                <input id="clasificaEText" type="text" class="form-control me-0" />
+                <label for="clasificaEColor" class="mb-0">${_('Color')}: </label>
+                <input type="color" id="clasificaEColor" name="clasificaEColor" value="#000000" class="form-control form-control-color" />
+                <label for="clasificaEBackColor" class="mb-0">${_('Background')}: </label>
+                <input type="color" id="clasificaEBackColor" name="clasificaEBackColor" value="#ffffff" class="form-control form-control-color" />
+            </div>
+           <span class="CQE-ETitleImage" id="clasificaETitleImage">${_('Image')}</span>
+           <div class="CQE-EInputImage mb-3 gap-2" id="clasificaEInputImage">
+               <label class="sr-av" for="clasificaEURLImage">URL</label>
+               <input type="text" class="exe-file-picker CQE-EURLImage form-control me-0" id="clasificaEURLImage"/>
+               <a href="#" id="clasificaEPlayImage" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CQE-EButtonImage " /></a>
+               <a href="#" id="clasificaShowAlt" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="CQE-EButtonImage " /></a>
+           </div>
+           <div class="CQE-ECoord d-none align-items-center flex-nowrap gap-2 mb-3">
+                   <label for="clasificaEXImage" class="mb-0">X:</label>
+                   <input id="clasificaEXImage" type="text" value="0" class="form-control" />
+                   <label for="clasificaEYImage" class="mb-0">Y:</label>
+                   <input id="clasificaEYImage" type="text" value="0" class="form-control" />
+           </div>
+           <div class="CQE-EAuthorAlt d-none align-items-center flex-nowrap gap-2 mb-3" id="clasificaEAuthorAlt">
+               <div class="CQE-EInputAuthor" id="clasificaEInputAuthor">
+                   <label for="clasificaEAuthor">${_('Author')}</label><input id="clasificaEAuthor" type="text" class="form-control" />
                </div>
-               <div class="CQE-ECoord">
-                       <label for="clasificaEXImage">X:</label>
-                       <input id="clasificaEXImage" type="text" value="0" />
-                       <label for="clasificaEYImage">Y:</label>
-                       <input id="clasificaEYImage" type="text" value="0" />
+               <div class="CQE-EInputAlt" id="clasificaEInputAlt">
+                   <label for="clasificaEAlt">${_('Alternative text')}</label><input id="clasificaEAlt" type="text" class="form-control" />
                </div>
-               <div class="CQE-EAuthorAlt" id="clasificaEAuthorAlt">
-                   <div class="CQE-EInputAuthor" id="clasificaEInputAuthor">
-                       <label for="clasificaEAuthor">${_('Author')}</label><input id="clasificaEAuthor" type="text" />
-                   </div>
-                   <div class="CQE-EInputAlt" id="clasificaEInputAlt">
-                       <label for="clasificaEAlt">${_('Alternative text')}</label><input id="clasificaEAlt" type="text" />
-                   </div>
-               </div>
-               <span id="clasificaETitleAudio">${_('Audio')}</span>
-               <div class="CQE-EInputAudio" id="clasificaEInputAudio">
-                   <label class="sr-av" for="clasificaEURLAudio">URL</label>
-                   <input type="text" class="exe-file-picker CQE-EURLAudio" id="clasificaEURLAudio"/>
-                   <a href="#" id="clasificaEPlayAudio" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="CQE-EButtonImage b-play" /></a>
-               </div>
-           </div>`;
+           </div>
+           <span id="clasificaETitleAudio">${_('Audio')}</span>
+           <div class="CQE-EInputAudio d-flex align-items-center flex-nowrap gap-2" id="clasificaEInputAudio">
+               <label class="sr-av" for="clasificaEURLAudio">URL</label>
+               <input type="text" class="exe-file-picker CQE-EURLAudio form-control me-0" id="clasificaEURLAudio"/>
+               <a href="#" id="clasificaEPlayAudio" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="CQE-EButtonImage " /></a>
+           </div>
+       </div>`;
             cards += card;
         }
         return cards;
@@ -415,8 +466,8 @@ var $exeDevice = {
             });
         } else if (p.type === 2) {
             $('#clasificaETextDiv').css({
-                color: '#000000',
-                'background-color': 'rgba(255, 255, 255, 0.7)',
+                color: p.color,
+                'background-color': $exeDevice.hexToRgba(p.backcolor, 0.7)
             });
         }
         $('#clasificaEGroupSelect').val(p.group);
@@ -428,12 +479,42 @@ var $exeDevice = {
         $exeDevice.stopSound();
     },
 
+    hexToRgba: function (hex, alpha = 1) {
+
+        if (typeof hex !== 'string' || hex.trim() === '') {
+            return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
+        }
+        const raw = hex.trim();
+        if (/^rgba?\(/i.test(raw)) {
+
+            if (/^rgba\(/i.test(raw) && (alpha === 1 || alpha === undefined)) return raw;
+            try {
+                const nums = raw.replace(/rgba?\(|\)|\s/g, '').split(',').map(v => parseFloat(v));
+                const [r = 255, g = 255, b = 255] = nums;
+                const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : (nums[3] ?? 1);
+                return `rgba(${r | 0}, ${g | 0}, ${b | 0}, ${a})`;
+            } catch (e) {
+                return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
+            }
+        }
+        let h = raw.replace(/^#/, '');
+        if (![3, 6].includes(h.length) || /[^0-9a-f]/i.test(h)) {
+            return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
+        }
+        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        const r = parseInt(h.slice(0, 2), 16);
+        const g = parseInt(h.slice(2, 4), 16);
+        const b = parseInt(h.slice(4, 6), 16);
+        const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, Number(alpha))) : 1;
+        return `rgba(${r}, ${g}, ${b}, ${a})`;
+    },
+
     initQuestions: function () {
         $('#clasificaEInputImage').css('display', 'flex');
         $('#clasificaEMediaImage').prop('disabled', false);
         $('#clasificaEMediaText').prop('disabled', false);
         $('#clasificaEMediaBoth').prop('disabled', false);
-        $('#clasificaEAuthorAlt').hide();
+        $('#clasificaEAuthorAlt').removeClass('d-flex').addClass('d-none');
         if ($exeDevice.wordsGame.length === 0) {
             $exeDevice.wordsGame.push($exeDevice.getCuestionDefault());
             this.changeTypeQuestion(0);
@@ -441,67 +522,10 @@ var $exeDevice = {
         this.active = 0;
     },
 
-    changeTypeQuestion1: function (type) {
-        $(
-            '#clasificaETitleAltImage, #clasificaETitleImage, #clasificaEInputImage, #clasificaEImage, #clasificaECover, #clasificaECursor, #clasificaENoImage, #clasificaETextDiv, #clasificaETitleText, #clasificaEInputText',
-        ).hide();
-        $("input[name='qxtmediatype'][value='" + type + "']").prop(
-            'checked',
-            true,
-        );
-
-        switch (type) {
-            case 0:
-                $(
-                    '#clasificaEImage, #clasificaETitleImage, #clasificaEInputImage',
-                ).show();
-                $exeDevice.showImage(
-                    $('#clasificaEURLImage').val(),
-                    $('#clasificaEXImage').val(),
-                    $('#clasificaEYImage').val(),
-                    $('#clasificaEAlt').val(),
-                );
-                break;
-            case 1:
-                $(
-                    '#clasificaETextDiv, #clasificaETitleText, #clasificaEInputText, #clasificaEColor, #clasificaEBackColor',
-                ).show();
-                $(
-                    'label[for=clasificaEBackColor], label[for=clasificaEColor]',
-                ).show();
-                $('#clasificaEAuthorAlt').hide();
-                $('#clasificaETextDiv').css({
-                    color: $('#clasificaEColor').val(),
-                    'background-color': $('#clasificaEBackColor').val(),
-                });
-                break;
-            case 2:
-                $(
-                    '#clasificaETitleAltImage, #clasificaETitleImage, #clasificaEInputImage, #clasificaEImage, #clasificaECover, #clasificaECursor, #clasificaENoImage, #clasificaETextDiv, #clasificaETitleText, #clasificaEInputText',
-                ).show();
-                $('#clasificaEColor, #clasificaEBackColor').hide();
-                $(
-                    'label[for=clasificaEBackColor], label[for=clasificaEColor]',
-                ).hide();
-                $('#clasificaETextDiv').css({
-                    color: '#000000',
-                    'background-color': 'rgba(255, 255, 255, 0.7)',
-                });
-                break;
-            default:
-                break;
-        }
-    },
-
     changeTypeQuestion: function (type) {
-        const elementsToHide =
-            '#clasificaETitleAltImage, #clasificaETitleImage, #clasificaEInputImage, #clasificaEImage, #clasificaECover, #clasificaECursor, #clasificaENoImage, #clasificaETextDiv, #clasificaETitleText, #clasificaEInputText',
-            $textElements = $(
-                '#clasificaETextDiv, #clasificaETitleText, #clasificaEInputText, #clasificaEColor, #clasificaEBackColor',
-            ),
-            $labelsColor = $(
-                'label[for=clasificaEBackColor], label[for=clasificaEColor]',
-            ),
+        const elementsToHide = '#clasificaETitleAltImage, #clasificaETitleImage, #clasificaEInputImage, #clasificaEImage, #clasificaECover, #clasificaECursor, #clasificaENoImage, #clasificaETextDiv, #clasificaETitleText, #clasificaEInputText',
+            $textElements = $('#clasificaETextDiv, #clasificaETitleText, #clasificaEInputText, #clasificaEColor, #clasificaEBackColor'),
+            $labelsColor = $('label[for=clasificaEBackColor], label[for=clasificaEColor]'),
             $colorInputs = $('#clasificaEColor, #clasificaEBackColor');
 
         $(elementsToHide).hide();
@@ -510,11 +534,11 @@ var $exeDevice = {
             true,
         );
 
+        const currentColor = $('#clasificaEColor').val() || '#000000';
+        const currentBg = $('#clasificaEBackColor').val() || '#ffffff';
         switch (type) {
             case 0:
-                $(
-                    '#clasificaEImage, #clasificaETitleImage, #clasificaEInputImage',
-                ).show();
+                $('#clasificaEImage, #clasificaETitleImage, #clasificaEInputImage').show();
                 $exeDevice.showImage(
                     $('#clasificaEURLImage').val(),
                     $('#clasificaEXImage').val(),
@@ -525,19 +549,25 @@ var $exeDevice = {
             case 1:
                 $textElements.show();
                 $labelsColor.show();
-                $('#clasificaEAuthorAlt').hide();
+                $('#clasificaEAuthorAlt').removeClass('d-flex').addClass('d-none');
                 $('#clasificaETextDiv').css({
-                    color: $('#clasificaEColor').val(),
-                    'background-color': $('#clasificaEBackColor').val(),
+                    'color': currentColor,
+                    'background-color': currentBg,
                 });
                 break;
             case 2:
+                $exeDevice.showImage(
+                    $('#clasificaEURLImage').val(),
+                    $('#clasificaEXImage').val(),
+                    $('#clasificaEYImage').val(),
+                    $('#clasificaEAlt').val(),
+                );
                 $(elementsToHide).show();
-                $colorInputs.hide();
-                $labelsColor.hide();
+                $colorInputs.show();
+                $labelsColor.show();
                 $('#clasificaETextDiv').css({
-                    color: '#000000',
-                    'background-color': 'rgba(255, 255, 255, 0.7)',
+                    'color': currentColor,
+                    'background-color': $exeDevice.hexToRgba(currentBg, 0.7),
                 });
                 break;
             default:
@@ -622,6 +652,7 @@ var $exeDevice = {
             );
             $exeDevice.showQuestion(0);
         }
+
     },
 
     escapeHtml: function (string) {
@@ -669,8 +700,8 @@ var $exeDevice = {
             imgCard = '';
         }
 
-    let html = '<div class="clasifica-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="clasifica-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `<div class="clasifica-feedback-game">${textFeedBack}</div>`;
         html += divContent;
         html += `<div class="clasifica-DataGame js-hidden">${json}</div>`;
@@ -759,8 +790,7 @@ var $exeDevice = {
         } else if (p.type === 1) {
             p.url = '';
         } else if (p.type === 2) {
-            p.color = '#000000';
-            p.backcolor = 'rgba(255, 255, 255, 0.7)';
+            ///
         }
 
         if (message.length === 0) {
@@ -983,9 +1013,20 @@ var $exeDevice = {
     addEvents: function () {
         $('#clasificaEPaste').hide();
 
-        $('.CQE-EPanel').on('click', 'input.CQE-Type', (e) => {
-            const type = parseInt($(e.target).val());
-            $exeDevice.changeTypeQuestion(type);
+        const $form = $('#clasificaQEIdeviceForm');
+        $form.on('change', 'input.CQE-Type', function () {
+            const type = parseInt(this.value, 10);
+            if (!isNaN(type)) {
+                $exeDevice.changeTypeQuestion(type);
+                if ($exeDevice.wordsGame[$exeDevice.active]) {
+                    $exeDevice.wordsGame[$exeDevice.active].type = type;
+                    if (type === 0) {
+                        $exeDevice.wordsGame[$exeDevice.active].eText = '';
+                    } else if (type === 1) {
+                        $exeDevice.wordsGame[$exeDevice.active].url = '';
+                    }
+                }
+            }
         });
 
         $('#clasificaEAdd').on('click', (e) => {
@@ -1037,60 +1078,122 @@ var $exeDevice = {
             }
         });
 
-        $('#clasificaEURLImage').on('change', () => {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-                selectedFile = $('#clasificaEURLImage').val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                (selectedFile.startsWith('files')) &&
-                !validExt.includes(ext)
-            ) {
+        $form.on('change', '#clasificaEURLImage', function () {
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'];
+            const selectedFile = this.value.trim();
+            const ext = selectedFile.split('.').pop().toLowerCase();
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
                 );
                 return false;
             }
-            const url = selectedFile,
-                alt = $('#clasificaEAlt').val(),
-                x = parseFloat($('#clasificaEXImage').val()),
-                y = parseFloat($('#clasificaEYImage').val());
-
+            if ($exeDevice.wordsGame[$exeDevice.active]) {
+                $exeDevice.wordsGame[$exeDevice.active].url = selectedFile;
+            }
+            const alt = $('#clasificaEAlt').val();
+            const x = parseFloat($('#clasificaEXImage').val());
+            const y = parseFloat($('#clasificaEYImage').val());
             $('#clasificaEImage').hide().attr('alt', 'No image');
             $('#clasificaECursor').hide();
             $('#clasificaENoImage').show();
-
-            if (url.length > 0) {
-                $exeDevice.showImage(url, x, y, alt);
+            if (selectedFile.length > 0) {
+                $exeDevice.showImage(selectedFile, x, y, alt);
             }
         });
 
         $('#clasificaEPlayImage').on('click', (e) => {
             e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-                selectedFile = $('#clasificaEURLImage').val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-
-            if (
-                (selectedFile.startsWith('files')) &&
-                !validExt.includes(ext)
-            ) {
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'];
+            const selectedFile = $('#clasificaEURLImage').val();
+            const ext = selectedFile.split('.').pop().toLowerCase();
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
                 );
                 return false;
             }
-
-            const url = selectedFile,
-                alt = $('#clasificaEAlt').val(),
-                x = parseFloat($('#clasificaEXImage').val()),
-                y = parseFloat($('#clasificaEYImage').val());
-
+            const url = selectedFile;
+            const alt = $('#clasificaEAlt').val();
+            const x = parseFloat($('#clasificaEXImage').val());
+            const y = parseFloat($('#clasificaEYImage').val());
             $('#clasificaEImage').hide().attr('alt', 'No image');
             $('#clasificaECursor').hide();
             $('#clasificaENoImage').show();
-
             if (url.length > 0) {
                 $exeDevice.showImage(url, x, y, alt);
+            }
+        });
+
+        $form.on('click', '#clasificaShowAlt', function (e) {
+            e.preventDefault();
+            const $panel = $('#clasificaEAuthorAlt');
+            if ($panel.hasClass('d-none')) {
+                $panel.removeClass('d-none').addClass('d-flex')
+            } else {
+                $panel.removeClass('d-flex').addClass('d-none')
+            }
+        });
+
+
+        $form.on('change', '#clasificaEGroupSelect', function () {
+            const val = parseInt(this.value, 10);
+            if (!isNaN(val) && $exeDevice.wordsGame[$exeDevice.active]) {
+                $exeDevice.wordsGame[$exeDevice.active].group = val;
+            }
+        });
+
+        $form.on('input change', '#clasificaEText', function () {
+            const val = this.value;
+            $('#clasificaETextDiv').text(val);
+            if ($exeDevice.wordsGame[$exeDevice.active]) {
+                $exeDevice.wordsGame[$exeDevice.active].eText = val;
+            }
+        });
+
+        $form.on('change', '#clasificaEColor', function () {
+            const val = this.value;
+            $('#clasificaETextDiv').css('color', val);
+            if ($exeDevice.wordsGame[$exeDevice.active]) {
+                $exeDevice.wordsGame[$exeDevice.active].color = val;
+            }
+        });
+        $form.on('change', '#clasificaEBackColor', function () {
+            const val = this.value;
+            const hasImage = $('#clasificaEURLImage').val().trim().length > 0;
+            const cssColor = hasImage ? $exeDevice.hexToRgba(val, 0.7) : val;
+            $('#clasificaETextDiv').css('background-color', cssColor);
+            if ($exeDevice.wordsGame[$exeDevice.active]) {
+                $exeDevice.wordsGame[$exeDevice.active].backcolor = val;
+            }
+        });
+
+        $form.on('change', '#clasificaEAuthor', function () {
+            if ($exeDevice.wordsGame[$exeDevice.active]) {
+                $exeDevice.wordsGame[$exeDevice.active].author = this.value;
+            }
+        });
+        $form.on('change', '#clasificaEAlt', function () {
+            if ($exeDevice.wordsGame[$exeDevice.active]) {
+                $exeDevice.wordsGame[$exeDevice.active].alt = this.value;
+            }
+        });
+
+        $form.on('change', '#clasificaEXImage, #clasificaEYImage', function () {
+            const $x = $('#clasificaEXImage');
+            const $y = $('#clasificaEYImage');
+            const clamp01 = (n) => (isNaN(n) ? 0 : Math.min(Math.max(n, 0), 1));
+            const vx = clamp01(parseFloat($x.val()));
+            const vy = clamp01(parseFloat($y.val()));
+            $x.val(vx);
+            $y.val(vy);
+            if ($exeDevice.wordsGame[$exeDevice.active]) {
+                $exeDevice.wordsGame[$exeDevice.active].x = vx;
+                $exeDevice.wordsGame[$exeDevice.active].y = vy;
+            }
+            const img = $('#clasificaEImage')[0];
+            if (img && $(img).is(':visible')) {
+                $exeDevice.paintMouse(img, $('#clasificaECursor')[0], vx, vy);
             }
         });
 
@@ -1103,13 +1206,12 @@ var $exeDevice = {
             $('#clasificaEXImage, #clasificaEYImage').val(0);
         });
 
-        $('#clasificaEURLAudio').on('change', () => {
-            const selectedFile = $('#clasificaEURLAudio').val().trim();
-            if (selectedFile.length === 0) {
-                $exeDevice.showMessage(
-                    `${_('Supported formats')}: mp3, ogg, wav`,
-                );
-            } else if (selectedFile.length > 4) {
+        $form.on('change', '#clasificaEURLAudio', function () {
+            const selectedFile = this.value.trim();
+            if ($exeDevice.wordsGame[$exeDevice.active]) {
+                $exeDevice.wordsGame[$exeDevice.active].audio = selectedFile;
+            }
+            if (selectedFile.length > 4) {
                 $exeDevice.stopSound();
                 $exeDevice.playSound(selectedFile);
             }
@@ -1164,18 +1266,10 @@ var $exeDevice = {
             );
         });
 
-        $('#clasificaEText').on('keyup', function () {
-            $('#clasificaETextDiv').text(this.value);
-        });
-
-        $('#clasificaEText').on('focusout', function () {
-            $('#clasificaETextDiv').text(this.value);
-        });
-
         $('input.CQE-ELevel').on('click', function () {
             const number = parseInt($(this).val());
             if (number != 1) {
-                $('#clasificaECustomMessages').fadeIn();
+                $('#clasificaECustomMessagesDiv').fadeIn();
                 $('label[for=clasificaECustomMessages]').fadeIn();
                 if ($('#clasificaECustomMessages').is(':checked')) {
                     $exeDevice.showSelectOrder(true);
@@ -1183,22 +1277,11 @@ var $exeDevice = {
                     $exeDevice.showSelectOrder(false);
                 }
             } else {
-                $('#clasificaECustomMessages').fadeOut();
-                $('label[for=clasificaECustomMessages]').fadeOut();
+                $('#clasificaECustomMessagesDiv').fadeOut();
                 $exeDevice.showSelectOrder(false);
             }
         });
 
-        $('#clasificaShowAlt').on('click', (e) => {
-            e.preventDefault();
-            $('#clasificaEAuthorAlt').slideToggle();
-        });
-        $('#clasificaEBackColor').on('change', function () {
-            $('#clasificaETextDiv').css('background-color', $(this).val());
-        });
-        $('#clasificaEColor').on('change', function () {
-            $('#clasificaETextDiv').css('color', $(this).val());
-        });
         $('#clasificaEEvaluation').on('change', function () {
             const marcado = $(this).is(':checked');
             $('#clasificaEEvaluationID').prop('disabled', !marcado);
@@ -1314,13 +1397,11 @@ var $exeDevice = {
 
 
     showGroups: function (number) {
-        $('.CQE-EGroup').hide();
+        $('.CQE-EGroup').closest('div').hide();
         $('.CQE-EGroup').each(function (i) {
             const id = $(this).attr('id');
-            $(`label[for="${id}"]`).hide();
             if (i < number) {
-                $(this).show();
-                $(`label[for="${id}"]`).show();
+                $(this).closest('div').css('display', 'flex');
             }
             $(this).val($exeDevice.groups[i]);
         });

@@ -109,79 +109,90 @@ var $exeDevice = {
             return;
         }
         html = `
-			<div id="interactiveVideoIdeviceForm">
-				<div class="exe-form-tab" title="${_('General settings')}">
-					${$exeDevicesEdition.iDevice.common.getTextFieldset("before")}
-					<p>
-						<strong>${_('Type')}:</strong>
-						<label for="interactiveVideoType-local">
-							<input type="radio" name="interactiveVideoType" id="interactiveVideoType-local" value="local" checked="checked" /> 
-							${_('Local file')}
-						</label>
-						<label for="interactiveVideoType-youtube">
-							<input type="radio" name="interactiveVideoType" id="interactiveVideoType-youtube" value="youtube" /> 
-							YouTube
-						</label>
-						<label for="interactiveVideoType-mediateca">
-							<input type="radio" name="interactiveVideoType" id="interactiveVideoType-mediateca" value="mediateca" /> 
-							${_('Mediateca')}
-						</label>
-					</p>
-					<p id="interactiveVideo-local" class="interactiveVideoType flexDisplay">
-                        <label for="interactiveVideoFile">${_("File")}:</label>
-						<input type="text" id="interactiveVideoFile" class="exe-file-picker" />						
-					</p>
-                    <p>
-                        <span class="info"><strong>${_("Supported formats")}:</strong> OGV/OGG, webm, mp4, flv</span>
-                    </p>
-					<p id="interactiveVideo-youtube" class="interactiveVideoType">
-						<label for="interactiveVideoYoutubeURL">${_("URL")}:</label>
-						<input type="text" id="interactiveVideoYoutubeURL" />
-						<span class="info">
-							<strong>${_("Example")}:</strong> 
-							<a href="https://www.youtube.com/watch?v=v_rGjOBtvhI" target="_blank">https://www.youtube.com/watch?v=v_rGjOBtvhI</a>
-						</span>
-					</p>
-					<p id="interactiveVideo-mediateca" class="interactiveVideoType">
-						<label for="interactiveVideoMediatecaURL">${_("URL")}:</label>
-						<input type="text" id="interactiveVideoMediatecaURL" />
-						<span class="info">
-							<strong>${_("Example")}:</strong> 
-							<a href="https://mediateca.educa.madrid.org/video/3vmgyeluy8c35xzj" target="_blank">https://mediateca.educa.madrid.org/video/3vmgyeluy8c35xzj</a>
-						</span>
-					</p>
-					<p>
-						<label for="interactiveVideoShowResults">
-							<input type="checkbox" name="interactiveVideoShowResults" id="interactiveVideoShowResults" checked="checked" /> 
-							${_("Show results")}
-						</label>
-					</p>
-					<p>
-						<label for="interactiveVideoScoreNIA">
-							<input type="checkbox" name="interactiveVideoScoreNIA" id="interactiveVideoScoreNIA" /> 
-							${_("Score non-interactive activities")}
-						</label>
-					</p>
-					<p>
-						<label for="interactiveVideoEvaluation">
-							<input type="checkbox" id="interactiveVideoEvaluation"> 
-							${_("Progress report")}.
-						</label>
-						<label for="interactiveVideoEvaluationID">
-							${_("Identifier")}: 
-                                <input type="text" id="interactiveVideoEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" /> 
-						</label>
-					</p>
-					<p class="exe-block-success flexDisplay">
-						${_("Open the editor and start adding interaction...")} 
-						<input type="button" id="interactiveVideoOpenEditor" onclick="$exeDevice.editor.start()" value="${_("Editor")}" />
-					</p>
-					${$exeDevicesEdition.iDevice.common.getTextFieldset("after")}
-				</div>
-				${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-				${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
-			</div>
-		`;
+        <div id="interactiveVideoIdeviceForm">
+            <div class="exe-form-tab" title="${_('General settings')}">
+                ${$exeDevicesEdition.iDevice.common.getTextFieldset("before")}
+                <div class="mb-3">                    
+                    <div class="d-flex align-items-center flex-wrap gap-3">
+                        <strong class="d-block mb-0 me-0">${_('Type')}:</strong>
+                        <div class="form-check form-check-inline d-inline-flex align-items-center">
+                            <input class="form-check-input" type="radio" name="interactiveVideoType" id="interactiveVideoType-local" value="local" checked="checked">
+                            <label class="form-check-label mb-0 ms-1" for="interactiveVideoType-local">${_('Local file')}</label>
+                        </div>
+                        <div class="form-check form-check-inline d-inline-flex align-items-center">
+                            <input class="form-check-input" type="radio" name="interactiveVideoType" id="interactiveVideoType-youtube" value="youtube">
+                            <label class="form-check-label mb-0 ms-1" for="interactiveVideoType-youtube">YouTube</label>
+                        </div>
+                        <div class="form-check form-check-inline d-inline-flex align-items-center">
+                            <input class="form-check-input" type="radio" name="interactiveVideoType" id="interactiveVideoType-mediateca" value="mediateca">
+                            <label class="form-check-label mb-0 ms-1" for="interactiveVideoType-mediateca">${_('Mediateca')}</label>
+                        </div>
+                    </div>
+                </div>
+                <div id="interactiveVideo-local" class="interactiveVideoType flexDisplay gap-2 mb-4">
+                    <label for="interactiveVideoFile" class="form-label mb-0 me-2">${_("File")}:</label>
+                    <input type="text" id="interactiveVideoFile" class="exe-file-picker form-control">
+                </div>
+                <div class="mb-4 info" id="interactiveFormats">
+                    <span class="d-block info"><strong>${_("Supported formats")}:</strong> OGV/OGG, webm, mp4, flv</span>
+                </div>
+                <div id="interactiveVideo-youtube" class="interactiveVideoType mb-4">
+                    <div class="interactiveVideoType d-flex flex-nowrap align-items-center gap-2">
+                        <label for="interactiveVideoYoutubeURL" class="form-label mb-0">${_("URL")}:</label>
+                        <input type="text" id="interactiveVideoYoutubeURL" class="form-control">
+                    </div>                    
+                    <span class="d-block mt-1 info">
+                        <strong>${_("Example")}:</strong>
+                        <a href="https://www.youtube.com/watch?v=v_rGjOBtvhI" target="_blank" rel="noopener">https://www.youtube.com/watch?v=v_rGjOBtvhI</a>
+                    </span>
+                </div>
+                <div id="interactiveVideo-mediateca" class="interactiveVideoType mb-4">
+                    <div class="interactiveVideoType d-flex flex-nowrap align-items-center gap-2">
+                        <label for="interactiveVideoMediatecaURL" class="form-label mb-0">${_("URL")}:</label>
+                        <input type="text" id="interactiveVideoMediatecaURL" class="form-control">
+                    </div>                    
+                    <span class="d-block mt-1 info">
+                        <strong>${_("Example")}:</strong>
+                        <a href="https://mediateca.educa.madrid.org/video/3vmgyeluy8c35xzj" target="_blank" rel="noopener">https://mediateca.educa.madrid.org/video/3vmgyeluy8c35xzj</a>
+                    </span>
+                </div>
+                <div class="toggle-item mb-4">
+                    <span class="toggle-control">
+                        <input class="toggle-input" type="checkbox" name="interactiveVideoShowResults" id="interactiveVideoShowResults" checked="checked">
+                        <span class="toggle-visual"></span>
+                    </span>
+                    <label class="toggle-label mb-0" for="interactiveVideoShowResults">${_("Show results")}</label>
+                </div>
+                <div class="toggle-item mb-4">
+                    <span class="toggle-control">
+                        <input class="toggle-input" type="checkbox" name="interactiveVideoScoreNIA" id="interactiveVideoScoreNIA">
+                        <span class="toggle-visual"></span>
+                    </span>
+                    <label class="toggle-label mb-0" for="interactiveVideoScoreNIA">${_("Score non-interactive activities")}</label>
+                </div>
+                <div class="d-flex flex-nowrap align-items-center gap-2 mb-4">
+                    <div class="toggle-item mb-0">
+                        <span class="toggle-control">
+                            <input class="toggle-input" type="checkbox" id="interactiveVideoEvaluation">
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label class="toggle-label mb-0" for="interactiveVideoEvaluation">${_("Progress report")}.</label>
+                    </div>
+                     <div class="d-flex flex-nowrap align-items-center gap-2">
+                        <label for="interactiveVideoEvaluationID" class="form-label mb-0">${_("Identifier")}</label>
+                        <input type="text" id="interactiveVideoEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}">
+                    </div>
+                </div>
+                <p class="exe-block-success d-flex align-items-center justify-content-between gap-3">
+                    <span class="me-auto">${_("Open the editor and start adding interaction...")}</span>
+                    <input type="button" id="interactiveVideoOpenEditor" onclick="$exeDevice.editor.start()" value="${_("Editor")}" class="btn btn-primary">
+                </p>
+                ${$exeDevicesEdition.iDevice.common.getTextFieldset("after")}
+            </div>
+            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+        </div>
+    `;
 
         this.ideviceBody.innerHTML = html;
 
@@ -369,6 +380,12 @@ var $exeDevice = {
         // To review: btn.hide();
         $(".interactiveVideoType").hide();
         $("#interactiveVideo-" + v).fadeIn();
+        // Show/hide supported formats hint depending on source type
+        if (v === 'local') {
+            $('#interactiveFormats').show();
+        } else {
+            $('#interactiveFormats').hide();
+        }
         // Hide the "Please save your iDevice now and edit it to add interaction." message.
         if (typeof ($exeDevice.interactiveVideoEditorOpenerHTML) != 'undefined') {
             btn.html($exeDevice.interactiveVideoEditorOpenerHTML);
