@@ -1,4 +1,3 @@
-
 #desafioIdeviceForm input[type=number] {
     min-width: 4em;
 }
@@ -11,7 +10,7 @@
     margin-right: 0.15em !important;
 }
 
-#desafioIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
+#desafioIdeviceForm input:is([type="checkbox"] [type="number"]) {
     margin-right: 0.15em !important;
 }
 
@@ -39,11 +38,15 @@
     justify-content: flex-start;
     align-items: center;
     width: 100%;
+
+}
+
+.desafio-EClue select {
+    width: 9ch !important;
+    min-width: 9ch !important;
 }
 
 .desafio-EClue input[type=text] {
-    width: 100%;
-    margin-right: 0.2em;
     flex-grow: 0;
 }
 
@@ -64,9 +67,6 @@
     flex-grow: 0;
 }
 
-.desafio-DataDesafio input[type=text]:nth-of-type(2n+1) {
-    margin-right: 0.3em;
-}
 
 .desafio-EDataChallenger select {
     width: 100px;
@@ -113,10 +113,9 @@
 }
 
 .desafio-ENavigationButton {
-    height: 1.5em;
-    margin: 0 .3em;
-    min-width: 1.5em;
-    width: 1.5em;
+    width: 1.7em;
+    height: 1.7em;
+    min-width: 1.7em;
     -moz-transition: transform 0.3s;
     -ms-transition: transform 0.3s;
     -o-transition: transform 0.3s;
@@ -141,12 +140,9 @@
 }
 
 .desafio-NumberQuestion {
-    font-weight: bold;
-    height: 1.5em;
-    line-height: 1.5em;
     text-align: center;
     vertical-align: middle;
-    width: 2em;
+    width: 3em;
 }
 
 @media screen and (max-width:500px) {
@@ -199,7 +195,7 @@
 #desafioIdeviceForm #desafioIdeviceFormTab1 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color: #0BA1A1;
     font-weight: 500;
 }
 
@@ -339,13 +335,13 @@ label[for=desafioActivitySCORM] {
 }
 
 .desafioToggle input:hover+label {
-    border-color: #213140;
+    border-color: var(--brand-primary, #0BA1A1);
 }
 
 .desafioToggle input:checked+label {
-    background-color: #CCC;
-    color: #213140;
-    border-color: #CCC;
+    background-color: var(--brand-primary, #0BA1A1);
+    color: #fff;
+    border-color: var(--brand-primary, #0BA1A1);
     z-index: 1;
 }
 
@@ -371,7 +367,6 @@ label[for=desafioActivitySCORM] {
 
 .desafioTypeGameHelp {
     display: none;
-    margin-bottom: 2em;
     font-size: .95em
 }
 

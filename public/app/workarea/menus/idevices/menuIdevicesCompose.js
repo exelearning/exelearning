@@ -20,7 +20,7 @@ export default class MenuIdevicesCompose {
     }
     categoriesTitle = {
         information: _('Information and presentation'),
-        evaluation: _('Evaluation and monitoring'),
+        evaluation: _('Assessment and tracking'),
         games: _('Games'),
         interactive: _('Interactive activities'),
         science: _('Science'),
@@ -121,7 +121,7 @@ export default class MenuIdevicesCompose {
                 );
                 break;
             case 'evaluation':
-                titleElement.textContent = _('Evaluation and monitoring');
+                titleElement.textContent = _('Assessment and tracking');
                 descriptionElement.textContent = _(
                     'These iDevices are designed to assess knowledge, understanding, skills, enable self-assessment, facilitate feedback, monitor progress and document performance levels.'
                 );

@@ -62,7 +62,9 @@ var $exeDevice = {
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.loadYoutubeApi();
+
     },
+
 
     refreshTranslations: function () {
         this.ci18n = {
@@ -1099,12 +1101,12 @@ var $exeDevice = {
 
     changeTypeQuestion: function (type) {
         $('#seleccionaETitleAltImage').hide();
-        $('#seleccionaEAuthorAlt').hide();
+        $('#seleccionaEAuthorAlt').removeClass('d-flex').addClass('d-none')
         $('#seleccionaETitleImage').hide();
         $('#seleccionaEInputImage').hide();
         $('#seleccionaETitleVideo').hide();
         $('#seleccionaEInputVideo').hide();
-        $('#seleccionaEInputAudio').show();
+        $('#seleccionaEInputAudio').removeClass('d-none').addClass('d-flex')
         $('#seleccionaETitleAudio').show();
         $('#seleccionaEInputOptionsVideo').hide();
         $('#seleccionaInputOptionsImage').hide();
@@ -1131,7 +1133,7 @@ var $exeDevice = {
                 $('#seleccionaENoImage').show();
                 $('#seleccionaETitleImage').show();
                 $('#seleccionaEInputImage').show();
-                $('#seleccionaEAuthorAlt').show();
+                $('#seleccionaEAuthorAlt').removeClass('d-none').addClass('d-flex')
                 $('#seleccionaECursor').show();
                 $('#seleccionaInputOptionsImage').show();
                 $exeDevice.showImage(
@@ -1149,7 +1151,7 @@ var $exeDevice = {
                 $('#seleccionaENoVideo').show();
                 $('#seleccionaEVideo').show();
                 $('#seleccionaEInputOptionsVideo').show();
-                $('#seleccionaEInputAudio').hide();
+                $('#seleccionaEInputAudio').removeClass('d-flex').addClass('d-none')
                 $('#seleccionaETitleAudio').hide();
                 break;
             case 3:
@@ -1207,199 +1209,360 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Choose the right answers and click on the Check button.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <p><label for="seleccionaEShowMinimize"><input type="checkbox" id="seleccionaEShowMinimize">${_('Show minimized.')}</label></p>
-                            <p>
-                                <strong class="GameModeLabel"><a href="#seleccionaEOrderHelp" id="seleccionaEOrderHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a>${_('Questions order')}:</strong>
-                                <input class="SLCNE-TypeOrder" checked="checked" id="seleccionaEOrderLinear" type="radio" name="slcgameorder" value="0" />
-                                <label for="seleccionaEOrderLinear">${_('Default')}</label>
-                                <input class="SLCNE-TypeOrder" id="seleccionaEOrderRamdon" type="radio" name="slcgameorder" value="1" />
-                                <label for="seleccionaEOrderRamdon">${_('Random')}</label>
-                                <input class="SLCNE-TypeOrder" id="seleccionaEOrderThree" type="radio" name="slcgameorder" value="2" />
-                                <label for="seleccionaEOrderThree">${_('Tree')}</label>
-                            </p>
-                            <div id="seleccionaEOrderHelp" class="exe-block-info SLCNE-TypeGameHelp">
+                        <div id="seleccionaEOptions">
+                            <div class="toggle-item mb-3" data-target="seleccionaEShowMinimize">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="seleccionaEShowMinimize" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="seleccionaEShowMinimize">${_('Show minimized.')} </label>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaEOrderLinear">
+                                <span>${_('Questions order')}:</span>
+                                <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="form-check-input SLCNE-TypeOrder" checked="checked" id="seleccionaEOrderLinear" type="radio" name="slcgameorder" value="0" />
+                                        <label class="form-check-label" for="seleccionaEOrderLinear">${_('Default')}</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="form-check-input SLCNE-TypeOrder" id="seleccionaEOrderRamdon" type="radio" name="slcgameorder" value="1" />
+                                        <label class="form-check-label" for="seleccionaEOrderRamdon">${_('Random')}</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="form-check-input SLCNE-TypeOrder" id="seleccionaEOrderThree" type="radio" name="slcgameorder" value="2" />
+                                        <label class="form-check-label" for="seleccionaEOrderThree">${_('Tree')}</label>
+                                    </div>
+                                </span>
+                                <div class="GameModeLabel d-inline-flex align-items-center gap-2">
+                                    <a href="#seleccionaEOrderHelp" id="seleccionaEOrderHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
+                                    </a>
+                                </div>
+                            </div>
+                            <div id="seleccionaEOrderHelp" class="exe-block-info SLCNE-TypeGameHelp pt-3">
                                 <ul>
                                     <li><strong>${_('Default')}: </strong>${_('Order defined by the author.')}</li>
                                     <li><strong>${_('Random')}: </strong>${_('Different order each time you run the game.')}</li>
                                     <li><strong>${_('Tree')}: </strong>${_('The questions will change depending on the answers.')}</li>
                                 </ul>
                             </div>
-                            <p><label for="seleccionaECustomMessages"><input type="checkbox" id="seleccionaECustomMessages">${_('Custom messages')}.</label></p>
-                            <p><label for="seleccionaEAnswersRamdon"><input type="checkbox" id="seleccionaEAnswersRamdon">${_('Random options')}</label></p>
-                            <p>
-                                <label for="seleccionaEShowSolution"><input type="checkbox" checked id="seleccionaEShowSolution">${_('Show solutions')}.</label>
-                                <label for="seleccionaETimeShowSolution">${_('Show solution time (seconds)')} <input type="number" name="seleccionaETimeShowSolution" id="seleccionaETimeShowSolution" value="3" min="1" max="9" /></label>
-                            </p>
-                            <p><label for="seleccionaEAudioFeedBack"><input type="checkbox" id="seleccionaEAudioFeedBack">${_('Play audio when displaying the solution')}.</label></p>
-                            <p><label for="seleccionaECustomScore"><input type="checkbox" id="seleccionaECustomScore">${_('Custom score')}.</label></p>
-                            <p>
-                                <strong class="GameModeLabel"><a href="#seleccionaEGameModeHelp" id="seleccionaEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a>${_('Score')}:</strong>
-                                <input class="SLCNE-TypeGame" checked="checked" id="seleccionaETypeActivity" type="radio" name="slcgamemode" value="1" />
-                                <label for="seleccionaETypeActivity">${_('From 0 to 10')}</label>
-                                <input class="SLCNE-TypeGame" id="seleccionaEGameMode" type="radio" name="slcgamemode" value="0" />
-                                <label for="seleccionaEGameMode">${_('Points and lives')}</label>
-                                <input class="SLCNE-TypeGame" id="seleccionaETypeReto" type="radio" name="slcgamemode" value="2" />
-                                <label for="seleccionaETypeReto">${_('No score')}</label>
-                            </p>
-                            <div id="seleccionaEGameModeHelp" class="exe-block-info SLCNE-TypeGameHelp">
+                            <div class="toggle-item mb-3" data-target="seleccionaECustomMessages">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="seleccionaECustomMessages" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="seleccionaECustomMessages">${_('Custom messages')}.</label>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="seleccionaEAnswersRamdon">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="seleccionaEAnswersRamdon" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="seleccionaEAnswersRamdon">${_('Random options')}</label>
+                            </div>
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                <div class="toggle-item toggle-related" data-target="seleccionaEShowSolution">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="seleccionaEShowSolution" checked />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="seleccionaEShowSolution">${_('Show solutions')}.</label>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">${_('Show solution time (seconds)')};</label>
+                                    <label for="seleccionaETimeShowSolution" class="mb-0 d-flex align-items-center gap-2">
+                                    <input type="number" name="seleccionaETimeShowSolution" id="seleccionaETimeShowSolution" value="3" min="1" max="9" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="seleccionaEAudioFeedBack">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="seleccionaEAudioFeedBack" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="seleccionaEAudioFeedBack">${_('Play audio when displaying the solution')}.</label>
+                            </div>
+                            <div class="toggle-item  mb-3" data-target="seleccionaECustomScore">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="seleccionaECustomScore" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="seleccionaECustomScore">${_('Custom score')}.</label>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaETypeActivity">
+                                <span> ${_('Score')}:</span> 
+                                <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <div class="form-check form-check-inline m-0">                               
+                                        <input class="form-check-input SLCNE-TypeGame" checked="checked" id="seleccionaETypeActivity" type="radio" name="slcgamemode" value="1" />
+                                        <label class="form-check-label" for="seleccionaETypeActivity">${_('From 0 to 10')}</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="form-check-input SLCNE-TypeGame" id="seleccionaEGameMode" type="radio" name="slcgamemode" value="0" />
+                                        <label class="form-check-label" for="seleccionaEGameMode">${_('Points and lives')}</label>
+                                    </div>
+                                    <div class="form-check form-check-inline m-0">
+                                        <input class="form-check-input SLCNE-TypeGame" id="seleccionaETypeReto" type="radio" name="slcgamemode" value="2" />
+                                        <label class="form-check-label" for="seleccionaETypeReto">${_('No score')}</label>
+                                    </div>
+                                </span> 
+                                <span class="GameModeLabel">
+                                    <a href="#seleccionaEGameModeHelp" id="seleccionaEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
+                                    </a>
+                                </span>
+                            </div>
+                            <div id="seleccionaEGameModeHelp" class="exe-block-info SLCNE-TypeGameHelp pt-3">
                                 <ul>
                                     <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
                                     <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
                                     <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
                                 </ul>
                             </div>
-                            <p>
-                                <label for="seleccionaEUseLives"><input type="checkbox" checked id="seleccionaEUseLives">${_('Use lives')}.</label>
-                                <label for="seleccionaENumberLives">${_('Number of lives')}: <input type="number" name="seleccionaENumberLives" id="seleccionaENumberLives" value="3" min="1" max="5" /></label>
-                            </p>
-                            <p>
-                                <label for="seleccionaEHasFeedBack"><input type="checkbox" id="seleccionaEHasFeedBack">${_('Feedback')}:</label>
-                                <label for="seleccionaEPercentajeFB"><input type="number" name="seleccionaEPercentajeFB" id="seleccionaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />${_('&percnt; right to see the feedback')}</label>
-                            </p>
-                            <p id="seleccionaEFeedbackP" class="SLCNE-EFeedbackP"><textarea id="seleccionaEFeedBackEditor" class="exe-html-editor"></textarea></p>
-                            <p class="SLCNE-Flex"><label for="seleccionaEVideoIntro">${_('Video Intro')}:</label><input type="text" id="seleccionaEVideoIntro" /><a href="#" class="SLCNE-ButtonLink" id="seleccionaEVideoIntroPlay" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="SLCNE-EButtonImage" /></a></p>
-                            <p><label for="seleccionaEPercentajeQuestions">%${_('Questions')}:  <input type="number" name="seleccionaEPercentajeQuestions" id="seleccionaEPercentajeQuestions" value="100" min="1" max="100" /> </label><span id="seleccionaENumeroPercentaje">1/1</span></p>
-                            <p><label for="seleccionaModeBoard"><input type="checkbox" id="seleccionaModeBoard">${_('Digital whiteboard mode')}</label></p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#seleccionaEEvaluationHelp" id="seleccionaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                                <input type="checkbox" id="seleccionaEEvaluation"><label for="seleccionaEEvaluation">${_('Progress report')}.</label>
-                                <label for="seleccionaEEvaluationID">${_('Identifier')}:</label><input type="text" id="seleccionaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </p>
-                            <div id="seleccionaEEvaluationHelp" class="exe-block-info SLCNE-TypeGameHelp">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                <div class="toggle-item toggle-related" data-target="seleccionaEUseLives">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="seleccionaEUseLives" checked />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="seleccionaEUseLives">${_('Use lives')}.</label>
+                                </div>
+                                <label for="seleccionaENumberLives" class="mb-0 d-flex align-items-center gap-2 SLCNE-ELivesNumber">
+                                    <span>${_('Number of lives')}:</span>
+                                    <input type="number" name="seleccionaENumberLives" id="seleccionaENumberLives" value="3" min="1" max="5" class="form-control" />
+                                </label>
                             </div>
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                <div class="toggle-item toggle-related" data-target="seleccionaEHasFeedBack">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="seleccionaEHasFeedBack" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="seleccionaEHasFeedBack">${_('Feedback')}.</label>
+                                </div>
+                                <label for="seleccionaEPercentajeFB" class="mb-0 d-flex align-items-center gap-2">
+                                    <input type="number" name="seleccionaEPercentajeFB" id="seleccionaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
+                                    <span>${_('&percnt; right to see the feedback')}</span>
+                                </label>
+                            </div>
+                            <div id="seleccionaEFeedbackP" class="SLCNE-EFeedbackP mb-3"">
+                                <textarea id="seleccionaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
+                            </div>
+                            <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                                <label for="seleccionaEVideoIntro" class="mb-0">${_('Video Intro')}:</label>
+                                <input type="text" id="seleccionaEVideoIntro" class="form-control" style="max-width:250px" />
+                                <a href="#" class="SLCNE-ButtonLink" id="seleccionaEVideoIntroPlay" title="${_('Play the introduction video')}">
+                                    <img src="${path}quextIEPlay.png" alt="${_('Play')}" class="SLCNE-ENavigationButton" />
+                                </a>
+                            </div>
+                            <div class="toggle-item toggle-related mb-3" data-target="seleccionaEPercentajeQuestions">
+                                <label for="seleccionaEPercentajeQuestions" class="toggle-label">%${_('Questions')}:</label>
+                                <input type="number" name="seleccionaEPercentajeQuestions" id="seleccionaEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
+                                <span id="seleccionaENumeroPercentaje" class="ms-2">1/1</span>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="seleccionaModeBoard">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="seleccionaModeBoard" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="seleccionaModeBoard">${_('Digital whiteboard mode')}</label>
+                            </div>
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                <div class="toggle-item" data-target="seleccionaEEvaluation">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="seleccionaEEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="seleccionaEEvaluation">${_('Progress report')}.</label>
+                                </div>
+                                <div class="d-flex align-items-center flex-nowrap gap-2 ms-2 SLCNE-EEvaluationFields">
+                                    <label for="seleccionaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                    <input type="text" class="form-control" id="seleccionaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" />
+                                    <a href="#seleccionaEEvaluationHelp" id="seleccionaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
+                                    </a>
+                                </div>
+                            </div>
+                            <p id="seleccionaEEvaluationHelp" class="exe-block-info SLCNE-TypeGameHelp">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
                         <legend><a href="#">${_('Questions')}</a></legend>
                         <div class="SLCNE-EPanel" id="seleccionaEPanel">
-                            <div class="SLCNE-EOptionsMedia">
+                            <div class="SLCNE-EOptionsMedia d-flex flex-nowrap align-items-center gap-2 mb-3">
                                 <div class="SLCNE-EOptionsGame">
-                                    <p><span>${_('Type')}:</span>
-                                        <span class="SLCNE-EInputType">
-                                            <input class="SLCNE-TypeSelect" checked id="seleccionaTypeChoose" type="radio" name="slctypeselect" value="0"/>
-                                            <label for="seleccionaTypeSelect">${_('Select')}</label>
-                                            <input class="SLCNE-TypeSelect" id="seleccionaTypeOrders" type="radio" name="slctypeselect" value="1"/>
-                                            <label for="seleccionaTypeOrders">${_('Order')}</label>
-                                            <input class="SLCNE-TypeSelect" id="seleccionaTypeWord" type="radio" name="slctypeselect" value="2"/>
-                                            <label for="seleccionaTypeWord">${_('Word')}</label>
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                        <span>${_('Type')}:</span>
+                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-TypeSelect form-check-input" checked id="seleccionaTypeChoose" type="radio" name="slctypeselect" value="0"/>
+                                                <label class="form-check-label" for="seleccionaTypeChoose">${_('Select')}</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-TypeSelect form-check-input" id="seleccionaTypeOrders" type="radio" name="slctypeselect" value="1"/>
+                                                <label class="form-check-label" for="seleccionaTypeOrders">${_('Order')}</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-TypeSelect form-check-input" id="seleccionaTypeWord" type="radio" name="slctypeselect" value="2"/>
+                                                <label class="form-check-label" for="seleccionaTypeWord">${_('Word')}</label>
+                                            </div>
                                         </span>
-                                    </p>
-                                    <p><span>${_('Multimedia Type')}:</span>
-                                        <span class="SLCNE-EInputMedias">
-                                            <input class="SLCNE-Type" checked="checked" id="seleccionaMediaNormal" type="radio" name="slcmediatype" value="0" disabled />
-                                            <label for="seleccionaMediaNormal">${_('None')}</label>
-                                            <input class="SLCNE-Type" id="seleccionaMediaImage" type="radio" name="slcmediatype" value="1" disabled />
-                                            <label for="seleccionaMediaImage">${_('Image')}</label>
-                                            <input class="SLCNE-Type" id="seleccionaMediaVideo" type="radio" name="slcmediatype" value="2" disabled />
-                                            <label for="seleccionaMediaVideo">${_('Video')}</label>
-                                            <input class="SLCNE-Type" id="seleccionaMediaText" type="radio" name="slcmediatype" value="3" disabled />
-                                            <label for="seleccionaMediaText">${_('Text')}</label>
-                                        </span>
-                                    </p>
-                                    <p><span id="seleccionaOptionsNumberSpan">${_('Options Number')}:</span>
-                                        <span class="SLCNE-EInputNumbers" id="seleccionaEInputNumbers">
-                                            <input class="SLCNE-Number" id="numQ2" type="radio" name="slcnumber" value="2" />
-                                            <label for="numQ2">2</label>
-                                            <input class="SLCNE-Number" id="numQ3" type="radio" name="slcnumber" value="3" />
-                                            <label for="numQ3">3</label>
-                                            <input class="SLCNE-Number" id="numQ4" type="radio" name="slcnumber" value="4" checked="checked" />
-                                            <label for="numQ4">4</label>
-                                        </span>
-                                    </p>
-                                    <p><span id="seleccionaPercentageSpan">${_('Percentage of letters to show (%)')}:</span>
-                                        <span class="SLCNE-EPercentage" id="seleccionaPercentage">
-                                            <input type="number" name="seleccionaPercentageShow" id="seleccionaPercentageShow" value="35" min="0" max="100" step="5" /> </label>
-                                        </span>
-                                    </p>
-                                    <p><span>${_('Time per question')}:</span>
-                                        <span class="SLCNE-EInputTimes">
-                                            <input class="SLCNE-Times" checked="checked" id="q15s" type="radio" name="slctime" value="0" />
-                                            <label for="q15s">15s</label>
-                                            <input class="SLCNE-Times" id="q30s" type="radio" name="slctime" value="1" />
-                                            <label for="q30s">30s</label>
-                                            <input class="SLCNE-Times" id="q1m" type="radio" name="slctime" value="2" />
-                                            <label for="q1m">1m</label>
-                                            <input class="SLCNE-Times" id="q3m" type="radio" name="slctime" value="3" />
-                                            <label for="q3m">3m</label>
-                                            <input class="SLCNE-Times" id="q5m" type="radio" name="slctime" value="4" />
-                                            <label for="q5m">5m</label>
-                                            <input class="SLCNE-Times" id="q10m" type="radio" name="slctime" value="5" />
-                                            <label for="q10m">10m</label>
-                                        </span>
-                                    <p>
-                                    <p id="seleccionaEScoreQuestionDiv" class="SLCNE-ScoreQuestionDiv">
-                                        <label for="seleccionaEScoreQuestion"><span>${_('Score')}</span>:</label><input type="number" name="seleccionaEScoreQuestion" id="seleccionaEScoreQuestion" value="1" min="0" max="100" step="0.05"/>
-                                    </p>
-                                    <span class="SLCNE-ETitleImage" id="seleccionaETitleImage">${_('Image URL')}:</span>
-                                    <div class="SLCNE-EInputImage SLCNE-Flex" id="seleccionaEInputImage">
-                                        <label class="sr-av" for="seleccionaEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker SLCNE-EURLImage" id="seleccionaEURLImage"/>
-                                        <a href="#" id="seleccionaEPlayImage" class="SLCNE-ENavigationButton SLCNE-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SLCNE-EButtonImage b-play" /></a>
                                     </div>
-                                    <div class="SLCNE-EInputOptionsImage" id="seleccionaInputOptionsImage">
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                        <span>${_('Multimedia Type')}:</span>
+                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Type form-check-input" checked="checked" id="seleccionaMediaNormal" type="radio" name="slcmediatype" value="0" disabled />
+                                                <label class="form-check-label" for="seleccionaMediaNormal">${_('None')}</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Type form-check-input" id="seleccionaMediaImage" type="radio" name="slcmediatype" value="1" disabled />
+                                                <label class="form-check-label" for="seleccionaMediaImage">${_('Image')}</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Type form-check-input" id="seleccionaMediaVideo" type="radio" name="slcmediatype" value="2" disabled />
+                                             <label class="form-check-label" for="seleccionaMediaVideo">${_('Video')}</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Type form-check-input" id="seleccionaMediaText" type="radio" name="slcmediatype" value="3" disabled />
+                                                <label class="form-check-label" for="seleccionaMediaText">${_('Text')}</label>
+                                            </div>
+                                        </span>
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="seleccionaEInputNumbers">
+                                        <span>${_('Options Number')}:</span>
+                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Number form-check-input" id="numQ2" type="radio" name="slcnumber" value="2" />
+                                                <label class="form-check-label" for="numQ2">2</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Number form-check-input" id="numQ3" type="radio" name="slcnumber" value="3" />
+                                                <label class="form-check-label" for="numQ3">3</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Number form-check-input" id="numQ4" type="radio" name="slcnumber" value="4" checked="checked" />
+                                                <label class="form-check-label" for="numQ4">4</label>
+                                            </div>
+                                         </span>
+                                    </div>
+                                    <div id="seleccionaPercentageSpan" class="d-none flex-wrap align-items-center gap-2 mb-3">
+                                        <span >${_('Percentage of letters to show (%)')}:</span>
+                                        <span class="SLCNE-EPercentage" id="seleccionaPercentage">
+                                            <input type="number" class="form-control form-control-sm"  name="seleccionaPercentageShow" id="seleccionaPercentageShow" value="35" min="0" max="100" step="5" />
+                                        </span>
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                        <span>${_('Time per question')}:</span>
+                                        <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Times form-check-input" checked="checked" id="q15s" type="radio" name="slctime" value="0" />
+                                                <label class="form-check-label" for="q15s">15s</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Times form-check-input" id="q30s" type="radio" name="slctime" value="1" />
+                                                <label class="form-check-label" for="q30s">30s</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Times form-check-input" id="q1m" type="radio" name="slctime" value="2" />
+                                                <label class="form-check-label" for="q1m">1m</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Times form-check-input" id="q3m" type="radio" name="slctime" value="3" />
+                                                <label class="form-check-label" for="q3m">3m</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Times form-check-input" id="q5m" type="radio" name="slctime" value="4" />
+                                                <label class="form-check-label" for="q5m">5m</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="SLCNE-Times form-check-input" id="q10m" type="radio" name="slctime" value="5" />
+                                                <label class="form-check-label" for="q10m">10m</label>
+                                            </div>
+                                        </span>
+                                    </div>
+                                    <div id="seleccionaEScoreQuestionDiv" class="SLCNE-ScoreQuestionDiv mb-3">
+                                        <label for="seleccionaEScoreQuestion">${_('Score')}:</label><input type="number" name="seleccionaEScoreQuestion" id="seleccionaEScoreQuestion" value="1" min="0" max="100" step="0.05"/>
+                                    </div>
+                                    <span class="SLCNE-ETitleImage" id="seleccionaETitleImage">${_('Image URL')}:</span>
+                                    <div class="SLCNE-EInputImage SLCNE-Flex mb-3 gap-2" id="seleccionaEInputImage">
+                                        <label class="sr-av" for="seleccionaEURLImage">${_('Image URL')}</label>
+                                        <input type="text" class="exe-file-picker form-control w-100 me-0" id="seleccionaEURLImage"/>
+                                        <a href="#" id="seleccionaEPlayImage" class="SLCNE-ENavigationButton" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SLCNE-ENavigationButton " /></a>
+                                    </div>
+                                    <div class="SLCNE-EInputOptionsImage mb-3" id="seleccionaInputOptionsImage">
                                         <div class="SLCNE-ECoord">
                                             <label for="seleccionaEXImage">X:</label>
-                                            <input id="seleccionaEXImage" type="text" value="0" />
+                                            <input id="seleccionaEXImage" type="text" value="0" class="form-control" />
                                             <label for="seleccionaEXImage">Y:</label>
-                                            <input id="seleccionaEYImage" type="text" value="0" />
+                                            <input id="seleccionaEYImage" type="text" value="0" class="form-control" />
                                         </div>
                                     </div>
                                     <span class="SLCNE-ETitleVideo" id="seleccionaETitleVideo">${_('URL')}:</span>
-                                    <div class="SLCNE-EInputVideo SLCNE-Flex" id="seleccionaEInputVideo">
+                                    <div class="SLCNE-EInputVideo SLCNE-Flex mb-3 gap-2" id="seleccionaEInputVideo">
                                         <label class="sr-av" for="seleccionaEURLYoutube">${_('URL')}</label>
-                                        <input id="seleccionaEURLYoutube" type="text" />
-                                        <a href="#" id="seleccionaEPlayVideo" class="SLCNE-ENavigationButton SLCNE-EPlayVideo" title="${_('Play video')}"><img src="${path}quextIEPlay.png" alt="${_('Play video')}" class="SLCNE-EButtonImage b-play" /></a>
+                                        <input id="seleccionaEURLYoutube" type="text" class="form-control" />
+                                        <a href="#" id="seleccionaEPlayVideo" class="SLCNE-ENavigationButton" title="${_('Play video')}"><img src="${path}quextIEPlay.png" alt="${_('Play video')}" class="SLCNE-ENavigationButton " /></a>
                                     </div>
-                                    <div class="SLCNE-EInputOptionsVideo" id="seleccionaEInputOptionsVideo">
-                                        <div>
-                                            <label for="seleccionaEInitVideo">${_('Start')}:</label>
-                                            <input id="seleccionaEInitVideo" type="text" value="00:00:00" maxlength="8" />
-                                            <label for="seleccionaEEndVideo">${_('End')}:</label>
-                                            <input id="seleccionaEEndVideo" type="text" value="00:00:00" maxlength="8" />
-                                            <button class="SLCNE-EVideoTime" id="seleccionaEVideoTime" type="button">00:00:00</button>
+                                    <div id="seleccionaEInputOptionsVideo">
+                                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                                            <label for="seleccionaEInitVideo" class="mb-0">${_('Start')}:</label>
+                                            <input id="seleccionaEInitVideo" type="text" value="00:00:00" maxlength="8" class="form-control" />
+                                            <label for="seleccionaEEndVideo" class="mb-0 ms-2">${_('End')}:</label>
+                                            <input id="seleccionaEEndVideo" type="text" value="00:00:00" maxlength="8" class="form-control" />
+                                            <button class="btn btn-primary" id="seleccionaEVideoTime">00:00:00</button>
                                         </div>
-                                        <div>
-                                            <label for="seleccionaESilenceVideo">${_('Silence')}:</label>
-                                            <input id="seleccionaESilenceVideo" type="text" value="00:00:00" maxlength="8" />
-                                            <label for="seleccionaETimeSilence">${_('Time (s)')}</label>
-                                            <input type="number" name="seleccionaETimeSilence" id="seleccionaETimeSilence" value="0" min="0" max="120" />
+                                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                                            <label for="seleccionaESilenceVideo" class="mb-0">${_('Silence')}:</label>
+                                            <input id="seleccionaESilenceVideo" type="text" value="00:00:00" maxlength="8" class="form-control" />
+                                            <label for="seleccionaETimeSilence" class="mb-0 ms-2">${_('Time (s)')}</label>
+                                            <input type="number" name="seleccionaETimeSilence" id="seleccionaETimeSilence" value="0" min="0" max="120" class="form-control" />
                                         </div>
-                                        <div>
-                                            <label for="seleccionaECheckSoundVideo">${_('Audio')}</label>
-                                            <input id="seleccionaECheckSoundVideo" type="checkbox" checked="checked" />
-                                            <label for="seleccionaECheckImageVideo">${_('Image')}</label>
-                                            <input id="seleccionaECheckImageVideo" type="checkbox" checked="checked" />
+                                        <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                            <div class="toggle-item d-flex align-items-center gap-2" data-target="seleccionaECheckSoundVideo">
+                                                <span class="toggle-control">
+                                                    <input id="seleccionaECheckSoundVideo" type="checkbox" class="toggle-input" checked />
+                                                    <span class="toggle-visual"></span>
+                                                </span>
+                                                <label for="seleccionaECheckSoundVideo" class="toggle-label mb-0">${_('Audio')}</label>
+                                            </div>
+                                            <div class="toggle-item d-flex align-items-center gap-2" data-target="seleccionaECheckImageVideo">
+                                                <span class="toggle-control">
+                                                    <input id="seleccionaECheckImageVideo" type="checkbox" class="toggle-input" checked />
+                                                    <span class="toggle-visual"></span>
+                                                </span>
+                                                <label for="seleccionaECheckImageVideo" class="toggle-label mb-0">${_('Image')}</label>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="SLCNE-EAuthorAlt" id="seleccionaEAuthorAlt">
-                                        <div class="SLCNE-EInputAuthor" id="seleccionaInputAuthor">
-                                            <label for="seleccionaEAuthor"><span>${_('Authorship')}</span>:</label>
-                                            <input id="seleccionaEAuthor" type="text" />
+                                    <div class="d-none flex-nowrap align-items-center gap-2 mb-3" id="seleccionaEAuthorAlt">
+                                        <div class="SLCNE-EInputAuthor w-50" id="seleccionaInputAuthor">
+                                            <label for="seleccionaEAuthor">${_('Authorship')}:</label>
+                                            <input id="seleccionaEAuthor" type="text" class="form-control w-100" />
                                         </div>
-                                        <div class="SLCNE-EInputAlt" id="seleccionaInputAlt">
-                                            <label for="seleccionaEAlt"><span>${_('Alternative text')}</span>:</label>
-                                            <input id="seleccionaEAlt" type="text" />
+                                        <div class="SLCNE-EInputAlt w-50" id="seleccionaInputAlt">
+                                            <label for="seleccionaEAlt">${_('Alternative text')}:</label>
+                                            <input id="seleccionaEAlt" type="text" class="form-control w-100" />
                                         </div>
                                     </div>
                                     <span id="seleccionaETitleAudio">${_('Audio')}:</span>
-                                    <div class="SLCNE-EInputAudio" id="seleccionaEInputAudio">
+                                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="seleccionaEInputAudio">
                                         <label class="sr-av" for="seleccionaEURLAudio">${_('URL')}</label>
-                                        <input type="text" class="exe-file-picker SLCNE-EURLAudio" id="seleccionaEURLAudio"/>
-                                        <a href="#" id="seleccionaEPlayAudio" class="SLCNE-ENavigationButton SLCNE-EPlayVideo" title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="SLCNE-EButtonImage b-play" /></a>
+                                        <input type="text" class="exe-file-picker w-100 form-control me-0" id="seleccionaEURLAudio"/>
+                                        <a href="#" id="seleccionaEPlayAudio" class="SLCNE-ENavigationButton" title="${_('Play audio')}">
+                                            <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="SLCNE-ENavigationButton " />
+                                        </a>
                                     </div>
                                 </div>
-                                <div class="SLCNE-EMultiMediaOption">
+                                <div class="SLCNE-EMultiMediaOption ">
                                     <div class="SLCNE-EMultimedia" id="seleccionaEMultimedia">
-                                        <textarea id="seleccionaEText"></textarea>
+                                        <textarea id="seleccionaEText" class="form-control" style="display:none"></textarea>
                                         <img class="SLCNE-EMedia" src="${path}quextIEImage.png" id="seleccionaEImage" alt="${_('Image')}" />
                                         <img class="SLCNE-EMedia" src="${path}quextIEImage.png" id="seleccionaENoImage" alt="${_('No image')}" />
-                                        <div class="SLCNE-EMedia" id="seleccionaEVideo"></div>
-                                        <video class="SLCNE-EMedia" id="seleccionaEVideoLocal" preload="auto" controls></video>
-                                        <img class="SLCNE-EMedia" src="${path}quextIENoImageVideo.png" id="seleccionaENoImageVideo" alt="" />
-                                        <img class="SLCNE-EMedia" src="${path}quextIENoVideo.png" id="seleccionaENoVideo" alt="" />
-                                        <img class="SLCNE-ECursor" src="${path}quextIECursor.gif" id="seleccionaECursor" alt="" />
+                                        <div class="SLCNE-EMedia" id="seleccionaEVideo" style="display:none"></div>
+                                        <video class="SLCNE-EMedia" id="seleccionaEVideoLocal" preload="auto" controls style="display:none"></video>
+                                        <img class="SLCNE-EMedia" src="${path}quextIENoImageVideo.png" id="seleccionaENoImageVideo" alt=""style="display:none" />
+                                        <img class="SLCNE-EMedia" src="${path}quextIENoVideo.png" id="seleccionaENoVideo" alt="" style="display:none"/>
+                                        <img class="SLCNE-ECursor" src="${path}quextIECursor.gif" id="seleccionaECursor" alt="" style="display:none"/>
                                         <img class="SLCNE-EMedia" src="${path}quextIECoverSelecciona.png" id="seleccionaECover" alt="${_('No image')}" />
                                     </div>
                                 </div>
@@ -1407,38 +1570,38 @@ var $exeDevice = {
                             <div class="SLCNE-EContents">
                                 <div id="seleccionaESolitionOptions" class="SLCNE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="selecionaESolutionSelect"></span></span></div>
                                 <div class="SLCNE-EQuestionDiv" id="seleccionaEQuestionDiv">
-                                    <label class="sr-av">${_('Question')}:</label><input type="text" class="SLCNE-EQuestion" id="seleccionaEQuestion">
+                                    <label class="sr-av">${_('Question')}:</label><input type="text" class="SLCNE-EQuestion form-control" id="seleccionaEQuestion">
                                 </div>
                                 <div class="SLCNE-EAnswers" id="seleccionaEAnswers">
-                                    <div class="SLCNE-EOptionDiv">
-                                        <label class="sr-av">${_('Solution')} A:</label><input type="checkbox" class="SLCNE-ESolution" name="slcsolution" id="seleccionaESolution0" value="A" />
-                                        <label >A</label><input type="text" class="SLCNE-EOption0 SLCNE-EAnwersOptions" id="seleccionaEOption0">
+                                    <div class="SLCNE-EOptionDiv gap-2">
+                                        <label class="sr-av">${_('Solution')} A:</label><input type="checkbox" class="SLCNE-ESolution form-check-input" name="slcsolution" id="seleccionaESolution0" value="A" />
+                                        <label >A</label><input type="text" class="SLCNE-EOption0 SLCNE-EAnwersOptions form-control" id="seleccionaEOption0">
                                     </div>
-                                    <div class="SLCNE-EOptionDiv">
-                                        <label class="sr-av">${_('Solution')} B:</label><input type="checkbox" class="SLCNE-ESolution" name="slcsolution" id="seleccionaESolution1" value="B" />
-                                        <label >B</label><input type="text" class="SLCNE-EOption1 SLCNE-EAnwersOptions" id="seleccionaEOption1">
+                                    <div class="SLCNE-EOptionDiv gap-2">
+                                        <label class="sr-av">${_('Solution')} B:</label><input type="checkbox" class="SLCNE-ESolution form-check-input" name="slcsolution" id="seleccionaESolution1" value="B" />
+                                        <label >B</label><input type="text" class="SLCNE-EOption1 SLCNE-EAnwersOptions form-control" id="seleccionaEOption1">
                                     </div>
-                                    <div class="SLCNE-EOptionDiv">
-                                        <label class="sr-av">${_('Solution')} C:</label><input type="checkbox" class="SLCNE-ESolution" name="slcsolution" id="seleccionaESolution2" value="C" />
-                                        <label >C</label><input type="text" class="SLCNE-EOption2 SLCNE-EAnwersOptions" id="seleccionaEOption2">
+                                    <div class="SLCNE-EOptionDiv gap-2">
+                                        <label class="sr-av">${_('Solution')} C:</label><input type="checkbox" class="SLCNE-ESolution form-check-input" name="slcsolution" id="seleccionaESolution2" value="C" />
+                                        <label >C</label><input type="text" class="SLCNE-EOption2 SLCNE-EAnwersOptions form-control" id="seleccionaEOption2">
                                     </div>
-                                    <div class="SLCNE-EOptionDiv">
-                                        <label class="sr-av">${_('Solution')} D:</label><input type="checkbox" class="SLCNE-ESolution" name="slcsolution" id="seleccionaESolution3" value="D" />
-                                        <label >D</label><input type="text" class="SLCNE-EOption3 SLCNE-EAnwersOptions" id="seleccionaEOption3">
+                                    <div class="SLCNE-EOptionDiv gap-2">
+                                        <label class="sr-av">${_('Solution')} D:</label><input type="checkbox" class="SLCNE-ESolution form-check-input" name="slcsolution" id="seleccionaESolution3" value="D" />
+                                        <label >D</label><input type="text" class="SLCNE-EOption3 SLCNE-EAnwersOptions form-control" id="seleccionaEOption3">
                                     </div>
                                 </div>
                                 <div class="SLCNE-EWordDiv SLCNE-DP" id="selecionaEWordDiv">
-                                    <div class="SLCNE-ESolutionWord"><label for="seleccionaESolutionWord"><span>${_('Word/Phrase')}:</span></label><input type="text" id="seleccionaESolutionWord"/></div>
-                                    <div class="SLCNE-ESolutionWord"><label for="seleccionaEDefinitionWord"><span>${_('Definition')}:</span></label><input type="text" id="seleccionaEDefinitionWord"/></div>
+                                    <div class="SLCNE-ESolutionWord"><label for="seleccionaESolutionWord">${_('Word/Phrase')}:</label><input type="text" id="seleccionaESolutionWord" class="form-control"/></div>
+                                    <div class="SLCNE-ESolutionWord"><label for="seleccionaEDefinitionWord">${_('Definition')}:</label><input type="text" id="seleccionaEDefinitionWord" class="form-control"/></div>
                                 </div>
                             </div>
                             <div class="SLCNE-EOrders" id="seleccionaEOrder">
                                 <div class="SLCNE-ECustomMessage">
                                     <span class="sr-av">${_('Hit')}</span><span class="SLCNE-EHit"></span>
                                     <label for="seleccionaEMessageOK">${_('Message')}:</label>
-                                    <input type="text" class="" id="seleccionaEMessageOK">
+                                    <input type="text" class="form-control" id="seleccionaEMessageOK">
                                     <label for="seleccionaGotoCorrect">${_('Go to')}:</label>
-                                    <select name="seleccionaGotoCorrect" id="seleccionaGotoCorrect">
+                                    <select name="seleccionaGotoCorrect" id="seleccionaGotoCorrect" class="form-select form-select-sm">
                                         <option value="-2">${_('End')}</option>
                                         <option value="-1" selected>${_('Next')}</option>
                                         <option value="0">${1}</option>
@@ -1447,26 +1610,26 @@ var $exeDevice = {
                                 <div class="SLCNE-ECustomMessage">
                                     <span class="sr-av">${_('Error')}</span><span class="SLCNE-EError"></span>
                                     <label for="seleccionaEMessageKO">${_('Message')}:</label>
-                                    <input type="text" class="" id="seleccionaEMessageKO">
+                                    <input type="text" class="form-control" id="seleccionaEMessageKO">
                                     <label for="seleccionaGotoIncorrect">${_('Go to')}:</label>
-                                    <select name="seleccionaGotoIncorrect" id="seleccionaGotoIncorrect">
+                                    <select name="seleccionaGotoIncorrect" id="seleccionaGotoIncorrect" class="form-select form-select-sm">
                                         <option value="-2">${_('End')}</option>
                                         <option value="-1" selected>${_('Next')}</option>
                                         <option value="0">${1}</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="SLCNE-ENavigationButtons">
-                                <a href="#" id="seleccionaEAdd" class="SLCNE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="SLCNE-EButtonImage" /></a>
-                                <a href="#" id="seleccionaEFirst" class="SLCNE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="SLCNE-EButtonImage" /></a>
-                                <a href="#" id="seleccionaEPrevious" class="SLCNE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="SLCNE-EButtonImage" /></a>
-                                <label class="sr-av" for="seleccionaENumberQuestion">${_('Question number:')}</label><input type="text" class="SLCNE-NumberQuestion" id="seleccionaENumberQuestion" value="1"/>
-                                <a href="#" id="seleccionaENext" class="SLCNE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="SLCNE-EButtonImage" /></a>
-                                <a href="#" id="seleccionaELast" class="SLCNE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="SLCNE-EButtonImage" /></a>
-                                <a href="#" id="seleccionaEDelete" class="SLCNE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="SLCNE-EButtonImage" /></a>
-                                <a href="#" id="seleccionaECopy" class="SLCNE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="SLCNE-EButtonImage" /></a>
-                                <a href="#" id="seleccionaECut" class="SLCNE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="SLCNE-EButtonImage" /></a>
-                                <a href="#" id="seleccionaEPaste" class="SLCNE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="SLCNE-EButtonImage" /></a>
+                            <div class="SLCNE-ENavigationButtons gap-2">
+                                <a href="#" id="seleccionaEAdd" class="SLCNE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="SLCNE-ENavigationButton" /></a>
+                                <a href="#" id="seleccionaEFirst" class="SLCNE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="SLCNE-ENavigationButton" /></a>
+                                <a href="#" id="seleccionaEPrevious" class="SLCNE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="SLCNE-ENavigationButton" /></a>
+                                <label class="sr-av" for="seleccionaENumberQuestion">${_('Question number:')}</label><input type="text" class="SLCNE-NumberQuestion form-control" id="seleccionaENumberQuestion" value="1"/>
+                                <a href="#" id="seleccionaENext" class="SLCNE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="SLCNE-ENavigationButton" /></a>
+                                <a href="#" id="seleccionaELast" class="SLCNE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="SLCNE-ENavigationButton" /></a>
+                                <a href="#" id="seleccionaEDelete" class="SLCNE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="SLCNE-ENavigationButton" /></a>
+                                <a href="#" id="seleccionaECopy" class="SLCNE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="SLCNE-ENavigationButton" /></a>
+                                <a href="#" id="seleccionaECut" class="SLCNE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="SLCNE-ENavigationButton" /></a>
+                                <a href="#" id="seleccionaEPaste" class="SLCNE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="SLCNE-ENavigationButton" /></a>
                             </div>
                             <div class="SLCNE-EVIDiv" id="seleccionaEVIDiv">
                                 <div class="SLCNE-EVIV">
@@ -1476,17 +1639,17 @@ var $exeDevice = {
                                         <img class="SLCNE-ENoVI" src="${path}quextIENoVideo.png" id="seleccionaEVINo" alt="" />
                                     </div>
                                 </div>
-                                <div class="SLCNE-EVIOptions">
-                                    <label for="seleccionaEVIURL">${_('URL')}:</label>
-                                    <input id="seleccionaEVIURL" type="text" />
-                                    <a href="#" id="seleccionaEVIPlayI" class="SLCNE-ENavigationButton SLCNE-EPlayVideo" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play the introduction video')}" class="SLCNE-EButtonImage b-playintro" /></a>
-                                    <label for="seleccionaEVIStart">${_('Start')}:</label>
-                                    <input id="seleccionaEVIStart" type="text" value="00:00:00" readonly />
-                                    <label for="seleccionaEVIEnd">${_('End')}:</label>
-                                    <input id="seleccionaEVIEnd" type="text" value="00:00:00" readonly />
-                                    <button class="SLCNE-EVideoTime" id="seleccionaEVITime" type="button">00:00:00</button>
+                                <div class="SLCNE-EVIOptions d-flex align-items-center flex-wrap gap-2">
+                                    <label for="seleccionaEVIURL" class="mb-0">${_('URL')}:</label>
+                                    <input id="seleccionaEVIURL" type="text" class="form-control" />
+                                    <a href="#" id="seleccionaEVIPlayI" class="SLCNE-ENavigationButton " title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play the introduction video')}" class="SLCNE-ENavigationButton intro" /></a>
+                                    <label for="seleccionaEVIStart" class="mb-0">${_('Start')}:</label>
+                                    <input id="seleccionaEVIStart" type="text" value="00:00:00" readonly class="form-control" />
+                                    <label for="seleccionaEVIEnd" class="mb-0">${_('End')}:</label>
+                                    <input id="seleccionaEVIEnd" type="text" value="00:00:00" readonly class="form-control" />
+                                    <button class="SLCNE-EVideoTime btn btn-primary" id="seleccionaEVITime" type="button">00:00:00</button>
                                 </div>
-                                <input type="button" class="SLCNE-EVIClose" id="seleccionaEVIClose" value="${_('Close')}" />
+                                <input type="button" class="SLCNE-EVIClose btn btn-primary mt-2" id="seleccionaEVIClose" value="${_('Close')}" />
                             </div>
                             <div class="SLCNE-ENumQuestionDiv" id="seleccionaENumQuestionDiv">
                                 <div class="SLCNE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="SLCNE-ENumQuestions" id="seleccionaENumQuestions">0</span>
@@ -1508,7 +1671,7 @@ var $exeDevice = {
 
         tinymce.init({
             selector: '#seleccionaEText',
-            height: 200,
+            height: 220,
             language: 'all',
             width: 400,
             plugins: ['code paste textcolor link'],
@@ -1880,8 +2043,8 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.selectsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.selectsGame);
 
-    let html = '<div class="selecciona-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="selecciona-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html += `<div class="selecciona-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="selecciona-feedback-game">${textFeedBack}</div>`;
@@ -2319,23 +2482,21 @@ var $exeDevice = {
     showTypeQuestion: function (type) {
         if (type == 2) {
             $('#seleccionaEAnswers').hide();
-            $('#seleccionaEQuestionDiv').hide();
+            $('#seleccionaEQuestionDiv').removeClass('d-flax').addClass('d-none');
             $('#quickMultipleQEIdeviceForm .SLCNE-ESolutionSelect').hide();
-            $('#seleccionaOptionsNumberSpan').hide();
-            $('#seleccionaEInputNumbers').hide();
-            $('#seleccionaESolitionOptions').hide();
-            $('#seleccionaPercentageSpan').show();
-            $('#seleccionaPercentage').show();
+            $('#seleccionaEInputNumbers').removeClass('d-flax').addClass('d-none');
+            $('#seleccionaESolitionOptions').removeClass('d-flax').addClass('d-none');
+            $('#seleccionaPercentageSpan').removeClass('d-none').addClass('d-flex');
+            $('#seleccionaPercentage').removeClass('d-none').addClass('d-flex');
             $('#selecionaEWordDiv').show();
         } else {
             $('#seleccionaEAnswers').show();
-            $('#seleccionaEQuestionDiv').show();
+            $('#seleccionaEQuestionDiv').removeClass('d-none').addClass('d-flex');
             $('#quickMultipleQEIdeviceForm .SLCNE-ESolutionSelect').show();
-            $('#seleccionaOptionsNumberSpan').show();
-            $('#seleccionaEInputNumbers').show();
-            $('#seleccionaESolitionOptions').show();
-            $('#seleccionaPercentageSpan').hide();
-            $('#seleccionaPercentage').hide();
+            $('#seleccionaEInputNumbers').removeClass('d-none').addClass('d-flex');
+            $('#seleccionaESolitionOptions').removeClass('d-none').addClass('d-flex');
+            $('#seleccionaPercentageSpan').removeClass('d-flax').addClass('d-none');
+            $('#seleccionaPercentage').removeClass('d-flax').addClass('d-none');
             $('#selecionaEWordDiv').hide();
         }
     },
@@ -2355,6 +2516,33 @@ var $exeDevice = {
             $seleccionaESilenceVideo = $('#seleccionaESilenceVideo');
 
         $seleccionaEPaste.hide();
+
+        // Delegación genérica para toggles estilo switch (paridad con guess.js)
+        $quickMultipleQEIdeviceForm.on('click.qq.toggle', '.toggle-item', function (e) {
+            // Evita doble cambio si el clic es directamente sobre el input, label asociado
+            // o sobre controles interactivos internos (números, textos, selects, botones)
+            if (
+                $(e.target).is('input.toggle-input, label[for], input[type=number], input[type=text], select, textarea, button')
+            ) return;
+            // No alternar si el clic proviene del campo identificador de evaluación o su enlace de ayuda
+            if (
+                $(e.target).is('#seleccionaEEvaluationID') ||
+                $(e.target).closest('#seleccionaEEvaluationHelpLnk').length
+            ) return;
+            const $input = $(this).find('input.toggle-input').first();
+            if ($input.length) {
+                const newVal = !$input.prop('checked');
+                $input.prop('checked', newVal).trigger('change');
+            }
+        });
+
+        // Evitar que el clic dentro del campo de evaluación dispare el toggle del contenedor
+        $quickMultipleQEIdeviceForm.on('click', '#seleccionaEEvaluationID', function (e) {
+            e.stopPropagation();
+        });
+        $quickMultipleQEIdeviceForm.on('click', '#seleccionaEEvaluationHelpLnk, #seleccionaEEvaluationHelpLnk *', function (e) {
+            e.stopPropagation();
+        });
 
         $seleccionaEUseLives.on('change', function () {
             const marcado = $(this).is(':checked');

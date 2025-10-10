@@ -132,87 +132,171 @@ var $exeDevice = {
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div>
-                            <p>
-                                <label for="eCQShowMinimize"><input type="checkbox" id="eCQShowMinimize"> ${_('Show minimized.')}</label>
-                            </p>
-                            <p>
-                                <label for="eCQOptionsRamdon"><input type="checkbox" id="eCQOptionsRamdon"> ${_('Random questions')}.</label>
-                            </p>
-                            <p>
-                                <label for="eCQShowSolution"><input type="checkbox" checked id="eCQShowSolution"> ${_('Show solutions')}.</label>
-                                <label for="eCQTimeShowSolution">${_('Show solution time (seconds)')}: <input type="number" name="eCQTimeShowSolution" id="eCQTimeShowSolution" value="3" min="1" max="9" step="1"/></label>
-                            </p>
-                            <p>
-                                <input class="MTOE-ErrorType" id="eCQRelative" type="checkbox" name="ecqtype" value="0" />
-                                <label for="eCQRelative">${_('Relative error')}.</label>
-                                <label for="eCQPercentajeRelative" class="sr-av">${_('Relative error')}</label><input type="number" name="eCQPercentajeRelative" id="eCQPercentajeRelative" value="0" min="0" max="1" step="0.01" style="display:none; width:70px"/>
-                            <p>
-                            <p>
-                                <input class="MTOE-ErrorType" id="eCQAbsolute" type="checkbox" name="ecqtype" value="1" />
-                                <label for="eCQAbsolute">${_('Absolute error')}.</label>
-                                <label for="eCQPercentajeAbsolute" class="sr-av">${_('Absolute error')}</label><input type="number" name="eCQPercentajeAbsolute" id="eCQPercentajeAbsolute" value="0" min="0" max="99.0" step="0.01" style="display:none; width:70px" />
-                            </p>
-                            <p>
-                                <label for="eCQHasFeedBack"><input type="checkbox" id="eCQHasFeedBack"> ${_('Feedback')}.</label>
-                                <label for="eCQPercentajeFB"><input type="number" name="eCQPercentajeFB" id="eCQPercentajeFB" value="100" min="5" max="100" step="5" disabled />${_('&percnt; right to see the feedback')}.</label>
-                            </p>
-                            <p id="eCQFeedbackP" class="MTOE-EFeedbackP" style="display:none">
-                                <textarea id="eCQFeedBackEditor" class="exe-html-editor"></textarea>
-                            </p>
-                            <p>
-                                <label for="eCQPercentajeQuestions">% ${_('Questions')}: <input type="number" name="eCQPercentajeQuestions" id="eCQPercentajeQuestions" value="100" min="1" max="100" /></label>
-                                <span id="eCQNumeroPercentaje">1/1</span>
-                            </p>
-                            <p style="display:none">
-                                <label for="eCQModeBoard"><input type="checkbox" id="eCQModeBoard">${_('Digital whiteboard mode')}</label>
-                            </p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#eCQEEvaluationHelp" id="eCQEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${$exeDevice.idevicePath}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                                <input type="checkbox" id="eCQEEvaluation"><label for="eCQEEvaluation">${_('Progress report')}.</label>
-                                <label for="eCQEEvaluationID">${_('Identifier')}:<input type="text" id="eCQEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/></label>
-                            </p>
-                            <div id="eCQEEvaluationHelp" class="MTOE-TypeGameHelp exe-block-info">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                            <div class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eCQShowMinimize" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eCQShowMinimize" class="toggle-label">${_('Show minimized.')}</label>
+                                </span>
                             </div>
+                            <div class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eCQOptionsRamdon" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eCQOptionsRamdon" class="toggle-label">${_('Random questions')}.</label>
+                                </span>
+                            </div>
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
+                                <span class="toggle-item" role="switch" aria-checked="true">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eCQShowSolution" class="toggle-input" checked />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eCQShowSolution" class="toggle-label">${_('Show solutions')}.</label>
+                                </span>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="eCQTimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}:</label>
+                                    <input type="number" name="eCQTimeShowSolution" id="eCQTimeShowSolution" value="3" min="1" max="9" step="1" class="form-control" style="width:6ch" />
+                                </div>
+                            </div>
+                            <div id="eCQErrorRelativeDiv" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input class="MTOE-ErrorType toggle-input" id="eCQRelative" type="checkbox" name="ecqtype" value="0" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eCQRelative" class="toggle-label">${_('Relative error')}.</label>
+                                </span>
+                                <input type="number" name="eCQPercentajeRelative" id="eCQPercentajeRelative" value="0" min="0" max="1" step="0.01" class="form-control" style="display:none; width:7ch" />
+                            </div>
+                            <div id="eCQErrorAbsoluteDiv" class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input class="MTOE-ErrorType toggle-input" id="eCQAbsolute" type="checkbox" name="ecqtype" value="1" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eCQAbsolute" class="toggle-label">${_('Absolute error')}.</label>
+                                </span>
+                                <input type="number" name="eCQPercentajeAbsolute" id="eCQPercentajeAbsolute" value="0" min="0" max="99.0" step="0.01" class="form-control" style="display:none; width:7ch" />
+                            </div>
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eCQHasFeedBack" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eCQHasFeedBack" class="toggle-label">${_('Feedback')}.</label>
+                                </span>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="eCQPercentajeFB" class="mb-0">%FB</label>
+                                    <input type="number" name="eCQPercentajeFB" id="eCQPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
+                                    <span>${_('&percnt; right to see the feedback')}.</span>
+                                </div>
+                            </div>
+                            <div id="eCQFeedbackP" class="MTOE-EFeedbackP mb-3" style="display:none">
+                                <textarea id="eCQFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
+                            </div>
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+                                <label for="eCQPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
+                                <input type="number" name="eCQPercentajeQuestions" id="eCQPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:7ch" />
+                                <span id="eCQNumeroPercentaje">1/1</span>
+                            </div>
+                            <div style="display:none" class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eCQModeBoard" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eCQModeBoard" class="toggle-label">${_('Digital whiteboard mode')}</label>
+                                </span>
+                            </div>
+                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-wrap mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eCQEEvaluation" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eCQEEvaluation" class="toggle-label">${_('Progress report')}.</label>
+                                </span>
+                                <span class="d-flex align-items-center gap-1 flex-nowrap">
+                                    <label for="eCQEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                    <input type="text" id="eCQEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
+                                </span>
+                                <a href="#eCQEEvaluationHelp" id="eCQEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                    <img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
+                                </a>
+
+                            </div>
+                            <p id="eCQEEvaluationHelp" class="MTOE-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset" style="position:relative">
                         <legend><a href="#">${_('Problems')}</a></legend>
                         <div>
-                            <p>
-                                <label for="eCQTime">${_('Time (s)')}: <input type="number" name="eCQTime" id="eCQTime" value="180" min="1" max="3600" style="width:70px"/></label>
-                            </p>
+                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="eCQTime" class="mb-0">${_('Time (s)')}:</label>
+                                <input type="number" name="eCQTime" id="eCQTime" value="180" min="1" max="3600" class="form-control" style="width:7ch" />
+                            </div>
                         </div>
-                        <p id="eCQformulaDiv">
-                            <label for="eCQformula">${_('Formula')}: <input id="eCQformula" type="text" style="width:50%" value="{b}*{h}/2" /></label>
+                        <div id="eCQformulaDiv" class="mb-3 d-flex flex-wrap align-items-center gap-2">
+                            <label for="eCQformula" class="mb-0">${_('Formula')}:</label>
+                            <input id="eCQformula" type="text" value="{b}*{h}/2" class="form-control" style="width:50%" />
                             <span><span class="sr-av">${_('Operations:')}</span> <a href="https://www.w3schools.com/js/js_arithmetic.asp" target="_blank" rel="noopener" hreflang="en" title="+  -  *  /  **  ()">${_('Help')}</a> - <a href="https://www.w3schools.com/js/js_math.asp" target="_blank" rel="noopener" hreflang="en" title="JavaScript Math">${_('More')}</a></span>
-                        </p>
-                        <p>
-                            <label for="eCQwording">${_('Question text:')}</label>
-                            <textarea name="eCQwording" id="eCQwording" class="exe-html-editor" cols="90" rows="6">${_('Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m')}</textarea>
-                        <p>
-                        <p>
-                            <label for="eCQDefinidedVariables"><input type="checkbox" id="eCQDefinidedVariables"> ${_('Define the domain of each variable')}</label>
-                        </p>
+                        </div>
+                        <div class="mb-3">
+                            <label for="eCQwording" class="mb-1 d-block">${_('Question text:')}</label>
+                            <textarea name="eCQwording" id="eCQwording" class="exe-html-editor form-control" rows="6">${_('Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m')}</textarea>
+                        </div>
+                        <div class="mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="eCQDefinidedVariables" class="toggle-input" />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label for="eCQDefinidedVariables" class="toggle-label">${_('Define the domain of each variable')}</label>
+                            </span>
+                        </div>
                         <p id="eQCVariablesContainer"></p>
                         <div id="eCQAleaContainer">
-                            <p><label for="eCQmin">${_('Smallest number:')} <input id="eCQmin" type="text" style="width:80px" value="1" onkeyup="$exeDevice.onlyNumbers(this)" /></label>
-                            <label for="eCQmax">${_('Highest number:')} <input id="eCQmax" type="text" style="width:80px" value="10" onkeyup="$exeDevice.onlyNumbers(this)" /></label></p>
-                            <p><label for="eCQdecimals">${_('Decimals:')} <select id="eCQdecimals"><option value="0">${_('No decimals')}</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label></p>
-                        </div>
-                        <p>
-                            <a href="#" id="eCQfeedbackLink">${_('Feedback (optional)')}</a>
-                            <div id="eCQfeedbackQuestionDiv" style="display:none">
-                                <label for="eCQfeedbackQuestion" class="sr-av">${_('Feedback (optional)')}</label>
-                                <textarea name="eCQfeedbackQuestion" id="eCQfeedbackQuestion" class="exe-html-editor" cols="90" rows="4"></textarea>
-                                <span class="info">${_('Use the Feedback to add an explanation or the right formula.')}</span>
+                            <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="eCQmin" class="mb-0">${_('Smallest number')}:</label>
+                                    <input id="eCQmin" type="text" value="1" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="eCQmax" class="mb-0">${_('Highest number')}:</label>
+                                    <input id="eCQmax" type="text" value="10" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
+                                </div>
                             </div>
-                        </p>
-                        <div class="MTOE-ENavigationButtons">
+                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="eCQdecimals" class="mb-0">${_('Decimals')}:</label>
+                                <select id="eCQdecimals" class="form-control" style="max-width:16ch">
+                                    <option value="0">${_('No decimals')}</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <a href="#" id="eCQfeedbackLink">${_('Feedback (optional)')}</a>
+                            <div id="eCQfeedbackQuestionDiv" style="display:none" class="mt-2">
+                                <label for="eCQfeedbackQuestion" class="sr-av">${_('Feedback (optional)')}</label>
+                                <textarea name="eCQfeedbackQuestion" id="eCQfeedbackQuestion" class="exe-html-editor form-control" rows="4"></textarea>
+                                <span class="info d-block mt-1">${_('Use the Feedback to add an explanation or the right formula.')}</span>
+                            </div>
+                        </div>
+                        <div class="MTOE-ENavigationButtons gap-2">
                             <a href="#" id="eCQAdd" class="MTOE-ENavigationButton" title="${_('Add question')}"><img src="${$exeDevice.idevicePath}quextIEAdd.png" alt="${_('Add question')}" class="MTOE-EButtonImage b-add" /></a>
                             <a href="#" id="eCQFirst" class="MTOE-ENavigationButton" title="${_('First question')}"><img src="${$exeDevice.idevicePath}quextIEFirst.png" alt="${_('First question')}" class="MTOE-EButtonImage b-first" /></a>
                             <a href="#" id="eCQPrevious" class="MTOE-ENavigationButton" title="${_('Previous question')}"><img src="${$exeDevice.idevicePath}quextIEPrev.png" alt="${_('Previous question')}" class="MTOE-EButtonImage b-prev" /></a>
-                            <label class="sr-av" for="eCQNumberQuestion">${_('Question number:')}:</label><input type="text" class="MTOE-NumberQuestion" id="eCQNumberQuestion" value="1"/>
+                            <label class="sr-av" for="eCQNumberQuestion">${_('Question number:')}:</label><input type="text" class="MTOE-NumberQuestion form-control" id="eCQNumberQuestion" value="1"/>
                             <a href="#" id="eCQNext" class="MTOE-ENavigationButton" title="${_('Next question')}"><img src="${$exeDevice.idevicePath}quextIENext.png" alt="${_('Next question')}" class="MTOE-EButtonImage b-next" /></a>
                             <a href="#" id="eCQLast" class="MTOE-ENavigationButton" title="${_('Last question')}"><img src="${$exeDevice.idevicePath}quextIELast.png" alt="${_('Last question')}" class="MTOE-EButtonImage b-last" /></a>
                             <a href="#" id="eCQDelete" class="MTOE-ENavigationButton" title="${_('Delete question')}"><img src="${$exeDevice.idevicePath}quextIEDelete.png" alt="${_('Delete question')}" class="MTOE-EButtonImage b-delete" /></a>
@@ -946,8 +1030,8 @@ var $exeDevice = {
                 instructions +
                 '</div>';
 
-    let html = '<div class="mathproblems-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="mathproblems-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="mathproblems-feedback-game js-hidden">' +
             textFeedBack +

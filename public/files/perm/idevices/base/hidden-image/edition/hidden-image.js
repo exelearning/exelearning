@@ -39,7 +39,6 @@ var $exeDevice = {
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
     },
-
     refreshTranslations: function () {
         this.ci18n = {
             msgStartGame: c_('Click here to start'),
@@ -98,27 +97,15 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
-        );
-        msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image',
-        );
+        msgs.msgESelectFile = _('The selected file does not contain a valid game');
+        msgs.msgEURLValid = _('You must upload or indicate the valid URL of an image');
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgECompleteQuestion = _('You have to complete the question');
-        msgs.msgECompleteAllOptions = _(
-            'You have to complete all the selected options',
-        );
-        msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
-        );
+        msgs.msgECompleteAllOptions = _('You have to complete all the selected options');
+        msgs.msgNoSuportBrowser = _('Your browser is not compatible with this tool.');
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
-        msgs.msgAltImageWarning = _(
-            'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
-        );
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
-        );
+        msgs.msgAltImageWarning = _('Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.');
+        msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
     },
 
 
@@ -385,36 +372,62 @@ var $exeDevice = {
             html = `
             <div id="hiQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_('Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.')} <a  style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/quext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
+                    ${_('Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.')} <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/quext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Reveal the hidden image and choose the right answer.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <p><label for="hiEShowMinimize"><input type="checkbox" id="hiEShowMinimize">${_('Show minimized.')}</label></p>
-                            <p>
-                                <label for="hiEQuestionsRamdon"><input type="checkbox" id="hiEQuestionsRamdon">${_('Random questions')}</label>
-                                <label for="hiEAnswersRamdon" class="HIE-inlineOption"><input type="checkbox" id="hiEAnswersRamdon">${_('Random options')}</label>
-                            </p>
-                            <p>
-                               <label for="hiERevealTime">${_('Card hidden time (seconds)')} <input type="number" name="hiERevealTime" id="hiERevealTime" value="1" min="0" max="100" /></label>
-                            </p>
-                            <p><label for="hiECustomMessages"><input type="checkbox" id="hiECustomMessages">${_('Custom messages')}.</label></p>
-                            <p>
-                                <label for="hiEShowSolution"><input type="checkbox" checked id="hiEShowSolution">${_('Show solutions')}.</label>
-                                <label for="hiETimeShowSolution">${_('Show solution time (seconds)')} <input type="number" name="hiETimeShowSolution" id="hiETimeShowSolution" value="3" min="1" max="9" /></label>
-                            </p>
-                            <p><label for="hiEPercentajeQuestions">%${_('Questions')}:</label><input type="number" name="hiEPercentajeQuestions" id="hiEPercentajeQuestions" value="100" min="1" max="100" /><span id="hiENumeroPercentaje">1/1</span></p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#hiEEvaluationHelp" id="hiEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                                <input type="checkbox" id="hiEEvaluation"><label for="hiEEvaluation">${_('Progress report')}.</label>
-                                <label for="hiEEvaluationID">${_('Identifier')}:</label><input type="text" id="hiEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </p>
-                            <div id="hiEEvaluationHelp" class="HIE-TypeGameHelp exe-block-info">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                        <div id="hiEOptions" class="mb-3">
+                            <div class="toggle-item mb-3" data-target="hiEShowMinimize">
+                                <span class="toggle-control"><input type="checkbox" class="toggle-input" id="hiEShowMinimize" /><span class="toggle-visual"></span></span>
+                                <label class="toggle-label" for="hiEShowMinimize">${_('Show minimized.')}</label>
                             </div>
+                            <div class="mb-3 d-flex flex-nowrap align-items-center gap-3">
+                                <div class="toggle-item m-0" data-target="hiEQuestionsRamdon">
+                                    <span class="toggle-control"><input type="checkbox" class="toggle-input" id="hiEQuestionsRamdon" /><span class="toggle-visual"></span></span>
+                                    <label class="toggle-label" for="hiEQuestionsRamdon">${_('Random questions')}</label>
+                                </div>
+                                <div class="toggle-item m-0" data-target="hiEAnswersRamdon">
+                                    <span class="toggle-control"><input type="checkbox" class="toggle-input" id="hiEAnswersRamdon" /><span class="toggle-visual"></span></span>
+                                    <label class="toggle-label" for="hiEAnswersRamdon">${_('Random options')}</label>
+                                </div>
+                            </div>
+                            <div class="mb-3 d-flex flex-nowrap align-items-center gap-2">
+                                <label class="m-0" for="hiERevealTime">${_('Card hidden time (seconds)')}</label>
+                                <input type="number" name="hiERevealTime" id="hiERevealTime" value="1" min="0" max="100" class="form-control" style="width:90px" />
+                            </div>
+                            <div class="toggle-item mb-3" data-target="hiECustomMessages">
+                                <span class="toggle-control"><input type="checkbox" class="toggle-input" id="hiECustomMessages" /><span class="toggle-visual"></span></span>
+                                <label class="toggle-label" for="hiECustomMessages">${_('Custom messages')}.</label>
+                            </div>
+                            <div class="mb-3 d-flex flex-nowrap align-items-center gap-3">
+                                <div class="toggle-item toggle-related m-0" data-target="hiEShowSolution">
+                                    <span class="toggle-control"><input type="checkbox" class="toggle-input" checked id="hiEShowSolution" /><span class="toggle-visual"></span></span>
+                                    <label class="toggle-label" for="hiEShowSolution">${_('Show solutions')}.</label>
+                                </div>
+                                <label class="m-0 d-flex align-items-center gap-2" for="hiETimeShowSolution">${_('Show solution time (seconds)')}</label>
+                                <input type="number" name="hiETimeShowSolution" id="hiETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:70px" />
+                            </div>
+                            <div class="mb-3 d-flex flex-nowrap align-items-center gap-2">
+                                <label class="m-0" for="hiEPercentajeQuestions">%${_('Questions')}:</label>
+                                <input type="number" name="hiEPercentajeQuestions" id="hiEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:90px" />
+                                <span id="hiENumeroPercentaje">1/1</span>
+                            </div>
+                            <div class="mb-3 d-flex flex-nowrap align-items-center gap-2 Games-Reportdiv">
+                                <div class="toggle-item m-0" data-target="hiEEvaluation">
+                                    <span class="toggle-control"><input type="checkbox" class="toggle-input" id="hiEEvaluation" /><span class="toggle-visual"></span></span>
+                                    <label class="toggle-label" for="hiEEvaluation">${_('Progress report')}.</label>
+                                </div>
+                                <label class="m-0" for="hiEEvaluationID">${_('Identifier')}:</label>
+                                <input type="text" id="hiEEvaluationID" disabled class="form-control" style="max-width:200px" value="${eXeLearning.app.project.odeId || ''}" />
+                                <a href="#hiEEvaluationHelp" id="hiEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/></a>
+
+                            </div>
+                            <p id="hiEEvaluationHelp" class="HIE-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -422,105 +435,125 @@ var $exeDevice = {
                         <div class="HIE-Panel" id="hiEPanel">
                             <div class="HIE-OptionsMedia">
                                 <div class="HIE-OptionsGame">
-                                    <p>
-                                        <label for="hiETimeQuestion">${_('Time (seconds)')}: <input type="number" name="hiETimeQuestion" id="hiETimeQuestion" value="30" min="0" max="900" /></label>
-                                        <label for="hiEAttempts">${_('Attempts')}: <input type="number" name="hiEAttempts" id="hiEAttempts" value="3" min="0" max="30" /></label>
-                                        <label for="hiERows">${_('Rows')}: <input type="number" name="hiERows" id="hiERows" value="4" min="2" max="10" /></label>
-                                        <label for="hiEColumns">${_('Columns')}: <input type="number" name="hiEColumns" id="hiEColumns" value="4" min="2" max="10" /></label>
-                                    </p>
-                                    <p>
-                                        <span>${_('Options Number')}:</span>
-                                        <span class="HIE-InputNumbers">
-                                            <input class="HIE-Number" id="numQ2" type="radio" name="qxtnumber" value="2" />
-                                            <label for="numQ2">2</label>
-                                            <input class="HIE-Number" id="numQ3" type="radio" name="qxtnumber" value="3" />
-                                            <label for="numQ3">3</label>
-                                            <input class="HIE-Number" id="numQ4" type="radio" name="qxtnumber" value="4" checked="checked" />
-                                            <label for="numQ4">4</label>
-                                        </span>
-                                    </p>
-                                    <p id="hiEScoreQuestionDiv" class="HIE-ScoreQuestionDiv">
-                                        <label for="hiEScoreQuestion">${_('Score')}:</label>
-                                        <input type="number" name="hiEScoreQuestion" id="hiEScoreQuestion" value="1" min="0" max="100" step="0.05"/>
-                                    </p>
-                                    <span class="HIE-TitleImage" id="hiETitleImage">${_('Image URL')}</span>
-                                    <div class="HIE-Flex HIE-InputImage" id="hiEInputImage">
-                                        <label class="sr-av" for="hiEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker HIE-URLImage" id="hiEURLImage"/>
-                                        <a href="#" id="hiEPlayImage" class="HIE-NavigationButton HIE-PlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="HIE-ButtonImage b-play" /></a>
-                                    </div>
-                                     <div class="HIE-AuthorAlt" id="hiEAuthorAlt">
-                                        <div class="HIE-InputAuthor" id="hiEInputAuthor">
-                                            <label for="hiEAuthor">${_('Authorship')}</label>
-                                            <input id="hiEAuthor" type="text" />
+                                    <div class="mb-3 d-flex flex-nowrap align-items-center gap-2">
+                                        <div class="d-flex flex-nowrap align-items-center gap-1">
+                                            <label for="hiETimeQuestion" class="m-0">${_('Time (seconds)')}:</label>
+                                            <input type="number" name="hiETimeQuestion" id="hiETimeQuestion" value="30" min="0" max="900" class="form-control" style="width:90px" />
                                         </div>
-                                        <div class="HIE-InputAlt" id="hiEInputAlt">
-                                            <label for="hiEAlt">${_('Alternative text')}</label>
-                                            <input id="hiEAlt" type="text" />
+                                        <div class="d-flex flex-nowrap align-items-center gap-3">
+                                            <label for="hiETimeQuestion" class="m-0">${_('Time (seconds)')}:</label>
+                                            <input type="number" name="hiETimeQuestion" id="hiETimeQuestion" value="30" min="0" max="900" class="form-control" style="width:90px" />
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 d-flex flex-nowrap align-items-center gap-2">
+                                        <div class="d-flex flex-nowrap align-items-center gap-1">
+                                            <label for="hiERows" class="m-0">${_('Rows')}:</label>
+                                            <input type="number" name="hiERows" id="hiERows" value="4" min="2" max="10" class="form-control" style="width:90px" />
+                                        </div>
+                                        <div class="d-flex flex-nowrap align-items-center gap-2">
+                                            <label for="hiEColumns" class="m-0">${_('Columns')}:</label>
+                                            <input type="number" name="hiEColumns" id="hiEColumns" value="4" min="2" max="10" class="form-control" style="width:90px" />
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 d-flex flex-nowrap align-items-center gap-2">
+                                        <span>${_('Options Number')}:</span>
+                                        <div class="HIE-InputNumbers d-flex align-items-center gap-2">
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="form-check-input HIE-Number" id="numQ2" type="radio" name="qxtnumber" value="2" />
+                                                <label class="form-check-label" for="numQ2">2</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="form-check-input HIE-Number" id="numQ3" type="radio" name="qxtnumber" value="3" />
+                                                <label class="form-check-label" for="numQ3">3</label>
+                                            </div>
+                                            <div class="form-check form-check-inline m-0">
+                                                <input class="form-check-input HIE-Number" id="numQ4" type="radio" name="qxtnumber" value="4" checked="checked" />
+                                                <label class="form-check-label" for="numQ4">4</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="hiEScoreQuestionDiv" class="HIE-ScoreQuestionDiv mb-3 d-flex flex-nowrap align-items-center gap-2">
+                                        <label for="hiEScoreQuestion" class="m-0">${_('Score')}:</label>
+                                        <input type="number" name="hiEScoreQuestion" id="hiEScoreQuestion" value="1" min="0" max="100" step="0.05" class="form-control" style="width:90px" />
+                                    </div>
+                                    <span class="HIE-TitleImage" id="hiETitleImage">${_('Image URL')}</span>
+                                    <div class="justify-content-start d-flex flex-nowrap align-items-center gap-2 mb-3" id="hiEInputImage">
+                                        <label class="sr-av" for="hiEURLImage">${_('Image URL')}</label>
+                                        <input type="text" class="exe-file-picker form-control me-0" id="hiEURLImage" />
+                                        <a href="#" id="hiEPlayImage" class="HIE-NavigationButton HIE-PlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="HIE-ButtonImage " /></a>
+                                    </div>
+                                    <div class="HIE-AuthorAlt mb-3 d-flex flex-nowrap align-items-center gap-2" id="hiEAuthorAlt">
+                                        <div id="hiEInputAuthor" class="d-flex flex-nowrap align-items-center gap-2 w-50">
+                                            <label for="hiEAuthor" class="m-0">${_('Authorship')}</label>
+                                            <input id="hiEAuthor" type="text" class="form-control w-100" />
+                                        </div>
+                                        <div id="hiEInputAlt" class="d-flex flex-nowrap align-items-center gap-2 w-50">
+                                            <label for="hiEAlt" class="m-0">${_('Alternative text')}</label>
+                                            <input id="hiEAlt" type="text" class="form-control w-100" />
                                         </div>
                                     </div>
                                     <span id="hiETitleAudio">${_('Audio')}</span>
-                                    <div class="HIE-InputAudio" id="hiEInputAudio">
+                                    <div class="justify-content-start  d-flex flex-nowrap align-items-center gap-1 mb-3" id="hiEInputAudio">
                                         <label class="sr-av" for="hiEURLAudio">${_('URL')}</label>
-                                        <input type="text" class="exe-file-picker HIE-URLAudio" id="hiEURLAudio"/>
-                                        <a href="#" id="hiEPlayAudio" class="HIE-NavigationButton HIE-PlayVideo" title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="HIE-ButtonImage b-play" /></a>
+                                        <input type="text" class="exe-file-picker HIE-URLAudio form-control me-0" id="hiEURLAudio" />
+                                        <a href="#" id="hiEPlayAudio" class="HIE-NavigationButton HIE-PlayVideo" title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="HIE-ButtonImage " /></a>
                                     </div>
                                 </div>
                                 <div class="HIE-MultiMediaOption">
-                                        <img class="HIE-Media" src="${path}quextIEImage.png" id="hiEImage" alt="${_('Image')}" style="display:none" />
-                                        <img class="HIE-Media" src="${path}quextIEImage.png" id="hiENoImage" alt="${_('No image')}" />
+                                    <img class="HIE-Media" src="${path}quextIEImage.png" id="hiEImage" alt="${_('Image')}" style="display:none" />
+                                    <img class="HIE-Media" src="${path}quextIEImage.png" id="hiENoImage" alt="${_('No image')}" />
                                 </div>
                             </div>
                             <div class="HIE-Contents">
                                 <span>${_('Question')}</span>
-                                <div class="HIE-QuestionDiv">
-                                    <label class="sr-av">${_('Question')}:</label>
-                                    <input type="text" class="HIE-Question" id="hiEQuestion">
+                                <div class="HIE-QuestionDiv mb-3 d-flex flex-nowrap align-items-center gap-2">
+                                    <label class="sr-av" for="hiEQuestion">${_('Question')}:</label>
+                                    <input type="text" class="HIE-Question form-control" id="hiEQuestion">
                                 </div>
                                 <div class="HIE-Answers">
-                                    <div class="HIE-OptionDiv">
-                                        <label class="sr-av">${_('Solution')} A:</label>
-                                        <input type="radio" class="HIE-Solution" name="hisoluiton" id="hiESolution0" value="0" checked="checked" />
-                                        <label class="sr-av">${_('Option')} A:</label>
-                                        <input type="text" class="HIE-Option0 HIE-AnwersOptions" id="hiEOption0">
+                                    <div class="HIE-OptionDiv d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                        <label class="sr-av" for="hiESolution0">${_('Solution')} A:</label>
+                                        <input type="radio" class="HIE-Solution form-check-input" name="hisoluiton" id="hiESolution0" value="0" checked="checked" />
+                                        <label class="sr-av" for="hiEOption0">${_('Option')} A:</label>
+                                        <input type="text" class="HIE-Option0 HIE-AnwersOptions form-control" id="hiEOption0">
                                     </div>
-                                    <div class="HIE-OptionDiv">
-                                        <label class="sr-av">${_('Solution')} B:</label>
-                                        <input type="radio" class="HIE-Solution" name="hisoluiton" id="hiESolution1" value="1" />
-                                        <label class="sr-av">${_('Option')} B:</label>
-                                        <input type="text" class="HIE-Option1 HIE-AnwersOptions" id="hiEOption1">
+                                    <div class="HIE-OptionDiv d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                        <label class="sr-av" for="hiESolution1">${_('Solution')} B:</label>
+                                        <input type="radio" class="HIE-Solution form-check-input" name="hisoluiton" id="hiESolution1" value="1" />
+                                        <label class="sr-av" for="hiEOption1">${_('Option')} B:</label>
+                                        <input type="text" class="HIE-Option1 HIE-AnwersOptions form-control" id="hiEOption1">
                                     </div>
-                                    <div class="HIE-OptionDiv">
-                                        <label class="sr-av">${_('Solution')} C:</label>
-                                        <input type="radio" class="HIE-Solution" name="hisoluiton" id="hiESolution2" value="2" />
-                                        <label class="sr-av">${_('Option')} C:</label>
-                                        <input type="text" class="HIE-Option2 HIE-AnwersOptions" id="hiEOption2">
+                                    <div class="HIE-OptionDiv d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                        <label class="sr-av" for="hiESolution2">${_('Solution')} C:</label>
+                                        <input type="radio" class="HIE-Solution form-check-input" name="hisoluiton" id="hiESolution2" value="2" />
+                                        <label class="sr-av" for="hiEOption2">${_('Option')} C:</label>
+                                        <input type="text" class="HIE-Option2 HIE-AnwersOptions form-control" id="hiEOption2">
                                     </div>
-                                    <div class="HIE-OptionDiv">
-                                        <label class="sr-av">${_('Solution')} D:</label>
-                                        <input type="radio" class="HIE-Solution" name="hisoluiton" id="hiESolution3" value="3" />
-                                        <label class="sr-av">${_('Option')} D:</label>
-                                        <input type="text" class="HIE-Option3 HIE-AnwersOptions" id="hiEOption3">
+                                    <div class="HIE-OptionDiv d-flex flex-nowrap align-items-center gap-2 mb-3">
+                                        <label class="sr-av" for="hiESolution3">${_('Solution')} D:</label>
+                                        <input type="radio" class="HIE-Solution form-check-input" name="hisoluiton" id="hiESolution3" value="3" />
+                                        <label class="sr-av" for="hiEOption3">${_('Option')} D:</label>
+                                        <input type="text" class="HIE-Option3 HIE-AnwersOptions form-control" id="hiEOption3">
                                     </div>
                                 </div>
                             </div>
                             <div class="HIE-Orders" id="hiEOrder">
-                                <div class="HIE-ECustomMessage">
+                                <div class="HIE-ECustomMessage mb-3 d-flex flex-nowrap align-items-center gap-2">
                                     <span class="sr-av">${_('Hit')}</span><span class="HIE-EHit"></span>
-                                    <label for="hiEMessageOK">${_('Message')}:</label>
-                                    <input type="text" id="hiEMessageOK">
+                                    <label class="m-0" for="hiEMessageOK">${_('Message')}:</label>
+                                    <input type="text" id="hiEMessageOK" class="form-control">
                                 </div>
-                                 <div class="HIE-ECustomMessage">
+                                <div class="HIE-ECustomMessage mb-3 d-flex flex-nowrap align-items-center gap-2">
                                     <span class="sr-av">${_('Error')}</span><span class="HIE-Error"></span>
-                                    <label for="hiEMessageKO">${_('Message')}:</label>
-                                    <input type="text" id="hiEMessageKO">
+                                    <label class="m-0" for="hiEMessageKO">${_('Message')}:</label>
+                                    <input type="text" id="hiEMessageKO" class="form-control">
                                 </div>
                             </div>
-                            <div class="HIE-NavigationButtons">
+                            <div class="HIE-NavigationButtons gap-1">
                                 <a href="#" id="hiEAdd" class="HIE-NavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="HIE-ButtonImage" /></a>
                                 <a href="#" id="hiEFirst" class="HIE-NavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="HIE-ButtonImage" /></a>
                                 <a href="#" id="hiEPrevious" class="HIE-NavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="HIE-ButtonImage" /></a>
-                                <label class="sr-av" for="hiENumberQuestion">${_('Question number:')}:</label><input type="text" class="HIE-NumberQuestion" id="hiENumberQuestion" value="1"/>
+                                <label class="sr-av" for="hiENumberQuestion">${_('Question number:')}:</label><input type="text" class="HIE-NumberQuestion form-control" id="hiENumberQuestion" value="1"/>
                                 <a href="#" id="hiENext" class="HIE-NavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="HIE-ButtonImage" /></a>
                                 <a href="#" id="hiELast" class="HIE-NavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="HIE-ButtonImage" /></a>
                                 <a href="#" id="hiEDelete" class="HIE-NavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="HIE-ButtonImage" /></a>
@@ -788,8 +821,8 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.questionsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.questionsGame);
 
-    let html = '<div class="hiddenimage-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="hiddenimage-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html += `<div class="hiddenimage-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="hiddenimage-DataGame js-hidden">${$exeDevices.iDevice.gamification.helpers.encrypt(json)}</div>`;
