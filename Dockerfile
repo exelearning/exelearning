@@ -82,6 +82,7 @@ RUN apk add --no-cache \
 COPY --chown=nobody assets.conf /etc/nginx/server-conf.d/assets.conf
 COPY --chown=nobody idevices.conf /etc/nginx/server-conf.d/idevices.conf
 COPY --chown=nobody subdir.conf.template /etc/nginx/server-conf.d/subdir.conf.template
+COPY --chown=nobody nginx-logging-map.conf /etc/nginx/conf.d/logging-map.conf
 
 # Copy Mercure binary and configuration from the official container because Mercure is not yet available as an Alpine package
 COPY --from=dunglas/mercure:latest /usr/bin/caddy /usr/bin/mercure
@@ -119,4 +120,4 @@ COPY --chown=nobody . .
 RUN rm /app/02-configure-symfony.sh
 
 HEALTHCHECK --interval=1m --timeout=15s --start-period=1m --retries=3 \
-  CMD curl -f http://localhost:8080/healthcheck || exit 1
+  CMD curl --fail --silent --show-error http://localhost:8080/healthcheck || exit 1
