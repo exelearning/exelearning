@@ -6,27 +6,6 @@
     cursor: pointer;
 }
 
-#completeQEIdeviceForm label {
-    margin-right: 0.15em !important;
-}
-
-#completeQEIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-    margin-right: 0.15em !important;
-}
-
-#completeQEIdeviceForm select {
-    line-height: 1.8em;
-    height: 1.8em;
-    width: 4em;
-}
-
-#completeQEIdeviceForm input[type=number] {
-    width: 4em;
-}
-
-#completeQEIdeviceForm label {
-    margin-right: .15em;
-}
 
 .CMPT-EFeedbackP {
     display: none;
@@ -193,7 +172,6 @@ label[for=gameQEActivitySCORM] {
 
 .CMPT-TypeGameHelp {
     display: none;
-    margin-bottom: 2em;
     font-size: .95em
 }
 

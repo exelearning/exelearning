@@ -74,7 +74,7 @@ var $exeDevice = {
                     </div>
                     <div class="d-flex align-items-center mb-3">
                         <label for="mnfFileInput" class="form-label me-2 mb-0 sr-av">${_('Image URL')}:</label>
-                        <input type="text" class="exe-file-picker form-control w-auto" id="mnfFileInput">
+                        <input type="text" class="exe-file-pickerform-control w-auto  me-0" id="mnfFileInput">
                     </div>
                     <div class="row align-items-center mb-3">
                         <label for="mnfWidthInput" class="col-auto col-form-label">${_('Image width')}:</label>

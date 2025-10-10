@@ -146,75 +146,105 @@ var $exeDevice = {
                 <fieldset class="exe-fieldset exe-fieldset-closed">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
-                        <p>
-                            <label for="ccgmEShowMinimize">
-                                <input type="checkbox" id="ccgmEShowMinimize">${_('Show minimized.')}</label>
-                        </p>
-                        <p>
-                            <label for="ccgmETime">${_('Time (minutes)')}: 
-                                <input type="number" name="ccgmETime" id="ccgmETime" value="0" min="0" max="59" /> 
-                            </label>
-                        </p>
-                        <p>
-                            <label for="ccgmEShowSolution">
-                                <input type="checkbox" checked id="ccgmEShowSolution">${_('Show solutions')}.</label> 
-                        </p>
-                        <p>
-                            <label for="ccgmECaseSensitive"> <input type="checkbox" id="ccgmECaseSensitive">${_('Case sensitive')}</label>
-                        </p>
-                        <p>
-                            <label for="ccgmEDifficulty">%${_('Difficulty')}: <input type="number" name="ccgmEDifficulty" id="ccgmEDifficulty" value="100" min="0" max="100" /> 
-                            </label>
-                        </p>
-                        <p>
-                            <label for="ccgmEHasFeedBack">
-                                <input type="checkbox" id="ccgmEHasFeedBack">${_('Feedback')}.</label> 
-                            <label for="ccgmEPercentajeFB">
-                                <input type="number" name="ccgmEPercentajeFB" id="ccgmEPercentajeFB" value="100" min="5" max="100" step="5" disabled />${_('&percnt; right to see the feedback')}</label>
-                        </p>
-                        <p id="ccgmEFeedbackP" class="CCGM-EFeedbackP">
-                            <textarea id="ccgmEFeedBackEditor" class="exe-html-editor"></textarea>
-                        </p>
-                        <p>
-                            <label for="ccgmEPercentajeQuestions">% 
-                                ${_('Questions')}:<input type="number" name="ccgmEPercentajeQuestions" id="ccgmEPercentajeQuestions" value="100" min="1" max="100" /> 
-                            </label>
+                        <div class="mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="ccgmEShowMinimize" class="toggle-input" />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label class="toggle-label" for="ccgmEShowMinimize">${_('Show minimized.')}</label>
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <label for="ccgmETime" class="mb-0">${_('Time (minutes)')}:</label>
+                            <input type="number" name="ccgmETime" id="ccgmETime" value="0" min="0" max="59" class="form-control" style="width:6ch" /> 
+                        </div>
+                        <div class="mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="true">
+                                <span class="toggle-control">
+                                    <input type="checkbox" checked id="ccgmEShowSolution" class="toggle-input" />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label class="toggle-label" for="ccgmEShowSolution">${_('Show solutions')}.</label> 
+                            </span>
+                        </div>
+                        <div class="mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="ccgmECaseSensitive" class="toggle-input" />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label class="toggle-label" for="ccgmECaseSensitive">${_('Case sensitive')}</label>
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <label for="ccgmEDifficulty" class="mb-0">%${_('Difficulty')}:</label>
+                            <input type="number" name="ccgmEDifficulty" id="ccgmEDifficulty" value="100" min="0" max="100" class="form-control" style="width:6ch" /> 
+                        </div>
+                        <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="ccgmEHasFeedBack" class="toggle-input" />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label class="toggle-label" for="ccgmEHasFeedBack">${_('Feedback')}.</label>
+                            </span>
+                           <input type="number" name="ccgmEPercentajeFB" id="ccgmEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
+                           <label for="ccgmEPercentajeFB" class="ms-0">${_('&percnt; right to see the feedback')}</label>
+                        </div>
+                        <div id="ccgmEFeedbackP" class="CCGM-EFeedbackP">
+                            <textarea id="ccgmEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
+                        </div>
+                        <div class=" d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            <label for="ccgmEPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
+                            <input type="number" name="ccgmEPercentajeQuestions" id="ccgmEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" /> 
                             <span id="ccgmENumeroPercentaje">1/1</span>
-                        </p>
-                        <p>
-                            <div class="CCGM-InputImage1">
-                                <div class="CCGM-InputImage1">
-                                    <label for="ccgmBack0"><input type="checkbox" id="ccgmBack0" checked/>${_('Background')}:</label>
-                                </div>
-                                <div class="CCGM-InputImage1" id="ccgmbackground1">
-                                    <label for="ccgmEURLBack">${_('URL')}: </label>
-                                    <input type="text" class="exe-file-picker CCGM-EURLImage" id="ccgmEURLBack"/>
-                                    <a href="#" id="ccgmEPlayBack" class="CCGM-ENavigationButton CCGMEEPlayVideo" title="${_('Show')}">
-                                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage b-play" />
-                                    </a>
-                                </div>
-                             </div>
-                            <div id="ccgmbackground" class="CCGM-Back">
-                                <img class="CCGM-EMedia1" src="" id="ccgmEImageBack" alt="${_('Image')}" />
-                                <img class="CCGM-EMedia1" src="${path}ccgmbackground.jpg" id="ccgmEImageNoBack" alt="${_('No image')}" />
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                            <span class="toggle-item" role="switch" aria-checked="true">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="ccgmBack0" class="toggle-input" checked />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label class="toggle-label" for="ccgmBack0">${_('Background')}:</label>
+                            </span>                            
+                            <div class="d-flex align-items-center gap-2 flex-nowrap" id="ccgmbackground1">
+                                <label for="ccgmEURLBack" class="mb-0">${_('URL')}: </label>
+                                <input type="text" class="exe-file-picker CCGM-EURLImage form-control me-0" id="ccgmEURLBack"/>
+                                <a href="#" id="ccgmEPlayBack" class="CCGM-ENavigationButton CCGMEEPlayVideo" title="${_('Show')}">
+                                    <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage " />
+                                </a>
                             </div>
-                            <div id="ccgmAuthorBackDiv" class="CCGM-AuthorBack">
-                                <label for="ccgmAuthorBack">${_('Authorship')}: </label>
-                                <input type="text" class="CCGM-EURLImage" id="ccgmAuthorBack"/>
-                            </div>
-                        </p>
-                        <p class="Games-Reportdiv">
+                         </div>
+                        <div id="ccgmbackground" class="CCGM-Back mb-3">
+                            <img class="CCGM-EMedia1" src="" id="ccgmEImageBack" alt="${_('Image')}" />
+                            <img class="CCGM-EMedia1" src="${path}ccgmbackground.jpg" id="ccgmEImageNoBack" alt="${_('No image')}" />
+                        </div>
+                        <div id="ccgmAuthorBackDiv" class="CCGM-AuthorBack d-none align-items-center gap-2 flex-nowrap">
+                            <label for="ccgmAuthorBack" class="mb-0">${_('Authorship')}: </label>
+                            <input type="text" class="CCGM-EURLImage form-control" id="ccgmAuthorBack"/>
+                        </div>
+                        <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="ccgmEEvaluation" class="toggle-input" data-target="#ccgmEEvaluationIDWrapper" />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label class="toggle-label" for="ccgmEEvaluation">${_('Progress report')}.</label>
+                            </span>
+                            <span id="ccgmEEvaluationIDWrapper" class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="ccgmEEvaluationID" class="mb-0 me-0">${_('Identifier')}: </label>
+                                <input type="text" id="ccgmEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}"/> 
+                            </span>
                             <strong class="GameModeLabel">
                                 <a href="#ccgmEEvaluationHelp" id="ccgmEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                    <img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/>
+                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
                                 </a>
                             </strong>
-                            <input type="checkbox" id="ccgmEEvaluation">  <label for="ccgmEEvaluation">${_('Progress report')}. </label>                        
-                            <label for="ccgmEEvaluationID">${_('Identifier')}: </label><input type="text" id="ccgmEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/> 
-                        </p>
-                        <div id="ccgmEEvaluationHelp" class="CCGM-TypeGameHelp" style="display:none;">
-                            <p class="exe-block-info exe-block-dismissible" >${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
                         </div>
+                        <p id="ccgmEEvaluationHelp" class="CCGM-TypeGameHelp exe-block-info" style="display:none;">
+                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                        </p>
                      </div>
                 </fieldset>
                 <fieldset class="exe-fieldset">
@@ -223,47 +253,46 @@ var $exeDevice = {
                         <div class="CCGM-EOptionsMedia">
                             <div class="CCGM-EOptionsGame">
                                 <span id="ccgmETitleWord">${_('Word')}</span>
-                                <div class="CCGM-EInputImage" id="ccgmEWordDiv">
+                                <div class="CCGM-EInputImage align-items-center gap-2 mb-3 flex-nowrap" id="ccgmEWordDiv">
                                     <label class="sr-av" for="ccgmESolutionWord">${_('Word')}: </label>
-                                    <input type="text" id="ccgmESolutionWord" maxlength="14"/>
+                                    <input type="text" id="ccgmESolutionWord" maxlength="14" class="form-control"/>
                                 </div>
                                 <span id="ccgmETitleDefinition">${_('Definition')}</span>
-                                <div class="CCGM-EInputImage" id="ccgmEDefinitionDiv">
+                                <div class="CCGM-EInputImage align-items-center gap-2 mb-3  flex-nowrap" id="ccgmEDefinitionDiv">
                                     <label class="sr-av" for="ccgmEDefinitionWord">${_('Definition')}: </label>
-                                    <input type="text" id="ccgmEDefinitionWord"/>
+                                    <input type="text" id="ccgmEDefinitionWord" class="form-control"/>
                                 </div>
                                 <span class="CCGM-ETitleImage" id="ccgmETitleImage">${_('Image URL')}</span>
-                                <div class="CCGM-EInputImage" id="ccgmEInputImage">
+                                <div class="CCGM-EInputImage align-items-center gap-2 mb-3  flex-nowrap" id="ccgmEInputImage">
                                     <label class="sr-av" for="ccgmEURLImage">${_('Image URL')}</label>
-                                    <input type="text" class="exe-file-picker" id="ccgmEURLImage"/>
+                                    <input type="text" class="exe-file-picker form-control me-0" id="ccgmEURLImage"/>
                                     <a href="#" id="ccgmEPlayImage" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Show')}">
-                                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage b-play" />
+                                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage " />
                                     </a>
                                     <a href="#" id="ccgmEShowMore" class="CCGM-ENavigationButton CCGM-EShowMore" title="${_('More')}">
-                                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="CCGM-EButtonImage b-play" />
+                                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="CCGM-EButtonImage " />
                                     </a>
                                 </div>
-                                <div class="CCGM-EInputOptionsImage" id="ccgmEInputOptionsImage"></div>
-                                <div class="CCGM-ECoord">
+                                <div class="CCGM-ECoord align-items-center gap-2 mb-3 flex-nowrap">
                                     <label for="ccgmEXImage">X:</label>
-                                    <input id="ccgmEXImage" type="text" value="0" />
+                                    <input id="ccgmEXImage" type="text" value="0" class="form-control" />
                                     <label for="ccgmEYImage">Y:</label>
-                                    <input id="ccgmEYImage" type="text" value="0" />
+                                    <input id="ccgmEYImage" type="text" value="0" class="form-control" />
                                 </div>
-                                <div class="CCGM-EAuthorAlt" id="ccgmEAuthorAlt">
-                                    <div class="CCGM-EInputAuthor">
-                                        <label>${_('Authorship')}</label><input id="ccgmEAuthor" type="text" class="CCGM-EAuthor" />
+                                <div class="CCGM-EAuthorAlt mb-3" id="ccgmEAuthorAlt">
+                                    <div class="CCGM-EInputAuthor align-items-center gap-2 flex-nowrap">
+                                        <label class="mb-0">${_('Authorship')}</label><input id="ccgmEAuthor" type="text" class="CCGM-EAuthor form-control" />
                                     </div>
-                                    <div class="CCGM-EInputAlt">
-                                        <label>${_('Alt')}</label><input id="ccgmEAlt" type="text" class="CCGM-EAlt" />
+                                    <div class="CCGM-EInputAlt align-items-center gap-2 flex-nowrap">
+                                        <label class="mb-0">${_('Alt')}</label><input id="ccgmEAlt" type="text" class="CCGM-EAlt form-control" />
                                     </div>
                                 </div>
                                 <span id="ccgmETitleAudio">${_('Audio')}</span>
-                                <div class="CCGM-EInputAudio" id="ccgmEInputAudio">
+                                <div class="CCGM-EInputAudio mb-3 align-items-center gap-2 flex-nowrap" id="ccgmEInputAudio">
                                     <label class="sr-av" for="ccgmEURLAudio">${_('URL')}</label>
-                                    <input type="text" class="exe-file-picker CCGM-EURLAudio" id="ccgmEURLAudio"/>
+                                    <input type="text" class="exe-file-picker CCGM-EURLAudio form-control me-0" id="ccgmEURLAudio"/>
                                     <a href="#" id="ccgmEPlayAudio" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Play audio')}">
-                                        <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="CCGM-EButtonImage b-play" />
+                                        <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="CCGM-EButtonImage " />
                                     </a>
                                 </div>
                             </div>
@@ -277,7 +306,7 @@ var $exeDevice = {
                             </div>
                         </div>
                         <div class="CCGM-EContents">
-                            <div class="CCGM-ENavigationButtons">
+                            <div class="CCGM-ENavigationButtons gap-2">
                                 <a href="#" id="ccgmEAdd" class="CCGM-ENavigationButton" title="${_('Add question')}">
                                     <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="CCGM-EButtonImage b-add" />
                                 </a>
@@ -288,7 +317,7 @@ var $exeDevice = {
                                     <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="CCGM-EButtonImage b-prev" />
                                 </a>
                                 <label class="sr-av" for="ccgmENumberQuestion">${_('Question number:')}</label>
-                                <input type="text" class="CCGM-NumberQuestion" id="ccgmENumberQuestion" value="1"/>
+                                <input type="text" class="CCGM-NumberQuestion form-control" id="ccgmENumberQuestion" value="1"/>
                                 <a href="#" id="ccgmENext" class="CCGM-ENavigationButton" title="${_('Next question')}">
                                     <img src="${path}quextIENext.png" alt="${_('Next question')}" class="CCGM-EButtonImage b-next" />
                                 </a>
@@ -393,10 +422,8 @@ var $exeDevice = {
     },
 
     changeTypeQuestion: function () {
-        $(
-            '#ccgmEInputOptionsImage, #ccgmEImage, #ccgmENoImage, #ccgmECover, #ccgmECursor',
-        ).hide();
-        $('#ccgmENoImage, #ccgmECursor, #ccgmEInputOptionsImage').show();
+        $('#ccgmEImage, #ccgmENoImage, #ccgmECover, #ccgmECursor').hide();
+        $('#ccgmENoImage, #ccgmECursor').show();
         $exeDevice.showImage(
             $('#ccgmEURLImage').val(),
             $('#ccgmEXImage').val(),
@@ -548,7 +575,7 @@ var $exeDevice = {
         if (textAfter !== '') {
             textAfter = `<div class="crucigrama-extra-content">${textAfter}</div>`;
         }
-    const html = `<div class="crucigrama-IDevice">
+        const html = `<div class="crucigrama-IDevice">
        <div class="game-evaluation-ids js-hidden" data-id="${dataGame.id}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>
             <div class="crucigrama-version js-hidden">${$exeDevice.version}</div>
             <div class="crucigrama-feedback-game">${textFeedBack}</div>
@@ -852,6 +879,29 @@ var $exeDevice = {
     addEvents: function () {
         $('#ccgmEPaste').hide();
 
+        // Inicializar estados de toggles y manejar cambios (ARIA + targets)
+        const initToggle = function ($input) {
+            const checked = $input.is(':checked');
+            $input
+                .closest('.toggle-item[role="switch"]')
+                .attr('aria-checked', checked);
+            const targetSel = $input.data('target');
+            if (targetSel) {
+                const $target = $(targetSel);
+                if (checked) {
+                    $target.css('display', 'flex');
+                } else {
+                    $target.hide();
+                }
+            }
+        };
+        $('.toggle-input').each(function () {
+            initToggle($(this));
+        });
+        $(document).on('change', '.toggle-input', function () {
+            initToggle($(this));
+        });
+
         $('#ccgmEAdd').on('click', (e) => {
             e.preventDefault();
             $exeDevice.addQuestion();
@@ -1093,14 +1143,9 @@ var $exeDevice = {
 
         $('#ccgmBack0').on('change', function () {
             if ($(this).is(':checked')) {
-                $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv').css(
-                    'display',
-                    'flex',
-                );
+                $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv').removeClass('d-none').addClass('d-flex');
             } else {
-                $(
-                    '#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv',
-                ).hide();
+                $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv').removeClass('d-flex').addClass('d-none');
             }
         });
 
@@ -1323,10 +1368,7 @@ var $exeDevice = {
         $('#ccgmbackground, #ccgmbackground1').hide();
 
         if (game.hasBack) {
-            $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv').css(
-                'display',
-                'flex',
-            );
+            $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv').removeClass('d-none').addClass('d-flex');
             if (game.urlBack.length > 4) {
                 $('#ccgmEURLBack').val(game.urlBack);
             }
