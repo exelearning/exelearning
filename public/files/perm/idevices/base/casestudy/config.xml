@@ -5,7 +5,7 @@
     <category>Information and presentation</category>
     <icon>
         <name>casestudy-icon</name>
-        <url>casestudy-icon.png</url>
+        <url>casestudy-icon.svg</url>
         <type>img</type>
     </icon>
     <version>1.0</version>

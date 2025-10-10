@@ -1,29 +1,7 @@
-#candadoIdeviceForm {
-    padding: 0 1em;
-}
-
 #candadoIdeviceForm input[type="radio"],
 #candadoIdeviceForm input[type="checkbox"],
 #candadoIdeviceForm select {
     cursor: pointer;
-}
-
-#candadoIdeviceForm select {
-    line-height: 1.8em;
-    height: 1.8em;
-    width: 4em;
-}
-
-#candadoIdeviceForm input[type=number] {
-    width: 4em;
-}
-
-#candadoIdeviceForm .exe-form-tab  label{
-    margin-right: 0.15em !important;
-}
-
-#candadoIdeviceForm  input:is([type="checkbox"], [type="radio"], [type="number"], [type="text"]){
-    margin-right: 0.15em !important;
 }
 
 .candado-EPanel {
@@ -31,6 +9,10 @@
     padding: 0;
     position: relative;
     width: 100%;
+}
+#candadoEDTime{
+    width: 9ch !important;
+    max-width: 9ch !important;;
 }
 
 .candado-EDataAccess {
@@ -102,7 +84,7 @@
 #candadoIdeviceForm #candadoIdeviceFormTab1 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 
@@ -203,12 +185,12 @@
 }
 
 .candadoToggle input:hover+label {
-    border-color: #213140;
+    border-color: #0BA1A1;
 }
 
 .candadoToggle input:checked+label {
-    background-color: #CCC;
-    color: #213140;
+    background-color: #0BA1A1;
+    color: #fff;
     border-color: #CCC;
     z-index: 1;
 }
@@ -220,7 +202,6 @@
 
 #candadoIdeviceForm .candado-TypeGameHelp {
     display: none;
-    margin-bottom: 2em;
     font-size: .95em
 }
 

@@ -2,16 +2,8 @@
     width: 100%;
 }
 
-#dragdropQIdeviceForm input[type=number] {
-    width: 4em;
-}
-
-#dragdropQIdeviceForm label {
-    margin-right: 0.1em !important;
-}
-
-#dragdropQIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-    margin-right: 0.1em !important;
+#dragdropQIdeviceForm input[type="button"] {
+	margin-right: 0 !important;
 }
 
 #dragdropQIdeviceForm input[type="radio"],
@@ -63,14 +55,7 @@
     width: 50%;
 }
 
-.DAD-DEOptionsGame div {
-    margin-bottom: 0.7em;
-}
 
-.DAD-DEOptionsGame input[type=text] {
-    margin-right: .2em;
-    width: 5em;
-}
 
 .DAD-DEInputImage {
     align-items: center;
@@ -94,11 +79,10 @@
 
 .DAD-DEAuthorAlt {
     align-items: center;
-    display: flex;
+    display: none;
     flex-wrap: nowrap;
     justify-content: space-between;
-    display: none;
-    ;
+
 }
 
 .DAD-DEAuthorAlt div {
@@ -454,10 +438,10 @@
 }
 
 .DAD-ENavigationButton {
-    height: 1.5em;
+    height: 1.7em;
     margin: 0 .3em;
-    min-width: 1.5em;
-    width: 1.5em;
+    min-width: 1.7em;
+    width: 1.7em;
 }
 
 .DAD-EButtonImage {
@@ -473,7 +457,8 @@
 
 .DAD-NumberCard {
     text-align: center;
-    width: 2em;
+    vertical-align: middle;
+    width: 3em;
 }
 
 .DAD-EReverseFacces {
@@ -521,7 +506,7 @@
 #dragdropQIdeviceForm #dragdropQIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 
@@ -629,9 +614,7 @@ label[for=gameQEActivitySCORM] {
 }
 
 .DAD-TypeGameHelp {
-    padding-top: 0.8em;
     display: none;
-    margin-bottom: 2em;
     font-size: .95em
 }
 
