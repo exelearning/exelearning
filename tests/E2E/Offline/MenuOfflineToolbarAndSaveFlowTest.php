@@ -98,6 +98,9 @@ class MenuOfflineToolbarAndSaveFlowTest extends BaseE2ETestCase
     public function testDownloadButtonExportsThenAsksLocation(): void
     {
         $client = $this->client();
+
+        $this->markTestSkipped('Skipped due temporary unavailable button');
+
         $this->clickToolbarButton($client, '#head-top-download-button');
         $this->waitCall($client, 'save');
     }

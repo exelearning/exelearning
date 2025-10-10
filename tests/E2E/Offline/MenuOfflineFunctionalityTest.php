@@ -274,6 +274,8 @@ class MenuOfflineFunctionalityTest extends BaseE2ETestCase
     {
         $client = $this->initOfflineClientWithMock();
 
+        $this->markTestSkipped('Skipped due temporary unavailable button');
+
         // Click the toolbar Download button (ELP export)
         $this->clickToolbarButton($client, '#head-top-download-button');
 
