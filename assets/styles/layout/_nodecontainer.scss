@@ -1,8 +1,11 @@
 #node-content-container {
     position: relative;
+    &:has(#properties-node-content-form).exe-content {
+        background: none;
+    }
     #eXeBetaWarning {
         z-index: 999;
-        margin: 10px 0 !important;
+        margin: 10px;
         font-size: .95em;
         padding: 10px 20px;
         button {
