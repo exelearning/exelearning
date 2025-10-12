@@ -11749,6 +11749,190 @@
         <source>abcdefghijklmnñopqrstuvwxyz</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="7rl.d.M" resname="No file selected">
+        <source>No file selected</source>
+        <target>~Ningún archivo seleccionado</target>
+      </trans-unit>
+      <trans-unit id="xHJHwx9" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
+        <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
+        <target>~Genera 10 preguntas de verdadero o falso. Cada pregunta debe incluir la solución (0 = falso, 1 = verdadero), una sugerencia y retroalimentación, todo separado por #. Además, la retroalimentación no debe indicar explícitamente si la respuesta es correcta o incorrecta</target>
+      </trans-unit>
+      <trans-unit id="tmHbmhG" resname="Imported">
+        <source>Imported</source>
+        <target>~Importado</target>
+      </trans-unit>
+      <trans-unit id="UNq.6d3" resname="They allow displaying information, structuring resources or enriching the content with accessibility and diverse media.">
+        <source>They allow displaying information, structuring resources or enriching the content with accessibility and diverse media.</source>
+        <target>~Permiten mostrar información, estructurar recursos o enriquecer el contenido con accesibilidad y medios diversos.</target>
+      </trans-unit>
+      <trans-unit id="jG6ZDR4" resname="These iDevices are designed to assess knowledge, understanding, skills, enable self-assessment, facilitate feedback, monitor progress and document performance levels.">
+        <source>These iDevices are designed to assess knowledge, understanding, skills, enable self-assessment, facilitate feedback, monitor progress and document performance levels.</source>
+        <target>~Estos iDevices están diseñados para evaluar conocimientos, comprensión y habilidades, permitir la autoevaluación, facilitar la retroalimentación, monitorear el progreso y documentar niveles de desempeño.</target>
+      </trans-unit>
+      <trans-unit id="onKN1Hh" resname="These resources encourage active student participation, play increases motivation, playful reinforcement, promotes the acquisition of skills and knowledge, memorisation and understanding of concepts.">
+        <source>These resources encourage active student participation, play increases motivation, playful reinforcement, promotes the acquisition of skills and knowledge, memorisation and understanding of concepts.</source>
+        <target>~Estos recursos fomentan la participación activa del estudiante, el juego aumenta la motivación, el refuerzo lúdico promueve la adquisición de habilidades y conocimientos, la memorización y la comprensión de conceptos.</target>
+      </trans-unit>
+      <trans-unit id="3rptwu0" resname="These iDevices promote active learning, guided discovery and autonomous exploration. They encourage critical thinking, problem solving and practical application of concepts.">
+        <source>These iDevices promote active learning, guided discovery and autonomous exploration. They encourage critical thinking, problem solving and practical application of concepts.</source>
+        <target>~Estos iDevices promueven el aprendizaje activo, el descubrimiento guiado y la exploración autónoma. Fomentan el pensamiento crítico, la resolución de problemas y la aplicación práctica de conceptos.</target>
+      </trans-unit>
+      <trans-unit id="kA_LL.P" resname="Sciencie">
+        <source>Sciencie</source>
+        <target>~Ciencia</target>
+      </trans-unit>
+      <trans-unit id="2A3RkFC" resname="These resources are geared towards teaching scientific concepts and skills through hands-on experience, observation, data analysis and conceptual explanation, providing contextualised learning.">
+        <source>These resources are geared towards teaching scientific concepts and skills through hands-on experience, observation, data analysis and conceptual explanation, providing contextualised learning.</source>
+        <target>~Estos recursos están orientados a la enseñanza de conceptos y habilidades científicas mediante la experiencia práctica, la observación, el análisis de datos y la explicación conceptual, proporcionando un aprendizaje contextualizado.</target>
+      </trans-unit>
+      <trans-unit id="w7FotCy" resname="Select or drag to place the iDevice on the page.">
+        <source>Select or drag to place the iDevice on the page.</source>
+        <target>~Selecciona o arrastra para colocar el iDevice en la página.</target>
+      </trans-unit>
+      <trans-unit id="brRgELp" resname="Click to upload the file">
+        <source>Click to upload the file</source>
+        <target>~Haz clic para subir el archivo</target>
+      </trans-unit>
+      <trans-unit id="HEyq1hx" resname="Import iDevice in ZIP format">
+        <source>Import iDevice in ZIP format</source>
+        <target>~Importar iDevice en formato ZIP</target>
+      </trans-unit>
+      <trans-unit id="I_Iqn6X" resname="There are no imported themes yet">
+        <source>There are no imported themes yet</source>
+        <target>~Todavía no hay temas importados</target>
+      </trans-unit>
+      <trans-unit id="oU7_3QD" resname="You can check the guide to create a style or add it from a link.">
+        <source>You can check the guide to create a style or add it from a link.</source>
+        <target>~Puedes consultar la guía para crear un estilo o añadirlo desde un enlace.</target>
+      </trans-unit>
+      <trans-unit id="Zi8zlAZ" resname="or drag it here">
+        <source>or drag it here</source>
+        <target>~o arrástralo aquí</target>
+      </trans-unit>
+      <trans-unit id="DOupdVJ" resname="Import theme in ZIP format">
+        <source>Import theme in ZIP format</source>
+        <target>~Importar tema en formato ZIP</target>
+      </trans-unit>
+      <trans-unit id="RwB4tEC" resname="Remove image">
+        <source>Remove image</source>
+        <target>~Eliminar imagen</target>
+      </trans-unit>
+      <trans-unit id="fKSXhx6" resname="Are you sure to delete the theme: ${themeId}?">
+        <source>Are you sure to delete the theme: ${themeId}?</source>
+        <target>~¿Estás seguro de eliminar el tema: ${themeId}?</target>
+      </trans-unit>
+      <trans-unit id="jb.15_T" resname="Upload iDevice file">
+        <source>Upload iDevice file</source>
+        <target>~Subir archivo iDevice</target>
+      </trans-unit>
+      <trans-unit id="1tMjRQx" resname="Drag an iDevice in and start building">
+        <source>Drag an iDevice in and start building</source>
+        <target>~Arrastra un iDevice y comienza a construir</target>
+      </trans-unit>
+      <trans-unit id="YfHiFNW" resname="Just drag an iDevice onto this page to start designing your content.">
+        <source>Just drag an iDevice onto this page to start designing your content.</source>
+        <target>~Simplemente arrastra un iDevice a esta página para comenzar a diseñar tu contenido.</target>
+      </trans-unit>
+      <trans-unit id="Ha6Z1ij" resname="Filter items">
+        <source>Filter items</source>
+        <target>~Filtrar elementos</target>
+      </trans-unit>
+      <trans-unit id="cvqhKr_" resname="Activar">
+        <source>Activar</source>
+        <target>~Activar</target>
+      </trans-unit>
+      <trans-unit id="F.0jKf8" resname="You can only select 5 iDevices as favourites. Please remove an iDevice so you can add another one.">
+        <source>You can only select 5 iDevices as favourites. Please remove an iDevice so you can add another one.</source>
+        <target>~Solo puedes seleccionar 5 iDevices como favoritos. Por favor, elimina uno para poder añadir otro.</target>
+      </trans-unit>
+      <trans-unit id="CLRCDhr" resname="Manual">
+        <source>Manual</source>
+        <target>~Manual</target>
+      </trans-unit>
+      <trans-unit id="OZeulWK" resname="Search...">
+        <source>Search...</source>
+        <target>~Buscar...</target>
+      </trans-unit>
+      <trans-unit id="wY6FkJp" resname="Edit title">
+        <source>Edit title</source>
+        <target>~Editar título</target>
+      </trans-unit>
+      <trans-unit id="V5xJrEH" resname="This page is being edited by:">
+        <source>This page is being edited by:</source>
+        <target>~Esta página está siendo editada por:</target>
+      </trans-unit>
+      <trans-unit id="tDt2D_." resname="at">
+        <source>at</source>
+        <target>~a las</target>
+      </trans-unit>
+      <trans-unit id="TjKSsPk" resname="This resource is being edited by:">
+        <source>This resource is being edited by:</source>
+        <target>~Este recurso está siendo editado por:</target>
+      </trans-unit>
+      <trans-unit id="RSemhX_" resname="Force Unlock">
+        <source>Force Unlock</source>
+        <target>~Forzar desbloqueo</target>
+      </trans-unit>
+      <trans-unit id="rVwkH5V" resname="Percent">
+        <source>Percent</source>
+        <target>~Porcentaje</target>
+      </trans-unit>
+      <trans-unit id="x7hS_ih" resname="Insert a GeoGebra activity from www.geogebra.org. It requires an Internet connection.">
+        <source>Insert a GeoGebra activity from www.geogebra.org. It requires an Internet connection.</source>
+        <target>~Inserta una actividad de GeoGebra desde www.geogebra.org. Requiere conexión a Internet.</target>
+      </trans-unit>
+      <trans-unit id="xDBQP79" resname="Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.">
+        <source>Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.</source>
+        <target>~¿Estás seguro de que quieres continuar sin incluir una descripción de la imagen? Sin ella, la imagen puede no ser accesible para algunos usuarios con discapacidad, quienes usan un navegador de texto o navegan con las imágenes desactivadas.</target>
+      </trans-unit>
+      <trans-unit id="F7TCatN" resname="Smallest number">
+        <source>Smallest number</source>
+        <target>~Número más pequeño</target>
+      </trans-unit>
+      <trans-unit id="kotZZWz" resname="Highest number">
+        <source>Highest number</source>
+        <target>~Número más grande</target>
+      </trans-unit>
+      <trans-unit id="JVTGXYH" resname="Decimals">
+        <source>Decimals</source>
+        <target>~Decimales</target>
+      </trans-unit>
+      <trans-unit id="0Zyv4s9" resname="lives">
+        <source>lives</source>
+        <target>~vidas</target>
+      </trans-unit>
+      <trans-unit id="Tx2FicQ" resname="The right answer will be shown after this text.">
+        <source>The right answer will be shown after this text.</source>
+        <target>~La respuesta correcta se mostrará después de este texto.</target>
+      </trans-unit>
+      <trans-unit id="0PirVoy" resname="after">
+        <source>after</source>
+        <target>~después</target>
+      </trans-unit>
+      <trans-unit id="_9u.dBq" resname="Page not found">
+        <source>Page not found</source>
+        <target>~Página no encontrada</target>
+      </trans-unit>
+      <trans-unit id="XB.DIlH" resname="Hello again! Please enter your credentials.">
+        <source>Hello again! Please enter your credentials.</source>
+        <target>~¡Hola de nuevo! Por favor, introduce tus credenciales.</target>
+      </trans-unit>
+      <trans-unit id="5U_Vq54" resname="Work area">
+        <source>Work area</source>
+        <target>~Área de trabajo</target>
+      </trans-unit>
+      <trans-unit id="VXFwlwn" resname="Settings">
+        <source>Settings</source>
+        <target>~Configuración</target>
+      </trans-unit>
+      <trans-unit id="EJDvYR8" resname="Save and exit">
+        <source>Save and exit</source>
+        <target>~Guardar y salir</target>
+      </trans-unit>
+      <trans-unit id="6C92oaM" resname="System">
+        <source>System</source>
+        <target>~Sistema</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
