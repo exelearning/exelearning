@@ -1,15 +1,4 @@
 
-#gameQEIdeviceForm input[type=number] {
-    width: 4em;
-}
-
-#gameQEIdeviceForm label {
-    margin-right: 0.1em !important;
-}
-
-#gameQEIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
-    margin-right: 0.1em !important;
-}
 
 #gameQEIdeviceForm input[type="radio"],
 #gameQEIdeviceForm input[type="checkbox"],
@@ -66,7 +55,7 @@ input#gameQEScoreQuestion {
 #gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 

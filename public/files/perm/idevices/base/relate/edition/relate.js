@@ -105,240 +105,258 @@ var $exeDevice = {
     createForm: function () {
         const path = $exeDevice.idevicePath,
             html = `
-            <div id="relateQIdeviceForm">
-                <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_("Create matching games with images, sounds and enriched texts.")} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_("Usage Instructions")}</a>
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
-                </p>
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <p>
-                                <span>${_("Level")}:</span>
-                                <span class="RLC-EInputType">
-                                    <input class="RLC-Type" checked id="rclETypeShow" type="radio" name="flctype" value="0"/>
+        <div id="relateQIdeviceForm">
+            <p class="exe-block-info exe-block-dismissible" style="position:relative">
+                ${_("Create matching games with images, sounds and enriched texts.")} 
+                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_("Usage Instructions")}</a>
+                <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
+            </p>
+            <div class="exe-form-tab" title="${_('General settings')}">
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
+                <fieldset class="exe-fieldset exe-fieldset-closed">
+                    <legend><a href="#">${_('Options')}</a></legend>
+                    <div>
+                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                            <span>${_("Level")}:</span>
+                            <span class="d-flex align-items-center gap-2 flex-nowrap">
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="RLC-Type form-check-input" checked id="rclETypeShow" type="radio" name="flctype" value="0"/>
                                     <label for="rclETypeShow">${_("Essential")}</label>
-                                    <input class="RLC-Type" id="rclETypeNavigation" type="radio" name="flctype" value="1"/>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="RLC-Type form-check-input" id="rclETypeNavigation" type="radio" name="flctype" value="1"/>
                                     <label for="rclETypeNavigation">${_("Medium")}</label>
-                                    <input class="RLC-Type" id="rclETypeIdentify" type="radio" name="flctype" value="2"/>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="RLC-Type form-check-input" id="rclETypeIdentify" type="radio" name="flctype" value="2"/>
                                     <label for="rclETypeIdentify">${_("Advanced")}</label>
+                                </div>
+                            </span>
+                        </div>
+                        <div class="d-none align-items-center flex-nowrap gap-2 mb-3">
+                            <div class="toggle-item">
+                                <span class="toggle-control">
+                                    <input type="checkbox" checked id="rclEShowSolution" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
                                 </span>
-                            </p>
-                            <p style="display:none">
-                                <label for="rclEShowSolution">
-                                    <input type="checkbox" checked id="rclEShowSolution">${_("Show solutions")}.
-                                </label>
-                                <label for="rclETimeShowSolution">${_("Show solution time (seconds)")}: 
-                                    <input type="number" name="rclETimeShowSolution" id="rclETimeShowSolution" value="3" min="1" max="9" />
-                                </label>
-                            </p>
-                            <p id="rclETimeDiv" style="display:none;">
-                                <label for="rclETime">${_("Time (minutes)")}: 
-                                    <input type="number" name="rclETime" id="rclETime" value="3" min="0" max="59" />
-                                </label>
-                            </p>
-                            <p>
-                                <label for="rclEShowMinimize">
-                                    <input type="checkbox" id="rclEShowMinimize">${_('Show minimized.')}
-                                </label>
-                            </p>
-                            <p>
-                                <label for="rclEPercentajeCards">%${_('Cards')}:</label>
-                                <input type="number" name="rclEPercentajeCards" id="rclEPercentajeCards" value="100" min="1" max="100" />
-                                <span id="rclENumeroPercentaje">1/1</span>
-                            </p>
-                            <p>
-                                <label for="rclEAuthory">${_('Authorship')}: </label>
-                                <input id="rclEAuthory" type="text" />
-                            </p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel">
-                                    <a href="#rclEEvaluationHelp" id="rclEEvaluationHelpLnk" class="GameModeHelpLink" title="${_("Help")}">
-                                        <img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_("Help")}"/>
-                                    </a>
-                                </strong>                                
-                                <input type="checkbox" id="rclEEvaluation"><label for="rclEEvaluation">${_("Progress report")}.</label>
-                                <label for="rclEEvaluationID">${_("Identifier")}:</label><input type="text" id="rclEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </p>
-                            <div id="rclEEvaluationHelp" class="RLC-TypeGameHelp exe-block-info">
-                                <p>${_("You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.")}</p>
+                                <label class="toggle-label" for="rclEShowSolution">${_("Show solutions")}</label>
                             </div>
+                            <label for="rclETimeShowSolution">${_("Show solution time (seconds)")}:</label>
+                            <input type="number" class="form-control" name="rclETimeShowSolution" id="rclETimeShowSolution" value="3" min="1" max="9" />
                         </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Pairs')}</a></legend>
-                        <div class="RLC-EPanel" id="rclEPanel">
-                            <div id="rclEArrowsDiv">\
-                                <div class="RLC-EPhrase" id="rclEPhrase">
-                                    <div class="RLC-EDatosCarta RLC-EFront" id="rclEDatosCarta">
-                                        <div class="RLC-EMultimedia">
-                                            <div class="RLC-ECard">
-                                                <img class="RLC-EHideRLC-EImage" id="rclEImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                                <img class="RLC-ECursor" id="rclECursor" src="${path}quextIECursor.gif" alt="" />
-                                                <img class="RLC-EHideRLC-NoImage" id="rclENoImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                                <div class="RLC-ETextDiv" id="rclETextDiv"></div>
-                                            </div>
-                                        </div>
-                                        <span class="RLC-ETitleText" id="rclETitleText">${_('Text')}</span>
-                                        <div class="RLC-EInputText" id="rclEInputText">
-                                            <label class="sr-av">${_('Text')}</label>
-                                            <input type="text" id="rclEText" class="RLC-EText" />
-                                            <label id="rclELblColor" class="RLC-LblColor">${_('Color')}: </label>
-                                            <input id="rclEColor" type="color" class="RLC-EColor" value="#000000">
-                                            <label id="rclELblBgColor" class="RLC-LblBgColor">${_('Background')}: </label>
-                                            <input id="rclEBgColor" type="color" class="RLC-EBackColor" value="#ffffff">
-                                        </div>
-                                        <span class="RLC-ETitleImage" id="rclETitleImage">${_('Image')}</span>
-                                        <div class="RLC-EInputImage" id="rclEInputImage">
-                                            <label class="sr-av">URL</label>
-                                            <input type="text" id="rclEURLImage" class="exe-file-picker RLC-EURLImage"/>
-                                            <a href="#" id="rclEPlayImage" class="RLC-ENavigationButton RLC-EPlayVideo" title="${_('Show')}">
-                                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="RLC-EButtonImage b-play" />
-                                            </a>
-                                            <a href="#" id="rclEShowMore" class="RLC-ENavigationButton RLC-EShowMore" title="${_('More')}">
-                                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="RLC-EButtonImage b-play" />
-                                            </a>
-                                        </div>
-                                        <div class="RLC-ECoord">
-                                            <label>X:</label>
-                                            <input id="rclEX" class="RLC-EX" type="text" value="0" />
-                                            <label>Y:</label>
-                                            <input id="rclEY" class="RLC-EY" type="text" value="0" />
-                                        </div>
-                                        <div class="RLC-EAuthorAlt" id="rclEAuthorAlt">
-                                            <div class="RLC-EInputAuthor">
-                                                <label>${_('Authorship')}</label>
-                                                <input id="rclEAuthor" type="text" class="RLC-EAuthor" />
-                                            </div>
-                                            <div class="RLC-EInputAlt">
-                                                <label>${_('Alternative text')}</label>
-                                                <input id="rclEAlt" type="text" class="RLC-EAlt" />
-                                            </div>
-                                        </div>
-                                        <span>${_('Audio')}</span>
-                                        <div class="RLC-EInputAudio">
-                                            <label class="sr-av">URL</label>
-                                            <input type="text" id="rclEURLAudio" class="exe-file-picker RLC-EURLAudio" />
-                                            <a href="#" id="rclEPlayAudio" class="RLC-ENavigationButton RLC-EPlayVideo" title="${_('Audio')}">
-                                                <img src="${path}quextIEPlay.png" alt="Play" class="RLC-EButtonImage b-play" />
-                                            </a>
+                        <div id="rclETimeDiv" class="d-none align-items-center flex-nowrap gap-2 mb-3">
+                            <label for="rclETime" class="mb-0">${_("Time (minutes)")}:</label>
+                            <input type="number" class="form-control" name="rclETime" id="rclETime" value="3" min="0" max="59" />
+                        </div>
+                        <div class="toggle-item mb-3">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="rclEShowMinimize" class="toggle-input" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label" for="rclEShowMinimize">${_('Show minimized.')}</label>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <label for="rclEPercentajeCards" class="mb-0">%${_('Cards')}:</label>
+                            <input type="number" class="form-control" name="rclEPercentajeCards" id="rclEPercentajeCards" value="100" min="1" max="100" />
+                            <span id="rclENumeroPercentaje">1/1</span>
+                        </div>
+                        <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                            <label for="rclEAuthory" class="mb-0">${_('Authorship')}:</label>
+                            <input id="rclEAuthory" type="text" class="form-control" />
+                        </div>
+                        <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                            <div class="toggle-item">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="rclEEvaluation" class="toggle-input" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="rclEEvaluation">${_("Progress report")}</label>
+                            </div>
+                            <div class="d-flex align-items-center flex-nowrap gap-2">
+                                <label for="rclEEvaluationID" class="mb-0">${_("Identifier")}:</label>
+                                <input type="text" class="form-control" id="rclEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                            </div>
+                            <a href="#rclEEvaluationHelp" id="rclEEvaluationHelpLnk" class="GameModeHelpLink" title="${_("Help")}">
+                                <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_("Help")}"/>
+                            </a>
+                        </div>
+                        <p id="rclEEvaluationHelp" class="RLC-TypeGameHelp exe-block-info">
+                            ${_("You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.")}
+                        </p>
+                    </div>
+                </fieldset>
+                <fieldset class="exe-fieldset">
+                    <legend><a href="#">${_('Pairs')}</a></legend>
+                    <div class="RLC-EPanel" id="rclEPanel">
+                        <div id="rclEArrowsDiv">
+                            <div class="RLC-EPhrase" id="rclEPhrase">
+                                <div class="RLC-EDatosCarta RLC-EFront" id="rclEDatosCarta">
+                                    <div class="RLC-EMultimedia mt-2 mb-2">
+                                        <div class="RLC-ECard">
+                                            <img class="RLC-EHideRLC-EImage" id="rclEImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                            <img class="RLC-ECursor" id="rclECursor" src="${path}quextIECursor.gif" alt="" />
+                                            <img class="RLC-EHideRLC-NoImage" id="rclENoImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                            <div class="RLC-ETextDiv" id="rclETextDiv"></div>
                                         </div>
                                     </div>
-                                    <div class="RLC-EDatosCarta RLC-EBack" id="rclEDatosCartaBack">
-                                        <div class="RLC-EMultimedia">
-                                            <div class="RLC-ECard">
-                                                <img class="RLC-EHideRLC-EImage" id="rclEImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                                <img class="RLC-ECursor" id="rclECursorBack" src="${path}quextIECursor.gif" alt="" />
-                                                <img class="RLC-EHideRLC-NoImage" id="rclENoImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                                <div class="RLC-ETextDiv" id="rclETextDivBack"></div>
-                                            </div>
+                                    <span id="rclETitleText">${_('Text')}</span>
+                                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="rclEInputText">
+                                        <label class="sr-av">${_('Text')}</label>
+                                        <input type="text" id="rclEText" class="form-control w-100  me-0" />
+                                        <label id="rclELblColor">${_('Color')}: </label>
+                                        <input id="rclEColor" type="color" class="form-control form-control-color" value="#000000">
+                                        <label id="rclELblBgColor">${_('Background')}:</label>
+                                        <input id="rclEBgColor" type="color" class="form-control form-control-color" value="#ffffff">
+                                    </div>
+                                    <span id="rclETitleImage">${_('Image')}</span>
+                                    <div class="d-flex align-items-center gap-2 mb-3" id="rclEInputImage">
+                                        <label class="sr-av">URL</label>
+                                        <input type="text" id="rclEURLImage" class="exe-file-picker form-control me-0 w-100"/>
+                                        <a href="#" id="rclEPlayImage" class="RLC-ENavigationButton" title="${_('Show')}">
+                                            <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="RLC-ENavigationButton " />
+                                        </a>
+                                        <a href="#" id="rclEShowMore" class="RLC-ENavigationButton RLC-EShowMore" title="${_('More')}">
+                                            <img src="${path}quextEIMore.png" alt="${_('More')}" class="RLC-ENavigationButton " />
+                                        </a>
+                                    </div>
+                                    <div class="RLC-ECoord d-none">
+                                        <label>X:</label>
+                                        <input id="rclEX" class="RLC-EX form-control" type="text" value="0" />
+                                        <label>Y:</label>
+                                        <input id="rclEY" class="RLC-EY form-control" type="text" value="0" />
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap" id="rclEAuthorAlt">
+                                        <div class="d-flex w-50 flex-wrap align-items-center gap-2">
+                                            <label class="mb-0">${_('Authorship')}</label>
+                                            <input id="rclEAuthor" type="text" class="w-100 form-control" />
                                         </div>
-                                        <span class="RLC-ETitleText" id="rclETitleTextBack">${_('Text')}</span>
-                                        <div class="RLC-EInputText" id="rclEInputTextBack">
-                                            <label class="sr-av">${_('Text')}</label>
-                                            <input type="text" id="rclETextBack" class="RLC-EText" />
-                                            <label id="rclELblColorBack" class="RLC-LblColor">${_('Color')}: </label>
-                                            <input id="rclEColorBack" type="color" class="RLC-EColor" value="#000000">
-                                            <label id="rclELblBgColorBack" class="RLC-LblBgColor">${_('Background')}: </label>
-                                            <input id="rclEBgColorBack" type="color" class="RLC-EBackColor" value="#ffffff">
-                                        </div>
-                                        <span class="RLC-ETitleImage" id="rclETitleImageBack">${_('Image')}</span>
-                                        <div class="RLC-EInputImage" id="rclEInputImageBack">
-                                            <label class="sr-av">URL</label>
-                                            <input type="text" id="rclEURLImageBack" class="exe-file-picker RLC-EURLImage"/>
-                                            <a href="#" id="rclEPlayImageBack" class="RLC-ENavigationButton RLC-EPlayVideo" title="${_('Show')}">
-                                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="RLC-EButtonImage b-play" />
-                                            </a>
-                                            <a href="#" id="rclEShowMoreBack" class="RLC-ENavigationButton RLC-EShowMore" title="${_('More')}">
-                                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="RLC-EButtonImage b-play" />
-                                            </a>
-                                        </div>
-                                        <div class="RLC-ECoord">
-                                            <label>X:</label>
-                                            <input id="rclEXBack" class="RLC-EX" type="text" value="0" />
-                                            <label>Y:</label>
-                                            <input id="rclEYBack" class="RLC-EY" type="text" value="0" />
-                                        </div>
-                                        <div class="RLC-EAuthorAlt" id="rclEAuthorAltBack">
-                                            <div class="RLC-EInputAuthor">
-                                                <label>${_('Authorship')}</label>
-                                                <input id="rclEAuthorBack" type="text" class="RLC-EAuthor" />
-                                            </div>
-                                            <div class="RLC-EInputAlt">
-                                                <label>${_('Alternative text')}</label>
-                                                <input id="rclEAltBack" type="text" class="RLC-EAlt" />
-                                            </div>
-                                        </div>
-                                        <span>${_('Audio')}</span>
-                                        <div class="RLC-EInputAudio">
-                                            <label class="sr-av">URL</label>
-                                            <input type="text" id="rclEURLAudioBack" class="exe-file-picker RLC-EURLAudio" />
-                                            <a href="#" id="rclEPlayAudioBack" class="RLC-ENavigationButton RLC-EPlayVideo" title="${_('Audio')}">
-                                                <img src="${path}quextIEPlay.png" alt="Play" class="RLC-EButtonImage b-play" />
-                                            </a>
+                                        <div class="d-flex flex-wrap w-50 align-items-center gap-2">
+                                            <label class="mb-0">${_('Alternative text')}</label>
+                                            <input id="rclEAlt" type="text" class="w-100 form-control" />
                                         </div>
                                     </div>
+                                    <span>${_('Audio')}</span>
+                                    <div class="d-flex align-items-center gap-2 mb-2 flex-nowrap">
+                                        <label class="sr-av">URL</label>
+                                        <input type="text" id="rclEURLAudio" class="exe-file-picker form-control me-0 w-100" />
+                                        <a href="#" id="rclEPlayAudio" class="RLC-ENavigationButton" title="${_('Audio')}">
+                                            <img src="${path}quextIEPlay.png" alt="Play" class="RLC-ENavigationButton " />
+                                        </a>
+                                    </div>
                                 </div>
-                                 <div class="RLC-EReverseFacces">
-                                    <a href="#" id="rclEReverseCard" title="${_('Flip down the card')}">${_('Flip down the card')}</a>
-                                    <a href="#" id="rclEReverseFaces" title="${_('Flip down all the cards')}">${_('Flip down all the cards')}</a>
+                                <div class="RLC-EDatosCarta RLC-EBack" id="rclEDatosCartaBack">
+                                    <div class="RLC-EMultimedia mt-2 mb-2">
+                                        <div class="RLC-ECard">
+                                            <img class="RLC-EHideRLC-EImage" id="rclEImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                            <img class="RLC-ECursor" id="rclECursorBack" src="${path}quextIECursor.gif" alt="" />
+                                            <img class="RLC-EHideRLC-NoImage" id="rclENoImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                            <div class="RLC-ETextDiv" id="rclETextDivBack"></div>
+                                        </div>
+                                    </div>
+                                    <span id="rclETitleTextBack">${_('Text')}</span>
+                                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="rclEInputTextBack">
+                                        <label class="sr-av">${_('Text')}</label>
+                                        <input type="text" id="rclETextBack" class="w-100 form-control me-0" />
+                                        <label id="rclELblColorBack">${_('Color')}: </label>
+                                        <input id="rclEColorBack" type="color" class="form-control form-control-color" value="#000000">
+                                        <label id="rclELblBgColorBack">${_('Background')}:</label>
+                                        <input id="rclEBgColorBack" type="color" class="form-control form-control-color" value="#ffffff">
+                                    </div>
+                                    <span id="rclETitleImageBack">${_('Image')}</span>
+                                    <div class="d-flex align-items-center gap-2 mb-3" id="rclEInputImageBack">
+                                        <label class="sr-av">URL</label>
+                                        <input type="text" id="rclEURLImageBack" class="exe-file-picker form-control me-0 w-100"/>
+                                        <a href="#" id="rclEPlayImageBack" class="RLC-ENavigationButton" title="${_('Show')}">
+                                            <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="RLC-ENavigationButton " />
+                                        </a>
+                                        <a href="#" id="rclEShowMoreBack" class="RLC-ENavigationButton RLC-EShowMore" title="${_('More')}">
+                                            <img src="${path}quextEIMore.png" alt="${_('More')}" class="RLC-ENavigationButton " />
+                                        </a>
+                                    </div>
+                                    <div class="d-none flex-wrap align-items-center gap-2">
+                                        <label>X:</label>
+                                        <input id="rclEXBack" class="RLC-EX form-control" type="text" value="0" />
+                                        <label>Y:</label>
+                                        <input id="rclEYBack" class="RLC-EY form-control" type="text" value="0" />
+                                    </div>
+                                    <div class="d-none align-items-center gap-2 mb-3 flex-nowrap" id="rclEAuthorAltBack">
+                                        <div class="d-flex w-50 flex-wrap align-items-center gap-2">
+                                            <label class="mb-0">${_('Authorship')}</label>
+                                            <input id="rclEAuthorBack" type="text" class="w-100 form-control" />
+                                        </div>
+                                        <div class="RLC-EInputAlt d-flex flex-wrap w-50 align-items-center gap-2">
+                                            <label class="mb-0">${_('Alternative text')}</label>
+                                            <input id="rclEAltBack" type="text" class="w-100 form-control" />
+                                        </div>
+                                    </div>
+                                    <span>${_('Audio')}</span>
+                                    <div class="RLC-EInputAudio d-flex align-items-center flex-nowrap gap-2 mb2">
+                                        <label class="sr-av">URL</label>
+                                        <input type="text" id="rclEURLAudioBack" class="exe-file-picker form-control me-0 w-100" />
+                                        <a href="#" id="rclEPlayAudioBack" class="RLC-ENavigationButton" title="${_('Audio')}">
+                                            <img src="${path}quextIEPlay.png" alt="Play" class="RLC-ENavigationButton " />
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
-                        
-                            <div class="RLC-ENavigationButtons">
-                                <a href="#" id="rclEAddC" class="RLC-ENavigationButton" title="${_("Add question")}">
-                                    <img src="${path}quextIEAdd.png" alt="${_("Add question")}" class="RLC-EButtonImage" />
-                                </a>
-                               
-                                <a href="#" id="rclEFirstC" class="RLC-ENavigationButton" title="${_("First question")}">
-                                    <img src="${path}quextIEFirst.png" alt="${_("First question")}" class="RLC-EButtonImage" />
-                                </a>
-                                <a href="#" id="rclEPreviousC" class="RLC-ENavigationButton" title="${_("Previous question")}">
-                                    <img src="${path}quextIEPrev.png" alt="${_("Previous question")}" class="RLC-EButtonImage" />
-                                </a>
-                                <label class="sr-av" for="rclENumberCard">${_("Question number:")}:</label>
-                                <input type="text" class="RLC-NumberCard" id="rclENumberCard" value="1"/>
-                                <a href="#" id="rclENextC" class="RLC-ENavigationButton" title="${_("Next question")}">
-                                    <img src="${path}quextIENext.png" alt="${_("Next question")}" class="RLC-EButtonImage" />
-                                </a>
-                                <a href="#" id="rclELastC" class="RLC-ENavigationButton" title="${_("Last question")}">
-                                    <img src="${path}quextIELast.png" alt="${_("Last question")}" class="RLC-EButtonImage" />
-                                </a>
-                                <a href="#" id="rclEDeleteC" class="RLC-ENavigationButton" title="${_("Delete question")}">
-                                    <img src="${path}quextIEDelete.png" alt="${_("Delete question")}" class="RLC-EButtonImage" />
-                                </a>
-                                <a href="#" id="rclECopyC" class="RLC-ENavigationButton" title="${_("Copy question")}">
-                                    <img src="${path}quextIECopy.png" alt="${_("Copy question")}" class="RLC-EButtonImage" />
-                                </a>
-                                <a href="#" id="rclECutC" class="RLC-ENavigationButton" title="${_("Cut question")}">
-                                    <img src="${path}quextIECut.png" alt="${_("Cut question")}" class="RLC-EButtonImage" />
-                                </a>
-                                <a href="#" id="rclEPasteC" class="RLC-ENavigationButton" title="${_("Paste question")}">
-                                    <img src="${path}quextIEPaste.png" alt="${_("Paste question")}" class="RLC-EButtonImage" />
-                                </a>
-                            </div>
-                            <div class="RLC-ENumCardDiv" id="rclENumCardsDiv">
-                                <div class="RLC-ENumCardsIcon"><span class="sr-av">${_('Cards')}:</span></div> 
-                                <span class="RLC-ENumCards" id="rclENumCards">0</span>
+                            <div class="d-flex align-items-center justify-content-center flex-nowrap gap-2 mt-2">
+                                <a href="#" id="rclEReverseCard" title="${_('Flip down the card')}">${_('Flip down the card')}</a>
+                                <a href="#" id="rclEReverseFaces" title="${_('Flip down all the cards')}">${_('Flip down all the cards')}</a>
                             </div>
                         </div>
-                    </fieldset>
-                    ${$exeDevice.getTextFieldset("after")}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
+                        <div class="RLC-ENavigationButtons d-flex flex-nowrap gap-2">
+                            <a href="#" id="rclEAddC" class="RLC-ENavigationButton" title="${_("Add question")}">
+                                <img src="${path}quextIEAdd.png" alt="${_("Add question")}" class="RLC-ENavigationButton" />
+                            </a>
+                            <a href="#" id="rclEFirstC" class="RLC-ENavigationButton" title="${_("First question")}">
+                                <img src="${path}quextIEFirst.png" alt="${_("First question")}" class="RLC-ENavigationButton" />
+                            </a>
+                            <a href="#" id="rclEPreviousC" class="RLC-ENavigationButton" title="${_("Previous question")}">
+                                <img src="${path}quextIEPrev.png" alt="${_("Previous question")}" class="RLC-ENavigationButton" />
+                            </a>
+                            <label class="sr-av" for="rclENumberCard">${_("Question number:")}:</label>
+                            <input type="text" class="RLC-NumberCard form-control" id="rclENumberCard" value="1"/>
+                            <a href="#" id="rclENextC" class="RLC-ENavigationButton" title="${_("Next question")}">
+                                <img src="${path}quextIENext.png" alt="${_("Next question")}" class="RLC-ENavigationButton" />
+                            </a>
+                            <a href="#" id="rclELastC" class="RLC-ENavigationButton" title="${_("Last question")}">
+                                <img src="${path}quextIELast.png" alt="${_("Last question")}" class="RLC-ENavigationButton" />
+                            </a>
+                            <a href="#" id="rclEDeleteC" class="RLC-ENavigationButton" title="${_("Delete question")}">
+                                <img src="${path}quextIEDelete.png" alt="${_("Delete question")}" class="RLC-ENavigationButton" />
+                            </a>
+                            <a href="#" id="rclECopyC" class="RLC-ENavigationButton" title="${_("Copy question")}">
+                                <img src="${path}quextIECopy.png" alt="${_("Copy question")}" class="RLC-ENavigationButton" />
+                            </a>
+                            <a href="#" id="rclECutC" class="RLC-ENavigationButton" title="${_("Cut question")}">
+                                <img src="${path}quextIECut.png" alt="${_("Cut question")}" class="RLC-ENavigationButton" />
+                            </a>
+                            <a href="#" id="rclEPasteC" class="RLC-ENavigationButton" title="${_("Paste question")}">
+                                <img src="${path}quextIEPaste.png" alt="${_("Paste question")}" class="RLC-ENavigationButton" />
+                            </a>
+                        </div>
+                        <div class="RLC-ENumCardDiv" id="rclENumCardsDiv">
+                            <div class="RLC-ENumCardsIcon"><span class="sr-av">${_('Cards')}:</span></div>
+                            <span class="RLC-ENumCards" id="rclENumCards">0</span>
+                        </div>
+                    </div>
+                </fieldset>
+
+                ${$exeDevice.getTextFieldset("after")}
             </div>
-        `;
+
+            ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+            ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
+        </div>
+    `;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init("relateQIdeviceForm");
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
+
 
 
     getTextFieldset: function (position) {
@@ -622,7 +640,7 @@ var $exeDevice = {
     },
 
     addEventCard: function () {
-        $('#rclEAuthorAlt, #rclEAuthorAltBack').hide();
+        $('#rclEAuthorAlt, #rclEAuthorAltBack').removeClass('d-flex').addClass('d-none');
 
         const loadAndPlayImage = (index) => $exeDevice.loadImage(index),
             loadAndPlayAudio = (selector) => $exeDevice.loadAudio($(selector).val());
@@ -652,14 +670,19 @@ var $exeDevice = {
             loadAndPlayAudio('#rclEURLAudioBack');
         });
 
-        $('#rclEShowMore').on('click', (e) => {
-            e.preventDefault();
-            $('#rclEAuthorAlt').slideToggle();
-        });
-        $('#rclEShowMoreBack').on('click', (e) => {
-            e.preventDefault();
-            $('#rclEAuthorAltBack').slideToggle();
-        });
+        $('#rclEShowMore').on('click', e => {
+            e.preventDefault()
+            const $el = $('#rclEAuthorAlt')
+            if ($el.hasClass('d-none')) $el.removeClass('d-none').addClass('d-flex')
+            else $el.removeClass('d-flex').addClass('d-none')
+        })
+
+        $('#rclEShowMoreBack').on('click', e => {
+            e.preventDefault()
+            const $el = $('#rclEAuthorAltBack')
+            if ($el.hasClass('d-none')) $el.removeClass('d-none').addClass('d-flex')
+            else $el.removeClass('d-flex').addClass('d-none')
+        })
 
         $('#rclEText, #rclETextBack').on('keyup', function () {
             const textDiv = $(this).is('#rclEText') ? '#rclETextDiv' : '#rclETextDivBack';
@@ -808,8 +831,8 @@ var $exeDevice = {
 
         let divContent = dataGame.instructions ? `<div class="relaciona-instructions gameQP-instructions">${dataGame.instructions}</div>` : "";
         const linksMedias = $exeDevice.createlinksIMedias(cards);
-    let html = `<div class="relaciona-IDevice">${divContent}<div class="relaciona-DataGame js-hidden">${json}</div>`;
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = `<div class="relaciona-IDevice">${divContent}<div class="relaciona-DataGame js-hidden">${json}</div>`;
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += linksMedias;
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
         if (textAfter) html += `<div class="relaciona-extra-content">${textAfter}</div>`;
@@ -1146,7 +1169,8 @@ var $exeDevice = {
 
         $('#relateQIdeviceForm').on('click', 'input.RLC-Type', function () {
             const type = parseInt($(this).val(), 10);
-            $("#rclETimeDiv").toggle(type === 2);
+            $("#rclETimeDiv").toggleClass('d-none', type !== 2)
+                .toggleClass('d-flex', type === 2);
         });
 
         $('#rclEEvaluation').on('change', function () {
@@ -1277,12 +1301,12 @@ var $exeDevice = {
         $('#rclETimeShowSolution').prop('disabled', !game.showSolution);
         $('#rclETime').val(game.time);
         $("input.RLC-Type[name='flctype'][value='" + game.type + "']").prop("checked", true);
-        $("#rclETimeDiv").hide();
+        $("#rclETimeDiv").removeClass('d-flex').addClass('d-none');
         $('#rclEEvaluation').prop('checked', game.evaluation);
         $('#rclEEvaluationID').val(game.evaluationID);
         $("#rclEEvaluationID").prop('disabled', (!game.evaluation));
         if (game.type == 2) {
-            $("#rclETimeDiv").show();
+            $("#rclETimeDiv").removeClass('d-none').addClass('d-flex');
         }
 
         $("#rclEArrowsDiv").hide();

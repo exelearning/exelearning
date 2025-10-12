@@ -30,7 +30,7 @@ var $exeDevice = {
     modeBoard: false,
     checkAltImage: true,
     accesibilityIsOk: true,
-    
+
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
@@ -165,39 +165,70 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <p>
-                                <label for="roscoShowMinimize"><input type="checkbox" id="roscoShowMinimize">${_('Show minimized.')}</label>
-                            </p>
-                            <p>
-                                <label for="roscoDuration">${_('Game time (seconds)')}: </label>
-                                <input type="number" name="roscoDuration" id="roscoDuration" value="240" min="5" max="9999" step="10" required />
-                            </p>
-                            <p>
-                                <label for="roscoNumberTurns">${_('Number of rounds')}: </label>
-                                <input type="number" value="1" min="0" max="2" id="roscoNumberTurns" required />
-                            </p>
-                            <p>
-                                <label for="roscoShowSolution"><input type="checkbox" checked id="roscoShowSolution">${_('Show solutions')}.</label>
-                                <label for="roscoTimeShowSolution">${_('Show solution in')}: 
-                                    <input type="number" name="roscoTimeShowSolution" id="roscoTimeShowSolution" value="3" min="1" max="9" />${_('seconds')}
-                                </label>
-                            </p>
-                            <p>
-                                <label for="roscoCaseSensitive"><input type="checkbox" id="roscoCaseSensitive">${_('Case sensitive')}.</label>
-                            </p>
-                            <p>
-                                <label for="roscoModeBoard"><input type="checkbox" id="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
-                            </p>
-                            <p class="Games-Reportdiv">
-                                <strong class="GameModeLabel"><a href="#roscoEEvaluationHelp" id="roscoEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${path}quextIEHelp.gif"  width="16" height="16" alt="${_('Help')}"/></a></strong>
-                                <input type="checkbox" id="roscoEEvaluation"><label for="roscoEEvaluation">${_('Progress report')}.</label>
-                                <label for="roscoEEvaluationID">${_('Identifier')}:</label><input type="text" id="roscoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                            </p>
-                            <div id="roscoEEvaluationHelp" class="roscoTypeGameHelp">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                            <div>
+                                <div class="toggle-item" idevice-id="roscoShowMinimize">
+                                    <div class="toggle-control">
+                                        <input type="checkbox" id="roscoShowMinimize" class="toggle-input" aria-label="${_('Show minimized.')}">
+                                        <span class="toggle-visual"></span>
+                                    </div>
+                                    <label class="toggle-label idevice-title" for="roscoShowMinimize">${_('Show minimized.')}</label>
+                                </div>
+                                <div>
+                                    <label for="roscoDuration">${_('Game time (seconds)')}: </label>
+                                    <input type="number" class="form-control form-control-sm" name="roscoDuration" id="roscoDuration" value="240" min="5" max="9999" step="10" required />
+                                </div>
+                                <div>
+                                    <label for="roscoNumberTurns">${_('Number of rounds')}: </label>
+                                    <input type="number" class="form-control form-control-sm" value="1" min="0" max="2" id="roscoNumberTurns" required />
+                                </div>
+                                <div class="roscoShowSolutionRow d-flex align-items-center flex-wrap">
+                                    <div class="toggle-item m-0" idevice-id="roscoShowSolution">
+                                        <div class="toggle-control">
+                                            <input type="checkbox" checked id="roscoShowSolution" class="toggle-input" aria-label="${_('Show solutions')}">
+                                            <span class="toggle-visual"></span>
+                                        </div>
+                                        <label class="toggle-label" for="roscoShowSolution">${_('Show solutions')}.</label>
+                                    </div>
+                                    <label for="roscoTimeShowSolution" class="mb-0 ms-2 d-flex align-items-center gap-1 roscoShowSolutionTime">
+                                        <span>${_('Show solution in')}:</span>
+                                        <input type="number" class="form-control form-control-sm" name="roscoTimeShowSolution" id="roscoTimeShowSolution" value="3" min="1" max="9" />
+                                        <span>${_('seconds')}</span>
+                                    </label>
+                                </div>
+                                <div class="toggle-item" idevice-id="roscoCaseSensitive">
+                                    <div class="toggle-control">
+                                        <input type="checkbox" id="roscoCaseSensitive" class="toggle-input" aria-label="${_('Case sensitive')}">
+                                        <span class="toggle-visual"></span>
+                                    </div>
+                                    <label class="toggle-label" for="roscoCaseSensitive">${_('Case sensitive')}.</label>
+                                </div>
+
+                                <div class="toggle-item" idevice-id="roscoModeBoard">
+                                    <div class="toggle-control">
+                                        <input type="checkbox" id="roscoModeBoard" class="toggle-input" aria-label="${_('Digital whiteboard mode')}">
+                                        <span class="toggle-visual"></span>
+                                    </div>
+                                    <label class="toggle-label" for="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
+                                </div>
+
+                                <div class="toggle-item" idevice-id="roscoEEvaluation">
+                                    <div class="toggle-control">
+                                        <input type="checkbox" id="roscoEEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
+                                        <span class="toggle-visual"></span>
+                                    </div>
+                                    <label class="toggle-label" for="roscoEEvaluation">${_('Progress report')}.</label>
+                                    <div class="toggle-related">
+                                        <label for="roscoEEvaluationID">${_('Identifier')}:</label>
+                                        <input type="text" class="form-control form-control-sm" id="roscoEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                                        <a href="#roscoEEvaluationHelp" id="roscoEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                            <img src="${path}quextIEHelp.png"  width="18" height="18" alt="${_('Help')}"/>
+                                        </a>
+                                    </div>
+                                </div>
+                                <p id="roscoEEvaluationHelp" class="roscoTypeGameHelp exe-block-info">
+                                    ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                                </p>
                             </div>
-                        </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
                         <legend><a href="#">${_('Words')}</a></legend>
@@ -691,7 +722,7 @@ var $exeDevice = {
             textAfter = tinymce.editors[1].getContent();
 
         let html = '<div class="rosco-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="rosco-version js-hidden">' +
             $exeDevice.roscoVersion +
@@ -830,12 +861,24 @@ var $exeDevice = {
             path = $exeDevice.idevicePath,
             fileWord = `
                 <div class="roscoWordMutimediaEdition">
-                    <div class="roscoFileWordEdition">
-                        <h3 class="roscoLetterEdition">${mLetter}</h3>
-                        <a href="#" class="roscoLinkStart" title="${_('Click here to toggle between Word starts with... and Word contains...')}"><img src="${path}roscoStart.png" alt="${_('The word starts with...')}" class="roscoStartEdition"/></a>
-                        <label class="sr-av">${_('Word')}: </label><input type="text" class="roscoWordEdition" placeholder="${_('Word')}">
-                        <label class="sr-av">${_('Definition')}: </label><input type="text" class="roscoDefinitionEdition" placeholder="${_('Definition')}">
-                        <a href="#" class="roscoLinkSelectImage" title="${_('Show/Hide image')}"><img src="${path}roscoSelectImageInactive.png" alt="${_('Select Image')}" class="roscoSelectImageEdition"/></a>
+                    <div class="roscoFileWordEdition row g-2 align-items-center">
+                        <div class="col-auto">
+                            <h3 class="roscoLetterEdition mb-0">${mLetter}</h3>
+                        </div>
+                        <div class="col-auto">
+                            <a href="#" class="roscoLinkStart" title="${_('Click here to toggle between Word starts with... and Word contains...')}"><img src="${path}roscoStart.png" alt="${_('The word starts with...')}" class="roscoStartEdition"/></a>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label sr-av">${_('Word')}: </label>
+                            <input type="text" class="form-control roscoWordEdition" placeholder="${_('Word')}">
+                        </div>
+                        <div class="col-7">
+                            <label class="form-label sr-av">${_('Definition')}: </label>
+                            <input type="text" class="form-control roscoDefinitionEdition" placeholder="${_('Definition')}">
+                        </div>
+                        <div class="col-auto">
+                            <a href="#" class="roscoLinkSelectImage" title="${_('Show/Hide image')}"><img src="${path}roscoSelectImageInactive.png" alt="${_('Select Image')}" class="roscoSelectImageEdition"/></a>
+                        </div>
                     </div>
                     <div class="roscoImageBarEdition">
                         <div class="roscoImageEdition">
@@ -843,20 +886,35 @@ var $exeDevice = {
                             <img src="" class="roscoHomeImageEdition" alt="${_('No image')}" /> 
                             <img src="${path}roscoHomeImage.png" class="roscoNoImageEdition" alt="${_('No image')}" /> 
                         </div>
-                        <div class="roscoBarEdition">
-                            <label>${_('Image')}: </label><input type="text" class="exe-file-picker roscoURLImageEdition" id="roscoURLImage-${letter}" placeholder="${_('Indicate a valid URL of an image or select one from your device')}"/>
-                            <label class="sr-av">X: </label><input type="text" class="roscoXImageEdition" value="0" readonly />
-                            <label class="sr-av">Y: </label><input type="text" class="roscoYImageEdition" value="0" readonly />
+                        <div class="roscoBarEdition row g-2 align-items-center">
+                            <div class="col-12 roscoImageInputWrapper">
+                                <label class="form-label mb-0">${_('Image')}: </label>
+                                <input type="text" class="form-control exe-file-picker roscoURLImageEdition me-0" id="roscoURLImage-${letter}" placeholder="${_('Indicate a valid URL of an image or select one from your device')}"/>
+                            </div>
+                            <div class="col-auto d-none">
+                                <label class="form-label sr-av">X: </label><input type="text" class="roscoXImageEdition" value="0" readonly />
+                            </div>
+                            <div class="col-auto d-none">
+                                <label class="form-label sr-av">Y: </label><input type="text" class="roscoYImageEdition" value="0" readonly />
+                            </div>
                         </div>
-                        <div class="roscoMetaData">
-                            <label for="roscoAlt${letter}">Alt: </label><input type="text" id="roscoAlt${letter}" class="roscoAlt" />
-                            <label for="roscoAuthorEdition${letter}">${_('Authorship')}: </label><input type="text" id="roscoAuthorEdition${letter}" class="roscoAuthorEdition" />
+                        <div class="roscoMetaData row g-2 align-items-center ">
+                            <div class="roscoMetaItem col-12 d-flex align-items-center">
+                                <label for="roscoAlt${letter}" class="form-label mb-0">Alt:</label>
+                                <input type="text" id="roscoAlt${letter}" class="form-control roscoAlt flex-fill" />
+                            </div>
+                            <div class="roscoMetaItem col-12 d-flex align-items-center">
+                                <label for="roscoAuthorEdition${letter}" class="form-label mb-0">${_('Authorship')}:</label>
+                                <input type="text" id="roscoAuthorEdition${letter}" class="form-control roscoAuthorEdition flex-fill" />
+                            </div>
                         </div>
-                        <div class="roscoAudioDiv">
-                            <label for="roscoEURLAudio${letter}">${_('Audio')}: </label>
-                            <input type="text" class="exe-file-picker roscoURLAudioEdition" id="roscoEURLAudio${letter}" placeholder="${_('Indicate a valid URL of an audio or select one from your device')}"/>
-                            <a href="#" class="roscoPlayAudio" title="${_('Play audio')}" id="roscoPlayAudio${letter}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="roscoIconoPlayAudio"/></a>
-                            <a href="#" class="roscoLinkClose" title="${_('Hide image')}"><img src="${path}roscoClose.png" alt="${_('Minimize')}" class="roscoCloseImage"/></a>
+                        <div class="roscoAudioDiv row g-2 align-items-center">
+                            <div class="col-12 roscoAudioInputWrapper">
+                                <label for="roscoEURLAudio${letter}" class="form-label mb-0">${_('Audio')}:</label>
+                                <input type="text" class="form-control exe-file-picker roscoURLAudioEdition me-0" id="roscoEURLAudio${letter}" placeholder="${_('Indicate a valid URL of an audio or select one from your device')}"/>
+                                <a href="#" class="roscoPlayAudio" title="${_('Play audio')}" id="roscoPlayAudio${letter}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="roscoIconoPlayAudio"/></a>
+                                <a href="#" class="roscoLinkClose" title="${_('Hide image')}"><img src="${path}roscoClose.png" alt="${_('Minimize')}" class="roscoCloseImage"/></a>
+                            </div>
                         </div>
                         <hr class="roscoSeparation"/>
                     </div>
@@ -1302,18 +1360,23 @@ var $exeDevice = {
             }
         });
 
-        $('#roscoDataWord a.roscoLinkSelectImage').on('click', function (e) {
+        // Uso de delegación para soportar elementos añadidos tras updateFieldGame
+        // Handler con namespace para poder desregistrar fácilmente y evitar duplicados.
+        $(document).off('click.roscoSelectImg').on('click.roscoSelectImg', '#roscoDataWord a.roscoLinkSelectImage', function (e) {
             e.preventDefault();
-            const $pater = $(this).parent().siblings('.roscoImageBarEdition'),
-                img = $pater.find('.roscoHomeImageEdition'),
-                url = $pater.find('.roscoURLImageEdition').val(),
-                alt = $pater.find('.roscoAlt').val();
-            let y = parseFloat($pater.find('.roscoYImageEdition').val()),
-                x = parseFloat($pater.find('.roscoXImageEdition').val());
+            const $container = $(this).closest('.roscoWordMutimediaEdition');
+            const $panel = $container.children('.roscoImageBarEdition');
+            if (!$panel.length) return;
 
-            x = x || 0;
-            y = y || 0;
-            $pater.slideToggle();
+            // Evita cola de animaciones si se hace clic repetidamente rápido.
+            $panel.stop(true, true).slideToggle(180);
+
+            const img = $panel.find('.roscoHomeImageEdition');
+            const url = $panel.find('.roscoURLImageEdition').val();
+            const alt = $panel.find('.roscoAlt').val();
+            let y = parseFloat($panel.find('.roscoYImageEdition').val()) || 0;
+            let x = parseFloat($panel.find('.roscoXImageEdition').val()) || 0;
+
             $exeDevice.stopSound();
             $exeDevice.showImage(img, url, x, y, alt, 0);
         });
@@ -1324,42 +1387,32 @@ var $exeDevice = {
             $(this).parents('.roscoImageBarEdition').slideUp();
         });
 
-        $('#roscoDataWord .roscoWordEdition').on('focusout', function () {
-            const word = $(this).val().trim(),
-                letter = $(this).siblings('.roscoLetterEdition').text(),
-                color = word ? $exeDevice.colors.blue : $exeDevice.colors.grey,
-                mletter = $exeDevice.getCaracterLetter(letter);
 
-            $(this)
-                .siblings('.roscoLetterEdition')
-                .css('background-color', color);
-            if (word.length > 0) {
-                const mType = $(this)
-                    .parent()
-                    .find('.roscoStartEdition')
-                    .attr('src')
-                    .includes('roscoContains.png')
-                    ? 1
-                    : 0;
-                if (
-                    !$exeDevice.modeBoard &&
-                    mType === 0 &&
-                    !$exeDevice.startContainsAll(mletter, word, mType)
-                ) {
-                    let message = msgs.msgNotStart
-                        .replace('%1', word)
-                        .replace('%2', letter);
-                    eXe.app.alert(message);
-                } else if (
-                    !$exeDevice.modeBoard &&
-                    mType === 1 &&
-                    !$exeDevice.startContainsAll(mletter, word, mType)
-                ) {
-                    let message = msgs.msgNotContain
-                        .replace('%1', word)
-                        .replace('%2', letter);
-                    eXe.app.alert(message);
-                }
+        $(document).on('focusout', '#roscoDataWord .roscoWordEdition', function () {
+            const $input = $(this);
+            const word = $input.val().trim();
+            const $row = $input.closest('.roscoFileWordEdition');
+            const $letterEl = $row.find('h3.roscoLetterEdition').first();
+            const letter = $letterEl.text();
+            const color = word ? $exeDevice.colors.blue : $exeDevice.colors.grey;
+            const mletter = $exeDevice.getCaracterLetter(letter);
+
+            $letterEl.css('background-color', color);
+
+            if (!word.length) return; 
+
+
+            const $startIcon = $row.find('.roscoStartEdition').first();
+            const mType = $startIcon.attr('src') && $startIcon.attr('src').includes('roscoContains.png') ? 1 : 0;
+
+            if ($exeDevice.modeBoard) return; 
+
+            if (mType === 0 && !$exeDevice.startContainsAll(mletter, word, mType)) {
+                const message = msgs.msgNotStart.replace('%1', word).replace('%2', letter);
+                eXe.app.alert(message);
+            } else if (mType === 1 && !$exeDevice.startContainsAll(mletter, word, mType)) {
+                const message = msgs.msgNotContain.replace('%1', word).replace('%2', letter);
+                eXe.app.alert(message);
             }
         });
 
@@ -1496,6 +1549,17 @@ var $exeDevice = {
         $('#roscoEEvaluationHelpLnk').click(function () {
             $('#roscoEEvaluationHelp').toggle();
             return false;
+        });
+
+
+        $(document).on('click', '.toggle-item', function (e) {
+            if ($(e.target).is('input, label, a, button')) return;
+            const id = $(this).attr('idevice-id');
+            if (!id) return;
+            const $input = $('#' + id);
+            if ($input.length) {
+                $input.prop('checked', !$input.is(':checked')).trigger('change');
+            }
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();

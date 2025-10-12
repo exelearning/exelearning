@@ -160,7 +160,7 @@ var $exeDevicesEdition = {
                         <div>\
                             <p>\
                                 <label for="eXeGameInstructions" class="sr-av">' + _("Instructions") + ': </label>\
-                                <textarea id="eXeGameInstructions" class="exe-html-editor"\>' + str + ' </textarea>\
+                                <textarea id="eXeGameInstructions" class="exe-html-editor form-control exe-instructions-textarea" rows="4">' + str + ' </textarea>\
                             </p>\
                         </div>\
                     </fieldset>';
@@ -168,42 +168,54 @@ var $exeDevicesEdition = {
             },
             itinerary: {
                 getContents: function () {
-                    return '\
-                        <div class="exe-info">'+ _("You might create a sequence of challenges where players won't be able to access a new game or challenge until they obtain a key from previous activity. For this purpose, you might set up an access code as well as a message that will be displayed to players when they reach a fixed percentage of correct answers, which they can use as a password for a new challenge or a following activity.") + '</div>\
-                        <p>\
-                            <label for="eXeGameShowCodeAccess"><input type="checkbox" id="eXeGameShowCodeAccess" >' + _("Access code is required") + '</label>\
-                        </p>\
-                        <p style="margin-left:1.4em;margin-bottom:1.5em;display:none" id="eXeGameShowCodeAccessOptions">\
-                            <label for="eXeGameCodeAccess" id="labelCodeAccess">'+ _("Access code") + ':</label>\
-                            <input type="text" name="eXeGameCodeAccess" id="eXeGameCodeAccess"    maxlength="40" disabled />\
-                            <label for="eXeGameMessageCodeAccess" id="labelMessageAccess">'+ _("Question") + ':</label>\
-                            <input type="text" name="eXeGameMessageCodeAccess" id="eXeGameMessageCodeAccess" maxlength="200"/ disabled> \
-                        </p>\
-                        <p>\
-                            <label for="eXeGameShowClue"><input type="checkbox" id="eXeGameShowClue" >'+ _("Display a message or password upon reaching the defined objective") + '</label>\
-                        </p>\
-                        <div style="margin-left:1.4em;margin-bottom:1.5em;display:none" id="eXeGameShowClueOptions">\
-                            <p>\
-                                <label for="eXeGameClue">'+ _("Message") + ':</label>\
-                                <input type="text" name="eXeGameClue" id="eXeGameClue"    maxlength="50" disabled>\
-                            </p>\
-                            <p>\
-                                <label for="eXeGamePercentajeClue" id="labelPercentajeClue">'+ _("Percentage of correct answers required to display the message") + ':</label>\
-                                <select id="eXeGamePercentajeClue" disabled>\
-                                    <option value="10">10%</option>\
-                                    <option value="20">20%</option>\
-                                    <option value="30">30%</option>\
-                                    <option value="40" selected>40%</option>\
-                                    <option value="50">50%</option>\
-                                    <option value="60">60%</option>\
-                                    <option value="70">70%</option>\
-                                    <option value="80">80%</option>\
-                                    <option value="90">90%</option>\
-                                    <option value="100">100%</option>\
-                                </select>\
-                            </p>\
-                        </div>\
-                    ';
+                    return `
+                        <p class="exe-block-info">${_("You might create a sequence of challenges where players won't be able to access a new game or challenge until they obtain a key from previous activity. For this purpose, you might set up an access code as well as a message that will be displayed to players when they reach a fixed percentage of correct answers, which they can use as a password for a new challenge or a following activity.")}</p>
+                        <div class="toggle-item mb-3" data-target="eXeGameShowCodeAccessOptions">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="eXeGameShowCodeAccess" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label" for="eXeGameShowCodeAccess">${_("Access code is required")}</label>
+                        </div>
+                        <div id="eXeGameShowCodeAccessOptions" class="gap-3 mb-3" style="display:none; flex-wrap: nowrap;margin-left:1.4em;">
+                            <div class="d-flex flex-column flex-grow-1" style="min-width:220px;max-width:300px;">
+                                <label for="eXeGameCodeAccess" id="labelCodeAccess" class="mb-1">${_("Access code")}:</label>
+                                <input type="text" name="eXeGameCodeAccess" id="eXeGameCodeAccess" class="form-control" maxlength="40" disabled />
+                            </div>
+                            <div class="d-flex flex-column flex-grow-1" style="min-width:260px">
+                                <label for="eXeGameMessageCodeAccess" id="labelMessageAccess" class="mb-1">${_("Question")}:</label>
+                                <input type="text" name="eXeGameMessageCodeAccess" id="eXeGameMessageCodeAccess" class="form-control" maxlength="200" disabled />
+                            </div>
+                        </div>
+                        <div class="toggle-item mb-3" data-target="eXeGameShowClueOptions">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="eXeGameShowClue" />
+                                <span class="toggle-visual"></span>
+                            </span>
+                            <label class="toggle-label" for="eXeGameShowClue">${_("Display a message or password upon reaching the defined objective")}</label>
+                        </div>
+                        <div id="eXeGameShowClueOptions" class="gap-3 mb-3" style="margin-left:1.4em;display:none">
+                            <div class="d-flex gap-1 mb-3 align-items-center">
+                                <label for="eXeGameClue" class="mb-1">${_("Message")}:</label>
+                                <input type="text" name="eXeGameClue" id="eXeGameClue" class="form-control" maxlength="50" disabled />
+                            </div>
+                            <div class="d-flex gap-1 align-items-center mb-3">
+                                <label for="eXeGamePercentajeClue" id="labelPercentajeClue" class="mb-1">${_("Percentage of correct answers required to display the message")}:</label>
+                                <select id="eXeGamePercentajeClue" class="form-select" disabled style="max-width:8ch;width:8ch;">
+                                    <option value="10">10%</option>
+                                    <option value="20">20%</option>
+                                    <option value="30">30%</option>
+                                    <option value="40" selected>40%</option>
+                                    <option value="50">50%</option>
+                                    <option value="60">60%</option>
+                                    <option value="70">70%</option>
+                                    <option value="80">80%</option>
+                                    <option value="90">90%</option>
+                                    <option value="100">100%</option>
+                                </select>
+                            </div>
+                        </div>
+                    `;
                 },
                 getTab: function () {
                     return `
@@ -248,7 +260,7 @@ var $exeDevicesEdition = {
                     $('#eXeGameClue').val(a.clueGame);
                     $('#eXeGamePercentajeClue').val(a.percentageClue);
                     $('#eXeGameShowCodeAccess').prop('checked', a.showCodeAccess);
-                    if (a.showCodeAccess) $("#eXeGameShowCodeAccessOptions").show();
+                    if (a.showCodeAccess) $("#eXeGameShowCodeAccessOptions").css("display", "flex");
                     $('#eXeGameCodeAccess').val(a.codeAccess);
                     $('#eXeGameMessageCodeAccess').val(a.messageCodeAccess);
                     $('#eXeGameClue').prop('disabled', !a.showClue);
@@ -266,7 +278,7 @@ var $exeDevicesEdition = {
                     });
                     $('#eXeGameShowCodeAccess').on('change', function () {
                         var mark = $(this).is(':checked');
-                        if (mark) $("#eXeGameShowCodeAccessOptions").show();
+                        if (mark) $("#eXeGameShowCodeAccessOptions").css("display", "flex");
                         else $("#eXeGameShowCodeAccessOptions").hide();
                         $('#eXeGameCodeAccess').prop('disabled', !mark);
                         $('#eXeGameMessageCodeAccess').prop('disabled', !mark);
@@ -290,54 +302,47 @@ var $exeDevicesEdition = {
                     const message = onlybutton ? _("Save the score") : _("Automatically save the score");
                     return `
                         <div class="exe-form-tab" title="${_('SCORM')}">
-                            <p id="eXeGameSCORMNoSave">
-                                <label for="eXeGameSCORMNoSave">
-                                    <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" checked /> 
-                                    ${_("Do not save the score")}
-                                </label>
-                            </p>
-                            <p id="eXeGameSCORMAutomatically">
-                                <label for="eXeGameSCORMAutoSave">
-                                    <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" /> 
-                                    ${message}
-                                </label>
-                                <span id="eXeGameSCORgameAuto"  style="display:none;">
-                                    <label for="eXeGameSCORMRepeatActivityAuto" ${displayrepeat}>
-                                        <input type="checkbox" id="eXeGameSCORMRepeatActivityAuto" checked /> 
-                                        ${_("Repeat activity")}
-                                    </label>
+                            <div class="d-flex align-items-center gap-1 mb-3 ml-1">
+                                <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" checked />
+                                <label class="form-check-label" for="eXeGameSCORMNoSave">${_("Do not save the score")}</label>
+                            </div>
+                            <div class="d-flex align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMAutomatically">
+                                <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
+                                <label class="form-check-label" for="eXeGameSCORMAutoSave">${message}</label>
+                                <span id="eXeGameSCORgameAuto" class="ms-3" style="display:none;">
+                                    <div class="form-check form-check-inline" ${displayrepeat}>
+                                        <input class="form-check-input" type="checkbox" id="eXeGameSCORMRepeatActivityAuto" checked />
+                                        <label class="form-check-label" for="eXeGameSCORMRepeatActivityAuto">${_("Repeat activity")}</label>
+                                    </div>
                                 </span>
-                            </p>
-                            <p id="eXeGameSCORMblock" ${displaybutton}>
-                                <label for="eXeGameSCORMButtonSave">
-                                    <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" /> 
-                                    ${_("Show a button to save the score")}
-                                </label>
-                                <span id="eXeGameSCORgame" style="display:none;">
-                                    <label for="eXeGameSCORMbuttonText">${_("Button text")}: </label>
-                                    <input type="text" max="100" name="eXeGameSCORMbuttonText" id="eXeGameSCORMbuttonText" value="${_("Save score")}" />
-                                    <label for="eXeGameSCORMRepeatActivity" ${displayrepeat}>
-                                        <input type="checkbox" id="eXeGameSCORMRepeatActivity" checked /> 
-                                        ${_("Repeat activity")}
-                                    </label>
+                            </div>
+                            <div class="d-flex align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMblock" ${displaybutton}>
+                                <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
+                                <label class="form-check-label" for="eXeGameSCORMButtonSave">${_("Show a button to save the score")}</label>
+                                <span id="eXeGameSCORgame" class="d-inline-flex align-items-center flex-wrap gap-2 ms-3" style="display:none;">
+                                    <label for="eXeGameSCORMbuttonText" class="form-label mb-0">${_("Button text")}: </label>
+                                    <input type="text" max="100" name="eXeGameSCORMbuttonText" id="eXeGameSCORMbuttonText" value="${_("Save score")}" class="form-control " style="width: auto; min-width: 140px;" />
+                                    <div class="form-check" ${displayrepeat}>
+                                        <input class="form-check-input" type="checkbox" id="eXeGameSCORMRepeatActivity" checked />
+                                        <label class="form-check-label" for="eXeGameSCORMRepeatActivity">${_("Repeat activity")}</label>
+                                    </div>
                                 </span>
-                            </p>
-                            <div id="eXeGameSCORMinstructionsAuto">
-                                <ul>
+                            </div>
+                            <div id="eXeGameSCORMinstructionsAuto" class="mb-3 ml-2">
+                                <ul class="mb-3">
                                     <li>${_("This will only work when exported as SCORM")}</li>
                                     <li ${displaybutton}>${_("The score will be automatically saved after answering each question and at the end of the game.")}</li>
                                 </ul>
                             </div>
-                            <div id="eXeGameSCORMinstructionsButton">
-                                <ul>
+                            <div id="eXeGameSCORMinstructionsButton" class="mb-3 ml-2">
+                                <ul class="mb-3">
                                     <li>${_("The button will only be displayed when exported as SCORM.")}</li>
                                 </ul>
                             </div>
-                            <div id="eXeGameSCORMPercentaje">
-                                <p>
-                                    <label for="eXeGameSCORMWeight">${_("Weighted")}: </label>
-                                    <input type="number" id="eXeGameSCORMWeight" name="eXeGameSCORMWeight" value ="100" min="1" max="100" />
-                                </p>
+                            <div id="eXeGameSCORMPercentaje" class="d-flex align-items-center gap-2" >
+                                <label for="eXeGameSCORMWeight" class="form-label mb-0">${_("Weighted")}: </label>
+                                <input type="number" id="eXeGameSCORMWeight" name="eXeGameSCORMWeight" value ="100" min="1" max="100" class="form-control" style="width:10ch" />
+                                
                             </div>
                         </div>`;
                 },
@@ -445,14 +450,18 @@ var $exeDevicesEdition = {
                                 <div id="eXeGameExportImport">
                                     <div>
                                         <form method="POST">
-                                            <label for="eXeGameImportGame">${_("Import")}:</label>
-                                            <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${txt}" />
-                                            <span class="exe-field-instructions">${_("Supported formats")}:${formtxt}</span>
+                                            <div class="exe-file-upload" data-exe-upload>
+                                                <label for="eXeGameImportGame" class="form-label mb-1">${_("Import")}: </label>
+                                                <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${txt}" class="exe-file-input" />
+                                                <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_("Choose")}</button>
+                                                <span class="exe-file-name" data-exe-file-name>${_("No file selected")}</span>
+                                                <span class="exe-field-instructions d-block mt-1">${_("Supported formats")}:${formtxt}</span>
+                                            </div>
                                         </form>
                                     </div>
                                     <div style="display:${display}">
                                         <p class="exe-block-info">${msgAddText}</p>
-                                        <p><input type="button"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_("Add questions")}" /></p>
+                                        <p><input type="button" class="btn btn-primary ms-2"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_("Add questions")}" /></p>
                                         <div class="bg-white rounded border w-100 position-relative" style="display:none; max-width: 1400px;" id="eXeEAddArea">
                                             <ul class="nav nav-tabs">
                                                 <li class="nav-item">
@@ -489,22 +498,22 @@ var $exeDevicesEdition = {
                                                 </div>
                                             </div>
                                             <div class="d-flex justify-content-end  border-secondary p-2">
-                                               <button id="eXeESaveButton"  class="btn btn-success ms-2"/>${_('Save')}</button>
-                                               <button id="eXeECopyButton"  class="btn btn-success ms-2"/>${_('Copy')}</button>
-                                               <button id="eXeEOpenChatGPTButton"  class="btn btn-success ms-2"/>${_('Send to AI')}</button>
-                                               <button id="eXeEIAButton"  class="btn btn-success ms-2"/>${_('Add questions')}</button>
+                                               <button id="eXeESaveButton"  class="btn  btn-primary ms-2"/>${_('Save')}</button>
+                                               <button id="eXeECopyButton"  class="btn btn-primary ms-2"/>${_('Copy')}</button>
+                                               <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>
+                                               <button id="eXeEIAButton"  class="btn btn-primary"/>${_('Add questions')}</button>
                                             </div>
                                         </div>
                                     </div>
                                     <p class="exe-block-info" style="display:${displayEQ}" >${_('You can export its questions in txt format to integrate them into other compatible activities.')}</p>
                                     <p class ="d-flex align-items-center justify-content-start gap-1">
-                                        <input type="button" lass="btn btn-success ms-2"  name="eXeGameExportGame" id="eXeGameExportQuestions" value="${_("Export questions")}" style="display:${displayEQ}" />
+                                        <input type="button" class="btn btn-primary ms-2"  name="eXeGameExportGame" id="eXeGameExportQuestions" value="${_("Export questions")}" style="display:${displayEQ}" />
                                     </p>
                                 </div>
                             </div>`;
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
-                
+
                 createIAButtonsHtml: function () {
                     return `<div id="eXeFormIAContainer">
                         <div class="dd-flex gap-2 mt-3 mb-3">
@@ -544,7 +553,7 @@ var $exeDevicesEdition = {
                                 </datalist>
                             </label>
                             <label for="eXeNumberOfQuestionsIA">${_('Number of Questions')}:
-                                <input id="eXeNumberOfQuestionsIA" type="number" min="1" max="30" value="10">
+                                <input id="eXeNumberOfQuestionsIA" type="number" min="1" max="30" value="10" class="form-control form-control-sm" style="width:6ch;">
                             </label>
                             <label for="eXeThemeIA">${_('Topic')}:
                                 <input id="eXeThemeIA" type="text" style="width: 300px;">
@@ -628,7 +637,7 @@ var $exeDevicesEdition = {
                             prompt: c_(`Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.`),
                         },
                         6: { // True or false
-                            prompt: c_(`Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect`),
+                            prompt: c_(`Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect`),
                             format: [`${c_('question')}#${c_('solution')}#${c_('suggestion')}#${c_('feedback')}`],
                             explanation: `${c_('The format requires a question (non-empty string), a solution (0 or 1), a suggestion (mandatory, can be empty), and feedback (mandatory, can be empty).')}`,
                             examples: [
@@ -719,6 +728,24 @@ var $exeDevicesEdition = {
                     $divEIA.hide();
                     $iaButton.hide()
 
+                    // File input custom UI events
+                    $(document).off('click.exeFileTrigger').on('click.exeFileTrigger', '[data-exe-file-trigger]', function () {
+                        const $wrap = $(this).closest('[data-exe-upload]');
+                        $wrap.find('.exe-file-input').trigger('click');
+                    });
+                    $(document).off('change.exeFileInput').on('change.exeFileInput', '.exe-file-input', function () {
+                        const file = this.files && this.files[0];
+                        const $wrap = $(this).closest('[data-exe-upload]');
+                        const $name = $wrap.find('[data-exe-file-name]');
+                        if (file) {
+                            $wrap.attr('data-has-file', 'true');
+                            $name.text(file.name);
+                        } else {
+                            $wrap.removeAttr('data-has-file');
+                            $name.text(_("No file selected"));
+                        }
+                    });
+
                     $tabQuestions.on('click', function (e) {
                         e.preventDefault();
                         $tabQuestions.addClass('active');
@@ -743,7 +770,7 @@ var $exeDevicesEdition = {
                         $textPrompt.show()
                         $saveButton.hide();
                         $copyButton.show();
-                        $openChatGPTButton.show();                         
+                        $openChatGPTButton.show();
                         $iaButton.hide();
 
                     });
