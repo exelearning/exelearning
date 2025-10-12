@@ -11763,19 +11763,19 @@
       </trans-unit>
       <trans-unit id="UNq.6d3" resname="Tools to display information, organize resources or enrich content with accessibility and diverse media.">
         <source>Tools to display information, organize resources or enrich content with accessibility and diverse media.</source>
-        <target>~Ili ebligas montri informojn, strukturi rimedojn aŭ riĉigi la enhavon per alirebleco kaj diversaj amaskomunikiloj.</target>
+        <target>~Iloj por montri informojn, organizi rimedojn aŭ riĉigi enhavon kun alirebleco kaj diversaj amaskomunikiloj.</target>
       </trans-unit>
       <trans-unit id="jG6ZDR4" resname="Quizzes and other tools to check knowledge or progress, with the option to provide feedback.">
         <source>Quizzes and other tools to check knowledge or progress, with the option to provide feedback.</source>
-        <target>~Ĉi tiuj iDevices estas desegnitaj por taksi scion, komprenon kaj kapablojn, ebligi mem-takson, faciligi reagojn, spuri progreson kaj dokumenti rendimentnivelojn.</target>
+        <target>~Kvizo kaj aliaj iloj por kontroli sciojn aŭ progreson, kun la eblo doni reagojn.</target>
       </trans-unit>
       <trans-unit id="onKN1Hh" resname="Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.">
         <source>Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.</source>
-        <target>~Ĉi tiuj rimedoj instigas aktivan studentan partoprenon, ludo pliigas motivadon, luda plifortigo, antaŭenigas la akiron de kapabloj kaj scioj, memoradon kaj komprenon de konceptoj.</target>
+        <target>~Rimedoj kiuj uzas ludmekanikon por motivi kaj plifortigi lernadon sen taksopremo.</target>
       </trans-unit>
       <trans-unit id="3rptwu0" resname="Exercises that require direct interaction, encouraging active learning and trial-and-error.">
         <source>Exercises that require direct interaction, encouraging active learning and trial-and-error.</source>
-        <target>~Ĉi tiuj iDevices antaŭenigas aktivan lernadon, gviditan malkovron kaj aŭtonoman esploradon. Ili instigas kritikan pensadon, problemo-solvadon kaj praktikan aplikon de konceptoj.</target>
+        <target>~Ekzercoj kiuj postulas rektan interagon, instigante aktivan lernadon kaj provo-eraron.</target>
       </trans-unit>
       <trans-unit id="kA_LL.P" resname="Sciencie">
         <source>Sciencie</source>
@@ -11783,7 +11783,7 @@
       </trans-unit>
       <trans-unit id="2A3RkFC" resname="Resources designed to work on specific subject areas or topics.">
         <source>Resources designed to work on specific subject areas or topics.</source>
-        <target>~Ĉi tiuj rimedoj celas instrui sciencajn konceptojn kaj kapablojn per praktika sperto, observado, datum-analizo kaj koncepta klarigo, provizante kuntekstan lernadon.</target>
+        <target>~Rimedoj desegnitaj por labori pri specifaj temaroj aŭ subjektoj.</target>
       </trans-unit>
       <trans-unit id="w7FotCy" resname="Select or drag to place the iDevice on the page.">
         <source>Select or drag to place the iDevice on the page.</source>
