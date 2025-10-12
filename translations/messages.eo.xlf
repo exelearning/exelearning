@@ -11761,28 +11761,28 @@
         <source>Imported</source>
         <target>~Enportita</target>
       </trans-unit>
-      <trans-unit id="UNq.6d3" resname="They allow displaying information, structuring resources or enriching the content with accessibility and diverse media.">
-        <source>They allow displaying information, structuring resources or enriching the content with accessibility and diverse media.</source>
+      <trans-unit id="UNq.6d3" resname="Tools to display information, organize resources or enrich content with accessibility and diverse media.">
+        <source>Tools to display information, organize resources or enrich content with accessibility and diverse media.</source>
         <target>~Ili ebligas montri informojn, strukturi rimedojn aŭ riĉigi la enhavon per alirebleco kaj diversaj amaskomunikiloj.</target>
       </trans-unit>
-      <trans-unit id="jG6ZDR4" resname="These iDevices are designed to assess knowledge, understanding, skills, enable self-assessment, facilitate feedback, monitor progress and document performance levels.">
-        <source>These iDevices are designed to assess knowledge, understanding, skills, enable self-assessment, facilitate feedback, monitor progress and document performance levels.</source>
+      <trans-unit id="jG6ZDR4" resname="Quizzes and other tools to check knowledge or progress, with the option to provide feedback.">
+        <source>Quizzes and other tools to check knowledge or progress, with the option to provide feedback.</source>
         <target>~Ĉi tiuj iDevices estas desegnitaj por taksi scion, komprenon kaj kapablojn, ebligi mem-takson, faciligi reagojn, spuri progreson kaj dokumenti rendimentnivelojn.</target>
       </trans-unit>
-      <trans-unit id="onKN1Hh" resname="These resources encourage active student participation, play increases motivation, playful reinforcement, promotes the acquisition of skills and knowledge, memorisation and understanding of concepts.">
-        <source>These resources encourage active student participation, play increases motivation, playful reinforcement, promotes the acquisition of skills and knowledge, memorisation and understanding of concepts.</source>
+      <trans-unit id="onKN1Hh" resname="Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.">
+        <source>Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.</source>
         <target>~Ĉi tiuj rimedoj instigas aktivan studentan partoprenon, ludo pliigas motivadon, luda plifortigo, antaŭenigas la akiron de kapabloj kaj scioj, memoradon kaj komprenon de konceptoj.</target>
       </trans-unit>
-      <trans-unit id="3rptwu0" resname="These iDevices promote active learning, guided discovery and autonomous exploration. They encourage critical thinking, problem solving and practical application of concepts.">
-        <source>These iDevices promote active learning, guided discovery and autonomous exploration. They encourage critical thinking, problem solving and practical application of concepts.</source>
+      <trans-unit id="3rptwu0" resname="Exercises that require direct interaction, encouraging active learning and trial-and-error.">
+        <source>Exercises that require direct interaction, encouraging active learning and trial-and-error.</source>
         <target>~Ĉi tiuj iDevices antaŭenigas aktivan lernadon, gviditan malkovron kaj aŭtonoman esploradon. Ili instigas kritikan pensadon, problemo-solvadon kaj praktikan aplikon de konceptoj.</target>
       </trans-unit>
       <trans-unit id="kA_LL.P" resname="Sciencie">
         <source>Sciencie</source>
         <target>~Scienco</target>
       </trans-unit>
-      <trans-unit id="2A3RkFC" resname="These resources are geared towards teaching scientific concepts and skills through hands-on experience, observation, data analysis and conceptual explanation, providing contextualised learning.">
-        <source>These resources are geared towards teaching scientific concepts and skills through hands-on experience, observation, data analysis and conceptual explanation, providing contextualised learning.</source>
+      <trans-unit id="2A3RkFC" resname="Resources designed to work on specific subject areas or topics.">
+        <source>Resources designed to work on specific subject areas or topics.</source>
         <target>~Ĉi tiuj rimedoj celas instrui sciencajn konceptojn kaj kapablojn per praktika sperto, observado, datum-analizo kaj koncepta klarigo, provizante kuntekstan lernadon.</target>
       </trans-unit>
       <trans-unit id="w7FotCy" resname="Select or drag to place the iDevice on the page.">

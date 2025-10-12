@@ -11761,28 +11761,28 @@
         <source>Imported</source>
         <target>~Inportatua</target>
       </trans-unit>
-      <trans-unit id="UNq.6d3" resname="They allow displaying information, structuring resources or enriching the content with accessibility and diverse media.">
-        <source>They allow displaying information, structuring resources or enriching the content with accessibility and diverse media.</source>
+      <trans-unit id="UNq.6d3" resname="Tools to display information, organize resources or enrich content with accessibility and diverse media.">
+        <source>Tools to display information, organize resources or enrich content with accessibility and diverse media.</source>
         <target>~Informazioa erakustea, baliabideak egituratzea edo edukia aberastea ahalbidetzen dute irisgarritasunarekin eta hedabide anitzekin.</target>
       </trans-unit>
-      <trans-unit id="jG6ZDR4" resname="These iDevices are designed to assess knowledge, understanding, skills, enable self-assessment, facilitate feedback, monitor progress and document performance levels.">
-        <source>These iDevices are designed to assess knowledge, understanding, skills, enable self-assessment, facilitate feedback, monitor progress and document performance levels.</source>
+      <trans-unit id="jG6ZDR4" resname="Quizzes and other tools to check knowledge or progress, with the option to provide feedback.">
+        <source>Quizzes and other tools to check knowledge or progress, with the option to provide feedback.</source>
         <target>~iDevice hauek ezagutza, ulermena eta trebetasunak ebaluatzeko, autoebaluazioa ahalbidetzeko, feedback-a errazteko, aurrerapena jarraitzeko eta errendimendu-mailak dokumentatzeko diseinatuta daude.</target>
       </trans-unit>
-      <trans-unit id="onKN1Hh" resname="These resources encourage active student participation, play increases motivation, playful reinforcement, promotes the acquisition of skills and knowledge, memorisation and understanding of concepts.">
-        <source>These resources encourage active student participation, play increases motivation, playful reinforcement, promotes the acquisition of skills and knowledge, memorisation and understanding of concepts.</source>
+      <trans-unit id="onKN1Hh" resname="Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.">
+        <source>Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.</source>
         <target>~Baliabide hauek ikasleen parte-hartze aktiboa bultzatzen dute, jolasa motibazioa handitzen du, indar jokoak trebetasun eta ezagutza eskuratzea, memorizazioa eta kontzeptuen ulermena sustatzen du.</target>
       </trans-unit>
-      <trans-unit id="3rptwu0" resname="These iDevices promote active learning, guided discovery and autonomous exploration. They encourage critical thinking, problem solving and practical application of concepts.">
-        <source>These iDevices promote active learning, guided discovery and autonomous exploration. They encourage critical thinking, problem solving and practical application of concepts.</source>
+      <trans-unit id="3rptwu0" resname="Exercises that require direct interaction, encouraging active learning and trial-and-error.">
+        <source>Exercises that require direct interaction, encouraging active learning and trial-and-error.</source>
         <target>~iDevice hauek ikaskuntza aktiboa, aurkikuntza gidatua eta esplorazio autonomoa sustatzen dute. Pentsamendu kritikoa, arazoen ebazpena eta kontzeptuen aplikazio praktikoa bultzatzen dute.</target>
       </trans-unit>
       <trans-unit id="kA_LL.P" resname="Sciencie">
         <source>Sciencie</source>
         <target>~Zientzia</target>
       </trans-unit>
-      <trans-unit id="2A3RkFC" resname="These resources are geared towards teaching scientific concepts and skills through hands-on experience, observation, data analysis and conceptual explanation, providing contextualised learning.">
-        <source>These resources are geared towards teaching scientific concepts and skills through hands-on experience, observation, data analysis and conceptual explanation, providing contextualised learning.</source>
+      <trans-unit id="2A3RkFC" resname="Resources designed to work on specific subject areas or topics.">
+        <source>Resources designed to work on specific subject areas or topics.</source>
         <target>~Baliabide hauek kontzeptu zientifikoak eta trebetasunak eskuratzeko diseinatuta daude esperientzia praktikoaren, behaketaren, datuen analisien eta azalpen kontzeptualaren bidez, testuinguruko ikaskuntza eskaintzen dutelarik.</target>
       </trans-unit>
       <trans-unit id="w7FotCy" resname="Select or drag to place the iDevice on the page.">
