@@ -522,7 +522,7 @@ export default class ModalIdeviceManager extends Modal {
         input.checked = userPreferencesIdevices.includes(idevice.name);
         input.setAttribute(
             'aria-label',
-            `${_('Activar')} ${idevice.title || idevice.id}`
+            `${_('Activate')} ${idevice.title || idevice.id}`
         );
 
         const visual = document.createElement('span');

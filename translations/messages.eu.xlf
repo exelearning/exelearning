@@ -11837,8 +11837,8 @@
         <source>Filter items</source>
         <target>~Elementuak iragazi</target>
       </trans-unit>
-      <trans-unit id="cvqhKr_" resname="Activar">
-        <source>Activar</source>
+      <trans-unit id="cvqhKr_" resname="Activate">
+        <source>Activate</source>
         <target>~Aktibatu</target>
       </trans-unit>
       <trans-unit id="F.0jKf8" resname="You can only select 5 iDevices as favourites. Please remove an iDevice so you can add another one.">
