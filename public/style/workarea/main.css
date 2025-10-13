@@ -2968,6 +2968,69 @@ a:hover {
   left: unset;
   right: 0;
 }
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container {
+  padding: 0 20px;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .exe-table-content,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .exe-table-content {
+  display: grid;
+  grid-auto-rows: min-content;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .property-row > label,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .property-row > label {
+  min-width: 140px;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .property-row:has(input[type=checkbox]) > label,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .property-row:has(input[type=checkbox]) > label {
+  min-width: 0;
+  cursor: pointer;
+  user-select: none;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .property-row input[type=text],
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .property-row input[type=text] {
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 8px 10px;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .property-row input[type=checkbox],
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .property-row input[type=checkbox] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #visibility,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #teacherOnly,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #allowToggle,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #minimized,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #visibility,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #teacherOnly,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #allowToggle,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #minimized {
+  margin-left: 74px;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #identifier,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #cssClass,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #identifier,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #cssClass {
+  margin-top: 15px;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #identifier > label,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #cssClass > label,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #identifier > label,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #cssClass > label {
+  text-align: right;
+  min-width: 90px;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #identifier input[type=text],
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #cssClass input[type=text],
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #identifier input[type=text],
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #cssClass input[type=text] {
+  padding-top: 9px;
+  padding-bottom: 9px;
+  max-width: calc(100% - 110px);
+  width: calc(100% - 110px);
+}
 #modalProperties #versionControl {
   display: none;
 }
@@ -4271,18 +4334,19 @@ Flexbox Bootstrap 5 helpers:
   justify-content: space-between;
   align-items: flex-start;
   line-height: 20;
-  margin-bottom: 24px;
+  margin-bottom: 17px;
 }
 .asideleft .content-info #exe-title.title-not-editing h2 {
   display: -webkit-box;
   border-radius: 4px;
   border: 2px solid transparent;
   margin-bottom: 0;
-  padding: 13px 4px 0 4px;
+  padding: 11px 4px 13px 4px;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-height: 50px;
 }
 .asideleft .content-info #exe-title.title-not-editing h2:hover {
   color: var(--brand-primary);
@@ -4307,7 +4371,7 @@ Flexbox Bootstrap 5 helpers:
   justify-content: space-between;
   align-items: flex-start;
   line-height: 19.2;
-  margin-bottom: 22px;
+  margin-bottom: 23px;
   height: 44px;
 }
 .asideleft .content-info #exe-title.title-editing h2 {
@@ -4337,13 +4401,13 @@ Flexbox Bootstrap 5 helpers:
 .asideleft .content-info #exe-title .title-menu-button:hover {
   background-color: var(--gray-100);
 }
-.asideleft .content-info #exe-title.two-lines {
+.asideleft .content-info #exe-title.two-lines:not(.title-editing) {
   margin-bottom: 7px;
 }
-.asideleft .content-info #exe-title.two-lines h2 {
+.asideleft .content-info #exe-title.two-lines:not(.title-editing) h2 {
   height: 60px;
 }
-.asideleft .content-info #exe-title.two-lines .title-menu-button {
+.asideleft .content-info #exe-title.two-lines:not(.title-editing) .title-menu-button {
   top: 2px;
 }
 .asideleft .content-info .title-menu {
@@ -4428,15 +4492,9 @@ Flexbox Bootstrap 5 helpers:
   z-index: 997;
 }
 #node-content-container #node-content {
-  min-height: 90%;
   height: auto;
 }
 #node-content-container #node-content .page-title {
-  /*
-  font-size: 18px;
-  font-weight: bold;
-  color: var(--text);
-  */
   margin-top: 15px;
 }
 #node-content-container #node-content[mode=edition] #eXeAddContentBtnWrapper {
@@ -4632,6 +4690,9 @@ Flexbox Bootstrap 5 helpers:
   padding: 0 20px 0 20px;
   margin: 0 20px 0 20px;
   border-radius: 8px;
+}
+#node-content-container.exe-content:not(.properties-page) {
+  height: calc(100vh - 105px - 80px);
 }
 #node-content-container.exe-content .box {
   border-radius: var(--radius);

@@ -1689,6 +1689,58 @@
             }
         }
     }
+    .form-properties[modal-content-id="idevice-properties"],
+    .form-properties[modal-content-id="block-properties"] {
+        .properties-body-container {
+            padding: 0 20px;
+            .exe-table-content {
+                display: grid;
+                grid-auto-rows: min-content;
+            }
+            .property-row {
+                > label {
+                    min-width: 140px;
+                }
+                &:has(input[type="checkbox"]) {
+                    > label {
+                        min-width: 0;
+                        cursor: pointer;
+                        user-select: none;
+                    }
+                }
+                input[type="text"] {
+                    flex: 1 1 auto;
+                    width: 100%;
+                    padding: 8px 10px;
+                }
+                input[type="checkbox"] {
+                    width: 18px;
+                    height: 18px;
+                    cursor: pointer;
+                }
+            }
+            #visibility,
+            #teacherOnly,
+            #allowToggle,
+            #minimized {
+                margin-left: 74px;
+            }
+            #identifier,
+            #cssClass {
+                margin-top: 15px;
+                > label {
+                    text-align: right;
+                    min-width: 90px;
+                }
+                input[type="text"] {
+                    padding-top: 9px;
+                    padding-bottom: 9px;
+                    max-width: calc(100% - 110px);
+                    width: calc(100% - 110px);
+                }
+            }
+        }
+    }
 
     #versionControl {
         display: none;
