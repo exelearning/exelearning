@@ -43,7 +43,6 @@ var myTheme = {
                         myTheme.params('add');
                     }
                 }
-
             } else {
                 $('body').toggleClass('siteNav-off');
                 myTheme.params(
@@ -62,7 +61,6 @@ var myTheme = {
                 }
                 bar.show();
                 $('#exe-client-search-text').focus();
-
             }
         });
         if (!this.inIframe()) {
