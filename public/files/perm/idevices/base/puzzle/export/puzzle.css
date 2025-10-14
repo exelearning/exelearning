@@ -450,12 +450,12 @@
 .PZLP-CodeAccessDiv,
 .PZLP-ShowClue {
     background-color: white;
-    width: 50%;
+    width: 80%;
     border: 1px solid #ddd;
     border-radius: 0.6em;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.20), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     padding: 1.5em;
-    max-width: 400px;
+    max-width: 450px;
 }
 
 .PZLP-MessageCodeAccessE {
@@ -475,6 +475,7 @@
 .PZLP-CodeAccessE {
     margin: 0 .3em;
     width: 100%;
+    max-width: 300px;
     text-align: center;
 }
 
@@ -965,26 +966,6 @@ div:fullscreen .PZLP-ImageDiv {
         width: 2em;
     }
 
-    .PZLP-MainContainer input[type="text"],
-    input.PZLP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
-
-    .PZLP-MainContainer input[type="text"]:active,
-    .PZLP-MainContainer input[type="text"]:focus,
-    input.PZLP-CodeAccessE:focus,
-    input.PZLP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
 
     .PZLP-GameOverExt {
         width: 90%;

@@ -109,7 +109,7 @@ var $eXeHiddenImage = {
             <div class="HIP-MainContainer" id="hiPMainContainer-${instance}">
                 <div class="HIP-GameMinimize" id="hiPGameMinimize-${instance}">
                     <a href="#" class="HIP-LinkMaximize" id="hiPLinkMaximize-${instance}" title="${msgs.msgMaximize}">
-                        <img src="${path}quextIcon.png" class="HIP-IconMinimize HIP-Activo" alt="">
+                        <img src="${path}hidden-image-icon.png" class="HIP-IconMinimize HIP-Activo" alt="">
                         <div class="HIP-MessageMaximize" id="hiPMessageMaximize-${instance}"></div>
                     </a>
                 </div>
@@ -159,7 +159,7 @@ var $eXeHiddenImage = {
                         <p class="HIP-MessageCodeAccessE" id="hiPMesajeAccesCodeE-${instance}"></p>
                         <div class="HIP-DataCodeAccessE">
                             <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                            <input type="text" class="HIP-CodeAccessE" id="hiPCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                            <input type="text" class="HIP-CodeAccessE form-control" id="hiPCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                             <a href="#" id="hiPCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                 <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                 <div class="exeQuextIcons exeQuextIcons-Submit HIP-Activo"></div>
@@ -259,6 +259,9 @@ var $eXeHiddenImage = {
                 $exeDevices.iDevice.gamification.media.extractURLGD(
                     question.url,
                 );
+            if (typeof question.attempts !== 'number' || isNaN(question.attempts) || question.attempts <= 0) {
+                question.attempts = 4;
+            }
         }
         mOptions.scoreGame = 0;
         mOptions.scoreTotal = 0;
@@ -429,7 +432,10 @@ var $eXeHiddenImage = {
             e.preventDefault();
             const audio = mOptions.questionsGame[mOptions.activeQuestion].audio;
             $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            if(audio && audio.length > 3){
+                $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            }
+           
         });
 
 
@@ -454,7 +460,7 @@ var $eXeHiddenImage = {
 
         $(document).on("click", ".HIP-Square", function () {
             if (mOptions.attempts <= 0) {
-                $eXeHiddenImage.showMessage(3, mOptions.msgs.msgAttemps0, instance);
+                $eXeHiddenImage.showMessage(3, mOptions.msgs.msgattempts0, instance);
                 return;
             }
             var $this = $(this);
@@ -663,7 +669,10 @@ var $eXeHiddenImage = {
             );
         }
         const audio = mOptions.questionsGame[i].audio;
-        $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+        if(audio && audio.length > 4){
+            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+        }
+        
     },
 
     ramdonOptions: function (instance) {

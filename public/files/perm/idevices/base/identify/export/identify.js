@@ -212,7 +212,7 @@ var $eXeIdentifica = {
                             <div class="exeQuextIcons-MoveOne IDFP-Activo"></div>
                         </a>
                         <label for="idfAnswer-${instance}" class="sr-av">${msgs.msgReply}</label>
-                        <input id="idfAnswer-${instance}" type="text">
+                        <input id="idfAnswer-${instance}" class="form-control" type="text">
                         <a href="#" id="idfSubmit-${instance}" title="${msgs.msgReply}">
                             <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                             <div class="exeQuextIcons-Submit IDFP-Activo"></div>
@@ -224,7 +224,7 @@ var $eXeIdentifica = {
                         <p class="IDFP-MessageCodeAccessE" id="idfMesajeAccesCodeE-${instance}"></p>
                             <div class="IDFP-DataCodeAccessE">
                                 <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                                <input type="text" class="IDFP-CodeAccessE" id="idfCodeAccessE-${instance}">
+                                <input type="text" class="IDFP-CodeAccessE form-control" id="idfCodeAccessE-${instance}">
                                 <a href="#" id="idfCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                     <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                     <div class="IDFPIcons IDFPIcons-Submit IDFP-Activo"></div>

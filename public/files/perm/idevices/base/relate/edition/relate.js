@@ -210,7 +210,7 @@ var $exeDevice = {
                                     </div>
                                     <span id="rclETitleImage">${_('Image')}</span>
                                     <div class="d-flex align-items-center gap-2 mb-3" id="rclEInputImage">
-                                        <label class="sr-av">URL</label>
+                                        <label class="sr-av" for="rclEURLImage">URL</label>
                                         <input type="text" id="rclEURLImage" class="exe-file-picker form-control me-0 w-100"/>
                                         <a href="#" id="rclEPlayImage" class="RLC-ENavigationButton" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="RLC-ENavigationButton " />
@@ -220,9 +220,9 @@ var $exeDevice = {
                                         </a>
                                     </div>
                                     <div class="RLC-ECoord d-none">
-                                        <label>X:</label>
+                                        <label for="rclEX">X:</label>
                                         <input id="rclEX" class="RLC-EX form-control" type="text" value="0" />
-                                        <label>Y:</label>
+                                        <label for="rclEY">Y:</label>
                                         <input id="rclEY" class="RLC-EY form-control" type="text" value="0" />
                                     </div>
                                     <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap" id="rclEAuthorAlt">
@@ -237,7 +237,7 @@ var $exeDevice = {
                                     </div>
                                     <span>${_('Audio')}</span>
                                     <div class="d-flex align-items-center gap-2 mb-2 flex-nowrap">
-                                        <label class="sr-av">URL</label>
+                                        <label class="sr-av" for="rclEURLAudio">URL</label>
                                         <input type="text" id="rclEURLAudio" class="exe-file-picker form-control me-0 w-100" />
                                         <a href="#" id="rclEPlayAudio" class="RLC-ENavigationButton" title="${_('Audio')}">
                                             <img src="${path}quextIEPlay.png" alt="Play" class="RLC-ENavigationButton " />
@@ -264,7 +264,7 @@ var $exeDevice = {
                                     </div>
                                     <span id="rclETitleImageBack">${_('Image')}</span>
                                     <div class="d-flex align-items-center gap-2 mb-3" id="rclEInputImageBack">
-                                        <label class="sr-av">URL</label>
+                                        <label class="sr-av" for="rclEURLImageBack">URL</label>
                                         <input type="text" id="rclEURLImageBack" class="exe-file-picker form-control me-0 w-100"/>
                                         <a href="#" id="rclEPlayImageBack" class="RLC-ENavigationButton" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="RLC-ENavigationButton " />
@@ -274,9 +274,9 @@ var $exeDevice = {
                                         </a>
                                     </div>
                                     <div class="d-none flex-wrap align-items-center gap-2">
-                                        <label>X:</label>
+                                        <label for="rclEXBack">X:</label>
                                         <input id="rclEXBack" class="RLC-EX form-control" type="text" value="0" />
-                                        <label>Y:</label>
+                                        <label for="rclEYBack">Y:</label>
                                         <input id="rclEYBack" class="RLC-EY form-control" type="text" value="0" />
                                     </div>
                                     <div class="d-none align-items-center gap-2 mb-3 flex-nowrap" id="rclEAuthorAltBack">
@@ -290,8 +290,8 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
-                                    <div class="RLC-EInputAudio d-flex align-items-center flex-nowrap gap-2 mb2">
-                                        <label class="sr-av">URL</label>
+                                    <div class="RLC-EInputAudio d-flex align-items-center flex-nowrap gap-2 mb-2">
+                                        <label class="sr-av" for="rclEURLAudioBack">URL</label>
                                         <input type="text" id="rclEURLAudioBack" class="exe-file-picker form-control me-0 w-100" />
                                         <a href="#" id="rclEPlayAudioBack" class="RLC-ENavigationButton" title="${_('Audio')}">
                                             <img src="${path}quextIEPlay.png" alt="Play" class="RLC-ENavigationButton " />
@@ -349,6 +349,7 @@ var $exeDevice = {
             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
+            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
         </div>
     `;
         this.ideviceBody.innerHTML = html;
@@ -356,7 +357,6 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
-
 
 
     getTextFieldset: function (position) {

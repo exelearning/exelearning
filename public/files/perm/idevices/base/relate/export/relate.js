@@ -389,7 +389,7 @@ var $eXeRelaciona = {
                     <div class="RLCP-MessageCodeAccessE" id="rlcMesajeAccesCodeE-${instance}"></div>
                     <div class="RLCP-DataCodeAccessE">
                         <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                        <input type="text" class="RLCP-CodeAccessE" id="rlcCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                        <input type="text" class="RLCP-CodeAccessE form-control" id="rlcCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                         <a href="#" id="rlcCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                             <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                             <div class="exeQuextIcons-Submit RLCP-Activo"></div>
@@ -508,24 +508,29 @@ var $eXeRelaciona = {
 
     rebootCards: function (instance) {
         const mOptions = $eXeRelaciona.options[instance];
-        let keis = [];
-        mOptions.linesMap.forEach((value, key) => {
-            keis.push(key);
-        });
 
-        for (let i = 0; i < keis.length; i++) {
-            $eXeRelaciona.removeLine(keis[i], instance);
-        }
+        const $container = $(`#rlcGameContainer-${instance}`);
+        $container.find(".RLCP-Word, .RLCP-Definition")
+            .removeClass("RLCP-Connected")
+            .removeData("lineindex");
 
         mOptions.linesMap.clear();
-        $eXeRelaciona.createCards(instance)
+        mOptions.currentWordDiv = null;
+        if (mOptions.tempEnd) {
+            mOptions.tempEnd.remove();
+            mOptions.tempEnd = null;
+        }
+
+        $eXeRelaciona.ajustarCanvas(instance);
+        $eXeRelaciona.redibujarLineas(instance, false);
+
+           $eXeRelaciona.createCards(instance);
         $eXeRelaciona.showScoreGame(instance);
+
         if (mOptions.type == 2) {
             mOptions.counter = mOptions.time * 60;
             $eXeRelaciona.startGame(instance);
         }
-
-
     },
 
     checkState: function (instance) {

@@ -539,14 +539,14 @@ var $exeDevice = {
                                             <input id="idfEYImage" type="text" value="0" />
                                         </div>
                                     </div>
-                                    <div class="align-items-center gap-2 flex-nowrap mb-3" id="idfEAuthorAlt">
-                                        <div class="IDFE-EInputAuthor">
-                                            <label>${_('Authorship')}</label>
-                                            <input id="idfEAuthor" type="text" class="IDFE-EAuthor form-control" />
+                                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="idfEAuthorAlt">
+                                        <div class="IDFE-EInputAuthor wp-50">
+                                            <label for="idfEAuthor">${_('Authorship')}</label>
+                                            <input id="idfEAuthor" type="text" class="IDFE-EAuthor form-control w-100" />
                                         </div>
-                                        <div class="IDFE-EInputAlt">
-                                            <label>${_('Alt')}</label>
-                                            <input id="idfEAlt" type="text" class="IDFE-EAlt form-control" />
+                                        <div class="IDFE-EInputAlt wp-50">
+                                            <label for="idfEAlt">${_('Alt')}</label>
+                                            <input id="idfEAlt" type="text" class="IDFE-EAlt form-control w-100" />
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
@@ -647,6 +647,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 4)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(4)}
             </div>`;
 
         this.ideviceBody.innerHTML = html;
@@ -1307,11 +1308,15 @@ var $exeDevice = {
         $('.toggle-input').each(function () { initToggle($(this)); });
         $(document).on('change', '.toggle-input', function () { initToggle($(this)); });
         $('#idfEPaste, #idfEAuthorAlt').hide();
-
+        $('#idfEAuthorAlt').removeClass('d-flex').addClass('d-none')
         $('#idfEShowMore').on('click', (e) => {
-            e.preventDefault();
-            $('#idfEAuthorAlt').slideToggle();
+            const $target = $('#idfEAuthorAlt')
+            const show = $target.hasClass('d-none')
+            $target.toggleClass('d-none', !show)
+                .toggleClass('d-flex', show)
         });
+
+
 
         $('#idfShowCodeAccess').on('change', function () {
             const marcado = $(this).is(':checked');

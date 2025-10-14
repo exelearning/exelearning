@@ -1575,7 +1575,7 @@ var $eXeCrucigrama = {
                             <div class="CCGMP-MessageCodeAccessE" id="ccgmMesajeAccesCodeE-${instance}"></div>
                                 <div class="CCGMP-DataCodeAccessE">
                                     <label for="ccgmCodeAccessE-${instance}" class="sr-av">${msgs.msgCodeAccess}:</label>
-                                    <input type="text" class="CCGMP-CodeAccessE" id="ccgmCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                                    <input type="text" class="CCGMP-CodeAccessE form-control" id="ccgmCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                                     <a href="#" id="ccgmCodeAccessButton-${instance}" title="${msgs.msgReply}">
                                         <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                                         <div class="exeQuextIcons-Submit CCGMP-Activo"></div>

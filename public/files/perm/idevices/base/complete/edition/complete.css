@@ -1,11 +1,13 @@
-
-
 #completeQEIdeviceForm input[type="radio"],
 #completeQEIdeviceForm input[type="checkbox"],
 #completeQEIdeviceForm select {
     cursor: pointer;
 }
 
+#completeQEIdeviceForm #cmptEPercentajeFB {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
 
 .CMPT-EFeedbackP {
     display: none;
@@ -53,6 +55,8 @@
     flex: 0 0 48%;
 }
 
+
+
 #completeQEIdeviceFormTab3> :first-child {
     flex: 0 0 100%;
 }
@@ -67,7 +71,7 @@
 #completeQEIdeviceForm #completeQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color: #0BA1A1;
     font-weight: 500;
 }
 

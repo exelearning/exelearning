@@ -133,7 +133,7 @@ var $padlock = {
                 </div>
                 <div class="candado-SolutionDiv" id="candadoSolutionDiv-${instance}">
                     <label for="candadoSolution-${instance}" class="labelSolution">${msgs.msgCodeAccess}:</label>
-                    <input type="password" class="candado-Solution" id="candadoSolution-${instance}">
+                    <input type="password" class="candado-Solution form-control" id="candadoSolution-${instance}">
                     <a href="#" id="candadoSolutionButton-${instance}" title="${msgs.msgSubmit}" class="candado-SolutionButton candado-Activo">
                         <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                         <div class="exeQuextIcons-Submit"></div>

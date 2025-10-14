@@ -325,7 +325,7 @@ var $eXePuzzle = {
                         <div class="PZLP-MessageCodeAccessE" id="pzlMesajeAccesCodeE-${instance}"></div>
                         <div class="PZLP-DataCodeAccessE">
                             <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                            <input type="text" class="PZLP-CodeAccessE" id="pzlCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                            <input type="text" class="PZLP-CodeAccessE form-control" id="pzlCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                             <a href="#" id="pzlCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                 <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                     <div class="exeQuextIcons-Submit PZLP-Activo"></div>

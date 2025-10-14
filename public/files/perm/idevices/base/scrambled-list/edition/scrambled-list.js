@@ -270,6 +270,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(8)}
             </div>`;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('scrambledlistIdeviceForm');
