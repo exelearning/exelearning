@@ -55,17 +55,18 @@
                 justify-content: space-between;
                 align-items: flex-start;
                 line-height: 20;
-                margin-bottom: 24px;
+                margin-bottom: 17px;
                 h2 {
                     display: -webkit-box;
                     border-radius: 4px;
                     border: 2px solid transparent;
                     margin-bottom: 0;
-                    padding: 13px 4px 0 4px;
+                    padding: 11px 4px 13px 4px;
                     -webkit-line-clamp: 2;
                     -webkit-box-orient: vertical;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                    min-height: 50px;
                     &:hover {
                         color: var(--brand-primary);
                         cursor: pointer;
@@ -91,7 +92,7 @@
                 justify-content: space-between;
                 align-items: flex-start;
                 line-height: 19.2;
-                margin-bottom: 22px;
+                margin-bottom: 23px;
                 height: 44px;
                 h2 {
                     padding: 11px 4px 13px 4px;
@@ -127,12 +128,14 @@
                 }
             }
             &.two-lines {
-                margin-bottom: 7px;
-                h2 {
-                    height: 60px;
-                }
-                .title-menu-button {
-                    top: 2px;
+                &:not(.title-editing) {
+                    margin-bottom: 7px;
+                    h2 {
+                        height: 60px;
+                    }
+                    .title-menu-button {
+                        top: 2px;
+                    }
                 }
             }
         }

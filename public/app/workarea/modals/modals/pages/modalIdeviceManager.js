@@ -425,11 +425,13 @@ export default class ModalIdeviceManager extends Modal {
         container.append(grid);
         this.getUserListIdevices().then((userPreferencesIdevices) => {
             for (const [, idevice] of Object.entries(idevices)) {
-                const row = this.makeRowTableIdevicesElement(
-                    idevice,
-                    userPreferencesIdevices
-                );
-                grid.append(row);
+                if (idevice.id != 'example') {
+                    const row = this.makeRowTableIdevicesElement(
+                        idevice,
+                        userPreferencesIdevices
+                    );
+                    grid.append(row);
+                }
             }
         });
 
@@ -520,7 +522,7 @@ export default class ModalIdeviceManager extends Modal {
         input.checked = userPreferencesIdevices.includes(idevice.name);
         input.setAttribute(
             'aria-label',
-            `${_('Activar')} ${idevice.title || idevice.id}`
+            `${_('Activate')} ${idevice.title || idevice.id}`
         );
 
         const visual = document.createElement('span');

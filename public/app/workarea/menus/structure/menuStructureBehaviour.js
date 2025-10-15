@@ -760,10 +760,16 @@ export default class MenuStructureBehaviour {
     }
 
     hideIdevicesBotton() {
+        document
+            .getElementById('node-content-container')
+            .classList.add('properties-page');
         document.getElementById('idevices-bottom').style.display = 'none';
     }
 
     showIdevicesBotton() {
+        document
+            .getElementById('node-content-container')
+            .classList.remove('properties-page');
         document.getElementById('idevices-bottom').style.display =
             'inline-flex';
     }

@@ -23,8 +23,10 @@
                     <span class="visually-hidden">{{ 'Version:'|trans({}, 'messages') }}</span>
                     {{ app_version }}
                 </div>
+                {% if not app.user %}
                 <h1 class="sign-in">{{ "Sign in" | trans }}</h3>
                 <p class="hello-again">{{ "Hello again! Please enter your credentials." | trans }}</p>
+                {% endif %}
                 {% if error %}
                     <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
                     {{ error.messageKey|trans(error.messageData, 'messages') }}
@@ -32,9 +34,11 @@
                     </div>
                 {% endif %}
                 {% if app.user %}
+                    <h1 class="sign-in visually-hidden">{{ "Sign in" | trans }}</h3>
                     <div class="text-center text-md-start">
                     <p class="mb-4">{{ 'Logged in as' | trans }} <strong>{{ app.user.username }}</strong></p>
-                    <a href="{{ path('app_logout') }}" class="btn button-primary logout-button">{{ 'Logout' | trans }}</a>
+                    <a href="{{ path('workarea') }}" class="btn button-secondary logout-button">{{ 'Work area' | trans }}</a>
+                    <a href="{{ path('app_logout') }}" class="btn button-primary logout-button mx-1">{{ 'Logout' | trans }}</a>
                     </div>
                 {% else %}
                     {% if '-' in app_version %}
@@ -73,7 +77,10 @@
                             <a href="{{ path('openid_connect') }}" id="login-link-openid" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center mx-1" data-turbo="false" data-no-prefetch>OpenID</a>
                         {% endif %}
                         {% if 'guest' in auth_methods %}
-                            <a href="{{ path('guest_login') }}" id="login-link-guest" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center mx-1" data-turbo="false" data-no-prefetch>{{ 'Guest' | trans }}</a>
+                            <form method="post" action="{{ path('guest_login') }}" id="login-form-guest" class="d-inline" data-turbo="false" data-no-prefetch>
+                                <input type="hidden" name="guest_login_nonce" value="{{ guest_login_nonce ?? '' }}">
+                                <button type="submit" id="login-link-guest" class="btn btn-secondary d-flex justify-content-center align-items-center mx-1">{{ 'Guest' | trans }}</button>
+                            </form>
                         {% endif %}
                         </div>
                     </div>

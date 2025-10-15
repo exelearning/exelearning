@@ -75,6 +75,7 @@ export default class FormProperties {
 
         const propertiesTableElement = document.createElement('div');
         propertiesTableElement.classList.add('exe-table-content');
+        propertiesTableElement.classList.add('pb-1');
 
         this.addRowsFlatWithSectionTitles(properties, propertiesTableElement);
 
