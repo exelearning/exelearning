@@ -57,6 +57,12 @@ export default class NavbarFile {
         this.exportHTML5SPAsButton = this.menu.navbar.querySelector(
             '#navbar-button-exportas-html5-sp'
         );
+        this.exportPrintButton = this.menu.navbar.querySelector(
+            '#navbar-button-export-print'
+        );
+        this.exportPrintAsButton = this.menu.navbar.querySelector(
+            '#navbar-button-exportas-print'
+        );
         this.exportSCORM12Button = this.menu.navbar.querySelector(
             '#navbar-button-export-scorm12'
         );
@@ -120,6 +126,8 @@ export default class NavbarFile {
         this.setExportHTML5FolderAsEvent();
         this.setExportHTML5SPEvent();
         this.setExportHTML5SPAsEvent();
+        this.setExportPrintEvent();
+        this.setExportPrintAsEvent();
         this.setExportSCORM12Event();
         this.setExportSCORM12AsEvent();
         this.setExportSCORM2004Event();
@@ -365,6 +373,42 @@ export default class NavbarFile {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5SPAsEvent();
         });
+    }
+
+    /**
+     * Open the unified print/PDF view in a new tab.
+     */
+    setExportPrintEvent() {
+        if (!this.exportPrintButton) return;
+        this.exportPrintButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.openPrintPreview();
+        });
+    }
+
+    setExportPrintAsEvent() {
+        if (!this.exportPrintAsButton) return;
+        this.exportPrintAsButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.openPrintPreview();
+        });
+    }
+
+    openPrintPreview() {
+        const odeId =
+            (eXeLearning?.app?.project && eXeLearning.app.project.odeId) ||
+            window.__currentProjectId;
+
+        if (!odeId) {
+            console.warn('Print preview requires an active project id.');
+            return;
+        }
+
+        const url = new URL(
+            `/project/${encodeURIComponent(odeId)}/print`,
+            window.location.origin
+        );
+        window.open(url.toString(), '_blank', 'noopener');
     }
 
     /**

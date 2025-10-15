@@ -9,6 +9,22 @@
         <source>Permissions error</source>
         <target>Baimen-errorea</target>
       </trans-unit>
+      <trans-unit id="print_pdf_menu" resname="Print / PDF">
+        <source>Print / PDF</source>
+        <target>Inprimatu / PDF</target>
+      </trans-unit>
+      <trans-unit id="print_view_heading" resname="Print view">
+        <source>Print view</source>
+        <target>Inprimatzeko ikuspegia</target>
+      </trans-unit>
+      <trans-unit id="print_generated_on" resname="Generated on">
+        <source>Generated on</source>
+        <target>Sortua</target>
+      </trans-unit>
+      <trans-unit id="print_table_of_contents" resname="Table of contents">
+        <source>Table of contents</source>
+        <target>Eduki-taula</target>
+      </trans-unit>
       <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
         <source>You are editing an iDevice. Please close it before continuing</source>
         <target>~iDevice bat editatzen ari zara. Mesedez, jarraitu aurretik itxi ezazu.</target>
