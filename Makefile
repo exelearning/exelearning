@@ -489,12 +489,16 @@ package: install-php-bin
 ifndef VERSION
 	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
 endif
+	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
+	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
+	$(if $(PACKAGE_VERSION),,$(error Unable to derive package version from '$(VERSION)'))
 	@echo "Packaging application with version $(VERSION)..."
+	@echo " -> Using sanitized package version $(PACKAGE_VERSION) for electron-builder"
 	
 	# Update version in Constants.php and package.json
 	@echo "Updating version in files..."
 	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = '$(VERSION)';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(VERSION)\"|" package.json && rm -f package.json.bak
+	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(PACKAGE_VERSION)\"|" package.json && rm -f package.json.bak
 
 	@echo "Installing Node.js dependencies..."
 	yarn install
@@ -504,9 +508,9 @@ endif
 	yarn build $(PUBLISH_ARG)
 	
 	# Restore the fixed version in package.json and Constants.php
-	@echo "Restoring fixed version v0.0.0-alpha in package.json and Constants.php..."
+	@echo "Restoring fixed version v0.0.0-alpha in Constants.php and 0.0.0-alpha in package.json..."
 	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = 'v0.0.0-alpha';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"v0.0.0-alpha\"|" package.json && rm -f package.json.bak
+	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"0.0.0-alpha\"|" package.json && rm -f package.json.bak
 	
 	# Remove php-bin
 	$(MAKE) remove-php-bin
