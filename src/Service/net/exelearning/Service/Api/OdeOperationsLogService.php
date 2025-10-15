@@ -17,7 +17,12 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 
 class OdeOperationsLogService implements OdeOperationsLogServiceInterface
 {
-    private $entityManager;
+    private EntityManagerInterface $entityManager;
+    private LoggerInterface $logger;
+    private FileHelper $fileHelper;
+    private CurrentOdeUsersServiceInterface $currentOdeUsersService;
+    private UserHelper $userHelper;
+    private TranslatorInterface $translator;
 
     public function __construct(
         EntityManagerInterface $entityManager,

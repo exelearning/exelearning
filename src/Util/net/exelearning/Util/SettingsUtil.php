@@ -64,7 +64,8 @@ class SettingsUtil
      */
     public static function idevicesInstallationAllowed(): bool
     {
-        return self::getParameter('app.online_idevices_install');
+        // return self::getParameter('app.online_idevices_install'); // To do (see #381)
+        return 0;
     }
 
     /**

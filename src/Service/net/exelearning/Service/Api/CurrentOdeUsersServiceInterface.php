@@ -50,7 +50,7 @@ interface CurrentOdeUsersServiceInterface
      * @param User                $user
      * @param array               $odeCurrentUsersFlags
      *
-     * @return \App\Entity\net\exelearning\Entity\CurrentOdeUsers
+     * @return \App\Entity\net\exelearning\Entity\CurrentOdeUsers|null
      */
     public function updateCurrentIdevice($odeNavStructureSync, $blockId, $odeIdeviceId, $user, $odeCurrentUsersFlags);
 

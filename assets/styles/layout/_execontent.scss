@@ -1,5 +1,10 @@
 #node-content-container.exe-content {
     padding: 0 20px 0 20px;
+    margin: 0 20px 0 20px;
+    border-radius: 8px;
+    &:not(.properties-page) {
+        height: calc(100vh - 105px - 80px);
+    }
     .box {
         border-radius: var(--radius);
         opacity: 1;
