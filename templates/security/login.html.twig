@@ -77,7 +77,10 @@
                             <a href="{{ path('openid_connect') }}" id="login-link-openid" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center mx-1" data-turbo="false" data-no-prefetch>OpenID</a>
                         {% endif %}
                         {% if 'guest' in auth_methods %}
-                            <a href="{{ path('guest_login') }}" id="login-link-guest" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center mx-1" data-turbo="false" data-no-prefetch>{{ 'Guest' | trans }}</a>
+                            <form method="post" action="{{ path('guest_login') }}" id="login-form-guest" class="d-inline" data-turbo="false" data-no-prefetch>
+                                <input type="hidden" name="guest_login_nonce" value="{{ guest_login_nonce ?? '' }}">
+                                <button type="submit" id="login-link-guest" class="btn btn-secondary d-flex justify-content-center align-items-center mx-1">{{ 'Guest' | trans }}</button>
+                            </form>
                         {% endif %}
                         </div>
                     </div>

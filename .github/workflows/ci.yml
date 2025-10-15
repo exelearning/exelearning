@@ -66,6 +66,9 @@ jobs:
           mkdir -p $TEST_SCREENSHOTS_DIR
           chmod 777 $TEST_SCREENSHOTS_DIR
 
+      - name: Build CSS (prod)
+        run: make css
+
       - name: Build Docker Image
         run: make build
 
@@ -164,7 +167,7 @@ jobs:
 
       - name: Upload SARIF results
         if: github.repository == 'exelearning/exelearning' && github.event_name != 'pull_request'
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: hadolint-results.sarif
           category: hadolint-dockerfile
