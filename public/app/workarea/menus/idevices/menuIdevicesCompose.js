@@ -33,7 +33,7 @@ export default class MenuIdevicesCompose {
         this.categoriesTitle.games,
         this.categoriesTitle.interactive,
         this.categoriesTitle.science,
-        this.categoriesTitle.imported,
+        // this.categoriesTitle.imported, // To do (see #381)
     ];
 
     /**
@@ -117,31 +117,31 @@ export default class MenuIdevicesCompose {
             case 'information':
                 titleElement.textContent = _('Information and presentation');
                 descriptionElement.textContent = _(
-                    'They allow displaying information, structuring resources or enriching the content with accessibility and diverse media.'
+                    'Tools to display information, organize resources or enrich content with accessibility and diverse media.'
                 );
                 break;
             case 'evaluation':
                 titleElement.textContent = _('Assessment and tracking');
                 descriptionElement.textContent = _(
-                    'These iDevices are designed to assess knowledge, understanding, skills, enable self-assessment, facilitate feedback, monitor progress and document performance levels.'
+                    'Quizzes and other tools to check knowledge or progress, with the option to provide feedback.'
                 );
                 break;
             case 'games':
                 titleElement.textContent = _('Games');
                 descriptionElement.textContent = _(
-                    'These resources encourage active student participation, play increases motivation, playful reinforcement, promotes the acquisition of skills and knowledge, memorisation and understanding of concepts.'
+                    'Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.'
                 );
                 break;
             case 'interactive':
                 titleElement.textContent = _('Interactive activities');
                 descriptionElement.textContent = _(
-                    'These iDevices promote active learning, guided discovery and autonomous exploration. They encourage critical thinking, problem solving and practical application of concepts.'
+                    'Exercises that require direct interaction, encouraging active learning and trial-and-error.'
                 );
                 break;
             case 'science':
                 titleElement.textContent = _('Sciencie');
                 descriptionElement.textContent = _(
-                    'These resources are geared towards teaching scientific concepts and skills through hands-on experience, observation, data analysis and conceptual explanation, providing contextualised learning.'
+                    'Resources designed to work on specific subject areas or topics.'
                 );
                 break;
             case 'imported':
@@ -158,7 +158,9 @@ export default class MenuIdevicesCompose {
 
         if (icon !== 'imported') {
             ideviceData.forEach((ideviceData) => {
-                nodeDivIdevices.append(this.elementDivIdevice(ideviceData));
+                if (ideviceData.id != 'example') {
+                    nodeDivIdevices.append(this.elementDivIdevice(ideviceData));
+                }
             });
         }
 
@@ -345,8 +347,7 @@ export default class MenuIdevicesCompose {
         let errorText = resErrorText
             ? `<p>${defErrorText}:</p><p>&nbsp;${resErrorText}</p>`
             : `<p>${defErrorText}</p>`;
-        // TODO show modal error.
-        alert(resErrorText);
+        eXe.app.alert(errorText);
     }
 
     /**
@@ -456,6 +457,8 @@ export default class MenuIdevicesCompose {
         ideviceDiv.setAttribute('drag', 'idevice');
         ideviceDiv.setAttribute('icon-type', ideviceData.icon.type);
         ideviceDiv.setAttribute('icon-name', ideviceData.icon.name);
+        // Testing: left menu id for this iDevice
+        ideviceDiv.setAttribute('data-testid', `idevice-${ideviceData.id}`);
         ideviceDiv.append(this.elementDivIcon(ideviceData));
         ideviceDiv.append(this.elementDivTitle(ideviceData.title));
 
@@ -471,6 +474,8 @@ export default class MenuIdevicesCompose {
         ideviceDiv.setAttribute('title', ideviceData.title);
         ideviceDiv.setAttribute('icon-type', ideviceData.icon.type);
         ideviceDiv.setAttribute('icon-name', ideviceData.icon.name);
+        // Testing: left menu id for this imported iDevice
+        ideviceDiv.setAttribute('data-testid', `idevice-${ideviceData.id}`);
 
         ideviceDiv.append(this.elementDivIcon(ideviceData));
         ideviceDiv.append(this.elementDivTitle(ideviceData.title));

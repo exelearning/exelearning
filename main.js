@@ -280,7 +280,7 @@ customEnv = {
   MERCURE_URL: process.env.MERCURE_URL || '',
   API_JWT_SECRET: process.env.API_JWT_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
   ONLINE_THEMES_INSTALL: 1,
-  ONLINE_IDEVICES_INSTALL: 1,
+  ONLINE_IDEVICES_INSTALL: 0, // To do (see #381)
 };
 }
 /**
@@ -1018,11 +1018,34 @@ function startPhpServer() {
     });
 
     phpServer.stderr.on('data', (data) => {
-      const errorMessage = data.toString();
-      console.error(`PHP Error: ${errorMessage}`);
-      if (errorMessage.includes('Address already in use')) {
-        showErrorDialog(`Port ${customEnv.APP_PORT} is already in use. Close the process using it and try again.`);
-        app.quit();
+      // Normalize to string
+      const text = data instanceof Buffer ? data.toString() : String(data);
+
+      // Process line by line (chunks can arrive concatenated)
+      for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line) continue;
+
+        // Silence php -S noise: "[::1]:64324 Accepted" / "[::1]:64324 Closing"
+        if (/\[(?:::1|127\.0\.0\.1)\]:\d+\s+(?:Accepted|Closing)\s*$/i.test(line)) {
+          continue;
+        }
+
+        // Hide simple succesful access logs like [200] or [301]
+        // Example: "[::1]:64331 [200]: GET /path" | "[::1]:64335 [301]: POST /path"
+        if (/\[\s*(?:200|301)\s*\]:\s+(GET|POST|PUT|DELETE|HEAD|OPTIONS)\s+/i.test(line)) {
+          continue;
+        }
+
+        // Detect "Address already in use" and stop the app
+        if (line.includes('Address already in use')) {
+          showErrorDialog(`Port ${customEnv.APP_PORT} is already in use. Close the process using it and try again.`);
+          app.quit();
+          return;
+        }
+
+        // Keep useful stderr
+        console.warn(`${line}`);
       }
     });
 

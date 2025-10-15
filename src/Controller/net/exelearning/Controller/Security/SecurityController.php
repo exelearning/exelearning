@@ -3,6 +3,7 @@
 namespace App\Controller\net\exelearning\Controller\Security;
 
 use App\Entity\net\exelearning\Entity\User;
+use App\Security\GuestLoginAccessValidator;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -29,6 +30,7 @@ class SecurityController extends AbstractController
     private TokenStorageInterface $tokenStorage;
     private LoggerInterface $logger;
     private array $authMethods;
+    private GuestLoginAccessValidator $guestLoginAccessValidator;
 
     public function __construct(
         ParameterBagInterface $params,
@@ -36,6 +38,7 @@ class SecurityController extends AbstractController
         HttpClientInterface $httpClient,
         TokenStorageInterface $tokenStorage,
         LoggerInterface $logger,
+        GuestLoginAccessValidator $guestLoginAccessValidator,
     ) {
         $this->params = $params;
         $this->entityManager = $entityManager;
@@ -43,6 +46,7 @@ class SecurityController extends AbstractController
         $this->tokenStorage = $tokenStorage;
         $this->logger = $logger;
         $this->authMethods = $params->get('app.auth_methods') ?? [];
+        $this->guestLoginAccessValidator = $guestLoginAccessValidator;
     }
 
     #[Route('/login', name: 'app_login')]
@@ -72,9 +76,15 @@ class SecurityController extends AbstractController
             $session->set('form_login_target_path', $targetPath);
         }
 
+        $guestLoginNonce = null;
+        if (in_array('guest', $this->authMethods, true)) {
+            $guestLoginNonce = $this->guestLoginAccessValidator->issueNonce($session);
+        }
+
         return $this->render('security/login.html.twig', [
             'last_username' => $lastUsername,
             'error' => $error,
+            'guest_login_nonce' => $guestLoginNonce,
         ]);
     }
 
@@ -386,11 +396,19 @@ class SecurityController extends AbstractController
         $this->tokenStorage->setToken($token);
     }
 
-    #[Route('/login/guest', name: 'guest_login')]
-    public function guestLogin(SessionInterface $session): Response
+    #[Route('/login/guest', name: 'guest_login', methods: ['POST'])]
+    public function guestLogin(Request $request, SessionInterface $session): Response
     {
         if (!in_array('guest', $this->authMethods)) {
             throw $this->createNotFoundException('Guest authentication is not enabled.');
+        }
+
+        if (!$request->hasSession()) {
+            $request->setSession($session);
+        }
+
+        if (!$this->guestLoginAccessValidator->isAccessAllowed($request)) {
+            return $this->json(['error' => 'Unauthorized guest login source'], Response::HTTP_FORBIDDEN);
         }
 
         try {

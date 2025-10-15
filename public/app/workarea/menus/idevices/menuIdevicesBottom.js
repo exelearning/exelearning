@@ -57,6 +57,11 @@ export default class MenuIdevicesBottom {
         ideviceDiv.setAttribute('drag', 'idevice');
         ideviceDiv.setAttribute('icon-type', ideviceData.icon.type);
         ideviceDiv.setAttribute('icon-name', ideviceData.icon.name);
+        // Testing: quickbar item testid
+        ideviceDiv.setAttribute(
+            'data-testid',
+            `quick-idevice-${ideviceData.id}`
+        );
         ideviceDiv.append(this.elementDivIcon(ideviceData));
 
         return ideviceDiv;
