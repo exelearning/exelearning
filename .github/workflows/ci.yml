@@ -66,6 +66,9 @@ jobs:
           mkdir -p $TEST_SCREENSHOTS_DIR
           chmod 777 $TEST_SCREENSHOTS_DIR
 
+      - name: Build CSS (prod)
+        run: make css
+
       - name: Build Docker Image
         run: make build
 

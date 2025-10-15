@@ -46,7 +46,11 @@ services:
     working_dir: /app
     volumes:
       - .:/app
-    command: sh -c "npm install sass && npx sass --watch assets/styles/main.scss:public/style/workarea/main.css"
+    environment:
+      - CHOKIDAR_USEPOLLING=1
+      - CHOKIDAR_INTERVAL=500
+    command: sh -lc "npm i --no-fund sass && npx sass --watch assets/styles/main.scss:public/style/workarea/main.css --style=expanded --embed-source-map"
+    profiles: ["dev"]
 
   # The alpine-chromium image includes a browser configured to work with Chromedriver
   chrome:
@@ -60,7 +64,6 @@ services:
       - e2e # Container only will be started with --profile e2e option
     volumes:
       - ./tests/Fixtures:/app/tests/Fixtures # Mount the SAME Fixtures directory
-
 
 volumes:
   mnt-data:

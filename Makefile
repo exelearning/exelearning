@@ -524,6 +524,29 @@ pull-vendor: check-docker check-env upd
 	@echo "✅ Done. Local ./vendor directory updated from container."
 
 
+.PHONY: css css-prod css-watch
+
+SASS_DOCKER = docker run --rm -v $(PWD):/app -w /app node:24-alpine sh -lc
+
+css:
+	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map"
+	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
+	@echo "CSS built (prod)."
+
+css-dev:
+	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
+	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
+	@echo "CSS built (dev)."
+
+css-watch:
+	docker run --rm -it --name scss-watch \
+	  -v $(PWD):/app -w /app \
+	  -e CHOKIDAR_USEPOLLING=1 -e CHOKIDAR_INTERVAL=500 \
+	  node:24-alpine sh -lc "npm i -s --no-fund sass && npx sass --watch assets/styles/main.scss:public/style/workarea/main.css --style=expanded --embed-source-map"
+
+
 # Display help with available commands
 help:
 	@echo ""
@@ -542,6 +565,12 @@ help:
 	@echo "  upd                   - Start Docker containers in background mode (daemon)"
 	@echo "  update                - Update Composer dependencies"
 	@echo "  pull-vendor           - Copy vendor/ from container to local ./vendor (for debugging)"
+	@echo ""
+	@echo "Assets (SCSS / CSS):"
+	@echo ""
+	@echo "  css                   - Build production CSS (compressed, no source map)"
+	@echo "  css-dev               - Build development CSS (expanded, with source map)"
+	@echo "  css-watch             - Start watcher to recompile SCSS on changes (dev mode)"
 	@echo ""
 	@echo "Code quality:"
 	@echo ""
