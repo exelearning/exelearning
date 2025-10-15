@@ -187,16 +187,22 @@ var $exeDevice = {
             }
             $('#mnfPreviewImage').attr('src', selectedFile || $exeDevice.defaultImage);
         });
-
-      
-
-        $('#mnfWidthInput').on('input change', function () {
-            let val = parseInt($(this).val(), 10);
-            if (isNaN(val)) { $(this).val(''); return; }
-            if (val < 150) val = 150;
-            if (val > 1000) val = 1000;
-            $(this).val(val);
-        });
+        $('#mnfWidthInput')
+            .on('input', function () {
+                const v = $(this).val();
+                if (v === '') return;
+                if (!/^\d*$/.test(v)) {
+                    $(this).val(String(v).replace(/\D/g, ''));
+                }
+            })
+            .on('change blur', function () {
+                let val = parseInt($(this).val(), 10);
+                if (isNaN(val)) { $(this).val(''); return; }
+                const min = 200, max = 1000;
+                if (val < min) val = min;
+                if (val > max) val = max;
+                $(this).val(val);
+            });
     },
 
     validateData: function () {
@@ -214,7 +220,7 @@ var $exeDevice = {
         let html = '';
         if (tinyMCE.get('instructions')) html = tinyMCE.get('instructions').getContent();
 
-        const textTextarea = html; 
+        const textTextarea = html;
 
         return {
             id,
