@@ -58,6 +58,8 @@ parameters:
     app.logs.dir:  '%env(default:logs_default_dir:LOG_DIR)%'
     app.cache.dir: '%env(default:cache_default_dir:CACHE_DIR)%'
 
+    app.tmp_cleanup_key: '%env(string:TMP_CLEANUP_KEY)%'
+
     # Allow users to import/install styles
     app.online_themes_install: '%env(bool:ONLINE_THEMES_INSTALL)%'
 

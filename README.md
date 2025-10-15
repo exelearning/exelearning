@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://github.com/exelearning/exelearning">
-    <img src="public/images/logo.svg" alt="eXeLearning Logo" height="120">
+    <img src="public/images/logo_readme.png" alt="eXeLearning Logo" height="225">
   </a>
 
   <h1 align="center">eXeLearning</h1>

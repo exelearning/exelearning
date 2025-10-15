@@ -1,8 +1,11 @@
 #node-content-container {
     position: relative;
+    &:has(#properties-node-content-form).exe-content {
+        background: none;
+    }
     #eXeBetaWarning {
         z-index: 999;
-        margin: 10px 0 !important;
+        margin: 10px;
         font-size: .95em;
         padding: 10px 20px;
         button {
@@ -56,14 +59,8 @@
         z-index: 997;
     }
     #node-content {
-        min-height: 90%;
         height: auto;
         .page-title {
-            /*
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--text);
-            */
             margin-top: 15px;
         }
         &[mode="edition"] {

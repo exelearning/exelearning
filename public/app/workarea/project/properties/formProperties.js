@@ -75,6 +75,7 @@ export default class FormProperties {
 
         const propertiesTableElement = document.createElement('div');
         propertiesTableElement.classList.add('exe-table-content');
+        propertiesTableElement.classList.add('pb-1');
 
         this.addRowsFlatWithSectionTitles(properties, propertiesTableElement);
 
@@ -401,6 +402,20 @@ export default class FormProperties {
         );
         valueElement.setAttribute('data-type', property.type);
         valueElement.classList.add('property-value');
+
+        // Testing: stable data-testid for common properties
+        const idToTestId = {
+            titleNode: 'prop-title',
+            editableInPage: 'prop-editable-in-page',
+            visibility: 'prop-visible-export',
+            description: 'prop-description',
+            titlePage: 'prop-title-page',
+            titleHtml: 'prop-title-html',
+        };
+        const kebab = (s) =>
+            (s || '').replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+        const testId = idToTestId[property.id] || `prop-${kebab(property.id)}`;
+        valueElement.setAttribute('data-testid', testId);
 
         valueElement.addEventListener('focus', () => this.hideHelpContentAll());
 

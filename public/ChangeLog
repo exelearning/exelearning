@@ -1,5 +1,54 @@
 # CHANGELOG
 
+## v3.0.0-beta7 – 2025-10-12
+
+### Added
+
+- New user interface
+- New iDevice icons
+- Updated Spanish (es) translation
+- Build and test automation for Electron desktop installers
+- Secure code signing for macOS installers
+- Improved Electron build workflow and documentation
+- New jobs to build and publish the application to Chocolatey and Winget
+- Doctrine middleware to improve SQLite connection performance under concurrent load
+- iDevice HTML revision
+
+### Fixed
+
+- Moodle publish process
+- CAS authentication compatibility with different `BASE_PATH` values
+- Incorrect iDevice order on pages
+- Handling of orphaned iDevices in `content.xml`
+- Prevent “invalid data” error when saving iDevices
+- Standardized serialization across all controllers
+- `make create-user` command on Windows
+
+### Upgraded
+
+- actions/checkout: 4 → 5
+- actions/download-artifact: 4 → 5
+- actions/setup-python: 5 → 6
+- actions/upload-pages-artifact: 3 → 4
+- api-platform/core: 4.2.0 → 4.2.1
+- brianium/paratest: 7.13.0 → 7.14.1
+- friendsofphp/php-cs-fixer: 3.87.2 → 3.88.2
+- peter-evans/dockerhub-description: 4 → 5
+- phpunit/phpunit: 12.3.14 → 12.3.15
+- postgres: 17-alpine → 18-alpine in /doc/deploy
+- symfony/debug-bundle: 7.3.0 → 7.3.4
+- symfony/framework-bundle: 7.3.3 → 7.3.4
+- symfony/intl: 7.3.3 → 7.3.4
+- symfony/serializer: 7.3.3 → 7.3.4
+- symfony/translation: 7.3.3 → 7.3.4
+- symfony/twig-bundle: 7.3.2 → 7.3.4
+
+### Removed
+
+- VirusTotal scanning step from the Electron installer build workflow
+
+---
+
 ## v3.0.0-beta6 – 2025-09-27
 
 ### Added

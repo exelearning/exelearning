@@ -63,11 +63,23 @@
     <env name="API_JWT_SECRET" value="test_secret"/>
     <env name="API_JWT_ISSUER" value="exelearning"/>
     <env name="API_JWT_AUDIENCE" value="clients"/>
+    <env name="TMP_CLEANUP_KEY" value="test-cleanup-key"/>
     <!-- ###- doctrine/doctrine-bundle ### -->
+
+        <!-- ###+ symfony/framework-bundle ### -->
+        <env name="APP_ENV" value="dev"/>
+        <env name="APP_SECRET" value=""/>
+        <!-- ###- symfony/framework-bundle ### -->
 
   </php>
 
   <extensions>
+        <bootstrap class="Symfony\Bridge\PhpUnit\SymfonyExtension">
+            <parameter name="clock-mock-namespaces" value="App" />
+            <parameter name="dns-mock-namespaces" value="App" />
+        </bootstrap>
+        <bootstrap class="Symfony\Component\Panther\ServerExtension" />
+        <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension" />
       <bootstrap class="Symfony\Component\Panther\ServerExtension"/>
       <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension"/>
   </extensions>

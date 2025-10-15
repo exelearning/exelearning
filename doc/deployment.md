@@ -195,3 +195,29 @@ server {
 ## See also
 
 * **Real-time configuration:** [development/real-time.md](../development/real-time.md)
+
+---
+
+## Maintenance
+
+### Temporary files cleanup
+
+eXeLearning stores intermediate/temporary files (exports, conversions, etc.) under the configured temporary directory. You can clean up old entries either via a console command (recommended for cron) or an HTTP endpoint (for environments where only HTTP access is available).
+
+- Command (recommended):
+  - `php bin/console app:tmp-files:cleanup [--max-age=SECONDS]`
+  - Composer shortcut: `composer tmp-cleanup`
+  - Example cron (daily at 03:00, keeping 24h):
+    - `0 3 * * * cd /opt/exelearning && php bin/console app:tmp-files:cleanup --max-age=86400`
+
+- HTTP endpoint (GET or POST):
+  - Path: `/maintenance/tmp/cleanup`
+  - Query/body parameter: `key`
+  - Example:
+    - `curl -fsS "https://exelearning.example.org/maintenance/tmp/cleanup?key=$TMP_CLEANUP_KEY"`
+  - Response: `200 OK` with a JSON summary; `207 Multi-Status` when some deletions fail.
+
+- Security and configuration:
+  - Set `TMP_CLEANUP_KEY` in your environment (also present in `.env.dist`). The endpoint validates `?key=...` against this value.
+  - If `TMP_CLEANUP_KEY` is empty or unset, the endpoint is inert and returns `204 No Content` without performing any action (silent exit).
+  - Expose the endpoint only over HTTPS and/or restrict by IP as needed.
