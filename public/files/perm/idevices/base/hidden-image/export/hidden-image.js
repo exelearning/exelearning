@@ -39,6 +39,7 @@ var $eXeHiddenImage = {
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
+    _imgResizeObservers: {},
     init: function () {
         $exeDevices.iDevice.gamification.initGame(this, 'Hidden Image', 'hidden-image', 'hiddenimage-IDevice');
      },
@@ -95,9 +96,55 @@ var $eXeHiddenImage = {
     refreshGame: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
         if (mOptions && !mOptions.gameOver && mOptions.gameStarted) {
-            $('#hiPImage-' + instance).css('opacity', 0);
+            $eXeHiddenImage.scheduleReflow(instance);
+        }
+    },
+
+    scheduleReflow: function(instance){
+        const doPass = () => {
+            $eXeHiddenImage.updateOverlaySize(instance);
             $eXeHiddenImage.createSquares(instance);
-            $('#hiPImage-' + instance).css('opacity', 1);
+        };
+        doPass();
+        if (typeof requestAnimationFrame !== 'undefined') {
+            requestAnimationFrame(() => {
+                doPass();
+                requestAnimationFrame(() => {
+                    doPass();
+                });
+            });
+        }
+        setTimeout(doPass, 200);
+    },
+
+    updateOverlaySize: function(instance){
+        const $img = $('#hiPImage-' + instance);
+        const $overlay = $('#hipOverlay-' + instance);
+        if (!$img.length || !$overlay.length) return;
+        const imgEl = $img.get(0);
+        const overlayParent = $overlay.parent();
+        if (!imgEl || !overlayParent.length) return;
+        const imgRect = imgEl.getBoundingClientRect();
+        const parentRect = overlayParent.get(0).getBoundingClientRect();
+
+        const w = Math.round(imgRect.width);
+        const h = Math.round(imgRect.height);
+        const left = Math.round(imgRect.left - parentRect.left);
+        const top = Math.round(imgRect.top - parentRect.top);
+
+        if (w > 0 && h > 0) {
+            const pos = overlayParent.css('position');
+            if (!pos || pos === 'static') {
+                overlayParent.css('position', 'relative');
+            }
+            $overlay.css({
+                position: 'absolute',
+                width: w + 'px',
+                height: h + 'px',
+                left: left + 'px',
+                top: top + 'px',
+                'z-index': 2
+            });
         }
     },
 
@@ -480,12 +527,13 @@ var $eXeHiddenImage = {
 
         });
         $(window).on('resize', () => {
-            $eXeHiddenImage.refreshGame(instance);
+            $eXeHiddenImage.scheduleReflow(instance);
         });
 
         $(document).on('fullscreenchange webkitfullscreenchange mozfullscreenchange MSFullscreenChange', () => {
-            $eXeHiddenImage.refreshGame(instance);
+            $eXeHiddenImage.scheduleReflow(instance);
         });
+        $eXeHiddenImage.setupImageResizeObserver(instance);
 
     },
 
@@ -506,6 +554,12 @@ var $eXeHiddenImage = {
         $('#hiPLinkFullScreen-' + instance).off('click touchstart');
         $('#hiPStartGame-' + instance).off('click');
         $('#hiPLinkAudio-' + instance).off('click');
+
+          const obs = $eXeHiddenImage._imgResizeObservers[instance];
+        if (obs) {
+            try { obs.disconnect(); } catch (e) {}
+            delete $eXeHiddenImage._imgResizeObservers[instance];
+        }
     },
 
 
@@ -527,6 +581,21 @@ var $eXeHiddenImage = {
                 .fadeOut(300)
                 .fadeIn(200);
             $('#hiPCodeAccessE-' + instance).val('');
+        }
+    },
+
+    setupImageResizeObserver: function(instance){
+        const img = document.getElementById('hiPImage-' + instance);
+        if (!img || typeof ResizeObserver === 'undefined') return;
+        if ($eXeHiddenImage._imgResizeObservers[instance]) return;
+        const ro = new ResizeObserver(() => {
+            $eXeHiddenImage.scheduleReflow(instance);
+        });
+        try {
+            ro.observe(img);
+            $eXeHiddenImage._imgResizeObservers[instance] = ro;
+        } catch(e) {
+            // 
         }
     },
 
@@ -702,8 +771,8 @@ var $eXeHiddenImage = {
             mQuestion = mOptions.questionsGame[mOptions.activeQuestion],
             $image = $('#hiPImage-' + instance);
     
-        $image.attr('alt', 'No image')
-              .hide();
+      $image.attr('alt', 'No image')
+          .hide();
     
         const imgEl = $image[0];
 
@@ -717,7 +786,7 @@ var $eXeHiddenImage = {
                       .css('opacity', 0)
                       .show();
                 setTimeout(function () {
-                    $eXeHiddenImage.createSquares(instance);
+                    $eXeHiddenImage.scheduleReflow(instance);
                     $image.css('opacity', 1);
                 }, 500);
             }
@@ -790,19 +859,33 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance];
         const mQuestion = mOptions.questionsGame[mOptions.activeQuestion];
         const $overlay = $("#hipOverlay-" + instance);
-        const overlayWidth = $overlay.width();
-        const overlayHeight = $overlay.height();
-        const squareWidth = overlayWidth / mQuestion.columns;
-        const squareHeight = overlayHeight / mQuestion.rows;
+        $eXeHiddenImage.updateOverlaySize(instance);
+        const overlayEl = $overlay.get(0);
+        if (!overlayEl) return;
+        const overlayRect = overlayEl.getBoundingClientRect();
+        const overlayWidth = overlayRect.width;
+        const overlayHeight = overlayRect.height;
+        if (!overlayWidth || !overlayHeight || mQuestion.columns <= 0 || mQuestion.rows <= 0) return;
+        const baseW = overlayWidth / mQuestion.columns;
+        const baseH = overlayHeight / mQuestion.rows;
         $overlay.empty();
         for (let row = 0; row < mQuestion.rows; row++) {
+            const top = row * baseH;
+            const height = (row === mQuestion.rows - 1)
+                ? (overlayHeight - baseH * (mQuestion.rows - 1))
+                : baseH;
             for (let col = 0; col < mQuestion.columns; col++) {
+                const left = col * baseW;
+                const width = (col === mQuestion.columns - 1)
+                    ? (overlayWidth - baseW * (mQuestion.columns - 1))
+                    : baseW;
                 const $hipsquare = $("<div class='HIP-Square'></div>");
                 $hipsquare.css({
-                    'width': squareWidth + "px",
-                    'height': squareHeight + "px",
-                    'top': (row * squareHeight) + "px",
-                    'left': (col * squareWidth) + "px"
+                    'position': 'absolute',
+                    'width': width.toFixed(3) + "px",
+                    'height': height.toFixed(3) + "px",
+                    'top': top.toFixed(3) + "px",
+                    'left': left.toFixed(3) + "px"
                 });
                 $overlay.append($hipsquare);
             }
