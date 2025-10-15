@@ -33,6 +33,16 @@ export default class Modal {
         this.modal = new bootstrap.Modal(this.modalElement, {});
         this.timeMax = 500;
         this.timeMin = 50;
+
+        // Initialize testing state attribute
+        this.modalElement.setAttribute('data-open', 'false');
+        // Sync data-open with Bootstrap modal events
+        this.modalElement.addEventListener('shown.bs.modal', () => {
+            this.modalElement.setAttribute('data-open', 'true');
+        });
+        this.modalElement.addEventListener('hidden.bs.modal', () => {
+            this.modalElement.setAttribute('data-open', 'false');
+        });
     }
 
     /**
