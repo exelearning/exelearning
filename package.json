@@ -1,6 +1,6 @@
 {
     "name": "exelearning",
-    "version": "v0.0.0-alpha",
+    "version": "0.0.0-alpha",
     "license": "AGPL-3.0-or-later",
     "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
     "main": "main.js",
@@ -25,8 +25,7 @@
         "chmodr": "^1.2.0",
         "electron-log": "^5.4.0",
         "electron-updater": "^6.6.2",
-        "i18n": "^0.15.1",
-        "sass": "^1.93.2"
+        "i18n": "^0.15.1"
     },
     "devDependencies": {
         "@playwright/test": "^1.55.0",
@@ -35,7 +34,8 @@
         "eslint": "^9.20.0",
         "eslint-config-prettier": "^10.1.5",
         "eslint-plugin-prettier": "^5.4.0",
-        "prettier": "^3.5.3"
+        "prettier": "^3.5.3",
+        "sass": "^1.93.2"
     },
     "build": {
         "appId": "es.intef.exelearning",
@@ -47,12 +47,10 @@
         "publish": [
             {
                 "provider": "github",
-                "releaseType": "prerelease",
-                "private": true
+                "releaseType": "prerelease"
             }
         ],
         "asar": true,
-        "afterPack": "afterPack.js",
         "disableDefaultIgnoredFiles": true,
         "files": [
             "main.js",
