@@ -3,15 +3,25 @@
 # Pipe stderr to stdout
 exec 2>&1
 
-if [ "$APP_ONLINE_MODE" -eq 0 ]; then
+# If online mode is explicitly disabled, do not start Mercure
+if [ "${APP_ONLINE_MODE:-1}" = "0" ]; then
     echo "Mercure is disabled: APP_ONLINE_MODE=0"
     exec sleep infinity
 fi
 
 # Check APP_ENV and run mercure with the appropriate configuration
-if [ "$APP_ENV" = "dev" ]; then
+case "${APP_ENV:-}" in
+  dev)
     # In dev we will have the mercure UI at http://<url>/.well-known/mercure/ui/
     exec /usr/bin/mercure run --config /etc/caddy/dev.Caddyfile --adapter caddyfile
-else
+    ;;
+  test)
+    # In test, run Mercure quietly: redirect logs away from stdout to avoid noisy test output.
+    mkdir -p /mnt/data/mercure/log
+    # Note: logs are available for inspection at /mnt/data/mercure/log/mercure-test.log
+    exec /usr/bin/mercure run --config /etc/caddy/dev.Caddyfile --adapter caddyfile >> /mnt/data/mercure/log/mercure-test.log 2>&1
+    ;;
+  *)
     exec /usr/bin/mercure run --config /etc/caddy/Caddyfile --adapter caddyfile
-fi
+    ;;
+esac

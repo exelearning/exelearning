@@ -451,7 +451,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
         ?string $actionType,
         string $userEmail,
         ?string $odeComponentFlag = null,
-        ?string $timeIdeviceEditing,
+        ?string $timeIdeviceEditing = null,
         ?string $pageId = null, // Collaborative
     ): void {
         $this->publish(

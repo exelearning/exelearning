@@ -73,92 +73,55 @@ var $exeDevice = {
      * @return {String}
      */
     save: function () {
-        // Get the instructions
 
         this.instructions = '';
-        if (tinyMCE.get('eXeGameInstructions')) {
-            this.instructions = tinyMCE.get('eXeGameInstructions').getContent();
-            if (this.instructions == '') {
-                tinyMCE
-                    .get('eXeGameInstructions')
-                    .getContainer()
-                    .classList.add('empty');
-            } else {
-                tinyMCE
-                    .get('eXeGameInstructions')
-                    .getContainer()
-                    .classList.remove('empty');
-            }
+        const inst = tinyMCE.get('eXeGameInstructions');
+        if (inst) {
+            this.instructions = inst.getContent();
+            inst.getContainer().classList.toggle('empty', this.instructions === '');
         }
-        // Get list elements
+
         this.options = [];
         this.counter = 0;
-        this.ideviceBody
-            .querySelectorAll('#sortableListFormList input')
-            .forEach((element) => {
-                if (element.value != '') {
-                    this.options.push(element.value);
-                    this.counter++;
-                }
-            });
-        // Get button text
-        this.buttonText = this.ideviceBody.querySelector(
-            '#sortableListButtonText',
-        ).value;
-        // Text when right
-        this.rightText = this.ideviceBody.querySelector(
-            '#sortableListRightText',
-        ).value;
-        // Text when wrong
-        this.wrongText = this.ideviceBody.querySelector(
-            '#sortableListWrongText',
-        ).value;
+        this.ideviceBody.querySelectorAll('#sortableListFormList input').forEach((el) => {
+            const val = (el.value || '').trim();
+            if (val !== '') {
+                this.options.push(val);
+                this.counter++;
+            }
+        });
 
-        this.evaluationID = this.ideviceBody.querySelector(
-            '#sortableEvaluationID',
-        ).value;
 
-        this.evaluation = this.ideviceBody.querySelector(
-            '#sortableEvaluation',
-        ).checked;
-
-        this.showSolutions = this.ideviceBody.querySelector(
-            '#sortableShowSolutions',
-        ).checked;
+        this.buttonText = (this.ideviceBody.querySelector('#sortableListButtonText') || {}).value || '';
+        this.rightText = (this.ideviceBody.querySelector('#sortableListRightText') || {}).value || '';
+        this.wrongText = (this.ideviceBody.querySelector('#sortableListWrongText') || {}).value || '';
+        this.evaluationID = (this.ideviceBody.querySelector('#sortableEvaluationID') || {}).value || '';
+        this.evaluation = !!(this.ideviceBody.querySelector('#sortableEvaluation') || {}).checked;
+        this.showSolutions = !!(this.ideviceBody.querySelector('#sortableShowSolutions') || {}).checked;
 
         this.textAfter = '';
-        if (tinyMCE.get('eXeIdeviceTextAfter')) {
-            this.textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
-            if (this.textAfter == '') {
-                tinyMCE
-                    .get('eXeIdeviceTextAfter')
-                    .getContainer()
-                    .classList.add('empty');
-            } else {
-                tinyMCE
-                    .get('eXeIdeviceTextAfter')
-                    .getContainer()
-                    .classList.remove('empty');
-                this.eXeIdeviceTextAfter = `<div class="exe-sortableList-textAfter">${this.eXeIdeviceTextAfter}</div>`;
-            }
+        const ta = tinyMCE.get('eXeIdeviceTextAfter');
+        if (ta) {
+            this.textAfter = ta.getContent();
+            ta.getContainer().classList.toggle('empty', this.textAfter === '');
         }
         this.afterElement = this.textAfter
             ? `<div class="exe-sortableList-textAfter">${this.textAfter}</div>`
             : '';
 
-        const fields = this.ci18n,
-            i18n = fields;
-        for (const i in fields) {
-            const fVal = $('#ci18n_' + i).val();
-            if (fVal !== '') i18n[i] = fVal;
+ 
+        const base = this.ci18n || {};
+        const i18n = { ...base };
+        for (const k in base) {
+            if (!Object.prototype.hasOwnProperty.call(base, k)) continue;
+            const v = $('#ci18n_' + k).val();
+            if (typeof v === 'string' && v.trim() !== '') i18n[k] = v;
         }
         this.msgs = i18n;
-        if (this.checkValues()) {
-            return this.dataJson();
-        } else {
-            return false;
-        }
+
+        return this.checkValues() ? this.dataJson() : false;
     },
+
 
     /**
      * Get a JSON with the idevice data
@@ -225,10 +188,8 @@ var $exeDevice = {
             return false;
         }
 
-        if (this.sortableEvaluation && this.sortableEvaluationID.length < 5) {
-            eXe.app.alert(
-                _('The report identifier must have at least 5 characters'),
-            );
+        if (this.evaluation && this.evaluationID && this.evaluationID.length < 5) {
+            eXe.app.alert(_('The report identifier must have at least 5 characters'));
             return false;
         }
 
@@ -248,96 +209,71 @@ var $exeDevice = {
         return true;
     },
 
-    /**
-     * GET HTML of general settings container
-     *
-     * @param {*} id
-     * @param {*} active (visible/hidden)
-     * @return string
-     */
-    createExeFormContainerGeneralSettings: function (id, active) {
-        let textButtonText = _('Button text');
-        let textCorrectAnswer = _('Correct Answer Feedback Overlay');
-        let textWrongAnswer_1 = _('Wrong Answer Feedback Overlay');
-        let textWrongAnswer_2 = _(
-            'The right answer will be shown after this text.',
-        );
-        let textContentAfter_1 = _('Content after');
-        let textContentAfter_2 = _('optional');
-        let style = active ? '' : 'style="display:none"';
-
-        let html = `<div id="ef${id}" class="exe-form-content" ${style}>`;
-        html += this.getListsFields();
-        html += this.createInputHTML(
-            'sortableListButtonText',
-            textButtonText,
-            false,
-            true,
-        );
-        html += this.createInputHTML(
-            'sortableListRightText',
-            textCorrectAnswer,
-            false,
-            true,
-        );
-        html += this.createInputHTML(
-            'sortableListWrongText',
-            textWrongAnswer_1,
-            textWrongAnswer_2,
-            true,
-        );
-        html += this.createShowSolutionsInput();
-        html += this.createEvaluationInputs();
-        html += `</div>`;
-
-        return html;
-    },
-
-    createShowSolutionsInput: function () {
-        return `<div>
-                    <p class="Games-Reportdiv">
-                       <label for="sortableShowSolutions"><input type="checkbox" checked id="sortableShowSolutions">${_('Show solutions')}. </label>
-                    </p>
-                </div> `;
-    },
-
-
-    createEvaluationInputs: function () {
-        return `<div>
-                    <p class="Games-Reportdiv">
-                        <strong class="GameModeLabel"><a href="#sortableEvaluationHelp" id="sortableEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${this.idevicePath}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}"/></a></strong>
-                        <label for="sortableEvaluation"><input type="checkbox" id="sortableEvaluation">${_('Progress report')}. </label>
-                        <label for="sortableEvaluationID">${_('Identifier')}: </label><input type="text" id="sortableEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                    </p>
-                    <div id="sortableEvaluationHelp" class="tofTypeGameHelp"  style="display:none">
-                        <p class="exe-block-info exe-block-dismissible">${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
-                    </div>
-                </div> `;
-    },
-
     createForm: function (id) {
+        const textButtonText = _('Button text');
+        const textCorrectAnswer = _('Correct Answer Feedback Overlay');
+        const textWrongAnswer_1 = _('Wrong Answer Feedback Overlay');
+        const textWrongAnswer_2 = _('The right answer will be shown after this text.');
+        const textContentAfter_1 = _('after');
+        const textContentAfter_2 = _('optional');
+        const hiddenClass = '';
         const html = `
-        <div id="scrambledlistIdeviceForm">
-            <p class="exe-block-info exe-block-dismissible">${_('Create interactive text ordering activities.')} <a  style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a></p>
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#" >${_('List')}</a></legend>
-                    <div class="TOF-EPanel" id="tofEPanel">                   
-                        ${this.createExeFormContainerGeneralSettings(id, true)}
-                     </div>
-                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                 </fieldset>
-             </div>
-             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
-             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
-         </div>
-     `;
+            <div id="scrambledlistIdeviceForm">
+                <p class="exe-block-info exe-block-dismissible">
+                    ${_('Create interactive text ordering activities.')}
+                    <a style="display:none;" href="https://youtu.be/xHhrBZ_66To" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
+                </p>
+                <div class="exe-form-tab" title="${_('General settings')}">
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
+                    <fieldset class="exe-fieldset">
+                        <legend><a href="#">${_('List')}</a></legend>
+                        <div  id="tofEPanel">
+                            <div id="ef${id}" class="exe-form-content${hiddenClass}">
+                                ${this.getListsFields()}
+                                ${this.createInputHTML('sortableListButtonText', textButtonText, false, true)}
+                                ${this.createInputHTML('sortableListRightText', textCorrectAnswer, false, true)}
+                                ${this.createInputHTML('sortableListWrongText', textWrongAnswer_1, textWrongAnswer_2, true)}
+                            
+                                <div class="toggle-item mb-3">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="sortableShowSolutions" class="toggle-input" checked />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label mb-0" for="sortableShowSolutions">${_('Show solutions')}.</label>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                    <div class="toggle-item mb-0">
+                                        <span class="toggle-control">
+                                            <input type="checkbox" id="sortableEvaluation" class="toggle-input" />
+                                            <span class="toggle-visual"></span>
+                                        </span>
+                                        <label class="toggle-label mb-0" for="sortableEvaluation">${_('Progress report')}.</label>
+                                    </div>
+                                    <div class="d-flex flex-nowrap align-items-center gap-2">
+                                        <label for="sortableEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                        <input type="text" id="sortableEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                                    </div>
+                                    <a href="#sortableEvaluationHelp" id="sortableEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                        <img src="${this.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
+                                    </a>
+                                </div>
+                                <div id="sortableEvaluationHelp" class="tofTypeGameHelp d-none">
+                                    <p class="exe-block-info exe-block-dismissible">
+                                        ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        ${$exeDevicesEdition.iDevice.common.getTextFieldset(textContentAfter_1)}
+                    </fieldset>
+                </div>
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
+            </div>`;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('scrambledlistIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
-
         this.loadPreviousValues();
     },
 
@@ -349,26 +285,20 @@ var $exeDevice = {
                 document.getElementById('sortableEvaluationID').disabled =
                     !select;
             });
-        document
-            .getElementById('sortableEvaluationHelpLnk')
+
+        document.getElementById('sortableEvaluationHelpLnk')
             .addEventListener('click', function (event) {
                 event.preventDefault();
-                const helpElement = document.getElementById(
-                    'sortableEvaluationHelp',
-                );
-                helpElement.style.display =
-                    helpElement.style.display === 'none' ? 'block' : 'none';
+                const help = document.getElementById('sortableEvaluationHelp');
+                const isHidden = help.classList.contains('d-none');
+                help.classList.toggle('d-none', !isHidden);
+                help.classList.toggle('d-block', isHidden);
             });
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
-            8,
-            $exeDevice.insertWords,
-        );
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
+
+
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(8, $exeDevice.insertWords);
+
+        if (window.File && window.FileReader && window.FileList && window.Blob) {
             $('#eXeGameExportImport .exe-field-instructions')
                 .eq(0)
                 .text(`${_('Supported formats')}: txt`);
@@ -377,26 +307,14 @@ var $exeDevice = {
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
-                    eXe.app.alert(
-                        _(
-                            'Please select a text file (.txt)',
-                        ),
-                    );
+                    eXe.app.alert(_('Please select a text file (.txt)'));
                     return;
                 }
-                if (
-                    !file.type ||
-                    !(
-                        file.type.match('text/plain')
-                    )
-                ) {
-                    eXe.app.alert(
-                        _(
-                            'Please select a text file (.txt)',
-                        ),
-                    );
+                if (file.type && !file.type.match('text/plain')) {
+                    eXe.app.alert(_('Please select a text file (.txt)'));
                     return;
                 }
+
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     $exeDevice.importGame(e.target.result, file.type);
@@ -414,7 +332,6 @@ var $exeDevice = {
         } else {
             eXe.app.alert(_('Sorry, wrong file format'));
         }
-
     },
 
     importText: function (content) {
@@ -435,23 +352,24 @@ var $exeDevice = {
         if (options.length < 3) {
             eXe.app.alert(_('Sorry, wrong file format'));
         }
-
     },
 
     addQuestions: function (options) {
         $('#sortableListFormList ol').empty();
         let inputList = '';
         for (let i = 0; i < this.items_no; i++) {
-            let requiredClass = i < this.items_min ? 'required' : '';
+            const isRequired = i < this.items_min;
+            const requiredAttr = isRequired ? 'required' : '';
+            const requiredClass = isRequired ? 'required' : '';
             const value = i < options.length ? options[i] : '';
             inputList += `
-                <li class="${requiredClass}" ${requiredClass}>
-                <label for="sortableListFormList${i}" class="sr-av"></label>
-                <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
-                    ${requiredClass} class="${requiredClass}" value = "${value}" />
+                <li class="${requiredClass}">
+                    <label for="sortableListFormList${i}" class="sr-av"></label>
+                    <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
+                        class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} value="${value}" />
                 </li>`;
         }
-        $('#sortableListFormList ol').append(inputList)
+        $('#sortableListFormList ol').append(inputList);
         $('.exe-form-tabs li:first-child a').trigger('click');
     },
 
@@ -464,12 +382,13 @@ var $exeDevice = {
      * @returns string
      */
     createTextareaHTML(id, title, required) {
-        let requiredClass = required ? 'required' : '';
+        const requiredClass = required ? 'required' : '';
+        const requiredAttr = required ? ' required' : '';
         return `
-      <p class="exe-text-field ${requiredClass}">
-        <label for="${id}">${title}:</label>
-        <textarea id="${id}" class="exe-html-editor" required></textarea>
-      </p>`;
+        <p class="exe-text-field ${requiredClass}">
+            <label for="${id}">${title}:</label>
+            <textarea id="${id}" class="exe-html-editor"${requiredAttr}></textarea>
+        </p>`;
     },
 
     /**
@@ -485,12 +404,12 @@ var $exeDevice = {
             : '';
         let requiredClass = required ? 'required' : '';
         return `
-      <p class="exe-text-field ${requiredClass}">
-        <label for="${id}">${title}:</label>
-        <input type="text" class="sortableListTextOption ${requiredClass}" name="${id}" ${requiredClass}
-          id="${id}" onfocus="this.select()" />
-        ${instructionsSpan}
-      </p>`;
+        <p class="exe-text-field ${requiredClass}">
+            <label for="${id}" class="form-control-label">${title}:</label>
+            <input type="text" class="sortableListTextOption ${requiredClass} form-control" name="${id}" ${requiredClass}
+            id="${id}" onfocus="this.select()" />
+            ${instructionsSpan}
+        </p>`;
     },
 
     /**
@@ -535,25 +454,22 @@ var $exeDevice = {
             }
         }
 
-        this.ideviceBody.querySelector('#sortableListButtonText').value =
-            data.buttonText || buttonText;
-        this.ideviceBody.querySelector('#sortableListRightText').value =
-            data.rightText || rightText;
-        this.ideviceBody.querySelector('#sortableListWrongText').value =
-            data.wrongText || wrongText;
-        this.ideviceBody.querySelector('#sortableEvaluation').checked =
-            data.evaluation || false;
-        if (data.evaluationID) {
-            this.ideviceBody.querySelector('#sortableEvaluationID').value = data.evaluationID;
+        this.ideviceBody.querySelector('#sortableListButtonText').value = data.buttonText || buttonText;
+        this.ideviceBody.querySelector('#sortableListRightText').value = data.rightText || rightText;
+        this.ideviceBody.querySelector('#sortableListWrongText').value = data.wrongText || wrongText;
+        const evalCheckbox = this.ideviceBody.querySelector('#sortableEvaluation');
+        const evalInput = this.ideviceBody.querySelector('#sortableEvaluationID');
+        const evalChecked = !!data.evaluation;
+        evalCheckbox.checked = evalChecked;
+
+        if (typeof data.evaluationID === 'string' && data.evaluationID.trim() !== '') {
+            evalInput.value = data.evaluationID;
         }
-        this.ideviceBody.querySelector('#sortableEvaluationID').disabled =
-            !data.evaluation;
-        this.ideviceBody.querySelector('#eXeGameInstructions').value =
-            data.instructions || _('Arrange the following texts in the correct order to complete the activity.');
-        this.ideviceBody.querySelector('#eXeIdeviceTextAfter').value =
-            data.textAfter || '';
-        this.ideviceBody.querySelector('#sortableShowSolutions').checked =
-            typeof data.showSolutions !== "undefined" ? data.showSolutions : true;
+        evalInput.disabled = !evalChecked;
+
+        this.ideviceBody.querySelector('#eXeGameInstructions').value = data.instructions || _('Arrange the following texts in the correct order to complete the activity.');
+        this.ideviceBody.querySelector('#eXeIdeviceTextAfter').value = data.textAfter || '';
+        this.ideviceBody.querySelector('#sortableShowSolutions').checked = typeof data.showSolutions !== "undefined" ? data.showSolutions : true;
 
         data.weighted = data.weighted || 100;
         data.repeatActivity = data.repeatActivity || false;
@@ -564,11 +480,9 @@ var $exeDevice = {
             data.isScorm,
             data.textButtonScorm,
             data.repeatActivity,
-            data.weighted,
+            data.weighted
         );
-        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-            data.msgs,
-        );
+        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(data.msgs);
     },
 
     /**
@@ -581,23 +495,25 @@ var $exeDevice = {
         let instructionsText = _('Write the elements in the right order:');
         // List of inputs
         let inputList = '';
-        for (var i = 0; i < $exeDevice.items_no; i++) {
-            let requiredClass = i < this.items_min ? 'required' : '';
+        for (let i = 0; i < $exeDevice.items_no; i++) {
+            const isRequired = i < this.items_min;
+            const requiredAttr = isRequired ? 'required' : '';
+            const requiredClass = isRequired ? 'required' : '';
             inputList += `
-        <li class="${requiredClass}" ${requiredClass}>
-          <label for="sortableListFormList${i}" class="sr-av"></label>
-          <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
-            ${requiredClass} class="${requiredClass}" />
-        </li>`;
+                <li class="${requiredClass}">
+                    <label for="sortableListFormList${i}" class="sr-av"></label>
+                    <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
+                        class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} />
+                </li>`;
         }
         // Generate HTML
         return `
-      <div id="sortableListFormList">
-        <p class="exe-text-field">
-          <label>${instructionsText}</label>
-        </p>
-        <ol>${inputList}</ol>
-      </div>`;
+            <div id="sortableListFormList">
+                <p class="exe-text-field">
+                <label>${instructionsText}</label>
+                </p>
+                <ol>${inputList}</ol>
+            </div>`;
     },
 
     /**

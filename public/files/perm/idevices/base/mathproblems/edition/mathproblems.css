@@ -8,7 +8,7 @@
     margin-right: 0.15em !important;
 }
 
-#gameQEIdeviceForm input:is([type="checkbox"], [type="radio"], [type="number"]) {
+#gameQEIdeviceForm input:is([type="checkbox"], [type="number"]) {
     margin-right: 0.15em !important;
 }
 
@@ -68,7 +68,7 @@ input#gameQEScoreQuestion {
 #gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color:  #0BA1A1;
     font-weight: 500;
 }
 
@@ -171,10 +171,9 @@ label[for=gameQEActivitySCORM] {
 }
 
 .MTOE-ENavigationButton {
-    height: 1.5em;
+    height: 1.7em;
     margin: 0 .3em;
-    min-width: 1.5em;
-    width: 1.5em;
+    min-width: 1.7em;
 }
 
 .MTOE-EButtonImage {
@@ -189,12 +188,9 @@ label[for=gameQEActivitySCORM] {
 }
 
 .MTOE-NumberQuestion {
-    font-weight: bold;
-    height: 1.5em;
-    line-height: 1.5em;
     text-align: center;
     vertical-align: middle;
-    width: 2em;
+    width: 3em;
 }
 
 /*Numero Preguntas */
@@ -206,7 +202,7 @@ label[for=gameQEActivitySCORM] {
     position: absolute;
     right: 0;
     top: .3em;
-    width: 4em;
+    width: 3em;
     z-index: 20;
 }
 

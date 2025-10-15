@@ -3,15 +3,18 @@
         display: flex;
         flex-flow: row wrap;
         justify-content: center;
-        padding: 5px;
-        border: 1px solid var(--delete);
-        border-radius: 5px;
+        padding: 12px;
+        margin: 12px 3px 12px 10px;
+        border: none;
+        border-radius: 8px;
+        background-color: var(--brand-primary-50) !important;
         .user-editing-description,
         .user-editing-email,
         .user-editing-time {
-            font-size: 12px;
+            font-size: 14px;
             margin-right: 3px;
             font-weight: normal;
+            color: var(--brand-primary-900);
         }
         .user-editing-description {
 
