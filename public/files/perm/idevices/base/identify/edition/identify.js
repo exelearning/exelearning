@@ -621,28 +621,28 @@ var $exeDevice = {
                                     <label for="idfEMessageKO">${_('Message')}:</label>
                                     <input type="text" class="" id="idfEMessageKO">
                                 </div>
-                                <div class="IDFE-ENavigationButtons gap-1">
-                                    <a href="#" id="idfEAdd" class="IDFE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="IDFE-EButtonImage" /></a>
-                                    <a href="#" id="idfEFirst" class="IDFE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="IDFE-EButtonImage" /></a>
-                                    <a href="#" id="idfEPrevious" class="IDFE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="IDFE-EButtonImage" /></a>
-                                    <label class="sr-av" for="idfENumberQuestion">${_('Question number:')}</label>
-                                    <input type="text" class="IDFE-NumberQuestion" id="idfENumberQuestion" value="1"/>
-                                    <a href="#" id="idfENext" class="IDFE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="IDFE-EButtonImage" /></a>
-                                    <a href="#" id="idfELast" class="IDFE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="IDFE-EButtonImage" /></a>
-                                    <a href="#" id="idfEDelete" class="IDFE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="IDFE-EButtonImage" /></a>
-                                    <a href="#" id="idfECopy" class="IDFE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="IDFE-EButtonImage" /></a>
-                                    <a href="#" id="idfECut" class="IDFE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="IDFE-EButtonImage" /></a>
-                                    <a href="#" id="idfEPaste" class="IDFE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="IDFE-EButtonImage" /></a>
-                                </div>
-                                <div class="IDFE-ENumQuestionDiv" id="idfENumQuestionDiv">
-                                    <div class="IDFE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
-                                    <span class="IDFE-ENumQuestions" id="idfENumQuestions">0</span>
-                                </div>
+                            </div>
+                            <div class="IDFE-ENavigationButtons gap-1">
+                                <a href="#" id="idfEAdd" class="IDFE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="IDFE-EButtonImage" /></a>
+                                <a href="#" id="idfEFirst" class="IDFE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="IDFE-EButtonImage" /></a>
+                                <a href="#" id="idfEPrevious" class="IDFE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="IDFE-EButtonImage" /></a>
+                                <label class="sr-av" for="idfENumberQuestion">${_('Question number:')}</label>
+                                <input type="text" class="IDFE-NumberQuestion" id="idfENumberQuestion" value="1"/>
+                                <a href="#" id="idfENext" class="IDFE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="IDFE-EButtonImage" /></a>
+                                <a href="#" id="idfELast" class="IDFE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="IDFE-EButtonImage" /></a>
+                                <a href="#" id="idfEDelete" class="IDFE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="IDFE-EButtonImage" /></a>
+                                <a href="#" id="idfECopy" class="IDFE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="IDFE-EButtonImage" /></a>
+                                <a href="#" id="idfECut" class="IDFE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="IDFE-EButtonImage" /></a>
+                                <a href="#" id="idfEPaste" class="IDFE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="IDFE-EButtonImage" /></a>
+                            </div>
+                            <div class="IDFE-ENumQuestionDiv" id="idfENumQuestionDiv">
+                                <div class="IDFE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
+                                <span class="IDFE-ENumQuestions" id="idfENumQuestions">0</span>
                             </div>
                         </div>
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
+                </div>                
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
