@@ -71,31 +71,29 @@ class SettingsUtil
     /**
      * Converts USER_STORAGE_MAX_DISK_SPACE from MB to Bytes.
      */
-    public static function getUserStorageMaxDiskSpaceInBytes(): float
+    public static function getUserStorageMaxDiskSpaceInBytes(): int
     {
         $factor = 2;
 
         if (self::installationTypeIsOffline()) {
             return Constants::INSTALLATION_TYPE_OFFLINE_DEFAULT_DISK_SPACE;
-        } else {
-            return Settings::USER_STORAGE_MAX_DISK_SPACE * pow(1024, $factor);
         }
+
+        return (int) (Settings::USER_STORAGE_MAX_DISK_SPACE * pow(1024, $factor));
     }
 
     /**
      * Converts FILE_UPLOAD_MAX_SIZE from MB to Bytes.
-     *
-     * @return float
      */
-    public static function getFileMaxUploadSizeInBytes()
+    public static function getFileMaxUploadSizeInBytes(): int
     {
         $factor = 2;
 
         if (self::installationTypeIsOffline()) {
             return Constants::INSTALLATION_TYPE_OFFLINE_DEFAULT_DISK_SPACE;
-        } else {
-            return Settings::FILE_UPLOAD_MAX_SIZE * pow(1024, $factor);
         }
+
+        return (int) (Settings::FILE_UPLOAD_MAX_SIZE * pow(1024, $factor));
     }
 
     /**
