@@ -795,6 +795,17 @@ div:fullscreen .exeQuextIcons-FullScreen {
     overflow-y: auto;
 }
 
+div:fullscreen .PZLP-GameContainer {
+    background-color: white;
+    width: 100%;
+    padding-top: 3px;
+    height: calc(100vh - 10px);
+    max-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
 div:fullscreen .PZLP-Multimedia {
     width: 100%;
     max-width: 100%;
@@ -805,6 +816,7 @@ div:fullscreen .PZLP-ImageDiv {
     width: 100%;
     max-width: 100%;
     height: calc(100% - 60px);
+    overflow: visible;
 }
 
 div:fullscreen .PZLP-ImageDiv::before {
@@ -980,6 +992,39 @@ div:fullscreen .PZLP-ImageDiv {
     div:fullscreen .PZLP-Message {
         font-weight: 1em;
     }
+}
+
+.PZLP-GameContainer:fullscreen,
+.PZLP-GameContainer:-webkit-full-screen,
+.PZLP-GameContainer:-moz-full-screen,
+.PZLP-GameContainer:-ms-full-screen,
+div:fullscreen .PZLP-GameContainer {
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    scrollbar-gutter: stable both-edges;
+    padding-bottom: 8px;
+}
+
+.PZLP-GameContainer.PZLP-IsFull {
+    background-color: white;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    padding: 3px 0 8px 0;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+.PZLP-GameContainer.PZLP-IsFull .PZLP-Multimedia {
+    width: 100%;
+    max-width: 100%;
+}
+
+.PZLP-GameContainer.PZLP-IsFull .PZLP-ImageDiv {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
 }
 
 @media screen and (max-width:340px) {
