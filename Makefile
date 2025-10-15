@@ -378,6 +378,10 @@ migration: check-docker check-env upd
 migrate: check-docker check-env upd
 	docker compose exec exelearning php bin/console doctrine:migrations:migrate --no-interaction
 
+# Clean temporary folder
+tmp-cleanup: check-docker check-env upd
+	docker compose exec exelearning composer --no-cache tmp-cleanup
+
 # Convert an ELP file via Docker using STDIN
 # Usage: make convert-elp INPUT=path/to/input.elp OUTPUT=path/to/output.elp [DEBUG=debug]
 # Important! Only works with absolute paths!
@@ -575,6 +579,7 @@ help:
 	@echo "  smoke-api-v2          - Quick smoke test for /api/v2/users (uses admin JWT)"
 	@echo "  make-migration        - Generate a new Symfony migration (make:migration)"
 	@echo "  migrate               - Run pending Symfony migrations (doctrine:migrations:migrate)"
+	@echo "  tmp-cleanup           - Clean temporary folder"
 	@echo ""
 	@echo "Testing:"
 	@echo ""

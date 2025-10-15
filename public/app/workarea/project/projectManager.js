@@ -230,12 +230,18 @@ export default class projectManager {
             ':scope > button, :scope > .nav-element-text'
         );
 
-        //pageLocked.setAttribute('title', `${user}`); // Add tooltip
         if (collaborativeMode === 'page') {
             buttons.forEach((button) => {
                 button.disabled = true;
-                button.style.pointerEvents = 'none';
+                button.style.cursor = 'not-allowed';
                 button.style.opacity = '0.5';
+                button.setAttribute(
+                    'title',
+                    _('This page is being edited by:') + ' ' + `${user}`
+                );
+                let settingButton = button.querySelector('.node-menu-button');
+                settingButton.style.cursor = 'not-allowed';
+                settingButton.style.pointerEvents = 'none';
             });
         }
 
@@ -299,8 +305,15 @@ export default class projectManager {
             );
             buttons.forEach((button) => {
                 button.disabled = false;
-                button.style.pointerEvents = 'auto';
+                button.style.cursor = 'inherit';
                 button.style.opacity = '1';
+                button.setAttribute(
+                    'title',
+                    button.querySelector('.node-text-span').textContent
+                );
+                let settingButton = button.querySelector('.node-menu-button');
+                settingButton.style.cursor = 'inherit';
+                settingButton.style.pointerEvents = 'auto';
             });
 
             // Remove gravatar
