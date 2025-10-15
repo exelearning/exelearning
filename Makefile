@@ -530,7 +530,9 @@ pull-vendor: check-docker check-env upd
 
 .PHONY: css css-prod css-watch
 
-SASS_DOCKER = docker run --rm -v $(PWD):/app -w /app node:24-alpine sh -lc
+# Prevent MSYS path conversion breaking Docker paths on Windows Git Bash
+# (same approach used elsewhere in this Makefile for docker compose commands)
+SASS_DOCKER = env MSYS_NO_PATHCONV=1 docker run --rm -v $(PWD):/app -w /app node:24-alpine sh -lc
 
 css:
 	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map"
@@ -545,7 +547,7 @@ css-dev:
 	@echo "CSS built (dev)."
 
 css-watch:
-	docker run --rm -it --name scss-watch \
+	env MSYS_NO_PATHCONV=1 docker run --rm -it --name scss-watch \
 	  -v $(PWD):/app -w /app \
 	  -e CHOKIDAR_USEPOLLING=1 -e CHOKIDAR_INTERVAL=500 \
 	  node:24-alpine sh -lc "npm i -s --no-fund sass && npx sass --watch assets/styles/main.scss:public/style/workarea/main.css --style=expanded --embed-source-map"
