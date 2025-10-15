@@ -31,16 +31,14 @@ final class OpenBasicElpTest extends BaseE2ETestCase
         $this->assertTrue(is_string($path) && file_exists($path), 'Fixture .elp file must exist');
         $input->sendKeys($path);
 
-        // Confirm open
-        // The file upload triggers a reload overlay; wait for it to be gone before clicking confirm
-        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
-        $client->waitFor('#modalOpenUserOdeFiles .modal-footer .btn-primary', 20);
-        $client->getWebDriver()->findElement(
-            WebDriverBy::cssSelector('#modalOpenUserOdeFiles .modal-footer .btn-primary')
-        )->click();
+        // Do NOT click the modal "Open" button here.
+        // Uploading a local .elp triggers the app to open it automatically
+        // via modalOpenUserOdeFiles.largeFilesUpload() -> openLocalElpFile() -> project.openLoad(),
+        // which closes the modal itself. Just wait for the modal and loading screen to finish.
+        try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 30); } catch (\Throwable) {}
+        try { $client->waitForInvisibility('#load-screen-main', 50); } catch (\Throwable) {}
 
         // Wait for the modal to close and for nodes to appear
-        try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 20); } catch (\Throwable) {}
         // The project reload shows the loading screen; wait for it to hide before asserting DOM
         try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
         $client->waitFor('.nav-element', 15);
