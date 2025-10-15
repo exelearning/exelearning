@@ -126,11 +126,15 @@ You can also:
   make package VERSION=1.2.3
   ```
 
+  You can also pass Git-style tags such as `v1.2.3-beta4`; the packaging task will
+  strip the leading `v` automatically when writing `package.json` so that Windows
+  upgrades detect the new build correctly, while the UI continues to show the
+  original version string.
+
 ---
 
 ## See Also
 
 - End‑user installation steps: [getting-started/install.md](../install.md)
 - Server deployment options: [deployment/overview.md](../deployment.md)
-
 
