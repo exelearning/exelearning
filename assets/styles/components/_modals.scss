@@ -1607,7 +1607,6 @@
         max-width: 1000px;
         min-width: 700px;
     }
-
     .modal-content {
         max-width: 1000px;
         width: 1000px;
@@ -1630,110 +1629,114 @@
     .form-properties .exe-properties-form-content {
         min-height: 250px;
         max-height: 60vh;
+    }
 
-        #identifier,
-        #cssClass,
-        #titleNode,
-        #titlePage,
-        #titleHtml {
-            flex-direction: column;
-            align-items: flex-start;
-            max-width: calc(100% - 2px);
-            margin-left: 2px;
-            label {
-                color: var(--text);
-                font-weight: 600;
-                font-size: 1em;
-                margin-bottom: 2px !important;
-            }
-            input {
-                max-width: calc(100% - 2px) !important;
-                height: 36px;
-                border-radius: 8px;
+    .properties-body-container {
+        .exe-properties-form-content {
+            .exe-table-content {
+                display: table;
+                width: 100%;
 
-                :focus,
-                :focus-visible {
-                    border-radius: 8px !important;
-                }
             }
         }
-
-        #locale,
-        #defaultLicense  {
-            flex-direction: column;
-            align-items: flex-start;
-            max-width: calc(100% - 2px);
-            margin-left: 2px;
-            .property-meta {
-                display: flex;
-                flex-direction: row;
-                label {
-                    color: var(--text);
-                    font-weight: 600;
-                    font-size: 1em;
-                    margin-bottom: 2px !important;
-                    text-align: left;
-                }
-                .exe-form-help {
-                    border-left: 0;
-                    .form-help-exe-icon {
-                        cursor: pointer;
-                        display: block;
-                        height: 16px;
-                        width: 16px;
-                        background-size: 16px;
-                        background-repeat: no-repeat;
-                        color: transparent;
-                        &.auto-icon {
-                            background-image: url("images/icons/exe-info-icon-solid-green.svg");
-                            position: relative;
-                            top: 7px;
-                            left: -4px;
+    }
+    .form-properties[modal-content-id="page-properties"] {
+        .properties-body-container {
+            .exe-properties-form-content {
+                .exe-table-content {
+                    .property-row {
+                        > :nth-child(1) {
+                            text-align: right;
+                            margin-right: 24px;
+                            width: 20%;
+                        }
+                        > :nth-child(2) {
+                            text-align: left;
+                            width: 67%;
+                        }
+                        input[type="checkbox"] {
+                            max-width: 20px;
+                            width: 4% !important;
+                            margin-left: 17.5%;
                         }
                     }
                 }
             }
-
-            select {
-                max-width: calc(100% - 2px) !important;
-                height: 36px;
-                border-radius: 8px;
-
-                :focus,
-                :focus-visible {
-                    border-radius: 8px !important;
-                }
-
-                &.property-value {
-                    padding: 6px 12px;
+        }
+    }
+    .form-properties[modal-content-id="preferences"] {
+        .properties-body-container {
+            .exe-properties-form-content {
+                .exe-table-content {
+                    .property-row {
+                        > :nth-child(1) {
+                            width: 30%;
+                            max-width: none;
+                            text-align: left;
+                            margin-right: 24px;
+                        }
+                        > :nth-child(2) {
+                            width: 60%;
+                            text-align: left;
+                        }
+                        .help-content {
+                            top: 38px;
+                            left: unset;
+                            right: 0;
+                        }
+                    }
                 }
             }
         }
-        #defaultLicense .property-meta {
-            label {
-                --width: 250px;
+    }
+    .form-properties[modal-content-id="idevice-properties"],
+    .form-properties[modal-content-id="block-properties"] {
+        .properties-body-container {
+            padding: 0 20px;
+            .exe-table-content {
+                display: grid;
+                grid-auto-rows: min-content;
             }
-        }
-
-        #description {
-            flex-direction: column;
-            align-items: flex-start;
-            max-width: calc(100% - 2px);
-            margin-left: 2px;
-            label {
-                color: var(--text);
-                font-weight: 600;
-                font-size: 1em;
-                margin-bottom: 2px !important;
+            .property-row {
+                > label {
+                    min-width: 140px;
+                }
+                &:has(input[type="checkbox"]) {
+                    > label {
+                        min-width: 0;
+                        cursor: pointer;
+                        user-select: none;
+                    }
+                }
+                input[type="text"] {
+                    flex: 1 1 auto;
+                    width: 100%;
+                    padding: 8px 10px;
+                }
+                input[type="checkbox"] {
+                    width: 18px;
+                    height: 18px;
+                    cursor: pointer;
+                }
             }
-            textarea {
-                max-width: calc(100% - 2px) !important;
-                height: 36px;
-                border-radius: 8px;
-
-                :focus,
-                :focus-visible {
-                    border-radius: 8px !important;
+            #visibility,
+            #teacherOnly,
+            #allowToggle,
+            #minimized {
+                margin-left: 74px;
+            }
+            #identifier,
+            #cssClass {
+                margin-top: 15px;
+                > label {
+                    text-align: right;
+                    min-width: 90px;
+                }
+                input[type="text"] {
+                    padding-top: 9px;
+                    padding-bottom: 9px;
+                    max-width: calc(100% - 110px);
+                    width: calc(100% - 110px);
                 }
             }
         }
