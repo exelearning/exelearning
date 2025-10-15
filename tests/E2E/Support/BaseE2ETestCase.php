@@ -9,6 +9,7 @@ use Symfony\Component\Panther\Client;
 use Symfony\Component\Panther\PantherTestCase;
 
 use Facebook\WebDriver\Chrome\ChromeOptions;
+use Facebook\WebDriver\Exception\TimeOutException;
 use Facebook\WebDriver\Remote\DesiredCapabilities;
 use Facebook\WebDriver\WebDriverBy;
 
@@ -170,41 +171,6 @@ abstract class BaseE2ETestCase extends PantherTestCase
         );
     }
 
-    // /**
-    //  * Logs into the application, auto-creating an ephemeral user with random password if not provided.
-    //  *
-    //  * @param Client|null  $client
-    //  * @param string|null  $email
-    //  * @param string|null  $password
-    //  *
-    //  * @return Client
-    //  */
-    // protected function login(?Client $client = null): Client {
-    //     if (null === $client) {
-    //         $client = $this->makeClient();
-    //         $this->mainClient = $client; // assign only when creating the main one     
-    //     }
-
-    //     // 1. Navigate directly to the guest login endpoint.
-    //     $client->request('GET', '/login/guest');
-
-    //     // 2. The backend handles user creation, login, and redirection automatically.
-    //     //    Wait for the workarea to load to confirm success.
-    //     $this->assertStringContainsString('/workarea', $client->getCurrentURL());
-    //     $client->waitForInvisibility('#load-screen-main', 30);
-
-    //     // 3. Extract the user's email from the UI to determine the userId for other tests.
-    //     $client->waitFor('.user-current-letter-icon');
-    //     $email = $client->executeScript("return document.querySelector('.user-current-letter-icon').getAttribute('title');");
-
-    //     // The guest userId is the part of the email before "@guest.local"
-    //     if ($email && str_ends_with($email, '@guest.local')) {
-    //         $this->currentUserId = str_replace('@guest.local', '', $email);
-    //     }
-
-    //     return $client;
-    // }
-
    /**
      * Performs a guest login and returns a ready-to-use logged-in client.
      * If no client is passed, a new one is created automatically.
@@ -213,13 +179,26 @@ abstract class BaseE2ETestCase extends PantherTestCase
     {
         if ($client === null) {
             $client = $this->makeClient();
-            // $this->mainClient = $client;
         }
 
-        // Step 1: trigger guest login
-        $client->request('GET', '/login/guest');
+        // Step 1: load the login page so the backend issues a guest nonce tied to this session
+        $client->request('GET', '/login');
 
-        // Step 2: ensure redirected to workarea
+        $guestLoginButtonSelector = '#login-form-guest button[type="submit"]';
+        try {
+            Wait::css($client, $guestLoginButtonSelector, 5000);
+        } catch (TimeOutException $exception) {
+            $this->fail('Guest login form not available on /login; cannot authenticate as guest for E2E tests.');
+        }
+
+        $buttons = $client->getWebDriver()->findElements(WebDriverBy::cssSelector($guestLoginButtonSelector));
+        if (count($buttons) === 0) {
+            $this->fail('Guest login button not found on /login; cannot authenticate as guest for E2E tests.');
+        }
+        $buttons[0]->click();
+
+        // Step 2: wait for the workarea to be ready after the redirect
+        Wait::css($client, Selectors::WORKAREA, 8000);
         $this->assertStringContainsString('/workarea', $client->getCurrentURL(), 'Expected to reach /workarea after guest login');
         $client->waitForInvisibility('#load-screen-main', 30);
 
