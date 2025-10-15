@@ -2549,7 +2549,7 @@ class ExportXmlUtil
                             'clasifica-IDevice',
                             'relaciona-IDevice',
                             'dragdrop-IDevice',
-                            'completa-IDevice'
+                            'completa-IDevice',
                         ];
                         foreach ($sortableClasses as $sc) {
                             if (preg_match("~<div[^>]*class=[\"']?[^\"']*".preg_quote($sc, '~')."[^\"']*[\"']?[^>]*>~i", $htmlView)) {
