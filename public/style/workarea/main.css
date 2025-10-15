@@ -6489,6 +6489,7 @@ body.login-page #login-tpl .login-left #exe-version {
     bottom: 22px;
     right: 30px;
     color: var(--white);
+    text-shadow: 1px 1px 1px hsl(215, 45%, 14%);
   }
 }
 body.login-page #login-tpl .login-left .logout-button {
@@ -6504,7 +6505,7 @@ body.login-page #login-tpl .login-right {
     justify-content: center;
     padding: 2rem;
     background: #f6f8fb;
-    background-image: url("images/exe-login-image.webp");
+    background-image: url("images/exe-login-image.jpg");
     background-size: cover;
     background-repeat: no-repeat;
     background-position: center;

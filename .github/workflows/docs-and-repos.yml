@@ -303,7 +303,9 @@ jobs:
           $sha256 = (Get-FileHash installer.exe -Algorithm SHA256).Hash
           "URL=$($asset.browser_download_url)"       | Out-File -FilePath env.props -Encoding utf8
           "SHA256=$sha256"                           | Add-Content env.props
-          "VERSION=$(${{ github.event.release.tag_name }} -replace '^v','')" | Add-Content env.props
+          $tag = "${{ github.event.release.tag_name }}"
+          $version = $tag -replace '^v',''
+          "VERSION=$version"                         | Add-Content env.props
 
       - name: Load env
         shell: pwsh
