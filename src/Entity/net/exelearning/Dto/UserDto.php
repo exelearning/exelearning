@@ -91,7 +91,8 @@ class UserDto extends BaseDto
 
         $this->gravatarUrl = GravatarUrlGenerator::createFromIdentifier(
             $username,
-            $this->initials
+            null,
+            $this->username
         );
     }
 }

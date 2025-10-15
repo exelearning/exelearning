@@ -354,7 +354,7 @@ class Constants
     public const GRAVATAR_BASE_URL = 'https://www.gravatar.com/avatar/';
     public const GRAVATAR_DEFAULT_IMAGE = 'initials';
     public const GRAVATAR_GUEST_DEFAULT_IMAGE = 'retro';
-    public const GRAVATAR_GUEST_ACCOUNT_DOMAIN = '@gest.local'; // Guest accounts use a dedicated default avatar.
+    public const GRAVATAR_GUEST_ACCOUNT_DOMAIN = '@guest.local'; // Guest accounts use a dedicated default avatar.
 
     // Locks
     public const RESOURCE_LOCK_TIMEOUT_SECONDS = 900; // 15 minutes
