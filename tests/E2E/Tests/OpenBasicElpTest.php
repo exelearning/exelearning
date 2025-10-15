@@ -31,28 +31,14 @@ final class OpenBasicElpTest extends BaseE2ETestCase
         $this->assertTrue(is_string($path) && file_exists($path), 'Fixture .elp file must exist');
         $input->sendKeys($path);
 
-        // Confirm open
-        // The file upload triggers a reload overlay; wait for it to be gone before clicking confirm
+        // Do NOT click the modal "Open" button here.
+        // Uploading a local .elp triggers the app to open it automatically
+        // via modalOpenUserOdeFiles.largeFilesUpload() -> openLocalElpFile() -> project.openLoad(),
+        // which closes the modal itself. Just wait for the modal and loading screen to finish.
+        try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 30); } catch (\Throwable) {}
         try { $client->waitForInvisibility('#load-screen-main', 50); } catch (\Throwable) {}
-        // Ensure the confirm button is actually visible and clickable before interacting
-        $selector = '#modalOpenUserOdeFiles .modal-footer .btn-primary';
-        $client->waitForVisibility($selector, 20);
-
-        $driver  = $client->getWebDriver();
-        $buttonBy = WebDriverBy::cssSelector($selector);
-
-        // Scroll the button into view to avoid zero-sized/obscured element in headless Chrome
-        $button = $driver->findElement($buttonBy);
-        try { $driver->executeScript('arguments[0].scrollIntoView({block: "center"});', [$button]); } catch (\Throwable) {}
-
-        // Give any CSS transitions a brief moment to settle in CI
-        \App\Tests\E2E\Support\Wait::seconds(5);
-
-        // Click the button
-        $button->click();
 
         // Wait for the modal to close and for nodes to appear
-        try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 20); } catch (\Throwable) {}
         // The project reload shows the loading screen; wait for it to hide before asserting DOM
         try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
         $client->waitFor('.nav-element', 15);
