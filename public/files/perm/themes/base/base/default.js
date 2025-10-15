@@ -86,6 +86,19 @@ var myTheme = {
                 $(this).text(t).addClass('package-link');
             }
         });
+        $('.page-header .page-title').each(function () {
+            var t = $(this).text().trim();
+            var res;
+            if (t.startsWith('- ') && t.endsWith(' -')) {
+                res = t;
+                res = res.substring(2);
+                res = res.substring(0, res.length - 2);
+                // Update page title
+                $(this).text(res);
+                // Update HTML title
+                document.title = document.title.replace(t, res);
+            }
+        });
         // Search form
         this.searchForm();
     },
