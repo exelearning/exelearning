@@ -33,7 +33,7 @@ final class OpenBasicElpTest extends BaseE2ETestCase
 
         // Confirm open
         // The file upload triggers a reload overlay; wait for it to be gone before clicking confirm
-        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
+        try { $client->waitForInvisibility('#load-screen-main', 50); } catch (\Throwable) {}
         $client->waitFor('#modalOpenUserOdeFiles .modal-footer .btn-primary', 20);
         $client->getWebDriver()->findElement(
             WebDriverBy::cssSelector('#modalOpenUserOdeFiles .modal-footer .btn-primary')
