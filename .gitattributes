@@ -18,6 +18,7 @@
 *.yml   text eol=lf -executable
 *.yaml  text eol=lf -executable
 *.json  text eol=lf -executable
+*.md    text eol=lf -executable
 
 # ---------------------------------------------------------------------
 # Images, icons, and other binary assets
