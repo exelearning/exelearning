@@ -25,7 +25,6 @@ var $eXeListaCotejo = {
             $('.ctj-IDevice').hide();
             return;
         }
-
         if (
             !$exeDevices.iDevice.gamification.helpers.supportedBrowser(
                 'Checklist',
@@ -420,39 +419,84 @@ var $eXeListaCotejo = {
             divElement = document.getElementById('ctjList-' + instance);
 
         if (!divElement) {
-            console.error(
-                'No se encontró el elemento con el ID proporcionado.',
-            );
+            console.error('No se encontró el elemento con el ID proporcionado.');
             return;
         }
 
-        const opacity = $('#ctjList-' + instance)
-            .find('mjx-assistive-mml')
-            .eq(0)
-            .css('opacity'),
-            mmls = $('#ctjList-' + instance).find('mjx-assistive-mml');
-
-        mmls.each(function () {
+        const mmls = $('#ctjList-' + instance).find('mjx-assistive-mml');
+        const originalOpacities = [];
+        mmls.each(function (idx) {
+            originalOpacities[idx] = $(this).css('opacity');
             $(this).css('opacity', '0.0');
         });
 
         html2canvas(divElement)
             .then(function (canvas) {
-                const imageData = canvas.toDataURL('image/png'),
-                    link = document.createElement('a');
-                link.href = imageData;
-                link.download = mOptions.msgs.msgList + '.png';
-                link.click();
+                const imgData = canvas.toDataURL('image/png');
+
+                const fallbackPng = function () {
+                    try {
+                        const link = document.createElement('a');
+                        link.href = imgData;
+                        link.download = (mOptions.msgs && mOptions.msgs.msgList ? mOptions.msgs.msgList : 'lista') + '.png';
+                        link.click();
+                    } catch (e) {
+                        console.error('Error al descargar la imagen:', e);
+                    }
+                };
+
+                const doPdf = function () {
+                    try {
+                        if (!window.jspdf || !window.jspdf.jsPDF) return false;
+                        const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        const imgProps = pdf.getImageProperties(imgData);
+                        const pdfWidth = pdf.internal.pageSize.getWidth();
+                        const pdfHeight = pdf.internal.pageSize.getHeight();
+                        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                        let heightLeft = imgHeight;
+                        let position = 0;
+
+                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                        heightLeft -= pdfHeight;
+
+                        while (heightLeft > 0) {
+                            position -= pdfHeight;
+                            pdf.addPage();
+                            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                            heightLeft -= pdfHeight;
+                        }
+
+                        const fileName = (mOptions.msgs && mOptions.msgs.msgList ? mOptions.msgs.msgList : 'lista') + '.pdf';
+                        pdf.save(fileName);
+                        return true;
+                    } catch (e) {
+                        console.error('Error al generar el PDF: ', e);
+                        return false;
+                    }
+                };
+
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    if (!doPdf()) fallbackPng();
+                } else {
+                    $eXeListaCotejo.ensureJsPDF(
+                        function onReady() {
+                            if (!doPdf()) fallbackPng();
+                        },
+                        function onError() {
+                            fallbackPng();
+                        },
+                    );
+                }
             })
             .catch(function (error) {
-                mmls.each(function () {
-                    $(this).css('opacity', opacity);
-                });
                 console.error('Error al generar la captura: ', error);
+            })
+            .finally(function () {
+                mmls.each(function (idx) {
+                    $(this).css('opacity', originalOpacities[idx]);
+                });
             });
-        mmls.each(function () {
-            $(this).css('opacity', opacity);
-        });
     },
 
     createItems: function (instance) {
@@ -510,7 +554,41 @@ var $eXeListaCotejo = {
         }
         return html;
     },
- 
+
+    ensureJsPDF: function (onReady, onError) {
+        try {
+            if (window.jspdf && window.jspdf.jsPDF) {
+                onReady && onReady();
+                return;
+            }
+        } catch (_) { }
+
+        const scriptId = 'jspdf-umd-loader';
+        const existing = document.getElementById(scriptId);
+        if (existing) {
+            let tries = 0;
+            const iv = setInterval(function () {
+                tries++;
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    clearInterval(iv);
+                    onReady && onReady();
+                } else if (tries > 50) {
+                    clearInterval(iv);
+                    onError && onError();
+                }
+            }, 100);
+            return;
+        }
+
+        const s = document.createElement('script');
+        s.id = scriptId;
+        s.src = 'https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js';
+        s.async = true;
+        s.onload = function () { onReady && onReady(); };
+        s.onerror = function () { onError && onError(); };
+        document.head.appendChild(s);
+    }
+
 
 
 };
