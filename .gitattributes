@@ -1,54 +1,65 @@
+# ---------------------------------------------------------------------
 # Line ending normalization
+# ---------------------------------------------------------------------
 * text=auto
 
-# PHP file-specific attributes
-*.php  text diff=php
+# ---------------------------------------------------------------------
+# PHP files
+# ---------------------------------------------------------------------
+*.php text diff=php eol=lf -executable
 
-# JavaScript file-specific attributes
-*.js   text
+# ---------------------------------------------------------------------
+# Static resources (readable text, not executable)
+# ---------------------------------------------------------------------
+*.css   text eol=lf -executable
+*.js    text eol=lf -executable
+*.xml   text eol=lf -executable
+*.html  text eol=lf -executable
+*.yml   text eol=lf -executable
+*.yaml  text eol=lf -executable
+*.json  text eol=lf -executable
+*.md    text eol=lf -executable
 
-# CSS file-specific attributes
-*.css  text
+# ---------------------------------------------------------------------
+# Images, icons, and other binary assets
+# ---------------------------------------------------------------------
+*.svg  text eol=lf -executable
+*.png  binary -executable
+*.jpg  binary -executable
+*.jpeg binary -executable
+*.gif  binary -executable
+*.ico  binary -executable
+*.webp binary -executable
 
-# HTML file-specific attributes
-*.html text
-
-# Images
-*.png  binary
-*.jpg  binary
-*.jpeg binary
-*.gif  binary
-
+# ---------------------------------------------------------------------
 # Composer files
-composer.json text eol=lf
-composer.lock text eol=lf
+# ---------------------------------------------------------------------
+composer.json text eol=lf -executable
+composer.lock text eol=lf -executable
 
-# Configuration files
-*.xml  text
-*.yml  text
-*.yaml text
-
+# ---------------------------------------------------------------------
 # Export exclusions
+# ---------------------------------------------------------------------
 /.env export-ignore
 /tests export-ignore
 /build export-ignore
 /vendor export-ignore
 
-# Ensure shell scripts use LF and are executable
-*.sh text eol=lf
-*.sh export-ignore
-*.sh executable
+# ---------------------------------------------------------------------
+# Shell scripts (explicitly executable)
+# ---------------------------------------------------------------------
+*.sh text eol=lf executable
 02-configure-symfony.sh text eol=lf chmod=+x
 mercure.run text eol=lf chmod=+x
 
-# Ensure consistent line endings for core files
-.gitignore text eol=lf
-*.yml      text eol=lf
-*.yaml     text eol=lf
-*.json     text eol=lf
-*.js       text eol=lf
-*.xml      text eol=lf
-*.php      text diff=php eol=lf
-docker-compose.yml text eol=lf
-config/bundles.php text eol=lf
+# ---------------------------------------------------------------------
+# Consistent line endings for core files
+# ---------------------------------------------------------------------
+.gitignore text eol=lf -executable
+docker-compose.yml text eol=lf -executable
+config/bundles.php text eol=lf -executable
 
+# ---------------------------------------------------------------------
+# Public assets: ensure static files are not executable
+# ---------------------------------------------------------------------
+public/** -text -diff -merge -eol -crlf -ident -executable
