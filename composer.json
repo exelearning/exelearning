@@ -101,6 +101,7 @@
         "phpunit-e2e-offline": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e-offline --colors=always",
         "translations:extract": "php bin/console app:translations:extract",
         "cache-clear": "php bin/console cache:clear",
+        "tmp-cleanup": "php bin/console app:tmp-files:cleanup",
         "update-licenses": "php bin/update-licenses.php"
     },
     "scripts-descriptions": {
