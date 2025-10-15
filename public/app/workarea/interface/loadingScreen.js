@@ -12,6 +12,8 @@ export default class LoadingScreen {
     show() {
         this.loadingScreenNode.classList.remove('hide');
         this.loadingScreenNode.classList.add('loading');
+        // Testing: explicit visibility flag
+        this.loadingScreenNode.setAttribute('data-visible', 'true');
     }
 
     /**
@@ -23,6 +25,8 @@ export default class LoadingScreen {
         setTimeout(() => {
             this.loadingScreenNode.classList.remove('hiding');
             this.loadingScreenNode.classList.add('hide');
+            // Testing: explicit visibility flag
+            this.loadingScreenNode.setAttribute('data-visible', 'false');
         }, this.hideTime);
     }
 }

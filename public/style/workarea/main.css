@@ -2935,127 +2935,101 @@ a:hover {
   min-height: 250px;
   max-height: 60vh;
 }
-#modalProperties .form-properties .exe-properties-form-content #identifier,
-#modalProperties .form-properties .exe-properties-form-content #cssClass,
-#modalProperties .form-properties .exe-properties-form-content #titleNode,
-#modalProperties .form-properties .exe-properties-form-content #titlePage,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml {
-  flex-direction: column;
-  align-items: flex-start;
-  max-width: calc(100% - 2px);
-  margin-left: 2px;
+#modalProperties .properties-body-container .exe-properties-form-content .exe-table-content {
+  display: table;
+  width: 100%;
 }
-#modalProperties .form-properties .exe-properties-form-content #identifier label,
-#modalProperties .form-properties .exe-properties-form-content #cssClass label,
-#modalProperties .form-properties .exe-properties-form-content #titleNode label,
-#modalProperties .form-properties .exe-properties-form-content #titlePage label,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml label {
-  color: var(--text);
-  font-weight: 600;
-  font-size: 1em;
-  margin-bottom: 2px !important;
+#modalProperties .form-properties[modal-content-id=page-properties] .properties-body-container .exe-properties-form-content .exe-table-content .property-row > :nth-child(1) {
+  text-align: right;
+  margin-right: 24px;
+  width: 20%;
 }
-#modalProperties .form-properties .exe-properties-form-content #identifier input,
-#modalProperties .form-properties .exe-properties-form-content #cssClass input,
-#modalProperties .form-properties .exe-properties-form-content #titleNode input,
-#modalProperties .form-properties .exe-properties-form-content #titlePage input,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml input {
-  max-width: calc(100% - 2px) !important;
-  height: 36px;
-  border-radius: 8px;
+#modalProperties .form-properties[modal-content-id=page-properties] .properties-body-container .exe-properties-form-content .exe-table-content .property-row > :nth-child(2) {
+  text-align: left;
+  width: 67%;
 }
-#modalProperties .form-properties .exe-properties-form-content #identifier input :focus,
-#modalProperties .form-properties .exe-properties-form-content #identifier input :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #cssClass input :focus,
-#modalProperties .form-properties .exe-properties-form-content #cssClass input :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #titleNode input :focus,
-#modalProperties .form-properties .exe-properties-form-content #titleNode input :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #titlePage input :focus,
-#modalProperties .form-properties .exe-properties-form-content #titlePage input :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml input :focus,
-#modalProperties .form-properties .exe-properties-form-content #titleHtml input :focus-visible {
-  border-radius: 8px !important;
+#modalProperties .form-properties[modal-content-id=page-properties] .properties-body-container .exe-properties-form-content .exe-table-content .property-row input[type=checkbox] {
+  max-width: 20px;
+  width: 4% !important;
+  margin-left: 17.5%;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense {
-  flex-direction: column;
-  align-items: flex-start;
-  max-width: calc(100% - 2px);
-  margin-left: 2px;
+#modalProperties .form-properties[modal-content-id=preferences] .properties-body-container .exe-properties-form-content .exe-table-content .property-row > :nth-child(1) {
+  width: 30%;
+  max-width: none;
+  text-align: left;
+  margin-right: 24px;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta {
-  display: flex;
-  flex-direction: row;
-}
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta label,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta label {
-  color: var(--text);
-  font-weight: 600;
-  font-size: 1em;
-  margin-bottom: 2px !important;
+#modalProperties .form-properties[modal-content-id=preferences] .properties-body-container .exe-properties-form-content .exe-table-content .property-row > :nth-child(2) {
+  width: 60%;
   text-align: left;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta .exe-form-help,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta .exe-form-help {
-  border-left: 0;
+#modalProperties .form-properties[modal-content-id=preferences] .properties-body-container .exe-properties-form-content .exe-table-content .property-row .help-content {
+  top: 38px;
+  left: unset;
+  right: 0;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta .exe-form-help .form-help-exe-icon,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta .exe-form-help .form-help-exe-icon {
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container {
+  padding: 0 20px;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .exe-table-content,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .exe-table-content {
+  display: grid;
+  grid-auto-rows: min-content;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .property-row > label,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .property-row > label {
+  min-width: 140px;
+}
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .property-row:has(input[type=checkbox]) > label,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .property-row:has(input[type=checkbox]) > label {
+  min-width: 0;
   cursor: pointer;
-  display: block;
-  height: 16px;
-  width: 16px;
-  background-size: 16px;
-  background-repeat: no-repeat;
-  color: transparent;
+  user-select: none;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale .property-meta .exe-form-help .form-help-exe-icon.auto-icon,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta .exe-form-help .form-help-exe-icon.auto-icon {
-  background-image: url("images/icons/exe-info-icon-solid-green.svg");
-  position: relative;
-  top: 7px;
-  left: -4px;
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .property-row input[type=text],
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .property-row input[type=text] {
+  flex: 1 1 auto;
+  width: 100%;
+  padding: 8px 10px;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale select,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense select {
-  max-width: calc(100% - 2px) !important;
-  height: 36px;
-  border-radius: 8px;
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container .property-row input[type=checkbox],
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container .property-row input[type=checkbox] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale select :focus,
-#modalProperties .form-properties .exe-properties-form-content #locale select :focus-visible,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense select :focus,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense select :focus-visible {
-  border-radius: 8px !important;
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #visibility,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #teacherOnly,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #allowToggle,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #minimized,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #visibility,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #teacherOnly,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #allowToggle,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #minimized {
+  margin-left: 74px;
 }
-#modalProperties .form-properties .exe-properties-form-content #locale select.property-value,
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense select.property-value {
-  padding: 6px 12px;
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #identifier,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #cssClass,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #identifier,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #cssClass {
+  margin-top: 15px;
 }
-#modalProperties .form-properties .exe-properties-form-content #defaultLicense .property-meta label {
-  --width: 250px;
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #identifier > label,
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #cssClass > label,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #identifier > label,
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #cssClass > label {
+  text-align: right;
+  min-width: 90px;
 }
-#modalProperties .form-properties .exe-properties-form-content #description {
-  flex-direction: column;
-  align-items: flex-start;
-  max-width: calc(100% - 2px);
-  margin-left: 2px;
-}
-#modalProperties .form-properties .exe-properties-form-content #description label {
-  color: var(--text);
-  font-weight: 600;
-  font-size: 1em;
-  margin-bottom: 2px !important;
-}
-#modalProperties .form-properties .exe-properties-form-content #description textarea {
-  max-width: calc(100% - 2px) !important;
-  height: 36px;
-  border-radius: 8px;
-}
-#modalProperties .form-properties .exe-properties-form-content #description textarea :focus,
-#modalProperties .form-properties .exe-properties-form-content #description textarea :focus-visible {
-  border-radius: 8px !important;
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #identifier input[type=text],
+#modalProperties .form-properties[modal-content-id=idevice-properties] .properties-body-container #cssClass input[type=text],
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #identifier input[type=text],
+#modalProperties .form-properties[modal-content-id=block-properties] .properties-body-container #cssClass input[type=text] {
+  padding-top: 9px;
+  padding-bottom: 9px;
+  max-width: calc(100% - 110px);
+  width: calc(100% - 110px);
 }
 #modalProperties #versionControl {
   display: none;
@@ -3957,16 +3931,19 @@ Flexbox Bootstrap 5 helpers:
   display: flex;
   flex-flow: row wrap;
   justify-content: center;
-  padding: 5px;
-  border: 1px solid var(--delete);
-  border-radius: 5px;
+  padding: 12px;
+  margin: 12px 3px 12px 10px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--brand-primary-50) !important;
 }
 .user-editing-overlay .user-editing-message .user-editing-description,
 .user-editing-overlay .user-editing-message .user-editing-email,
 .user-editing-overlay .user-editing-message .user-editing-time {
-  font-size: 12px;
+  font-size: 14px;
   margin-right: 3px;
   font-weight: normal;
+  color: var(--brand-primary-900);
 }
 .user-editing-overlay .user-editing-message .user-editing-email {
   font-weight: bold;
@@ -4357,18 +4334,19 @@ Flexbox Bootstrap 5 helpers:
   justify-content: space-between;
   align-items: flex-start;
   line-height: 20;
-  margin-bottom: 24px;
+  margin-bottom: 17px;
 }
 .asideleft .content-info #exe-title.title-not-editing h2 {
   display: -webkit-box;
   border-radius: 4px;
   border: 2px solid transparent;
   margin-bottom: 0;
-  padding: 13px 4px 0 4px;
+  padding: 11px 4px 13px 4px;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-height: 50px;
 }
 .asideleft .content-info #exe-title.title-not-editing h2:hover {
   color: var(--brand-primary);
@@ -4393,7 +4371,7 @@ Flexbox Bootstrap 5 helpers:
   justify-content: space-between;
   align-items: flex-start;
   line-height: 19.2;
-  margin-bottom: 22px;
+  margin-bottom: 23px;
   height: 44px;
 }
 .asideleft .content-info #exe-title.title-editing h2 {
@@ -4423,13 +4401,13 @@ Flexbox Bootstrap 5 helpers:
 .asideleft .content-info #exe-title .title-menu-button:hover {
   background-color: var(--gray-100);
 }
-.asideleft .content-info #exe-title.two-lines {
+.asideleft .content-info #exe-title.two-lines:not(.title-editing) {
   margin-bottom: 7px;
 }
-.asideleft .content-info #exe-title.two-lines h2 {
+.asideleft .content-info #exe-title.two-lines:not(.title-editing) h2 {
   height: 60px;
 }
-.asideleft .content-info #exe-title.two-lines .title-menu-button {
+.asideleft .content-info #exe-title.two-lines:not(.title-editing) .title-menu-button {
   top: 2px;
 }
 .asideleft .content-info .title-menu {
@@ -4456,9 +4434,12 @@ Flexbox Bootstrap 5 helpers:
 #node-content-container {
   position: relative;
 }
+#node-content-container:has(#properties-node-content-form).exe-content {
+  background: none;
+}
 #node-content-container #eXeBetaWarning {
   z-index: 999;
-  margin: 10px 0 !important;
+  margin: 10px;
   font-size: 0.95em;
   padding: 10px 20px;
 }
@@ -4511,15 +4492,9 @@ Flexbox Bootstrap 5 helpers:
   z-index: 997;
 }
 #node-content-container #node-content {
-  min-height: 90%;
   height: auto;
 }
 #node-content-container #node-content .page-title {
-  /*
-  font-size: 18px;
-  font-weight: bold;
-  color: var(--text);
-  */
   margin-top: 15px;
 }
 #node-content-container #node-content[mode=edition] #eXeAddContentBtnWrapper {
@@ -4713,6 +4688,11 @@ Flexbox Bootstrap 5 helpers:
 
 #node-content-container.exe-content {
   padding: 0 20px 0 20px;
+  margin: 0 20px 0 20px;
+  border-radius: 8px;
+}
+#node-content-container.exe-content:not(.properties-page) {
+  height: calc(100vh - 105px - 80px);
 }
 #node-content-container.exe-content .box {
   border-radius: var(--radius);
@@ -5254,6 +5234,254 @@ article.box.idevice-element-in-content .idevice_node[mode=edition] .idevice_body
 }
 article.box.idevice-element-in-content .idevice_node[mode=edition] .idevice_body fieldset.exe-fieldset-open {
   margin-top: 5px;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] {
+  /* iDevice form fields styles */
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check-input {
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #666;
+  border-radius: 0.25rem;
+  background: #fff;
+  position: relative;
+  display: inline-block;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] input[type=number] {
+  min-width: 5ch !important;
+  width: 7.5ch !important;
+  max-width: 7.5ch !important;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] input[type=radio] {
+  padding-left: 0.2rem !important;
+  margin-right: 0.2rem !important;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] label {
+  margin: 0 !important;
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] input[type=radio],
+article.box.idevice-element-in-content .idevice_node[mode=edition] input[type=checkbox],
+article.box.idevice-element-in-content .idevice_node[mode=edition] input[type=button] {
+  cursor: pointer;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] input[type=text],
+article.box.idevice-element-in-content .idevice_node[mode=edition] input[type=number],
+article.box.idevice-element-in-content .idevice_node[mode=edition] textarea {
+  box-sizing: border-box;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check-input:checked {
+  background-color: var(--brand-primary, #0BA1A1);
+  border-color: var(--brand-primary, #0BA1A1);
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex: 0 0 auto !important;
+  min-width: max-content;
+  box-sizing: border-box;
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check-input[type=radio] {
+  border-radius: 50%;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check-input:focus {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(11, 161, 161, 0.25);
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check-input:checked[type=checkbox]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="white"><path d="M13.485 1.929a1 1 0 0 1 .086 1.414l-7.07 8.001a1 1 0 0 1-1.452.038L2.4 9.314a1 1 0 1 1 1.414-1.414l2.055 2.054 6.364-7.2a1 1 0 0 1 1.252-.18z"/></svg>') center/14px 14px no-repeat;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check-label {
+  cursor: pointer;
+  margin: 0;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .idevice_options > * {
+  margin-bottom: 1.2em;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
+  flex-wrap: wrap;
+  gap: 0.1rem;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-item + .toggle-item {
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-label {
+  cursor: pointer;
+  margin-right: 12px;
+  margin-top: 0;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 40px;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-visual {
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--gray-400, #ccc);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  transition: background 160ms ease, box-shadow 160ms ease;
+  position: relative;
+  cursor: pointer;
+  pointer-events: none;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-visual::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 160ms ease;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-input:checked + .toggle-visual {
+  background: var(--brand-primary, #0BA1A1);
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-input:checked + .toggle-visual::after {
+  transform: translateX(16px);
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-input:disabled + .toggle-visual {
+  opacity: 0.5;
+  filter: grayscale(0.3);
+  cursor: not-allowed;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .toggle-related label > input[type=number] {
+  display: inline-block;
+  width: 60px;
+  margin: 0 4px;
+  vertical-align: middle;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check-input[type=radio] {
+  position: relative;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check-input[type=radio]:checked {
+  background: #fff !important;
+  border: 1px solid var(--brand-primary, #0BA1A1) !important;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .form-check-input[type=radio]:checked::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--brand-primary, #0BA1A1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-LightboxWindow {
+  background-color: #fff;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ccc;
+  width: 100%;
+  max-width: 1200px;
+  position: relative;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-LightboxTabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+  align-items: center;
+  position: relative;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] a.eXeE-TabButton,
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-TabButton {
+  padding: 10px 15px;
+  cursor: pointer;
+  background: #f0f0f0;
+  border: none;
+  border-right: 1px solid #ccc;
+  font-size: 16px;
+  position: relative;
+  text-decoration: none !important;
+  color: black;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] a.eXeE-TabButton:last-child {
+  border-right: none;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-Active,
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-Active {
+  background: #fff !important;
+  border-bottom: 2px solid #007BFF !important;
+  color: #0BA1A1 !important;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-LightboxContent {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-LightboxTextarea {
+  width: 100%;
+  height: 250px;
+  font-family: monospace;
+  font-size: 14px;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-LightboxFooter {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #ccc;
+  padding: 10px;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-LightboxFooter button {
+  margin-left: 10px;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-InfoTooltip {
+  display: inline-block;
+  margin-left: 5px;
+  cursor: help;
+  border-radius: 50%;
+  background: #ccc;
+  width: 16px;
+  height: 16px;
+  text-align: center;
+  line-height: 16px;
+  font-size: 12px;
+  font-weight: bold;
+  position: relative;
+}
+article.box.idevice-element-in-content .idevice_node[mode=edition] .eXeE-InfoTooltip:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 20px;
+  left: 0;
+  background: #333;
+  color: #fff;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 999;
 }
 article.box.idevice-element-in-content.hidden-idevices.box.idevice-element-in-content {
   min-height: 0;
@@ -6232,7 +6460,7 @@ body.login-page #login-tpl .login-left .other-methods {
 body.login-page #login-tpl .login-left .other-methods p {
   margin: 24px 0;
 }
-body.login-page #login-tpl .login-left .other-methods .other-methods-buttons a {
+body.login-page #login-tpl .login-left .other-methods .other-methods-buttons .btn {
   width: 100%;
   border-color: hsl(217, 16%, 84%) !important;
   background-color: var(--white) !important;
@@ -6240,10 +6468,10 @@ body.login-page #login-tpl .login-left .other-methods .other-methods-buttons a {
   font-weight: 500;
   color: #132032;
 }
-body.login-page #login-tpl .login-left .other-methods .other-methods-buttons a:hover {
+body.login-page #login-tpl .login-left .other-methods .other-methods-buttons .btn:hover {
   background-color: var(--gray-100) !important;
 }
-body.login-page #login-tpl .login-left .other-methods .other-methods-buttons a:active {
+body.login-page #login-tpl .login-left .other-methods .other-methods-buttons .btn:active {
   background-color: var(--gray-200) !important;
 }
 body.login-page #login-tpl .login-left .lead {

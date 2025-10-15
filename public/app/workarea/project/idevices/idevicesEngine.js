@@ -943,10 +943,10 @@ export default class IdevicesEngine {
                         ideviceData,
                         this.nodeContentElement
                     );
-                    // Send operation log action to bbdd
+                    // Send operation log action to db: source = new iDevice id, destination = its block
                     let additionalData = {};
                     eXeLearning.app.project.sendOdeOperationLog(
-                        null,
+                        ideviceNode.odeIdeviceId,
                         ideviceNode.blockId,
                         'ADD_IDEVICE',
                         additionalData
@@ -1653,6 +1653,9 @@ export default class IdevicesEngine {
         this.nodeContentLoadScreenElement.classList.add('loading');
         this.nodeContentLoadScreenElement.classList.remove('hidden');
         this.nodeContentLoadScreenElement.classList.remove('hiding');
+        // Testing: explicit visibility flag and content readiness
+        this.nodeContentLoadScreenElement.setAttribute('data-visible', 'true');
+        this.nodeContentElement?.setAttribute('data-ready', 'false');
         // Clear timeout loading screen
         if (this.hideNodeContanerLoadScreenTimeout) {
             clearTimeout(this.hideNodeContanerLoadScreenTimeout);
@@ -1669,6 +1672,12 @@ export default class IdevicesEngine {
         this.hideNodeContanerLoadScreenTimeout = setTimeout(() => {
             this.nodeContentLoadScreenElement.classList.add('hidden');
             this.nodeContentLoadScreenElement.classList.remove('hiding');
+            // Testing: explicit visibility flag and content readiness
+            this.nodeContentLoadScreenElement.setAttribute(
+                'data-visible',
+                'false'
+            );
+            this.nodeContentElement?.setAttribute('data-ready', 'true');
         }, ms);
     }
 
