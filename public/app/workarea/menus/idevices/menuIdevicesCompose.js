@@ -457,6 +457,8 @@ export default class MenuIdevicesCompose {
         ideviceDiv.setAttribute('drag', 'idevice');
         ideviceDiv.setAttribute('icon-type', ideviceData.icon.type);
         ideviceDiv.setAttribute('icon-name', ideviceData.icon.name);
+        // Testing: left menu id for this iDevice
+        ideviceDiv.setAttribute('data-testid', `idevice-${ideviceData.id}`);
         ideviceDiv.append(this.elementDivIcon(ideviceData));
         ideviceDiv.append(this.elementDivTitle(ideviceData.title));
 
@@ -472,6 +474,8 @@ export default class MenuIdevicesCompose {
         ideviceDiv.setAttribute('title', ideviceData.title);
         ideviceDiv.setAttribute('icon-type', ideviceData.icon.type);
         ideviceDiv.setAttribute('icon-name', ideviceData.icon.name);
+        // Testing: left menu id for this imported iDevice
+        ideviceDiv.setAttribute('data-testid', `idevice-${ideviceData.id}`);
 
         ideviceDiv.append(this.elementDivIcon(ideviceData));
         ideviceDiv.append(this.elementDivTitle(ideviceData.title));

@@ -114,8 +114,8 @@ export default class StructureNode {
                 navId: response.odeNavStructureSyncId,
             };
             eXeLearning.app.project.sendOdeOperationLog(
-                null,
-                null,
+                this.pageId,
+                this.pageId,
                 'ADD_PAGE',
                 additionalData
             );
