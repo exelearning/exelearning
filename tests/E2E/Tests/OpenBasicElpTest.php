@@ -46,7 +46,7 @@ final class OpenBasicElpTest extends BaseE2ETestCase
         try { $driver->executeScript('arguments[0].scrollIntoView({block: "center"});', [$button]); } catch (\Throwable) {}
 
         // Give any CSS transitions a brief moment to settle in CI
-        \App\Tests\E2E\Support\Wait::settleDom(300);
+        \App\Tests\E2E\Support\Wait::seconds(5);
 
         // Click the button
         $button->click();
