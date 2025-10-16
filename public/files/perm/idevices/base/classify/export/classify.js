@@ -1278,8 +1278,8 @@ var $eXeClasifica = {
                 .on('error', () => $cursor.hide());
 
             $text.show().css({
-                color: '#000',
-                'background-color': 'rgba(255, 255, 255, 0.7)',
+                'color': color,
+                'background-color': $eXeClasifica.hexToRgba(backcolor, 0.7)
             });
         }
 
@@ -1301,6 +1301,36 @@ var $eXeClasifica = {
                 if (group === groupp) hits++;
             });
         return hits;
+    },
+
+    hexToRgba: function (hex, alpha = 1) {
+
+        if (typeof hex !== 'string' || hex.trim() === '') {
+            return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
+        }
+        const raw = hex.trim();
+        if (/^rgba?\(/i.test(raw)) {
+
+            if (/^rgba\(/i.test(raw) && (alpha === 1 || alpha === undefined)) return raw;
+            try {
+                const nums = raw.replace(/rgba?\(|\)|\s/g, '').split(',').map(v => parseFloat(v));
+                const [r = 255, g = 255, b = 255] = nums;
+                const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : (nums[3] ?? 1);
+                return `rgba(${r | 0}, ${g | 0}, ${b | 0}, ${a})`;
+            } catch (e) {
+                return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
+            }
+        }
+        let h = raw.replace(/^#/, '');
+        if (![3, 6].includes(h.length) || /[^0-9a-f]/i.test(h)) {
+            return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
+        }
+        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        const r = parseInt(h.slice(0, 2), 16);
+        const g = parseInt(h.slice(2, 4), 16);
+        const b = parseInt(h.slice(4, 6), 16);
+        const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, Number(alpha))) : 1;
+        return `rgba(${r}, ${g}, ${b}, ${a})`;
     },
 
     refreshCards: function (instance) {

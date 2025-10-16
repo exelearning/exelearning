@@ -672,7 +672,7 @@ var $eXeDescubre = {
                         <div class="DescubreQP-MessageCodeAccessE" id="descubreMesajeAccesCodeE-${instance}"></div>
                         <div class="DescubreQP-DataCodeAccessE">
                             <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                            <input type="text" class="DescubreQP-CodeAccessE" id="descubreCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                            <input type="text" class="DescubreQP-CodeAccessE form-control" id="descubreCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                             <a href="#" id="descubreCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                 <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                 <div class="exeQuextIcons-Submit DescubreQP-Activo"></div>

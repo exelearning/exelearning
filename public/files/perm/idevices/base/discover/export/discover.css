@@ -1075,29 +1075,6 @@ div:fullscreen .DescubreQP-Multimedia {
         width: 2em;
     }
 
-    .DescubreQP-GameContainer input[type="text"],
-    input.DescubreQP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
-
-    .DescubreQP-GameContainer input[type="text"]:active,
-    .DescubreQP-GameContainer input[type="text"]:focus,
-    input.DescubreQP-EdReply:focus,
-    input.DescubreQP-EdReply:active,
-    input.DescubreQP-CodeAccessE:focus,
-    input.DescubreQP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
-
     .DescubreQP-GameOverExt {
         width: 90%;
         font-size: 0.9em;

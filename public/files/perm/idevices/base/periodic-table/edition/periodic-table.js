@@ -293,15 +293,15 @@ var $exeDevice = {
                                 <span>${_('Mode')}: </span>
                                 <div class="form-check form-check-inline m-0">
                                     <input class="form-check-input" id="ptEGame" type="radio" name="ptmode" value="0" checked="checked" />
-                                    <label for="ptETypeGame" class="form-check-label">${_('Game')}</label>
+                                    <label for="ptEGame" class="form-check-label">${_('Game')}</label>
                                 </div>
                                 <div class="form-check form-check-inline m-0">
                                     <input class="form-check-input" id="ptEComplete" type="radio" name="ptmode" value="1" />
-                                    <label for="ptETypeComplete" class="form-check-label">${_('Complete')}</label>
+                                    <label for="ptEComplete" class="form-check-label">${_('Complete')}</label>
                                 </div>
                                 <div class="form-check form-check-inline m-0">
                                     <input class="form-check-input" id="ptEMobile" type="radio" name="ptmode" value="2" />
-                                    <label for="ptETypeMobile" class="form-check-label">${_('Mobile')}</label>
+                                    <label for="ptEMobile" class="form-check-label">${_('Mobile')}</label>
                                 </div>
                             </div>                    
                             <div id="ptCompleteData" class="align-items-center flex-nowrap gap-2 mb-3" style="display:none">

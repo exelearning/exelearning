@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\E2E\Offline;
 
-use App\Tests\E2E\ExelearningE2EBase;
+use App\Tests\E2E\Support\BaseE2ETestCase;
 use Symfony\Component\Panther\Client;
+use App\Tests\E2E\Support\Console;
 
-class OfflineModePantherTest extends ExelearningE2EBase
+class OfflineModePantherTest extends BaseE2ETestCase
 {
     // /**
     //  * Override the base URL to point to our local PHP server for offline tests.
@@ -51,7 +52,7 @@ class OfflineModePantherTest extends ExelearningE2EBase
      */
     public function testLoadsWorkareaDirectlyInOfflineMode(): void
     {
-        $client = $this->createTestClient();
+        $client = $this->makeClient();
         $client->request('GET', '/workarea');
 
         // Since APP_ONLINE_MODE=0, it should not redirect to /login
@@ -71,6 +72,9 @@ class OfflineModePantherTest extends ExelearningE2EBase
             'return !!(window.__MockElectronLoaded === true && window.electronAPI && typeof window.electronAPI.openElp === "function");'
         );
         $this->assertTrue((bool)$injected, 'Mock Electron API not injected or missing expected methods.');
+
+        // Check browser console for errors
+        Console::assertNoBrowserErrors($client);
 
     }
 }

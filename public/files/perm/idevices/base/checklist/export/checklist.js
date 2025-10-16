@@ -25,7 +25,6 @@ var $eXeListaCotejo = {
             $('.ctj-IDevice').hide();
             return;
         }
-
         if (
             !$exeDevices.iDevice.gamification.helpers.supportedBrowser(
                 'Checklist',
@@ -244,11 +243,13 @@ var $eXeListaCotejo = {
                         <div id="ctjTitle-${instance}" class="CTJP-Title">${mOptions.title}</div>
                         <div id="ctjSubTitle-${instance}" class="CTJP-SubTitle">${mOptions.subtitle}</div>
                         <div id="ctjUserData-${instance}" class="CTJP-UserData" style="display:${ud};">
-                            <div id="ctjUserNameDiv-${instance}" class="CTJP-UserName">
-                                <label for="ctjUserName-${instance}">${mOptions.msgs.msgName}: </label><input type="text" id="ctjUserName-${instance}">
+                            <div id="ctjUserNameDiv-${instance}" class="CTJP-UserName flex-nowrap" style="width:100%">
+                                <label for="ctjUserName-${instance}" class="form-control-label">${mOptions.msgs.msgName}: </label>
+                                <input type="text" id="ctjUserName-${instance}" class="w-100 form-control">
                             </div>
-                            <div id="ctjUserDateDiv-${instance}" class="CTJP-UserDate">
-                                <label for="ctjUserDate-${instance}">${mOptions.msgs.msgDate}: </label><input type="text" id="ctjUserDate-${instance}">
+                            <div id="ctjUserDateDiv-${instance}" class="CTJP-UserDate flex-nowrap ">
+                                <label for="ctjUserDate-${instance}" class="form-control-label" >${mOptions.msgs.msgDate}: </label>
+                                <input type="text" id="ctjUserDate-${instance}" class="form-control w-100">
                             </div>
                         </div>
                         <hr class="CTJP-Line"/>
@@ -418,67 +419,178 @@ var $eXeListaCotejo = {
             divElement = document.getElementById('ctjList-' + instance);
 
         if (!divElement) {
-            console.error(
-                'No se encontró el elemento con el ID proporcionado.',
-            );
+            console.error('No se encontró el elemento con el ID proporcionado.');
             return;
         }
 
-        const opacity = $('#ctjList-' + instance)
-            .find('mjx-assistive-mml')
-            .eq(0)
-            .css('opacity'),
-            mmls = $('#ctjList-' + instance).find('mjx-assistive-mml');
-
-        mmls.each(function () {
+        const mmls = $('#ctjList-' + instance).find('mjx-assistive-mml');
+        const originalOpacities = [];
+        mmls.each(function (idx) {
+            originalOpacities[idx] = $(this).css('opacity');
             $(this).css('opacity', '0.0');
         });
 
         html2canvas(divElement)
             .then(function (canvas) {
-                const imageData = canvas.toDataURL('image/png'),
-                    link = document.createElement('a');
-                link.href = imageData;
-                link.download = mOptions.msgs.msgList + '.png';
-                link.click();
+                const imgData = canvas.toDataURL('image/png');
+
+                const fallbackPng = function () {
+                    try {
+                        const link = document.createElement('a');
+                        link.href = imgData;
+                        link.download = (mOptions.msgs && mOptions.msgs.msgList ? mOptions.msgs.msgList : 'lista') + '.png';
+                        link.click();
+                    } catch (e) {
+                        console.error('Error al descargar la imagen:', e);
+                    }
+                };
+
+                const doPdf = function () {
+                    try {
+                        if (!window.jspdf || !window.jspdf.jsPDF) return false;
+                        const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        const imgProps = pdf.getImageProperties(imgData);
+                        const pdfWidth = pdf.internal.pageSize.getWidth();
+                        const pdfHeight = pdf.internal.pageSize.getHeight();
+                        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+                        let heightLeft = imgHeight;
+                        let position = 0;
+
+                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                        heightLeft -= pdfHeight;
+
+                        while (heightLeft > 0) {
+                            position -= pdfHeight;
+                            pdf.addPage();
+                            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                            heightLeft -= pdfHeight;
+                        }
+
+                        const fileName = (mOptions.msgs && mOptions.msgs.msgList ? mOptions.msgs.msgList : 'lista') + '.pdf';
+                        pdf.save(fileName);
+                        return true;
+                    } catch (e) {
+                        console.error('Error al generar el PDF: ', e);
+                        return false;
+                    }
+                };
+
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    if (!doPdf()) fallbackPng();
+                } else {
+                    $eXeListaCotejo.ensureJsPDF(
+                        function onReady() {
+                            if (!doPdf()) fallbackPng();
+                        },
+                        function onError() {
+                            fallbackPng();
+                        },
+                    );
+                }
             })
             .catch(function (error) {
-                mmls.each(function () {
-                    $(this).css('opacity', opacity);
-                });
                 console.error('Error al generar la captura: ', error);
+            })
+            .finally(function () {
+                mmls.each(function (idx) {
+                    $(this).css('opacity', originalOpacities[idx]);
+                });
             });
-        mmls.each(function () {
-            $(this).css('opacity', opacity);
-        });
     },
 
     createItems: function (instance) {
         const mOptions = $eXeListaCotejo.options[instance];
         let html = '';
-        for (let level of mOptions.levels) {
+        for (let i = 0; i < mOptions.levels.length; i++) {
+            const level = mOptions.levels[i];
             const marginLeft = 1.5 * parseInt(level.nivel) + 0.5,
-                msgp =
-                    level.points.trim() == '1'
-                        ? mOptions.msgs.msgPoint
-                        : mOptions.msgs.msgPoints,
+                msgp = level.points.trim() == '1'
+                    ? mOptions.msgs.msgPoint
+                    : mOptions.msgs.msgPoints,
                 msg = '(' + level.points + ' ' + msgp + ')',
-                points =
-                    mOptions.useScore && level.points.trim().length > 0
-                        ? msg
-                        : '';
+                points = mOptions.useScore && level.points.trim().length > 0 ? msg : '';
+
             if (level.type === '0') {
-                html += `<div class="CTJP-Item"><input type="checkbox" style="margin-left: ${marginLeft}em" /><span style="">${level.item}</span></span><span class= "CTJP-Points">${points}</span></div>`;
+                const cid = `ctjToggle-${instance}-${i}`;
+                html += `<div class="CTJP-Item d-flex align-item-center flex-nowrap gap-1" style="margin-left: ${marginLeft}em">
+                        <div class="toggle-control">
+                            <input type="checkbox" id="${cid}" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </div>
+                        <label class="toggle-label" for="${cid}">${level.item}</label>
+                        <span class="CTJP-Points">${points}</span>
+                </div>`;
             } else if (level.type === '1') {
-                html += `<div class="CTJP-Item"><input type="checkbox" style="margin-left: ${marginLeft}em" /><span>${level.item}</span></span><span class= "CTJP-Points">${points}</span><input type="text" /></div>`;
+                const cid = `ctjToggle-${instance}-${i}`;
+                html += `<div class="CTJP-Item d-flex align-item-center flex-nowrap gap-1"  style="margin-left: ${marginLeft}em">
+                        <div class="toggle-control"
+                            <input type="checkbox" id="${cid}" class="toggle-input" />
+                            <span class="toggle-visual"></span>
+                        </div>
+                        <label class="toggle-label" for="${cid}">${level.item}</label>
+                        <div class="d-flex align-item-center flex-nowrap">
+                            <span class="CTJP-Points">${points}</span>
+                            <input type="text" class="form-control form-control-sm"  style=" max-width:10em; margin-right:3px"/>
+                        </div>
+                </div>`;
             } else if (level.type === '2') {
-                html += `<div class="CTJP-Item"><select  style="margin-left: ${marginLeft}em"  class="CTJ-Select"><option value="0" selected></option><option value="1">${mOptions.msgs.msgDone}</option><option value="2">${mOptions.msgs.msgInProgress}</option><option value="3">${mOptions.msgs.msgUnrealized}</option></select><span>${level.item}</span></span><span class= "CTJP-Points">${points}</span></div>`;
+                html += `<div class="CTJP-Item d-flex align-item-center flex-nowrap">
+                    <select class="form-select form-select-sm CTJ-Select" style="margin-left: ${marginLeft}em; max-width:10em; margin-right:3px">
+                        <option value="0" selected></option>
+                        <option value="1">${mOptions.msgs.msgDone}</option>
+                        <option value="2">${mOptions.msgs.msgInProgress}</option>
+                        <option value="3">${mOptions.msgs.msgUnrealized}</option>
+                    </select>
+                    <span>${level.item}</span>
+                    <span class="CTJP-Points">${points}</span>
+                </div>`;
             } else if (level.type === '3') {
-                html += `<div class="CTJP-Item"><span style="display:inlin-block;margin-left: ${marginLeft}em">${level.item}</span><span class= "CTJP-Points">${points}</span></div>`;
+                html += `<div class="CTJP-Item d-flex align-item-center flex-nowrap">
+                    <span style="display:inline-block;margin-left:${marginLeft}em">${level.item}</span>
+                    <span class="CTJP-Points">${points}</span>
+                </div>`;
             }
         }
         return html;
     },
+
+    ensureJsPDF: function (onReady, onError) {
+        try {
+            if (window.jspdf && window.jspdf.jsPDF) {
+                onReady && onReady();
+                return;
+            }
+        } catch (_) { }
+
+        const scriptId = 'jspdf-umd-loader';
+        const existing = document.getElementById(scriptId);
+        if (existing) {
+            let tries = 0;
+            const iv = setInterval(function () {
+                tries++;
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    clearInterval(iv);
+                    onReady && onReady();
+                } else if (tries > 50) {
+                    clearInterval(iv);
+                    onError && onError();
+                }
+            }, 100);
+            return;
+        }
+
+        const s = document.createElement('script');
+        s.id = scriptId;
+        s.src = 'https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js';
+        s.async = true;
+        s.onload = function () { onReady && onReady(); };
+        s.onerror = function () { onError && onError(); };
+        document.head.appendChild(s);
+    }
+
+
+
 };
 $(function () {
     $eXeListaCotejo.init();

@@ -9,6 +9,13 @@
     margin-right: 0 !important;
 }
 
+#identifyQEIdeviceForm #idfEPercentajeFB,
+#identifyQEIdeviceForm #idfEPercentajeQuestions,
+#identifyQEIdeviceForm #hiETimeQuestion {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
+
 .IDFE-EPanel {
     margin: 0.7em auto;
     padding: 0;

@@ -378,7 +378,7 @@ var $quickquestionsvideo = {
                         <div class="sr-av">${msgs.msgQuestions}:</div>
                         <div class="VQXTP-Question" id="vquextQuestion-${instance}"></div>
                         <div class="VQXTP-DivReply" id="vquextDivReply-${instance}">
-                            <label class="sr-av">${msgs.msgIndicateSolution}:</label><input type="text" value="" class="VQXTP-EdReply" id="vquextEdAnswer-${instance}" autocomplete="off">
+                            <label class="sr-av">${msgs.msgIndicateSolution}:</label><input type="text" value="" class="VQXTP-EdReply form-control" id="vquextEdAnswer-${instance}" autocomplete="off">
                             <a href="#" id="vquextBtnReply-${instance}" title="${msgs.msgReply}">
                                 <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                                 <div class="exeQuextIcons-Submit"></div>
@@ -443,7 +443,8 @@ var $quickquestionsvideo = {
                     <div class="VQXTP-CodeAccessDiv" id="vquextCodeAccessDiv-${instance}">
                         <p class="VQXTP-MessageCodeAccessE" id="vquextMesajeAccesCodeE-${instance}"></p>
                         <div class="VQXTP-DataCodeAccessE">
-                            <label for="vquextCodeAccessE-${instance}" class="sr-av">${msgs.msgCodeAccess}:</label><input type="text" class="VQXTP-CodeAccessE" id="vquextCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                            <label for="vquextCodeAccessE-${instance}" class="sr-av">${msgs.msgCodeAccess}:</label>
+                            <input type="text" class="VQXTP-CodeAccessE form-control" id="vquextCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                             <a href="#" id="vquextCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                 <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                 <div class="exeQuextIcons-Submit VQXTP-Activo"></div>

@@ -1,3 +1,20 @@
 .MNFE-Preview{
 	max-width: 600px;
 }
+
+#magnifierIdeviceForm #mnfAlignSelect{
+	width: 15ch !important;
+    max-width: 15ch !important;
+}
+#magnifierIdeviceForm #mnfWidthInput{
+	width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
+#magnifierIdeviceForm  #mnfLensSizeSelect,
+#magnifierIdeviceForm #mnfInitialZoomSelect{
+	width: 13ch !important;
+    max-width: 13ch !important;
+}
+
+
+

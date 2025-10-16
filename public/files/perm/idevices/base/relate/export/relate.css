@@ -419,6 +419,7 @@
 .RLCP-CodeAccessE {
     margin: 0 .3em;
     width: 100%;
+    max-width: 350px;
     text-align: center;
 }
 
@@ -1242,34 +1243,12 @@ div:fullscreen .RLCP-LinkMinimize {
         width: 2em;
     }
 
-    .RLCP-GameContainer input[type="text"],
-    input.RLCP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
 
-    .RLCP-GameContainer input[type="text"]:active,
-    .RLCP-GameContainer input[type="text"]:focus,
-    input.RLCP-EdReply:focus,
-    input.RLCP-EdReply:active,
-    input.RLCP-CodeAccessE:focus,
-    input.RLCP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
 
     .RLCP-CodeAccessDiv,
     .RLCP-ShowClue {
         width: 90%;
     }
-
     div:fullscreen .RLCP-Message {
         font-size: 1em;
     }

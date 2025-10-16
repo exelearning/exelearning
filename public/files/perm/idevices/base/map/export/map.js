@@ -1959,7 +1959,7 @@ var $eXeMapa = {
                         <div class="MQP-MessageMoScoreData">
                             <p id="mapaAccessMessage-${instance}"></p>
                             <div class="MQP-DataCodeAccessE">
-                                <input type="text" class="MQP-CodeAccessE" id="mapaCodeAccessE-${instance}">
+                                <input type="text" class="MQP-CodeAccessE form-control" id="mapaCodeAccessE-${instance}">
                                 <a href="#" id="mapaCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                     <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                     <div class="exeQuextIcons-Submit MQP-Activo"></div>
@@ -2021,7 +2021,7 @@ var $eXeMapa = {
                     <div class="sr-av">${msgs.msgQuestion}:</div>
                     <div class="MQP-Definition" id="mapaDefinition-${instance}"></div>
                     <div class="MQP-DivReply" id="mapaDivResponder-${instance}">
-                        <input type="text" value="" class="MQP-EdReply" id="mapaEdAnswer-${instance}" autocomplete="off">
+                        <input type="text" value="" class="MQP-EdReply form-control" id="mapaEdAnswer-${instance}" autocomplete="off">
                         <a href="#" id="mapaBtnReply-${instance}" title="${msgs.msgAnswer}">
                             <strong class="sr-av">${msgs.msgAnswer}</strong>
                             <div class="exeQuextIcons-Submit MQP-Activo"></div>
@@ -2090,7 +2090,7 @@ var $eXeMapa = {
                     <div class="sr-av">${msgs.msgQuestion}:</div>
                     <div class="MQP-Definition" id="mapaDefinition1-${instance}"></div>
                     <div class="MQP-DivReply" id="mapaDivResponder1-${instance}">
-                        <input type="text" value="" class="MQP-EdReply" id="mapaEdAnswer1-${instance}" autocomplete="off">
+                        <input type="text" value="" class="MQP-EdReply form-control" id="mapaEdAnswer1-${instance}" autocomplete="off">
                         <a href="#" id="mapaBtnReply1-${instance}" title="${msgs.msgAnswer}">
                             <strong class="sr-av">${msgs.msgAnswer}</strong>
                             <div class="exeQuextIcons-Submit MQP-Activo"></div>

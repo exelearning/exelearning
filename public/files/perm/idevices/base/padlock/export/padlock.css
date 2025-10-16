@@ -145,7 +145,6 @@
     margin: 0 .3em;
     max-width: 300px;
     width: 60%;
-    padding: 0.4em 0.25em;
     text-align: center;
 }
 
@@ -269,24 +268,7 @@
     .candado-GameContainer {
         font-size: 0.9rem;
     }
-
-    .candado-GameContainer input[type="text"] {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        font-size: 0.9em;
-        line-height: 1.1em;
-        padding: 3px 2px;
-    }
-
-    .candado-GameContainer input[type="text"]:active,
-    .candado-GameContainer input[type="text"]:focus {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
+ 
 }
 
 @media screen and (max-width:550px) {

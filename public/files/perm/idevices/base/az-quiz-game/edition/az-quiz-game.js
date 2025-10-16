@@ -168,7 +168,7 @@ var $exeDevice = {
                             <div>
                                 <div class="toggle-item" idevice-id="roscoShowMinimize">
                                     <div class="toggle-control">
-                                        <input type="checkbox" id="roscoShowMinimize" class="toggle-input" aria-label="${_('Show minimized.')}">
+                                        <input type="checkbox" id="roscoShowMinimize" class="toggle-input">
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label idevice-title" for="roscoShowMinimize">${_('Show minimized.')}</label>
@@ -184,20 +184,20 @@ var $exeDevice = {
                                 <div class="roscoShowSolutionRow d-flex align-items-center flex-wrap">
                                     <div class="toggle-item m-0" idevice-id="roscoShowSolution">
                                         <div class="toggle-control">
-                                            <input type="checkbox" checked id="roscoShowSolution" class="toggle-input" aria-label="${_('Show solutions')}">
+                                            <input type="checkbox" checked id="roscoShowSolution" class="toggle-input">
                                             <span class="toggle-visual"></span>
                                         </div>
                                         <label class="toggle-label" for="roscoShowSolution">${_('Show solutions')}.</label>
                                     </div>
                                     <label for="roscoTimeShowSolution" class="mb-0 ms-2 d-flex align-items-center gap-1 roscoShowSolutionTime">
-                                        <span>${_('Show solution in')}:</span>
-                                        <input type="number" class="form-control form-control-sm" name="roscoTimeShowSolution" id="roscoTimeShowSolution" value="3" min="1" max="9" />
-                                        <span>${_('seconds')}</span>
+                                        ${_('Show solution in')}:                                        
                                     </label>
+                                    <input type="number" class="form-control form-control-sm" name="roscoTimeShowSolution" id="roscoTimeShowSolution" value="3" min="1" max="9" />
+                                    <span>${_('seconds')}</span>
                                 </div>
                                 <div class="toggle-item" idevice-id="roscoCaseSensitive">
                                     <div class="toggle-control">
-                                        <input type="checkbox" id="roscoCaseSensitive" class="toggle-input" aria-label="${_('Case sensitive')}">
+                                        <input type="checkbox" id="roscoCaseSensitive" class="toggle-input">
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label" for="roscoCaseSensitive">${_('Case sensitive')}.</label>
@@ -205,7 +205,7 @@ var $exeDevice = {
 
                                 <div class="toggle-item" idevice-id="roscoModeBoard">
                                     <div class="toggle-control">
-                                        <input type="checkbox" id="roscoModeBoard" class="toggle-input" aria-label="${_('Digital whiteboard mode')}">
+                                        <input type="checkbox" id="roscoModeBoard" class="toggle-input">
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label" for="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
@@ -213,7 +213,7 @@ var $exeDevice = {
 
                                 <div class="toggle-item" idevice-id="roscoEEvaluation">
                                     <div class="toggle-control">
-                                        <input type="checkbox" id="roscoEEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
+                                        <input type="checkbox" id="roscoEEvaluation" class="toggle-input"">
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label" for="roscoEEvaluation">${_('Progress report')}.</label>
@@ -243,6 +243,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 1, true)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(1)}
             </div>
         `;
 
@@ -1295,10 +1296,10 @@ var $exeDevice = {
                 .attr('alt', alt);
         });
 
-        $('#roscoDataWord input.roscoURLImageEdition').on(
+    $('#roscoDataWord input.roscoURLImageEdition').on(
             'change',
             function () {
-                const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp`'],
+        const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                     selectedFile = $(this).val(),
                     ext = selectedFile.split('.').pop().toLowerCase();
                 if (
@@ -1310,25 +1311,22 @@ var $exeDevice = {
                     );
                     return false;
                 }
-                const img = $(this)
-                    .parent()
-                    .siblings('.roscoImageEdition')
-                    .find('.roscoHomeImageEdition');
-                const url = selectedFile,
-                    alt = $(this)
-                        .parent()
-                        .siblings('.roscoMetaData')
-                        .find('.roscoAlt')
-                        .val();
-                let x = parseFloat(
-                    $(this).siblings('.roscoXImageEdition').val(),
-                );
-                let y = parseFloat(
-                    $(this).siblings('.roscoYImageEdition').val(),
-                );
+        const $imageBar = $(this).closest('.roscoImageBarEdition');
+        const img = $imageBar.find('.roscoHomeImageEdition');
+        const url = selectedFile;
+        const alt = $imageBar.find('.roscoAlt').val();
+        let x = parseFloat($imageBar.find('.roscoXImageEdition').val());
+        let y = parseFloat($imageBar.find('.roscoYImageEdition').val());
                 x = x || 0;
                 y = y || 0;
                 $exeDevice.showImage(img, url, x, y, alt, 1);
+
+        // Sincroniza icono activo/inactivo
+        const $container = $(this).closest('.roscoWordMutimediaEdition');
+        const hasImage = $.trim($(this).val() || '').length > 0;
+        const hasAudio = $.trim($container.find('.roscoURLAudioEdition').val() || '').length > 0;
+        const icon = (hasImage || hasAudio) ? 'roscoSelectImage.png' : 'roscoSelectImageInactive.png';
+        $container.find('.roscoSelectImageEdition').attr('src', $exeDevice.idevicePath + icon);
             },
         );
 
@@ -1337,12 +1335,17 @@ var $exeDevice = {
             function () {
                 const selectedFile = $(this).val();
                 if (!selectedFile) {
-                    eXe.app.alert(
-                        _('Supported formats') + ": mp3', 'ogg', 'wav'",
-                    );
+                    eXe.app.alert(_('Supported formats') + ': mp3, ogg, wav');
                 } else if (selectedFile.length > 4) {
                     $exeDevice.playSound(selectedFile);
                 }
+
+                // Sincroniza icono activo/inactivo
+                const $container = $(this).closest('.roscoWordMutimediaEdition');
+                const hasImage = $.trim($container.find('.roscoURLImageEdition').val() || '').length > 0;
+                const hasAudio = $.trim($(this).val() || '').length > 0;
+                const icon = (hasImage || hasAudio) ? 'roscoSelectImage.png' : 'roscoSelectImageInactive.png';
+                $container.find('.roscoSelectImageEdition').attr('src', $exeDevice.idevicePath + icon);
             },
         );
 
@@ -1379,12 +1382,31 @@ var $exeDevice = {
 
             $exeDevice.stopSound();
             $exeDevice.showImage(img, url, x, y, alt, 0);
+
+            // Sincroniza icono activo/inactivo también aquí
+            const hasImage = $.trim($panel.find('.roscoURLImageEdition').val() || '').length > 0;
+            const hasAudio = $.trim($panel.find('.roscoURLAudioEdition').val() || '').length > 0;
+            const icon = (hasImage || hasAudio) ? 'roscoSelectImage.png' : 'roscoSelectImageInactive.png';
+            $container.find('.roscoSelectImageEdition').attr('src', $exeDevice.idevicePath + icon);
+
+            if (!hasImage) {
+                const $cursor = $panel.find('.roscoCursorEdition');
+                const $noImage = $panel.find('.roscoNoImageEdition');
+                img.hide();
+                $cursor.hide();
+                $noImage.show();
+            }
         });
 
         $('#roscoDataWord a.roscoLinkClose').on('click', function (e) {
             e.preventDefault();
             $exeDevice.stopSound();
-            $(this).parents('.roscoImageBarEdition').slideUp();
+            const $container = $(this).closest('.roscoWordMutimediaEdition');
+            const hasImage = $.trim($container.find('.roscoURLImageEdition').val() || '').length > 0;
+            const hasAudio = $.trim($container.find('.roscoURLAudioEdition').val() || '').length > 0;
+            const icon = (hasImage || hasAudio) ? 'roscoSelectImage.png' : 'roscoSelectImageInactive.png';
+            $container.find('.roscoSelectImageEdition').attr('src', $exeDevice.idevicePath + icon);
+            $container.find('.roscoImageBarEdition').slideUp();
         });
 
 
@@ -1425,9 +1447,12 @@ var $exeDevice = {
             $exeDevice.modeBoard = $(this).is(':checked');
         });
 
-        $('.roscoHomeImageEdition').on('click', function (e) {
-            $exeDevice.clickImage(this, e.pageX, e.pageY);
-        });
+        // Delegación para soportar imágenes añadidas dinámicamente y evitar bindings duplicados
+        $(document)
+            .off('click.roscoImg')
+            .on('click.roscoImg', '#roscoDataWord img.roscoHomeImageEdition', function (e) {
+                $exeDevice.clickImage(this, e.pageX, e.pageY);
+            });
 
         $('.roscoWordMutimediaEdition').on(
             'dblclick',
@@ -1476,7 +1501,7 @@ var $exeDevice = {
             this.value =
                 this.value.trim() === ''
                     ? 1
-                    : Math.min(Math.max(this.value, 1), 2);
+                    :  Math.min(Math.max(this.value, 0), 2);
         });
 
         $('#roscoDuration').on('focusout', function () {

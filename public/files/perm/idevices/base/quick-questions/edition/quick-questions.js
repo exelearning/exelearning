@@ -1059,8 +1059,8 @@ var $exeDevice = {
                                 <textarea id="quextEFeedBackEditor" class="exe-html-editor"></textarea>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label>${_('Video Intro')}:</label>
-                                <input type="text" id="quextEVideoIntro" />
+                                <label form="quextEVideoIntro">${_('Video Intro')}:</label>
+                                <input type="text" id="quextEVideoIntro" class="form-control w-25" />
                                 <a href="#" class="QXTE-ButtonLink" id="quextEVideoIntroPlay" title="${_('Play the introduction video')}">
                                     <img src="${path}quextIEPlay.png" alt="Play" class="QXTE-ENavigationButton" />
                                 </a>
@@ -1214,11 +1214,11 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <div class="d-none align-items-center gap-2 flex-nowrap mb-3" id="quextEAuthorAlt">
-                                        <div id="quextInputAuthor" class="wp-50">
+                                        <div id="quextInputAuthor" class="w-50">
                                             <label for="quextEAuthor">${_('Authorship')}</label>
                                             <input id="quextEAuthor" class="form-control w-100" type="text" />
                                         </div>
-                                        <div id="quextInputAlt"  class="wp-50">
+                                        <div id="quextInputAlt"  class="w-50">
                                             <label for="quextEAlt">${_('Alternative text')}</label>
                                             <input id="quextEAlt" class="form-control w-100" type="text" />
                                         </div>
@@ -1235,7 +1235,7 @@ var $exeDevice = {
                                         
                                         <div class="QXTE-EMedia" id="quextEVideo" style="display:none;"></div>
                                         <video class="QXTE-EMedia" id="quextEVideoLocal" preload="auto" controls style="display:none;"></video>
-                                        <img class="QXTE-EMedia" src="${path}quextIENoImageVideo.png" id="quextENoImageVideo style="display:none;"" alt="" />
+                                        <img class="QXTE-EMedia" src="${path}quextIENoImageVideo.png" id="quextENoImageVideo" style="display:none;" alt="" />
                                         <img class="QXTE-EMedia" src="${path}quextIENoVideo.png" id="quextENoVideo" alt="" style="display:none;" />
                                         <img class="QXTE-ECursor" src="${path}quextIECursor.gif" id="quextECursor" alt="" style="display:none;" />
                                         <img class="QXTE-EMedia" src="${path}quextIECoverQuExt.png" id="quextECover" alt="${_('No image')}" style="display:none;"/>
@@ -1310,15 +1310,15 @@ var $exeDevice = {
                                         <img class="QXTE-ENoVI" src="${path}quextIENoVideo.png" id="quextEVINo" alt="" />
                                     </div>
                                 </div>
-                                <div class="QXTE-EVIOptions">
-                                    <label for="quextEVIURL">${_('URL')}:</label>
-                                    <input id="quextEVIURL"  class="form-control"  type="text" />
-                                    <a href="#" id="quextEVIPlayI" class="QXTE-ENavigationButton " title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="QXTE-ENavigationButton intro" /></a>
-                                    <label for="quextEVIStart">${_('Start')}:</label>
-                                    <input id="quextEVIStart"  class="form-control" type="text" value="00:00:00" readonly />
-                                    <label for="quextEVIEnd">${_('End')}:</label>
-                                    <input id="quextEVIEnd"  class="form-control" type="text" value="00:00:00" readonly />
-                                    <button class="QXTE-EVideoTime" id="quextEVITime" type="button">00:00:00</button>
+                                <div class="d-flex align-items-center mb-3  flex-nowrap gap-2">
+                                    <label for="quextEVIURL" class="mb-0">${_('URL')}:</label>
+                                    <input id="quextEVIURL"  class="form-control me-0"  type="text" />
+                                    <a href="#" id="quextEVIPlayI" class="QXTE-ENavigationButton me-1" title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play')}" class="QXTE-ENavigationButton intro" /></a>
+                                    <label for="quextEVIStart" class="mb-0">${_('Start')}:</label>
+                                    <input id="quextEVIStart"  class="form-control" type="text" value="00:00:00" readonly style="width: 13ch !important; text-align: center;" />
+                                    <label for="quextEVIEnd" class="mb-0">${_('End')}:</label>
+                                    <input id="quextEVIEnd"  class="form-control" type="text" value="00:00:00" readonly style="width: 13ch !important; text-align: center;" />
+                                    <button class="btn btn-primary" id="quextEVITime" type="button">00:00:00</button>
                                 </div>
                                 <input type="button" class="QXTE-EVIClose" id="quextEVIClose" value="${_('Close')}" />
                             </div>
@@ -1334,6 +1334,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 2, true)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(2)}
             </div>
         `;
         this.ideviceBody.innerHTML = html; //eXe 3.0

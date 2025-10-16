@@ -175,7 +175,7 @@ var $eXeBeforeAfter = {
                     <div class="BFAFP-MessageCodeAccessE" id="bfafMesajeAccesCodeE-${instance}"></div>
                     <div class="BFAFP-DataCodeAccessE">
                         <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                        <input type="text" class="BFAFP-CodeAccessE" id="bfafCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                        <input type="text" class="BFAFP-CodeAccessE form-control" id="bfafCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                         <a href="#" id="bfafCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                             <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                             <div class="exeQuextIcons-Submit BFAFP-Activo"></div>

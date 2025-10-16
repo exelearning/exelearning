@@ -42,6 +42,11 @@
 
 .IFPP-MainContainer .IFPP-PageIcon {
 	background-image: url(ifnpage.png);
+	background-size: contain;
+	background-repeat: no-repeat;
+	width: 24px;
+	height: 24px;
+	display: inline-block;
 }
 
 .IFPP-MainContainer .IFPP-IdiviceIconPass {
@@ -62,9 +67,6 @@
 	display: inline-block;
 }
 
-.IFPP-MainContainer .IFPP-PageIcon {
-	background-image: url(ifnpage.png);
-}
 
 .IFPP-MainContainer .IFPP-ComponentItem {
 	margin: 8px 0 8px 0;
