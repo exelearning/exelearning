@@ -394,21 +394,100 @@ export default class NavbarFile {
         });
     }
 
-    openPrintPreview() {
-        const odeId =
-            (eXeLearning?.app?.project && eXeLearning.app.project.odeId) ||
-            window.__currentProjectId;
+    async openPrintPreview() {
+        const project = eXeLearning?.app?.project;
+        const sessionId = project?.odeSession;
 
-        if (!odeId) {
-            console.warn('Print preview requires an active project id.');
+        if (!sessionId) {
+            console.warn('Print preview requires an active session id.');
             return;
         }
 
-        const url = new URL(
-            `/project/${encodeURIComponent(odeId)}/print`,
-            window.location.origin
+        const projectId =
+            project?.odeId || window.__currentProjectId || 'unsaved';
+
+        const previewWindow = window.open('', '_blank');
+        if (previewWindow) {
+            try {
+                previewWindow.opener = null;
+            } catch (e) {}
+        }
+
+        const toastData = {
+            title: _('Print / PDF'),
+            body: _('Generating preview...'),
+            icon: 'preview',
+        };
+        const toast = eXeLearning?.app?.toasts?.createToast
+            ? eXeLearning.app.toasts.createToast(toastData)
+            : null;
+
+        const baseUrl =
+            window.eXeLearning?.symfony?.baseURL || window.location.origin;
+        const basePathRaw =
+            window.eXeLearning?.symfony?.basePath !== undefined
+                ? window.eXeLearning.symfony.basePath
+                : '';
+        const trimmedBasePath = String(basePathRaw).replace(
+            /^\/+|\/+$/g,
+            ''
         );
-        window.open(url.toString(), '_blank', 'noopener');
+        const sanitizedBasePath = trimmedBasePath ? `/${trimmedBasePath}` : '';
+        const safeProjectId = encodeURIComponent(projectId);
+        const endpointPath = `${sanitizedBasePath}/project/${safeProjectId}/export/single-page-preview`;
+        const requestUrl = new URL(endpointPath, baseUrl);
+        requestUrl.searchParams.set('sessionId', sessionId);
+
+        try {
+            const response = await fetch(requestUrl.toString(), {
+                credentials: 'include',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Unexpected status ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!data || !data.url) {
+                throw new Error('Missing preview URL in response');
+            }
+
+            if (toast) {
+                toast.toastBody.innerHTML = _('Opening preview...');
+            }
+            if (previewWindow) {
+                previewWindow.location.href = data.url;
+            } else {
+                window.open(data.url, '_blank', 'noopener');
+            }
+        } catch (error) {
+            console.error('Unable to open print preview', error);
+            if (toast) {
+                toast.toastBody.innerHTML = _(
+                    'An error occurred while generating the preview.'
+                );
+                toast.toastBody.classList.add('error');
+            }
+            if (previewWindow) {
+                previewWindow.close();
+            }
+            if (eXeLearning?.app?.modals?.alert) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Error'),
+                    body: _(
+                        'An error occurred while generating the print preview.'
+                    ),
+                    contentId: 'error',
+                });
+            }
+        } finally {
+            if (toast) {
+                setTimeout(() => toast.remove(), 1000);
+            }
+        }
     }
 
     /**
