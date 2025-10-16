@@ -61,11 +61,11 @@ ifeq ($(SYSTEM_OS),windows)
 endif
 
 # Start Docker containers in interactive mode
-up: check-docker check-env
+up: check-docker check-env css-dev
 	docker compose up --build --remove-orphans
 
 # Start Docker containers in background mode (daemon)
-upd: check-docker check-env
+upd: check-docker check-env css-dev
 	@RUNNING=$$(docker compose ps -q exelearning | xargs docker inspect -f '{{.State.Running}}' 2>/dev/null | grep true || true); \
 	if [ "$$RUNNING" = "true" ]; then \
 		echo "🔄 Container 'exelearning' already running, skipping wait."; \
@@ -127,7 +127,7 @@ phpunit: test
 
 # Run ALL or a specific PHPUnit test (by file or with extra args)
 # Usage: make test [TEST=tests/Command/AlgoTest.php] [EXTRA="--filter testAlgo"]
-test: check-docker check-env
+test: check-docker check-env css-dev
 	@echo "Starting unit test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit $(if $(TEST),test: $(TEST) $(EXTRA),suite: all)"
@@ -140,7 +140,7 @@ test: check-docker check-env
 	@docker compose --profile e2e down > /dev/null 2>&1
 
 # Run just unit tests with PHPUnit
-test-unit: check-docker check-env
+test-unit: check-docker check-env css-dev
 	@echo "Running PHPUnit tests..."
 	@docker compose run --rm --no-deps -e XDEBUG_MODE=off -e memory_limit=512M -e APP_ENV=test  exelearning composer --no-cache phpunit-unit
 
@@ -150,21 +150,21 @@ test-unit-parallel: check-docker check-env
 	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit-parallel
 
 # Run just e2e tests with PHPUnit
-test-e2e: check-docker check-env
+test-e2e: check-docker check-env css-dev
 	@echo "Starting e2e test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
 	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e
 
 # Run just e2e-realtime tests with PHPUnit
-test-e2e-realtime: check-docker check-env
+test-e2e-realtime: check-docker check-env css-dev
 	@echo "Starting e2e test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
 	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e-realtime
 
 # Run E2E tests for the offline (Electron) web content
-test-e2e-offline: check-docker check-env
+test-e2e-offline: check-docker check-env css-dev
 	@echo "Starting e2e test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit tests..."
@@ -179,7 +179,7 @@ test-electron: install-php-bin
 	$(MAKE) remove-php-bin
 
 # Open a shell inside the exelearning container ready for running phpunit
-test-shell:
+test-shell: check-docker check-env css-dev
 	@echo "Starting e2e test environment..."
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "\033[33mRun a specific test with 'composer phpunit <test path>'. Example: composer phpunit tests/Command/CreateUserCommandTest.php\033[0m"	
@@ -329,7 +329,7 @@ translations: check-docker check-env upd
 	docker compose exec exelearning composer --no-cache translations:extract
 
 # Start the local environment with specific commands
-up-local: check-env
+up-local: check-env css-dev
 	@echo "\033[31mWarning: Running in local environment may cause unexpected behavior. Use at your own risk.\033[0m"
 	@TMPDIR=$$(mktemp -d /tmp/exelearning-XXXXXX) && \
 	echo "Using temporary directory: $$TMPDIR" && \
@@ -528,20 +528,22 @@ pull-vendor: check-docker check-env upd
 	@echo "✅ Done. Local ./vendor directory updated from container."
 
 
-.PHONY: css css-prod
+.PHONY: css css-dev
 
 # Prevent MSYS path conversion breaking Docker paths on Windows Git Bash
 # (same approach used elsewhere in this Makefile for docker compose commands)
 SASS_DOCKER = env MSYS_NO_PATHCONV=1 docker run --rm -v $(PWD):/app -w /app node:24-alpine sh -lc
 
 css:
+	@echo "Generating CSS (prod)..."
 	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map"
 	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
 	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
 	@echo "CSS built (prod)."
 
 css-dev:
-	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
+	@echo "Generating CSS (dev)..."
+	@$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
 	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
 	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
 	@echo "CSS built (dev)."
