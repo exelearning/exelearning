@@ -285,7 +285,8 @@ var $eXeSopa = {
                     <div class="SPP-CodeAccessDiv" id="sopaCodeAccessDiv">
                         <div class="SPP-MessageCodeAccessE" id="sopaMesajeAccesCodeE"></div>
                         <div class="SPP-DataCodeAccessE">
-                                <label class="sr-av">${msgs.msgCodeAccess}:</label><input type="text" class="SPP-CodeAccessE" id="sopaCodeAccessE">
+                            <label class="sr-av">${msgs.msgCodeAccess}:</label>
+                            <input type="text" class="SPP-CodeAccessE form-control" id="sopaCodeAccessE">
                             <a href="#" id="sopaCodeAccessButton" title="${msgs.msgReply}">
                                 <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                                 <div class="exeQuextIcons exeQuextIcons-Submit SPP-Activo"></div>

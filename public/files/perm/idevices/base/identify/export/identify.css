@@ -721,7 +721,7 @@ div:fullscreen .IDFP-LinkMinimize {
 .IDFP-BClue:focus:not(:focus-visible):not(.focus-visible) {
     box-shadow: none;
     outline: none !important;
-    color:#000000 !important;
+    color: #000000 !important;
 }
 
 .IDFP-BClue:hover {
@@ -875,7 +875,6 @@ div:fullscreen .IDFP-LinkMinimize {
 .IDFP-DivSubmit {
     width: 100%;
     text-align: center;
-    padding: 0.4em;
     max-width: 500px;
     margin: auto;
     display: flex;
@@ -886,11 +885,7 @@ div:fullscreen .IDFP-LinkMinimize {
 .IDFP-DivSubmit input[type="text"] {
     width: 70%;
     text-align: center;
-    padding: 0.3em;
-    margin-right: 0.3em;
-    margin-left: 0.3em;
 }
-
 
 .IDFP-MainContainer .exeQuextIcons-Submit {
     background: url(exequextreply.png) no-repeat;
@@ -1013,29 +1008,7 @@ div:fullscreen .IDFP-LinkMinimize {
         width: 2em;
     }
 
-    .IDFP-GameContainer input[type="text"],
-    input.IDFP-EdReply,
-    input.IDFP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
 
-    .IDFP-GameContainer input[type="text"]:active,
-    .IDFP-GameContainer input[type="text"]:focus,
-    input.IDFP-EdReply:focus,
-    input.IDFP-EdReply:active,
-    input.IDFP-CodeAccessE:focus,
-    input.IDFP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
 
     .IDFP-MessageClue {
         width: 95%;

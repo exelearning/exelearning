@@ -53,21 +53,37 @@
     <!-- <env name="PANTHER_APP_BASE_URI" value="http://exelearning:8080"/> -->
     <!-- <env name="PANTHER_NO_SANDBOX" value="1"/> -->
     <!-- <env name="PANTHER_ENABLED" value="0"/> -->
+    <!-- We are using our own approach to save the screenshots, to also write preview window when visible -->
+    <!-- <env name="PANTHER_ERROR_SCREENSHOT_DIR" value="/tmp/e2e_screenshots/"/> -->
 
     <!-- Mercure -->
+    <!-- Internal hub URL used by the backend to publish (inside exelearning container). -->
     <env name="MERCURE_URL" value="http://exelearning:8080/.well-known/mercure"/>
-    <env name="MERCURE_PUBLIC_URL" value=""/>
+    <!-- Public hub URL used by the browser (Chrome container) to subscribe/publish. -->
+    <env name="MERCURE_PUBLIC_URL" value="http://exelearning:8080/.well-known/mercure"/>
     <env name="MERCURE_JWT_SECRET_KEY" value="!ChangeThisMercureHubJWTSecretKey!"/>
 
     <!-- REST Api -->
     <env name="API_JWT_SECRET" value="test_secret"/>
     <env name="API_JWT_ISSUER" value="exelearning"/>
     <env name="API_JWT_AUDIENCE" value="clients"/>
+    <env name="TMP_CLEANUP_KEY" value="test-cleanup-key"/>
     <!-- ###- doctrine/doctrine-bundle ### -->
+
+        <!-- ###+ symfony/framework-bundle ### -->
+        <env name="APP_ENV" value="dev"/>
+        <env name="APP_SECRET" value=""/>
+        <!-- ###- symfony/framework-bundle ### -->
 
   </php>
 
   <extensions>
+        <bootstrap class="Symfony\Bridge\PhpUnit\SymfonyExtension">
+            <parameter name="clock-mock-namespaces" value="App" />
+            <parameter name="dns-mock-namespaces" value="App" />
+        </bootstrap>
+        <bootstrap class="Symfony\Component\Panther\ServerExtension" />
+        <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension" />
       <bootstrap class="Symfony\Component\Panther\ServerExtension"/>
       <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension"/>
   </extensions>

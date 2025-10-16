@@ -168,7 +168,8 @@ class WorkareaController extends DefaultWorkareaController
         // Allow user styles
         $userStyles = $this->getParameter('app.online_themes_install');
         // Allow user iDevices
-        $userIdevices = $this->getParameter('app.online_idevices_install');
+        // $userIdevices = $this->getParameter('app.online_idevices_install');
+        $userIdevices = 0; // To do (see #381)
 
         // Idevices
         $ideviceTypeBase = Constants::IDEVICE_TYPE_BASE;

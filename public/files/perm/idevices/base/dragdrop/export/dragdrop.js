@@ -543,7 +543,7 @@ var $eXeDragDrop = {
                     <div class="DADP-MessageCodeAccessE" id="dadPMesajeAccesCodeE-${instance}"></div>
                     <div class="DADP-DataCodeAccessE">
                         <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                        <input type="text" class="DADP-CodeAccessE" id="dadPCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                        <input type="text" class="DADP-CodeAccessE form-control" id="dadPCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                         <a href="#" id="dadPCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                             <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                             <div class="exeQuextIcons-Submit DADP-Activo"></div>
@@ -703,7 +703,7 @@ var $eXeDragDrop = {
             msgs = mOptions.msgs,
             score = ((mOptions.hits * 10) / mOptions.numberCards).toFixed(2);
         let message = msgs.msgEndGameM.replace('%s', score),
-            messageColor = 0,
+            messageColor = score >= 5 ? 2 : 1,
             clueMessage = '';
 
         $eXeDragDrop.showMessage(messageColor, message, instance, true);

@@ -128,7 +128,7 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
      * @param User                $user
      * @param array               $odeCurrentUsersFlags
      *
-     * @return CurrentOdeUsers
+     * @return CurrentOdeUsers|null
      */
     public function updateCurrentIdevice($odeNavStructureSync, $blockId, $odeIdeviceId, $user, $odeCurrentUsersFlags)
     {
@@ -163,6 +163,16 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
                 'odeSessionId' => $odeNavStructureSync->getOdeSessionId(),
                 'nodeSessionIdFallback' => $currentOdeUsersRepository->getCurrentSessionForUser($user->getUserIdentifier())?->getOdeSessionId(),
                 'odeNavStructureSyncId' => $odeNavStructureSync->getId(),
+            ]);
+
+            return null;
+        }
+
+        if (null === $currentOdeSessionForUser) {
+            $this->logger->info('Current session for user not found when updating current idevice', [
+                'user' => $user->getUserIdentifier(),
+                'odeIdeviceId' => $odeIdeviceId,
+                'method' => __METHOD__,
             ]);
 
             return null;
@@ -296,6 +306,16 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
 
         // Get current user
         $currentUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUserName());
+
+        if (null === $currentUser) {
+            $this->logger->info('Current session for user not found when updating sync current user ode id', [
+                'user' => $user->getUserIdentifier(),
+                'odeSessionId' => $odeSessionId,
+                'method' => __METHOD__,
+            ]);
+
+            return;
+        }
 
         // Users with the same sessionId
         $currentOdeUsers = $currentOdeUsersRepository->getCurrentUsers(null, null, $odeSessionId);
@@ -477,6 +497,17 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
         // Set odeSessionId to the user
         if (!empty($currentUsers)) {
             $currentUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
+
+            if (null === $currentUser) {
+                $this->logger->info('Current session for user not found when checking ode session id', [
+                    'user' => $user->getUserIdentifier(),
+                    'odeSessionId' => $odeSessionId,
+                    'method' => __METHOD__,
+                ]);
+
+                return false;
+            }
+
             $currentUser->setOdeSessionId($odeSessionId);
 
             $this->entityManager->persist($currentUser);
@@ -499,6 +530,15 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentOdeUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
 
+        if (null === $currentOdeUser) {
+            $this->logger->info('Current session for user not found when removing sync save flag', [
+                'user' => $user->getUserIdentifier(),
+                'method' => __METHOD__,
+            ]);
+
+            return;
+        }
+
         // Set 0 to syncSaveFlag
         $currentOdeUser->setSyncSaveFlag(0);
 
@@ -516,6 +556,15 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentOdeUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
 
+        if (null === $currentOdeUser) {
+            $this->logger->info('Current session for user not found when activating sync save flag', [
+                'user' => $user->getUserIdentifier(),
+                'method' => __METHOD__,
+            ]);
+
+            return;
+        }
+
         // Set 1 to syncSaveFlag
         $currentOdeUser->setSyncSaveFlag(1);
 
@@ -532,6 +581,15 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
     {
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentOdeUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
+
+        if (null === $currentOdeUser) {
+            $this->logger->info('Current session for user not found when removing sync components flag', [
+                'user' => $user->getUserIdentifier(),
+                'method' => __METHOD__,
+            ]);
+
+            return;
+        }
 
         // Set 0 to syncSaveFlag and remove block/idevice
         $currentOdeUser->setSyncComponentsFlag(0);
@@ -554,6 +612,20 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
         // Get currentOdeUser
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
+
+        if (null === $currentSessionForUser) {
+            $this->logger->info('Current session for user not found when checking current users on same page', [
+                'user' => $user->getUserIdentifier(),
+                'odeSessionId' => $odeSessionId,
+                'method' => __METHOD__,
+            ]);
+
+            $response['responseMessage'] = 'Page without users';
+            $response['isAvailable'] = true;
+
+            return $response;
+        }
+
         // Get currentPageId
         $currentPageId = $currentSessionForUser->getCurrentPageId();
 

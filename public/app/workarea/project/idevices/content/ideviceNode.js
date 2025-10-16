@@ -756,8 +756,10 @@ export default class IdeviceNode {
                                 odeIdeviceId: this.odeIdeviceId,
                             };
                             eXeLearning.app.project.sendOdeOperationLog(
-                                this.pageId, // Collaborative
-                                this.pageId, // Collaborative
+                                this.block?.pageId ??
+                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
+                                this.block?.pageId ??
+                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
                                 'EDIT_IDEVICE',
                                 additionalData
                             );
@@ -872,8 +874,10 @@ export default class IdeviceNode {
                                                 odeIdeviceId: this.odeIdeviceId,
                                             };
                                             eXeLearning.app.project.sendOdeOperationLog(
-                                                this.pageId, // Collaborative
-                                                this.pageId, // Collaborative
+                                                this.block?.pageId ??
+                                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
+                                                this.block?.pageId ??
+                                                    eXeLearning.app.project.structure.getSelectNodePageId(), // Collaborative
                                                 'REMOVE_IDEVICE',
                                                 additionalData
                                             );
@@ -1214,9 +1218,10 @@ export default class IdeviceNode {
      *
      */
     addTooltips() {
-        $('button.btn-action-menu', this.ideviceButtons).addClass(
-            'exe-app-tooltip'
-        );
+        $(
+            'button.btn-action-menu:not([data-bs-toggle="dropdown"])',
+            this.ideviceButtons
+        ).addClass('exe-app-tooltip');
         eXeLearning.app.common.initTooltips(this.ideviceButtons);
     }
 
@@ -2874,6 +2879,11 @@ export default class IdeviceNode {
         loadScreen.style.left = '0';
         loadScreen.classList.remove('hide', 'hidden');
         loadScreen.classList.add('loading');
+        // Testing: explicit visibility flag and content readiness
+        loadScreen.setAttribute('data-visible', 'true');
+        document
+            .getElementById('node-content')
+            ?.setAttribute('data-ready', 'false');
     }
 
     unlockScreen(delay = 1000) {
@@ -2888,6 +2898,11 @@ export default class IdeviceNode {
             loadScreen.style.position = 'absolute';
             delete loadScreen.style.top;
             delete loadScreen.style.left;
+            // Testing: explicit visibility flag and content readiness
+            loadScreen.setAttribute('data-visible', 'false');
+            document
+                .getElementById('node-content')
+                ?.setAttribute('data-ready', 'true');
         }, delay);
     }
 

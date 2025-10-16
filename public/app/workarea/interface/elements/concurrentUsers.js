@@ -5,7 +5,7 @@ export default class ConcurrentUsers {
             '#exe-concurrent-users'
         );
         this.currentUsersJson = null;
-        this.currentUsers = null;
+        this.currentUsers = []; // safer default
         this.intervalTime = 3500;
         this.app = app;
     }

@@ -1173,7 +1173,7 @@ var $eXeFlipCards = {
                     <div class="FLCDSP-MessageCodeAccessE" id="flcdsMesajeAccesCodeE-${instance}"></div>
                     <div class="FLCDSP-DataCodeAccessE">
                         <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                        <input type="text" class="FLCDSP-CodeAccessE" id="flcdsCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                        <input type="text" class="FLCDSP-CodeAccessE form-control" id="flcdsCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                         <a href="#" id="flcdsCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                             <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                             <div class="exeQuextIcons exeQuextIcons-Submit FLCDSP-Activo"></div>

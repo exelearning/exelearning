@@ -324,7 +324,7 @@ var $quickquestions = {
                         <p class="QXTP-MessageCodeAccessE" id="quextMesajeAccesCodeE-${instance}"></p>
                         <div class="QXTP-DataCodeAccessE">
                             <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                            <input type="text" class="QXTP-CodeAccessE" id="quextCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                            <input type="text" class="QXTP-CodeAccessE form-control" id="quextCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                             <a href="#" id="quextCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                 <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                 <div class="exeQuextIcons exeQuextIcons-Submit QXTP-Activo"></div>

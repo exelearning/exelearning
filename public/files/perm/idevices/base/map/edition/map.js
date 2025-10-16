@@ -335,7 +335,7 @@ var $exeDevice = {
                             <div id="mapaImageSelect">
                                 <p class="MQE-CloseDetail" id="mapaCloseDetail">
                                     <a href="#" id="mapaCloseLevel" title="${_('Close map')}">${_('Close map')} 
-                                        <img src="${path}mapacerrarventana.svg" class="MQE-ENavigationButton MQE-EActivo" alt="" />
+                                        <img src="${path}mapacerrarventana.svg" class="ms-1 MQE-ENavigationButton MQE-EActivo" alt="" />
                                     </a>
                                 </p>
                                 <div class="d-flex align-items-center gap-2 mb-4 w-100" style="width:100%">
@@ -653,9 +653,9 @@ var $exeDevice = {
                             <input type="text" id="mapaSURLImage" class="form-control exe-file-picker me-0" />
                             <a href="#" id="mapaSShowImage" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Show image')}"></a>
                         </div>
-                        <div class="d-flex align-items-center mb-3">
+                        <div class="d-flex align-items-center  gap-2 mb-3">
                             <label for="mapaSAuthorImage">${_('Authorship')}:</label>
-                            <input id="mapaSAuthorImage" type="text" class="form-control" />
+                            <input id="mapaSAuthorImage" type="text" class="form-control me-0" />
                             <label for="mapaSAltImage">${_('Alt')}:</label>
                             <input id="mapaSAltImage" type="text" class="form-control me-0" />
                         </div>
@@ -690,7 +690,7 @@ var $exeDevice = {
         const html = `
             <div class="MQE-ESTestPointContainer" id="mapaTContainer">
                <div class="MQE-EFlexSolution mb-3">
-                    <label class="m-0" for="mapaPTClose">${_('Questionnaire')}:</label>
+                    <label class="me-1">${_('Questionnaire')}:</label>
                     <a href="#" id="mapaPTClose" class="MQE-ENavigationButton MQE-EActivo MQE-Close" title="${_('Close')}"></a>
                 </div>
                 <div class="MQE-EContents">
@@ -743,25 +743,25 @@ var $exeDevice = {
                             <label class="sr-av">${_('Solution')} A:</label>
                             <input type="checkbox" class="MQE-PESolution form-check-input" name="mpsolution1" id="mapaESolution01" value="A" />
                             <label>A</label>
-                            <input type="text" class="MQE-EOption0 MQE-PEAnwersOptions form-control" id="mapaEOption01">
+                            <input type="text" class="MQE-EOption0 MQE-PEAnwersOptions form-control ms-1" id="mapaEOption01">
                         </div>
                         <div class="MQE-PEOptionDiv d-flex align-items-center mb-3 flex-nowrap">
                             <label class="sr-av">${_('Solution')} B:</label>
                             <input type="checkbox" class="MQE-PESolution form-check-input" name="mpsolution1" id="mapaESolution11" value="B" />
                             <label>B</label>
-                            <input type="text" class="MQE-EOption1 MQE-PEAnwersOptions form-control" id="mapaEOption11">
+                            <input type="text" class="MQE-EOption1 MQE-PEAnwersOptions form-control ms-1" id="mapaEOption11">
                         </div>
                         <div class="MQE-PEOptionDiv d-flex align-items-center mb-3 flex-nowrap">
                             <label class="sr-av">${_('Solution')} C:</label>
                             <input type="checkbox" class="MQE-PESolution form-check-input" name="mpsolution1" id="mapaESolution21" value="C" />
                             <label>C</label>
-                            <input type="text" class="MQE-EOption2 MQE-PEAnwersOptions form-control" id="mapaEOption21">
+                            <input type="text" class="MQE-EOption2 MQE-PEAnwersOptions form-control ms-1" id="mapaEOption21">
                         </div>
                         <div class="MQE-PEOptionDiv d-flex align-items-center mb-3 flex-nowrap">
                             <label class="sr-av">${_('Solution')} D:</label>
                             <input type="checkbox" class="MQE-PESolution form-check-input" name="mpsolution1" id="mapaESolution31" value="D" />
                             <label>D</label>
-                            <input type="text" class="MQE-EOption3 MQE-PEAnwersOptions form-control" id="mapaEOption31">
+                            <input type="text" class="MQE-EOption3 MQE-PEAnwersOptions form-control ms-1" id="mapaEOption31">
                         </div>
                     </div>
                     <div class="MQE-EWordDiv MQE-DP mb-4" id="mapaEWordDiv1">
@@ -802,7 +802,7 @@ var $exeDevice = {
                 <legend><a href="#">${_('Questionnaire')}</a></legend>
                 <div class="MQE-EContents">
                     <div id="mapaDataQuestion" class="MQE-EFlexSolution mb-3 ">
-                        <div class="MQE-EInputType d-flex flex-nowrap align-items-center">
+                        <div class="MQE-EInputType d-flex flex-nowrap  gap-2 align-items-center">
                             <span>${_('Type')}:</span>
                             <div class="form-check form-check-inline m-0">
                                 <input class="form-check-input MQE-TypeSelect" checked id="mapaTypeSelect" type="radio" name="mptypeselect" value="0" />
@@ -4627,17 +4627,18 @@ var $exeDevice = {
         if (type == 2) {
             $('#mapaEAnswers1').hide();
             $('#mapaEQuestionDiv1').hide();
-            $('#mapaEWordDiv1').show();
-            $('#mapaOptionsNumberA1').hide();
-            $('#mapaESolitionOptions1').hide();
-            $('#mapaPercentageLetters1').css('display', 'flex').show();
+            $('#mapaEWordDiv1').show();           
+            $('#mapaESolitionOptions1').hide()
+            $('#mapaOptionsNumberA1').addClass('d-none').removeClass('d-flex');
+            $('#mapaPercentageLetters1').addClass('d-flex').removeClass('d-none');
         } else {
             $('#mapaEAnswers1').show()
             $('#mapaEQuestionDiv1').show();
             $('#mapaEWordDiv1').hide();
-            $('#mapaPercentageLetters1').hide();
-            $('#mapaESolitionOptions1').show();
-            $('#mapaOptionsNumberA1').css('display', 'flex').show();
+            $('#mapaESolitionOptions1').show()  
+            $('#mapaPercentageLetters1').addClass('d-none').removeClass('d-flex')
+                          
+            $('#mapaOptionsNumberA1').addClass('d-flex').removeClass('d-none')
         }
     },
 

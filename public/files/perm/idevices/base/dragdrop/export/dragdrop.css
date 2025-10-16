@@ -580,6 +580,7 @@
 .DADP-CodeAccessE {
     margin: 0 .3em;
     width: 100%;
+    max-width: 300px;
     text-align: center;
 }
 
@@ -1399,29 +1400,6 @@ div:fullscreen .DADP-LinkMinimize {
     .DADP-GameContainer .exeQuextIcons-Video {
         height: 2em;
         width: 2em;
-    }
-
-    .DADP-GameContainer input[type="text"],
-    input.DADP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
-
-    .DADP-GameContainer input[type="text"]:active,
-    .DADP-GameContainer input[type="text"]:focus,
-    input.DADP-EdReply:focus,
-    input.DADP-EdReply:active,
-    input.DADP-CodeAccessE:focus,
-    input.DADP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
     }
 
     .DADP-CodeAccessDiv,

@@ -527,8 +527,7 @@ export default class NavbarFile {
         let errorText = resErrorText
             ? `<p>${defErrorText}:</p><p>&nbsp;${resErrorText}</p>`
             : `<p>${defErrorText}</p>`;
-        // TODO show error.
-        alert(resErrorText);
+        eXe.app.alert(errorText);
     }
 
     makeElementInputFileImportTheme() {
@@ -574,7 +573,6 @@ export default class NavbarFile {
                 this.updateThemes();
                 this.buildUserListThemes();
             } else {
-                // Show alert
                 this.showElementAlert(
                     _('Failed to install the new style'),
                     response

@@ -579,6 +579,7 @@
     margin: 0 .3em;
     width: 100%;
     text-align: center;
+    max-width: 350px;
 }
 
 /* Inicio juego */
@@ -1048,28 +1049,6 @@ div:fullscreen .ODNP-LinkMinimize {
         width: 2em;
     }
 
-    .ODNP-MainContainer input[type="text"],
-    input.ODNP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
-
-    .ODNP-MainContainer input[type="text"]:active,
-    .ODNP-MainContainer input[type="text"]:focus,
-    input.ODNP-EdReply:focus,
-    input.ODNP-EdReply:active,
-    input.ODNP-CodeAccessE:focus,
-    input.ODNP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
 
     .ODNP-GameOverExt {
         width: 90%;

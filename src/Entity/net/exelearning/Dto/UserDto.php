@@ -2,7 +2,7 @@
 
 namespace App\Entity\net\exelearning\Dto;
 
-use App\Constants;
+use App\Util\GravatarUrlGenerator;
 
 /**
  * UserDto.
@@ -38,8 +38,9 @@ class UserDto extends BaseDto
      *
      * Parameters used in the Gravatar URL:
      * - `s=96`: Sets the image size to 96x96 pixels.
-     * - `d=mm`: Uses the 'mystery man' default image if no avatar is found.
+     * - `d=` + configured default image: Selects the default avatar style.
      * - `r=g`: Restricts the image to the 'G' rating (safe for all audiences).
+     * - `initials=`: When using the "initials" style, sends the initials to display.
      *
      * @param string $username The user's email address
      *
@@ -48,17 +49,7 @@ class UserDto extends BaseDto
     public function setUsername($username)
     {
         $this->username = $username;
-
-        // Automatically generate the Gravatar URL only if the username and base URL are not empty
-        $trimmedUsername = trim($username);
-        $baseUrl = trim(Constants::GRAVATAR_BASE_URL);
-
-        if (!empty($trimmedUsername) && !empty($baseUrl)) {
-            $hash = md5(strtolower($trimmedUsername));
-            $this->gravatarUrl = $baseUrl.$hash.'?s=96&d=mm&r=g';
-        } else {
-            $this->gravatarUrl = null;
-        }
+        $this->refreshGravatarUrl();
     }
 
     /**
@@ -75,6 +66,7 @@ class UserDto extends BaseDto
     public function setInitials($initials)
     {
         $this->initials = $initials;
+        $this->refreshGravatarUrl();
     }
 
     /**
@@ -85,5 +77,22 @@ class UserDto extends BaseDto
     public function getGravatarUrl()
     {
         return $this->gravatarUrl;
+    }
+
+    private function refreshGravatarUrl(): void
+    {
+        $username = trim((string) $this->username);
+
+        if ('' === $username) {
+            $this->gravatarUrl = null;
+
+            return;
+        }
+
+        $this->gravatarUrl = GravatarUrlGenerator::createFromIdentifier(
+            $username,
+            null,
+            $this->username
+        );
     }
 }
