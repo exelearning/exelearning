@@ -12,6 +12,7 @@
 # Static resources (readable text, not executable)
 # ---------------------------------------------------------------------
 *.css   text eol=lf -executable
+*.scss  text eol=lf -executable
 *.js    text eol=lf -executable
 *.xml   text eol=lf -executable
 *.html  text eol=lf -executable
@@ -62,4 +63,4 @@ config/bundles.php text eol=lf -executable
 # ---------------------------------------------------------------------
 # Public assets: ensure static files are not executable
 # ---------------------------------------------------------------------
-public/** -text -diff -merge -eol -crlf -ident -executable
+public/** -executable

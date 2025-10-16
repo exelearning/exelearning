@@ -224,6 +224,49 @@ function ensureWritableDirectory(dirPath) {
 }
 
 /**
+ * Perform "run-once per version" maintenance.
+ * - Cleans cache on version change (optional but helps avoid stale code/data).
+ * - Rotates logs (optional).
+ * Stores the current version in settings.json to avoid repeating the work.
+ */
+function ensurePerVersionSetup() {
+  const currentVersion = app.getVersion();
+  const s = readSettings();
+  const previousVersion = s.appVersion || null;
+
+  if (previousVersion !== currentVersion) {
+    try {
+      // Clean cache folder when the app version changes
+      if (customEnv && customEnv.CACHE_DIR && fs.existsSync(customEnv.CACHE_DIR)) {
+        fs.rmSync(customEnv.CACHE_DIR, { recursive: true, force: true });
+        fs.mkdirSync(customEnv.CACHE_DIR, { recursive: true });
+        console.log(`Cache cleared for version change: ${previousVersion} -> ${currentVersion}`);
+      }
+    } catch (e) {
+      console.warn(`Cache cleanup failed: ${e.message}`);
+    }
+
+    try {
+      // Optional: truncate logs on version change (keep folder)
+      if (customEnv && customEnv.LOG_DIR && fs.existsSync(customEnv.LOG_DIR)) {
+        for (const file of fs.readdirSync(customEnv.LOG_DIR)) {
+          const full = path.join(customEnv.LOG_DIR, file);
+          try {
+            if (fs.statSync(full).isFile()) fs.truncateSync(full, 0);
+          } catch (_e) {}
+        }
+      }
+    } catch (e) {
+      console.warn(`Log rotation failed: ${e.message}`);
+    }
+
+    // Persist the current version to avoid repeating the maintenance on the next run
+    s.appVersion = currentVersion;
+    writeSettings(s);
+  }
+}
+
+/**
  * Ensures all required directories exist and are (attempted to be) writable.
  * 
  * @param {object} env - The environment object that contains your directory paths.
@@ -360,6 +403,9 @@ function createWindow() {
   initializePaths(); // Initialize paths before using them
   initializeEnv();   // Initialize environment variables afterward
   combineEnv();      // Combine the environment
+
+  // Run-once per version maintenance (cache/logs cleanup, etc.)
+  ensurePerVersionSetup();
 
   // Ensure all required directories exist and try to set permissions
   ensureAllDirectoriesWritable(env);
@@ -755,6 +801,22 @@ app.on('browser-window-created', (_event, window) => {
   attachOpenHandler(window);
 });
 
+// Prevent running two instances at the same time (e.g., old install + new install).
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+} else {
+  app.on('second-instance', (_event, _commandLine, _workingDirectory) => {
+    // Focus existing window if user tries to start a second instance
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+
 if (IS_E2E) app.disableHardwareAcceleration();
 app.whenReady().then(createWindow);
 
@@ -1076,61 +1138,39 @@ function showErrorDialog(message) {
  * @returns {string} The path to the PHP executable.
  */
 function getPhpBinaryPath() {
-
-  // Try to get the previous extracted bundled PHP binary
-  const bundledDir = path.join(process.resourcesPath, 'php-bin', 'php-8.4');
-  const bundledBin = path.join(bundledDir, process.platform === 'win32' ? 'php.exe' : 'php');
-  if (fs.existsSync(bundledBin)) return bundledBin;
-
-  const platform = process.platform;
-  const arch = process.arch;
-
-  // Directory where PHP binaries will be unzipped in userData
-  const phpBinaryDir = path.join(app.getPath('userData'), 'php-bin', 'php-8.4');
-
-  // Path of the zip file inside vendor
-  const phpZipPath = path.join(
-    basePath,
-    'vendor',
-    'nativephp',
-    'php-bin',
-    'bin',
-    platform === 'win32' ? 'win' : platform === 'darwin' ? 'mac' : 'linux',
-    arch === 'arm64' && platform === 'darwin' ? 'arm64' : 'x64',
-    'php-8.4.zip'
-  );
-
-  // If the PHP binary is not unzipped, unzip it
-  if (!fs.existsSync(phpBinaryDir)) {
-    console.log('Extracting PHP in', phpBinaryDir);
-    const zip = new AdmZip(phpZipPath);
-    zip.extractAllTo(phpBinaryDir, true);
-    console.log('Extraction completed');
-
-    // Apply execution permissions using fs.chmodSync on macOS and Linux
-    if (platform !== 'win32') {
-      const phpBinary = path.join(phpBinaryDir, 'php');
-      try {
-        fs.chmodSync(phpBinary, 0o755);
-        console.log('Execution permissions applied successfully to the PHP binary');
-      } catch (err) {
-        showErrorDialog(`Error applying chmod to the PHP binary: ${err.message}`);
-        app.quit();
-      }
-    }
-  }
-
-  // Path of the unzipped PHP binary
-  const phpBinary = platform === 'win32' ? 'php.exe' : 'php';
-  const phpBinaryPathFinal = path.join(phpBinaryDir, phpBinary);
+  const versionTag = app.getVersion(); // o un hash del ZIP
+  const phpBinaryDir = path.join(app.getPath('userData'), 'php-bin', `php-8.4-${versionTag}`);
+  const phpBinName = process.platform === 'win32' ? 'php.exe' : 'php';
+  const phpBinaryPathFinal = path.join(phpBinaryDir, phpBinName);
 
   if (!fs.existsSync(phpBinaryPathFinal)) {
-    showErrorDialog(`The PHP binary was not found at the path: ${phpBinaryPathFinal}`);
-    app.quit();
+    // Clean old php-bin
+    const root = path.join(app.getPath('userData'), 'php-bin');
+    try {
+      for (const d of fs.readdirSync(root)) {
+        if (d.startsWith('php-8.4-') && d !== `php-8.4-${versionTag}`) {
+          fs.rmSync(path.join(root, d), { recursive: true, force: true });
+        }
+      }
+    } catch (_) {}
+
+    fs.mkdirSync(phpBinaryDir, { recursive: true });
+
+    const phpZipPath = path.join(
+      basePath, 'vendor', 'nativephp', 'php-bin', 'bin',
+      process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'linux',
+      process.arch === 'arm64' && process.platform === 'darwin' ? 'arm64' : 'x64',
+      'php-8.4.zip'
+    );
+
+    const zip = new (require('adm-zip'))(phpZipPath);
+    zip.extractAllTo(phpBinaryDir, true);
+    if (process.platform !== 'win32') fs.chmodSync(phpBinaryPathFinal, 0o755);
   }
 
   return phpBinaryPathFinal;
 }
+
 // Helper: translated or default fallback (handles missing/bad translations)
 function tOrDefault(key, fallback) {
   try {

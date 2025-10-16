@@ -224,10 +224,9 @@ table.PTP-periodic-table th {
 
 .PTP-element-symbol-big {
 	position: absolute;
-	left: 5px;
-	top: 50%;
+	top: 45%;
 	transform: translateY(-50%);
-	font-size: 6em;
+	font-size: 4.5em;
 }
 
 .PTP-name-big {
@@ -1422,26 +1421,7 @@ div:fullscreen .PTP-LinkMinimize {
 		width: 2em;
 	}
 
-	.PTP-GameContainer input[type="text"],
-	input.PTP-CodeAccessE {
-		background: #fdfdfd;
-		border: 1px solid #828282;
-		border-radius: 4px;
-		box-sizing: border-box;
-		display: inline-block;
-		line-height: 1.5em;
-		margin: 0 0.3em;
-		padding: 0.4em 0.25em;
-	}
-
-	.PTP-GameContainer input[type="text"]:active,
-	.PTP-GameContainer input[type="text"]:focus,
-	input.PTP-CodeAccessE:focus,
-	input.PTP-CodeAccessE:active {
-		background: #fdfdfd;
-		border: 1px solid #398ee7;
-		border-radius: 4px;
-	}
+	
 }
 
 @media screen and (max-width: 340px) {

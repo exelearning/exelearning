@@ -1,12 +1,15 @@
-
 #hiQEIdeviceForm input[type="radio"],
 #hiQEIdeviceForm input[type="checkbox"],
 #hiQEIdeviceForm input[type=button] {
     cursor: pointer;
 }
 
-
-
+#hiQEIdeviceForm #hiEPercentajeQuestions,
+#hiQEIdeviceForm #hiEAttempts,
+#hiQEIdeviceForm #hiETimeQuestion {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
 /*Panel preguntas */
 .HIE-Panel {
     margin: 0.7em auto;
@@ -21,7 +24,6 @@
     justify-content: space-between;
     margin-bottom: 1em;
     width: 100%;
-
 }
 
 /* Medias */
@@ -31,7 +33,6 @@
     display: flex;
     justify-content: center;
     align-items: center;
-
 }
 
 .HIE-Media {
@@ -65,20 +66,19 @@
     width: 50%;
 }
 
-
 .HIE-inlineOption,
 .HIE-TypeGame,
 .HIE-TypeOrder {
     margin-left: .5em
 }
 
-
 #hiQEIdeviceForm .HIE-TypeGameHelp {
     display: none;
     margin-bottom: 2em;
     font-size: .95em
 }
-#hiQEIdeviceForm .HIE-OptionsMedia .exe-pick-any-file{
+
+#hiQEIdeviceForm .HIE-OptionsMedia .exe-pick-any-file {
     margin-right: 0;
 }
 
@@ -105,11 +105,6 @@
     min-width: 100px;
     width: 100%;
 }
-
-
-
-
-
 
 .HIE-ButtonLink {
     display: block;
@@ -184,8 +179,6 @@
 .HIE-Orders label {
     white-space: nowrap;
 }
-
-
 
 /*Numero Preguntas */
 .HIE-NumQuestionDiv {
@@ -347,11 +340,9 @@
     margin-right: .2em;
 }
 
-
 /* Ocutar elementos */
 .HIE-InputOptionsVideo,
 .HIE-DP,
-
 .HIE-VIDiv,
 .HIE-ScoreQuestionDiv,
 .HIE-Coord,
@@ -381,12 +372,10 @@
     margin-right: 0.2em;
 }
 
-
 label[for=gameQEScoreQuestion],
 input#gameQEScoreQuestion {
     display: none;
 }
-
 
 /* To review */
 #hiQEIdeviceForm .exe-block-info img {
@@ -399,7 +388,6 @@ input#gameQEScoreQuestion {
     top: 6px;
     right: 5px;
 }
-
 
 #hiQEIdeviceFormTab3 p:first-child {
     margin-top: 0;
@@ -424,7 +412,7 @@ input#gameQEScoreQuestion {
 #hiQEIdeviceForm #hiQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color:  #0BA1A1;
+    color: #0BA1A1;
     font-weight: 500;
 }
 
@@ -519,8 +507,6 @@ label[for=gameQEActivitySCORM] {
     vertical-align: middle;
 }
 
-
 .GameModeLabel {
     font-weight: normal
 }
-

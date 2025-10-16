@@ -156,16 +156,16 @@ var $exeDevice = {
                                 </div>
                                 <div class="BFAFE-EPhrase mb-2" id="bfafEPhrase">
                                      <div class="BFAFE-EDatosCarta BFAFE-EBack" id="bfafEDatosCartaBack">
-                                        <div class="BFAFE-ETitleImage mb-3 mt-2">${_('Before')}</div></span>
+                                        <div class="BFAFE-ETitleImage mb-3 mt-2">${_('Before')}</div>
                                         <div class="BFAFE-EMultimedia">
                                             <div class="BFAFE-ECard">
                                                 <img class="BFAFE-EHideBFAFE-EImage" id="bfafEImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
                                                 <img class="BFAFE-EHideBFAFE-NoImage" id="bfafENoImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
                                             </div>
                                         </div>
-                                        <spanid="bfafETitleImageBack">${_('Image')}</span>
+                                        <span id="bfafETitleImageBack">${_('Image')}</span>
                                         <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImageBack">
-                                            <label class="sr-av">URL</label>
+                                            <label for="bfafEURLImageBack" class="sr-av">URL</label>
                                             <input type="text" id="bfafEURLImageBack" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
                                             <a href="#" id="bfafEPlayImageBack" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
                                                 <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
@@ -200,7 +200,7 @@ var $exeDevice = {
                                         </div>
                                         <span id="bfafETitleImage">${_('Image')}</span>
                                         <div class="BFAFE-EInputImage gap-2 mb-3" id="bfafEInputImage">
-                                            <label class="sr-av">URL</label>
+                                            <label for="bfafEURLImage" class="sr-av">URL</label>
                                             <input type="text" id="bfafEURLImage" class="exe-file-picker BFAFE-EURLImage form-control me-0"/>
                                             <a href="#" id="bfafEPlayImage" class="BFAFE-ENavigationButton BFAFE-EPlayVideo" title="${_('Show')}">
                                                 <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="BFAFE-EButtonImage " />
@@ -215,7 +215,7 @@ var $exeDevice = {
                                                 <input id="bfafEAuthor" type="text" class="BFAFE-EAuthor form-control" />
                                             </div>
                                             <div class="BFAFE-EInputAlt">
-                                                <label for="bfafEAuthor">${_('Alternative text')}</label>
+                                                <label for="bfafEAlt">${_('Alternative text')}</label>
                                                 <input id="bfafEAlt" type="text" class="BFAFE-EAlt form-control" />
                                             </div>
                                         </div>
@@ -438,6 +438,8 @@ var $exeDevice = {
 
         $('#bfafEURLImage').val(p.url);
         $('#bfafEURLImageBack').val(p.urlBk);
+        
+        $('#bfafENumberCard').val(num + 1);
 
         $('#bfafEAuthor').val(p.author);
         $('#bfafEAuthorBack').val(p.authorBk);

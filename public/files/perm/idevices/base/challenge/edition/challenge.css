@@ -142,7 +142,7 @@
 .desafio-NumberQuestion {
     text-align: center;
     vertical-align: middle;
-    width: 3em;
+    width: 2.2em;
 }
 
 @media screen and (max-width:500px) {

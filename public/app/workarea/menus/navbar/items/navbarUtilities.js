@@ -49,7 +49,8 @@ export default class NavbarFile {
      */
     setTooltips() {
         // See eXeLearning.app.common.initTooltips
-        $('.main-menu-right button')
+        // Avoid binding tooltips to dropdown toggles to prevent Bootstrap instance conflicts
+        $('.main-menu-right button:not([data-bs-toggle="dropdown"])')
             .attr('data-bs-placement', 'bottom')
             .tooltip();
         $('#exeUserMenuToggler').on('click mouseleave', function () {

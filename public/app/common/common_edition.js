@@ -341,8 +341,8 @@ var $exeDevicesEdition = {
                             </div>
                             <div id="eXeGameSCORMPercentaje" class="d-flex align-items-center gap-2" >
                                 <label for="eXeGameSCORMWeight" class="form-label mb-0">${_("Weighted")}: </label>
-                                <input type="number" id="eXeGameSCORMWeight" name="eXeGameSCORMWeight" value ="100" min="1" max="100" class="form-control" style="width:10ch" />
-                                
+                                <input type="number" id="eXeGameSCORMWeight" name="eXeGameSCORMWeight" value="100" min="1" max="100" class="form-control" style="width: 9.5ch !important; max-width:9.5ch  !important;" />
+                                <span>%</span>   
                             </div>
                         </div>`;
                 },
@@ -436,14 +436,10 @@ var $exeDevicesEdition = {
 
             share: {
                 getTab: function (allowtext = false, type = 0, exportquestion = false) {
-
-                    const msgAddText = _("You can easily generate multiple questions for the activity using AI.")
                     const txt = allowtext ? ', .txt, .xml' : '';
                     const formtxt = allowtext ? ', txt, xml' : '';
-                    const display = allowtext ? 'block' : 'none';
                     const displayEQ = exportquestion ? 'block' : 'none';
                     const msgimport = _('You can import questions compatible with this activity from txt or xml (Moodle) files.');
-                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type)
                     const tab = `
                             <div class="exe-form-tab" title="${_('Import/Export')}">
                                 <p class="exe-block-info">${msgimport}</p>
@@ -459,58 +455,65 @@ var $exeDevicesEdition = {
                                             </div>
                                         </form>
                                     </div>
-                                    <div style="display:${display}">
-                                        <p class="exe-block-info">${msgAddText}</p>
-                                        <p><input type="button" class="btn btn-primary ms-2"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_("Add questions")}" /></p>
-                                        <div class="bg-white rounded border w-100 position-relative" style="display:none; max-width: 1400px;" id="eXeEAddArea">
-                                            <ul class="nav nav-tabs">
-                                                <li class="nav-item">
-                                                    <a id="eXeETabPrompt" class="nav-link bg-light border-end active" href="#">
-                                                    ${_('Prompt')}
-                                                    </a>
-                                                </li>
-                                                <li class="nav-item">
-                                                    <a id="eXeETabQuestions" class="nav-link bg-light border-end"  href="#">
-                                                     ${_('Questions')}
-                                                    </a>
-                                                </li>                                          
-                                                <li class="nav-item" style="display:none">
-                                                    <a id="eXeETabIA" class="nav-link bg-light border-end" href="#">
-                                                    ${_('Generate')}
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                            <div class="eXeE-LightboxContent p-2">
-                                                <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">
-                                                    ${c_("Act as a highly experienced teacher.")}
-                                                    ${fprompt.prompt}
-                                                    ${c_('Formats')}:
-                                                    ${fprompt.format.join('\n')} 
-                                                    ${fprompt.explanation}
-                                                    ${c_('Examples')}:
-                                                    ${fprompt.examples.join('\n')}
-                                                    ${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')}, 
-                                                </textarea>
-                                                <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
-                                                <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
-                                                    ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
-                                                    <textarea class="form-control font-monospace fs-6" style="display:none" id="eXeEQuestionsIA"> </textarea>
-                                                </div>
-                                            </div>
-                                            <div class="d-flex justify-content-end  border-secondary p-2">
-                                               <button id="eXeESaveButton"  class="btn  btn-primary ms-2"/>${_('Save')}</button>
-                                               <button id="eXeECopyButton"  class="btn btn-primary ms-2"/>${_('Copy')}</button>
-                                               <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>
-                                               <button id="eXeEIAButton"  class="btn btn-primary"/>${_('Add questions')}</button>
-                                            </div>
-                                        </div>
-                                    </div>
                                     <p class="exe-block-info" style="display:${displayEQ}" >${_('You can export its questions in txt format to integrate them into other compatible activities.')}</p>
                                     <p class ="d-flex align-items-center justify-content-start gap-1">
                                         <input type="button" class="btn btn-primary ms-2"  name="eXeGameExportGame" id="eXeGameExportQuestions" value="${_("Export questions")}" style="display:${displayEQ}" />
                                     </p>
                                 </div>
                             </div>`;
+                    return tab.replace(/[ \t]+/g, ' ').trim();
+                },
+
+                getTabIA: function (type = 0) {
+                    const msgAddText = _("You can easily generate multiple questions for the activity using AI.");
+                    const fprompt = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(type);
+                    const tab = `
+                        <div class="exe-form-tab" title="${_('AI')}">
+                            <p class="exe-block-info">${msgAddText}</p>
+                            <p style="display:none"><input type="button" class="btn btn-primary ms-2"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_('Add questions')}" /></p>
+                            <div class="bg-white rounded w-100 position-relative" style="max-width: 1400px;" id="eXeEAddArea">
+                                <ul class="nav nav-tabs">
+                                    <li class="nav-item">
+                                        <a id="eXeETabPrompt" class="nav-link bg-light border-end active" href="#">
+                                        ${_('Prompt')}
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a id="eXeETabQuestions" class="nav-link bg-light border-end"  href="#">
+                                         ${_('Questions')}
+                                        </a>
+                                    </li>
+                                    <li class="nav-item" style="display:none">
+                                        <a id="eXeETabIA" class="nav-link bg-light border-end" href="#">
+                                        ${_('Generate')}
+                                        </a>
+                                    </li>
+                                </ul>
+                                <div class="eXeE-LightboxContent p-2">
+                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">
+                                        ${c_('Act as a highly experienced teacher.')}
+                                        ${fprompt.prompt}
+                                        ${c_('Formats')}:
+                                        ${fprompt.format.join('\\n')} 
+                                        ${fprompt.explanation}
+                                        ${c_('Examples')}:
+                                        ${fprompt.examples.join('\\n')}
+                                        ${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')}, 
+                                    </textarea>
+                                    <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
+                                    <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
+                                        ${$exeDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
+                                        <textarea class="form-control font-monospace fs-6" style="display:none" id="eXeEQuestionsIA"> </textarea>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-end  border-secondary p-2">
+                                   <button id="eXeESaveButton"  class="btn  btn-primary ms-2"/>${_('Save')}</button>
+                                   <button id="eXeECopyButton"  class="btn btn-primary ms-2"/>${_('Copy')}</button>
+                                   <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>
+                                   <button id="eXeEIAButton"  class="btn btn-primary"/>${_('Add questions')}</button>
+                                </div>
+                            </div>
+                        </div>`;
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
 

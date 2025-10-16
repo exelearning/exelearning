@@ -1032,6 +1032,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab($exeDevice.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 7, false)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(7)}
             </div>            
             `;
             ideviceBody.innerHTML = html;

@@ -266,7 +266,7 @@ var $exeDevice = {
                                     </div>
                                     <span>${_('Image')}</span>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEInputImage">
-                                        <label class="sr-av">URL</label>
+                                        <label for="flipcardsEURLImage" class="sr-av">URL</label>
                                         <input type="text" id="flipcardsEURLImage" class="exe-file-picker FLCRDS-EURLImage form-control me-0"/>
                                         <a href="#" id="flipcardsEPlayImage" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
@@ -276,24 +276,24 @@ var $exeDevice = {
                                         </a>
                                     </div>
                                     <div class="FLCRDS-ECoord">
-                                        <label>X:</label>
+                                        <label for="flipcardsEX">X:</label>
                                         <input id="flipcardsEX" class="FLCRDS-EX form-control" type="text" value="0" />
-                                        <label>Y:</label>
+                                        <label for="flipcardsEY">Y:</label>
                                         <input id="flipcardsEY" class="FLCRDS-EY form-control" type="text" value="0" />
                                     </div>
                                     <div class="align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEAuthorAlt">
                                         <div class="FLCRDS-EInputAuthor">
-                                            <label>${_('Authorship')}</label>
+                                            <label for="flipcardsEAuthor">${_('Authorship')}</label>
                                             <input id="flipcardsEAuthor" type="text" class="FLCRDS-EAuthor form-control" />
                                         </div>
                                         <div class="FLCRDS-EInputAlt">
-                                            <label>${_('Alternative text')}</label>
+                                            <label for="flipcardsEAlt">${_('Alternative text')}</label>
                                             <input id="flipcardsEAlt" type="text" class="FLCRDS-EAlt form-control" />
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
                                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                        <label class="sr-av">URL</label>
+                                        <label for="flipcardsEURLAudio" class="sr-av">URL</label>
                                         <input type="text" id="flipcardsEURLAudio" class="exe-file-picker FLCRDS-EURLAudio form-control me-0" />
                                         <a href="#" id="flipcardsEPlayAudio" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Audio')}">
                                             <img src="${path}quextIEPlay.png" alt="Play" class="FLCRDS-ENavigationButton " />
@@ -312,7 +312,7 @@ var $exeDevice = {
                                     </div>
                                     <span >${_('Text')}</span>
                                     <div class="d-flex align-items-center flex-nowrap mb-3 gap-2" id="flipcardsEInputTextBack">
-                                        <label class="sr-av">${_('Text')}</label>
+                                        <label for="flipcardsETextBack" class="sr-av">${_('Text')}</label>
                                         <input type="text" id="flipcardsETextBack" class="form-control" />
                                         <label id="flipcardsELblColorBack" class="FLCRDS-LblColor ">${_('Color')}:</label> 
                                         <input id="flipcardsEColorBack" type="color" class="form-control form-control-color" value="#000000">
@@ -322,7 +322,7 @@ var $exeDevice = {
                                     </div>
                                     <span> ${_('Image')}</span>
                                     <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="flipcardsEInputImageBack">
-                                        <label class="sr-av">URL</label>
+                                        <label for="flipcardsEURLImageBack" class="sr-av">URL</label>
                                         <input type="text" id="flipcardsEURLImageBack" class="exe-file-picker form-control me-0"/>
                                         <a href="#" id="flipcardsEPlayImageBack" class="FLCRDS-EPlayVideo" title="${_('Show')}">
                                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
@@ -349,7 +349,7 @@ var $exeDevice = {
                                     </div>
                                     <span>${_('Audio')}</span>
                                     <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
-                                        <label class="sr-av">URL</label>
+                                        <label form="flipcardsEURLAudioBack" class="sr-av">URL</label>
                                         <input type="text" id="flipcardsEURLAudioBack" class="exe-file-picker FLCRDS-EURLAudio form-control  me-0" />
                                         <a href="#" id="flipcardsEPlayAudioBack" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Audio')}">
                                             <img src="${path}quextIEPlay.png" alt="Play" class="FLCRDS-ENavigationButton " />
@@ -386,6 +386,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
             </div>
         `;
 
