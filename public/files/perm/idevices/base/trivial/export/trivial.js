@@ -284,22 +284,22 @@ var $eXeTrivial = {
                                 <div class="trivial-JugadorData">
                                     <div class="trivial-FichaJugador trivial-JugadorRojo"></div>
                                     <label for="inputjugador0"></label>
-                                    <input type="text" name="inputjugador0" class="trivial-NameGamer" id="inputjugador0" autocomplete="off">
+                                    <input type="text" name="inputjugador0" class="trivial-NameGamer form-control" id="inputjugador0" autocomplete="off">
                                 </div>
                                 <div class="trivial-JugadorData">
                                     <div class="trivial-FichaJugador trivial-JugadorAzul"></div>
                                     <label for="inputjugador1"></label>
-                                    <input type="text" name="inputjugador1" class="trivial-NameGamer" id="inputjugador1" autocomplete="off">
+                                    <input type="text" name="inputjugador1" class="trivial-NameGamer form-control" id="inputjugador1" autocomplete="off">
                                 </div>
                                 <div class="trivial-JugadorData">
                                     <div class="trivial-FichaJugador trivial-JugadorVerde"></div>
                                     <label for="inputjugador2"></label>
-                                    <input type="text" name="inputjugador2" class="trivial-NameGamer" id="inputjugador2" autocomplete="off">
+                                    <input type="text" name="inputjugador2" class="trivial-NameGamer form-control" id="inputjugador2" autocomplete="off">
                                 </div>
                                 <div class="trivial-JugadorData">
                                     <div class="trivial-FichaJugador trivial-JugadorAmarillo"></div>
                                     <label for="inputjugador3"></label>
-                                    <input type="text" name="inputjugador3" class="trivial-NameGamer" id="inputjugador3" autocomplete="off">
+                                    <input type="text" name="inputjugador3" class="trivial-NameGamer form-control" id="inputjugador3" autocomplete="off">
                                 </div>
                             </div>
                             <a href="#" id="trivialStartGame-${instance}" class="trivial-StartGame">Iniciar partida</a>
@@ -333,7 +333,7 @@ var $eXeTrivial = {
                             <div class="trivial-CodeAccessDiv" id="trivialCodeAccessDiv-${instance}">
                                 <div class="trivial-MessageCodeAccessE" id="trivialMesajeAccesCodeE-${instance}"></div>
                                 <div class="trivial-DataCodeAccessE">
-                                    <input type="text" class="trivial-CodeAccessE" id="trivialCodeAccessE-${instance}">
+                                    <input type="text" class="trivial-CodeAccessE form-control" id="trivialCodeAccessE-${instance}">
                                     <a href="#" id="trivialCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                         <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                         <div class="exeQuextIcons-Submit trivial-Activo"></div>
@@ -470,7 +470,7 @@ var $eXeTrivial = {
                     <div class="sr-av">${msgs.msgQuestion}:</div>
                     <div class="trivial-Definition" id="trivialDefinition-${instance}"></div>
                     <div class="trivial-DivReply" id="trivialDivResponder-${instance}">
-                        <input type="text" value="" class="trivial-EdReply" id="trivialEdAnswer-${instance}" autocomplete="off">
+                        <input type="text" value="" class="trivial-EdReply form-control" id="trivialEdAnswer-${instance}" autocomplete="off">
                         <a href="#" id="trivialBtnReply-${instance}" title="${msgs.msgReply}">
                             <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                             <div class="exeQuextIcons-Submit trivial-Activo"></div>

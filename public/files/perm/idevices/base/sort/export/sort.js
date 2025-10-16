@@ -402,14 +402,23 @@ var $eXeOrdena = {
             }
         });
 
-        $ordenaMultimedia
-            .find('.ODNP-Card1')
-            .on('mousedown touchstart', function (event) {
-                event.preventDefault();
-                if (mOptions.gameStarted) {
-                    $eXeOrdena.checkAudio(this, instance);
-                }
-            });
+
+        $ordenaMultimedia.off('mousedown touchstart', '.ODNP-Card1');
+        $ordenaMultimedia.on('mousedown touchstart', '.ODNP-Card1', function (event) {
+            event.preventDefault();
+            if (mOptions.gameStarted) {
+                $eXeOrdena.checkAudio(this, instance);
+            }
+        });
+
+        $ordenaMultimedia.off('click', '.ODNP-LinkAudio');
+        $ordenaMultimedia.on('click', '.ODNP-LinkAudio', function (e) {
+            e.preventDefault();
+            const audio = $(this).data('audio');
+            if (audio && audio.length > 3) {
+                $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            }
+        });
     },
 
     randomPhrase: function (instance) {
@@ -569,7 +578,7 @@ var $eXeOrdena = {
                         <div class="ODNP-MessageCodeAccessE" id="ordenaMesajeAccesCodeE-${instance}"></div>
                         <div class="ODNP-DataCodeAccessE">
                             <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                            <input type="text" class="ODNP-CodeAccessE" id="ordenaCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                            <input type="text" class="ODNP-CodeAccessE form-control" id="ordenaCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                             <a href="#" id="ordenaCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                 <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                 <div class="exeQuextIcons-Submit ODNP-Activo"></div>

@@ -97,28 +97,16 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
-        );
-        msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image',
-        );
+        msgs.msgESelectFile = _('The selected file does not contain a valid game');
+        msgs.msgEURLValid = _('You must upload or indicate the valid URL of an image');
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgTypeChoose = _(
-            'Please check all the answers in the right order',
-        );
+        msgs.msgTypeChoose = _('Please check all the answers in the right order');
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideFB = _('Message to display when passing the game');
-        msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
-        );
-        msgs.msgCompleteData = _(
-            'You must indicate an image, a text or/and an audio for each card',
-        );
+        msgs.msgNoSuportBrowser = _('Your browser is not compatible with this tool.');
+        msgs.msgCompleteData = _('You must indicate an image, a text or/and an audio for each card');
         msgs.msgPairsMax = _('Maximum number of activities: 30');
-        msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
-        );
+        msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
     },
 
     createForm: function () {
@@ -273,7 +261,7 @@ var $exeDevice = {
                                 <input type="text" id="slcmEURLAudioDefinition" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioDefinition" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
-                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3"">
+                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3">
                                 <label for="slcmEMessageOK" class="mb-0">${_('Success')}:</label>
                                 <input type="text" id="slcmEMessageOK" class="form-control" />
                                 <label class="mb-0">${_('Audio')}:</label>

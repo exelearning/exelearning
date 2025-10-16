@@ -493,7 +493,7 @@ var $eXeMathProblems = {
                             <strong><span class="sr-av">${msgs.msgMoveOne}</span></strong>
                             <div class="exeQuextIcons-MoveOne MTHP-Activo"></div>
                         </a>
-                        <input type="text" value="" class="MTHP-EdReply" id="mthpEdAnswer-${instance}" autocomplete="off">
+                        <input type="text" value="" class="MTHP-EdReply form-control" id="mthpEdAnswer-${instance}" autocomplete="off">
                         <a href="#" id="mathBtnReply-${instance}" title="${msgs.msgReply}">
                             <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                             <div class="exeQuextIcons-Submit MTHP-Activo"></div>
@@ -514,7 +514,7 @@ var $eXeMathProblems = {
                             <p class="MTHP-MessageCodeAccessE" id="mthpMesajeAccesCodeE-${instance}"></p>
                             <div class="MTHP-DataCodeAccessE">
                                 <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                                <input type="text" class="MTHP-CodeAccessE" id="mthpCodeAccessE-${instance}">
+                                <input type="text" class="MTHP-CodeAccessE form-control" id="mthpCodeAccessE-${instance}">
                                 <a href="#" id="mthpCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                     <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                     <div class="exeQuextIcons-Submit MTHP-Activo"></div>

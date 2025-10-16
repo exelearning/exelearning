@@ -373,7 +373,7 @@ var $eXeMathOperations = {
                             <p class="MTHO-MessageCodeAccessE" id="mthoMesajeAccesCodeE-${instance}"></p>
                             <div class="MTHO-DataCodeAccessE">
                                 <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                                <input type="text" class="MTHO-CodeAccessE" id="mthoCodeAccessE-${instance}">
+                                <input type="text" class="MTHO-CodeAccessE form-control" id="mthoCodeAccessE-${instance}">
                                 <a href="#" id="mthoCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                     <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                     <div class="exeQuextIcons-Submit MTHO-Activo"></div>

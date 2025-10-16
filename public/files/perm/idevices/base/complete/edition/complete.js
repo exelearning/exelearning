@@ -232,7 +232,7 @@ var $exeDevice = {
                                     </span>
                                     <label for="cmptEEvaluation" class="toggle-label">${_('Progress report')}.</label>
                                 </span>
-                                <span id="cmptEEvaluationIDWrapper" class="d-flex align-items-center flex-nograp gap-2">
+                                <span id="cmptEEvaluationIDWrapper" class="d-flex align-items-center flex-nowrap gap-2">
                                     <label for="cmptEEvaluationID">${_('Identifier')}:</label> <input type="text" id="cmptEEvaluationID" class="form-control" disabled value="${eXeLearning.app.project.odeId || ''}" />
                                 </span>
                                 <strong class="GameModeLabel"><a href="#cmptEEvaluationHelp" id="cmptEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}"><img src="${$exeDevice.idevicePath}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" /></a></strong>

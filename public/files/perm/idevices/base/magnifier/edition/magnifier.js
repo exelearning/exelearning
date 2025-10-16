@@ -61,12 +61,10 @@ var $exeDevice = {
 
         const html = `
             <div id="magnifierIdeviceForm">
-                <!-- Instrucciones -->
                 <div class="mb-3">
                     <label for="instructions" class="sr-av">${_('Instructions')}:</label>
                     <textarea id="instructions" class="exe-html-editor mb-1">${c_("Choose the zoom and the magnifier's size. Then move your mouse over the image to see it enlarged.")}</textarea>
                 </div>
-
                 <div class="container">
                     <div class="ratio ratio-16x9 mb-4 MNFE-Preview">
                         <img src="${path}hood.jpg" alt="Preview" id="mnfPreviewImage"
@@ -74,7 +72,7 @@ var $exeDevice = {
                     </div>
                     <div class="d-flex align-items-center mb-3">
                         <label for="mnfFileInput" class="form-label me-2 mb-0 sr-av">${_('Image URL')}:</label>
-                        <input type="text" class="exe-file-pickerform-control w-auto  me-0" id="mnfFileInput">
+                        <input type="text" class="exe-file-picker form-control w-auto" id="mnfFileInput" />
                     </div>
                     <div class="row align-items-center mb-3">
                         <label for="mnfWidthInput" class="col-auto col-form-label">${_('Image width')}:</label>
@@ -179,38 +177,32 @@ var $exeDevice = {
         }
     },
     addEvents: function () {
-        $('#mnfFileInput').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-                selectedFile = $(this).val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                (selectedFile.startsWith('files')) && !validExt.includes(ext)
-            ) {
-                $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
-                );
-                return false;
-            }
-            $('#mnfPreviewImage').attr('src', selectedFile);
-
-        });
-        $('#mnfWidthInput').on('input change', function () {
-            let val = parseInt($(this).val(), 10);
-
-            if (isNaN(val)) {
-                $(this).val('');
+        $('#mnfFileInput').on('input change', function () {
+            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'];
+            const selectedFile = $(this).val().trim();
+            const ext = selectedFile.split('.').pop().toLowerCase();
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
+                $exeDevice.showMessage(`${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`);
                 return;
             }
-
-            if (val < 150) {
-                val = 150;
-            } else if (val > 1000) {
-                val = 1000;
-            }
-
-            $(this).val(val);
+            $('#mnfPreviewImage').attr('src', selectedFile || $exeDevice.defaultImage);
         });
-
+        $('#mnfWidthInput')
+            .on('input', function () {
+                const v = $(this).val();
+                if (v === '') return;
+                if (!/^\d*$/.test(v)) {
+                    $(this).val(String(v).replace(/\D/g, ''));
+                }
+            })
+            .on('change blur', function () {
+                let val = parseInt($(this).val(), 10);
+                if (isNaN(val)) { $(this).val(''); return; }
+                const min = 200, max = 1000;
+                if (val < min) val = min;
+                if (val > max) val = max;
+                $(this).val(val);
+            });
     },
 
     validateData: function () {
@@ -228,7 +220,7 @@ var $exeDevice = {
         let html = '';
         if (tinyMCE.get('instructions')) html = tinyMCE.get('instructions').getContent();
 
-        const textTextarea = html; 
+        const textTextarea = html;
 
         return {
             id,

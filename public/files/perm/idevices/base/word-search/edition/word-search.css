@@ -6,11 +6,16 @@
     margin: 0;
 }
 
-
 #sopaQEIdeviceForm input[type="radio"],
 #sopaQEIdeviceForm input[type="checkbox"],
 #sopaQEIdeviceForm input[type=button] {
     cursor: pointer;
+}
+
+#sopaQEIdeviceForm #sopaEPercentajeFB,
+#sopaQEIdeviceForm #sopaEPercentajeQuestions {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
 }
 
 /*Panel preguntas */
@@ -33,7 +38,7 @@
 .SPE-EMultiMediaOption {
     height: 100%;
     min-height: 300px;
-    min-width: 400px; 
+    min-width: 400px;
     position: relative;
     width: 50%;
 }
@@ -554,7 +559,7 @@ input#gameQEScoreQuestion {
 #sopaQEIdeviceForm #sopaQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color:  #0BA1A1;
+    color: #0BA1A1;
     font-weight: 500;
 }
 
@@ -653,4 +658,3 @@ label[for=gameQEActivitySCORM] {
 .GameModeLabel {
     font-weight: normal
 }
-
