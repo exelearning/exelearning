@@ -14,26 +14,32 @@ use Symfony\Component\Panther\Client;
 trait RealTimeCollaborationTrait
 {
     /**
-     * Retrieves the current page URL after saving the document.
-     *
-     * The URL returned by this method is the same as the current one,
-     * but the document must be saved first to ensure that all related
-     * data (such as the session or project state) has been persisted.
-     * 
-     * This method simulates a real user action by clicking the "Save"
-     * button (#head-top-save-button) before returning the current URL.
+     * Retrieves the session share URL from the given client's browser context.
+     * This URL allows a second client to join the same workarea session.
      */
     protected function getMainShareUrl(Client $client): string
     {
         // Wait for the share button to be available, ensuring the UI is ready.
         $client->waitForVisibility('#head-top-share-button');
 
-        // Wait until the save button is visible and clickableAdd a comment on line R59Add diff commentMarkdown input:  edit mode selected.WritePreviewAdd a suggestionHeadingBoldItalicQuoteCodeLinkUnordered listNumbered listTask listMentionReferenceSaved repliesAdd FilesPaste, drop, or click to add filesCancelCommentStart a reviewReturn to code
-        $this->client->waitFor('#head-top-save-button');
-        $button->click();
+        $apiUrl = '/api/current-ode-users-management/current-ode-user/get/ode/session/id/current/ode/user';
 
-        // Return the full URL currently in the browser
-        return (string) $this->client->getCurrentURL();
+        // Execute an AJAX request from the browser to get the share URL.
+        // This is more stable than trying to parse it from the page content.
+        $shareSessionUrl = $client->executeScript(<<<JS
+            return (async () => {
+                const response = await fetch('{$apiUrl}');
+                if (!response.ok) { return ''; }
+                const data = await response.json();
+                return data.shareSessionUrl || '';
+            })();
+        JS);
+
+        if (!$shareSessionUrl || !is_string($shareSessionUrl)) {
+            return '';
+        }
+
+        return htmlspecialchars_decode($shareSessionUrl);
     }
 
     /**
