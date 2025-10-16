@@ -32,7 +32,7 @@
 
 .CTJP-GameContainer {
     width: 100%;
-    max-width: 850px;
+    max-width: 1000px;
 }
 
 .CTJP-List {
@@ -170,8 +170,8 @@
 }
 
 .CTJP-Points {
-    margin: left 5px;
-    font-weight: 600px;
+    margin-left: 5px;
+    font-weight: 600;
     color: #01343f
 }
 
@@ -186,6 +186,7 @@
 
 .CTJP-Item input[type=checkbox] {
     cursor: pointer;
+    margin-right: 3px !important;
 }
 
 .CTJP-Item input[type=text] {
@@ -197,6 +198,7 @@
 .CTJP-UserData {
     display: flex;
     justify-content: space-between;
+    flex-wrap: nowrap;
     align-items: center;
     margin: 1em 0;
     gap: 1em;
@@ -208,7 +210,6 @@
     align-items: center;
     justify-content: flex-start;
     gap: 0.15em;
-
     flex-wrap: wrap;
 }
 
@@ -240,53 +241,100 @@
     }
 }
 
-/*
 
-.CTJP-MainContainer select {
-	appearance: none;
-	-webkit-appearance: none;
-	-moz-appearance: none;
-	background-color: #fff;
-	border: 1px solid #ccc;
-	padding: 6px;
-	font-size: 16px;
-	color: #333;
-	border-radius: 4px;
-	outline: none;
-	cursor: pointer;
-	transition: border-color 0.3s ease;
-  }
-  .CTJP-MainContainer select:focus {
-	border-color: #6c63ff;
-  }
-  
-  .CTJP-MainContainer select::after {
-	content: "\25BC";
-	position: absolute;
-	top: calc(50% - 6px);
-	right: 10px;
-	color: #999;
-	font-size: 12px;
-	pointer-events: none;
-  }
-  
-  .CTJP-MainContainer select option {
-	background-color: #fff;
-	color: #333;
-  }
-  
-  .CTJP-MainContainer select option:hover {
-	background-color: #f2f2f2;
-  }
-  .CTJP-MainContainer select option[value="1"] {
-	background-color: #00ff00; 
-  }
-  
-  .CTJP-MainContainer  select option[value="1"] {
-	background-color: #0000ff; 
-  }
-  
-  .CTJP-MainContainer  select option[value="0"] {
-	background-color: #ff0000; 
-  }
-  */
+.CTJP-MainContainer .toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0;
+    flex-wrap: wrap;
+    gap: .1rem;
+}
+
+.CTJP-MainContainer .toggle-item+.toggle-item {
+    border-top: 1px solid rgba(0, 0, 0, .04);
+}
+
+.CTJP-MainContainer .toggle-label {
+    cursor: pointer;
+    margin-right: 3px;
+    margin-top: 0;
+}
+
+.CTJP-MainContainer .toggle-control {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    /* Tamaño explícito del switch para asegurar el área clicable */
+    width: 36px;
+    height: 20px;
+}
+
+.CTJP-MainContainer .toggle-input {
+    position: absolute;
+    opacity: 0;
+    /* Usar top/left/right/bottom para compatibilidad amplia en vez de inset */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.CTJP-MainContainer .toggle-visual {
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    border-radius: 999px;
+    background: var(--gray-400, #ccc);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
+    transition: background 160ms ease, box-shadow 160ms ease;
+    position: relative;
+    cursor: pointer;
+    pointer-events: none;
+}
+
+.CTJP-MainContainer .toggle-visual::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .15);
+    transition: transform 160ms ease;
+}
+
+.CTJP-MainContainer .toggle-input:checked+.toggle-visual {
+    background: var(--bs-blue, #0d6efd) !important;
+}
+
+.CTJP-MainContainer .toggle-input:checked+.toggle-visual::after {
+    transform: translateX(16px);
+}
+
+.CTJP-MainContainer .toggle-input:disabled+.toggle-visual {
+    opacity: .5;
+    filter: grayscale(.3);
+    cursor: not-allowed;
+}
+
+
+.CTJP-List .toggle-visual {
+    background: var(--gray-400, #ccc) !important;
+}
+.CTJP-List .toggle-input:checked + .toggle-visual {
+    background: var(--bs-blue, #0d6efd) !important;
+}
+
+.CTJP-MainContainer .toggle-related label>input[type=number] {
+    display: inline-block;
+    width: 60px;
+    margin: 0 4px;
+    vertical-align: middle;
+}

@@ -188,7 +188,7 @@ var $eXeDesafio = {
                 </div>
                 <div class="desafio-SolutionDiv" id="desafioSolutionDiv-${instance}">
                     <label for="desafioSolution-${instance}">${msgs.mgsSolution}:</label>
-                    <input type="text" class="desafio-Solution" id="desafioSolution-${instance}">
+                    <input type="text" class="desafio-Solution form-control" id="desafioSolution-${instance}">
                     <a href="#" id="desafioSolutionButton-${instance}" title="${msgs.msgSubmit}">
                         <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                         <div class="exeQuextIcons-Submit desafio-Activo"></div>

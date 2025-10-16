@@ -410,7 +410,7 @@ var $guess = {
                             <strong><span class="sr-av">${msgs.msgMoveOne}</span></strong>
                             <div class="exeQuextIcons-MoveOne ADVNP-Activo"></div>
                         </a>
-                        <input type="text" value="" class="ADVNP-EdReply" id="adivinaEdAnswer-${instance}" autocomplete="off">
+                        <input type="text" value="" class="ADVNP-EdReply form-control" id="adivinaEdAnswer-${instance}" autocomplete="off">
                         <a href="#" id="adivinaBtnReply-${instance}" title="${msgs.msgReply}">
                             <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                             <div class="exeQuextIcons-Submit ADVNP-Activo"></div>
@@ -432,7 +432,7 @@ var $guess = {
                     <div class="ADVNP-MessageCodeAccessE" id="adivinaMesajeAccesCodeE-${instance}"></div>
                     <div class="ADVNP-DataCodeAccessE">
                         <label for="adivinaCodeAccessE-${instance}" class="sr-av">${msgs.msgCodeAccess}:</label>
-                        <input type="text" class="ADVNP-CodeAccessE" id="adivinaCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                        <input type="text" class="ADVNP-CodeAccessE form-control" id="adivinaCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                         <a href="#" id="adivinaCodeAccessButton-${instance}" title="${msgs.msgReply}">
                             <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                             <div class="exeQuextIcons-Submit ADVNP-Activo"></div>

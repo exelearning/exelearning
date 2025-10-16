@@ -18,6 +18,17 @@
     cursor: pointer;
 }
 
+#gameQEIdeviceForm #eCQPercentajeQuestions,
+#gameQEIdeviceForm #eCQPercentajeFB,
+#gameQEIdeviceForm #eCQTime {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
+
+#gameQEIdeviceForm #eRMQdecimals {
+    padding-right: 1em;
+}
+
 #gameQEIdeviceForm #eCQformula {
     width: 50%;
     min-width: 200px;

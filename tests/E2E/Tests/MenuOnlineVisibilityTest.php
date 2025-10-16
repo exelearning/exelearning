@@ -1,15 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Tests\E2E;
+namespace App\Tests\E2E\Tests;
 
 use Facebook\WebDriver\WebDriverBy;
+use App\Tests\E2E\Support\BaseE2ETestCase;
+use App\Tests\E2E\Support\Console;
 
-class MenuOnlineVisibilityTest extends ExelearningE2EBase
+final class MenuOnlineVisibilityTest extends BaseE2ETestCase
 {
     public function testFileMenuItemsVisibleInOnlineMode(): void
     {
-        $client = $this->login();
+        $client = $this->login($this->makeClient());
 
         // Open File dropdown
         $client->waitForVisibility('#dropdownFile', 5);
@@ -38,6 +40,9 @@ class MenuOnlineVisibilityTest extends ExelearningE2EBase
         $this->assertFalse($client->executeScript("return ($jsIsVisible)('#navbar-button-save-offline');"), 'Save (offline) should be hidden');
         $this->assertFalse($client->executeScript("return ($jsIsVisible)('#navbar-button-save-as-offline');"), 'Save As (offline) should be hidden');
         $this->assertFalse($client->executeScript("return ($jsIsVisible)('#dropdownExportAsOffline');"), 'Export As (offline) should be hidden');
+
+        // Check browser console for errors
+        Console::assertNoBrowserErrors($client);
     }
 }
 

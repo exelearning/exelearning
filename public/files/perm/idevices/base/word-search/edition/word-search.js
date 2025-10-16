@@ -432,11 +432,11 @@ var $exeDevice = {
                                 </div>
                                 <div class="d-none flex-nowrap align-items-center gap-2 mb-3" id="sopaEAuthorAlt">
                                     <div class="d-flex w-50 flex-nowrap align-items-center gap-2">
-                                        <label>${_('Authorship')}</label>
+                                        <label for="sopaEAuthor">${_('Authorship')}</label>
                                         <input id="sopaEAuthor" type="text" class="me-0 w-100 form-control" />
                                     </div>
                                     <div class="d-flex flex-nowrap align-items-center gap-2">
-                                        <label>${_('Alt')}</label>
+                                        <label for="sopaEAlt">${_('Alt')}</label>
                                         <input id="sopaEAlt" type="text" class="me-0 w-100 form-control" />
                                     </div>
                                 </div>
@@ -486,6 +486,7 @@ var $exeDevice = {
             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
+            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
         </div>
         `;
         this.ideviceBody.innerHTML = html;
@@ -527,7 +528,6 @@ var $exeDevice = {
         $('#sopaEDefinitionWord').val(p.definition);
         $('#sopaENumQuestions').text($exeDevice.wordsGame.length);
         $('#sopaESolutionWord').val(p.word);
-        $('#sopaEPercentageShow').val(p.percentageShow);
         $('#sopaEURLImage').val(p.url);
         $('#sopaEXImage').val(p.x);
         $('#sopaEYImage').val(p.y);
@@ -772,7 +772,7 @@ var $exeDevice = {
                 alt: $('#sopaEAlt').val(),
                 url: $('#sopaEURLImage').val().trim(),
                 audio: $('#sopaEURLAudio').val(),
-                percentageShow: parseInt($('#sopaEPercentageShow').val()),
+                percentageShow: 100
             };
 
         $exeDevice.stopSound();
@@ -1023,19 +1023,7 @@ var $exeDevice = {
             }
         });
 
-        $('#sopaEPercentageShow').on('keyup', function () {
-            let v = this.value;
-            v = v.replace(/\D/g, '');
-            v = v.substring(0, 3);
-            this.value = v;
-        });
-
-        $('#sopaEPercentageShow').on('focusout', function () {
-            this.value = this.value.trim() == '' ? 35 : this.value;
-            this.value = this.value > 100 ? 100 : this.value;
-            this.value = this.value < 0 ? 0 : this.value;
-        });
-
+     
         if (
             window.File &&
             window.FileReader &&

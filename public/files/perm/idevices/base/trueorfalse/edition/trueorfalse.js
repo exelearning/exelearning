@@ -350,7 +350,7 @@ var $exeDevice = {
                                     </span>
                                     <label class="toggle-label mb-0" for="tofEIsTest">${_('Test')}</label>
                                 </div>
-                                <div id="tofETimeDiv" class="d-none d-flex flex-nowrap align-items-center gap-2">
+                                <div id="tofETimeDiv" class="d-none flex-nowrap align-items-center gap-2">
                                     <label for="tofETime" class="mb-0">${_('Time (minutes)')}:</label>
                                     <input type="number" class="form-control" name="tofETime" id="tofETime" value="0" min="0" max="59" />
                                 </div>
@@ -438,6 +438,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 6, true)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(6)}
             </div>
             `;
         this.ideviceBody.innerHTML = html;

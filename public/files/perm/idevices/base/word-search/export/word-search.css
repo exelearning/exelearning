@@ -304,7 +304,7 @@
 
 .SPP-CodeAccessE {
     margin: 0 .3em;
-    max-width: 250px;
+    max-width: 350px;
     text-align: center;
     width: 80%;
 }
@@ -887,29 +887,6 @@ div:fullscreen .SPP-LinkMinimize {
         width: 2em;
     }
 
-    .SPP-GameContainer input[type="text"],
-    input.SPP-EdReply,
-    input.SPP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
-
-    .SPP-GameContainer input[type="text"]:active,
-    .SPP-GameContainer input[type="text"]:focus,
-    input.SPP-EdReply:focus,
-    input.SPP-EdReply:active,
-    input.SPP-CodeAccessE:focus,
-    input.SPP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
 
     .SPP-Detail {
         width: 240px;

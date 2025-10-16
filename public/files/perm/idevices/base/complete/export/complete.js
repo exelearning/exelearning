@@ -185,7 +185,7 @@ var $eXeCompleta = {
                     <div class="CMPT-MessageCodeAccessE" id="cmptMesajeAccesCodeE-${instance}"></div>
                     <div class="CMPT-DataCodeAccessE">
                         <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                        <input type="text" class="CMPT-CodeAccessE" id="cmptCodeAccessE-${instance}">
+                        <input type="text" class="CMPT-CodeAccessE form-control" id="cmptCodeAccessE-${instance}">
                         <a href="#" id="cmptCodeAccessButton-${instance}" title="${msgs.msgReply}">
                             <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                             <div class="exeQuextIcons exeQuextIcons-Submit CMPT-Activo"></div>

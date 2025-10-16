@@ -398,7 +398,7 @@ var $eXeSeleccionaMedias = {
                 <div class="SLCMP-CodeAccessDiv" id="slcmpCodeAccessDiv-${instance}">
                     <div class="SLCMP-MessageCodeAccessE" id="slcmpMesajeAccesCodeE-${instance}"></div>
                     <div class="SLCMP-DataCodeAccessE">
-                        <label class="sr-av">${msgs.msgCodeAccess}:</label><input type="text" class="SLCMP-CodeAccessE" id="slcmpCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                        <label class="sr-av">${msgs.msgCodeAccess}:</label><input type="text" class="SLCMP-CodeAccessE form-control" id="slcmpCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                         <a href="#" id="slcmpCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                             <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                             <div class="exeQuextIcons-Submit SLCMP-Activo"></div>

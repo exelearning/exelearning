@@ -63,4 +63,4 @@ config/bundles.php text eol=lf -executable
 # ---------------------------------------------------------------------
 # Public assets: ensure static files are not executable
 # ---------------------------------------------------------------------
-public/** -text -diff -merge -eol -crlf -ident -executable
+public/** -executable

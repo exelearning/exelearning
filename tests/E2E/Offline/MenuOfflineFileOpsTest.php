@@ -3,12 +3,13 @@ declare(strict_types=1);
 
 namespace App\Tests\E2E\Offline;
 
-use App\Tests\E2E\ExelearningE2EBase;
-use Facebook\WebDriver\WebDriverBy;
+use App\Tests\E2E\Support\BaseE2ETestCase;
 use Symfony\Component\Panther\Client;
 
-class MenuOfflineFileOpsTest extends ExelearningE2EBase
+class MenuOfflineFileOpsTest extends BaseE2ETestCase
 {
+    use OfflineMenuActionsTrait;
+
     private function injectMockElectronApi(Client $client): void
     {
         $mockApiPath = __DIR__ . '/../../../public/app/workarea/mock-electron-api.js';
@@ -57,11 +58,35 @@ class MenuOfflineFileOpsTest extends ExelearningE2EBase
                 ['openElp','readFile','save','saveAs'].forEach(wrap);
             })();
         JS);
+
+        // Speed up export/download API so Save/Save As (offline) reach electronAPI quickly
+        $client->executeScript(<<<'JS'
+            (function(){
+                try {
+                    let patched = false;
+                    const tryPatch = function(){
+                        try {
+                            if (patched) return;
+                            const api = window.eXeLearning && window.eXeLearning.app && window.eXeLearning.app.api;
+                            if (api) {
+                                api.getOdeExportDownload = async function(odeSessionId, type){
+                                    const name = (type === 'elp') ? 'document.elp' : `export-${type}.zip`;
+                                    return { responseMessage: 'OK', urlZipFile: '/fake/download/url', exportProjectName: name };
+                                };
+                                api.getFileResourcesForceDownload = async function(url){ return { url: url }; };
+                                patched = true; clearInterval(iv);
+                            }
+                        } catch (e) {}
+                    };
+                    const iv = setInterval(tryPatch, 50); tryPatch();
+                } catch (e) {}
+            })();
+        JS);
     }
 
     private function initOfflineClientWithMock(): Client
     {
-        $client = $this->createTestClient();
+        $client = $this->makeClient();
         $client->request('GET', '/workarea');
         $client->waitForInvisibility('#load-screen-main', 30);
         $this->injectMockElectronApi($client);
@@ -82,9 +107,8 @@ class MenuOfflineFileOpsTest extends ExelearningE2EBase
     public function testOpenOfflineUsesElectronDialogs(): void
     {
         $client = $this->initOfflineClientWithMock();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-open-offline'))->click();
+        $this->openOfflineFileMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-open-offline');
         $this->waitForMockCall($client, 'openElp');
         $this->waitForMockCall($client, 'readFile');
     }
@@ -92,19 +116,16 @@ class MenuOfflineFileOpsTest extends ExelearningE2EBase
     public function testSaveOfflineUsesElectronSave(): void
     {
         $client = $this->initOfflineClientWithMock();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-save-offline'))->click();
+        $this->openOfflineFileMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-save-offline');
         $this->waitForMockCall($client, 'save');
     }
 
     public function testSaveAsOfflineUsesElectronSaveAs(): void
     {
         $client = $this->initOfflineClientWithMock();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-save-as-offline'))->click();
+        $this->openOfflineFileMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-save-as-offline');
         $this->waitForMockCall($client, 'saveAs');
     }
 }
-

@@ -177,6 +177,15 @@ var $exeDevice = {
                                 <label class="toggle-label" for="ccgmECaseSensitive">${_('Case sensitive')}</label>
                             </span>
                         </div>
+                        <div class="mb-3">
+                            <span class="toggle-item" role="switch" aria-checked="false">
+                                <span class="toggle-control">
+                                    <input type="checkbox" checked id="ccgmETilde" class="toggle-input" />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label class="toggle-label" for="ccgmETilde">${_('Tildes')}</label>
+                            </span>
+                        </div>
                         <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                             <label for="ccgmEDifficulty" class="mb-0">%${_('Difficulty')}:</label>
                             <input type="number" name="ccgmEDifficulty" id="ccgmEDifficulty" value="100" min="0" max="100" class="form-control" style="width:6ch" /> 
@@ -350,6 +359,7 @@ var $exeDevice = {
             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 9, true)}
+            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(9)}
         </div>
     `;
         this.ideviceBody.innerHTML = html;
@@ -699,6 +709,7 @@ var $exeDevice = {
             urlBack = $('#ccgmEURLBack').val().trim(),
             itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#ccgmECaseSensitive').is(':checked'),
+            tilde = $('#ccgmETilde').is(':checked'),
             feedBack = $('#ccgmEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#ccgmEPercentajeFB').val())),
             evaluation = $('#ccgmEEvaluation').is(':checked'),
@@ -766,6 +777,7 @@ var $exeDevice = {
             textFeedBack: escape(textFeedBack),
             textAfter: escape(textAfter),
             caseSensitive,
+            tilde,
             feedBack,
             percentajeFB,
             version: 2,
@@ -1331,15 +1343,15 @@ var $exeDevice = {
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
-        game.weighted =
-            typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.weighted =  typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.tilde =  typeof game.tilde !== 'undefined' ? game.tilde : true;
         $exeDevice.id = $exeDevice.getIdeviceID();
-
         $('#ccgmEShowMinimize').prop('checked', game.showMinimize);
         $('#ccgmETime').val(game.time);
         $('#ccgmEDifficulty').val(game.difficulty);
         $('#ccgmEShowSolution').prop('checked', game.showSolution);
         $('#ccgmECaseSensitive').prop('checked', game.caseSensitive);
+        $('#ccgmETilde').prop('checked', game.tilde);
         $('#ccgmEHasFeedBack').prop('checked', game.feedBack);
         $('#ccgmEPercentajeFB').val(game.percentajeFB);
         $('#ccgmEEvaluation').prop('checked', game.evaluation);
