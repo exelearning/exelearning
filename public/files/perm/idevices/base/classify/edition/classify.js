@@ -330,6 +330,7 @@ var $exeDevice = {
             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 5)}
+            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(5)}
         </div>
     `;
         this.ideviceBody.innerHTML = html;
@@ -474,7 +475,7 @@ var $exeDevice = {
         $('#clasificaEURLAudio').val(p.audio);
         $('#clasificaEMessageOK').val(p.msgHit);
         $('#clasificaEMessageKO').val(p.msgError);
-        $('#clasificaENumberQuestion').text(i + 1);
+        $('#clasificaENumberQuestion').val(i + 1);
 
         $exeDevice.stopSound();
     },
@@ -529,13 +530,12 @@ var $exeDevice = {
             $colorInputs = $('#clasificaEColor, #clasificaEBackColor');
 
         $(elementsToHide).hide();
-        $("input[name='qxtmediatype'][value='" + type + "']").prop(
-            'checked',
-            true,
-        );
+        $("input[name='qxtmediatype'][value='" + type + "']").prop('checked', true);
 
-        const currentColor = $('#clasificaEColor').val() || '#000000';
-        const currentBg = $('#clasificaEBackColor').val() || '#ffffff';
+        const p = $exeDevice.wordsGame[$exeDevice.active] || {};
+        const currentColor = (p.color || $('#clasificaEColor').val() || '#000000').trim();
+        const currentBg = (p.backcolor || $('#clasificaEBackColor').val() || '#ffffff').trim();
+
         switch (type) {
             case 0:
                 $('#clasificaEImage, #clasificaETitleImage, #clasificaEInputImage').show();
@@ -543,16 +543,18 @@ var $exeDevice = {
                     $('#clasificaEURLImage').val(),
                     $('#clasificaEXImage').val(),
                     $('#clasificaEYImage').val(),
-                    $('#clasificaEAlt').val(),
+                    $('#clasificaEAlt').val()
                 );
                 break;
             case 1:
                 $textElements.show();
                 $labelsColor.show();
                 $('#clasificaEAuthorAlt').removeClass('d-flex').addClass('d-none');
+                $('#clasificaEColor').val(currentColor).trigger('input');
+                $('#clasificaEBackColor').val(currentBg).trigger('input');
                 $('#clasificaETextDiv').css({
-                    'color': currentColor,
-                    'background-color': currentBg,
+                    color: currentColor,
+                    'background-color': currentBg
                 });
                 break;
             case 2:
@@ -560,17 +562,17 @@ var $exeDevice = {
                     $('#clasificaEURLImage').val(),
                     $('#clasificaEXImage').val(),
                     $('#clasificaEYImage').val(),
-                    $('#clasificaEAlt').val(),
+                    $('#clasificaEAlt').val()
                 );
                 $(elementsToHide).show();
                 $colorInputs.show();
                 $labelsColor.show();
+                $('#clasificaEColor').val(currentColor).trigger('input');
+                $('#clasificaEBackColor').val(currentBg).trigger('input');
                 $('#clasificaETextDiv').css({
-                    'color': currentColor,
-                    'background-color': $exeDevice.hexToRgba(currentBg, 0.7),
+                    color: currentColor,
+                    'background-color': $exeDevice.hexToRgba(currentBg, 0.7)
                 });
-                break;
-            default:
                 break;
         }
     },
@@ -1078,7 +1080,7 @@ var $exeDevice = {
             }
         });
 
-        $form.on('change', '#clasificaEURLImage', function () {
+        $('#clasificaEURLImage').on('change', function () {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'];
             const selectedFile = this.value.trim();
             const ext = selectedFile.split('.').pop().toLowerCase();
@@ -1206,7 +1208,7 @@ var $exeDevice = {
             $('#clasificaEXImage, #clasificaEYImage').val(0);
         });
 
-        $form.on('change', '#clasificaEURLAudio', function () {
+        $('#clasificaEURLAudio').on('change', function () {
             const selectedFile = this.value.trim();
             if ($exeDevice.wordsGame[$exeDevice.active]) {
                 $exeDevice.wordsGame[$exeDevice.active].audio = selectedFile;
@@ -1434,7 +1436,7 @@ var $exeDevice = {
         $('#clasificaETextDiv').text('');
         $('#clasificaEColor').val('#000000');
         $('#clasificaEBackColor').val('#ffffff');
-        $exeDevice.changeTypeQuestion(0);
+        
     },
 
     addQuestion: function () {
@@ -1444,9 +1446,12 @@ var $exeDevice = {
         }
         if ($exeDevice.validateQuestion()) {
             $exeDevice.clearQuestion();
+
             $exeDevice.wordsGame.push($exeDevice.getCuestionDefault());
+
             $exeDevice.active = $exeDevice.wordsGame.length - 1;
-            $('#clasificaENumberQuestion').text($exeDevice.wordsGame.length);
+            $exeDevice.changeTypeQuestion(0);
+            $('#clasificaENumberQuestion').val($exeDevice.wordsGame.length);
             $exeDevice.typeEdit = -1;
             $('#clasificaEPaste').hide();
             $('#clasificaENumQuestions').text($exeDevice.wordsGame.length);
@@ -1467,7 +1472,7 @@ var $exeDevice = {
             $exeDevice.typeEdit = -1;
             $('#clasificaEPaste').hide();
             $('#clasificaENumQuestions').text($exeDevice.wordsGame.length);
-            $('#clasificaENumberQuestion').text($exeDevice.active + 1);
+            $('#clasificaENumberQuestion').val($exeDevice.active + 1);
             $exeDevice.updateQuestionsNumber();
         }
     },

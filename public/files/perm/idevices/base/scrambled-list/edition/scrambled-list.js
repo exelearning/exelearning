@@ -109,7 +109,7 @@ var $exeDevice = {
             ? `<div class="exe-sortableList-textAfter">${this.textAfter}</div>`
             : '';
 
- 
+
         const base = this.ci18n || {};
         const i18n = { ...base };
         for (const k in base) {
@@ -264,12 +264,14 @@ var $exeDevice = {
                                 </div>
                             </div>
                         </div>
-                        ${$exeDevicesEdition.iDevice.common.getTextFieldset(textContentAfter_1)}
                     </fieldset>
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(8)}
             </div>`;
         this.ideviceBody.innerHTML = html;
         $exeDevicesEdition.iDevice.tabs.init('scrambledlistIdeviceForm');
@@ -444,8 +446,13 @@ var $exeDevice = {
         var buttonText = c_('Check');
         var rightText = c_('Right!');
         var wrongText = c_('Sorry, that’s incorrect... The right answer is:');
+        this.ideviceBody.querySelector('#sortableListButtonText').value = buttonText;
+        this.ideviceBody.querySelector('#sortableListRightText').value = rightText;
+        this.ideviceBody.querySelector('#sortableListWrongText').value = wrongText;
+
         // Set form values
         let data = this.idevicePreviousData;
+        if (!data || Object.keys(data).length === 0) return;
         if (data.options) {
             for (let i = 0; i < data.options.length; i++) {
                 this.ideviceBody.querySelector(

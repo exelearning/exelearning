@@ -3,24 +3,29 @@
     max-width: 1200px;
 }
 
-
 #gameQEIdeviceForm input[type="radio"],
 #gameQEIdeviceForm input[type="checkbox"],
 #gameQEIdeviceForm input[type=button] {
     cursor: pointer;
 }
 
-#gameQEIdeviceForm input[type="color"] ,
+#gameQEIdeviceForm input[type="color"],
 #gameQEIdeviceForm input[type="button"] {
     margin-right: 0 !important;
 
 }
+
 #gameQEIdeviceForm input[type="color"] {
     padding: .2rem !important;
     height: 2em !important;
-    width: 3em !important;
+    width: 3.5rem !important;
 }
-  
+
+#gameQEIdeviceForm #ordenaEPercentajeFB,
+#gameQEIdeviceForm #ordenaEPercentajeQuestions {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
 
 /*Panel preguntas */
 .ODNE-EPanel {
@@ -280,7 +285,7 @@
     margin: 0 0.1em;
 }
 
-.ODNE-NumberPhrase{
+.ODNE-NumberPhrase {
     min-width: 3ch;
     text-align: center;
 }
@@ -372,7 +377,7 @@
 #gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color:  #0BA1A1;
+    color: #0BA1A1;
     font-weight: 500;
 }
 
@@ -473,7 +478,7 @@ label[for=gameQEActivitySCORM] {
 
 .ODNE-TypeGameHelp {
     display: none;
-      font-size: .95em;
+    font-size: .95em;
     width: 100%;
 }
 

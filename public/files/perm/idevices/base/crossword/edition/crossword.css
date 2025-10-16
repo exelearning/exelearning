@@ -4,8 +4,16 @@
 	cursor: pointer;
 }
 
+
 #ccgmQEIdeviceForm input[type="button"] {
 	margin-right: 0 !important;
+}
+
+#ccgmQEIdeviceForm #ccgmEDifficulty,
+#ccgmQEIdeviceForm #ccgmEPercentajeFB,
+#ccgmQEIdeviceForm #ccgmEPercentajeQuestions {
+	width: 9.5ch !important;
+	max-width: 9.5ch !important;
 }
 
 /*Panel preguntas */

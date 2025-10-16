@@ -69,7 +69,7 @@ var $exeDevice = {
                         <div id="geogebraActivityURLS" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
                             <label for="geogebraActivityURL" class="mb-0">${_('URL or identifier (ID)')}:</label>
                             <input type="text" name="geogebraActivityURL" id="geogebraActivityURL" class="form-control w-100" />
-                            <a href="#" id="geogebraActivityPlayButton" title="${_('Load data')}" class="flex-shrink-0"><span class="sr-av"${_('Load data')}</span></a>
+                            <a href="#" id="geogebraActivityPlayButton" title="${_('Load data')}" class="flex-shrink-0"><span class="sr-av">${_('Load data')}</span></a>
                             <label for="geogebraActivityURLexample" class="mb-0">${_('Example')}:</label>
                             <input type="text" id="geogebraActivityURLexample" name="geogebraActivityURLexample" readonly value="${this.activityURLbase}VgHhQXCC" class="form-control w-100" />
                         </div>
@@ -83,9 +83,9 @@ var $exeDevice = {
                         </div>
                         <div id="geogebraActivitySize" class="d-none flex-wrap align-items-center gap-2 mb-3">
                             <label for="geogebraActivityWidth" class="mb-0">${_('Width')}:</label>
-                            <input type="text" max="1500" name="geogebraActivityWidth" id="geogebraActivityWidth" class="form-control" /><span>px</span>
+                            <input type="text" maxlength="1500" name="geogebraActivityWidth" id="geogebraActivityWidth" class="form-control" /><span>px</span>
                             <label for="geogebraActivityHeight" class="mb-0">${_('Height')}:</label>
-                            <input type="text" max="1500" name="geogebraActivityHeight" id="geogebraActivityHeight" class="form-control" /><span>px</span>
+                            <input type="text" maxlength="1500" name="geogebraActivityHeight" id="geogebraActivityHeight" class="form-control" /><span>px</span>
                         </div>
                     </div>
                 </fieldset>
@@ -94,10 +94,10 @@ var $exeDevice = {
                     <div>
                         <div id="geogebraActivityLangWrapper" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
                             <label for="geogebraActivityLang" class="mb-0">${_('Language')}:</label>
-                            <input type="text" max="2" name="geogebraActivityLang" id="geogebraActivityLang" class="form-control" />
+                            <input type="text" maxlength="2" name="geogebraActivityLang" id="geogebraActivityLang" class="form-control" />
                             <span class="input-instructions">es, en, fr, de, ca, eu, gl...</span>
                             <label for="geogebraActivityBorderColor" class="mb-0">${_('Border color')}:</label>
-                            <input type="text" max="6" name="geogebraActivityBorderColor" id="geogebraActivityBorderColor" class="exe-color-picker form-control" />
+                            <input type="text" maxlength="6" name="geogebraActivityBorderColor" id="geogebraActivityBorderColor" class="exe-color-picker form-control" />
                             <label for="geogebraActivityScale" class="mb-0">${_('Size')} (%):</label>
                             <input type="number" name="geogebraActivityScale" id="geogebraActivityScale" value="100" min="1" max="100" step="1" class="form-control" />
                         </div>
@@ -112,7 +112,7 @@ var $exeDevice = {
                             </div>
                             <span id="geogebraActivitySCORMoptions" class="d-none d-flex flex-nowrap align-items-center gap-2">
                                 <label for="geogebraActivitySCORMbuttonText" class="mb-0">${_('Button text')}:</label>
-                                <input type="text" max="100" name="geogebraActivitySCORMbuttonText" id="geogebraActivitySCORMbuttonText" value="${str1}" class="form-control" />
+                                <input type="text" maxlength="100" name="geogebraActivitySCORMbuttonText" id="geogebraActivitySCORMbuttonText" value="${str1}" class="form-control" />
                             </span>
                         </div>
                         <div id="geogebraActivitySCORMinstructions" class="d-none mb-3">

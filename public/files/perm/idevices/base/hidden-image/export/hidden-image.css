@@ -764,27 +764,7 @@ div:fullscreen .HIP-LinkMinimize {
         height: 2em;
         width: 2em;
     }
-
-    .HIP-GameContainer input[type="text"],
-    input.HIP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
-
-    .HIP-GameContainer input[type="text"]:active,
-    .HIP-GameContainer input[type="text"]:focus,
-    input.HIP-CodeAccessE:focus,
-    input.HIP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
+    
 }
 
 @media screen and (max-width:340px) {

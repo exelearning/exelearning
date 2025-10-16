@@ -12,6 +12,12 @@
     cursor: pointer;
 }
 
+
+#dragdropQIdeviceForm #dadEPercentajeCards {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
+
 .DAD-DEOptionsMedia {
     align-items: center;
     display: flex;

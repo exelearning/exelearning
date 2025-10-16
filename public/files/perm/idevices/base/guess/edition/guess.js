@@ -376,7 +376,7 @@ var $exeDevice = {
                                     <div class="ADVNE-ECoord">
                                         <label for="adivinaEXImage">X:</label>
                                         <input id="adivinaEXImage" type="text" value="0" />
-                                        <label for="adivinaEXImage">Y:</label>
+                                        <label for="adivinaEYImage">Y:</label>
                                         <input id="adivinaEYImage" type="text" value="0" />
                                     </div>
                                     <span id="adivinaTitleVideo">${_('URL')}</span>
@@ -529,6 +529,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
             </div>
         `;
 
