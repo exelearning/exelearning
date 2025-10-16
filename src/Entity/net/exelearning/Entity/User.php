@@ -15,10 +15,10 @@ use ApiPlatform\Metadata\Put;
 use ApiPlatform\OpenApi\Model as OpenApiModel;
 use App\ApiFilter\UserRoleFilter;
 use App\ApiFilter\UserSearchFilter;
-use App\Constants;
 use App\Controller\Api\User\UpdateQuotaAction;
 use App\Controller\Api\User\UserStatsAction;
 use App\Repository\net\exelearning\Repository\UserRepository;
+use App\Util\GravatarUrlGenerator;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -148,8 +148,9 @@ class User extends BaseEntity implements UserInterface, PasswordAuthenticatedUse
      *
      * Parameters used in the Gravatar URL:
      * - `s=96`: Sets the image size to 96x96 pixels.
-     * - `d=mm`: Uses the 'mystery man' default image if no avatar is found.
+     * - `d=` + configured default image: Selects the default avatar style, with a guest-specific override.
      * - `r=g`: Restricts the image to the 'G' rating (safe for all audiences).
+     * - `initials=`: When using the "initials" style, sends the initials to display.
      *
      * @return void
      */
@@ -157,14 +158,7 @@ class User extends BaseEntity implements UserInterface, PasswordAuthenticatedUse
     #[ApiProperty(readable: true, writable: false)]
     public function getGravatarUrl(): ?string
     {
-        $email = trim((string) $this->getEmail());
-        if ('' === $email) {
-            return null;
-        }
-
-        $hash = md5(strtolower($email));
-
-        return Constants::GRAVATAR_BASE_URL.$hash.'?s=96&d=mm&r=g';
+        return GravatarUrlGenerator::createFromIdentifier($this->getEmail(), null, $this->getUsername());
     }
 
     public function getExternalIdentifier(): ?string
