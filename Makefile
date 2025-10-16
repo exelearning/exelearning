@@ -489,12 +489,16 @@ package: install-php-bin
 ifndef VERSION
 	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
 endif
+	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
+	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
+	$(if $(PACKAGE_VERSION),,$(error Unable to derive package version from '$(VERSION)'))
 	@echo "Packaging application with version $(VERSION)..."
+	@echo " -> Using sanitized package version $(PACKAGE_VERSION) for electron-builder"
 	
 	# Update version in Constants.php and package.json
 	@echo "Updating version in files..."
 	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = '$(VERSION)';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(VERSION)\"|" package.json && rm -f package.json.bak
+	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(PACKAGE_VERSION)\"|" package.json && rm -f package.json.bak
 
 	@echo "Installing Node.js dependencies..."
 	yarn install
@@ -504,9 +508,9 @@ endif
 	yarn build $(PUBLISH_ARG)
 	
 	# Restore the fixed version in package.json and Constants.php
-	@echo "Restoring fixed version v0.0.0-alpha in package.json and Constants.php..."
+	@echo "Restoring fixed version v0.0.0-alpha in Constants.php and 0.0.0-alpha in package.json..."
 	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = 'v0.0.0-alpha';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"v0.0.0-alpha\"|" package.json && rm -f package.json.bak
+	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"0.0.0-alpha\"|" package.json && rm -f package.json.bak
 	
 	# Remove php-bin
 	$(MAKE) remove-php-bin
@@ -523,6 +527,24 @@ pull-vendor: check-docker check-env upd
 	@docker compose cp exelearning:/app/vendor ./vendor
 	@echo "✅ Done. Local ./vendor directory updated from container."
 
+
+.PHONY: css css-prod
+
+# Prevent MSYS path conversion breaking Docker paths on Windows Git Bash
+# (same approach used elsewhere in this Makefile for docker compose commands)
+SASS_DOCKER = env MSYS_NO_PATHCONV=1 docker run --rm -v $(PWD):/app -w /app node:24-alpine sh -lc
+
+css:
+	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map"
+	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
+	@echo "CSS built (prod)."
+
+css-dev:
+	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
+	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
+	@echo "CSS built (dev)."
 
 # Display help with available commands
 help:
@@ -542,6 +564,11 @@ help:
 	@echo "  upd                   - Start Docker containers in background mode (daemon)"
 	@echo "  update                - Update Composer dependencies"
 	@echo "  pull-vendor           - Copy vendor/ from container to local ./vendor (for debugging)"
+	@echo ""
+	@echo "Assets (SCSS / CSS):"
+	@echo ""
+	@echo "  css                   - Build production CSS (compressed, no source map)"
+	@echo "  css-dev               - Build development CSS (expanded, with source map)"
 	@echo ""
 	@echo "Code quality:"
 	@echo ""
