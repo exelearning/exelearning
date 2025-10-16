@@ -6,6 +6,7 @@ use App\Constants;
 use App\Entity\net\exelearning\Entity\User;
 use App\Entity\net\exelearning\Entity\UserPreferences;
 use App\Properties;
+use App\Util\GravatarUrlGenerator;
 use App\Util\net\exelearning\Util\FilePermissionsUtil;
 use App\Util\net\exelearning\Util\FileUtil;
 use App\Util\net\exelearning\Util\Util;
@@ -161,8 +162,9 @@ class UserHelper
      *
      * Parameters used in the Gravatar URL:
      * - `s=96`: Sets the image size to 96x96 pixels.
-     * - `d=mm`: Uses the 'mystery man' default image if no avatar is found.
+     * - `d=` + configured default image: Selects the default avatar style, with a guest-specific override.
      * - `r=g`: Restricts the image to the 'G' rating (safe for all audiences).
+     * - `initials=`: When using the "initials" style, sends the initials to display.
      *
      * @param UserInterface|null $userLogged The logged-in user instance. Can be null if no user is authenticated.
      *
@@ -170,16 +172,11 @@ class UserHelper
      */
     public function getUserGravatarUrl($userLogged)
     {
-        $username = $userLogged ? $userLogged->getUserIdentifier() : '';
-        $baseUrl = trim(Constants::GRAVATAR_BASE_URL);
+        $identifier = $userLogged ? $userLogged->getUserIdentifier() : null;
 
-        if (empty($baseUrl)) {
-            return '';
-        }
+        $gravatarUrl = GravatarUrlGenerator::createFromIdentifier($identifier);
 
-        $hash = md5(strtolower(trim($username)));
-
-        return $baseUrl.$hash.'?s=96&d=mm&r=g';
+        return $gravatarUrl ?? '';
     }
 
     /**
