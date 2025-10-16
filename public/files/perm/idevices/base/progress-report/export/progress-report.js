@@ -917,17 +917,72 @@ var $eXeInforme = {
         $("#informeButtons").hide();
         html2canvas(divElement)
             .then(function (canvas) {
-                var imageData = canvas.toDataURL("image/png");
-                var link = document.createElement("a");
-                link.href = imageData;
-                link.download = $eXeInforme.options.msgs.msgReport + ".png";
-                link.click();
+                const imgData = canvas.toDataURL('image/png');
+                const fileBase = $eXeInforme.options.msgs.msgReport || 'informe';
+                const doPdf = function () {
+                    try {
+                        if (!(window.jspdf && window.jspdf.jsPDF)) return false;
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+                        const pageWidth = pdf.internal.pageSize.getWidth();
+                        const pageHeight = pdf.internal.pageSize.getHeight();
+                        const imgWidth = pageWidth;
+                        const imgProps = { width: canvas.width, height: canvas.height };
+                        const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+                        let y = 0;
+                        const pageCanvas = document.createElement('canvas');
+                        const ctx = pageCanvas.getContext('2d');
+                        const ratio = imgWidth / imgProps.width;
+                        pageCanvas.width = imgProps.width;
+                        pageCanvas.height = Math.min(imgProps.height, Math.round(pageHeight / ratio));
+
+                        let sY = 0;
+                        while (sY < imgProps.height) {
+                            const sliceHeight = Math.min(pageCanvas.height, imgProps.height - sY);
+                            pageCanvas.height = sliceHeight;
+                            ctx.clearRect(0, 0, pageCanvas.width, pageCanvas.height);
+                            ctx.drawImage(canvas, 0, sY, pageCanvas.width, sliceHeight, 0, 0, pageCanvas.width, sliceHeight);
+                            const sliceData = pageCanvas.toDataURL('image/png');
+                            const sliceHeightMM = (sliceHeight * ratio);
+                            if (y > 0) pdf.addPage();
+                            pdf.addImage(sliceData, 'PNG', 0, 0, imgWidth, sliceHeightMM);
+                            sY += sliceHeight;
+                            y += sliceHeightMM;
+                        }
+                        pdf.save(fileBase + '.pdf');
+                        return true;
+                    } catch (e) {
+                        console.error('PDF generation error:', e);
+                        return false;
+                    }
+                };
+
+                const fallbackPng = function () {
+                    try {
+                        const link = document.createElement('a');
+                        link.href = imgData;
+                        link.download = fileBase + '.png';
+                        link.click();
+                    } catch (e) {
+                        console.error('PNG download error:', e);
+                    }
+                };
+
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    if (!doPdf()) fallbackPng();
+                } else {
+                    $eXeInforme.ensureJsPDF(() => {
+                        if (!doPdf()) fallbackPng();
+                    }, () => fallbackPng());
+                }
             })
             .catch(function (error) {
                 $("#informeButtons").show();
                 console.error("Error al generar la captura: ", error);
+            })
+            .finally(function(){
+                $("#informeButtons").show();
             });
-        $("#informeButtons").show();
     },
 
     showMessage: function (type, message) {
@@ -960,6 +1015,37 @@ var $eXeInforme = {
 
     addZero: function (number) {
         return number < 10 ? "0" + number : number;
+    },
+
+    ensureJsPDF: function (onReady, onError) {
+        try {
+            if (window.jspdf && window.jspdf.jsPDF) {
+                onReady();
+                return;
+            }
+        } catch (_) { }
+        const scriptId = 'jspdf-umd-loader';
+        if (document.getElementById(scriptId)) {
+            let tries = 0;
+            const iv = setInterval(() => {
+                tries++;
+                if (window.jspdf && window.jspdf.jsPDF) {
+                    clearInterval(iv);
+                    onReady();
+                } else if (tries > 50) {
+                    clearInterval(iv);
+                    onError && onError();
+                }
+            }, 100);
+            return;
+        }
+        const s = document.createElement('script');
+        s.id = scriptId;
+        s.src = 'https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js';
+        s.async = true;
+        s.onload = function () { onReady(); };
+        s.onerror = function () { onError && onError(); };
+        document.head.appendChild(s);
     }
 };
 $(function () {

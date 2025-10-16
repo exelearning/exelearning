@@ -79,7 +79,7 @@ var $exeDevice = {
                         ${this.getActivity()}
                     </div>
                     <div>
-                        <button type="button" id="cseAddActivity" class="btn btn-outline-primary">
+                        <button type="button" id="cseAddActivity" class="btn btn-primary">
                             ${_("Add activity")}
                         </button>
                     </div>
@@ -109,7 +109,7 @@ var $exeDevice = {
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <label for="activityTextarea-${id}" class="form-label mb-0">${_("Activity")}:</label>
                     <button type="button"
-                            class="btn btn-danger btn-sm rounded-pill px-3 py-1 CSE-DeleteActivity"
+                            class="btn btn-danger btn-sm text-white rounded-pill px-3 py-1 CSE-DeleteActivity"
                             title="${_("Delete activity")}">
                      ${_("Delete")}
                     </button>

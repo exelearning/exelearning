@@ -7,6 +7,14 @@
     margin-right: 0 !important;
 }
 
+
+
+
+#quickMultipleQEIdeviceForm #seleccionaEPercentajeQuestions,
+#quickMultipleQEIdeviceForm #seleccionaEPercentajeFB {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
 .SLCNE-EPanel {
     margin: 0.7em auto;
     padding: 0;

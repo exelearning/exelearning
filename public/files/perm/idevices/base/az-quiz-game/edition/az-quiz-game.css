@@ -33,6 +33,11 @@
     margin-right: 5px;
 }
 
+#roscoIdeviceForm #roscoDuration {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
+
 #roscoIdeviceForm #roscoCodeAccess {
     width: 20%;
     min-width: 100px;
@@ -155,6 +160,13 @@
 
 #roscoIdeviceForm .roscoHomeImageEdition {
     position: absolute;
+    cursor: crosshair;
+}
+
+#roscoIdeviceForm .roscoCursorEdition {
+    position: absolute;
+    pointer-events: none;
+    z-index: 3000;
 }
 
 #roscoIdeviceForm .roscoAuthorEdition {
@@ -202,7 +214,7 @@
     vertical-align: middle;
 }
 
-#roscoIdeviceForm div>input.form-control{
+#roscoIdeviceForm div>input.form-control {
     display: inline-block;
     width: auto;
     vertical-align: middle;

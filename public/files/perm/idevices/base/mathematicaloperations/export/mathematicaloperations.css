@@ -293,14 +293,6 @@ td {
     width: 100%;
 }
 
-.MTHO-CodeAccessE {
-    margin: 0 .3em;
-    max-width: 250px;
-    text-align: center;
-    width: 80%;
-}
-
-
 
 /* Game Over */
 
@@ -407,13 +399,6 @@ td {
     justify-content: center;
     margin: 0.7em auto 0 auto;
     width: 100%;
-}
-
-.IDFP-CodeAccessE {
-    margin: 0 .3em;
-    max-width: 250px;
-    text-align: center;
-    width: 80%;
 }
 
 
@@ -877,29 +862,6 @@ div:fullscreen .MTHO-LinkMinimize {
         display: none;
     }
 
-    .MTHO-GameContainer input[type="text"],
-    input.MTHO-EdReply,
-    input.MTHO-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
-
-    .MTHO-GameContainer input[type="text"]:active,
-    .MTHO-GameContainer input[type="text"]:focus,
-    input.MTHO-EdReply:focus,
-    input.MTHO-EdReply:active,
-    input.MTHO-CodeAccessE:focus,
-    input.MTHO-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
 }
 
 @media screen and (max-width:340px) {

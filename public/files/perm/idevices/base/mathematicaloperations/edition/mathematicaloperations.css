@@ -1,5 +1,3 @@
-
-
 #gameQEIdeviceForm input[type="radio"],
 #gameQEIdeviceForm input[type="checkbox"],
 #gameQEIdeviceForm input[type=button] {
@@ -8,6 +6,11 @@
 
 #gameQEIdeviceForm #eRMQdecimals {
     padding-right: 1em;
+}
+
+#gameQEIdeviceForm #eRMQPercentajeFB {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
 }
 
 label[for=gameQEScoreQuestion],
@@ -55,7 +58,7 @@ input#gameQEScoreQuestion {
 #gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color:  #0BA1A1;
+    color: #0BA1A1;
     font-weight: 500;
 }
 

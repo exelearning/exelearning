@@ -160,6 +160,9 @@ var $eXeIdentifica = {
                             ${$eXeIdentifica.getClues(0, instance)}
                         </div>
                         <div class="IDFP-Media">
+                            <a href="#" id="idfLinkAudio-${instance}" class="IDFP-LinkAudio" title="${msgs.msgAudio}" style="position:absolute;top:8px;right:8px;z-index:1000;display:none;">
+                                <img src="${path}exequextaudio.png" class="IDFP-Audio" alt="Audio">
+                            </a>
                             <div id="idfCardDraw-${instance}" class="IDFP-CardDraw">
                                 <div class="IDFP-card">
                                     <div class="IDFP-card-inner" id="idfcardinner-${instance}">
@@ -212,7 +215,7 @@ var $eXeIdentifica = {
                             <div class="exeQuextIcons-MoveOne IDFP-Activo"></div>
                         </a>
                         <label for="idfAnswer-${instance}" class="sr-av">${msgs.msgReply}</label>
-                        <input id="idfAnswer-${instance}" type="text">
+                        <input id="idfAnswer-${instance}" class="form-control" type="text">
                         <a href="#" id="idfSubmit-${instance}" title="${msgs.msgReply}">
                             <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                             <div class="exeQuextIcons-Submit IDFP-Activo"></div>
@@ -224,7 +227,7 @@ var $eXeIdentifica = {
                         <p class="IDFP-MessageCodeAccessE" id="idfMesajeAccesCodeE-${instance}"></p>
                             <div class="IDFP-DataCodeAccessE">
                                 <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                                <input type="text" class="IDFP-CodeAccessE" id="idfCodeAccessE-${instance}">
+                                <input type="text" class="IDFP-CodeAccessE form-control" id="idfCodeAccessE-${instance}">
                                 <a href="#" id="idfCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                     <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                     <div class="IDFPIcons IDFPIcons-Submit IDFP-Activo"></div>
@@ -504,7 +507,8 @@ var $eXeIdentifica = {
 
         $linkAudio.on('click', function (e) {
             e.preventDefault();
-            const audio = mOptions.questionsGame[mOptions.activeQuestion].audio;
+            const audio = (mOptions.questionsGame[mOptions.activeQuestion].audio || '').trim();
+            if (!audio || audio.length <= 4) return;
             $exeDevices.iDevice.gamification.media.stopSound(mOptions);
             $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
         });
@@ -1094,11 +1098,11 @@ var $eXeIdentifica = {
         }
 
         $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-        if (q.audio.trim().length > 4) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                q.audio.trim(),
-                mOptions,
-            );
+        const hasAudio = q.audio && q.audio.trim().length > 4;
+        if (hasAudio) {
+            $(`#idfLinkAudio-${instance}`).show();
+        } else {
+            $(`#idfLinkAudio-${instance}`).hide();
         }
 
         $(`#idfMessageClue-${instance}`).html(q.question);

@@ -221,7 +221,7 @@ var $quickquestionsmultiplechoice = {
                     <div class="sr-av">${msgs.msgQuestion}:</div>
                     <div class="SLCNP-Definition" id="seleccionaDefinition-${instance}"></div>
                     <div class="SLCNP-DivReply" id="seleccionaDivResponder-${instance}">
-                        <input type="text" value="" class="SLCNP-EdReply" id="seleccionaEdAnswer-${instance}" autocomplete="off">
+                        <input type="text" value="" class="SLCNP-EdReply form-control" id="seleccionaEdAnswer-${instance}" autocomplete="off">
                         <a href="#" id="seleccionaBtnReply-${instance}" title="${msgs.msgAnswer}">
                             <strong class="sr-av">${msgs.msgAnswer}</strong>
                             <div class="exeQuextIcons-Submit SLCNP-Activo"></div>
@@ -260,7 +260,7 @@ var $quickquestionsmultiplechoice = {
                         <p class="SLCNP-MessageCodeAccessE" id="seleccionaMesajeAccesCodeE-${instance}"></p>
                         <div class="SLCNP-DataCodeAccessE">
                             <label for="seleccionaCodeAccessE-${instance}" class="sr-av">${msgs.msgCodeAccess}:</label>
-                            <input type="text" class="SLCNP-CodeAccessE" id="seleccionaCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                            <input type="text" class="SLCNP-CodeAccessE form-control" id="seleccionaCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                             <a href="#" id="seleccionaCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                 <strong class="sr-av">${msgs.msgSubmit}</strong>
                                 <div class="exeQuextIcons exeQuextIcons-Submit SLCNP-Activo"></div>

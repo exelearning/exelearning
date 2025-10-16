@@ -66,11 +66,11 @@ var $exeDevice = {
                 <fieldset class="exe-fieldset">
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
-                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-4"
+                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-4">
                             <label for="ctjTitle">${_('Title')}:</label>
                             <input id="ctjTitle" type="text" style="flex-grow: 1" class="form-control" />
                         </div>
-                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-4"                            
+                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-4">                            
                             <label for="ctjSubTitle">${_('Caption')}:</label>
                             <input id="ctjSubTitle" type="text" style="flex-grow: 1;" class="form-control"/>
                         </div>

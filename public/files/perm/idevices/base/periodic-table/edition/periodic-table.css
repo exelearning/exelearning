@@ -1,8 +1,13 @@
-
 #ptQEIdeviceForm input[type="radio"],
 #ptQEIdeviceForm input[type="checkbox"],
 #ptQEIdeviceForm input[type=button] {
     cursor: pointer;
+}
+
+
+#ptQEIdeviceForm #ptEPercentajeFB {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
 }
 
 /*Panel preguntas */
@@ -341,7 +346,7 @@ input#ptQEScoreQuestion {
 #ptQEIdeviceForm #ptQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color:  #0BA1A1;
+    color: #0BA1A1;
     font-weight: 500;
 }
 
@@ -445,4 +450,3 @@ label[for=ptQEActivitySCORM] {
 .CGM-TypeGameHelp {
     display: none;
 }
-

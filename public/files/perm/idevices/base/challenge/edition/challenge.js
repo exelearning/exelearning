@@ -383,7 +383,7 @@ var $exeDevice = {
                                 <div id="desafioSelects" class="align-items-center gap-2 flex-nowrap justify-flex-start mb-3">
                                     <label id="desafiolblEDType" for="desafioEDType">${_('Type')}: </label>
                                     <select id="desafioEDType" class="form-select form-select-sm">
-                                        <option value="0">Lineal</option>
+                                        <option value="0" selected>Lineal</option>
                                         <option value="1">Libre</option>
                                     </select>
                                     <label id="desafiolblEDTime" for="desafioEDTime">${_('Max time')}: </label>
@@ -414,7 +414,7 @@ var $exeDevice = {
                             <div class="desafio-EInputMedias">
                                 <span>${_('Description')}:</span>
                                 <div id="divDesafioEDescription">
-                                    <label for="desafioEDescription" class="sr-av">${_('Instructions')}":</label>
+                                    <label for="desafioEDescription" class="sr-av">${_('Instructions')}:</label>
                                     <textarea id="desafioEDescription" class="exe-html-editor"></textarea>
                                 </div>
                                 <div id="desafioEChallenges" class="mb-3">
@@ -611,7 +611,7 @@ var $exeDevice = {
         for (let j = 0; j < num; j++) {
             const ch = `
             <div class="desafio-EDivFeebBack" id="desafioEDivFeebBack-${j}">
-                <label for="desafioEChallenge-${j}" class="sr-av">${_('Feedback')}"</label>
+                <label for="desafioEChallenge-${j}" class="sr-av">${_('Feedback')}</label>
                 <textarea id="desafioEChallenge-${j}" class="exe-html-editor desafio-EFeedBack"></textarea>
             </div>
         `;
@@ -644,13 +644,13 @@ var $exeDevice = {
                 <option value="70">70m</option>
                 <option value="75">75m</option>
                 <option value="80">80m</option>
-                <option value="85">55m</option>
+                <option value="85">85m</option>
                 <option value="90">90m</option>
-                <option value="95">75m</option>
+                <option value="95">95m</option>
                 <option value="100">100m</option>
                 <option value="110">110m</option>
                 <option value="120">120m</option>
-                <option value="150">150</option>
+                <option value="150">150m</option>
                 <option value="180">180m</option>
                 <option value="210">210m</option>
                 <option value="240">240m</option>
@@ -678,19 +678,19 @@ var $exeDevice = {
                 <option value="70">70m</option>
                 <option value="75">75m</option>
                 <option value="80">80m</option>
-                <option value="85">55m</option>
+                <option value="85">85m</option>
                 <option value="90">90m</option>
-                <option value="95">75m</option>
+                <option value="95">95m</option>
                 <option value="100">100m</option>
                 <option value="110">110m</option>
                 <option value="120">120m</option>
-                <option value="150">150</option>
+                <option value="150">150m</option>
                 <option value="180">180m</option>
                 <option value="210">210m</option>
                 <option value="240">240m</option>
             </select>
         </div>
-        <p class="desafio-EClue ">
+        <p class="desafio-EClue gap-2">
             <label for="desafioEClue3">${_('Help')} 3:</label><input type="text" id="desafioEClue3" class="form-control form-control-sm" />
             <label id="desafiolblECTime3" for="desafioECTime3" class="sr-av">${_('Time')}:</label>
             <select id="desafioECTime3" class="form-select form-select-sm">
@@ -711,13 +711,13 @@ var $exeDevice = {
                 <option value="70">70m</option>
                 <option value="75">75m</option>
                 <option value="80">80m</option>
-                <option value="85">55m</option>
+                <option value="85">85m</option>
                 <option value="90">90m</option>
-                <option value="95">75m</option>
+                <option value="95">95m</option>
                 <option value="100">100m</option>
                 <option value="110">110m</option>
                 <option value="120">120m</option>
-                <option value="150">150</option>
+                <option value="150">150m</option>
                 <option value="180">180m</option>
                 <option value="210">210m</option>
                 <option value="240">240m</option>

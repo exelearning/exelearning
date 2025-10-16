@@ -10,9 +10,13 @@
 #flipcardsQEIdeviceForm input[type="color"] {
     padding: .2rem !important;
     height: 2em !important;
-    width: 3em !important;
 }
   
+#flipcardsQEIdeviceForm #flipcardsEPercentajeCards {
+	width: 9.5ch !important;
+	max-width: 9.5ch !important;
+}
+
 
 #flipcardsQEIdeviceForm input[type="color"],
 #flipcardsQEIdeviceForm input[type="radio"],
