@@ -472,7 +472,7 @@ remove-php-bin:
 	composer remove --dev nativephp/php-bin --no-scripts
 
 # Run the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-run-app: install-php-bin
+run-app: install-php-bin css-dev
 	yarn install
 ifeq ($(SYSTEM_OS),windows)
 	powershell -Command "$$env:EXELEARNING_DEBUG_MODE='$(DEBUG)'; yarn start"	
@@ -485,7 +485,7 @@ endif
 
 # Package the application with the specified version
 # Usage: make package VERSION=1.0.0
-package: install-php-bin
+package: install-php-bin css
 ifndef VERSION
 	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
 endif
