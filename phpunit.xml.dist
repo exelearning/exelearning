@@ -53,10 +53,14 @@
     <!-- <env name="PANTHER_APP_BASE_URI" value="http://exelearning:8080"/> -->
     <!-- <env name="PANTHER_NO_SANDBOX" value="1"/> -->
     <!-- <env name="PANTHER_ENABLED" value="0"/> -->
+    <!-- We are using our own approach to save the screenshots, to also write preview window when visible -->
+    <!-- <env name="PANTHER_ERROR_SCREENSHOT_DIR" value="/tmp/e2e_screenshots/"/> -->
 
     <!-- Mercure -->
+    <!-- Internal hub URL used by the backend to publish (inside exelearning container). -->
     <env name="MERCURE_URL" value="http://exelearning:8080/.well-known/mercure"/>
-    <env name="MERCURE_PUBLIC_URL" value=""/>
+    <!-- Public hub URL used by the browser (Chrome container) to subscribe/publish. -->
+    <env name="MERCURE_PUBLIC_URL" value="http://exelearning:8080/.well-known/mercure"/>
     <env name="MERCURE_JWT_SECRET_KEY" value="!ChangeThisMercureHubJWTSecretKey!"/>
 
     <!-- REST Api -->

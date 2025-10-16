@@ -2,49 +2,66 @@
     <div class="accordion-header" id="menu_nav_header">
         <div class="accordion-button">
             <div class="content_action_buttons buttons_action_container_right">
-                <button class="btn button-secondary secondary-green button-narrow button-combo combo-left button_nav_action action_move_prev" title="{{ "Move up" | trans }}">
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-left button_nav_action action_move_prev"
+                        title="{{ 'Move up' | trans }}"
+                        data-testid="nav-move-up">
                     <i class="small-icon arrow-up-icon-green" aria-hidden="true"></i>
-                    <span class="visually-hidden">{{ "Move up" | trans }}</span>
+                    <span class="visually-hidden">{{ 'Move up' | trans }}</span>
                 </button>
-                <button class="btn button-secondary secondary-green button-narrow button-combo combo-center button_nav_action action_move_next" title="{{ "Move down" | trans }}">
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-center button_nav_action action_move_next"
+                        title="{{ 'Move down' | trans }}"
+                        data-testid="nav-move-down">
                     <i class="small-icon arrow-down-icon-green" aria-hidden="true"></i>
-                    <span class="visually-hidden">{{ "Move down" | trans }}</span>
+                    <span class="visually-hidden">{{ 'Move down' | trans }}</span>
                 </button>
-                <button class="btn button-secondary secondary-green button-narrow button-combo combo-center button_nav_action action_move_up" title="{{ "Move left (up in hierarchy)" | trans }}">
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-center button_nav_action action_move_up"
+                        title="{{ 'Move left (up in hierarchy)' | trans }}"
+                        data-testid="nav-move-left">
                     <i class="small-icon arrow-left-icon-green" aria-hidden="true"></i>
-                    <span class="visually-hidden">{{ "Move left (up in hierarchy)" | trans }}</span>
+                    <span class="visually-hidden">{{ 'Move left (up in hierarchy)' | trans }}</span>
                 </button>
-                <button class="btn button-secondary secondary-green button-narrow button-combo combo-right button_nav_action action_move_down" title="{{ "Move right (down in hierarchy)" | trans }}">
+                <button class="btn button-secondary secondary-green button-narrow button-combo combo-right button_nav_action action_move_down"
+                        title="{{ 'Move right (down in hierarchy)' | trans }}"
+                        data-testid="nav-move-right">
                     <i class="small-icon arrow-right-icon-green" aria-hidden="true"></i>
-                    <span class="visually-hidden">{{ "Move right (down in hierarchy)" | trans }}</span>
+                    <span class="visually-hidden">{{ 'Move right (down in hierarchy)' | trans }}</span>
                 </button>
             </div>
             <div class="content_action_buttons buttons_action_container_left" id="nav_actions">
-                <button class="button_nav_action action_properties d-none" title="{{ "Page properties" | trans }}">
+                <button class="button_nav_action action_properties d-none"
+                        title="{{ 'Page properties' | trans }}"
+                        data-testid="nav-properties">
                     <i class="exe-icon" aria-hidden="true">settings</i>
-                    <span class="visually-hidden">{{ "Page properties" | trans }}</span>
+                    <span class="visually-hidden">{{ 'Page properties' | trans }}</span>
                 </button>
-                <button class="btn button-secondary secondary-green button-square button-combo combo-left button_nav_action action_delete" title="{{ "Delete page" | trans }}">
+                <button class="btn button-secondary secondary-green button-square button-combo combo-left button_nav_action action_delete"
+                        title="{{ 'Delete page' | trans }}"
+                        data-testid="nav-delete">
                     <i class="small-icon delete-icon-green" aria-hidden="true"></i>
-                    <span class="visually-hidden">{{ "Delete page" | trans }}</span>
+                    <span class="visually-hidden">{{ 'Delete page' | trans }}</span>
                 </button>
-                <button class="btn button-secondary secondary-green button-square button-combo combo-center button_nav_action action_clone" title="{{ "Clone page" | trans }}">
+                <button class="btn button-secondary secondary-green button-square button-combo combo-center button_nav_action action_clone"
+                        title="{{ 'Clone page' | trans }}"
+                        data-testid="nav-clone">
                     <i class="small-icon duplicate-icon-green" aria-hidden="true"></i>
-                    <span class="visually-hidden">{{ "Clone page" | trans }}</span>
+                    <span class="visually-hidden">{{ 'Clone page' | trans }}</span>
                 </button>
-                <button class="btn button-secondary secondary-green button-square button-combo combo-right button_nav_action action_import_idevices" title="{{ "Import iDevices" | trans }}">
+                <button class="btn button-secondary secondary-green button-square button-combo combo-right button_nav_action action_import_idevices"
+                        title="{{ 'Import iDevices' | trans }}"
+                        data-testid="nav-import-idevices">
                     <i class="small-icon import-icon-green" aria-hidden="true"></i>
-                    <span class="visually-hidden">{{ "Import iDevices" | trans }}</span>
+                    <span class="visually-hidden">{{ 'Import iDevices' | trans }}</span>
                 </button>
                 <!--<button class="button_nav_action action_check_broken_links" title="{{ "Check links" | trans }}">
                     <span class="exe-icon" aria-hidden="true">playlist_add_check</span><span class="visually-hidden">{{ "Check links" | trans }}</span>
                 </button>-->
             </div>
             <div class="content_action_buttons add-page">
-                <button class="button_nav_action action_add" title="{{ "New page" | trans }}" aria-label="{{ "New page" | trans }}">
+                <button class="button_nav_action action_add" title="{{ 'New page' | trans }}" aria-label="{{ 'New page' | trans }}" data-testid="nav-add-page">
                     <span class="exe-icon" aria-hidden="true">add</span>
                 </button>
             </div>
+
         </div>
     </div>
     <div id="menu_nav_content" class="menu_content accordion-collapse collapse show" aria-labelledby="menu_nav_header">
