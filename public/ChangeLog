@@ -4,14 +4,13 @@
 
 ### Added
 
-- Refactored E2E tests with factories, real-time improvements, and cleaner output
-- Improved collaborative edition mode in new interface
-- New temporary files cleanup feature and documentation
+- Improved collaborative editing mode in the new interface
+- New temporary files cleanup feature and related documentation
 - Configurable system for rendering user profile avatars
 - Added a `data-testid` attribute to various UI components to facilitate automated testing
-- Restrict guest login endpoint to authorized sources to avoid abuse
+- Refactored E2E tests with factories, real-time improvements, and cleaner output
+- Restricted guest login endpoint to authorized sources to prevent abuse
 - New `make css` and `make css-dev` commands for building production and development CSS
-- New iDevices icons and styling
 - iDevices:
   - New icons and styling
   - Checklist & Progress Report: Enabled PDF report download (with PNG fallback)
@@ -21,15 +20,14 @@
 ### Fixed
 
 - SQLite PRAGMA handling
-- New UI presentation and usability issues
-- Reduce Mercure and app log output
-- Change the default shell to `/bin/ash` for Alpine compatibility and enable error handling
-- Add active polling for eXeLearning.exe after NSIS install to avoid race condition
-- Chocolatey publishing
-- Logo and favicons version and colors
-- Packaging and version management (improved upgrade application process)
+- Reduced Mercure and app log output
+- Changed the default shell to `/bin/ash` for Alpine compatibility and enabled error handling
+- Added active polling for eXeLearning.exe after NSIS installation to avoid race conditions
+- Chocolatey publishing process
+- Packaging and version management (improved application upgrade process)
+- Presentation and usability issues in the new UI
 - iDevices:
-  - Complete: jQuery UI loading issue
+  - Complete: Fixed jQuery UI loading issue
   - AZ Quiz Game: Added support for accent marks and special characters
 
 ### Upgraded
