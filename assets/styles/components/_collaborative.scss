@@ -1,0 +1,36 @@
+.user-editing-overlay {
+    .user-editing-message {
+        display: flex;
+        flex-flow: row wrap;
+        justify-content: center;
+        padding: 12px;
+        margin: 12px 3px 12px 10px;
+        border: none;
+        border-radius: 8px;
+        background-color: var(--brand-primary-50) !important;
+        .user-editing-description,
+        .user-editing-email,
+        .user-editing-time {
+            font-size: 14px;
+            margin-right: 3px;
+            font-weight: normal;
+            color: var(--brand-primary-900);
+        }
+        .user-editing-description {
+
+        }
+        .user-editing-email {
+            font-weight: bold;
+        }
+        .user-editing-time {
+            margin-right: 3px;
+        }
+    }
+}
+
+.article-disabled.editing-article {
+    pointer-events: none !important;
+    .idevice-element-in-content {
+        opacity: .7 !important;
+    }
+}

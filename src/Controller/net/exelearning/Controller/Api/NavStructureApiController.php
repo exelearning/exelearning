@@ -18,6 +18,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/api/nav-structure-management/nav-structures')]
@@ -36,12 +37,13 @@ class NavStructureApiController extends DefaultApiController
         TranslatorInterface $translator,
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
         HubInterface $hub,
+        SerializerInterface $serializer,
     ) {
         $this->fileHelper = $fileHelper;
         $this->userHelper = $userHelper;
         $this->translator = $translator;
         $this->currentOdeUsersService = $currentOdeUsersService;
-        parent::__construct($entityManager, $logger, $hub);
+        parent::__construct($entityManager, $logger, $serializer, $hub);
     }
 
     #[Route('/{odeVersionId}/{odeSessionId}/nav/structure/get', methods: ['GET'], name: 'api_nav_structures_nav_structure_get')]
@@ -104,6 +106,8 @@ class NavStructureApiController extends DefaultApiController
     #[Route('/nav/structure/data/save', methods: ['PUT'], name: 'api_nav_structures_nav_structure_data_save')]
     public function saveOdeNavStructureSyncDataAction(Request $request)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = new OdeNavStructureSyncDataSaveDto();
 
         $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
@@ -356,6 +360,8 @@ class NavStructureApiController extends DefaultApiController
     #[Route('/reorder/save', methods: ['PUT'], name: 'api_nav_structures_nav_structure_reorder')]
     public function reorderOdeNavStructureSyncAction(Request $request)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = [];
 
         $responseData['odeNavStructureSyncs'] = [];
@@ -533,6 +539,10 @@ class NavStructureApiController extends DefaultApiController
                         }
                     }
 
+                    foreach ($odeNavStructureSync->getOdeNavStructureSyncProperties() as $property) {
+                        $this->entityManager->remove($property);
+                    }
+
                     if (!$anyError) {
                         if ($odeNavStructureSync->getId() == $odeNavStructureSyncId) {
                             // Move element to delete to the last position
@@ -594,6 +604,8 @@ class NavStructureApiController extends DefaultApiController
     #[Route('/properties/save', methods: ['PUT'], name: 'api_nav_structures_nav_structure_properties_save')]
     public function saveOdeNavStructureSyncPropertiesAction(Request $request)
     {
+        $this->hydrateRequestBody($request);
+
         $responseData = [];
         $responseData['odeNavStructureSync'] = null;
 
@@ -881,18 +893,16 @@ class NavStructureApiController extends DefaultApiController
      */
     private function getOdeNavStructureSyncsToDelete($odeNavStructureSync)
     {
-        $odeNavStructureSyncsToDelete = [];
-        $odeNavStructureSyncsToDelete[] = $odeNavStructureSync;
+        $entities = [];
 
         foreach ($odeNavStructureSync->getOdeNavStructureSyncs() as $childOdeNavStructureSync) {
-            if (!$childOdeNavStructureSync->getOdeNavStructureSyncs()->isEmpty()) {
-                $odeNavStructureSyncsToDelete = array_merge($odeNavStructureSyncsToDelete, $this->getOdeNavStructureSyncsToDelete($childOdeNavStructureSync));
-            } else {
-                $odeNavStructureSyncsToDelete[] = $childOdeNavStructureSync;
-            }
+            // Depth-first traversal: ensure descendants are deleted before the current node.
+            $entities = array_merge($entities, $this->getOdeNavStructureSyncsToDelete($childOdeNavStructureSync));
         }
 
-        return $odeNavStructureSyncsToDelete;
+        $entities[] = $odeNavStructureSync;
+
+        return $entities;
     }
 
     /**

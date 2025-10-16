@@ -1,0 +1,153 @@
+.asideleft {
+    padding: 30px 0 0 0;
+    font-family: "Inter", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--white) !important;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.07);
+    transition:
+            width var(--sidebar),
+            padding var(--sidebar);
+    width: 33%;
+    max-width: 400px;
+    min-width: 323px;
+    max-height: 100vh;
+    overflow: hidden;
+    z-index: 1;
+    .content-info,
+    #exe-logo,
+    #exe-title,
+    #menu_nav,
+    #menu_idevices {
+        transition: opacity var(--sidebar), visibility var(--sidebar);
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+    .main-menu {
+        transition: width var(--sidebar);
+        width: 100%;
+    }
+    .content-info {
+        position: relative;
+        padding: 0 20px;
+        z-index: 1040;
+        .exe-icon {
+            font-family: var(--icons-ff);
+        }
+        #exe-logo {
+            margin-bottom: 10px;
+            img {
+                height: 30px;
+                width: auto;
+            }
+        }
+        #exe-title {
+            position: relative;
+            h2 {
+                font-size: 16px;
+                font-weight: 600;
+                line-height: 1.3;
+            }
+            &.title-not-editing {
+                display: flex;
+                flex-flow: row nowrap;
+                justify-content: space-between;
+                align-items: flex-start;
+                line-height: 20;
+                margin-bottom: 17px;
+                h2 {
+                    display: -webkit-box;
+                    border-radius: 4px;
+                    border: 2px solid transparent;
+                    margin-bottom: 0;
+                    padding: 11px 4px 13px 4px;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    min-height: 50px;
+                    &:hover {
+                        color: var(--brand-primary);
+                        cursor: pointer;
+                    }
+                }
+            }
+            &.title-editing {
+                outline: none;
+                border: 2px solid var(--brand-primary-light);
+                border-radius: 8px;
+                background-color: var(--white);
+                transition: box-shadow 0.2s ease, background-color 0.2s ease;
+                box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+                max-width: 100%;
+                overflow: hidden;
+                color: var(--text);
+                width: 100%;
+                max-height: 44px;
+                white-space: nowrap;
+                overflow: hidden;
+                display: flex;
+                flex-flow: row nowrap;
+                justify-content: space-between;
+                align-items: flex-start;
+                line-height: 19.2;
+                margin-bottom: 23px;
+                height: 44px;
+                h2 {
+                    padding: 11px 4px 13px 4px;
+                    width: 100%;
+                    &[contenteditable="true"] {
+                        outline: none !important;
+                        box-shadow: none !important;
+                    }
+                }
+                .title-menu-button {
+                    display: none;
+                }
+            }
+            .title-menu-button {
+                cursor: pointer;
+                margin-left: 12px;
+                align-self: center;
+                font-size: 18px;
+                color: var(--gray-500);
+                flex-shrink: 0;
+                position: relative;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin-top: 8px;
+                &:hover {
+                    background-color: var(--gray-100);
+                }
+            }
+            &.one-line {
+                .title-menu-button {
+
+                }
+            }
+            &.two-lines {
+                &:not(.title-editing) {
+                    margin-bottom: 7px;
+                    h2 {
+                        height: 60px;
+                    }
+                    .title-menu-button {
+                        top: 2px;
+                    }
+                }
+            }
+        }
+        .title-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            &.exe-submenu {
+                .small-icon {
+                    margin-right: 6px;
+                }
+            }
+        }
+    }
+}

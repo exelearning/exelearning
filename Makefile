@@ -98,7 +98,7 @@ pull: check-docker check-env
 
 # Build or rebuild Docker containers
 build: check-docker check-env
-	docker compose build
+	docker compose build --pull
 
 # Run the linter to check PHP and JS code style
 lint: lint-php lint-js
@@ -132,9 +132,9 @@ test: check-docker check-env
 	@docker compose --profile e2e up -d --quiet-pull
 	@echo "Running PHPUnit $(if $(TEST),test: $(TEST) $(EXTRA),suite: all)"
 	@if [ -n "$(TEST)" ]; then \
-		docker compose exec exelearning vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always $(TEST) $(EXTRA); \
+		docker compose exec -e APP_ENV=test exelearning vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always $(TEST) $(EXTRA); \
 	else \
-		docker compose exec exelearning composer --no-cache phpunit; \
+		docker compose exec -e APP_ENV=test exelearning composer --no-cache phpunit; \
 	fi
 	@echo "Stopping test environment..."
 	@docker compose --profile e2e down > /dev/null 2>&1
@@ -142,13 +142,11 @@ test: check-docker check-env
 # Run just unit tests with PHPUnit
 test-unit: check-docker check-env
 	@echo "Running PHPUnit tests..."
-	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
-	@docker compose run --rm --no-deps -e XDEBUG_MODE=off -e memory_limit=512M -e APP_ENV=test exelearning composer --no-cache phpunit-unit
+	@docker compose run --rm --no-deps -e XDEBUG_MODE=off -e memory_limit=512M -e APP_ENV=test  exelearning composer --no-cache phpunit-unit
 
 # Run unit tests in parallel using "paratest"
 test-unit-parallel: check-docker check-env
 	@echo "Running PHPUnit tests..."
-	# We add -e APP_ENV=test to ensure that Symfony runs in the test environment.
 	@docker compose run --rm --no-deps -e APP_ENV=test exelearning composer --no-cache phpunit-unit-parallel
 
 # Run just e2e tests with PHPUnit
@@ -235,7 +233,7 @@ create-user: check-docker check-env upd
 	@read -p "Enter email: " email; \
 	read -p "Enter password: " password; \
 	read -p "Enter username: " username; \
-	@docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
+	docker compose exec exelearning php bin/console app:create-user $$email $$password $$username --no-fail;
 
 # Grant an arbitrary role to a user
 # Usage: make grant-role EMAIL=user@example.com ROLE=ROLE_MANAGER
@@ -380,6 +378,10 @@ migration: check-docker check-env upd
 migrate: check-docker check-env upd
 	docker compose exec exelearning php bin/console doctrine:migrations:migrate --no-interaction
 
+# Clean temporary folder
+tmp-cleanup: check-docker check-env upd
+	docker compose exec exelearning composer --no-cache tmp-cleanup
+
 # Convert an ELP file via Docker using STDIN
 # Usage: make convert-elp INPUT=path/to/input.elp OUTPUT=path/to/output.elp [DEBUG=debug]
 # Important! Only works with absolute paths!
@@ -487,12 +489,16 @@ package: install-php-bin
 ifndef VERSION
 	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
 endif
+	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
+	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
+	$(if $(PACKAGE_VERSION),,$(error Unable to derive package version from '$(VERSION)'))
 	@echo "Packaging application with version $(VERSION)..."
+	@echo " -> Using sanitized package version $(PACKAGE_VERSION) for electron-builder"
 	
 	# Update version in Constants.php and package.json
 	@echo "Updating version in files..."
 	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = '$(VERSION)';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(VERSION)\"|" package.json && rm -f package.json.bak
+	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(PACKAGE_VERSION)\"|" package.json && rm -f package.json.bak
 
 	@echo "Installing Node.js dependencies..."
 	yarn install
@@ -502,9 +508,9 @@ endif
 	yarn build $(PUBLISH_ARG)
 	
 	# Restore the fixed version in package.json and Constants.php
-	@echo "Restoring fixed version v0.0.0-alpha in package.json and Constants.php..."
+	@echo "Restoring fixed version v0.0.0-alpha in Constants.php and 0.0.0-alpha in package.json..."
 	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = 'v0.0.0-alpha';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"v0.0.0-alpha\"|" package.json && rm -f package.json.bak
+	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"0.0.0-alpha\"|" package.json && rm -f package.json.bak
 	
 	# Remove php-bin
 	$(MAKE) remove-php-bin
@@ -521,6 +527,24 @@ pull-vendor: check-docker check-env upd
 	@docker compose cp exelearning:/app/vendor ./vendor
 	@echo "✅ Done. Local ./vendor directory updated from container."
 
+
+.PHONY: css css-prod
+
+# Prevent MSYS path conversion breaking Docker paths on Windows Git Bash
+# (same approach used elsewhere in this Makefile for docker compose commands)
+SASS_DOCKER = env MSYS_NO_PATHCONV=1 docker run --rm -v $(PWD):/app -w /app node:24-alpine sh -lc
+
+css:
+	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map"
+	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
+	@echo "CSS built (prod)."
+
+css-dev:
+	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
+	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
+	@echo "CSS built (dev)."
 
 # Display help with available commands
 help:
@@ -540,6 +564,11 @@ help:
 	@echo "  upd                   - Start Docker containers in background mode (daemon)"
 	@echo "  update                - Update Composer dependencies"
 	@echo "  pull-vendor           - Copy vendor/ from container to local ./vendor (for debugging)"
+	@echo ""
+	@echo "Assets (SCSS / CSS):"
+	@echo ""
+	@echo "  css                   - Build production CSS (compressed, no source map)"
+	@echo "  css-dev               - Build development CSS (expanded, with source map)"
 	@echo ""
 	@echo "Code quality:"
 	@echo ""
@@ -577,6 +606,7 @@ help:
 	@echo "  smoke-api-v2          - Quick smoke test for /api/v2/users (uses admin JWT)"
 	@echo "  make-migration        - Generate a new Symfony migration (make:migration)"
 	@echo "  migrate               - Run pending Symfony migrations (doctrine:migrations:migrate)"
+	@echo "  tmp-cleanup           - Clean temporary folder"
 	@echo ""
 	@echo "Testing:"
 	@echo ""
@@ -607,4 +637,3 @@ help:
 
 # Set help as the default goal if no target is specified
 .DEFAULT_GOAL := help
-

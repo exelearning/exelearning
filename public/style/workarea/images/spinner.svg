@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Carregant">
+  <g fill="none" stroke-linecap="round" stroke-width="3">
+    <circle cx="32" cy="32" r="24" stroke="#26DDC7"
+            stroke-dasharray="1 200" stroke-dashoffset="0">
+      <animate attributeName="stroke-dasharray"
+               values="1 200; 100 200; 1 200"
+               dur="1.5s"
+               repeatCount="indefinite"
+               keyTimes="0;0.5;1"
+               calcMode="spline"
+               keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>
+      <animate attributeName="stroke-dashoffset"
+               values="0; -45; -180"
+               dur="1.5s"
+               repeatCount="indefinite"
+               keyTimes="0;0.5;1"
+               calcMode="spline"
+               keySplines="0.4 0 0.2 1; 0.4 0 0.2 1"/>
+    </circle>
+    <animateTransform attributeName="transform"
+                      attributeType="XML"
+                      type="rotate"
+                      from="0 32 32"
+                      to="360 32 32"
+                      dur="2s"
+                      repeatCount="indefinite"/>
+  </g>
+
+  <style>
+    @media (prefers-reduced-motion: reduce) {
+      animate, animateTransform { display: none; }
+    }
+  </style>
+</svg>

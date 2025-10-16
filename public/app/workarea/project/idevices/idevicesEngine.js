@@ -42,10 +42,16 @@ export default class IdevicesEngine {
         this.clickIdeviceMenuEnabled = true;
         this.menuIdevicesElement =
             this.project.app.menus.menuIdevices.menuIdevices;
-        this.menuIdevicesDraggableElements =
-            this.menuIdevicesElement.querySelectorAll(
+        this.menuIdevicesElementBottom =
+            this.project.app.menus.menuIdevices.menuIdevicesBottomContent;
+        this.menuIdevicesDraggableElements = [
+            ...this.menuIdevicesElement.querySelectorAll(
                 '.idevice_item.draggable'
-            );
+            ),
+            ...this.menuIdevicesElementBottom.querySelectorAll(
+                '.idevice_item.draggable'
+            ),
+        ];
         // Set mode to node-content
         this.updateMode();
         // Node container drag&drop events
@@ -56,6 +62,7 @@ export default class IdevicesEngine {
         // Menu idevices events
         this.addEventDragStartToMenuIdevices();
         this.addEventClickIdevice();
+        eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
     }
 
     /**
@@ -923,16 +930,23 @@ export default class IdevicesEngine {
     addEventClickIdevice() {
         this.menuIdevicesDraggableElements.forEach((element) => {
             element.addEventListener('click', async (event) => {
+                if (
+                    event.target.classList.contains('ideviceMenu') ||
+                    event.target.classList.contains('userIdeviceExport') ||
+                    event.target.classList.contains('userIdeviceDelete')
+                ) {
+                    return;
+                }
                 if (this.clickIdeviceMenuEnabled) {
                     let ideviceData = { odeIdeviceTypeName: element.id };
                     let ideviceNode = await this.createIdeviceInContent(
                         ideviceData,
                         this.nodeContentElement
                     );
-                    // Send operation log action to bbdd
+                    // Send operation log action to db: source = new iDevice id, destination = its block
                     let additionalData = {};
                     eXeLearning.app.project.sendOdeOperationLog(
-                        null,
+                        ideviceNode.odeIdeviceId,
                         ideviceNode.blockId,
                         'ADD_IDEVICE',
                         additionalData
@@ -942,6 +956,14 @@ export default class IdevicesEngine {
                         this.clickIdeviceMenuEnabled = true;
                     }, this.intervalTime);
                 }
+                let categoriesIdevices = document.querySelectorAll(
+                    '#menu_idevices .idevice_category'
+                );
+                categoriesIdevices.forEach((element) => {
+                    element.classList.remove('last-open');
+                    element.classList.remove('on');
+                    element.classList.add('off');
+                });
             });
         });
     }
@@ -1042,6 +1064,7 @@ export default class IdevicesEngine {
         if (ideviceNode) {
             // Add and initialize the idevice
             this.addIdeviceNodeToContainer(ideviceNode, container);
+            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
             await ideviceNode.loadInitScriptIdevice(ideviceNode.mode);
             // If the idevice is in edit mode, the engine is changed to edit mode
             if (ideviceNode.mode == 'edition') {
@@ -1062,7 +1085,7 @@ export default class IdevicesEngine {
         // In case the idevice already exists
         if (ideviceNode.ideviceContent) {
             // Regenerate the idevice buttons
-            ideviceNode.ideviceContent.append(
+            ideviceNode.ideviceContent.prepend(
                 ideviceNode.makeIdeviceButtonsElement()
             );
             ideviceNodeContent = ideviceNode.ideviceContent;
@@ -1089,7 +1112,7 @@ export default class IdevicesEngine {
             // Add only the idevice
             let ideviceBlockNode = this.getBlockById(container.id);
             if (ideviceBlockNode) {
-                if (ideviceNode.mode == 'edition') {
+                if (ideviceNode.mode === 'edition') {
                     ideviceBlockNode.toggleOn();
                 }
                 // Set block ids
@@ -1099,7 +1122,7 @@ export default class IdevicesEngine {
             }
         }
         // Move window to idevice element
-        if (ideviceNode.mode == 'edition') {
+        if (ideviceNode.mode === 'edition') {
             // Set true Component flag
             eXeLearning.app.project.changeUserFlagOnEdit(
                 true,
@@ -1132,6 +1155,7 @@ export default class IdevicesEngine {
         this.addEventDragOverToContainer(ideviceBlockContent);
         // Add block to components list
         if (addToComponents) this.components.blocks.push(ideviceBlockNode);
+
         return ideviceBlockNode;
     }
 
@@ -1629,6 +1653,9 @@ export default class IdevicesEngine {
         this.nodeContentLoadScreenElement.classList.add('loading');
         this.nodeContentLoadScreenElement.classList.remove('hidden');
         this.nodeContentLoadScreenElement.classList.remove('hiding');
+        // Testing: explicit visibility flag and content readiness
+        this.nodeContentLoadScreenElement.setAttribute('data-visible', 'true');
+        this.nodeContentElement?.setAttribute('data-ready', 'false');
         // Clear timeout loading screen
         if (this.hideNodeContanerLoadScreenTimeout) {
             clearTimeout(this.hideNodeContanerLoadScreenTimeout);
@@ -1645,6 +1672,12 @@ export default class IdevicesEngine {
         this.hideNodeContanerLoadScreenTimeout = setTimeout(() => {
             this.nodeContentLoadScreenElement.classList.add('hidden');
             this.nodeContentLoadScreenElement.classList.remove('hiding');
+            // Testing: explicit visibility flag and content readiness
+            this.nodeContentLoadScreenElement.setAttribute(
+                'data-visible',
+                'false'
+            );
+            this.nodeContentElement?.setAttribute('data-ready', 'true');
         }, ms);
     }
 

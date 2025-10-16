@@ -13,12 +13,15 @@ use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersSyncChangesServiceInterface;
+use App\Settings;
 use App\Util\net\exelearning\Util\Util;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 
 #[Route('/api/current-ode-users-management/current-ode-user')]
 class CurrentOdeUsersApiController extends DefaultApiController
@@ -30,13 +33,20 @@ class CurrentOdeUsersApiController extends DefaultApiController
     private $currentOdeUsersService;
     private $currentOdeUsersSyncChangesService;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, UserHelper $userHelper, CurrentOdeUsersServiceInterface $currentOdeUsersService, CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        UserHelper $userHelper,
+        CurrentOdeUsersServiceInterface $currentOdeUsersService,
+        CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService,
+        SerializerInterface $serializer,
+        HubInterface $hub,
+    ) {
         $this->userHelper = $userHelper;
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->currentOdeUsersSyncChangesService = $currentOdeUsersSyncChangesService;
 
-        parent::__construct($entityManager, $logger);
+        parent::__construct($entityManager, $logger, $serializer, $hub);
     }
 
     #[Route('/user/get', methods: ['GET'], name: 'api_current_ode_users_for_user_get')]
@@ -107,13 +117,21 @@ class CurrentOdeUsersApiController extends DefaultApiController
     {
         $responseData = [];
 
+        // Debug the incoming request
+        $this->logger->info('Force Unlock Debug - Request payload: '.json_encode($request->request->all()));
+
+        // Get parameters with proper type casting
+        $odeComponentFlag = $request->get('odeComponentFlag');
+
         // Get parameters
         $odeSessionId = $request->get('odeSessionId');
         $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
         $odeBlockId = $request->get('blockId');
         $odeIdeviceId = $request->get('odeIdeviceId');
+        $actionType = $request->get('actionType');
+        $pageId = $request->get('pageId');
+
         // Active or deactive flags
-        $odeComponentFlag = $request->get('odeComponentFlag');
         $odePagStructureFlag = $request->get('odePagStructureFlag');
         $odeNavStructureFlag = $request->get('odeNavStructureFlag');
 
@@ -132,16 +150,56 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
         $odeNavStructureSync = $odeNavStructureSyncRepo->find($odeNavStructureSyncId);
 
-        // Check current_idevice of concurrent users
-        $isIdeviceFree = $this->currentOdeUsersService->checkIdeviceCurrentOdeUsers($odeSessionId, $odeIdeviceId, $odeBlockId, $user);
+        $lockParams = [
+            'resourceId' => $request->get('blockId'),
+            'user' => $user,
+            'odeSessionId' => $odeSessionId,
+            'forceUnlock' => (false === $odeComponentFlag), // Explicit force flag
+        ];
 
-        if ($isIdeviceFree) {
-            // Update CurrentOdeUsers
-            $this->currentOdeUsersService->updateCurrentIdevice($odeNavStructureSync, $odeBlockId, $odeIdeviceId, $databaseUser, $odeCurrentUsersFlags);
+        try {
+            // Check current_idevice of concurrent users
+            $isIdeviceFree = $this->currentOdeUsersService->checkIdeviceCurrentOdeUsers(
+                $odeSessionId,
+                $odeIdeviceId,
+                $odeBlockId,
+                $user
+            );
 
-            $responseData['responseMessage'] = 'OK';
-        } else {
-            $responseData['responseMessage'] = 'An user has an idevice open on this block';
+            if ($isIdeviceFree) {
+                // Update CurrentOdeUsers
+                $this->currentOdeUsersService->updateCurrentIdevice($odeNavStructureSync, $odeBlockId, $odeIdeviceId, $databaseUser, $odeCurrentUsersFlags);
+
+                $expiresAt = (new \DateTime())->modify('+'.Constants::RESOURCE_LOCK_TIMEOUT_SECONDS.' seconds')->getTimestamp();
+
+                $message = 'blockId:'.$odeBlockId.
+                            ',odeIdeviceId:'.$odeIdeviceId.
+                            ',odeComponentFlag:'.$odeComponentFlag.
+                            ',user:'.$databaseUser->getUserIdentifier().
+                            ',editing:true'.
+                            ',timeIdeviceEditing:'.time().
+                            ',actionType:'.$actionType.
+                            ',pageId:'.$pageId.
+                            ',collaborativeMode:'.Settings::COLLABORATIVE_BLOCK_LEVEL;
+
+                if ('true' !== $odeComponentFlag) {
+                    $message .= ',editing:false';
+                }
+
+                $this->publish($odeSessionId, $message);
+
+                $responseData['responseMessage'] = 'OK';
+            } else {
+                $responseData['responseMessage'] = 'An user has an idevice open on this block';
+            }
+        } catch (\Exception $e) {
+            // Make sure to release the lock in case of error
+            $this->logger->error('Error updating user flag: '.$e->getMessage());
+
+            return new JsonResponse(
+                ['responseMessage' => 'Internal server error'],
+                JsonResponse::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
 
         $jsonData = $this->getJsonSerialized($responseData);
@@ -198,6 +256,9 @@ class CurrentOdeUsersApiController extends DefaultApiController
     #[Route('/current/ode/users/update/flag', methods: ['POST'], name: 'current_ode_users_update_flag')]
     public function currentOdeUsersUpdateFlagAction(Request $request)
     {
+        $user = $this->getUser();
+        $databaseUser = $this->userHelper->getDatabaseUser($user);
+
         // Get parameters
         $odeSessionId = $request->get('odeSessionId');
         $odeIdeviceId = $request->get('odeIdeviceId');
@@ -205,9 +266,10 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $odePagId = $request->get('odePageId');
         $destinationPageId = $request->get('destinationPageId');
         $actionType = $request->get('actionType');
-
-        $user = $this->getUser();
-        $databaseUser = $this->userHelper->getDatabaseUser($user);
+        $userEmail = $databaseUser->getUserIdentifier();
+        $odeComponentFlag = $request->get('odeComponentFlag');
+        $timeIdeviceEditing = $request->get('timeIdeviceEditing');
+        $pageId = $request->get('pageId'); // Collaborative
 
         // If not empty odPagId synchronize changes even if you're not on the same page
         if (!empty($odePagId)) {
@@ -217,6 +279,18 @@ class CurrentOdeUsersApiController extends DefaultApiController
         } else {
             $this->currentOdeUsersSyncChangesService->activateSyncUpdateFlag($odeSessionId, $odeIdeviceId, $odeBlockId, $odePagId, $user, $actionType, $destinationPageId);
         }
+
+        $this->publishOdeBlockStatusEvent(
+            $odeSessionId,
+            $odeBlockId,
+            $odeIdeviceId,
+            $actionType,
+            $userEmail,
+            $odeComponentFlag,
+            $timeIdeviceEditing,
+            $pageId // Collaborative
+        );
+
         $responseData['responseMessage'] = 'OK';
         $jsonData = $this->getJsonSerialized($responseData);
 
@@ -368,5 +442,27 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $jsonData = $this->getJsonSerialized($response);
 
         return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
+    private function publishOdeBlockStatusEvent(
+        string $odeSessionId,
+        string $odeBlockId,
+        string $odeIdeviceId,
+        ?string $actionType,
+        string $userEmail,
+        ?string $odeComponentFlag = null,
+        ?string $timeIdeviceEditing = null,
+        ?string $pageId = null, // Collaborative
+    ): void {
+        $this->publish(
+            $odeSessionId,
+            'blockId:'.$odeBlockId.
+            ',odeIdeviceId:'.$odeIdeviceId.
+            ',actionType:'.$actionType.
+            ',user:'.$userEmail.
+            ',odeComponentFlag:'.$odeComponentFlag.
+            ',timeIdeviceEditing:'.$timeIdeviceEditing.
+            ',pageId:'.$pageId // Collaborative
+        );
     }
 }

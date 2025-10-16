@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{ app.request.locale }}">
     <head>
         <meta charset="UTF-8">
         <meta name="robots" content="noindex">
@@ -17,7 +17,7 @@
         {% endblock %}
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
-    <body>
+    <body class="{% block class %}{% endblock %}" id="{% block id %}{% endblock %}">
         {% block body %}{% endblock %}
         <script src="{{ asset('app/workarea/custom.js') }}"></script>
     </body>

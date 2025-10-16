@@ -8,7 +8,7 @@ namespace App;
 class Constants
 {
     public const APP_VERSION = 'v0.0.0-alpha';
-    public const DEMO_EXPIRATION_DATE = '20251020'; // Expiration date for the offline beta versions: YYYYMMDD (empty for no expiration date)
+    public const DEMO_EXPIRATION_DATE = '20251030'; // Expiration date for the offline beta versions: YYYYMMDD (empty for no expiration date)
 
     // Directories
     public const PUBLIC_DIR_NAME = 'public';
@@ -347,4 +347,7 @@ class Constants
 
     // Gravatar (empty string to disable gravatar icons)
     public const GRAVATAR_BASE_URL = 'https://www.gravatar.com/avatar/';
+
+    // Locks
+    public const RESOURCE_LOCK_TIMEOUT_SECONDS = 900; // 15 minutes
 }

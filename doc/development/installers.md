@@ -14,14 +14,6 @@ The application includes built-in support for **automatic updates** via [`electr
 
 ---
 
-## Security Scanning
-
-As part of the `app.yml` build pipeline, **all generated binaries are automatically uploaded to [VirusTotal](https://www.virustotal.com/)** for malware scanning. This provides an extra layer of security and trust for end users.
-
-If any issue is reported, the release is flagged before publication.
-
----
-
 ## Installer Formats
 
 Each production release generates and publishes the following installers:
@@ -134,11 +126,15 @@ You can also:
   make package VERSION=1.2.3
   ```
 
+  You can also pass Git-style tags such as `v1.2.3-beta4`; the packaging task will
+  strip the leading `v` automatically when writing `package.json` so that Windows
+  upgrades detect the new build correctly, while the UI continues to show the
+  original version string.
+
 ---
 
 ## See Also
 
 - End‑user installation steps: [getting-started/install.md](../install.md)
-- Server deployment options: [deployment/overview.md](../deploy/overview.md)
-
+- Server deployment options: [deployment/overview.md](../deployment.md)
 

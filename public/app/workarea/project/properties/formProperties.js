@@ -3,33 +3,20 @@ export default class FormProperties {
         this.properties = properties;
         this.metadataProperties = {};
         this.categories = [];
-        this.categoryView = null;
-        this.confirmButtonDefaultText = _('Save');
-        this.cancelButtonDefaultText = _('Cancel');
-        this.propertiesCategoryKey = 'properties';
         this.cataloguingCategoryKey = 'cataloguing';
         this.nodeContent = document.querySelector(
             '#main #workarea #node-content'
         );
-        // Add behaviour to body to hide helps dialogs
         this.addBehaviourBodyToHideHelpDialogs();
     }
 
-    /**
-     *
-     * @param {*} data
-     */
     show() {
         this.combineMetadataProperties();
-        let formElement = this.makeBodyElement(this.metadataProperties);
+        const formElement = this.makeBodyElement(this.metadataProperties);
         this.setBodyElement(formElement);
-        // Add behaviour to save button
         this.addBehaviourSaveButton();
-        // Add default help behaviour
         this.addBehaviourExeHelp();
-        // Add behaviour to text inputs
         this.addBehaviourTextInputs();
-        // Focus first input text
         setTimeout(() => {
             this.focusTextInput(
                 this.nodeContent.querySelector('input[type="text"')
@@ -37,28 +24,19 @@ export default class FormProperties {
         }, 500);
     }
 
-    /**
-     * Combine properties and cataloguing metadata
-     *
-     * @returns
-     */
     combineMetadataProperties() {
-        // All metadata: properties and cataloguing
         this.metadataProperties = {};
         this.metadataPropertiesBase = Object.assign(
             {},
             this.properties.properties,
             this.properties.cataloguing
         );
-        // Check advanced mode
         if (
             eXeLearning.app.user.preferences.preferences.advancedMode.value ==
             'true'
         ) {
-            // - Get all properties
             this.metadataProperties = this.metadataPropertiesBase;
         } else {
-            // - Get "always-visible" properties
             for (let [key, property] of Object.entries(
                 this.metadataPropertiesBase
             )) {
@@ -69,550 +47,278 @@ export default class FormProperties {
         return this.metadataProperties;
     }
 
-    /**
-     *
-     * @param {*} bodyElement
-     */
     setBodyElement(bodyElement) {
         this.propertiesFormElement = this.nodeContent.querySelector(
             '#properties-node-content-form'
         );
         if (this.propertiesFormElement) {
-            this.propertiesFormElement.innerHTML = bodyElement.innerHTML;
+            this.propertiesFormElement.replaceWith(bodyElement);
         } else {
             this.propertiesFormElement = bodyElement;
             this.nodeContent.append(this.propertiesFormElement);
         }
-        // Select first category
-        let firstCategory = this.nodeContent.querySelector(
-            '.exe-form-tabs a.exe-tab'
-        );
-        if (firstCategory) firstCategory.click();
     }
 
-    /**
-     *
-     */
     remove() {
-        if (this.propertiesFormElement) {
-            this.propertiesFormElement.remove();
-        }
+        if (this.propertiesFormElement) this.propertiesFormElement.remove();
     }
 
-    /*******************************************************************************
-     * COMPOSE
-     *******************************************************************************/
-
-    /**
-     * Generate body node element
-     *
-     * @param {*} properties
-     * @returns {Node}
-     */
     makeBodyElement(properties) {
-        let element = document.createElement('div');
+        const element = document.createElement('form');
         element.id = 'properties-node-content-form';
-        element.classList.add('properties-body-container');
-        element.classList.add('form-properties');
         element.classList.add('loading');
-        // Categories tabs
-        let categoriesElement = this.makeCategoriesTabs(properties);
-        if (categoriesElement) {
-            element.classList.add('categories');
-            element.append(categoriesElement);
-        }
-        // Form content
-        let formContentElement = document.createElement('div');
+        element.setAttribute('novalidate', '');
+
+        const formContentElement = document.createElement('div');
         formContentElement.classList.add('exe-properties-form-content');
-        if (categoriesElement)
-            formContentElement.classList.add('has-categories');
         element.append(formContentElement);
-        // Properties table
-        let propertiesTableElement = document.createElement('div');
+
+        const propertiesTableElement = document.createElement('div');
         propertiesTableElement.classList.add('exe-table-content');
-        // Add table to form
-        formContentElement.append(propertiesTableElement);
-        // Add groups to table
-        this.addGroupsToTable(properties, propertiesTableElement);
-        // Add rows to table
-        this.addRowsToTable(properties, propertiesTableElement);
-        // Add form buttons
-        let saveButton = this.makeSaveButton();
+        propertiesTableElement.classList.add('pb-1');
+
+        this.addRowsFlatWithSectionTitles(properties, propertiesTableElement);
+
+        const saveButton = this.makeSaveButton();
+
         formContentElement.append(saveButton);
-        // Remove class Loading
-        setTimeout(() => {
-            element.classList.remove('loading');
-        }, 100);
+        formContentElement.append(propertiesTableElement);
+
+        setTimeout(() => element.classList.remove('loading'), 100);
 
         return element;
     }
-
-    /**
-     *
-     * @param {*} properties
-     * @param {*} table
-     */
-    addGroupsToTable(properties, table) {
-        let groups = this.makeGroupTree(properties);
-        // Add groups to table
-        for (let [id, data] of Object.entries(groups)) {
-            // Create group element
-            let groupElement = this.createGroupElement(id, data);
-            // in case the group has a parent, we add the element to it
-            if (data.parent) {
-                let dictSearchParentGroup = {};
-                dictSearchParentGroup[data.parent] = {};
-                let parentGroupElement = this.getGroupElement(
-                    dictSearchParentGroup,
-                    table
-                );
-                if (parentGroupElement) {
-                    parentGroupElement.append(groupElement);
-                } else {
-                    table.append(groupElement);
-                }
-            } else {
-                table.append(groupElement);
-            }
-        }
-    }
-
-    /**
-     *
-     * @param {*} properties
-     * @returns
-     */
-    makeGroupTree(properties) {
-        let groups = {};
-        for (let [id, property] of Object.entries(properties)) {
-            if (property.hide) continue;
-            // Add groups
-            let groupParent = null;
-            if (property.groups) {
-                for (let [key, value] of Object.entries(property.groups)) {
-                    if (!groups[key]) groups[key] = {};
-                    groups[key].title = value;
-                    groups[key].parent = groupParent;
-                    groups[key].category = Object.keys(property.category)[0];
-                    if (property.required) groups[key].required = true;
-                    groupParent = key;
-                }
-            }
-        }
-        return groups;
-    }
-
-    /**
-     *
-     * @param {*} data
-     * @returns
-     */
-    createGroupElement(id, data) {
-        let groupElement = document.createElement('div');
-        groupElement.id = id;
-        groupElement.setAttribute('category', data.category);
-        groupElement.classList.add('properties-group');
-        if (data.required) groupElement.classList.add('required');
-        // Toggle off by default
-        if (id != 'properties_package' && !data.required)
-            groupElement.classList.add('hide-content');
-        // Title
-        let groupElementTitle = document.createElement('h6');
-        groupElementTitle.classList.add('properties-group-title');
-        let titleText = "<span class='title-text'>" + data.title + '</span>';
-        if (data.category == this.cataloguingCategoryKey) {
-            if (data.required) {
-                titleText +=
-                    " - <span class='required-text'>(" +
-                    _('Required') +
-                    ')</span>';
-                titleText = '* ' + titleText;
-            } else {
-                titleText +=
-                    " - <span class='optional-text'>(" +
-                    _('Optional') +
-                    ')</span>';
-            }
-        }
-        groupElementTitle.innerHTML =
-            "<span class='title'>" + titleText + '</span>';
-        groupElement.append(groupElementTitle);
-        // Add event to group title
-        groupElementTitle.addEventListener('click', (event) => {
-            // Hide help texts
-            this.hideHelpContentAll();
-            // Show/Hide group properties
-            if (groupElement.classList.contains('hide-content')) {
-                groupElement.classList.remove('hide-content');
-            } else {
-                groupElement.classList.add('hide-content');
-            }
-        });
-        return groupElement;
-    }
-
-    /**
-     *
-     * @param {*} properties
-     * @param {*} table
-     */
-    addRowsToTable(properties, table) {
-        // Sort multiple properties
+    addRowsFlatWithSectionTitles(properties, table) {
         let propertiesArray = Object.entries(properties);
         propertiesArray = propertiesArray.sort((a, b) => {
             if (
                 a[1].multipleId &&
                 b[1].multipleId &&
-                a[1].multipleId == b[1].multipleId
+                a[1].multipleId === b[1].multipleId
             ) {
-                if (a[1].multipleIndex == b[1].multipleIndex) return 0;
-                if (a[1].multipleIndex > b[1].multipleIndex) return 1;
-                if (a[1].multipleIndex < b[1].multipleIndex) return -1;
+                if (a[1].multipleIndex === b[1].multipleIndex) return 0;
+                return a[1].multipleIndex > b[1].multipleIndex ? 1 : -1;
             } else if (
                 a[1].multipleId &&
                 b[1].multipleId &&
-                a[1].prefix == b[1].prefix
+                a[1].prefix === b[1].prefix
             ) {
-                if (a[1].multipleIndex == b[1].multipleIndex) {
-                    if (a[1].index == b[1].index) return 0;
-                    if (a[1].index > b[1].index) return 1;
-                    if (a[1].index < b[1].index) return -1;
+                if (a[1].multipleIndex === b[1].multipleIndex) {
+                    if (a[1].index === b[1].index) return 0;
+                    return a[1].index > b[1].index ? 1 : -1;
                 } else {
-                    if (a[1].multipleIndex == b[1].multipleIndex) return 0;
-                    if (a[1].multipleIndex > b[1].multipleIndex) return 1;
-                    if (a[1].multipleIndex < b[1].multipleIndex) return -1;
+                    if (a[1].multipleIndex === b[1].multipleIndex) return 0;
+                    return a[1].multipleIndex > b[1].multipleIndex ? 1 : -1;
                 }
             } else {
                 return 0;
             }
         });
-        // Add a row for each property
-        for (let [key, property] of propertiesArray) {
-            // Group
-            let groupElement = this.getGroupElement(property.groups, table);
-            // Row
-            let propertyRow = this.makeRowElement(
-                key,
-                property,
-                groupElement,
-                table
+
+        const groupContainers = new Map();
+
+        const ensureGroupContainer = (topGroupKey, topGroupTitle, property) => {
+            if (groupContainers.has(topGroupKey))
+                return groupContainers.get(topGroupKey);
+
+            const groupDiv = document.createElement('div');
+            groupDiv.classList.add(
+                'properties-group',
+                'properties-body-container',
+                'form-properties'
             );
-            if (!propertyRow) continue;
-            // If there is a group we put the row inside
-            if (groupElement) {
-                let groupChildren =
-                    groupElement.querySelectorAll('.properties-group');
-                if (groupChildren) {
-                    var inserted = false;
-                    groupChildren.forEach((groupChildrenElement) => {
-                        if (
-                            !groupChildrenElement.querySelector(
-                                '.property-row'
-                            ) &&
-                            !inserted
-                        ) {
-                            groupElement.insertBefore(
-                                propertyRow,
-                                groupChildrenElement
-                            );
-                            inserted = true;
-                        }
-                    });
-                    if (!inserted) {
-                        groupElement.append(propertyRow);
-                    }
-                } else {
-                    groupElement.append(propertyRow);
-                }
+            groupDiv.setAttribute('data-group', topGroupKey);
+
+            const groupElementTitle = document.createElement('div');
+            groupElementTitle.classList.add('properties-group-title');
+
+            const collapseId = `collapse-${topGroupKey}`;
+            groupElementTitle.setAttribute('data-bs-toggle', 'collapse');
+            groupElementTitle.setAttribute('data-bs-target', `#${collapseId}`);
+            groupElementTitle.setAttribute('role', 'button');
+            console.log(topGroupKey, topGroupTitle, property);
+            if (topGroupKey === 'properties_package') {
+                groupElementTitle.setAttribute('aria-expanded', 'true');
             } else {
-                // Not group
-                if (table.querySelector('.properties-group')) {
-                    table.prepend(propertyRow);
+                groupElementTitle.classList.add('collapsed');
+                groupElementTitle.setAttribute('aria-expanded', 'false');
+            }
+            groupElementTitle.setAttribute('aria-controls', collapseId);
+
+            let titleText =
+                "<span class='title-text'>" + topGroupTitle + '</span>';
+            const catKey = Object.keys(property.category || { '': '' })[0];
+            if (catKey == this.cataloguingCategoryKey) {
+                if (property.required) {
+                    titleText =
+                        '* ' +
+                        titleText +
+                        " · <span class='required-text'>(" +
+                        _('Required') +
+                        ')</span>';
                 } else {
-                    table.append(propertyRow);
+                    titleText +=
+                        " · <span class='optional-text'>(" +
+                        _('Optional') +
+                        ')</span>';
                 }
             }
-        }
-    }
+            groupElementTitle.innerHTML =
+                "<h2 class='title'>" + titleText + '</h2>';
 
-    /**
-     * Reload form values
-     *
-     */
-    reloadValues() {
-        this.combineMetadataProperties();
-        for (let [key, property] of Object.entries(this.metadataProperties)) {
-            let element;
-            if (property.multipleId) {
-                let elementsMultiples = this.nodeContent.querySelectorAll(
-                    `.property-value[property="${property.multipleId}"]`
-                );
-                element = elementsMultiples[property.multipleIndex - 1];
+            const collapseDiv = document.createElement('div');
+            if (topGroupKey === 'properties_package') {
+                collapseDiv.classList.add('collapse', 'show');
             } else {
-                element = this.nodeContent.querySelector(
-                    `.property-value[property="${key}"]`
+                collapseDiv.classList.add('collapse');
+            }
+
+            collapseDiv.id = collapseId;
+
+            groupDiv.append(groupElementTitle, collapseDiv);
+            table.append(groupDiv);
+            groupContainers.set(topGroupKey, collapseDiv);
+            return collapseDiv;
+        };
+
+        for (const [key, property] of propertiesArray) {
+            let topGroupKey = null;
+            let topGroupTitle = null;
+            if (property.groups && Object.keys(property.groups).length) {
+                topGroupKey = Object.keys(property.groups)[0];
+                topGroupTitle = property.groups[topGroupKey];
+            }
+
+            let groupContainer;
+            if (topGroupKey) {
+                groupContainer = ensureGroupContainer(
+                    topGroupKey,
+                    topGroupTitle,
+                    property
                 );
+            } else {
+                const noGroupKey = '__no_group__';
+                if (!groupContainers.has(noGroupKey)) {
+                    const g = document.createElement('div');
+                    g.classList.add('properties-group');
+                    g.setAttribute('data-group', 'no-group');
+                    groupContainers.set(noGroupKey, g);
+                    table.append(g);
+                }
+                groupContainer = groupContainers.get(noGroupKey);
             }
-            if (!element) continue;
-            switch (property.type) {
-                case 'checkbox':
-                    element.checked = property.value == 'true' ? true : false;
-                    break;
-                case 'select':
-                    let select = element.querySelector(
-                        `option[value="${property.value}"]`
-                    );
-                    if (select) select.setAttribute('selected', 'selected');
-                    break;
-                case 'text':
-                case 'date':
-                case 'textarea':
-                default:
-                    element.value = property.value;
-                    break;
-            }
+
+            const propertyRow = this.makeRowElement(key, property);
+            if (propertyRow) groupContainer.append(propertyRow);
         }
     }
 
-    /**
-     *
-     */
-    makeSaveButton() {
-        let footer = document.createElement('div');
-        footer.classList.add('footer');
-        let buttonSave = document.createElement('button');
-        buttonSave.setAttribute('type', 'button');
-        buttonSave.classList.add('confirm');
-        buttonSave.classList.add('btn');
-        buttonSave.classList.add('btn-primary');
-        buttonSave.classList.add('mt-3');
-        buttonSave.innerHTML = _('Save metadata and properties');
-        footer.append(buttonSave);
-
-        return footer;
-    }
-
-    /**
-     *
-     * @param {*} properties
-     */
-    makeCategoriesTabs(properties) {
-        // Get categories
-        this.categories = this.getListCategories(properties);
-        if (this.categories.length >= 2) {
-            // Generate elements
-            let categoriesElement = document.createElement('ul');
-            categoriesElement.classList.add('exe-form-tabs');
-            this.categories.forEach((categoryPar) => {
-                let categoryElement = this.makeCategoryTabElement(
-                    categoryPar[0],
-                    categoryPar[1]
-                );
-                categoriesElement.append(categoryElement);
-            });
-            return categoriesElement;
-        }
-        return false;
-    }
-
-    /**
-     *
-     * @param {String} categoryTitle
-     * @returns {Node}
-     */
-    makeCategoryTabElement(key, categoryTitle) {
-        let categoryElement = document.createElement('li');
-        categoryElement.setAttribute('category-id', key);
-        let categoryLink = document.createElement('a');
-        categoryLink.setAttribute('category-id', key);
-        categoryLink.setAttribute('href', '#');
-        categoryLink.classList.add('exe-tab');
-        categoryLink.innerHTML = categoryTitle;
-        // Add event to tab
-        categoryLink.addEventListener('click', (event) => {
-            event.preventDefault();
-            // Set category
-            this.categoryView = key;
-            // Hide help texts
-            this.hideHelpContentAll();
-            // Remove tabs active class
-            this.nodeContent.querySelectorAll('a.exe-tab').forEach((tab) => {
-                tab.classList.remove('exe-form-active-tab');
-            });
-            // Add active class to current tab
-            categoryLink.classList.add('exe-form-active-tab');
-            // Hide/show rows
-            this.nodeContent
-                .querySelectorAll('.property-row')
-                .forEach((row) => {
-                    if (row.getAttribute('category') == key) {
-                        row.classList.remove('hidden');
-                    } else {
-                        row.classList.add('hidden');
-                    }
-                });
-            // Hide show groups
-            this.nodeContent
-                .querySelectorAll('.properties-group')
-                .forEach((row) => {
-                    if (row.getAttribute('category') == key) {
-                        row.classList.remove('hidden');
-                    } else {
-                        row.classList.add('hidden');
-                    }
-                });
-        });
-        categoryElement.append(categoryLink);
-
-        return categoryElement;
-    }
-
-    /**
-     *
-     * @param {*} properties
-     */
-    getListCategories(properties) {
-        let categories = {};
-        let categoriesKeys = [];
-        for (let [key, property] of Object.entries(properties)) {
-            let propertyCategoryKey = Object.keys(property.category)[0];
-            let propertyCategoryValue = Object.values(property.category)[0];
-            if (!categoriesKeys.includes(propertyCategoryKey)) {
-                categoriesKeys.push(propertyCategoryKey);
-                categories[propertyCategoryKey] = propertyCategoryValue;
-            }
-        }
-        let categoriesList = Object.entries(categories);
-        categoriesList.sort((a, b) => {
-            return a[0] == this.propertiesCategoryKey ? -1 : 1;
-        });
-
-        return categoriesList;
-    }
-
-    /**
-     *
-     * @param {*} groups
-     * @returns {Node}
-     */
-    getGroupElement(groups, table) {
-        if (groups) {
-            let groupsArray = Object.entries(groups);
-            let groupLast = groupsArray[groupsArray.length - 1];
-            let groupId = groupLast[0];
-            let groupElement = table.querySelector(`#${groupId}`);
-            return groupElement;
-        }
-        return false;
-    }
-
-    /**
-     *
-     * @param {*} name
-     * @param {*} property
-     * @param {*} groupElement
-     * @returns
-     */
-    makeRowElement(name, property, groupElement, tableElement) {
-        // Id
+    makeRowElement(name, property) {
         property.id = name;
-        let propertyId = property.multipleId
+        const propertyId = property.multipleId
             ? property.multipleId
             : property.id;
-        let propertyIdGenerated =
+        const propertyIdGenerated =
             propertyId + '-' + eXeLearning.app.common.generateId();
-        // Property row
-        let propertyRow = document.createElement('div');
+
+        const propertyRow = document.createElement('div');
         propertyRow.id = propertyIdGenerated + '-container';
         propertyRow.classList.add('property-row');
         propertyRow.setAttribute('property', property.id);
         propertyRow.setAttribute('type', property.type);
-        propertyRow.setAttribute('category', Object.keys(property.category)[0]);
-        propertyRow.setAttribute('group', groupElement.id);
+        propertyRow.setAttribute(
+            'category',
+            Object.keys(property.category || { '': '' })[0]
+        );
+        propertyRow.setAttribute(
+            'group',
+            property.groups ? Object.keys(property.groups).pop() : ''
+        );
         propertyRow.setAttribute(
             'duplicate',
             property.duplicate ? property.duplicate : false
         );
-        // Multiple property classes
+
         if (property.multipleId) {
             propertyRow.classList.add('copied-row');
-            let lastRowElement = groupElement.querySelector(
-                '.property-row:last-child'
-            );
-            if (lastRowElement) {
-                if (
-                    !lastRowElement.classList.contains('copied-row') ||
-                    (lastRowElement.classList.contains('copied-row') &&
-                        propertyRow.getAttribute('duplicate') >= 1)
-                ) {
-                    propertyRow.classList.add('first-copied-row');
-                }
-            }
         }
-        // Label property
-        let propertyTitle = this.makeRowElementLabel(
+
+        const propertyTitle = this.makeRowElementLabel(
             propertyIdGenerated,
             property
         );
-        if (property.multipleId) propertyTitle.classList.add('copied');
-        // Value property
-        let propertyValue = this.makeRowValueElement(
+        const propertyValue = this.makeRowValueElement(
             propertyIdGenerated,
             propertyId,
             property
         );
-        if (property.multipleId) propertyValue.classList.add('copied');
-        // Help
-        let helpContainer = this.makeRowElementHelp(property);
-        // Actions add/delete
-        let actionsContainer = this.makeRowActionsElement(
+        const helpContainer = this.makeRowElementHelp(property);
+        const actionsContainer = this.makeRowActionsElement(
             property,
             propertyRow
         );
         if (actionsContainer && property.multipleId)
             actionsContainer.setAttribute('original', false);
-        // Add elements to row
-        // - Title and value
+
         if (property.type == 'checkbox') {
-            propertyRow.append(propertyValue);
-            propertyRow.append(propertyTitle);
+            const wrapper = document.createElement('div');
+            wrapper.classList.add('form-check');
+            propertyValue.classList.add('form-check-input', 'me-2');
+            propertyTitle.classList.add('form-check-label');
+            wrapper.append(propertyValue);
+            wrapper.append(propertyTitle);
+            propertyRow.append(wrapper);
+            if (helpContainer) {
+                helpContainer.classList.add('ms-2');
+                propertyRow.append(helpContainer);
+            }
+            if (actionsContainer) {
+                actionsContainer.classList.add('ms-2');
+                propertyRow.append(actionsContainer);
+            }
         } else {
-            propertyRow.append(propertyTitle);
-            propertyRow.append(propertyValue);
-        }
-        // - Help element
-        if (helpContainer) {
-            propertyRow.append(helpContainer);
-        }
-        // - Actions element
-        if (actionsContainer) {
-            propertyRow.append(actionsContainer);
+            const header = document.createElement('div');
+            header.classList.add(
+                'header-container',
+                'd-flex',
+                'align-items-center',
+                'gap-2',
+                'mb-1'
+            );
+            propertyTitle.classList.add('form-label', 'mb-0');
+            header.append(propertyTitle);
+            if (helpContainer) {
+                header.append(helpContainer);
+            }
+            propertyRow.append(header);
+            const controlStack = document.createElement('div');
+            controlStack.classList.add(
+                'd-flex',
+                'align-items-center',
+                'gap-2',
+                'flex-nowrap',
+                'content-field'
+            );
+            controlStack.append(propertyValue);
+            if (actionsContainer) {
+                actionsContainer.classList.add('mt-1');
+                controlStack.append(actionsContainer);
+            }
+            propertyRow.append(controlStack);
         }
 
         return propertyRow;
     }
 
-    /**
-     *
-     * @param {*} id
-     * @param {*} property
-     * @returns
-     */
     makeRowElementLabel(id, property) {
-        let propertyTitle = document.createElement('label');
+        const propertyTitle = document.createElement('label');
         let propertyTitleText = property.title;
-        if (property.type != 'checkbox') propertyTitleText += ':';
         if (property.required) propertyTitleText = '* ' + propertyTitleText;
         propertyTitle.innerHTML = propertyTitleText;
         propertyTitle.setAttribute('for', id);
-
         return propertyTitle;
     }
 
-    /**
-     *
-     * @param {*} data
-     */
     makeRowValueElement(id, name, property) {
         let valueElement;
         switch (property.type) {
@@ -635,11 +341,13 @@ export default class FormProperties {
                 break;
             case 'select':
                 valueElement = document.createElement('select');
-                for (let [value, text] of Object.entries(property.options)) {
-                    let optionElement = document.createElement('option');
+                for (let [value, text] of Object.entries(
+                    property.options || {}
+                )) {
+                    const optionElement = document.createElement('option');
                     optionElement.value = value;
                     optionElement.innerHTML = text;
-                    if (value == property.value)
+                    if (value === property.value)
                         optionElement.setAttribute('selected', 'selected');
                     valueElement.append(optionElement);
                 }
@@ -648,7 +356,7 @@ export default class FormProperties {
                 valueElement = document.createElement('div');
                 break;
         }
-        // Add attributes to element
+
         valueElement = this.addAttributesRowValueElement(
             id,
             name,
@@ -656,20 +364,31 @@ export default class FormProperties {
             valueElement
         );
 
+        switch (property.type) {
+            case 'select':
+                valueElement.classList.add('form-select');
+                break;
+            case 'textarea':
+                valueElement.classList.add('form-control');
+                valueElement.setAttribute(
+                    'rows',
+                    property.rows ? property.rows : 3
+                );
+                break;
+            case 'checkbox':
+                break;
+            case 'date':
+            case 'text':
+            default:
+                valueElement.classList.add('form-control');
+                break;
+        }
+
         return valueElement;
     }
 
-    /**
-     *
-     * @param {*} id
-     * @param {*} name
-     * @param {*} property
-     * @param {*} valueElement
-     */
     addAttributesRowValueElement(id, name, property, valueElement) {
-        // Value element id
         valueElement.id = id;
-        // Value element attributes
         valueElement.setAttribute('name', id);
         valueElement.setAttribute('property', name);
         valueElement.setAttribute('type', property.type);
@@ -682,23 +401,30 @@ export default class FormProperties {
             property.groups ? Object.keys(property.groups).pop() : ''
         );
         valueElement.setAttribute('data-type', property.type);
-        // Value element class
         valueElement.classList.add('property-value');
-        // Value element event click
-        valueElement.addEventListener('focus', (event) => {
-            // Hide help texts
-            this.hideHelpContentAll();
-        });
-        // required property
+
+        // Testing: stable data-testid for common properties
+        const idToTestId = {
+            titleNode: 'prop-title',
+            editableInPage: 'prop-editable-in-page',
+            visibility: 'prop-visible-export',
+            description: 'prop-description',
+            titlePage: 'prop-title-page',
+            titleHtml: 'prop-title-html',
+        };
+        const kebab = (s) =>
+            (s || '').replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+        const testId = idToTestId[property.id] || `prop-${kebab(property.id)}`;
+        valueElement.setAttribute('data-testid', testId);
+
+        valueElement.addEventListener('focus', () => this.hideHelpContentAll());
+
         if (property.required) {
             valueElement.setAttribute('required', '');
             valueElement.classList.add('required');
         }
-        // readonly property
-        if (property.readonly) {
-            valueElement.setAttribute('readonly', '');
-        }
-        // onchange
+        if (property.readonly) valueElement.setAttribute('readonly', '');
+
         if (property.onchange) {
             valueElement.addEventListener('change', () => {
                 let value;
@@ -716,56 +442,49 @@ export default class FormProperties {
                 ).value = value;
             });
         }
-
         return valueElement;
     }
 
-    /**
-     *
-     * @param {*} property
-     * @returns
-     */
     makeRowElementHelp(property) {
         if (property.help) {
-            let helpContainer = document.createElement('div');
-            helpContainer.classList.add('exe-form-help');
-            helpContainer.classList.add('help-content-disabled');
-            let helpIcon = document.createElement('icon');
-            helpIcon.innerHTML = 'contact_support';
-            helpIcon.classList.add('form-help-exe-icon');
-            helpIcon.classList.add('auto-icon');
-            let helpSpanText = document.createElement('span');
-            helpSpanText.classList.add('help-content');
-            helpSpanText.classList.add('help-hidden');
+            const helpContainer = document.createElement('div');
+            helpContainer.classList.add(
+                'exe-form-help',
+                'help-content-disabled'
+            );
+
+            const helpIcon = document.createElement('span');
+            helpIcon.classList.add(
+                'form-help-exe-icon',
+                'icon-medium',
+                'info-icon-solid-green'
+            );
+
+            const helpSpanText = document.createElement('span');
+            helpSpanText.classList.add('help-content', 'help-hidden');
             helpSpanText.innerHTML = property.help;
-            helpContainer.append(helpIcon);
-            helpContainer.append(helpSpanText);
+
+            helpContainer.append(helpIcon, helpSpanText);
             return helpContainer;
         } else {
             return false;
         }
     }
 
-    /**
-     *
-     * @param {*} property
-     * @param {*} row
-     * @returns
-     */
     makeRowActionsElement(property, row) {
         let actionsContainer = false;
         if (property.duplicate) {
-            // Actions container
             actionsContainer = document.createElement('div');
             actionsContainer.classList.add(
-                'actions-duplicate-properties-container'
+                'actions-duplicate-properties-container',
+                'd-inline-flex',
+                'align-items-center',
+                'gap-2'
             );
             actionsContainer.setAttribute('duplicate', property.duplicate);
             actionsContainer.setAttribute('original', 'true');
-            // Action add
-            let actionAdd = document.createElement('div');
-            actionAdd.classList.add('exe-icon');
-            actionAdd.classList.add('add-properties');
+            const actionAdd = document.createElement('div');
+            actionAdd.classList.add('exe-icon', 'add-properties');
             actionAdd.setAttribute('duplicate', property.duplicate);
             actionAdd.innerHTML = 'add_circle_outline';
             this.addEventClickToActionAddButton(
@@ -775,10 +494,8 @@ export default class FormProperties {
                 row
             );
             actionsContainer.append(actionAdd);
-            // Action delete
-            let actionDelete = document.createElement('div');
-            actionDelete.classList.add('exe-icon');
-            actionDelete.classList.add('delete-properties');
+            const actionDelete = document.createElement('div');
+            actionDelete.classList.add('exe-icon', 'delete-properties');
             actionDelete.setAttribute('duplicate', property.duplicate);
             actionDelete.innerHTML = 'remove_circle_outline';
             this.addEventClickToActionDeleteButton(
@@ -792,38 +509,26 @@ export default class FormProperties {
         return actionsContainer;
     }
 
-    /**
-     *
-     * @param {*} button
-     * @param {*} duplicate
-     * @param {*} property
-     * @param {*} row
-     */
     addEventClickToActionAddButton(button, duplicate, property, row) {
-        button.addEventListener('click', (event) => {
-            // Clone rows elements
-            let rowsToDuplicate = [];
-            let nextRow = row.classList.contains('properties-group')
-                ? row.children[1]
-                : row;
+        button.addEventListener('click', () => {
+            const rowsToDuplicate = [];
+            let nextRow = row;
             for (let i = 0; i < duplicate; i++) {
                 if (nextRow) {
-                    let cloneRow = this.cloneRowElement(nextRow, property, i);
+                    const cloneRow = this.cloneRowElement(nextRow, property, i);
                     rowsToDuplicate.push(cloneRow);
                     if (i < duplicate - 1) nextRow = nextRow.nextElementSibling;
                 }
             }
-            // Add rows to container
             rowsToDuplicate.reverse().forEach((cloneRowElement) => {
                 this.insertAfter(nextRow, cloneRowElement);
-                // Check visibility of action buttons
                 cloneRowElement
                     .querySelectorAll('.actions-duplicate-properties-container')
                     .forEach((actionsContainer) => {
-                        let prevElement =
+                        const prevElement =
                             actionsContainer.parentNode.previousSibling;
                         if (actionsContainer && prevElement) {
-                            let showRemoveButton =
+                            const showRemoveButton =
                                 prevElement.classList.contains(
                                     'property-row'
                                 ) ||
@@ -840,34 +545,23 @@ export default class FormProperties {
         });
     }
 
-    /**
-     *
-     * @param {*} button
-     * @param {*} duplicate
-     * @param {*} property
-     * @param {*} row
-     */
     addEventClickToActionDeleteButton(button, duplicate, property, row) {
-        button.addEventListener('click', (event) => {
-            let container = row.classList.contains('properties-group')
-                ? row
-                : row.parentNode;
-            let propertyId = row
+        button.addEventListener('click', () => {
+            const container = row.parentNode;
+            const propertyId = row
                 .querySelector('.property-value')
                 .getAttribute('property');
-            let isOriginal =
+            const isOriginal =
                 button.parentNode.getAttribute('original') == 'true';
-            let propertiesRows = container.querySelectorAll(
+            const propertiesRows = container.querySelectorAll(
                 `.property-value[property="${propertyId}"]`
             );
-            let nPropertiesRows = propertiesRows ? propertiesRows.length : 0;
+            const nPropertiesRows = propertiesRows ? propertiesRows.length : 0;
+
             if (nPropertiesRows > 1 && !isOriginal) {
-                let rowsToDelete = [];
-                let nextRow = row.classList.contains('properties-group')
-                    ? row.children[1]
-                    : row;
+                const rowsToDelete = [];
+                let nextRow = row;
                 for (let i = 0; i < duplicate; i++) {
-                    // todo: check in multiple chained properties
                     if (
                         nextRow &&
                         nextRow != row &&
@@ -875,11 +569,10 @@ export default class FormProperties {
                     )
                         break;
                     rowsToDelete.push(nextRow);
-                    if (i < duplicate - 1) {
+                    if (i < duplicate - 1)
                         nextRow = nextRow.nextElementSibling
                             ? nextRow.nextElementSibling
                             : false;
-                    }
                 }
                 rowsToDelete.forEach((rowElement) => {
                     if (rowElement) rowElement.remove();
@@ -888,103 +581,55 @@ export default class FormProperties {
         });
     }
 
-    /**
-     *
-     * @param {*} row
-     * @param {*} property
-     * @param {*} num
-     * @returns
-     */
     cloneRowElement(row, propertyBase, num) {
-        // Row
-        let cloneRow = row.cloneNode(true);
-        // In case it is a group we go through the rows recursively
-        if (cloneRow.classList.contains('properties-group')) {
-            cloneRow.id = `${cloneRow.id.split('-')[0]}-${eXeLearning.app.common.generateId()}`;
-            for (let child of cloneRow.children) {
-                if (child.classList.contains('properties-group-title')) {
-                    // Add event to group title
-                    child.addEventListener('click', (event) => {
-                        // Hide help texts
-                        this.hideHelpContentAll();
-                        // Show/Hide group properties
-                        if (cloneRow.classList.contains('hide-content')) {
-                            cloneRow.classList.remove('hide-content');
-                        } else {
-                            cloneRow.classList.add('hide-content');
-                        }
-                    });
-                } else {
-                    // Clone row
-                    let cloneChild = this.cloneRowElement(
-                        child,
-                        propertyBase,
-                        -1
-                    );
-                    cloneRow.append(cloneChild);
-                    child.remove();
-                }
-            }
-            return cloneRow;
-        }
-        // Elements
-        let childrenLabel =
-            cloneRow.getAttribute('type') == 'checkbox'
-                ? cloneRow.children[1]
-                : cloneRow.children[0];
-        let childrenValue =
-            cloneRow.getAttribute('type') == 'checkbox'
-                ? cloneRow.children[0]
-                : cloneRow.children[1];
-        // Get property id
-        let propertyId = cloneRow.getAttribute('property');
-        let property = this.metadataProperties[propertyId];
-        // Add class copied
+        const cloneRow = row.cloneNode(true);
+        const childrenLabel = cloneRow.querySelector('label');
+        const childrenValue = cloneRow.querySelector('.property-value');
+        const propertyId = cloneRow.getAttribute('property');
+        const property = this.metadataProperties[propertyId];
+
         cloneRow.classList.add('copied-row');
-        childrenLabel.classList.add('copied');
-        childrenValue.classList.add('copied');
-        // Add class to first copy row
-        if (num == 0) {
-            cloneRow.classList.add('first-copied-row');
-        } else {
-            cloneRow.classList.remove('first-copied-row');
-        }
-        // New id string
+        if (childrenLabel) childrenLabel.classList.add('copied');
+        if (childrenValue) childrenValue.classList.add('copied');
+        if (num == 0) cloneRow.classList.add('first-copied-row');
+        else cloneRow.classList.remove('first-copied-row');
+
         cloneRow.id = `${cloneRow.id.split('-')[0]}-${eXeLearning.app.common.generateId()}-container`;
-        // Modify attribute names
-        let newId = `${row.id}-${eXeLearning.app.common.generateId()}`;
-        childrenLabel.id = newId;
-        childrenLabel.setAttribute('for', newId);
-        childrenValue.id = newId;
-        childrenValue.setAttribute('name', newId);
-        // Add clone attribute group
-        childrenValue.setAttribute(
-            'groupCopied',
-            Object.keys(propertyBase.groups).pop()
-        );
-        // Clear value
-        childrenValue.value = '';
-        // Add event to label
-        childrenLabel.addEventListener('click', (event) => {
-            childrenValue.focus();
-        });
-        // Add event enter
+
+        const newId = `${row.id}-${eXeLearning.app.common.generateId()}`;
+        if (childrenLabel) {
+            childrenLabel.id = newId;
+            childrenLabel.setAttribute('for', newId);
+            childrenLabel.addEventListener('click', () => {
+                childrenValue && childrenValue.focus();
+            });
+        }
+        if (childrenValue) {
+            childrenValue.id = newId;
+            childrenValue.setAttribute('name', newId);
+            childrenValue.setAttribute(
+                'groupCopied',
+                propertyBase.groups
+                    ? Object.keys(propertyBase.groups).pop()
+                    : ''
+            );
+            if (childrenValue.tagName.toLowerCase() !== 'select')
+                childrenValue.value = '';
+        }
+
         cloneRow.querySelectorAll('input[type="text"]').forEach((input) => {
             input.addEventListener('keyup', (event) => {
                 event.preventDefault();
-                if (event.key == 'Enter') {
-                    this.saveAction();
-                }
+                if (event.key === 'Enter') this.saveAction();
             });
         });
-        // Add events to action buttons
-        let actionsContainer = cloneRow.querySelector(
+        const actionsContainer = cloneRow.querySelector(
             '.actions-duplicate-properties-container'
         );
         if (actionsContainer) {
-            let nDuplicate = actionsContainer.getAttribute('duplicate');
-            let buttonAdd = actionsContainer.querySelector('.add-properties');
-            let buttonDelete =
+            const nDuplicate = actionsContainer.getAttribute('duplicate');
+            const buttonAdd = actionsContainer.querySelector('.add-properties');
+            const buttonDelete =
                 actionsContainer.querySelector('.delete-properties');
             this.addEventClickToActionAddButton(
                 buttonAdd,
@@ -1007,27 +652,21 @@ export default class FormProperties {
      * SAVE
      *******************************************************************************/
 
-    /**
-     *
-     *
-     */
     saveAction() {
-        // Hide help texts
         this.hideHelpContentAll();
-        // Properties dict
-        let propertiesDict = this.getPropertiesData();
-        // Check required properties
+        const propertiesDict = this.getPropertiesData();
         let missingFields = false;
-        let query = `#properties-node-content-form .property-value.required[category="${this.categoryView}"]`;
+        const query = `#properties-node-content-form .property-value.required`;
         this.nodeContent.querySelectorAll(query).forEach((field) => {
-            let value = this.getFieldValueByType(field);
-            if (value == '') {
-                field.classList.add('field-missing');
+            const value = this.getFieldValueByType(field);
+            if (value === '') {
+                field.classList.add('field-missing', 'is-invalid');
                 missingFields = true;
             } else {
-                field.classList.remove('field-missing');
+                field.classList.remove('field-missing', 'is-invalid');
             }
         });
+
         if (missingFields) {
             eXeLearning.app.modals.alert.show({
                 title: _('Project properties'),
@@ -1035,26 +674,17 @@ export default class FormProperties {
                 contentId: 'error',
             });
         } else {
-            // Save properties in database
             this.saveProperties(propertiesDict, false).then((response) => {
                 this.properties.project.app.locale.loadContentTranslationsStrings(
                     propertiesDict.pp_lang
                 );
-                // eXeLearning.app.modals.alert.show({
-                //     title: _('Project properties'),
-                //     body: _('Project properties saved.'),
-                // });
-
-                // Show message
-                let toastData = {
+                const toastData = {
                     title: _('Project properties'),
                     body: _('Project properties saved.'),
                     icon: 'downloading',
                 };
-                let toast =
+                const toast =
                     window.eXeLearning.app.toasts.createToast(toastData);
-
-                // Remove message
                 setTimeout(() => {
                     toast.remove();
                 }, 1000);
@@ -1062,25 +692,18 @@ export default class FormProperties {
         }
     }
 
-    /**
-     *
-     *
-     */
     getPropertiesData() {
-        let propertiesDict = {};
-        let propertiesGroupNum = {};
-        let propertiesValueElements =
+        const propertiesDict = {};
+        const propertiesGroupNum = {};
+        const propertiesValueElements =
             this.nodeContent.querySelectorAll('.property-value');
-        // Loop through all property values of the form
         propertiesValueElements.forEach((propertyValue) => {
-            let property =
+            const property =
                 this.metadataProperties[propertyValue.getAttribute('property')];
-            let value = this.getFieldValueByType(propertyValue);
-            // Get key
-            let propertyKeyBase = propertyValue.getAttribute('property');
+            const value = this.getFieldValueByType(propertyValue);
+            const propertyKeyBase = propertyValue.getAttribute('property');
             let propertyKey;
             if (propertyValue.classList.contains('copied')) {
-                // Generate property key in case it is a multiple property
                 propertyKey = this.getPropertyKeyMultiple(
                     propertyValue,
                     property,
@@ -1089,23 +712,14 @@ export default class FormProperties {
                     propertiesDict
                 );
             } else {
-                // If the property is not a copy we send the id of the property as is
                 propertyKey = propertyKeyBase;
             }
-            // Add to dict
             propertiesDict[propertyKey] = value;
         });
 
         return propertiesDict;
     }
 
-    /**
-     * Generate property key in case it is a multiple property
-     *
-     * @param {*} propertyValue
-     * @param {*} property
-     * @returns
-     */
     getPropertyKeyMultiple(
         propertyValue,
         property,
@@ -1113,56 +727,43 @@ export default class FormProperties {
         propertiesGroupNum,
         propertiesDict
     ) {
-        let propertyKeyPrefixGroup = propertyValue.getAttribute('group');
-        let propertyKeyPrefixGroupCopied =
-            propertyValue.getAttribute('groupCopied');
+        const propertyKeyPrefixGroup = propertyValue.getAttribute('group');
         let prevGroup = '';
         let propertyKey = '';
-        // Loop through all groups
-        for (let group of Object.keys(property.groups)) {
-            let groupDiff = group.replace(prevGroup, '');
-            // Add sufix
+        for (const group of Object.keys(property.groups || {})) {
+            const groupDiff = group.replace(prevGroup, '');
             if (group == propertyKeyPrefixGroup) {
-                let propertyPre = propertyKey + groupDiff;
-                let numStringSuffix = propertiesGroupNum[propertyPre]
+                const propertyPre = propertyKey + groupDiff;
+                const numStringSuffix = propertiesGroupNum[propertyPre]
                     ? propertiesGroupNum[propertyPre]
                     : '';
-                let groupSuffix = propertyKeyBase.replace(
+                const groupSuffix = propertyKeyBase.replace(
                     propertyKeyPrefixGroup,
                     ''
                 );
-                let propertyKeyPrototipe =
+                const propertyKeyPrototipe =
                     propertyKey + groupDiff + numStringSuffix + groupSuffix;
-                // Add group to dict
                 if (propertiesDict[propertyKeyPrototipe] !== undefined) {
-                    let numGroup = propertiesGroupNum[propertyPre]
+                    const numGroup = propertiesGroupNum[propertyPre]
                         ? propertiesGroupNum[propertyPre] + 1
                         : 2;
                     propertiesGroupNum[propertyPre] = numGroup;
                 }
-                let numGroupString = propertiesGroupNum[propertyPre]
+                const numGroupString = propertiesGroupNum[propertyPre]
                     ? propertiesGroupNum[propertyPre]
                     : '';
                 propertyKey += groupDiff + numGroupString + groupSuffix;
             } else {
-                // Add group string
-                let numStringGroup = propertiesGroupNum[propertyKey]
+                const numStringGroup = propertiesGroupNum[propertyKey]
                     ? propertiesGroupNum[propertyKey]
                     : '';
                 propertyKey += groupDiff + numStringGroup;
             }
-            // Previous group
             prevGroup = group;
         }
-        return propertyKey;
+        return propertyKey || propertyKeyBase;
     }
 
-    /**
-     * Get property field value
-     *
-     * @param {*} propertyValue
-     * @returns
-     */
     getFieldValueByType(propertyValue) {
         let value = '';
         switch (propertyValue.getAttribute('data-type')) {
@@ -1181,149 +782,136 @@ export default class FormProperties {
         return value;
     }
 
-    /**
-     *
-     * @param {Array} propertiesDict
-     * @param {Boolean} inherit
-     */
     async saveProperties(propertiesDict, inherit) {
-        let response = await this.properties.apiSaveProperties(
-            propertiesDict,
-            inherit
-        );
-        return response;
+        return await this.properties.apiSaveProperties(propertiesDict, inherit);
     }
 
     /*******************************************************************************
      * BEHAVIOUR
      *******************************************************************************/
 
-    /**
-     * Add event click to save button
-     *
-     */
-    addBehaviourSaveButton() {
-        let saveButton =
-            this.propertiesFormElement.querySelector('button.confirm');
-        saveButton.addEventListener('click', (event) => {
-            this.saveAction();
-        });
+    makeSaveButton() {
+        const footer = document.createElement('div');
+        footer.classList.add('footer');
+
+        const buttonSave = document.createElement('button');
+        buttonSave.setAttribute('type', 'button');
+        buttonSave.classList.add('confirm', 'btn', 'btn-primary', 'mb-3');
+        buttonSave.innerHTML = _('Save metadata and properties');
+
+        footer.append(buttonSave);
+        return footer;
     }
 
-    /**
-     * Add event keyup to all text inputs
-     *
-     */
+    addBehaviourSaveButton() {
+        const saveButton =
+            this.propertiesFormElement.querySelector('button.confirm');
+        saveButton.addEventListener('click', () => this.saveAction());
+    }
+
     addBehaviourTextInputs() {
-        // Press enter to confirm in text inputs
         this.propertiesFormElement
             .querySelectorAll('input[type="text"]')
             .forEach((input) => {
                 input.addEventListener('keyup', (event) => {
                     event.preventDefault();
-                    if (event.key == 'Enter') {
-                        this.saveAction();
-                    }
+                    if (event.key == 'Enter') this.saveAction();
                 });
             });
     }
 
-    /**
-     * Add event click to help icons
-     *
-     */
     addBehaviourExeHelp() {
-        let exeHelp = this.nodeContent.querySelectorAll('.exe-form-help');
+        const exeHelp = this.nodeContent.querySelectorAll('.exe-form-help');
         exeHelp.forEach((help) => {
-            // Help text
-            let helpContent = help.querySelector('.help-content');
-            // Add title
+            const helpContent = help.querySelector('.help-content');
             help.setAttribute('title', _('Information'));
-            // Close
             this.hideHelpContent(help);
-            // Click event
-            help.querySelector('icon').addEventListener('click', (icon) => {
-                let show = helpContent.classList.contains('help-hidden');
-                this.hideHelpContentAll();
-                if (show) this.showHelpContent(help);
-            });
+            help.querySelector('.form-help-exe-icon').addEventListener(
+                'click',
+                () => {
+                    const show = helpContent.classList.contains('help-hidden');
+                    this.hideHelpContentAll();
+                    if (show) this.showHelpContent(help);
+                }
+            );
         });
     }
 
-    /**
-     * Hide helps dialog when clicking on body
-     *
-     */
     addBehaviourBodyToHideHelpDialogs() {
         document.querySelector('body').addEventListener('click', (event) => {
-            if (!event.target.classList.contains('form-help-exe-icon')) {
+            if (!event.target.classList.contains('form-help-exe-icon'))
                 this.hideHelpContentAll();
-            }
         });
     }
 
-    /**
-     * Show help row text
-     *
-     * @param {*} helpContainer
-     */
     showHelpContent(helpContainer) {
-        let helpContent = helpContainer.querySelector('.help-content');
+        const helpContent = helpContainer.querySelector('.help-content');
         helpContent.classList.remove('help-hidden');
         helpContainer.classList.add('help-content-active');
         helpContainer.classList.remove('help-content-disabled');
     }
 
-    /**
-     * Hide help row text
-     *
-     * @param {*} helpContainer
-     */
     hideHelpContent(helpContainer) {
-        let helpContent = helpContainer.querySelector('.help-content');
+        const helpContent = helpContainer.querySelector('.help-content');
         helpContent.classList.add('help-hidden');
         helpContainer.classList.add('help-content-disabled');
         helpContainer.classList.remove('help-content-active');
     }
 
-    /**
-     * Hide all help texts
-     *
-     */
     hideHelpContentAll() {
-        let exeHelp = this.nodeContent.querySelectorAll('.exe-form-help');
-        exeHelp.forEach((help) => {
-            this.hideHelpContent(help);
-        });
+        const exeHelp = this.nodeContent.querySelectorAll('.exe-form-help');
+        exeHelp.forEach((help) => this.hideHelpContent(help));
     }
 
-    /**
-     * Focus input text element
-     *
-     * @param {*} input
-     */
     focusTextInput(input) {
         if (input) {
             input.focus();
-            let inputElementValue = input.value;
+            const inputElementValue = input.value;
             input.value = '';
             input.value = inputElementValue;
         }
     }
 
-    /*******************************************************************************
-     * AUXILIAR
-     *******************************************************************************/
-
-    /**
-     *
-     * @param {*} referenceNode
-     * @param {*} newNode
-     */
     insertAfter(referenceNode, newNode) {
         referenceNode.parentNode.insertBefore(
             newNode,
             referenceNode.nextSibling
         );
+    }
+
+    reloadValues() {
+        this.combineMetadataProperties();
+        for (let [key, property] of Object.entries(this.metadataProperties)) {
+            let element;
+            if (property.multipleId) {
+                const elementsMultiples = this.nodeContent.querySelectorAll(
+                    `.property-value[property="${property.multipleId}"]`
+                );
+                element = elementsMultiples[property.multipleIndex - 1];
+            } else {
+                element = this.nodeContent.querySelector(
+                    `.property-value[property="${key}"]`
+                );
+            }
+            if (!element) continue;
+            switch (property.type) {
+                case 'checkbox':
+                    element.checked = property.value == 'true' ? true : false;
+                    break;
+                case 'select': {
+                    const select = element.querySelector(
+                        `option[value="${property.value}"]`
+                    );
+                    if (select) select.setAttribute('selected', 'selected');
+                    break;
+                }
+                case 'text':
+                case 'date':
+                case 'textarea':
+                default:
+                    element.value = property.value;
+                    break;
+            }
+        }
     }
 }

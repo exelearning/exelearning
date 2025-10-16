@@ -178,103 +178,135 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <p>
-                                <label for="adivinaEShowMinimize">
-                                    <input type="checkbox" id="adivinaEShowMinimize">${_('Show minimized.')}
-                                </label>
-                            </p>
-                            <p>
-                                <label for="adivinaEOptionsRamdon">
-                                    <input type="checkbox" id="adivinaEOptionsRamdon">${_('Random questions')}
-                                </label>
-                            </p>
-                            <p>
-                                <label for="adivinaECustomMessages">
-                                    <input type="checkbox" id="adivinaECustomMessages">${_('Custom messages')}.
-                                </label>
-                            </p>
-                            <p>
-                                <label for="adivinaEShowSolution">
-                                    <input type="checkbox" checked id="adivinaEShowSolution">${_('Show solutions')}.
-                                </label>
-                                <label for="adivinaETimeShowSolution">${_('Show solution time (seconds)')}:
-                                    <input type="number" name="adivinaETimeShowSolution" id="adivinaETimeShowSolution" value="3" min="1" max="9" />
-                                </label>
-                            </p>
-                            <p>
-                                <label for="adivinaECaseSensitive">
-                                    <input type="checkbox" id="adivinaECaseSensitive">${_('Case sensitive')}
-                                </label>
-                            </p>
-                            <p>
-                                <strong class="GameModeLabel">
-                                    <a href="#adivinaEGameModeHelp" id="adivinaEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" />
-                                    </a> 
-                                    ${_('Score')}:
-                                </strong>
-                                <input class="ADVNE-TypeGame" checked="checked" id="adivinaETypeActivity" type="radio" name="qxtgamemode" value="1" />
-                                <label for="adivinaETypeActivity">${_('From 0 to 10')}</label>
-                                <input class="ADVNE-TypeGame" id="adivinaEGameMode" type="radio" name="qxtgamemode" value="0" />
-                                <label for="adivinaEGameMode">${_('Points and lives')}</label>
-                                <input class="ADVNE-TypeGame" id="adivinaETypeReto" type="radio" name="qxtgamemode" value="2" />
-                                <label for="adivinaETypeReto">${_('No score')}</label>
-                            </p>
-                            <div id="adivinaEGameModeHelp" class="exe-block-info ADVNE-TypeGameHelp" style="padding-top:8px">
+                        <div id="adivinaEOptions">
+                            <div class="toggle-item mb-3" data-target="adivinaEShowMinimize">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="adivinaEShowMinimize" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="adivinaEShowMinimize">${_('Show minimized.')}</label>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="adivinaEOptionsRamdon">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="adivinaEOptionsRamdon" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="adivinaEOptionsRamdon">${_('Random questions')}</label>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="adivinaECustomMessages">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="adivinaECustomMessages" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="adivinaECustomMessages">${_('Custom messages')}.</label>
+                            </div>
+                            <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
+                                <div class="toggle-item toggle-related m-0" data-target="adivinaEShowSolution">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="adivinaEShowSolution" checked />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="adivinaEShowSolution">${_('Show solutions')}.</label>
+                                </div>
+                                <label for="adivinaETimeShowSolution">${_('Show solution time (seconds)')}</label>
+                                <input type="number" name="adivinaETimeShowSolution" id="adivinaETimeShowSolution" value="3" min="1" max="9" class="form-control" />
+                            </div>
+                            <div class="toggle-item mb-3" data-target="adivinaECaseSensitive">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="adivinaECaseSensitive" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="adivinaECaseSensitive">${_('Case sensitive')}</label>
+                            </div>
+                            <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                                <span>${_('Score')}: </span>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input ADVNE-TypeGame" checked="checked" id="adivinaETypeActivity" type="radio" name="qxtgamemode" value="1" />
+                                    <label class="form-check-label" for="adivinaETypeActivity">${_('From 0 to 10')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input ADVNE-TypeGame" id="adivinaEGameMode" type="radio" name="qxtgamemode" value="0" />
+                                    <label class="form-check-label" for="adivinaEGameMode">${_('Points and lives')}</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input ADVNE-TypeGame" id="adivinaETypeReto" type="radio" name="qxtgamemode" value="2" />
+                                    <label class="form-check-label" for="adivinaETypeReto">${_('No score')}</label>
+                                </div>
+                                <a href="#adivinaEGameModeHelp" id="adivinaEGameModeHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                    <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
+                                </a> 
+                            </div>
+                            <div id="adivinaEGameModeHelp" class="exe-block-info ADVNE-TypeGameHelp pt-3">
                                 <ul>
                                     <li><strong>${_('From 0 to 10')}: </strong>${_('No lives, 0 to 10 score, right/wrong answers counter... A more educational context.')}</li>
                                     <li><strong>${_('Points and lives')}: </strong>${_('Just like a game: Aim for a high score (thousands of points) and try not to lose your lives.')}</li>
                                     <li><strong>${_('No score')}: </strong>${_('No score and no lives. You have to answer right to get some information (a feedback).')}</li>
                                 </ul>
                             </div>
-                            <p>
-                                <label for="adivinaEUseLives">
-                                    <input type="checkbox" checked id="adivinaEUseLives">${_('Use lives')}.
-                                </label>
-                                <label for="adivinaENumberLives">${_('Number of lives')}: <input type="number" name="adivinaENumberLives" id="adivinaENumberLives" value="3" min="1" max="5" />
-                                </label>
-                            </p>
-                            <p>
-                                <label for="adivinaEHasFeedBack">
-                                    <input type="checkbox" id="adivinaEHasFeedBack">${_('Feedback')}.
-                                </label>
-                                <label for="adivinaEPercentajeFB">
-                                    <input type="number" name="adivinaEPercentajeFB" id="adivinaEPercentajeFB" value="100" min="5" max="100" step="5" disabled />${_('&percnt; right to see the feedback')}
-                                </label>
-                            </p>
-                            <p id="adivinaEFeedbackP" class="ADVNE-EFeedbackP">
-                                <textarea id="adivinaEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </p>
-                            <p>
-                                <label for="adivinaEPercentajeQuestions">%${_('Questions')}:
-                                    <input type="number" name="adivinaEPercentajeQuestions" id="adivinaEPercentajeQuestions" value="100" min="1" max="100" />
-                                </label>
-                                <span id="adivinaENumeroPercentaje">1/1</span>
-                            </p>
-                            <p>
-                                <label for="adivinaModeBoard">
-                                    <input type="checkbox" id="adivinaModeBoard">${_('Digital whiteboard mode')}
-                                </label>
-                            </p>
-                            <p style="display:none">
-                                <label for="adivinaETranslate">
-                                    <input type="checkbox" id="adivinaETranslate">${_('Activate translator')}.
-                                </label>
-                            </p>
-                            <p>
-                                <strong class="GameModeLabel">
-                                    <a href="#adivinaEEvaluationHelp" id="adivinaEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.gif" width="16" height="16" alt="${_('Help')}" />
-                                    </a>
-                                </strong>
-                                <input type="checkbox" id="adivinaEEvaluation"><label for="adivinaEEvaluation">${_('Progress report')}.</label>
-                                <label for="adivinaEEvaluationID">${_('Identifier')}:</label> <input type="text" id="adivinaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
-                                
-                            </p>
-                            <div id="adivinaEEvaluationHelp" class="exe-block-info ADVNE-TypeGameHelp">
-                                <p>${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}</p>
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                                <div class="toggle-item toggle-related m-0" data-target="adivinaEUseLives">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="adivinaEUseLives" checked />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="adivinaEUseLives">${_('Use lives')}.</label>
+                                </div>
+                                <label for="adivinaENumberLives"> ${_('Number of lives')}:</label>
+                                <input type="number" name="adivinaENumberLives" id="adivinaENumberLives" value="3" min="1" max="5" class="form-control" />
+
                             </div>
+                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
+                                <div class="toggle-item toggle-related m-0" data-target="adivinaEHasFeedBack">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="adivinaEHasFeedBack" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="adivinaEHasFeedBack">${_('Feedback')}.</label>
+                                </div>
+                                <input type="number" name="adivinaEPercentajeFB" id="adivinaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
+                                <label for="adivinaEPercentajeFB">${_('&percnt; right to see the feedback')}</label>
+                            </div>
+                            <div id="adivinaEFeedbackP" class="ADVNE-EFeedbackP mb-3">
+                                <textarea id="adivinaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
+                            </div>
+                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
+                                <label for="adivinaEPercentajeQuestions" class="toggle-label">%${_('Questions')}:</label>
+                                <input type="number" name="adivinaEPercentajeQuestions" id="adivinaEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
+                                <span id="adivinaENumeroPercentaje" >1/1</span>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="adivinaModeBoard">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="adivinaModeBoard" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="adivinaModeBoard">${_('Digital whiteboard mode')}</label>
+                            </div>
+                            <div class="toggle-item mb-3" data-target="adivinaETranslate" style="display:none">
+                                <span class="toggle-control">
+                                    <input type="checkbox" class="toggle-input" id="adivinaETranslate" />
+                                    <span class="toggle-visual"></span>
+                                </span>
+                                <label class="toggle-label" for="adivinaETranslate">${_('Activate translator')}.</label>
+                            </div>
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb3">
+                                <div class="toggle-item m-0" data-target="adivinaEEvaluation">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="adivinaEEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="adivinaEEvaluation">${_('Progress report')}.</label>
+                                </div>
+                                <div class="d-flex align-items-center flex-nowrap gap-2">
+                                    <label for="adivinaEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                    <input type="text" class="form-control" id="adivinaEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
+                                    <a href="#adivinaEEvaluationHelp" id="adivinaEEvaluationHelpLnk" style="min-width:18px" class="GameModeHelpLink" title="${_('Help')}">
+                                        <img src="${path}quextIEHelp.png"  width="18" height="18" alt="${_('Help')}"/>
+                                    </a>
+                                </div>
+                            </div>
+                            <p id="adivinaEEvaluationHelp" class="exe-block-info ADVNE-TypeGameHelp">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -282,100 +314,133 @@ var $exeDevice = {
                         <div class="ADVNE-EPanel" id="adivinaEPanel">
                             <div class="ADVNE-EOptionsMedia">
                                 <div class="ADVNE-EOptionsGame">
-                                    <p>
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                                         <span>${_('Multimedia Type')}:</span>
-                                        <span class="ADVNE-EInputMedias">
-                                            <input class="ADVNE-Type" checked="checked" id="adivinaEMediaNormal" type="radio" name="qxtmediatype" value="0" disabled />
-                                            <label for="adivinaEMediaNormal">${_('None')}</label>
-                                            <input class="ADVNE-Type" id="adivinaEMediaImage" type="radio" name="qxtmediatype" value="1" disabled />
-                                            <label for="adivinaEMediaImage">${_('Image')}</label>
-                                            <input class="ADVNE-Type" id="adivinaEMediaVideo" type="radio" name="qxtmediatype" value="2" disabled />
-                                            <label for="adivinaEMediaVideo">${_('Video')}</label>
-                                            <input class="ADVNE-Type" id="adivinaEMediaText" type="radio" name="qxtmediatype" value="3" disabled />
-                                            <label for="adivinaEMediaText">${_('Text')}</label>
-                                        </span>
-                                    </p>
-                                    <p>
-                                        <span>${_('Time per question')}:</span>
-                                        <span class="ADVNE-EInputTimes">
-                                            <input class="ADVNE-Times" checked="checked" id="q15s" type="radio" name="qxttime" value="0" />
-                                            <label for="q15s">15s</label>
-                                            <input class="ADVNE-Times" id="q30s" type="radio" name="qxttime" value="1" />
-                                            <label for="q30s">30s</label>
-                                            <input class="ADVNE-Times" id="q1m" type="radio" name="qxttime" value="2" />
-                                            <label for="q1m">1m</label>
-                                            <input class="ADVNE-Times" id="q3m" type="radio" name="qxttime" value="3" />
-                                            <label for="q3m">3m</label>
-                                            <input class="ADVNE-Times" id="q5m" type="radio" name="qxttime" value="4" />
-                                            <label for="q5m">5m</label>
-                                            <input class="ADVNE-Times" id="q10m" type="radio" name="qxttime" value="5" />
-                                            <label for="q10m">10m</label>
-                                        </span>
-                                    </p>
-                                    <p class="ADVNE-EPercentage" id="adivinaEPercentage">
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Type" checked="checked" id="adivinaEMediaNormal" type="radio" name="qxtmediatype" value="0" disabled />
+                                            <label class="form-check-label" for="adivinaEMediaNormal">${_('None')}</label>
+                                         </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Type" id="adivinaEMediaImage" type="radio" name="qxtmediatype" value="1" disabled />
+                                            <label class="form-check-label" for="adivinaEMediaImage">${_('Image')}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Type" id="adivinaEMediaVideo" type="radio" name="qxtmediatype" value="2" disabled />
+                                            <label class="form-check-label" for="adivinaEMediaVideo">${_('Video')}</label>
+                                        </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Type" id="adivinaEMediaText" type="radio" name="qxtmediatype" value="3" disabled />
+                                            <label class="form-check-label" for="adivinaEMediaText">${_('Text')}</label>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                        <span class="mb3">${_('Time per question')}:</span>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Times" checked="checked" id="q15s" type="radio" name="qxttime" value="0" />
+                                            <label class="form-check-label" for="q15s">15s</label>
+                                        </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Times" id="q30s" type="radio" name="qxttime" value="1" />
+                                            <label class="form-check-label" for="q30s">30s</label>
+                                        </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Times" id="q1m" type="radio" name="qxttime" value="2" />
+                                            <label class="form-check-label" for="q1m">1m</label>
+                                        </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Times" id="q3m" type="radio" name="qxttime" value="3" />
+                                            <label class="form-check-label" for="q3m">3m</label>
+                                        </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Times" id="q5m" type="radio" name="qxttime" value="4" />
+                                            <label class="form-check-label" for="q5m">5m</label>
+                                        </div>
+                                        <div class="form-check form-check-inline m-0">
+                                            <input class="form-check-input ADVNE-Times" id="q10m" type="radio" name="qxttime" value="5" />
+                                            <label class="form-check-label" for="q10m">10m</label>
+                                        </div>
+                                    </div>
+                                    <div id="adivinaEPercentageShowDiv" class="d-flex flex-wrap align-items-center gap-2 mb-3">                                        
                                         <label for="adivinaEPercentageShow">${_('Percentage of letters to show (%)')}:</label>
-                                        <input type="number" name="adivinaEPercentageShow" id="adivinaEPercentageShow" value="35" min="0" max="100" step="5" />
-                                    </p>
-                                    <span class="ADVNE-ETitleImage" id="adivinaETitleImage">${_('Image URL')}</span>
-                                    <div class="ADVNE-EInputImage" id="adivinaEInputImage">
+                                        <input type="number" name="adivinaEPercentageShow" id="adivinaEPercentageShow" value="35" min="0" max="100" step="5" class="form-control" />
+                                    </div>
+                                    <span id="adivinaTitleImage">${_('Image URL')}</span>
+                                    <div class="flex-nowrap align-items-center  flex-nowrap gap-2 mb-3" id="adivinaEInputImage">
                                         <label class="sr-av" for="adivinaEURLImage">${_('Image URL')}</label>
-                                        <input type="text" class="exe-file-picker ADVNE-EURLImage" id="adivinaEURLImage"/>
+                                        <input type="text" class="exe-file-picker form-control me-0" id="adivinaEURLImage"/>
                                         <a href="#" id="adivinaEPlayImage" class="ADVNE-ENavigationButton ADVNE-EPlayVideo" title="${_('Show')}">
-                                            <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ADVNE-EButtonImage b-play" />
+                                            <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="ADVNE-ENavigationButton " />
                                         </a>
                                     </div>
-                                    <div class="ADVNE-EInputOptionsImage" id="adivinaEInputOptionsImage"></div>
+
                                     <div class="ADVNE-ECoord">
                                         <label for="adivinaEXImage">X:</label>
                                         <input id="adivinaEXImage" type="text" value="0" />
                                         <label for="adivinaEXImage">Y:</label>
                                         <input id="adivinaEYImage" type="text" value="0" />
                                     </div>
-                                    <span class="ADVNE-ETitleVideo" id="adivinaETitleVideo">${_('URL')}</span>
-                                    <div class="ADVNE-Flex ADVNE-EInputVideo" id="adivinaEInputVideo">
+                                    <span id="adivinaTitleVideo">${_('URL')}</span>
+                                    <div class="flex-nowrap align-items-center gap-2 flex-nowrap mb-3" id="adivinaEInputVideo">
                                         <label class="sr-av" for="adivinaEURLYoutube">${_('URL')}</label>
-                                        <input id="adivinaEURLYoutube" type="text" />
-                                        <a href="#" id="adivinaEPlayVideo" class="ADVNE-ENavigationButton ADVNE-EPlayVideo" title="${_('Play video')}">
-                                            <img src="${path}quextIEPlay.png" alt="${_('Play video')}" class="ADVNE-EButtonImage b-play" />
+                                        <input id="adivinaEURLYoutube" type="text" class="form-control" />
+                                        <a href="#" id="adivinaEPlayVideo" class="ADVNE-ENavigationButton" title="${_('Play video')}">
+                                            <img src="${path}quextIEPlay.png" alt="${_('Play video')}" class="ADVNE-ENavigationButton " />
                                         </a>
                                     </div>
-                                    <div class="ADVNE-EInputOptionsVideo" id="adivinaEInputOptionsVideo">
-                                        <div>
-                                            <label for="adivinaEInitVideo">${_('Start')}:</label>
-                                            <input id="adivinaEInitVideo" type="text" value="00:00:00" maxlength="8" />
-                                            <label for="adivinaEEndVideo">${_('End')}:</label>
-                                            <input id="adivinaEEndVideo" type="text" value="00:00:00" maxlength="8" />
-                                            <button class="ADVNE-EMediaTime" id="adivinaEVideoTime" type="button">00:00:00</button>
+                                    <div class="mb-3" id="adivinaEInputOptionsVideo">
+                                        <div class="ADVNE-EMediaRow ADVNE-EVideoTimeRow">
+                                            <div class="ADVNE-EMediaRow-options d-flex align-items-center flex-nowrap ADVNE-EVideoTimeCompact">
+                                                <label for="adivinaEInitVideo" class="mb-0 me-1">${_('Start')}:</label>
+                                                <input id="adivinaEInitVideo" type="text" value="00:00:00" maxlength="8" class="form-control" />
+                                                <label for="adivinaEEndVideo" class="mb-0 ms-2 me-1">${_('End')}:</label>
+                                                <input id="adivinaEEndVideo" type="text" value="00:00:00" maxlength="8" class="form-control" />
+                                                <button class="bnt btn-primary"  id="adivinaEVideoTime" type="button">00:00:00</button>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label for="adivinaESilenceVideo">${_('Silence')}:</label>
-                                            <input id="adivinaESilenceVideo" type="text" value="00:00:00" maxlength="8" />
-                                            <label for="adivinaETimeSilence">${_('Time (s)')}:</label>
-                                            <input type="number" name="adivinaETimeSilence" id="adivinaETimeSilence" value="0" min="0" max="120" />
+                                        <div class="ADVNE-EMediaRow ADVNE-EVideoSilentRow">
+                                            <div class="ADVNE-EMediaRow-options d-flex align-items-center flex-nowrap ADVNE-EVideoTimeCompact">
+                                                <label for="adivinaESilenceVideo" class="mb-0 me-1">${_('Silence')}:</label>
+                                                <input id="adivinaESilenceVideo" type="text" value="00:00:00" maxlength="8" class="form-control" />
+                                                <label for="adivinaETimeSilence" class="mb-0 ms-2 me-1">${_('Time (s)')}:</label>
+                                                <input type="number" name="adivinaETimeSilence" id="adivinaETimeSilence" value="0" min="0" max="120" class="form-control" />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label for="adivinaECheckSoundVideo">${_('Audio')}:</label>
-                                            <input id="adivinaECheckSoundVideo" type="checkbox" checked="checked" />
-                                            <label for="adivinaECheckImageVideo">${_('Image')}:</label>
-                                            <input id="adivinaECheckImageVideo" type="checkbox" checked="checked" />
+                                        <div class="ADVNE-EMediaRow">
+                                            <div class="ADVNE-EMediaRow-options d-flex align-items-center flex-wrap ADVNE-EVideoTimeCompact">
+                                                <span class="mb-0 me-1">${_('Options')}:</span>
+                                                <div class="toggle-item form-check m-0 d-flex align-items-center gap-1" data-target="adivinaECheckSoundVideo">
+                                                    <span class="toggle-control">
+                                                        <input id="adivinaECheckSoundVideo" type="checkbox" class="toggle-input" checked />
+                                                        <span class="toggle-visual"></span>
+                                                    </span>
+                                                    <label for="adivinaECheckSoundVideo" class="toggle-label mb-0">${_('Audio')}</label>
+                                                </div>
+                                                <div class="toggle-item form-check m-0 d-flex align-items-center gap-1 ms-2" data-target="adivinaECheckImageVideo">
+                                                    <span class="toggle-control">
+                                                        <input id="adivinaECheckImageVideo" type="checkbox" class="toggle-input" checked />
+                                                        <span class="toggle-visual"></span>
+                                                    </span>
+                                                    <label for="adivinaECheckImageVideo" class="toggle-label mb-0">${_('Image')}</label>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="ADVNE-EAuthorAlt" id="adivinaEAuthorAlt">
-                                        <div class="ADVNE-EInputAuthor" id="adivinaEInputAuthor">
-                                            <label for="adivinaEAuthor">${_('Authorship')}</label>
-                                            <input id="adivinaEAuthor" type="text" />
-                                        </div>
-                                        <div class="ADVNE-EInputAlt" id="adivinaEInputAlt">
-                                            <label for="adivinaEAlt">${_('Alternative text')}</label>
-                                            <input id="adivinaEAlt" type="text" />
-                                        </div>
+                                    <div class="align-items-center flex-nowrap gap-2 mb-3" id="adivinaEAuthorAlt">
+                                            <div class="w-50" id="adivinaEInputAuthor">
+                                                <label for="adivinaEAuthor" class="form-label">${_('Authorship')}</label>
+                                                <input id="adivinaEAuthor" type="text" class="form-control w-100" />
+                                            </div>
+                                            <div class="w-50" id="adivinaEInputAlt">
+                                                <label for="adivinaEAlt" class="form-label mb-1">${_('Alternative text')}</label>
+                                                <input id="adivinaEAlt" type="text" class="form-control w-100" />
+                                            </div>
                                     </div>
-                                    <span id="adivinaETitleAudio">${_('Audio')}</span>
-                                    <div class="ADVNE-EInputAudio" id="adivinaEInputAudio">
+                                    <span id="adivinaETitleInputAudio">${_('Audio')}</span>
+                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="adivinaEInputAudio">
                                         <label class="sr-av" for="adivinaEURLAudio">${_('URL')}</label>
-                                        <input type="text" class="exe-file-picker ADVNE-EURLAudio" id="adivinaEURLAudio"/>
+                                        <input type="text" class="exe-file-picker ADVNE-EURLAudio form-control  me-0" id="adivinaEURLAudio"/>
                                         <a href="#" id="adivinaEPlayAudio" class="ADVNE-ENavigationButton ADVNE-EPlayVideo" title="${_('Play audio')}">
-                                            <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="ADVNE-EButtonImage b-play" />
+                                            <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="ADVNE-ENavigationButton " />
                                         </a>
                                     </div>
                                 </div>
@@ -394,14 +459,14 @@ var $exeDevice = {
                                 </div>
                             </div>
                             <div class="ADVNE-EContents">
-                                <div class="ADVNE-EWordDiv" id="selecionaEWordDiv">
+                                <div class="ADVNE-EWordDiv" id="adivinaEWordDiv">
                                     <div class="ADVNE-ESolutionWord">
                                         <label for="adivinaESolutionWord">${_('Word/Phrase')}: </label>
-                                        <input type="text" id="adivinaESolutionWord"/>
+                                        <input type="text" id="adivinaESolutionWord" class="form-control"/>
                                     </div>
                                     <div class="ADVNE-ESolutionWord">
                                         <label for="adivinaEDefinitionWord">${_('Definition')}: </label>
-                                        <input type="text" id="adivinaEDefinitionWord"/>
+                                        <input type="text" id="adivinaEDefinitionWord" class="form-control"/>
                                     </div>
                                 </div>
                                 <div class="ADVNE-EOrders" id="adivinaEOrder">
@@ -409,44 +474,44 @@ var $exeDevice = {
                                         <span class="sr-av">${_('Hit')}</span>
                                         <span class="ADVNE-EHit"></span>
                                         <label for="adivinaEMessageOK">${_('Message')}:</label>
-                                        <input type="text" id="adivinaEMessageOK">
+                                        <input type="text" id="adivinaEMessageOK" class="form-control">
                                     </div>
                                     <div class="ADVNE-ECustomMessage">
                                         <span class="sr-av">${_('Error')}</span>
                                         <span class="ADVNE-EError"></span>
                                         <label for="adivinaEMessageKO">${_('Message')}:</label>
-                                        <input type="text" id="adivinaEMessageKO">
+                                        <input type="text" id="adivinaEMessageKO" class="form-control">
                                     </div>
                                 </div>
-                                <div class="ADVNE-ENavigationButtons">
+                                <div class="ADVNE-ENavigationButtons gap-2">
                                     <a href="#" id="adivinaEAdd" class="ADVNE-ENavigationButton" title="${_('Add question')}">
-                                        <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="ADVNE-EButtonImage b-add" />
+                                        <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="ADVNE-ENavigationButton b-add" />
                                     </a>
                                     <a href="#" id="adivinaEFirst" class="ADVNE-ENavigationButton" title="${_('First question')}">
-                                        <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="ADVNE-EButtonImage b-first" />
+                                        <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="ADVNE-ENavigationButton b-first" />
                                     </a>
                                     <a href="#" id="adivinaEPrevious" class="ADVNE-ENavigationButton" title="${_('Previous question')}">
-                                        <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="ADVNE-EButtonImage b-prev" />
+                                        <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="ADVNE-ENavigationButton b-prev" />
                                     </a>
                                     <label class="sr-av" for="adivinaENumberQuestion">${_('Question number:')}:</label>
-                                    <input type="text" class="ADVNE-NumberQuestion" id="adivinaENumberQuestion" value="1"/>
-                                    <a href="#" id="adivinaENext" class="ADVNE-ENavigationButton" title="${_('Next question')}">
-                                        <img src="${path}quextIENext.png" alt="${_('Next question')}" class="ADVNE-EButtonImage b-next" />
+                                    <input type="text" class="ADVNE-NumberQuestion form-control" id="adivinaENumberQuestion" value="1"/>
+                                    <a href="#" id="adivinaENext" class="ADVNE-ENavigationButton gap-2" title="${_('Next question')}">
+                                        <img src="${path}quextIENext.png" alt="${_('Next question')}" class="ADVNE-ENavigationButton b-next" />
                                     </a>
                                     <a href="#" id="adivinaELast" class="ADVNE-ENavigationButton" title="${_('Last question')}">
-                                        <img src="${path}quextIELast.png" alt="${_('Last question')}" class="ADVNE-EButtonImage b-last" />
+                                        <img src="${path}quextIELast.png" alt="${_('Last question')}" class="ADVNE-ENavigationButton b-last" />
                                     </a>
                                     <a href="#" id="adivinaEDelete" class="ADVNE-ENavigationButton" title="${_('Delete question')}">
-                                        <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="ADVNE-EButtonImage b-delete" />
+                                        <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="ADVNE-ENavigationButton b-delete" />
                                     </a>
                                     <a href="#" id="adivinaECopy" class="ADVNE-ENavigationButton" title="${_('Copy question')}">
-                                        <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="ADVNE-EButtonImage b-copy" />
+                                        <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="ADVNE-ENavigationButton b-copy" />
                                     </a>
                                     <a href="#" id="adivinaECut" class="ADVNE-ENavigationButton" title="${_('Cut question')}">
-                                        <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="ADVNE-EButtonImage b-cut" />
+                                        <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="ADVNE-ENavigationButton b-cut" />
                                     </a>
                                     <a href="#" id="adivinaEPaste" class="ADVNE-ENavigationButton" title="${_('Paste question')}">
-                                        <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="ADVNE-EButtonImage b-paste" />
+                                        <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="ADVNE-ENavigationButton b-paste" />
                                     </a>
                                 </div>
                                 <div class="ADVNE-ENumQuestionDiv" id="adivinaENumQuestionDiv">
@@ -472,7 +537,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         tinymce.init({
             selector: '#adivinaEText',
-            height: 200,
+            height: 220,
             language: 'all',
             width: 400,
             plugins: ['code paste textcolor link'],
@@ -622,8 +687,9 @@ var $exeDevice = {
     },
 
     initQuestions: function () {
-        $('#adivinaEInputVideo').css('display', 'flex');
-        $('#adivinaEInputImage').css('display', 'flex');
+        $('#adivinaEInputVideo').hide();
+        $('#adivinaEInputImage').hide();
+        $('#adivinaTitleImage').hide();
         $('#adivinaEMediaNormal').prop('disabled', false);
         $('#adivinaEMediaImage').prop('disabled', false);
         $('#adivinaEMediaText').prop('disabled', false);
@@ -642,14 +708,14 @@ var $exeDevice = {
     changeTypeQuestion: function (type) {
         $('#adivinaETitleAltImage').hide();
         $('#adivinaEAuthorAlt').hide();
-        $('#adivinaETitleImage').hide();
+        $('#adivinaTitleImage').hide();
         $('#adivinaEInputImage').hide();
         $('#adivinaETitleAudio').show();
         $('#adivinaEInputAudio').show();
-        $('#adivinaETitleVideo').hide();
+        $('#adivinaETitleInputAudio').show();
+        $('#adivinaTitleVideo').hide();
         $('#adivinaEInputVideo').hide();
         $('#adivinaEInputOptionsVideo').hide();
-        $('#adivinaEInputOptionsImage').hide();
         if (tinyMCE.get('adivinaEText')) {
             tinyMCE.get('adivinaEText').hide();
         }
@@ -670,10 +736,9 @@ var $exeDevice = {
             case 1:
                 $('#adivinaENoImage').show();
                 $('#adivinaETitleImage').show();
-                $('#adivinaEInputImage').show();
-                $('#adivinaEAuthorAlt').show();
+                $('#adivinaEInputImage').css('display', 'flex');
+                $('#adivinaEAuthorAlt').css('display', 'flex');
                 $('#adivinaECursor').show();
-                $('#adivinaEInputOptionsImage').show();
                 $exeDevice.showImage(
                     $('#adivinaEURLImage').val(),
                     $('#adivinaEXImage').val(),
@@ -682,14 +747,13 @@ var $exeDevice = {
                 );
                 break;
             case 2:
-                $('#adivinaEImageVideo').show();
-                $('#adivinaETitleVideo').show();
-                $('#adivinaEInputVideo').show();
+                $('#adivinaTitleVideo').show();
+                $('#adivinaEInputVideo').css('display', 'flex')
                 $('#adivinaENoVideo').show();
                 $('#adivinaEVideo').show();
                 $('#adivinaEInputOptionsVideo').show();
                 $('#adivinaEInputAudio').hide();
-                $('#adivinaETitleAudio').hide();
+                $('#adivinaETitleInputAudio').hide();
                 break;
             case 3:
                 $('#adivinaEText').show();
@@ -1114,8 +1178,8 @@ var $exeDevice = {
         const linksImages = $exeDevice.createlinksImage(dataGame.wordsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.wordsGame);
 
-    let html = '<div class="adivina-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="adivina-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `<div class="adivina-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="adivina-feedback-game">${textFeedBack}</div>`;
         html += divContent;
@@ -1193,7 +1257,7 @@ var $exeDevice = {
         const msgs = $exeDevice.msgs,
             p = {};
 
-        p.word = $('#adivinaESolutionWord').val().trim();
+        p.word = $('#adivinaESolutionWord').val();
         p.definition = $('#adivinaEDefinitionWord').val();
         p.type = parseInt($('input[name=qxtmediatype]:checked').val(), 10);
         p.time = parseInt($('input[name=qxttime]:checked').val(), 10);
@@ -1201,7 +1265,7 @@ var $exeDevice = {
         p.y = parseFloat($('#adivinaEYImage').val());
         p.author = $('#adivinaEAuthor').val();
         p.alt = $('#adivinaEAlt').val();
-        p.url = $('#adivinaEURLImage').val().trim();
+        p.url = $('#adivinaEURLImage').val();
         p.audio = $('#adivinaEURLAudio').val();
         p.msgHit = $('#adivinaEMessageOK').val();
         p.msgError = $('#adivinaEMessageKO').val();
@@ -1509,6 +1573,31 @@ var $exeDevice = {
     addEvents: function () {
         $('#adivinaEPaste').hide();
 
+        // Delegación genérica para toggles estilo switch
+        $('#gameQEIdeviceForm').on('click.guess.toggle', '.toggle-item', function (e) {
+            // Evita que un clic directo en el input provoque doble cambio
+            if ($(e.target).is('input.toggle-input, label[for]')) return;
+            // No alternar si el clic proviene del campo identificador de evaluación
+            if (
+                $(e.target).is('#adivinaEEvaluationID') ||
+                $(e.target).closest('#adivinaEEvaluationHelpLnk').length
+            )
+                return;
+            const $input = $(this).find('input.toggle-input').first();
+            if ($input.length) {
+                const newVal = !$input.prop('checked');
+                $input.prop('checked', newVal).trigger('change');
+            }
+        });
+
+        // Evitar burbujeo de clic dentro del campo de texto que provoca toggle en el contenedor
+        $('#gameQEIdeviceForm').on('click', '#adivinaEEvaluationID', function (e) {
+            e.stopPropagation();
+        });
+        $('#gameQEIdeviceForm').on('click', '#adivinaEEvaluationHelpLnk, #adivinaEEvaluationHelpLnk *', function (e) {
+            e.stopPropagation();
+        });
+
         $('#adivinaEInitVideo, #adivinaEEndVideo, #adivinaESilenceVideo').on(
             'focusout',
             function () {
@@ -1615,45 +1704,21 @@ var $exeDevice = {
 
         $('#adivinaECheckSoundVideo').on('change', () => {
             const youtubeUrl = $('#adivinaEURLYoutube').val().trim();
-            if (
-                $exeDevices.iDevice.gamification.media.getIDYoutube(youtubeUrl)
-            ) {
-                if (typeof YT === 'undefined') {
-                    $exeDevice.isVideoType = true;
-                    $exeDevice.loadYoutubeApi();
-                } else {
-                    $exeDevice.showVideoQuestion();
-                }
-            } else if (
-                $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                    youtubeUrl,
-                )
-            ) {
-                $exeDevice.showVideoQuestion();
+            if (typeof YT === 'undefined') {
+                $exeDevice.isVideoType = true;
+                $exeDevice.loadYoutubeApi();
             } else {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeDevice.showVideoQuestion();
             }
         });
 
         $('#adivinaECheckImageVideo').on('change', () => {
             const youtubeUrl = $('#adivinaEURLYoutube').val().trim();
-            if (
-                $exeDevices.iDevice.gamification.media.getIDYoutube(youtubeUrl)
-            ) {
-                if (typeof YT === 'undefined') {
-                    $exeDevice.isVideoType = true;
-                    $exeDevice.loadYoutubeApi();
-                } else {
-                    $exeDevice.showVideoQuestion();
-                }
-            } else if (
-                $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                    youtubeUrl,
-                )
-            ) {
-                $exeDevice.showVideoQuestion();
+            if (typeof YT === 'undefined') {
+                $exeDevice.isVideoType = true;
+                $exeDevice.loadYoutubeApi();
             } else {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeDevice.showVideoQuestion();
             }
         });
 

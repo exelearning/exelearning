@@ -21,7 +21,7 @@ class OdeComponentsSyncProperties extends BaseEntity
     protected ?string $description = null;
 
     #[ORM\ManyToOne(targetEntity: 'OdeComponentsSync', inversedBy: 'odeComponentsSyncProperties')]
-    #[ORM\JoinColumn(name: 'ode_components_sync_id', referencedColumnName: 'id')]
+    #[ORM\JoinColumn(name: 'ode_components_sync_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     protected OdeComponentsSync $odeComponentsSync;
 
     public function getKey(): ?string
