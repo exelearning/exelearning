@@ -345,8 +345,16 @@ class Constants
     public const SAVE_INSTALLED_THEMES_IN_SESSION = false;
     public const SESSION_USER_DATA = 'SESSION_USER_DATA';
 
-    // Gravatar (empty string to disable gravatar icons)
+    /*
+     * Gravatar configuration (leave the base URL empty to disable avatars globally).
+     * Default image options for GRAVATAR_DEFAULT_IMAGE and GRAVATAR_GUEST_DEFAULT_IMAGE:
+     * "initials", "color", "404", "mp", "identicon", "monsterid", "wavatar",
+     * "retro", "robohash", "blank".
+     */
     public const GRAVATAR_BASE_URL = 'https://www.gravatar.com/avatar/';
+    public const GRAVATAR_DEFAULT_IMAGE = 'initials';
+    public const GRAVATAR_GUEST_DEFAULT_IMAGE = 'retro';
+    public const GRAVATAR_GUEST_ACCOUNT_DOMAIN = '@guest.local'; // Guest accounts use a dedicated default avatar.
 
     // Locks
     public const RESOURCE_LOCK_TIMEOUT_SECONDS = 900; // 15 minutes
