@@ -230,7 +230,7 @@ var $periodicTable = {
                             <div class="PTP-MessageCodeAccessE" id="ptMesajeAccesCodeE-${instance}"></div>
                             <div class="PTP-DataCodeAccessE">
                                 <label for="ptCodeAccessE-${instance}" class="sr-av">${msgs.msgCodeAccess}:</label>
-                                <input type="text" class="PTP-CodeAccessE" id="ptCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                                <input type="text" class="PTP-CodeAccessE form-control" id="ptCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                                 <a href="#" id="ptCodeAccessButton-${instance}" title="${msgs.msgReply}">
                                     <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                                     <div class="exeQuextIcons-Submit PTP-Activo"></div>
@@ -1819,15 +1819,15 @@ var $periodicTable = {
                     </div>
                     <div class="PTP-inputdata" id="ptNumberInputDiv-${instance}">
                         <label class="sr-av" for="ptNumberInput-${instance}">${msgs.msgNumber}:</label>
-                        <input type="text" id="ptNumberInput-${instance}" maxlength="3"  placeholder="${msgs.msgNumber}" />
+                        <input type="text" class="form-control" id="ptNumberInput-${instance}" maxlength="3"  placeholder="${msgs.msgNumber}" />
                     </div>
                     <div class="PTP-inputdata" id="ptNameInputDiv-${instance}">
                         <label  class="sr-av"  for="ptNameInput-${instance}">${msgs.msgName}:</label>
-                        <input type="text" id="ptNameInput-${instance}" maxlength="20"  placeholder="${msgs.msgName}" />
+                        <input type="text" class="form-control" id="ptNameInput-${instance}" maxlength="20"  placeholder="${msgs.msgName}" />
                     </div>
                     <div class="PTP-inputdata" id="ptSymbolInputDiv-${instance}">
                         <label  class="sr-av"  for="ptSymbolInput-${instance}">${msgs.msgSymbol}:</label>
-                        <input type="text" id="ptSymbolInput-${instance}" maxlength="2"   placeholder="${msgs.msgSymbol}"/>
+                        <input type="text" class="form-control" id="ptSymbolInput-${instance}" maxlength="2"   placeholder="${msgs.msgSymbol}"/>
                     </div>                
                     <div class="PTP-inputdata" id="ptGroupSelectDiv-${instance}">
                         <label for="ptGroupsSelect-${instance}">${msgs.msgGroup}: </label>
@@ -1845,8 +1845,8 @@ var $periodicTable = {
                             <option value="9">${msgs.msgActinide}</option>
                         </select>
                     </div>      
-                    <button class="btn btn-success" id="ptAcceptButton-${instance}">${msgs.msgAccept}</button>
-                    <button class="btn btn-danger" id="ptCancelButton-${instance}">${msgs.msgCancel}</button>
+                    <button class="btn btn-primary" id="ptAcceptButton-${instance}">${msgs.msgAccept}</button>
+                    <button class="btn btn-primary" id="ptCancelButton-${instance}">${msgs.msgCancel}</button>
                 </div>
             </div>
         `;

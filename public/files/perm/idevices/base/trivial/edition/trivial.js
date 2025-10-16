@@ -886,7 +886,7 @@ var $exeDevice = {
                                     <div class="TRVLE-ENameTema d-flex align-items-center flex-nowrap gap-2 mb-3">
                                         <span>${_("Topic")}:</span>
                                         <label class="sr-av" for="trivialNumberTema">${_("Topic number")}</label>
-                                         <input type="number" class="form-control" name="trivialNumberTema" id="trivialNumberTema" value="1" min="1" max="2" step="1" style="width:6ch" /> 
+                                         <input type="number" class="form-control me-0" name="trivialNumberTema" id="trivialNumberTema" value="1" min="1" max="2" step="1" style="width:6ch" /> 
                                         <label class="sr-av" for="trivialNameTema">${_("Topic number")}</label>
                                         <input type="text" id="trivialNameTema" class="form-control w-100" />
                                     </div>
@@ -987,7 +987,7 @@ var $exeDevice = {
                                             <img src="${path}quextIEPlay.png" alt="${_("Play")}" class="TRVLE-EButtonImage " />
                                         </a>
                                     </div>
-                                    <div class="d-none"  id="quextInputOptionsImage">
+                                    <div class="d-none"  id="trivialInputOptionsImage">
                                         <div class="TRVLE-ECoord">
                                             <label for="trivialEXImage">X:</label>
                                             <input id="trivialEXImage" type="text" value="0" class="form-control" style="width:6ch" />
@@ -1006,9 +1006,9 @@ var $exeDevice = {
                                     <div class="TRVLE-EInputOptionsVideo" id="trivialEInputOptionsVideo">
                                         <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
                                             <label for="trivialEInitVideo">${_("Start")}:</label>
-                                            <input id="trivialEInitVideo" type="text" value="00:00:00" maxlength="8" class="form-control w-auto" style="min-width:10ch; max-width:10ch"/" />
+                                            <input id="trivialEInitVideo" type="text" value="00:00:00" maxlength="8" class="form-control w-auto" style="min-width:10ch; max-width:10ch;" />
                                             <label for="trivialEEndVideo">${_("End")}:</label>
-                                            <input id="trivialEEndVideo" type="text" value="00:00:00" maxlength="8" class="form-control w-auto" style="min-width:10ch; max-width:10ch"/ />
+                                            <input id="trivialEEndVideo" type="text" value="00:00:00" maxlength="8" class="form-control w-auto" style="min-width:10ch; max-width:10ch";" />
                                             <button class="btn btn-primary" id="trivialEVideoTime" type="button">00:00:00</button>
                                         </div>
                                         <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
@@ -1076,32 +1076,32 @@ var $exeDevice = {
                                     </span>
                                 </div>
                                 <div class="TRVLE-EQuestionDiv" id="trivialEQuestionDiv">
-                                    <label class="sr-av">${_("Question")}:</label>
+                                    <label for="trivialEQuestion" class="sr-av">${_("Question")}:</label>
                                     <input type="text" class="TRVLE-EQuestion form-control" id="trivialEQuestion">
                                 </div>
                                 <div class="TRVLE-EAnswers" id="trivialEAnswers">
                                     <div class="TRVLE-EOptionDiv">
-                                        <label class="sr-av">${_("Solution")} A:</label>
-                                        <input type="checkbox" class="TRVLE-ESolution" name="tvlsolution" id="trivialESolution0" value="A" />
-                                        <label>A</label>
+                                        <label for="trivialESolution0" class="sr-av">${_("Solution")} A:</label>
+                                        <input type="checkbox" class="TRVLE-ESolution me-1" name="tvlsolution" id="trivialESolution0" value="A" />
+                                        <label for="trivialEOption0" >A</label>
                                         <input type="text" class="TRVLE-EOption0 TRVLE-EAnwersOptions form-control" id="trivialEOption0">
                                     </div>
                                     <div class="TRVLE-EOptionDiv">
-                                        <label class="sr-av">${_("Solution")} B:</label>
-                                        <input type="checkbox" class="TRVLE-ESolution" name="tvlsolution" id="trivialESolution1" value="B" />
-                                        <label>B</label>
+                                        <label for="trivialESolution1" class="sr-av">${_("Solution")} B:</label>
+                                        <input type="checkbox" class="TRVLE-ESolution me-1" name="tvlsolution" id="trivialESolution1" value="B" />
+                                        <label for="trivialEOption1" >B</label>
                                         <input type="text" class="TRVLE-EOption1 TRVLE-EAnwersOptions form-control" id="trivialEOption1">
                                     </div>
                                     <div class="TRVLE-EOptionDiv">
-                                        <label class="sr-av">${_("Solution")} C:</label>
-                                        <input type="checkbox" class="TRVLE-ESolution" name="tvlsolution" id="trivialESolution2" value="C" />
-                                        <label>C</label>
+                                        <label for="trivialESolution2" class="sr-av">${_("Solution")} C:</label>
+                                        <input type="checkbox" class="TRVLE-ESolution me-1" name="tvlsolution" id="trivialESolution2" value="C" />
+                                        <label for="trivialEOption2" >C</label>
                                         <input type="text" class="TRVLE-EOption2 TRVLE-EAnwersOptions form-control" id="trivialEOption2">
                                     </div>
                                     <div class="TRVLE-EOptionDiv">
-                                        <label class="sr-av">${_("Solution")} D:</label>
-                                        <input type="checkbox" class="TRVLE-ESolution" name="tvlsolution" id="trivialESolution3" value="D" />
-                                        <label>D</label>
+                                        <label for="trivialESolution3" class="sr-av">${_("Solution")} D:</label>
+                                        <input type="checkbox" class="TRVLE-ESolution me-1" name="tvlsolution" id="trivialESolution3" value="D" />
+                                        <label for="trivialEOption3" >D</label>
                                         <input type="text" class="TRVLE-EOption3 TRVLE-EAnwersOptions form-control" id="trivialEOption3">
                                     </div>
                                 </div>

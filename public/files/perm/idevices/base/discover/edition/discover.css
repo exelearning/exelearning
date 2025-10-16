@@ -2,16 +2,22 @@
     width: 100%;
 }
 
-#descubreQEIdeviceForm input[type="color"] ,
+#descubreQEIdeviceForm input[type="color"],
 #descubreQEIdeviceForm input[type="button"] {
     margin-right: 0 !important;
 }
+
 #descubreQEIdeviceForm input[type="color"] {
     padding: .2rem !important;
     height: 2em !important;
     width: 3em !important;
 }
-  
+
+#descubreQEIdeviceForm #descubreEPercentajeFB,
+#descubreQEIdeviceForm #descubreEPercentajeQuestions {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
 
 
 #descubreQEIdeviceForm input[type="radio"],
@@ -281,7 +287,7 @@
 .Descubre-NumberQuestion {
     text-align: center;
     vertical-align: middle;
-    width: 3em;
+    width: 2.5em;
 }
 
 /* Video introdución */
@@ -346,7 +352,7 @@
 #descubreQEIdeviceForm #descubreQEIdeviceFormTab3 label {
     display: block;
     margin-bottom: .2em;
-    color:  #0BA1A1;
+    color: #0BA1A1;
     font-weight: 500;
 }
 

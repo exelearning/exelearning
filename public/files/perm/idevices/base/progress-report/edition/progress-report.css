@@ -17,11 +17,18 @@
 #reportQEIdeviceForm .IFPE-PageIcon {
     background-size: contain;
     background-repeat: no-repeat;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     display: inline-block;
 }
 
+#reportQEIdeviceForm .IFPE-PageIcon {
+    background-size: contain;
+    background-repeat: no-repeat;
+    width: 24px;
+    height: 24px;
+    display: inline-block;
+}
 #reportQEIdeviceForm .IFPE-ComponentScore {
     text-align: right;
     min-width: 1em;
@@ -117,7 +124,7 @@
 #reportQEIdeviceForm #reportQEIdeviceFormTab1 label {
     display: block;
     margin-bottom: .2em;
-    color: #5b810b;
+    color: #0BA1A1;
     font-weight: 500;
 }
 

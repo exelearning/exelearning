@@ -13,6 +13,14 @@
     margin-right: .2em
 }
 
+
+
+#eXeAutoGeogebraForm #geogebraActivityWeight, 
+#eXeAutoGeogebraForm #geogebraActivityScale {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
+
 #geogebraActivityWidth,
 #geogebraActivityHeight,
 #geogebraActivityLang,
@@ -97,6 +105,8 @@ label[for=geogebraActivityHeight] {
     width: 55px;
     margin-right: 1.5em
 }
+
+
 
 #geogebraActivityPlayButton {
     display: inline-block;

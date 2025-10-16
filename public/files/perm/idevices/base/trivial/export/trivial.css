@@ -265,13 +265,6 @@ a.trivial-LinkMaximize {
 }
 
 .trivial-NameGamer {
-    background: #fdfdfd;
-    border: 1px solid #828282;
-    border-radius: 0.25rem;
-    font-size: 0.9rem;
-    height: 1.8rem;
-    line-height: 1.8rem;
-    padding: 3px 2px;
     text-align: center;
     width: 70%;
 }
@@ -805,14 +798,12 @@ a.trivial-LinkMaximize {
 }
 
 .trivial-CodeAccessE {
-    font-size: 0.9em;
     margin: 0.7em 0.3em;
     max-width: 300px;
     width: 50%;
 }
 
-.trivial-GameQuestion input[type="text"],
-.trivial-CodeAccessE {
+.trivial-GameQuestion input[type="text"] {
     background: #fdfdfd;
     border: 1px solid #828282;
     border-radius: 4px;
@@ -823,15 +814,7 @@ a.trivial-LinkMaximize {
     text-align: center;
 }
 
-.trivial-NameGamers input[type="text"]:focus,
-.trivial-NameGamers input[type="text"]:active,
-.trivial-GameQuestion input[type="text"]:active,
-.trivial-GameQuestion input[type="text"]:focus,
-input.trivial-CodeAccessE:focus,
-input.trivial-CodeAccessE:active {
-    background: #fdfdfd;
-    border: 1px solid #398ee7;
-}
+
 
 /* Mensaje Modal */
 .trivial-MessageModal {
@@ -1099,6 +1082,7 @@ div:-moz-full-screen .trivial-CasillaDestino {
 .trivial-EdReply {
     max-width: 400px;
     width: 60%;
+    text-align: center;
 }
 
 .trivial-MainContainer .exeQuextIcons-MoveOne {

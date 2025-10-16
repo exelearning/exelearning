@@ -78,6 +78,8 @@ yarn.lock
 # Ignore dist directory
 /dist
 
+public/style/workarea/main.css
+
 # Ignore SQLite database
 exelearning.db
 

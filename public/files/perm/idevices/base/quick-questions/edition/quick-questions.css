@@ -1,4 +1,3 @@
-/* Ancho mínimo para al menos 4 dígitos en cualquier input numérico */
 
 #gameQEIdeviceForm input[type="radio"],
 #gameQEIdeviceForm input[type="checkbox"],
@@ -6,9 +5,16 @@
     cursor: pointer;
 }
 
-#quextEInputOptionsVideo input[type="text"]{
+#quextEInputOptionsVideo input[type="text"] {
     width: 6em;
     text-align: center;
+}
+
+
+#gameQEIdeviceForm #quextEPercentajeQuestions,
+#gameQEIdeviceForm #quextEPercentajeFB {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
 }
 
 #gameQEIdeviceForm input[type="button"] {
@@ -69,9 +75,6 @@
     width: 50%;
 }
 
-.QXTE-EOptionsGame div {
-    margin-bottom: 0.7em;
-}
 
 .QXTE-EOptionsGame input[type=text] {
     width: auto;
@@ -143,15 +146,7 @@
 }
 
 .QXTE-EOrders>div {
-    align-items: center;
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    ;
-}
-
-.QXTE-EOrders>div {
-    align-items: left;
+    align-items: flex-start;
     display: flex;
     flex-wrap: nowrap;
     justify-content: flex-start;
@@ -252,7 +247,7 @@
     text-align: center;
     vertical-align: middle;
     width: 4em;
-    margin-left:0.3em
+    margin-left: 0.3em
 }
 
 /* Video introdución */
@@ -288,28 +283,6 @@
     width: 100%;
 }
 
-.QXTE-EVIOptions {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    height: 50px;
-    justify-content: center;
-    position: absolute;
-    width: 100%;
-}
-
-.QXTE-EVIOptions * {
-    margin-left: 0.3em;
-}
-
-.QXTE-EVIOptions input[type=text] {
-    text-align: left;
-    width: 5em;
-}
-
-.QXTE-EVIOptions input[type=text]:first-of-type {
-    width: 15em;
-}
 
 
 .QXTE-EVIClose {
@@ -318,8 +291,6 @@
     top: 0.3em;
 }
 
-
-/* (Eliminado bloque de ocultar elementos con clases no usadas) */
 
 #gameQEIdeviceForm .QXTE-EOptionDiv label {
     margin-right: 0.2em;
@@ -388,7 +359,7 @@ input#gameQEScoreQuestion {
     padding: 0;
 }
 
-#main .exe-form-tabs li {
+.exe-form-tabs li {
     display: inline;
     list-style: none;
     list-style-image: none;
@@ -497,12 +468,3 @@ label[for=gameQEActivitySCORM] {
 }
 
 
-#gameQEIdeviceForm .exe-form-tab fieldset:first-of-type>div>.toggle-item {
-    border-top: 1px solid rgba(0, 0, 0, .05);
-    padding-top: .35rem;
-}
-
-#gameQEIdeviceForm .exe-form-tab fieldset:first-of-type>div>*:first-child {
-    border-top: 0;
-    padding-top: 0;
-}

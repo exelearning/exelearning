@@ -1,6 +1,12 @@
-
 #gameQEIdeviceForm input[type="button"] {
     margin-right: 0 !important;
+}
+
+#gameQEIdeviceForm #adivinaEPercentageShow,
+#gameQEIdeviceForm #adivinaEPercentajeFB,
+#gameQEIdeviceForm #adivinaEPercentajeQuestions {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
 }
 
 .ADVNE-EPanel {
@@ -18,7 +24,6 @@
     width: 100%;
 }
 
-
 .ADVNE-EMultimedia {
     background-color: #fff;
     border-radius: .5em;
@@ -27,7 +32,6 @@
     position: relative;
     width: 400px;
 }
-
 
 .ADVNE-EMedia {
     border: 1px solid #cccccc;
@@ -69,11 +73,9 @@
     padding: .15rem .25rem;
 }
 
-
 .ADVNE-EInputImage input[type=button] {
     flex-shrink: 0;
 }
-
 
 .ADVNE-SolutionWordDiv {
     align-items: center;
@@ -147,9 +149,6 @@
     margin-bottom: 1.5rem !important;
 }
 
-
-
-
 #gameQEIdeviceForm .ADVNE-EVideoTimeRow .ADVNE-EMediaRow-options input[type=text],
 #gameQEIdeviceForm .ADVNE-EVideoSilentRow .ADVNE-EMediaRow-options input[type=text] {
     width: 7.2rem;
@@ -157,11 +156,6 @@
     text-align: center;
     font-family: monospace;
 }
-
-
-
-
-
 
 #gameQEIdeviceForm .ADVNE-EMediaRow-options {
     flex: 1 1 auto;
@@ -193,9 +187,6 @@
     margin-top: .25rem;
     align-items: center;
 }
-
-
-
 
 .ADVNE-EOrders label {
     white-space: nowrap;
@@ -276,7 +267,6 @@
     width: 1.7em;
 }
 
-
 .ADVNE-NumberQuestion {
     text-align: center;
     vertical-align: middle;
@@ -297,7 +287,6 @@
 .ADVNE-EFeedbackP {
     margin-bottom: 1.5rem !important;
 }
-
 
 label[for=gameQEScoreQuestion],
 input#gameQEScoreQuestion {
@@ -345,7 +334,6 @@ input#gameQEScoreQuestion {
 #gameQEIdeviceFormTab3> :first-child {
     flex: 0 0 100%;
 }
-
 
 @media screen and (max-width:720px) {
     #gameQEIdeviceFormTab3>* {
@@ -473,4 +461,3 @@ label[for=gameQEActivitySCORM] {
 .GameModeLabel {
     margin-right: 1rem;
 }
-

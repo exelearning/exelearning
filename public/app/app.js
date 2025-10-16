@@ -123,6 +123,33 @@ class App {
                     );
             }
         }
+
+        // Test-env override: when running E2E with Panther, the page origin
+        // is the internal PHP server (exelearning:908X), which doesn't host Mercure.
+        // Force the hub to the Nginx/Caddy endpoint in the exelearning container.
+        if (window.eXeLearning?.symfony?.environment === 'test') {
+            // Only override if not already explicitly set to a non-908X host
+            try {
+                const current = window.eXeLearning.mercure?.url || '';
+                const url = new URL(current || 'http://exelearning');
+                const isPantherPort = /^90\d{2}$/.test(
+                    String(urlRequest.port || '')
+                );
+                const isCurrentOk = current.includes('exelearning:8080');
+                if (!isCurrentOk && isPantherPort) {
+                    window.eXeLearning.mercure = {
+                        ...(window.eXeLearning.mercure || {}),
+                        url: 'http://exelearning:8080/.well-known/mercure',
+                    };
+                }
+            } catch (e) {
+                // Fallback: set directly
+                window.eXeLearning.mercure = {
+                    ...(window.eXeLearning.mercure || {}),
+                    url: 'http://exelearning:8080/.well-known/mercure',
+                };
+            }
+        }
     }
 
     /**
@@ -461,12 +488,35 @@ class App {
 /**
  * Prevent unexpected close
  *
+ * Install the `beforeunload` handler only after the first real user gesture.
+ * If we install it eagerly on page load, Chrome (especially in headless/E2E
+ * contexts) blocks the confirmation panel and logs a SEVERE console warning:
+ *   "Blocked attempt to show a 'beforeunload' confirmation panel for a frame
+ *    that never had a user gesture since its load."
+ * Deferring the installation avoids noisy warnings during automated navigations
+ * while preserving the safety prompt for real users after they interact.
  */
-window.onbeforeunload = function (event) {
-    event.preventDefault();
-    // Kept for legacy.
-    event.returnValue = false;
-};
+let __exeBeforeUnloadInstalled = false;
+function __exeInstallBeforeUnloadOnce() {
+    if (__exeBeforeUnloadInstalled) return;
+    __exeBeforeUnloadInstalled = true;
+
+    window.onbeforeunload = function (event) {
+        event.preventDefault();
+        // Modern browsers ignore custom text; a non-empty value is still
+        // required to trigger the confirmation dialog.
+        event.returnValue = '';
+    };
+}
+
+// Listen for the first trusted user interaction and install then.
+['pointerdown', 'touchstart', 'keydown', 'input'].forEach((type) => {
+    window.addEventListener(type, __exeInstallBeforeUnloadOnce, {
+        once: true,
+        passive: true,
+        capture: true,
+    });
+});
 
 /**
  * Catch ctrl+z action

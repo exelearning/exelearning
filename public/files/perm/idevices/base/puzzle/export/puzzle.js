@@ -35,11 +35,55 @@ var $eXePuzzle = {
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Puzzle', 'puzzle', 'puzzle-IDevice');       
+        $exeDevices.iDevice.gamification.initGame(this, 'Puzzle', 'puzzle', 'puzzle-IDevice');
     },
 
     enable: function () {
         $eXePuzzle.loadGame();
+    },
+
+    stopAllSounds: function (instance) {
+        const mOptions = $eXePuzzle.options[instance];
+        if (mOptions && $exeDevices && $exeDevices.iDevice && $exeDevices.iDevice.gamification && $exeDevices.iDevice.gamification.media) {
+            try {
+                $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+            } catch (e) { /* noop */ }
+        }
+        const $container = $('#pzlMainContainer-' + instance);
+        $container.find('audio, video').each(function () {
+            try {
+                if (typeof this.pause === 'function') this.pause();
+                if (!isNaN(this.currentTime)) this.currentTime = 0;
+            } catch (e) { /* noop */ }
+        });
+    },
+
+    bindFullscreenEvents: function (instance) {
+        const mOptions = $eXePuzzle.options[instance];
+        if (!mOptions) return;
+        const container = document.getElementById('pzlGameContainer-' + instance);
+        if (!container) return;
+
+        if (mOptions._fsBound) return;
+
+        const handler = function () {
+            const el = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            const isFS = el === container;
+            if (isFS) {
+                container.classList.add('PZLP-IsFull');
+            } else {
+                container.classList.remove('PZLP-IsFull');
+            }
+            try { setTimeout(function () { $eXePuzzle.resizePuzzlePieces(instance); }, 50); } catch (e) { }
+        };
+
+        ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']
+            .forEach(function (evt) { document.addEventListener(evt, handler); });
+
+        mOptions._fsBound = true;
+        mOptions._fsHandler = handler;
+
+        setTimeout(handler, 0);
     },
 
     loadGame: function () {
@@ -197,7 +241,7 @@ var $eXePuzzle = {
         mOptions.audiofirst =
             num === 0 && mOptions.puzzle.audioDefinition.length > 3;
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $eXePuzzle.stopAllSounds(instance);
         $eXePuzzle.showMessage(
             3,
             mOptions.puzzlesGame[num].definition,
@@ -232,6 +276,12 @@ var $eXePuzzle = {
         $eXePuzzle.showImagePuzzle(num, instance);
         $('#pzlAudioDef-' + instance).hide();
         $('#pzlAudioClue-' + instance).hide();
+
+        const container = document.getElementById('pzlGameContainer-' + instance);
+        if (container && (container === document.fullscreenElement || container.classList.contains('PZLP-IsFull'))) {
+            $eXePuzzle.bindFullscreenEvents(instance);
+            setTimeout(function () { $eXePuzzle.resizePuzzlePieces(instance); }, 50);
+        }
     },
 
     createInterfacePuzzle: function (instance) {
@@ -325,7 +375,7 @@ var $eXePuzzle = {
                         <div class="PZLP-MessageCodeAccessE" id="pzlMesajeAccesCodeE-${instance}"></div>
                         <div class="PZLP-DataCodeAccessE">
                             <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                            <input type="text" class="PZLP-CodeAccessE" id="pzlCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                            <input type="text" class="PZLP-CodeAccessE form-control" id="pzlCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                             <a href="#" id="pzlCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                                 <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                                     <div class="exeQuextIcons-Submit PZLP-Activo"></div>
@@ -641,18 +691,24 @@ var $eXePuzzle = {
             $pzlImagePuzzle = $('#pzlImagePuzzle-' + instance),
             cols = q.columns,
             rows = q.rows,
-            width = q.data.w,
-            height = q.data.h,
             pieceClass = q.type == 0 ? 'PZLP-Tile' : 'PZLP-TileChange',
-            tileSizeX =
-                typeof q.tileSizeX == 'undefined' || isNaN(q.tileSizeX)
-                    ? Math.round(width / cols)
-                    : q.tileSizeX,
-            tileSizeY =
-                typeof q.tileSizeY == 'undefined' || isNaN(q.tileSizeY)
-                    ? Math.round(height / rows)
-                    : q.tileSizeY,
             url = q.url;
+
+        let tileSizeX = (q && !isNaN(q.tileSizeX) && q.tileSizeX > 0)
+            ? Math.round(q.tileSizeX)
+            : (q.data && q.data.w ? Math.round(q.data.w / cols) : Math.round(($pzlImagePuzzle.width() || 0) / cols));
+        let tileSizeY = (q && !isNaN(q.tileSizeY) && q.tileSizeY > 0)
+            ? Math.round(q.tileSizeY)
+            : (q.data && q.data.h ? Math.round(q.data.h / rows) : Math.round(($pzlImagePuzzle.height() || 0) / rows));
+
+        if (!tileSizeX || tileSizeX <= 0) tileSizeX = 1;
+        if (!tileSizeY || tileSizeY <= 0) tileSizeY = 1;
+
+        let width = tileSizeX * cols;
+        let height = tileSizeY * rows;
+
+
+        $pzlImagePuzzle.css({ width: width + 'px', height: height + 'px' });
 
         let z = 0;
 
@@ -662,7 +718,9 @@ var $eXePuzzle = {
         for (let i = 0; i < rows; i++) {
             for (let j = 0; j < cols; j++) {
                 const x = j * tileSizeX,
-                    y = i * tileSizeY;
+                    y = i * tileSizeY,
+                    bgPosX = -j * tileSizeX,
+                    bgPosY = -i * tileSizeY;
 
                 $pzlImagePuzzle.append(`
                 <div id="pzlTile${instance}-${z}" class="${pieceClass}" data-index="${z}" data-x="${j}" data-y="${i}" data-x1="${j}" data-y1="${i}" style="
@@ -672,7 +730,7 @@ var $eXePuzzle = {
                   background-size: ${width}px ${height}px;
                   width: ${tileSizeX}px; 
                   height: ${tileSizeY}px;
-                  background-position: -${x}px -${y}px;
+                  background-position: ${bgPosX}px ${bgPosY}px;
                   opacity: 0;
                   z-index: 12;
                   transition: opacity 0.3s ease;">
@@ -700,10 +758,9 @@ var $eXePuzzle = {
                     opacity: '1',
                     display: 'none',
                 });
-                setTimeout(
-                    () => $eXePuzzle.showCompletedWindows(instance),
-                    300,
-                );
+                setTimeout(function () {
+                    $eXePuzzle.showCompletedWindows(instance);
+                }, 300);
             }
             counter++;
         }, 300);
@@ -818,6 +875,8 @@ var $eXePuzzle = {
         if (isSolved) {
             mOptions.gameActived = true;
             if (q.audioClue && q.audioClue.length > 4) {
+
+                $eXePuzzle.stopAllSounds(instance);
                 $('#pzlAudioClue-' + instance).css('display', 'block');
                 $exeDevices.iDevice.gamification.media.playSound(
                     q.audioClue,
@@ -915,6 +974,14 @@ var $eXePuzzle = {
         if (container && mOptions.resizeObserver) {
             mOptions.resizeObserver.unobserve(container);
         }
+
+
+        if (mOptions._fsBound && mOptions._fsHandler) {
+            ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']
+                .forEach(function (evt) { document.removeEventListener(evt, mOptions._fsHandler); });
+            mOptions._fsBound = false;
+            mOptions._fsHandler = null;
+        }
     },
 
     addEvents: function (instance) {
@@ -958,6 +1025,7 @@ var $eXePuzzle = {
                 const element = document.getElementById(
                     'pzlGameContainer-' + instance,
                 );
+                $eXePuzzle.bindFullscreenEvents(instance);
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
                     element,
                     instance,
@@ -1221,6 +1289,8 @@ var $eXePuzzle = {
                 mOptions.hits--;
                 $eXePuzzle.updateScoreRepeat(instance);
                 $eXePuzzle.showPuzzle(mOptions.active, instance);
+                $eXePuzzle.bindFullscreenEvents(instance);
+                setTimeout(function () { $eXePuzzle.resizePuzzlePieces(instance); }, 50);
             },
         );
 
@@ -1252,7 +1322,20 @@ var $eXePuzzle = {
             $parent = $('#node-content-container');
         }
 
-        const wDiv = $parent.width() > 900 ? 900 : $parent.width(),
+        const container = document.getElementById('pzlGameContainer-' + instance);
+        const isFS = !!(container && (container.classList.contains('PZLP-IsFull') ||
+            document.fullscreenElement === container ||
+            document.webkitFullscreenElement === container ||
+            document.mozFullScreenElement === container ||
+            document.msFullscreenElement === container));
+
+
+        let baseWidth = isFS
+            ? ($('#pzlMultimedia-' + instance).width() || $parent.width() || 900)
+            : ($parent.width() > 900 ? 900 : $parent.width());
+        if (!baseWidth || baseWidth <= 0) baseWidth = 900;
+
+        const wDiv = baseWidth,
             hDiv = (wDiv * 9) / 16,
             wM = wDiv,
             hM = hDiv,
@@ -1323,16 +1406,15 @@ var $eXePuzzle = {
 
     nextPuzzle: function (instance) {
         const mOptions = $eXePuzzle.options[instance];
-
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $eXePuzzle.stopAllSounds(instance);
 
         mOptions.active++;
         if (mOptions.active < mOptions.puzzlesGame.length) {
             $eXePuzzle.showPuzzle(mOptions.active, instance);
-            setTimeout(function(){
+            setTimeout(function () {
                 $eXePuzzle.resizePuzzlePieces(instance);
-            },300)
-           
+            }, 300)
+
         } else {
             $eXePuzzle.gameOver(1, instance);
         }
@@ -1531,7 +1613,7 @@ var $eXePuzzle = {
 
         clearInterval(mOptions.counterClock);
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $eXePuzzle.stopAllSounds(instance);
         $(`#pzlCubierta-${instance}`).show();
         $eXePuzzle.showScoreGame(type, instance);
         $eXePuzzle.saveEvaluation(instance);

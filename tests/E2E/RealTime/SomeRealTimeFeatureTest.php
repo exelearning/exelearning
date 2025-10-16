@@ -3,38 +3,32 @@ declare(strict_types=1);
 
 namespace App\Tests\E2E\RealTime;
 
-use Symfony\Component\Panther\PantherTestCase;
+use App\Tests\E2E\Support\BaseE2ETestCase;
+use App\Tests\E2E\Support\RealTimeCollaborationTrait;
+use App\Tests\E2E\Support\Console;
 
 /**
- * Example test that uses two real-time clients.
+ * Example real-time test aligned with the new BaseE2ETestCase.
  */
-class SomeRealTimeFeatureTest extends ExelearningRealTimeE2EBase
+final class SomeRealTimeFeatureTest extends BaseE2ETestCase
 {
+    use RealTimeCollaborationTrait;
+
     public function testTwoClientsSeeSameDocument(): void
     {
+        $a = $this->openWorkareaInNewBrowser('A');
+        $b = $this->openWorkareaInNewBrowser('B');
 
-        // $this->markTestSkipped('disabled until we release the new test sysstem');
-
-
-        // 1) Create both browsers and log them in
-        $this->createRealTimeClients();
-
-        // 2) Main client navigates somewhere
-        $this->mainClient->request('GET', '/workarea');
-
-        // 3) Possibly retrieve a share URL
-        $shareUrl = $this->getMainShareUrl();
+        $shareUrl = $this->getMainShareUrl($a);
         $this->assertNotEmpty($shareUrl, 'Expected a share URL from main client.');
+        $b->request('GET', $shareUrl);
 
-        // 4) Secondary client visits the same URL
-        $this->secondaryClient->request('GET', $shareUrl);
+        $a->getWebDriver()->navigate()->refresh();
+        $this->assertSelectorExistsIn($a, '#exe-concurrent-users[num="2"]');
+        $this->assertSelectorExistsIn($b, '#exe-concurrent-users[num="2"]');
 
-        // 5) Wait for real-time elements in the secondary client
-        //    NOTE: The "assertSelectorTextContains" runs in the main client,
-        //    so if you want to check a secondary client’s DOM, call $this->secondaryClient->waitFor()...
-        // $this->secondaryClient->waitFor('.some-realtime-indicator');
-
-        // // 6) Switch to main client (the default context) and verify
-        // $this->assertSelectorTextContains('.some-realtime-element', 'Synchronized');
+        // Final check for any browser console errors in both clients.
+        Console::assertNoBrowserErrors($a);
+        Console::assertNoBrowserErrors($b);
     }
 }

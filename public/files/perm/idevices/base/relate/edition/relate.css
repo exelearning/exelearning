@@ -3,16 +3,21 @@
 }
 
 
-#relateQIdeviceForm input[type="color"] ,
+#relateQIdeviceForm input[type="color"],
 #relateQIdeviceForm input[type="button"] {
-    margin-right: 0 !important;
+	margin-right: 0 !important;
 }
+
 #relateQIdeviceForm input[type="color"] {
-    padding: .2rem !important;
-    height: 2rem !important;
-    width: 3.5rm !important;
+	padding: .2rem !important;
+	height: 2rem !important;
+	width: 3rem !important;
 }
-  
+
+#relateQIdeviceForm #rclEPercentajeCards {
+	width: 9.5ch !important;
+	max-width: 9.5ch !important;
+}
 
 #relateQIdeviceForm input[type="radio"],
 #relateQIdeviceForm input[type="checkbox"],
@@ -456,8 +461,8 @@
 
 .RLC-NumberCard {
 	text-align: center;
-    vertical-align: middle;
-    width: 3em;
+	vertical-align: middle;
+	width: 3em;
 }
 
 .RLC-ECoord {
@@ -466,39 +471,39 @@
 
 
 #relateQIdeviceFormTab3 p:first-child {
-    margin-top: 0;
+	margin-top: 0;
 }
 
 #relateQIdeviceFormTab3 {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2%;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2%;
 }
 
 #relateQIdeviceFormTab3>* {
-    flex: 0 0 48%;
+	flex: 0 0 48%;
 }
 
 #relateQIdeviceFormTab3> :first-child {
-    flex: 0 0 100%;
+	flex: 0 0 100%;
 }
 
 
 @media screen and (max-width:720px) {
-    #relateQIdeviceFormTab3>* {
-        flex: 0 0 100%;
-    }
+	#relateQIdeviceFormTab3>* {
+		flex: 0 0 100%;
+	}
 }
 
 #relateQIdeviceForm #relateQIdeviceFormTab3 label {
-    display: block;
-    margin-bottom: .2em;
-    color:  #0BA1A1;
-    font-weight: 500;
+	display: block;
+	margin-bottom: .2em;
+	color: #0BA1A1;
+	font-weight: 500;
 }
 
 #relateQIdeviceForm #relateQIdeviceFormTab3 input {
-    width: 100%;
+	width: 100%;
 }
 
 

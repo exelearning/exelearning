@@ -19,7 +19,7 @@
 	padding: 0;
 	width: 100%;
 	max-width: 1024px;
-	position:relative;
+	position: relative;
 }
 
 .CCGMP-MainContainer * {
@@ -1006,8 +1006,7 @@ div:fullscreen .CCGMP-LinkMinimize {
 		width: 2em;
 	}
 
-	.CCGMP-GameContainer input[type="text"],
-	input.CCGMP-CodeAccessE {
+	.CCGMP-GameContainer input[type="text"] {
 		background: #fdfdfd;
 		border: 1px solid #828282;
 		border-radius: 4px;
@@ -1019,9 +1018,7 @@ div:fullscreen .CCGMP-LinkMinimize {
 	}
 
 	.CCGMP-GameContainer input[type="text"]:active,
-	.CCGMP-GameContainer input[type="text"]:focus,
-	input.CCGMP-CodeAccessE:focus,
-	input.CCGMP-CodeAccessE:active {
+	.CCGMP-GameContainer input[type="text"]:focus {
 		background: #fdfdfd;
 		border: 1px solid #398ee7;
 		border-radius: 4px;

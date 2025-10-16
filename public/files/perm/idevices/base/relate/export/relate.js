@@ -305,8 +305,8 @@ var $eXeRelaciona = {
         $("#rlcMessage-" + instance).hide();
 
         if (typeof mOptions != "undefined" && mOptions.type == 2 && mOptions.time > 0) {
-            $("#rlcPTime-" + instance).show();
-            $("#rlcImgTime-" + instance).show();
+            $(`#rlcPTime-${instance}`).show();
+            $(`#rlcImgTime-${instance}`).show();
             let $node = $('#rlcMainContainer-' + instance);
             let $content = $('#node-content');
             mOptions.counterClock = setInterval(function () {
@@ -331,6 +331,57 @@ var $eXeRelaciona = {
 
 
     },
+    redibujarLineas: function (instance, isMoving) {
+        const mOptions = $eXeRelaciona.options[instance];
+        if (!mOptions) return;
+        mOptions._moving = !!isMoving;
+        $eXeRelaciona.requestRedraw(instance);
+    },
+
+    requestRedraw: function (instance) {
+        const mOptions = $eXeRelaciona.options[instance];
+        if (!mOptions || !mOptions.canvas || !mOptions.contexto) return;
+        if (mOptions._rafPending) return;
+        mOptions._rafPending = true;
+        const raf = (typeof requestAnimationFrame !== 'undefined') ? requestAnimationFrame : function (cb) { return setTimeout(cb, 16); };
+        raf(() => {
+            mOptions._rafPending = false;
+            $eXeRelaciona._drawLines(instance);
+        });
+    },
+
+    _drawLines: function (instance) {
+        const mOptions = $eXeRelaciona.options[instance];
+        if (!mOptions || !mOptions.canvas || !mOptions.contexto) return;
+        const ctx = mOptions.contexto;
+        const canvasRect = mOptions.canvas.getBoundingClientRect();
+        const dpr = mOptions._dpr || Math.max(window.devicePixelRatio || 1, 1);
+        const cssW = (mOptions._cssW) ? mOptions._cssW : (mOptions.canvas.width / dpr);
+        const cssH = (mOptions._cssH) ? mOptions._cssH : (mOptions.canvas.height / dpr);
+        ctx.clearRect(0, 0, cssW, cssH);
+
+        ctx.lineWidth = ($eXeRelaciona.isMobile() ? 3 : 5);
+
+        mOptions.linesMap.forEach((line) => {
+            const startRect = line.start[0].getBoundingClientRect();
+            const endRect = line.end[0].getBoundingClientRect();
+            const x1 = startRect.right - canvasRect.left;
+            const y1 = startRect.top + startRect.height / 2 - canvasRect.top;
+            const x2 = endRect.left - canvasRect.left;
+            const y2 = endRect.top + endRect.height / 2 - canvasRect.top;
+            $eXeRelaciona.dibujaLineaCurva(ctx, x1, y1, x2, y2, line.color);
+        });
+
+        if (mOptions._moving && mOptions.currentWordDiv) {
+            const startRect = mOptions.currentWordDiv[0].getBoundingClientRect();
+            const x1 = startRect.right - canvasRect.left;
+            const y1 = startRect.top + startRect.height / 2 - canvasRect.top;
+            const x2 = (typeof mOptions._tempX === 'number') ? (mOptions._tempX - canvasRect.left) : x1;
+            const y2 = (typeof mOptions._tempY === 'number') ? (mOptions._tempY - canvasRect.top) : y1;
+            $eXeRelaciona.dibujaLineaCurva(ctx, x1, y1, x2, y2, $eXeRelaciona.borderColors.blue);
+        }
+    },
+
 
     createInterfaceCards: function (instance) {
         const path = $eXeRelaciona.idevicePath,
@@ -389,7 +440,7 @@ var $eXeRelaciona = {
                     <div class="RLCP-MessageCodeAccessE" id="rlcMesajeAccesCodeE-${instance}"></div>
                     <div class="RLCP-DataCodeAccessE">
                         <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                        <input type="text" class="RLCP-CodeAccessE" id="rlcCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
+                        <input type="text" class="RLCP-CodeAccessE form-control" id="rlcCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess}">
                         <a href="#" id="rlcCodeAccessButton-${instance}" title="${msgs.msgSubmit}">
                             <strong><span class="sr-av">${msgs.msgSubmit}</span></strong>
                             <div class="exeQuextIcons-Submit RLCP-Activo"></div>
@@ -508,24 +559,29 @@ var $eXeRelaciona = {
 
     rebootCards: function (instance) {
         const mOptions = $eXeRelaciona.options[instance];
-        let keis = [];
-        mOptions.linesMap.forEach((value, key) => {
-            keis.push(key);
-        });
 
-        for (let i = 0; i < keis.length; i++) {
-            $eXeRelaciona.removeLine(keis[i], instance);
-        }
+        const $container = $(`#rlcGameContainer-${instance}`);
+        $container.find(".RLCP-Word, .RLCP-Definition")
+            .removeClass("RLCP-Connected")
+            .removeData("lineindex");
 
         mOptions.linesMap.clear();
-        $eXeRelaciona.createCards(instance)
+        mOptions.currentWordDiv = null;
+        if (mOptions.tempEnd) {
+            mOptions.tempEnd.remove();
+            mOptions.tempEnd = null;
+        }
+
+        $eXeRelaciona.ajustarCanvas(instance);
+        $eXeRelaciona.redibujarLineas(instance, false);
+
+        $eXeRelaciona.createCards(instance);
         $eXeRelaciona.showScoreGame(instance);
+
         if (mOptions.type == 2) {
             mOptions.counter = mOptions.time * 60;
             $eXeRelaciona.startGame(instance);
         }
-
-
     },
 
     checkState: function (instance) {
@@ -581,6 +637,9 @@ var $eXeRelaciona = {
             .off('click', '.Games-SendScore');
 
         $(window).off('unload.eXeRelaciona beforeunload.eXeRelaciona');
+
+        $(document).off("mousemove.eXeRlc" + instance);
+        $(document).off("mouseup.eXeRlc" + instance);
 
         $(`#rlcClueButton-${instance}`).off("click");
         $(`#rlcStartGame-${instance}`).off("click");
@@ -829,7 +888,7 @@ var $eXeRelaciona = {
             }
         });
 
-        $(document).on("mousemove", (e) => {
+        $(document).on("mousemove.eXeRlc" + instance, (e) => {
             if (typeof mOptions == "undefined" || !mOptions.gameStarted || mOptions.gameOver || !mOptions.currentWordDiv || !mOptions.tempEnd) return;
 
             const dx = Math.abs(e.clientX - mOptions.startX),
@@ -841,6 +900,9 @@ var $eXeRelaciona = {
                     top: e.clientY - mOptions.canvasRect.top,
                     left: e.clientX - mOptions.canvasRect.left,
                 });
+                // Guardar coords absolutas para el repintado
+                mOptions._tempX = e.clientX;
+                mOptions._tempY = e.clientY;
 
                 const buffer = 40,
                     scrollSpeed = 10;
@@ -855,7 +917,7 @@ var $eXeRelaciona = {
             }
         });
 
-        $(document).on("mouseup", (e) => {
+        $(document).on("mouseup.eXeRlc" + instance, (e) => {
             e.preventDefault();
             if (typeof mOptions == "undefined" || !mOptions.gameStarted || mOptions.gameOver || !mOptions.currentWordDiv) return;
 
@@ -880,12 +942,15 @@ var $eXeRelaciona = {
                     $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
                 }
             }
-            $eXeRelaciona.redibujarLineas(instance, false);
+            mOptions._moving = false;
+            $eXeRelaciona.requestRedraw(instance);
             isDragging = false;
             if (mOptions.tempEnd) {
                 mOptions.tempEnd.remove();
                 mOptions.tempEnd = null;
             }
+            mOptions._tempX = undefined;
+            mOptions._tempY = undefined;
         });
     },
 
@@ -984,6 +1049,8 @@ var $eXeRelaciona = {
                     top: touch.clientY - mOptions.canvasRect.top,
                     left: touch.clientX - mOptions.canvasRect.left,
                 });
+                mOptions._tempX = touch.clientX;
+                mOptions._tempY = touch.clientY;
                 const buffer = 40,
                     scrollSpeed = 10;
                 if (touch.clientY < buffer) {
@@ -1019,12 +1086,15 @@ var $eXeRelaciona = {
                     }
                 }
             }
-            $eXeRelaciona.redibujarLineas(instance, false);
+            mOptions._moving = false;
+            $eXeRelaciona.requestRedraw(instance);
             isDragging = false;
             if (mOptions.tempEnd) {
                 mOptions.tempEnd.remove();
                 mOptions.tempEnd = null;
             }
+            mOptions._tempX = undefined;
+            mOptions._tempY = undefined;
         };
 
         const containerGame = document.querySelector(`#rlcGameContainer-${instance}`);
@@ -1134,43 +1204,32 @@ var $eXeRelaciona = {
             $contenedor = $(`#rlcContainerGame-${instance}`),
             $canvas = $(`#rlcCanvas-${instance}`);
 
-        $canvas.attr("width", $contenedor.width());
-        $canvas.attr("height", $contenedor.height());
+        const cssW = $contenedor.width();
+        const cssH = $contenedor.height();
+        const dpr = Math.max(window.devicePixelRatio || 1, 1);
+        mOptions._dpr = dpr;
+        mOptions._cssW = cssW;
+        mOptions._cssH = cssH;
+
+        $canvas.attr("width", Math.round(cssW * dpr));
+        $canvas.attr("height", Math.round(cssH * dpr));
+        $canvas.css({ width: cssW + 'px', height: cssH + 'px' });
+
         mOptions.canvas = $canvas[0];
 
         if (mOptions.canvas) {
             mOptions.contexto = mOptions.canvas.getContext("2d");
+            mOptions.contexto.setTransform(dpr, 0, 0, dpr, 0, 0);
             mOptions.canvasRect = mOptions.canvas.getBoundingClientRect();
-            $eXeRelaciona.redibujarLineas(instance, false);
+            $eXeRelaciona.requestRedraw(instance);
         }
     },
 
     redibujarLineas: function (instance, isMoving) {
         const mOptions = $eXeRelaciona.options[instance];
-        if (!mOptions || !mOptions.canvas) return;
-        const canvasRect = mOptions.canvas.getBoundingClientRect();
-
-        mOptions.contexto.clearRect(0, 0, mOptions.canvas.width, mOptions.canvas.height);
-
-        mOptions.linesMap.forEach((line) => {
-            const startRect = line.start[0].getBoundingClientRect(),
-                endRect = line.end[0].getBoundingClientRect(),
-                x1 = startRect.right - canvasRect.left,
-                y1 = startRect.top + startRect.height / 2 - canvasRect.top,
-                x2 = endRect.left - canvasRect.left,
-                y2 = endRect.top + endRect.height / 2 - canvasRect.top;
-            $eXeRelaciona.dibujaLineaCurva(mOptions.contexto, x1, y1, x2, y2, line.color);
-        });
-
-        if (isMoving && mOptions.currentWordDiv && mOptions.tempEnd) {
-            const startRect = mOptions.currentWordDiv[0].getBoundingClientRect(),
-                endRect = mOptions.tempEnd[0].getBoundingClientRect(),
-                x1 = startRect.right - canvasRect.left,
-                y1 = startRect.top + startRect.height / 2 - canvasRect.top,
-                x2 = endRect.left - canvasRect.left,
-                y2 = endRect.top + endRect.height / 2 - canvasRect.top;
-            $eXeRelaciona.dibujaLineaCurva(mOptions.contexto, x1, y1, x2, y2, $eXeRelaciona.borderColors.blue);
-        }
+        if (!mOptions) return;
+        mOptions._moving = !!isMoving;
+        $eXeRelaciona.requestRedraw(instance);
     },
 
     dibujaLineaCurva: function (contexto, x0, y0, x1, y1, color) {
@@ -1186,7 +1245,6 @@ var $eXeRelaciona = {
 
         contexto.beginPath();
         contexto.strokeStyle = color;
-        contexto.lineWidth = $eXeRelaciona.isMobile() ? 3 : 5;
         contexto.moveTo(p0.x, p0.y);
         contexto.bezierCurveTo(pc1.x, pc1.y, pc2.x, pc2.y, p1.x, p1.y);
         contexto.stroke();
