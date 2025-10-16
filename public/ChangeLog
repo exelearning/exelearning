@@ -11,6 +11,7 @@
 - Refactored E2E tests with factories, real-time improvements, and cleaner output
 - Restricted guest login endpoint to authorized sources to prevent abuse
 - New `make css` and `make css-dev` commands for building production and development CSS
+- New "Base" style colors
 - iDevices:
   - New icons and styling
   - Checklist & Progress Report: Enabled PDF report download (with PNG fallback)
