@@ -428,10 +428,7 @@ export default class NavbarFile {
             window.eXeLearning?.symfony?.basePath !== undefined
                 ? window.eXeLearning.symfony.basePath
                 : '';
-        const trimmedBasePath = String(basePathRaw).replace(
-            /^\/+|\/+$/g,
-            ''
-        );
+        const trimmedBasePath = String(basePathRaw).replace(/^\/+|\/+$/g, '');
         const sanitizedBasePath = trimmedBasePath ? `/${trimmedBasePath}` : '';
         const safeProjectId = encodeURIComponent(projectId);
         const endpointPath = `${sanitizedBasePath}/project/${safeProjectId}/export/single-page-preview`;

@@ -538,6 +538,7 @@ label[for='teacher-mode-toggler']{font-size:.9em;color:#777;position:relative;to
     .exe-web-site #siteFooter,
     .exe-web-site main.page{padding-left: 0;padding-right: 0}
     .exe-web-site main.page{padding-top:1em}
+
     body.exe-single-page{
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
