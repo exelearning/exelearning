@@ -11935,31 +11935,31 @@
       </trans-unit>
       <trans-unit id="HqMcS6o" resname="AI">
         <source>AI</source>
-        <target></target>
+        <target>~AI</target>
       </trans-unit>
       <trans-unit id="St1Ka3l" resname="Accent marks">
         <source>Accent marks</source>
-        <target></target>
+        <target>~Supersignoj</target>
       </trans-unit>
       <trans-unit id="y.iaDMv" resname="Games with local videos or audios can't be exported">
         <source>Games with local videos or audios can't be exported</source>
-        <target></target>
+        <target>~Ludoj kun lokaj videoj aŭ sonoj ne povas esti eksportitaj</target>
       </trans-unit>
       <trans-unit id="BrjnoAt" resname="That second is not part of the video. Please check the video duration.">
         <source>That second is not part of the video. Please check the video duration.</source>
-        <target></target>
+        <target>~Tiu sekundo ne estas parto de la video. Bonvolu kontroli la daŭron de la video.</target>
       </trans-unit>
       <trans-unit id="VcWni3Z" resname="Write the message to be displayed when passing the game">
         <source>Write the message to be displayed when passing the game</source>
-        <target></target>
+        <target>~Skribu la mesaĝon kiu estos montrata kiam la ludo estos trapasita</target>
       </trans-unit>
       <trans-unit id="ojpSm9R" resname="Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)">
         <source>Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)</source>
-        <target></target>
+        <target>~Uzu YouTube URL aŭ elektu dosieron (mp4, ogg, webm, mp3, wav)</target>
       </trans-unit>
       <trans-unit id="61_1EWE" resname="You must indicate an image, a text or/and an audio for each card">
         <source>You must indicate an image, a text or/and an audio for each card</source>
-        <target></target>
+        <target>~Vi devas indiki bildon, tekston kaj/aŭ sonon por ĉiu karto</target>
       </trans-unit>
     </body>
   </file>

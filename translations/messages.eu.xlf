@@ -11935,31 +11935,31 @@
       </trans-unit>
       <trans-unit id="HqMcS6o" resname="AI">
         <source>AI</source>
-        <target></target>
+        <target>~IA</target>
       </trans-unit>
       <trans-unit id="St1Ka3l" resname="Accent marks">
         <source>Accent marks</source>
-        <target></target>
+        <target>~Azentuak</target>
       </trans-unit>
       <trans-unit id="y.iaDMv" resname="Games with local videos or audios can't be exported">
         <source>Games with local videos or audios can't be exported</source>
-        <target></target>
+        <target>~Bideo edo audio lokalekin dituzten jokoak ezin dira esportatu</target>
       </trans-unit>
       <trans-unit id="BrjnoAt" resname="That second is not part of the video. Please check the video duration.">
         <source>That second is not part of the video. Please check the video duration.</source>
-        <target></target>
+        <target>~Segundo hori ez da bideoaren parte. Mesedez, egiaztatu bideoaren iraupena.</target>
       </trans-unit>
       <trans-unit id="VcWni3Z" resname="Write the message to be displayed when passing the game">
         <source>Write the message to be displayed when passing the game</source>
-        <target></target>
+        <target>~Idatzi jokoa gainditzean erakutsiko den mezua</target>
       </trans-unit>
       <trans-unit id="ojpSm9R" resname="Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)">
         <source>Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)</source>
-        <target></target>
+        <target>~Erabili YouTube URL bat edo hautatu fitxategi bat (mp4, ogg, webm, mp3, wav)</target>
       </trans-unit>
       <trans-unit id="61_1EWE" resname="You must indicate an image, a text or/and an audio for each card">
         <source>You must indicate an image, a text or/and an audio for each card</source>
-        <target></target>
+        <target>~Irudi bat, testu bat eta/edo audio bat adierazi behar duzu txartel bakoitzarentzat</target>
       </trans-unit>
     </body>
   </file>

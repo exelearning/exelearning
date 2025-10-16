@@ -11935,31 +11935,31 @@
       </trans-unit>
       <trans-unit id="HqMcS6o" resname="AI">
         <source>AI</source>
-        <target></target>
+        <target>~IA</target>
       </trans-unit>
       <trans-unit id="St1Ka3l" resname="Accent marks">
         <source>Accent marks</source>
-        <target></target>
+        <target>~Accents</target>
       </trans-unit>
       <trans-unit id="y.iaDMv" resname="Games with local videos or audios can't be exported">
         <source>Games with local videos or audios can't be exported</source>
-        <target></target>
+        <target>~Els jocs amb vídeos o àudios locals no es poden exportar</target>
       </trans-unit>
       <trans-unit id="BrjnoAt" resname="That second is not part of the video. Please check the video duration.">
         <source>That second is not part of the video. Please check the video duration.</source>
-        <target></target>
+        <target>~Aquest segon no forma part del vídeo. Si us plau, comprova la durada del vídeo.</target>
       </trans-unit>
       <trans-unit id="VcWni3Z" resname="Write the message to be displayed when passing the game">
         <source>Write the message to be displayed when passing the game</source>
-        <target></target>
+        <target>~Escriu el missatge que es mostrarà en superar el joc</target>
       </trans-unit>
       <trans-unit id="ojpSm9R" resname="Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)">
         <source>Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)</source>
-        <target></target>
+        <target>~Utilitza una URL de YouTube o selecciona un fitxer (mp4, ogg, webm, mp3, wav)</target>
       </trans-unit>
       <trans-unit id="61_1EWE" resname="You must indicate an image, a text or/and an audio for each card">
         <source>You must indicate an image, a text or/and an audio for each card</source>
-        <target></target>
+        <target>~Has d’indicar una imatge, un text i/o un àudio per a cada targeta</target>
       </trans-unit>
     </body>
   </file>
