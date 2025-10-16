@@ -471,7 +471,7 @@ var $exeDevicesEdition = {
                         <div class="exe-form-tab" title="${_('AI')}">
                             <p class="exe-block-info">${msgAddText}</p>
                             <p style="display:none"><input type="button" class="btn btn-primary ms-2"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_('Add questions')}" /></p>
-                            <div class="bg-white rounded border w-100 position-relative" style="max-width: 1400px;" id="eXeEAddArea">
+                            <div class="bg-white rounded w-100 position-relative" style="max-width: 1400px;" id="eXeEAddArea">
                                 <ul class="nav nav-tabs">
                                     <li class="nav-item">
                                         <a id="eXeETabPrompt" class="nav-link bg-light border-end active" href="#">
