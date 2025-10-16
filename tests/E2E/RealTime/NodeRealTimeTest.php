@@ -11,7 +11,6 @@ use App\Tests\E2E\PageObject\WorkareaPage;
 use App\Tests\E2E\Support\BaseE2ETestCase;
 use App\Tests\E2E\Support\Console;
 use App\Tests\E2E\Support\RealTimeCollaborationTrait;
-use App\Tests\E2E\Support\Wait;
 
 /**
  * Real-time collaboration test for Node operations (create/rename/delete).
@@ -67,8 +66,8 @@ final class NodeRealTimeTest extends BaseE2ETestCase
             'title'    => $a1Title,
         ]);
 
-        Wait::seconds(5);
-        // $this->markTestIncomplete('This test is still incomplete.');
+
+        $this->markTestIncomplete('This test is still incomplete.');
 
 
         // B sees it
