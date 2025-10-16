@@ -471,7 +471,7 @@ class App {
                         <li>Falta Archivo - Imprimir.</li>
                         <li>No se puede exportar o importar una página.</li>
                         <li>Si estás editando un iDevice no puedes cambiar su título.</li>
-                        <li>La exportación SCORM 2004 no funciona bien.</li>
+                        <li>No hay opción para exportar en formato SCORM 2004.</li>
                     </ul>
                     <p><strong>Si encuentras algo más:</strong> Ayuda → Informar de un fallo</p>
                     <p>Muchas gracias.</p>

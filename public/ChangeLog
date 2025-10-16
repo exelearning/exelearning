@@ -40,6 +40,10 @@
 - rector/rector: 2.1.7 → 2.2.3
 - symfony/mailer: 7.3.3 → 7.3.4
 
+### Removed
+
+- SCORM 2004 export (temporarily)
+
 ---
 
 ## v3.0.0-beta7 – 2025-10-12
