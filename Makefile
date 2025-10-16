@@ -532,7 +532,10 @@ pull-vendor: check-docker check-env upd
 
 # Prevent MSYS path conversion breaking Docker paths on Windows Git Bash
 # (same approach used elsewhere in this Makefile for docker compose commands)
-SASS_DOCKER = env MSYS_NO_PATHCONV=1 docker run --rm -v $(PWD):/app -w /app node:24-alpine sh -lc
+SASS_DOCKER = env MSYS_NO_PATHCONV=1 docker run --rm \
+	-v $(PWD)/assets:/app/assets \
+	-v $(PWD)/public/style/workarea:/app/public/style/workarea \
+	-w /app node:24-alpine sh -lc
 
 css:
 	@echo "Generating CSS (prod)..."
@@ -543,7 +546,7 @@ css:
 
 css-dev:
 	@echo "Generating CSS (dev)..."
-	@$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
+	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
 	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
 	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
 	@echo "CSS built (dev)."
