@@ -9,9 +9,7 @@
 }
 
 
-
-
-#vquextQEIdeviceForm #vquextQEIdeviceForm
+/* Eliminado selector inválido duplicado que rompía el parseo: #vquextQEIdeviceForm #vquextQEIdeviceForm */
 
 /*Panel preguntas */
 .VDQXTE-EPanel {
@@ -250,7 +248,7 @@
     justify-content: center;
     position: absolute;
     right: 0;
-    top: .3em;
+    top: -1.5em;
     width: 3em;
     z-index: 19;
 }
@@ -447,7 +445,7 @@ input#gameQEScoreQuestion {
     padding: 0;
 }
 
-#main .exe-form-tabs li {
+.exe-form-tabs li {
     display: inline;
     list-style: none;
     list-style-image: none;

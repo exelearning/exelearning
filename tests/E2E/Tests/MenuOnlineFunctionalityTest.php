@@ -1,12 +1,15 @@
 <?php
 declare(strict_types=1);
 
-namespace App\Tests\E2E;
+namespace App\Tests\E2E\Tests;
 
 use Facebook\WebDriver\WebDriverBy;
 use Symfony\Component\Panther\Client;
 
-class MenuOnlineFunctionalityTest extends ExelearningE2EBase
+use App\Tests\E2E\Support\BaseE2ETestCase;
+use App\Tests\E2E\Support\Console;
+
+final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
 {
     /**
      * Inject lightweight stubs to avoid real downloads and heavy network.
@@ -58,7 +61,7 @@ class MenuOnlineFunctionalityTest extends ExelearningE2EBase
 
     public function testOnlineSaveCallsBackendNotElectron(): void
     {
-        $client = $this->login();
+        $client = $this->login($this->makeClient());
         $this->injectOnlineStubs($client);
 
         // Click File -> Save (online)
@@ -69,11 +72,14 @@ class MenuOnlineFunctionalityTest extends ExelearningE2EBase
         // Assert backend save stub was hit; no electron API expected in online tests
         $saveCount = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.saveOde) || 0;');
         $this->assertGreaterThanOrEqual(1, $saveCount);
+
+        // Check browser console for errors
+        Console::assertNoBrowserErrors($client);        
     }
 
     public function testOnlineExportHtml5TriggersApiAndBrowserDownload(): void
     {
-        $client = $this->login();
+        $client = $this->login($this->makeClient());
         $this->injectOnlineStubs($client);
 
         // Click File -> Download as... -> Website (online)
@@ -86,11 +92,14 @@ class MenuOnlineFunctionalityTest extends ExelearningE2EBase
         $downloadCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.downloadLink) || 0;');
         $this->assertGreaterThanOrEqual(1, $exportCalls, 'Export API should be called');
         $this->assertGreaterThanOrEqual(1, $downloadCalls, 'Browser download should be triggered');
+
+        // Check browser console for errors
+        Console::assertNoBrowserErrors($client);        
     }
 
     public function testOnlineDownloadProjectTriggersApiAndBrowserDownload(): void
     {
-        $client = $this->login();
+        $client = $this->login($this->makeClient());
         $this->injectOnlineStubs($client);
 
         // Click File -> Download as... -> eXeLearning content (.elp)
@@ -103,12 +112,15 @@ class MenuOnlineFunctionalityTest extends ExelearningE2EBase
         $downloadCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.downloadLink) || 0;');
         $this->assertGreaterThanOrEqual(1, $exportCalls, 'Export API should be called');
         $this->assertGreaterThanOrEqual(1, $downloadCalls, 'Browser download should be triggered');
+
+        // Check browser console for errors
+        Console::assertNoBrowserErrors($client);        
     }
 
 
     public function testExportToFolderOptionNotVisibleOnline(): void
     {
-        $client = $this->login();
+        $client = $this->login($this->makeClient());
         $this->injectOnlineStubs($client);
 
         $client->waitForVisibility('#dropdownFile', 5);
@@ -116,5 +128,8 @@ class MenuOnlineFunctionalityTest extends ExelearningE2EBase
         // Ensure the offline-only option is not present
         $present = (bool) $client->executeScript('return !!document.getElementById("navbar-button-exportas-html5-folder");');
         $this->assertFalse($present, 'Export to Folder option must not appear online');
+
+        // Check browser console for errors
+        Console::assertNoBrowserErrors($client);        
     }
 }

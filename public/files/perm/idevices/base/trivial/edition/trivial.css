@@ -16,6 +16,7 @@
     cursor: pointer;
 }
 
+
 #gameQEIdeviceForm input[type=number] {
     max-width: 8ch;
 }
@@ -105,6 +106,9 @@
     margin-left: .5em
 }
 
+.TRVLE-EOptionDiv label{
+    margin-right: 2px;
+}
 /* Ayuda */
 .TRVLE-TypeGameHelp {
     display: none;
@@ -484,7 +488,7 @@
 }
 
 #gameQEIdeviceForm .TRVLE-EOptionDiv label {
-    margin-right: 0.2em;
+    margin-right: 3px !important;
 }
 
 .TRVLE-ESolutionSelect input[type=number],

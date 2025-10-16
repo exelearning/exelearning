@@ -10,9 +10,13 @@
 }
 
 #beforeAfterQIdeviceForm input[type="button"] {
-    margin-right: 0 !important;
+	margin-right: 0 !important;
 }
 
+#beforeAfterQIdeviceForm #bfafEPosition {
+	width: 9.5ch !important;
+	max-width: 9.5ch !important;
+}
 
 .BFAFE-EOptionsMedia {
 	display: flex;

@@ -351,6 +351,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
@@ -391,10 +392,13 @@ var $exeDevice = {
                     </div>
                 </div>
                <span class="Descubre-ETitleText" id="descubreETitleText-${i}">${_('Text')}</span>
-               <div class="Descubre-EInputImage  mb-3" id="descubreEInputText-${i}">
-                        <label for="descubreEText-${i}" class="sr-av">${_('Text')}</label><input id="descubreEText-${i}" type="text" class="form-control" />
-                        <label for="descubreEColor-${i}">${_('Color')}: </label><input type="color" id="descubreEColor-${i}" class="form-control form-control-color" name="descubreEColor-${i}" value="#000000">
-                        <label for="descubreEBackColor-${i}">${_('Background')}: </label><input type="color" id="descubreEBackColor-${i}" class="form-control form-control-color" name="descubreEBackColor-${i}" value="#ffffff">
+               <div class="Descubre-EInputImage gap-2 mb-3" id="descubreEInputText-${i}">
+                        <label for="descubreEText-${i}" class="sr-av">${_('Text')}</label>
+                        <input id="descubreEText-${i}" type="text" class="form-control me-0" />
+                        <label for="descubreEColor-${i}">${_('Color')}: </label>
+                        <input type="color" id="descubreEColor-${i}" class="form-control form-control-color" name="descubreEColor-${i}" value="#000000">
+                        <label for="descubreEBackColor-${i}">${_('Background')}: </label>
+                        <input type="color" id="descubreEBackColor-${i}" class="form-control form-control-color" name="descubreEBackColor-${i}" value="#ffffff">
                 </div>
                <span class="Descubre-ETitleImage" id="descubreETitleImage-${i}">${_('Image')}</span>
                <div class="Descubre-EInputImage mb-3 gap-2" id="descubreEInputImage-${i}">
@@ -406,7 +410,7 @@ var $exeDevice = {
                <div class="Descubre-ECoord">
                        <label for="descubreEXImage-${i}">X:</label>
                            <input id="descubreEXImage-${i}" type="text" value="0" class="form-control" />
-                       <label for="descubreEXImage-${i}">Y:</label>
+                       <label for="descubreEYImage-${i}">Y:</label>
                            <input id="descubreEYImage-${i}" type="text" value="0" class="form-control" />
                </div>
                <div class="Descubre-EAuthorAlt  mb-3" id="descubreEAuthorAlt-${i}">

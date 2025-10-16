@@ -13,10 +13,15 @@
     margin-right: 0 !important;
 }
 
+#puzzleIdeviceForm #puzzleEPercentajeQuestions,
+#puzzleIdeviceForm #puzzleEPercentajeFB{
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
+
 #puzzleIdeviceForm .exe-form-tab {
     margin-right: 3px !important;
 }
-
 
 #puzzleIdeviceForm .PZLE-EPanel {
     padding: 0;

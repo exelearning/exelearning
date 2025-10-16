@@ -901,26 +901,7 @@ div:fullscreen .QXTP-LinkMinimize {
         width: 2em;
     }
 
-    .QXTP-GameContainer input[type="text"],
-    input.QXTP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.5em;
-        margin: 0 0.3em;
-        padding: 0.4em 0.25em;
-    }
-
-    .QXTP-GameContainer input[type="text"]:active,
-    .QXTP-GameContainer input[type="text"]:focus,
-    input.QXTP-CodeAccessE:focus,
-    input.QXTP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
+ 
 }
 
 @media screen and (max-width:340px) {

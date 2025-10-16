@@ -1888,30 +1888,6 @@ div:fullscreen .MQP-LinkCloseDetail {
         width: 2em;
     }
 
-    .MQP-MainContainer input[type="text"],
-    input.MQP-EdReply,
-    input.MQP-CodeAccessE {
-        background: #fdfdfd;
-        border: 1px solid #828282;
-        border-radius: 4px;
-        box-sizing: border-box;
-        display: inline-block;
-        line-height: 1.3em;
-        margin: 0 0.3em;
-        padding: 0.2em 0.25em;
-        font-size: 1em;
-    }
-
-    .MQP-MainContainer input[type="text"]:active,
-    .MQP-MainContainer input[type="text"]:focus,
-    input.MQP-EdReply:focus,
-    input.MQP-EdReply:active,
-    input.MQP-CodeAccessE:focus,
-    input.MQP-CodeAccessE:active {
-        background: #fdfdfd;
-        border: 1px solid #398ee7;
-        border-radius: 4px;
-    }
 
     .MQP-MainContainer .exeQuextIcons-Submit {
         height: 1.7em;

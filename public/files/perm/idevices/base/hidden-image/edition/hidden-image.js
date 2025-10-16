@@ -438,11 +438,11 @@ var $exeDevice = {
                                     <div class="mb-3 d-flex flex-nowrap align-items-center gap-2">
                                         <div class="d-flex flex-nowrap align-items-center gap-1">
                                             <label for="hiETimeQuestion" class="m-0">${_('Time (seconds)')}:</label>
-                                            <input type="number" name="hiETimeQuestion" id="hiETimeQuestion" value="30" min="0" max="900" class="form-control" style="width:90px" />
+                                            <input type="number" name="hiETimeQuestion" id="hiETimeQuestion" value="30" min="0" max="99" class="form-control" style="width:90px" />
                                         </div>
                                         <div class="d-flex flex-nowrap align-items-center gap-3">
-                                            <label for="hiETimeQuestion" class="m-0">${_('Time (seconds)')}:</label>
-                                            <input type="number" name="hiETimeQuestion" id="hiETimeQuestion" value="30" min="0" max="900" class="form-control" style="width:90px" />
+                                            <label for="hiEAttempts" class="m-0">${_('Attempts')}:</label>
+                                            <input type="number" name="hiEAttempts" id="hiEAttempts" value="4" min="1" max="30" class="form-control" style="width:90px" />
                                         </div>
                                     </div>
                                     <div class="mb-3 d-flex flex-nowrap align-items-center gap-2">
@@ -472,7 +472,7 @@ var $exeDevice = {
                                             </div>
                                         </div>
                                     </div>
-                                    <div id="hiEScoreQuestionDiv" class="HIE-ScoreQuestionDiv mb-3 d-flex flex-nowrap align-items-center gap-2">
+                                    <div id="hiEScoreQuestionDiv" class="HIE-ScoreQuestionDiv mb-3 d-none flex-nowrap align-items-center gap-2">
                                         <label for="hiEScoreQuestion" class="m-0">${_('Score')}:</label>
                                         <input type="number" name="hiEScoreQuestion" id="hiEScoreQuestion" value="1" min="0" max="100" step="0.05" class="form-control" style="width:90px" />
                                     </div>
@@ -483,11 +483,11 @@ var $exeDevice = {
                                         <a href="#" id="hiEPlayImage" class="HIE-NavigationButton HIE-PlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="HIE-ButtonImage " /></a>
                                     </div>
                                     <div class="HIE-AuthorAlt mb-3 d-flex flex-nowrap align-items-center gap-2" id="hiEAuthorAlt">
-                                        <div id="hiEInputAuthor" class="d-flex flex-nowrap align-items-center gap-2 w-50">
+                                        <div id="hiEInputAuthor" class="w-50">
                                             <label for="hiEAuthor" class="m-0">${_('Authorship')}</label>
                                             <input id="hiEAuthor" type="text" class="form-control w-100" />
                                         </div>
-                                        <div id="hiEInputAlt" class="d-flex flex-nowrap align-items-center gap-2 w-50">
+                                        <div id="hiEInputAlt" class="w-50">
                                             <label for="hiEAlt" class="m-0">${_('Alternative text')}</label>
                                             <input id="hiEAlt" type="text" class="form-control w-100" />
                                         </div>
@@ -743,10 +743,6 @@ var $exeDevice = {
                     : question.msgError;
         });
 
-        if (game.customScore) {
-            $('#hiEScoreQuestionDiv').show();
-        }
-
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
@@ -898,6 +894,7 @@ var $exeDevice = {
             message = msgs.msgEURLValid;
         }
 
+        
         if (message.length === 0) {
             $exeDevice.questionsGame[$exeDevice.active] = p;
             message = true;
@@ -1135,10 +1132,17 @@ var $exeDevice = {
             $('#hiETimeShowSolution').prop('disabled', !marcado);
         });
 
-        $('#hiECustomScore').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#hiEScoreQuestionDiv').toggle(marcado);
-        });
+        $('#hiEAttempts')
+            .on('keyup', function () {
+                this.value = this.value.replace(/\D/g, '').substring(0, 2);
+            })
+            .on('focusout', function () {
+                let value = this.value.trim() === '' ? 4 : parseInt(this.value, 10);
+                value = Math.max(1, Math.min(value, 20));
+                this.value = value;
+            });
+
+
 
         $('#hiEURLImage').on('change', function () {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],

@@ -3,12 +3,13 @@ declare(strict_types=1);
 
 namespace App\Tests\E2E\Offline;
 
-use App\Tests\E2E\ExelearningE2EBase;
-use Facebook\WebDriver\WebDriverBy;
+use App\Tests\E2E\Support\BaseE2ETestCase;
 use Symfony\Component\Panther\Client;
 
-class MenuOfflineExportsPackagesTest extends ExelearningE2EBase
+class MenuOfflineExportsPackagesTest extends BaseE2ETestCase
 {
+    use OfflineMenuActionsTrait;
+
     private function inject(Client $client): void
     {
         $mockApiPath = __DIR__ . '/../../../public/app/workarea/mock-electron-api.js';
@@ -66,7 +67,7 @@ class MenuOfflineExportsPackagesTest extends ExelearningE2EBase
 
     private function client(): Client
     {
-        $c = $this->createTestClient();
+        $c = $this->makeClient();
         $c->request('GET', '/workarea');
         $c->waitForInvisibility('#load-screen-main', 30);
         $this->inject($c);
@@ -87,51 +88,40 @@ class MenuOfflineExportsPackagesTest extends ExelearningE2EBase
     public function testExportAsScorm12OfflineUsesElectronSaveAs(): void
     {
         $client = $this->client();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAsOffline'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-exportas-scorm12'))->click();
+        $this->openOfflineExportMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-exportas-scorm12');
         $this->waitSaveAs($client);
     }
 
     public function testExportAsScorm2004OfflineUsesElectronSaveAs(): void
     {
         $client = $this->client();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAsOffline'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-exportas-scorm2004'))->click();
+        $this->openOfflineExportMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-exportas-scorm2004');
         $this->waitSaveAs($client);
     }
 
     public function testExportAsImsOfflineUsesElectronSaveAs(): void
     {
         $client = $this->client();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAsOffline'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-exportas-ims'))->click();
+        $this->openOfflineExportMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-exportas-ims');
         $this->waitSaveAs($client);
     }
 
     public function testExportAsEpub3OfflineUsesElectronSaveAs(): void
     {
         $client = $this->client();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAsOffline'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-exportas-epub3'))->click();
+        $this->openOfflineExportMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-exportas-epub3');
         $this->waitSaveAs($client);
     }
 
     public function testExportAsXmlOfflineUsesElectronSaveAs(): void
     {
         $client = $this->client();
-        $client->waitForVisibility('#dropdownFile', 5);
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAsOffline'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-exportas-xml-properties'))->click();
+        $this->openOfflineExportMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-exportas-xml-properties');
         $this->waitSaveAs($client);
     }
 }
-

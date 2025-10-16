@@ -1268,10 +1268,10 @@ var $exeDevice = {
                                     </span>
                                     <label class="toggle-label" for="seleccionaEShowSolution">${_('Show solutions')}.</label>
                                 </div>
-                                <div class="d-flex align-items-center gap-2">${_('Show solution time (seconds)')};</label>
-                                    <label for="seleccionaETimeShowSolution" class="mb-0 d-flex align-items-center gap-2">
+                                <label for="seleccionaETimeShowSolution" class="mb-0 d-flex align-items-center gap-2">
+                                    <span>${_('Show solution time (seconds)')}</span>
                                     <input type="number" name="seleccionaETimeShowSolution" id="seleccionaETimeShowSolution" value="3" min="1" max="9" class="form-control" />
-                                </div>
+                                </label>
                             </div>
                             <div class="toggle-item mb-3" data-target="seleccionaEAudioFeedBack">
                                 <span class="toggle-control">
@@ -1342,7 +1342,7 @@ var $exeDevice = {
                                     <span>${_('&percnt; right to see the feedback')}</span>
                                 </label>
                             </div>
-                            <div id="seleccionaEFeedbackP" class="SLCNE-EFeedbackP mb-3"">
+                            <div id="seleccionaEFeedbackP" class="SLCNE-EFeedbackP mb-3">
                                 <textarea id="seleccionaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
                             </div>
                             <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
@@ -1480,8 +1480,9 @@ var $exeDevice = {
                                             </div>
                                         </span>
                                     </div>
-                                    <div id="seleccionaEScoreQuestionDiv" class="SLCNE-ScoreQuestionDiv mb-3">
-                                        <label for="seleccionaEScoreQuestion">${_('Score')}:</label><input type="number" name="seleccionaEScoreQuestion" id="seleccionaEScoreQuestion" value="1" min="0" max="100" step="0.05"/>
+                                    <div id="seleccionaEScoreQuestionDiv" class="SLCNE-ScoreQuestionDiv align-items-center gap-2 mb-3 d-none">
+                                        <label for="seleccionaEScoreQuestion">${_('Score')}:</label>
+                                        <input type="number" name="seleccionaEScoreQuestion" id="seleccionaEScoreQuestion" value="1" min="0" max="100" step="0.05" class="form-control"/>
                                     </div>
                                     <span class="SLCNE-ETitleImage" id="seleccionaETitleImage">${_('Image URL')}:</span>
                                     <div class="SLCNE-EInputImage SLCNE-Flex mb-3 gap-2" id="seleccionaEInputImage">
@@ -1493,7 +1494,7 @@ var $exeDevice = {
                                         <div class="SLCNE-ECoord">
                                             <label for="seleccionaEXImage">X:</label>
                                             <input id="seleccionaEXImage" type="text" value="0" class="form-control" />
-                                            <label for="seleccionaEXImage">Y:</label>
+                                            <label for="seleccionaEYImage">Y:</label>
                                             <input id="seleccionaEYImage" type="text" value="0" class="form-control" />
                                         </div>
                                     </div>
@@ -1501,19 +1502,20 @@ var $exeDevice = {
                                     <div class="SLCNE-EInputVideo SLCNE-Flex mb-3 gap-2" id="seleccionaEInputVideo">
                                         <label class="sr-av" for="seleccionaEURLYoutube">${_('URL')}</label>
                                         <input id="seleccionaEURLYoutube" type="text" class="form-control" />
-                                        <a href="#" id="seleccionaEPlayVideo" class="SLCNE-ENavigationButton" title="${_('Play video')}"><img src="${path}quextIEPlay.png" alt="${_('Play video')}" class="SLCNE-ENavigationButton " /></a>
+                                        <a href="#" id="seleccionaEPlayVideo" class="SLCNE-ENavigationButton" title="${_('Play video')}">
+                                        <img src="${path}quextIEPlay.png" alt="${_('Play video')}" class="SLCNE-ENavigationButton " /></a>
                                     </div>
                                     <div id="seleccionaEInputOptionsVideo">
                                         <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
                                             <label for="seleccionaEInitVideo" class="mb-0">${_('Start')}:</label>
-                                            <input id="seleccionaEInitVideo" type="text" value="00:00:00" maxlength="8" class="form-control" />
+                                            <input id="seleccionaEInitVideo" type="text" value="00:00:00" maxlength="8" class="form-control" style="width: 13ch !important; text-align: center;" />
                                             <label for="seleccionaEEndVideo" class="mb-0 ms-2">${_('End')}:</label>
-                                            <input id="seleccionaEEndVideo" type="text" value="00:00:00" maxlength="8" class="form-control" />
+                                            <input id="seleccionaEEndVideo" type="text" value="00:00:00" maxlength="8" class="form-control" style="width: 13ch !important; text-align: center;" />
                                             <button class="btn btn-primary" id="seleccionaEVideoTime">00:00:00</button>
                                         </div>
                                         <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
                                             <label for="seleccionaESilenceVideo" class="mb-0">${_('Silence')}:</label>
-                                            <input id="seleccionaESilenceVideo" type="text" value="00:00:00" maxlength="8" class="form-control" />
+                                            <input id="seleccionaESilenceVideo" type="text" value="00:00:00" maxlength="8" class="form-control" style="width: 13ch !important; text-align: center;" />
                                             <label for="seleccionaETimeSilence" class="mb-0 ms-2">${_('Time (s)')}</label>
                                             <input type="number" name="seleccionaETimeSilence" id="seleccionaETimeSilence" value="0" min="0" max="120" class="form-control" />
                                         </div>
@@ -1560,7 +1562,7 @@ var $exeDevice = {
                                         <img class="SLCNE-EMedia" src="${path}quextIEImage.png" id="seleccionaENoImage" alt="${_('No image')}" />
                                         <div class="SLCNE-EMedia" id="seleccionaEVideo" style="display:none"></div>
                                         <video class="SLCNE-EMedia" id="seleccionaEVideoLocal" preload="auto" controls style="display:none"></video>
-                                        <img class="SLCNE-EMedia" src="${path}quextIENoImageVideo.png" id="seleccionaENoImageVideo" alt=""style="display:none" />
+                                        <img class="SLCNE-EMedia" src="${path}quextIENoImageVideo.png" id="seleccionaENoImageVideo" alt="" style="display:none" />
                                         <img class="SLCNE-EMedia" src="${path}quextIENoVideo.png" id="seleccionaENoVideo" alt="" style="display:none"/>
                                         <img class="SLCNE-ECursor" src="${path}quextIECursor.gif" id="seleccionaECursor" alt="" style="display:none"/>
                                         <img class="SLCNE-EMedia" src="${path}quextIECoverSelecciona.png" id="seleccionaECover" alt="${_('No image')}" />
@@ -1570,24 +1572,33 @@ var $exeDevice = {
                             <div class="SLCNE-EContents">
                                 <div id="seleccionaESolitionOptions" class="SLCNE-SolitionOptionsDiv"><span>${_('Question')}:</span><span><span>${_('Solution')}: </span><span id="selecionaESolutionSelect"></span></span></div>
                                 <div class="SLCNE-EQuestionDiv" id="seleccionaEQuestionDiv">
-                                    <label class="sr-av">${_('Question')}:</label><input type="text" class="SLCNE-EQuestion form-control" id="seleccionaEQuestion">
+                                    <label class="sr-av" for="seleccionaEQuestion">${_('Question')}:</label>
+                                    <input type="text" class="SLCNE-EQuestion form-control" id="seleccionaEQuestion">
                                 </div>
                                 <div class="SLCNE-EAnswers" id="seleccionaEAnswers">
                                     <div class="SLCNE-EOptionDiv gap-2">
-                                        <label class="sr-av">${_('Solution')} A:</label><input type="checkbox" class="SLCNE-ESolution form-check-input" name="slcsolution" id="seleccionaESolution0" value="A" />
-                                        <label >A</label><input type="text" class="SLCNE-EOption0 SLCNE-EAnwersOptions form-control" id="seleccionaEOption0">
+                                        <label class="sr-av" for="seleccionaESolution0">${_('Solution')} A:</label>
+                                        <input type="checkbox" class="SLCNE-ESolution form-check-input me-0" name="slcsolution" id="seleccionaESolution0" value="A" />
+                                        <label for="seleccionaEOption0">A</label>
+                                        <input type="text" class="SLCNE-EOption0 SLCNE-EAnwersOptions form-control" id="seleccionaEOption0">
                                     </div>
                                     <div class="SLCNE-EOptionDiv gap-2">
-                                        <label class="sr-av">${_('Solution')} B:</label><input type="checkbox" class="SLCNE-ESolution form-check-input" name="slcsolution" id="seleccionaESolution1" value="B" />
-                                        <label >B</label><input type="text" class="SLCNE-EOption1 SLCNE-EAnwersOptions form-control" id="seleccionaEOption1">
+                                        <label class="sr-av" for="seleccionaESolution1">${_('Solution')} B:</label>
+                                        <input type="checkbox" class="SLCNE-ESolution form-check-input me-0" name="slcsolution" id="seleccionaESolution1" value="B" />
+                                        <label for="seleccionaEOption1">B</label>
+                                        <input type="text" class="SLCNE-EOption1 SLCNE-EAnwersOptions form-control" id="seleccionaEOption1">
                                     </div>
                                     <div class="SLCNE-EOptionDiv gap-2">
-                                        <label class="sr-av">${_('Solution')} C:</label><input type="checkbox" class="SLCNE-ESolution form-check-input" name="slcsolution" id="seleccionaESolution2" value="C" />
-                                        <label >C</label><input type="text" class="SLCNE-EOption2 SLCNE-EAnwersOptions form-control" id="seleccionaEOption2">
+                                        <label class="sr-av" for="seleccionaESolution2">${_('Solution')} C:</label>
+                                        <input type="checkbox" class="SLCNE-ESolution form-check-input me-0" name="slcsolution" id="seleccionaESolution2" value="C" />
+                                        <label for="seleccionaEOption2">C</label>
+                                        <input type="text" class="SLCNE-EOption2 SLCNE-EAnwersOptions form-control" id="seleccionaEOption2">
                                     </div>
                                     <div class="SLCNE-EOptionDiv gap-2">
-                                        <label class="sr-av">${_('Solution')} D:</label><input type="checkbox" class="SLCNE-ESolution form-check-input" name="slcsolution" id="seleccionaESolution3" value="D" />
-                                        <label >D</label><input type="text" class="SLCNE-EOption3 SLCNE-EAnwersOptions form-control" id="seleccionaEOption3">
+                                        <label class="sr-av" for="seleccionaESolution3">${_('Solution')} D:</label>
+                                        <input type="checkbox" class="SLCNE-ESolution form-check-input me-0" name="slcsolution" id="seleccionaESolution3" value="D" />
+                                        <label for="seleccionaEOption3">D</label>
+                                        <input type="text" class="SLCNE-EOption3 SLCNE-EAnwersOptions form-control" id="seleccionaEOption3">
                                     </div>
                                 </div>
                                 <div class="SLCNE-EWordDiv SLCNE-DP" id="selecionaEWordDiv">
@@ -1641,12 +1652,12 @@ var $exeDevice = {
                                 </div>
                                 <div class="SLCNE-EVIOptions d-flex align-items-center flex-wrap gap-2">
                                     <label for="seleccionaEVIURL" class="mb-0">${_('URL')}:</label>
-                                    <input id="seleccionaEVIURL" type="text" class="form-control" />
+                                    <input id="seleccionaEVIURL" type="text" class="form-control me-0" />
                                     <a href="#" id="seleccionaEVIPlayI" class="SLCNE-ENavigationButton " title="${_('Play the introduction video')}"><img src="${path}quextIEPlay.png" alt="${_('Play the introduction video')}" class="SLCNE-ENavigationButton intro" /></a>
                                     <label for="seleccionaEVIStart" class="mb-0">${_('Start')}:</label>
-                                    <input id="seleccionaEVIStart" type="text" value="00:00:00" readonly class="form-control" />
+                                    <input id="seleccionaEVIStart" type="text" value="00:00:00" readonly class="form-control me-0" style="width: 13ch !important; text-align: center;" />
                                     <label for="seleccionaEVIEnd" class="mb-0">${_('End')}:</label>
-                                    <input id="seleccionaEVIEnd" type="text" value="00:00:00" readonly class="form-control" />
+                                    <input id="seleccionaEVIEnd" type="text" value="00:00:00" readonly class="form-control me-0"  style="width: 13ch !important; text-align: center;" />
                                     <button class="SLCNE-EVideoTime btn btn-primary" id="seleccionaEVITime" type="button">00:00:00</button>
                                 </div>
                                 <input type="button" class="SLCNE-EVIClose btn btn-primary mt-2" id="seleccionaEVIClose" value="${_('Close')}" />
@@ -1662,6 +1673,7 @@ var $exeDevice = {
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 3, true)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(3)}
 
             </div>`;
 
@@ -1908,7 +1920,7 @@ var $exeDevice = {
         $('#seleccionaECustomMessages').prop('checked', game.customMessages);
         $('#seleccionaECustomMessages').prop('disabled', game.order == 2);
         $('#seleccionaEAudioFeedBack').prop('checked', game.audioFeedBach);
-        $('#seleccionaEScoreQuestionDiv').hide();
+        $('#seleccionaEScoreQuestionDiv').addClass('d-none').removeClass('d-flex');
         $('#seleccionaEHasFeedBack').prop('checked', game.feedBack);
         $('#seleccionaEPercentajeFB').val(game.percentajeFB);
         $(
@@ -2833,7 +2845,9 @@ var $exeDevice = {
 
         $('#seleccionaECustomScore').on('change', function () {
             const marcado = $(this).is(':checked');
-            $('#seleccionaEScoreQuestionDiv').toggle(marcado);
+            $('#seleccionaEScoreQuestionDiv')
+                .toggleClass('d-none', !marcado)
+                .toggleClass('d-flex', marcado);
         });
 
         $('#seleccionaEURLImage').on('change', function () {
@@ -3049,10 +3063,10 @@ var $exeDevice = {
             $('label[for="seleccionaGotoIncorrect"]').hide();
         }
 
-        $('#seleccionaEScoreQuestionDiv').hide();
+        $('#seleccionaEScoreQuestionDiv').addClass('d-none').removeClass('d-flex');
 
         if (type == 2 || custonmScore) {
-            $('#seleccionaEScoreQuestionDiv').show();
+            $('#seleccionaEScoreQuestionDiv').addClass('d-flex').removeClass('d-none');
         }
     },
 
@@ -3583,14 +3597,9 @@ var $exeDevice = {
             p.audio =
                 typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
             p.hit = typeof cuestion.hit == 'undefined' ? -1 : cuestion.hit;
-            p.error =
-                typeof cuestion.error == 'undefined' ? -1 : cuestion.error;
-            p.msgHit =
-                typeof cuestion.msgHit == 'undefined' ? '' : cuestion.msgHit;
-            p.msgError =
-                typeof cuestion.msgError == 'undefined'
-                    ? ''
-                    : cuestion.msgError;
+            p.error = typeof cuestion.error == 'undefined' ? -1 : cuestion.error;
+            p.msgHit = typeof cuestion.msgHit == 'undefined' ? '' : cuestion.msgHit;
+            p.msgError = typeof cuestion.msgError == 'undefined' ? '' : cuestion.msgError;
             p.solution = '';
             p.silentVideo = 0;
             p.tSilentVideo = 0;

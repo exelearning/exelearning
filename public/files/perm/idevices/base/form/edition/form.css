@@ -18,6 +18,12 @@
     margin-bottom: 10px;
 }
 
+#formIdeviceForm #frmEPercentageQuestions {
+    width: 9.5ch !important;
+    max-width: 9.5ch !important;
+}
+
+
 #addQuestionsContainerForm #addQuestionsSelectorContainer {
     background-color: rgba(220, 220, 220, 0.8);
     padding: 8px;
@@ -538,7 +544,7 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
 #formIdeviceForm #formIdeviceFormTab2 label {
     display: block;
     margin-bottom: .2em;
-    color:  #0BA1A1;
+    color: #0BA1A1;
     font-weight: 500;
 }
 
