@@ -15,7 +15,7 @@ const basePath = app.isPackaged
   : app.getAppPath();
 
 // Optional: force a predictable path/name
-log.transports.file.resolvePath = () =>
+log.transports.file.resolvePathFn = () =>
   path.join(app.getPath('userData'), 'logs', 'main.log');
 
 // Mirror console.* to electron-log so GUI builds persist logs to file
@@ -228,8 +228,8 @@ function ensureAllDirectoriesWritable(env) {
 
   // For any subfolders you know must exist:
   const idevicesAdminDir = path.join(env.FILES_DIR, 'perm', 'idevices', 'users', 'admin');
-  ensureWritableDirectory(idevicesAdminDir);
-
+  ensureWritableDirectory(idevicesUsersDir);
+  ensureWritableDirectory(path.join(idevicesUsersDir, 'admin'));
   // ...Add additional directories as needed.
 }
 
