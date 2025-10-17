@@ -767,7 +767,7 @@
 }
 
 .CQP-GameContainer .exeQuextIcons-Minimize {
-    background-image: url(exequextmin.png);
+    background-image: url(exequextmin.svg);
     background-size: 100% 100%;
 }
 
@@ -777,37 +777,32 @@
 }
 
 .CQP-GameContainer .exeQuextIcons-Hit {
-    background-image: url(exequexthits.png);
+    background-image: url(exequexthits.svg);
     background-size: 100% 100%;
 }
 
 .CQP-GameContainer .exeQuextIcons-FullScreen {
-    background-image: url(exequextfull.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 .CQP-GameContainer .exeQuextIcons-Error {
-    background-image: url(exequextrerrors.png);
+    background-image: url(exequextrerrors.svg);
     background-size: 100% 100%;
 }
 
 .CQP-GameContainer .exeQuextIcons-Score {
-    background-image: url(exequextscore.png);
+    background-image: url(exequextscore.svg);
     background-size: 100% 100%;
 }
 
 .CQP-GameContainer .exeQuextIcons-Time {
-    background-image: url(exequexttime.png);
+    background-image: url(exequexttime.svg);
     background-size: 100% 100%;
 }
 
 .CQP-GameContainer .exeQuextIcons-Number {
-    background-image: url(exequextnumber.png);
-    background-size: 100% 100%;
-}
-
-.CQP-GameContainer .exeQuextIcons-Life {
-    background-image: url(exequextlive.png);
+    background-image: url(exequextnumber.svg);
     background-size: 100% 100%;
 }
 
@@ -849,12 +844,12 @@
 /* Full Screen */
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background-image: url(exequextnormal.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png);
+    background: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
@@ -1034,7 +1029,6 @@ div:fullscreen .CQP-Multimedia {
         display: none;
     }
 
-    .CQP-GameContainer .exeQuextIcons-MoveOne,
     .CQP-GameContainer .exeQuextIcons-Submit,
     .CQP-GameContainer .exeQuextIcons-Video {
         height: 2em;
@@ -1166,8 +1160,6 @@ div:fullscreen .CQP-Multimedia {
 }
 
 @media screen and (max-width:235px) {
-
-    .CQP-GameScoreBoard .exeQuextIcons-Life,
     .CQP-GameScoreBoard .exeQuextIcons-Time {
         display: none;
     }
