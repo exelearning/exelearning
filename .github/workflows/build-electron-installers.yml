@@ -222,13 +222,12 @@ jobs:
             sleep 1
           done
 
-          # Activate window / screenshot 1
-          WID=$(xdotool search --name "eXeLearning" | head -n1 || true)
+          # screenshot 1
           sleep ${SCREENSHOT_DELAY:-4}
           import -display :99 -window root ubuntu-screenshot-1.png || true
 
-          # Send Ctrl+P to the focused window
-          xdotool key --window "$WID" ctrl+p
+          # Send Ctrl+P to the current focused window
+          xdotool key ctrl+p
 
           sleep ${SCREENSHOT_DELAY:-4}
           import -display :99 -window root ubuntu-screenshot-2.png || true

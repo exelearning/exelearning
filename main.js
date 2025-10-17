@@ -345,56 +345,6 @@ function attachOpenHandler(win) {
 
 }
 
-async function triggerPreviewOnce(wc) {
-  try {
-    // 1) Robust attempt to locate and click the "Preview" button
-    const clicked = await wc.executeJavaScript(`
-      (function() {
-        function tryClick() {
-          // Several selector options: your HTML includes id="head-bottom-preview"
-          // and we keep other selectors as fallback in case they change.
-          const btn =
-            document.querySelector('#head-bottom-preview') ||
-            document.querySelector('#navbar-button-preview') ||
-            document.querySelector('button[aria-label="Visualización previa"]') ||
-            (document.querySelector('.preview-icon-green') && document.querySelector('.preview-icon-green').closest('button'));
-          if (btn) { btn.click(); return true; }
-
-          // Fallback to your API if available (example you were already using)
-          if (window.eXeLearning?.app?.menu?.navbarFile?.previewEvent) {
-            window.eXeLearning.app.menu.navbarFile.previewEvent();
-            return true;
-          }
-          return false;
-        }
-
-        // If the DOM is already ready, try immediately; otherwise, wait for DOMContentLoaded
-        if (document.readyState === 'complete' || document.readyState === 'interactive') {
-          return tryClick();
-        }
-        return new Promise(resolve => {
-          const id = setInterval(() => { if (tryClick()) { clearInterval(id); resolve(true); } }, 300);
-          // Safety timeout: stop after 15s
-          setTimeout(() => { clearInterval(id); resolve(false); }, 15000);
-          window.addEventListener('DOMContentLoaded', () => { if (tryClick()) { clearInterval(id); resolve(true); } }, { once: true });
-        });
-      })();
-    `);
-
-    if (clicked) return true;
-
-    // 2) If no button was found, send the Ctrl+P shortcut directly to the renderer (Linux uses Ctrl+P)
-    wc.sendInputEvent({ type: 'keyDown', keyCode: 'p', modifiers: ['control'] });
-    wc.sendInputEvent({ type: 'keyUp',   keyCode: 'p', modifiers: ['control'] });
-
-    return true;
-  } catch (e) {
-    console.warn('triggerPreviewOnce() failed:', e.message);
-    return false;
-  }
-}
-
-
 function createWindow() {
 
   initializePaths(); // Initialize paths before using them
@@ -476,15 +426,6 @@ function createWindow() {
     });
 
     mainWindow.loadURL(`http://localhost:${customEnv.APP_PORT}`);
-
-    // When running in CI we auto show the preview window (for testing purposes)
-    if ( process.env.CI === '1' || process.env.CI === 'true' ) {
-      const wc = mainWindow.webContents;
-      wc.once('did-finish-load', async () => {
-        await triggerPreviewOnce(wc);
-      });
-    }
-
 
     // Intercept downloads: first time ask path, then overwrite same path
     session.defaultSession.on('will-download', async (event, item, webContents) => {
