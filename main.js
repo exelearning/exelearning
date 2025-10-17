@@ -9,18 +9,8 @@ const AdmZip                          = require('adm-zip');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
        
-// Enable DevTools protocol in CI as early as possible
-const DEVTOOLS_PORT = process.env.ELECTRON_DEVTOOLS_PORT || '9222';
-const ALLOW_UI_IN_CI_EARLY =
+const ALLOW_UI_IN_CI =
   process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true';
-
-if (ALLOW_UI_IN_CI_EARLY) {
-  // Must happen before app.whenReady()
-  app.commandLine.appendSwitch('remote-debugging-port', String(DEVTOOLS_PORT));
-  app.commandLine.appendSwitch('remote-allow-origins', '*');
-  process.env.ELECTRON_ENABLE_LOGGING = process.env.ELECTRON_ENABLE_LOGGING || '1';
-}
-const ALLOW_UI_IN_CI = ALLOW_UI_IN_CI_EARLY;
 const IS_E2E = process.env.E2E_TEST === '1' || (process.env.CI === 'true' && !ALLOW_UI_IN_CI);
 
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
@@ -402,6 +392,56 @@ function attachOpenHandler(win) {
 
 }
 
+async function triggerPreviewOnce(wc) {
+  try {
+    // 1) Robust attempt to locate and click the "Preview" button
+    const clicked = await wc.executeJavaScript(`
+      (function() {
+        function tryClick() {
+          // Several selector options: your HTML includes id="head-bottom-preview"
+          // and we keep other selectors as fallback in case they change.
+          const btn =
+            document.querySelector('#head-bottom-preview') ||
+            document.querySelector('#navbar-button-preview') ||
+            document.querySelector('button[aria-label="Visualización previa"]') ||
+            (document.querySelector('.preview-icon-green') && document.querySelector('.preview-icon-green').closest('button'));
+          if (btn) { btn.click(); return true; }
+
+          // Fallback to your API if available (example you were already using)
+          if (window.eXeLearning?.app?.menu?.navbarFile?.previewEvent) {
+            window.eXeLearning.app.menu.navbarFile.previewEvent();
+            return true;
+          }
+          return false;
+        }
+
+        // If the DOM is already ready, try immediately; otherwise, wait for DOMContentLoaded
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          return tryClick();
+        }
+        return new Promise(resolve => {
+          const id = setInterval(() => { if (tryClick()) { clearInterval(id); resolve(true); } }, 300);
+          // Safety timeout: stop after 15s
+          setTimeout(() => { clearInterval(id); resolve(false); }, 15000);
+          window.addEventListener('DOMContentLoaded', () => { if (tryClick()) { clearInterval(id); resolve(true); } }, { once: true });
+        });
+      })();
+    `);
+
+    if (clicked) return true;
+
+    // 2) If no button was found, send the Ctrl+P shortcut directly to the renderer (Linux uses Ctrl+P)
+    wc.sendInputEvent({ type: 'keyDown', keyCode: 'p', modifiers: ['control'] });
+    wc.sendInputEvent({ type: 'keyUp',   keyCode: 'p', modifiers: ['control'] });
+
+    return true;
+  } catch (e) {
+    console.warn('triggerPreviewOnce() failed:', e.message);
+    return false;
+  }
+}
+
+
 function createWindow() {
 
   initializePaths(); // Initialize paths before using them
@@ -490,6 +530,16 @@ if (!IS_E2E) {
     });
 
     mainWindow.loadURL(`http://localhost:${customEnv.APP_PORT}`);
+
+    // When running in CI we auto show the preview window (for testing purposes)
+    const autoPreviewInCI = process.env.ALLOW_UI_IN_CI === '1' || process.env.CI === 'true';
+    if (autoPreviewInCI) {
+      const wc = mainWindow.webContents;
+      wc.once('did-finish-load', async () => {
+        await triggerPreviewOnce(wc);
+      });
+    }
+
 
     // Intercept downloads: first time ask path, then overwrite same path
     session.defaultSession.on('will-download', async (event, item, webContents) => {

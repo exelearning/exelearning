@@ -180,19 +180,6 @@ jobs:
           path: installers
 
       # ---------- Ubuntu test ----------
-      - name: Set up Node.js (for CDP)
-        if: matrix.os == 'ubuntu-latest'
-
-        uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-          package-manager-cache: false
-
-      - name: Install CDP helper
-        if: matrix.os == 'ubuntu-latest'
-        run: npm i chrome-remote-interface
-        shell: bash
-
       - name: Test install on Linux (.deb only)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -241,31 +228,8 @@ jobs:
           sleep ${SCREENSHOT_DELAY:-4}
           import -display :99 -window root ubuntu-screenshot-1.png || true
 
-          # --- CDP: click "Preview" without keys ---
-          node - <<'NODE'
-          const CDP = require('chrome-remote-interface');
-          (async () => {
-            const targets = await CDP.List();
-            // el renderer principal suele tener la URL de tu servidor embebido
-            const target =
-              targets.find(t => (t.url||'').includes('http://localhost:41309')) ||
-              targets.find(t => (t.title||'').includes('eXeLearning')) ||
-              targets[0];
-            const client = await CDP({ target });
-            const { Runtime } = client;
-            await Runtime.evaluate({ expression: `
-              (function(){
-                const btn = document.getElementById('navbar-button-preview');
-                if (btn) btn.click();
-                else if (window.eXeLearning?.app?.menu?.navbarFile?.previewEvent) {
-                  window.eXeLearning.app.menu.navbarFile.previewEvent();
-                }
-                'ok';
-              })();
-            `});
-            await client.close();
-          })();
-          NODE
+          # Send Ctrl+P to the focused window
+          xdotool key --window "$WID" ctrl+p
 
           sleep ${SCREENSHOT_DELAY:-4}
           import -display :99 -window root ubuntu-screenshot-2.png || true
