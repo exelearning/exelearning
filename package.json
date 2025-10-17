@@ -39,7 +39,6 @@
         "sass": "^1.93.2"
     },
     "build": {
-        "afterSign": "packaging/notarize.js",
         "appId": "es.intef.exelearning",
         "productName": "eXeLearning",
         "directories": {
@@ -177,8 +176,6 @@
         },
         "mac": {
             "category": "public.app-category.education",
-            "entitlements": "packaging/entitlements.mac.plist",
-            "entitlementsInherit": "packaging/entitlements.mac.plist",
             "hardenedRuntime": true,
             "gatekeeperAssess": false,
             "target": [
