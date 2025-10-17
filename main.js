@@ -12,7 +12,9 @@ const https                           = require('https');
 const ALLOW_UI_IN_CI =
   process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true';
 const IS_E2E = process.env.E2E_TEST === '1' || (process.env.CI === 'true' && !ALLOW_UI_IN_CI);
-
+const ELECTRON_DISABLE_UPDATER =
+  process.env.ELECTRON_DISABLE_UPDATER === '1' || process.env.ELECTRON_DISABLE_UPDATER === 'true';
+  
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged
   ? process.resourcesPath
@@ -65,6 +67,12 @@ autoUpdater.autoDownload = false;
  * @param {BrowserWindow} win - Main renderer window.
  */
 function initUpdates(win) {
+
+  // Disable updater in CI, E2E, or when explicitly disabled
+  if ((IS_E2E || process.env.CI === 'true' || ELECTRON_DISABLE_UPDATER) && app.isPackaged) {
+    log.warn('autoUpdater disabled: CI/E2E/disabled flag detected');
+    return;
+  }
 
   const showBox = (opts) => dialog.showMessageBox(win, opts);
 

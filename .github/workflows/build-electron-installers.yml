@@ -208,6 +208,7 @@ jobs:
           export ELECTRON_DISABLE_SANDBOX=1
           export ELECTRON_DISABLE_GPU=1
           export AUTO_PREVIEW=1
+          export ELECTRON_DISABLE_UPDATER=1
 
           app_cmd="/opt/eXeLearning/exelearning"
           command -v exelearning >/dev/null 2>&1 && app_cmd="$(command -v exelearning)" || true
