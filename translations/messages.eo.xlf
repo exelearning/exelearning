@@ -11761,19 +11761,19 @@
         <source>Imported</source>
         <target>~Enportita</target>
       </trans-unit>
-      <trans-unit id="UNq.6d3" resname="Tools to display information, organize resources or enrich content with accessibility and diverse media.">
+      <trans-unit id="syHNb_G" resname="Tools to display information, organize resources or enrich content with accessibility and diverse media.">
         <source>Tools to display information, organize resources or enrich content with accessibility and diverse media.</source>
         <target>~Iloj por montri informojn, organizi rimedojn aŭ riĉigi enhavon kun alirebleco kaj diversaj amaskomunikiloj.</target>
       </trans-unit>
-      <trans-unit id="jG6ZDR4" resname="Quizzes and other tools to check knowledge or progress, with the option to provide feedback.">
+      <trans-unit id="UzOi88i" resname="Quizzes and other tools to check knowledge or progress, with the option to provide feedback.">
         <source>Quizzes and other tools to check knowledge or progress, with the option to provide feedback.</source>
         <target>~Kvizo kaj aliaj iloj por kontroli sciojn aŭ progreson, kun la eblo doni reagojn.</target>
       </trans-unit>
-      <trans-unit id="onKN1Hh" resname="Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.">
+      <trans-unit id="u3Cobad" resname="Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.">
         <source>Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.</source>
         <target>~Rimedoj kiuj uzas ludmekanikon por motivi kaj plifortigi lernadon sen taksopremo.</target>
       </trans-unit>
-      <trans-unit id="3rptwu0" resname="Exercises that require direct interaction, encouraging active learning and trial-and-error.">
+      <trans-unit id="MovwyhB" resname="Exercises that require direct interaction, encouraging active learning and trial-and-error.">
         <source>Exercises that require direct interaction, encouraging active learning and trial-and-error.</source>
         <target>~Ekzercoj kiuj postulas rektan interagon, instigante aktivan lernadon kaj provo-eraron.</target>
       </trans-unit>
@@ -11781,7 +11781,7 @@
         <source>Sciencie</source>
         <target>~Scienco</target>
       </trans-unit>
-      <trans-unit id="2A3RkFC" resname="Resources designed to work on specific subject areas or topics.">
+      <trans-unit id="JzukSIl" resname="Resources designed to work on specific subject areas or topics.">
         <source>Resources designed to work on specific subject areas or topics.</source>
         <target>~Rimedoj desegnitaj por labori pri specifaj temaroj aŭ subjektoj.</target>
       </trans-unit>
@@ -11837,7 +11837,7 @@
         <source>Filter items</source>
         <target>~Filtri erojn</target>
       </trans-unit>
-      <trans-unit id="cvqhKr_" resname="Activate">
+      <trans-unit id="dRNHWgg" resname="Activate">
         <source>Activate</source>
         <target>~Aktivigi</target>
       </trans-unit>
@@ -11932,6 +11932,34 @@
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
         <target>~Sistemo</target>
+      </trans-unit>
+      <trans-unit id="HqMcS6o" resname="AI">
+        <source>AI</source>
+        <target>~AI</target>
+      </trans-unit>
+      <trans-unit id="St1Ka3l" resname="Accent marks">
+        <source>Accent marks</source>
+        <target>~Supersignoj</target>
+      </trans-unit>
+      <trans-unit id="y.iaDMv" resname="Games with local videos or audios can't be exported">
+        <source>Games with local videos or audios can't be exported</source>
+        <target>~Ludoj kun lokaj videoj aŭ sonoj ne povas esti eksportitaj</target>
+      </trans-unit>
+      <trans-unit id="BrjnoAt" resname="That second is not part of the video. Please check the video duration.">
+        <source>That second is not part of the video. Please check the video duration.</source>
+        <target>~Tiu sekundo ne estas parto de la video. Bonvolu kontroli la daŭron de la video.</target>
+      </trans-unit>
+      <trans-unit id="VcWni3Z" resname="Write the message to be displayed when passing the game">
+        <source>Write the message to be displayed when passing the game</source>
+        <target>~Skribu la mesaĝon kiu estos montrata kiam la ludo estos trapasita</target>
+      </trans-unit>
+      <trans-unit id="ojpSm9R" resname="Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)">
+        <source>Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)</source>
+        <target>~Uzu YouTube URL aŭ elektu dosieron (mp4, ogg, webm, mp3, wav)</target>
+      </trans-unit>
+      <trans-unit id="61_1EWE" resname="You must indicate an image, a text or/and an audio for each card">
+        <source>You must indicate an image, a text or/and an audio for each card</source>
+        <target>~Vi devas indiki bildon, tekston kaj/aŭ sonon por ĉiu karto</target>
       </trans-unit>
     </body>
   </file>
