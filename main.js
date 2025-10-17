@@ -9,6 +9,20 @@ const AdmZip                          = require('adm-zip');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
        
+// Enable DevTools protocol in CI as early as possible
+const DEVTOOLS_PORT = process.env.ELECTRON_DEVTOOLS_PORT || '9222';
+const ALLOW_UI_IN_CI_EARLY =
+  process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true';
+
+if (ALLOW_UI_IN_CI_EARLY) {
+  // Must happen before app.whenReady()
+  app.commandLine.appendSwitch('remote-debugging-port', String(DEVTOOLS_PORT));
+  app.commandLine.appendSwitch('remote-allow-origins', '*');
+  process.env.ELECTRON_ENABLE_LOGGING = process.env.ELECTRON_ENABLE_LOGGING || '1';
+}
+const ALLOW_UI_IN_CI = ALLOW_UI_IN_CI_EARLY;
+const IS_E2E = process.env.E2E_TEST === '1' || (process.env.CI === 'true' && !ALLOW_UI_IN_CI);
+
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged
   ? process.resourcesPath
@@ -387,9 +401,6 @@ function attachOpenHandler(win) {
   });
 
 }
-
-const ALLOW_UI_IN_CI = process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true';
-const IS_E2E = process.env.E2E_TEST === '1' || (process.env.CI === 'true' && !ALLOW_UI_IN_CI);
 
 function createWindow() {
 
