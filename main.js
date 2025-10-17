@@ -14,7 +14,7 @@ const ALLOW_UI_IN_CI =
 const IS_E2E = process.env.E2E_TEST === '1' || (process.env.CI === 'true' && !ALLOW_UI_IN_CI);
 const ELECTRON_DISABLE_UPDATER =
   process.env.ELECTRON_DISABLE_UPDATER === '1' || process.env.ELECTRON_DISABLE_UPDATER === 'true';
-  
+
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged
   ? process.resourcesPath
@@ -53,14 +53,6 @@ i18n.configure({
 
 i18n.setLocale(defaultLocale);
 
-
-// Logger
-autoUpdater.logger = log;
-autoUpdater.logger.transports.file.level = 'info';
-
-// Do not download until the user confirms
-autoUpdater.autoDownload = false;
-
 /**
  * Initialise listeners and launch the first check.
  * Call this once your main window is ready.
@@ -68,55 +60,14 @@ autoUpdater.autoDownload = false;
  */
 function initUpdates(win) {
 
-  // Disable updater in CI, E2E, or when explicitly disabled
-  if ((IS_E2E || process.env.CI === 'true' || ELECTRON_DISABLE_UPDATER) && app.isPackaged) {
-    log.warn('autoUpdater disabled: CI/E2E/disabled flag detected');
-    return;
-  }
+  // Logger
+  autoUpdater.logger = log;
+  autoUpdater.logger.transports.file.level = 'info';
 
-  const showBox = (opts) => dialog.showMessageBox(win, opts);
+  // check on every launch
+  autoUpdater.checkForUpdatesAndNotify()
 
-  autoUpdater.on('error', (err) => {
-    dialog.showErrorBox(
-      i18n.__('updater.errorTitle'),
-      err == null ? 'unknown' : (err.stack || err).toString()
-    );
-  });
-
-  autoUpdater.on('update-available', (info) => {
-    showBox({
-      type: 'info',
-      title:   i18n.__('updater.updateAvailableTitle'),
-      message: i18n.__('updater.updateAvailableMessage', { version: info.version }),
-      buttons: [i18n.__('updater.download'), i18n.__('updater.later')],
-      defaultId: 0,
-      cancelId: 1
-    }).then(({ response }) => {
-      if (response === 0) autoUpdater.downloadUpdate();
-    });
-  });
-
-  autoUpdater.on('update-not-available', () => {
-    log.info('No update found');
-  });
-
-  autoUpdater.on('update-downloaded', () => {
-    showBox({
-      type: 'info',
-      title:   i18n.__('updater.readyTitle'),
-      message: i18n.__('updater.readyMessage'),
-      buttons: [i18n.__('updater.restart'), i18n.__('updater.later')],
-      defaultId: 0,
-      cancelId: 1
-    }).then(({ response }) => {
-      if (response === 0) setImmediate(() => autoUpdater.quitAndInstall());
-    });
-  });
-
-  // Background check on every launch
-  autoUpdater.checkForUpdates();
 }
-
 
 let phpBinaryPath;
 let appDataPath;
