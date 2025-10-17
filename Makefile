@@ -472,8 +472,7 @@ remove-php-bin:
 	composer remove --dev nativephp/php-bin --no-scripts
 
 # Run the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-run-app: install-php-bin
-	yarn install
+run-app: install-php-bin css-node
 ifeq ($(SYSTEM_OS),windows)
 	powershell -Command "$$env:EXELEARNING_DEBUG_MODE='$(DEBUG)'; yarn start"	
 	#set EXELEARNING_DEBUG_MODE=$(DEBUG) && yarn start
@@ -485,7 +484,7 @@ endif
 
 # Package the application with the specified version
 # Usage: make package VERSION=1.0.0
-package: install-php-bin
+package: install-php-bin css-node
 ifndef VERSION
 	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
 endif
@@ -500,9 +499,6 @@ endif
 	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = '$(VERSION)';|" src/Constants.php && rm -f src/Constants.php.bak
 	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(PACKAGE_VERSION)\"|" package.json && rm -f package.json.bak
 
-	@echo "Installing Node.js dependencies..."
-	yarn install
-	
 	# Build & publish for current platform
 	@echo "Building & publishing for current platform..."
 	yarn build $(PUBLISH_ARG)
@@ -528,11 +524,14 @@ pull-vendor: check-docker check-env upd
 	@echo "✅ Done. Local ./vendor directory updated from container."
 
 
-.PHONY: css css-dev
+.PHONY: css css-dev css-node
 
 # Prevent MSYS path conversion breaking Docker paths on Windows Git Bash
 # (same approach used elsewhere in this Makefile for docker compose commands)
-SASS_DOCKER = env MSYS_NO_PATHCONV=1 docker run --rm -v $(PWD):/app -w /app node:24-alpine sh -lc
+SASS_DOCKER = env MSYS_NO_PATHCONV=1 docker run --rm \
+	-v $(PWD)/assets:/app/assets \
+	-v $(PWD)/public/style/workarea:/app/public/style/workarea \
+	-w /app node:24-alpine sh -lc
 
 css:
 	@echo "Generating CSS (prod)..."
@@ -543,10 +542,17 @@ css:
 
 css-dev:
 	@echo "Generating CSS (dev)..."
-	@$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
+	$(SASS_DOCKER) "npm i -s --no-fund sass && npx sass assets/styles/main.scss public/style/workarea/main.css --style=expanded --embed-source-map"
 	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
 	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
 	@echo "CSS built (dev)."
+
+# Generate css direct with node, for local electron and package in GH
+css-node:
+	@echo "Installing Node.js dependencies..."
+	yarn install
+	@echo "Generating CSS (prod)..."
+	yarn run --silent sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map
 
 # Display help with available commands
 help:
