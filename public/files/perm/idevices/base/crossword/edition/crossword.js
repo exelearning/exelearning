@@ -183,7 +183,7 @@ var $exeDevice = {
                                     <input type="checkbox" checked id="ccgmETilde" class="toggle-input" />
                                     <span class="toggle-visual" aria-hidden="true"></span>
                                 </span>
-                                <label class="toggle-label" for="ccgmETilde">${_('Tildes')}</label>
+                                <label class="toggle-label" for="ccgmETilde">${_('Accent marks')}</label>
                             </span>
                         </div>
                         <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
