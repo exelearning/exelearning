@@ -62,13 +62,6 @@ autoUpdater.autoDownload = false;
  */
 function initUpdates(win) {
 
-// IMPORTANT! REMOVE THIS WHEN OPEN THE GH REPOSITORY!
-if (!process.env.GH_TOKEN && app.isPackaged ) {
-  log.warn('GH_TOKEN not present: updater disabled on this boot');
-  return;
-}
-// IMPORTANT! REMOVE THIS WHEN OPEN THE GH REPOSITORY!
-
   const showBox = (opts) => dialog.showMessageBox(win, opts);
 
   autoUpdater.on('error', (err) => {
