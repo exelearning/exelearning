@@ -7,7 +7,7 @@ namespace App;
  */
 class Constants
 {
-    public const APP_VERSION = 'v0.0.0-alpha';
+    public const APP_VERSION = 'v6.6.6';
     public const DEMO_EXPIRATION_DATE = '20251030'; // Expiration date for the offline beta versions: YYYYMMDD (empty for no expiration date)
 
     // Directories

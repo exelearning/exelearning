@@ -1,6 +1,6 @@
 {
     "name": "exelearning",
-    "version": "0.0.0-alpha",
+    "version": "6.6.6",
     "license": "AGPL-3.0-or-later",
     "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
     "main": "main.js",
@@ -24,6 +24,7 @@
         "adm-zip": "^0.5.16",
         "chmodr": "^1.2.0",
         "electron-log": "^5.4.0",
+        "electron-notarize": "^1.2.2",
         "electron-updater": "^6.6.2",
         "i18n": "^0.15.1"
     },
@@ -38,6 +39,7 @@
         "sass": "^1.93.2"
     },
     "build": {
+        "afterSign": "packaging/notarize.js",
         "appId": "es.intef.exelearning",
         "productName": "eXeLearning",
         "directories": {
@@ -175,6 +177,8 @@
         },
         "mac": {
             "category": "public.app-category.education",
+            "entitlements": "packaging/entitlements.mac.plist",
+            "entitlementsInherit": "packaging/entitlements.mac.plist",
             "hardenedRuntime": true,
             "gatekeeperAssess": false,
             "target": [

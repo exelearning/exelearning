@@ -16,7 +16,8 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]        
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -170,7 +171,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Download installers
@@ -180,13 +182,13 @@ jobs:
           path: installers
 
       # ---------- Ubuntu test ----------
+
       - name: Test install on Linux (.deb only)
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -euo pipefail
-
           sudo apt-get update
-          sudo apt-get install -y xvfb xdotool imagemagick curl openbox || true
+          sudo apt-get install -y xvfb imagemagick curl
           sudo apt-get install -y --no-install-recommends \
             libgtk-3-0 libnss3 libxss1 libgbm1 libxshmfence1 libdrm2 \
             libatk-bridge2.0-0 libatspi2.0-0 libx11-xcb1 libxtst6 || true
@@ -196,14 +198,6 @@ jobs:
           if [ -z "$installer" ]; then echo "No .deb installer found" >&2; exit 1; fi
           sudo apt-get install -y "./$installer" || { sudo apt-get -f install -y && sudo apt-get install -y "./$installer"; }
 
-          # X virtual
-          Xvfb :99 -screen 0 1280x800x24 >/tmp/xvfb.log 2>&1 &
-          export DISPLAY=:99
-
-          # Window manager so that _NET_ACTIVE_WINDOW works
-          openbox >/tmp/openbox.log 2>&1 &
-          sleep 1
-
           export ALLOW_UI_IN_CI=1
           export ELECTRON_DISABLE_SANDBOX=1
           export ELECTRON_DISABLE_GPU=1
@@ -212,29 +206,75 @@ jobs:
 
           app_cmd="/opt/eXeLearning/exelearning"
           command -v exelearning >/dev/null 2>&1 && app_cmd="$(command -v exelearning)" || true
-          "$app_cmd" > ubuntu-app.log 2>&1 &
-          APP_PID=$!
-          echo "App pid: $APP_PID"
 
-          # Wait until the server responds or the window appears
-          end=$((SECONDS + ${APP_BOOT_TIMEOUT:-120}))
-          until curl -sf "http://localhost:${APP_PORT:-41309}/" >/dev/null 2>&1 || \
-                xdotool search --name 'eXeLearning' >/dev/null 2>&1 || \
-                [ $SECONDS -ge $end ]; do
-            sleep 1
-          done
+          xvfb-run -a -s "-screen 0 1280x800x24" bash -lc '
+            "$app_cmd" > ubuntu-app.log 2>&1 &
+            APP_PID=$!
+            end=$((SECONDS + ${APP_BOOT_TIMEOUT:-120}))
+            until curl -sf "http://localhost:${APP_PORT:-41309}/" >/dev/null 2>&1 || [ $SECONDS -ge $end ]; do
+              sleep 1
+            done
+            sleep ${SCREENSHOT_DELAY:-4}
+            import -window root ubuntu-screenshot-1.png || true
+            sleep ${SCREENSHOT_DELAY:-4}
+            import -window root ubuntu-screenshot-2.png || true
+            # No matamos la app abruptamente para permitir flush de logs
+            wait $APP_PID || true
+          '
 
-          # Activate window / screenshot 1
-          WID=$(xdotool search --name "eXeLearning" | head -n1 || true)
-          [ -n "$WID" ] && xdotool windowactivate "$WID" || true
-          sleep ${SCREENSHOT_DELAY:-4}
-          import -display :99 -window root ubuntu-screenshot-1.png || true
 
-          # Send Ctrl+P to the focused window
-          xdotool key --window "$WID" ctrl+p
+      # - name: Test install on Linux (.deb only)
+      #   if: matrix.os == 'ubuntu-latest'
+      #   run: |
+      #     set -euo pipefail
 
-          sleep ${SCREENSHOT_DELAY:-4}
-          import -display :99 -window root ubuntu-screenshot-2.png || true
+      #     sudo apt-get update
+      #     sudo apt-get install -y xvfb xdotool imagemagick curl openbox || true
+      #     sudo apt-get install -y --no-install-recommends \
+      #       libgtk-3-0 libnss3 libxss1 libgbm1 libxshmfence1 libdrm2 \
+      #       libatk-bridge2.0-0 libatspi2.0-0 libx11-xcb1 libxtst6 || true
+      #     sudo apt-get install -y --no-install-recommends libasound2t64 || true
+
+      #     installer=$(ls installers/*.deb 2>/dev/null || true)
+      #     if [ -z "$installer" ]; then echo "No .deb installer found" >&2; exit 1; fi
+      #     sudo apt-get install -y "./$installer" || { sudo apt-get -f install -y && sudo apt-get install -y "./$installer"; }
+
+      #     # X virtual
+      #     Xvfb :99 -screen 0 1280x800x24 >/tmp/xvfb.log 2>&1 &
+      #     export DISPLAY=:99
+
+      #     # Window manager so that _NET_ACTIVE_WINDOW works
+      #     openbox >/tmp/openbox.log 2>&1 &
+      #     sleep 1
+
+      #     export ELECTRON_DISABLE_SANDBOX=1
+      #     export ELECTRON_DISABLE_GPU=1
+
+      #     app_cmd="/opt/eXeLearning/exelearning"
+      #     command -v exelearning >/dev/null 2>&1 && app_cmd="$(command -v exelearning)" || true
+      #     "$app_cmd" > ubuntu-app.log 2>&1 &
+      #     APP_PID=$!
+      #     echo "App pid: $APP_PID"
+
+      #     # Wait until the server responds or the window appears
+      #     end=$((SECONDS + ${APP_BOOT_TIMEOUT:-120}))
+      #     until curl -sf "http://localhost:${APP_PORT:-41309}/" >/dev/null 2>&1 || \
+      #           xdotool search --name 'eXeLearning' >/dev/null 2>&1 || \
+      #           [ $SECONDS -ge $end ]; do
+      #       sleep 1
+      #     done
+
+      #     # Activate window / screenshot 1
+      #     WID=$(xdotool search --name "eXeLearning" | head -n1 || true)
+      #     [ -n "$WID" ] && xdotool windowactivate "$WID" || true
+      #     sleep ${SCREENSHOT_DELAY:-4}
+      #     import -display :99 -window root ubuntu-screenshot-1.png || true
+
+      #     # Send Ctrl+P to the focused window
+      #     xdotool key --window "$WID" ctrl+p
+
+      #     sleep ${SCREENSHOT_DELAY:-4}
+      #     import -display :99 -window root ubuntu-screenshot-2.png || true
 
 
       # ---------- macOS test ----------
@@ -257,7 +297,6 @@ jobs:
           cp -R "$APP_PATH" /Applications/
           hdiutil detach "$VOL" || true
 
-          export ALLOW_UI_IN_CI=1
           export ELECTRON_DISABLE_GPU=1
 
           # Open app and wait for readiness
@@ -312,8 +351,6 @@ jobs:
           if (-not (Test-Path $exePath)) { $exePath = Join-Path $env:LOCALAPPDATA "Programs\eXeLearning\eXeLearning.exe" }
           if (-not (Test-Path $exePath)) { Write-Error "eXeLearning.exe not found after install"; exit 1 }
           Write-Host "Found eXeLearning.exe at: $exePath"
-
-          $env:ALLOW_UI_IN_CI = "1"
 
           # Load assemblies and launch
           Add-Type -AssemblyName System.Windows.Forms

@@ -8,12 +8,6 @@ const fs                              = require('fs');
 const AdmZip                          = require('adm-zip');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
-       
-const ALLOW_UI_IN_CI =
-  process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true';
-const IS_E2E = process.env.E2E_TEST === '1' || (process.env.CI === 'true' && !ALLOW_UI_IN_CI);
-const ELECTRON_DISABLE_UPDATER =
-  process.env.ELECTRON_DISABLE_UPDATER === '1' || process.env.ELECTRON_DISABLE_UPDATER === 'true';
 
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged
@@ -325,7 +319,7 @@ function attachOpenHandler(win) {
       width,
       height,
       modal: false,
-      show: ALLOW_UI_IN_CI ? true : !IS_E2E,
+      show: true,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -413,11 +407,8 @@ function createWindow() {
   // Ensure all required directories exist and try to set permissions
   ensureAllDirectoriesWritable(env);
 
-// Skip loading window in E2E/CI
-if (!IS_E2E) {
- // Create the loading window
+  // Create the loading window
   createLoadingWindow();
-}
 
   // Check if the database exists and run Symfony commands
   checkAndCreateDatabase();
@@ -446,9 +437,7 @@ if (!IS_E2E) {
         preload: path.join(__dirname, 'preload.js'),
       },
       tabbingIdentifier: 'mainGroup',
-      // show: false
-      show: ALLOW_UI_IN_CI ? true : !IS_E2E,
-      // show: !IS_E2E  // don't actually show in E2E/CI
+      show: true,
       // titleBarStyle: 'customButtonsOnHover', // hidden title bar on macOS
     });
     
@@ -456,12 +445,10 @@ if (!IS_E2E) {
     mainWindow.setMenuBarVisibility(isDev);
     
     // Maximize the window and open it
-    if (!IS_E2E) {
-        mainWindow.maximize();
-        mainWindow.show();
-    }
+    mainWindow.maximize();
+    mainWindow.show();
 
-    if (process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true') {
+    if (process.env.CI === '1' || process.env.CI === 'true') {
       mainWindow.setAlwaysOnTop(true, 'screen-saver');
       mainWindow.show();
       mainWindow.focus();
@@ -491,8 +478,7 @@ if (!IS_E2E) {
     mainWindow.loadURL(`http://localhost:${customEnv.APP_PORT}`);
 
     // When running in CI we auto show the preview window (for testing purposes)
-    const autoPreviewInCI = process.env.ALLOW_UI_IN_CI === '1' || process.env.CI === 'true';
-    if (autoPreviewInCI) {
+    if ( process.env.CI === '1' || process.env.CI === 'true' ) {
       const wc = mainWindow.webContents;
       wc.once('did-finish-load', async () => {
         await triggerPreviewOnce(wc);
@@ -607,10 +593,10 @@ if (!IS_E2E) {
         }
       }
     });
+  
+    // Init updater logic
+    initUpdates(mainWindow);
 
-    if (!IS_E2E) {
-      initUpdates(mainWindow);   // Init updater logic
-    }
     // If any event blocks window closing, remove it
     mainWindow.on('close', (e) => {
       // This is to ensure any preventDefault() won't stop the closing
@@ -829,8 +815,6 @@ if (!gotTheLock) {
   });
 }
 
-
-if (IS_E2E) app.disableHardwareAcceleration();
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', function () {
