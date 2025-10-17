@@ -228,8 +228,8 @@ function ensureAllDirectoriesWritable(env) {
 
   // For any subfolders you know must exist:
   const idevicesAdminDir = path.join(env.FILES_DIR, 'perm', 'idevices', 'users', 'admin');
-  ensureWritableDirectory(idevicesUsersDir);
-  ensureWritableDirectory(path.join(idevicesUsersDir, 'admin'));
+  ensureWritableDirectory(idevicesAdminDir);
+
   // ...Add additional directories as needed.
 }
 
