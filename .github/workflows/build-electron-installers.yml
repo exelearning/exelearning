@@ -27,7 +27,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22'  # Use the version you need
+          node-version: '24'  # Use the version you need
           package-manager-cache: false 
 
       - name: Setup PHP
@@ -207,7 +207,7 @@ jobs:
 
           installer=$(ls installers/*.deb 2>/dev/null || true)
           if [ -z "$installer" ]; then echo "No .deb installer found" >&2; exit 1; fi
-          sudo dpkg -i "$installer" || sudo apt-get -f install -y
+          sudo apt-get install -y "./$installer" || { sudo apt-get -f install -y && sudo apt-get install -y "./$installer"; }
 
           # X virtual
           Xvfb :99 -screen 0 1280x800x24 >/tmp/xvfb.log 2>&1 &
