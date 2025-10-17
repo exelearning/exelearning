@@ -16,8 +16,7 @@ jobs:
 
     strategy:
       matrix:
-        # os: [ubuntu-latest, macos-latest, windows-latest]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -171,8 +170,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # os: [ubuntu-latest, macos-latest, windows-latest]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Download installers
         uses: actions/download-artifact@v5
@@ -208,12 +206,14 @@ jobs:
           export ELECTRON_DISABLE_SANDBOX=1
           export ELECTRON_DISABLE_GPU=1
 
+          echo "Opening eXeLearning app..."
           app_cmd="/opt/eXeLearning/exelearning"
           command -v exelearning >/dev/null 2>&1 && app_cmd="$(command -v exelearning)" || true
           dbus-run-session -- "$app_cmd" > ubuntu-app.log 2>&1 &
           APP_PID=$!
           echo "App pid: $APP_PID"
 
+          echo "Waiting until eXeLearning is opened..."
           # Wait until the server responds or the window appears
           end=$((SECONDS + ${APP_BOOT_TIMEOUT:-120}))
           until curl -sf "http://localhost:${APP_PORT:-41309}/" >/dev/null 2>&1 || \
@@ -222,13 +222,14 @@ jobs:
             sleep 1
           done
 
-          # screenshot 1
+          echo "eXeLearning is already opened, taking first screenshot..."
           sleep ${SCREENSHOT_DELAY:-4}
           import -display :99 -window root ubuntu-screenshot-1.png || true
 
-          # Send Ctrl+P to the current focused window
+          echo "Sending Ctrl+P to the current focused window..."          
           xdotool key ctrl+p
 
+          echo "Taking second screenshot..."
           sleep ${SCREENSHOT_DELAY:-4}
           import -display :99 -window root ubuntu-screenshot-2.png || true
 
