@@ -207,10 +207,11 @@ jobs:
           export ALLOW_UI_IN_CI=1
           export ELECTRON_DISABLE_SANDBOX=1
           export ELECTRON_DISABLE_GPU=1
+          export AUTO_PREVIEW=1
 
           app_cmd="/opt/eXeLearning/exelearning"
           command -v exelearning >/dev/null 2>&1 && app_cmd="$(command -v exelearning)" || true
-          "$app_cmd" --remote-debugging-port=9222 > ubuntu-app.log 2>&1 &
+          "$app_cmd" > ubuntu-app.log 2>&1 &
           APP_PID=$!
           echo "App pid: $APP_PID"
 
