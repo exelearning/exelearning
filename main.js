@@ -969,6 +969,8 @@ function runSymfonyCommands() {
     // We already created FILES_DIR in ensureAllDirectoriesWritable().
     // Also check other required directories if needed.
 
+    const iniArgs = phpIniArgs();
+
     const publicDir = path.join(basePath, 'public');
     if (!fs.existsSync(publicDir)) {
       showErrorDialog(`The public directory was not found at the path: ${publicDir}`);
@@ -982,7 +984,7 @@ function runSymfonyCommands() {
     }
     try {
       console.log('Clearing Symfony cache...');
-      execFileSync(phpBinaryPath, ['bin/console', 'cache:clear'], {
+      execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'cache:clear'], {
         env: env,
         cwd: basePath,
         windowsHide: true,
@@ -993,7 +995,7 @@ function runSymfonyCommands() {
     }
 
     console.log('Creating database tables in SQLite...');
-    execFileSync(phpBinaryPath, ['bin/console', 'doctrine:schema:update', '--force'], {
+    execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'doctrine:schema:update', '--force'], {
       env: env,
       cwd: basePath,
       windowsHide: true,
@@ -1004,9 +1006,13 @@ function runSymfonyCommands() {
     if (!app.isPackaged) {
       try {
         console.log('Installing assets in public (dev/local only)...');
-        execFileSync(phpBinaryPath, ['bin/console', 'assets:install', 'public', '--no-debug', '--env=prod'], {
-          env, cwd: basePath, windowsHide: true, stdio: 'inherit',
-        });
+        execFileSync(
+          phpBinaryPath,
+          [...iniArgs, 'bin/console', 'assets:install', 'public', '--no-debug', '--env=prod'],
+          {
+            env, cwd: basePath, windowsHide: true, stdio: 'inherit',
+          },
+        );
       } catch (e) {
         console.warn('Skipping assets:install:', e.message);
       }
@@ -1015,19 +1021,21 @@ function runSymfonyCommands() {
     }
 
     console.log('Creating test user...');
-    execFileSync(phpBinaryPath, [
-      'bin/console',
-      'app:create-user',
-      customEnv.TEST_USER_EMAIL,
-      customEnv.TEST_USER_PASSWORD,
-      customEnv.TEST_USER_USERNAME,
-      '--no-fail',
-    ], {
-      env: env,
-      cwd: basePath,
-      windowsHide: true,
-      stdio: 'inherit',
-    });
+    execFileSync(
+      phpBinaryPath,
+      [
+        ...iniArgs,
+        'bin/console',
+        'app:create-user',
+        customEnv.TEST_USER_EMAIL,
+        customEnv.TEST_USER_PASSWORD,
+        customEnv.TEST_USER_USERNAME,
+        '--no-fail',
+      ],
+      {
+        env, cwd: basePath, windowsHide: true, stdio: 'inherit',
+      },
+    );
 
     console.log('Symfony commands executed successfully.');
   } catch (err) {
@@ -1037,6 +1045,31 @@ function runSymfonyCommands() {
 }
 
 function phpIniArgs() {
+  const maxExecutionTime = String(process.env.PHP_MAX_EXECUTION_TIME ?? '600');
+  const maxInputTime = String(process.env.PHP_MAX_INPUT_TIME ?? maxExecutionTime);
+  const memoryLimit = String(process.env.PHP_MEMORY_LIMIT ?? '512M');
+  const uploadMaxFilesize = String(process.env.PHP_UPLOAD_MAX_FILESIZE ?? '512M');
+  let postMaxSize = String(process.env.PHP_POST_MAX_SIZE ?? uploadMaxFilesize);
+
+  // Ensure POST payload limit is never lower than the upload limit.
+  const parseSize = (value) => {
+    if (!value) return 0;
+    const match = String(value).trim().match(/^(\d+)([KMG]?)/i);
+    if (!match) return Number(value) || 0;
+    const quantity = Number(match[1]);
+    const unit = match[2]?.toUpperCase();
+    switch (unit) {
+      case 'G': return quantity * 1024 * 1024 * 1024;
+      case 'M': return quantity * 1024 * 1024;
+      case 'K': return quantity * 1024;
+      default: return quantity;
+    }
+  };
+
+  if (parseSize(postMaxSize) < parseSize(uploadMaxFilesize)) {
+    postMaxSize = uploadMaxFilesize;
+  }
+
   return [
     '-dopcache.enable=1',
     '-dopcache.enable_cli=1',
@@ -1046,6 +1079,11 @@ function phpIniArgs() {
     '-dopcache.validate_timestamps=0',
     '-drealpath_cache_size=4096k',
     '-drealpath_cache_ttl=600',
+    `-dmax_execution_time=${maxExecutionTime}`,
+    `-dmax_input_time=${maxInputTime}`,
+    `-dmemory_limit=${memoryLimit}`,
+    `-dupload_max_filesize=${uploadMaxFilesize}`,
+    `-dpost_max_size=${postMaxSize}`,
   ];
 }
 
