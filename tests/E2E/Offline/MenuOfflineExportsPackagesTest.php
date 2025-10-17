@@ -95,10 +95,12 @@ class MenuOfflineExportsPackagesTest extends BaseE2ETestCase
 
     public function testExportAsScorm2004OfflineUsesElectronSaveAs(): void
     {
+        /* To review (SCORM 2004 export is currently hidden)
         $client = $this->client();
         $this->openOfflineExportMenu($client);
         $this->clickMenuItem($client, '#navbar-button-exportas-scorm2004');
         $this->waitSaveAs($client);
+        */
     }
 
     public function testExportAsImsOfflineUsesElectronSaveAs(): void
