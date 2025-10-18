@@ -10,8 +10,10 @@ use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\OdeComponentsSyncServiceInterface;
 use App\Service\net\exelearning\Service\Api\OdeExportServiceInterface;
 use App\Service\net\exelearning\Service\Api\OdeServiceInterface;
+use App\Util\net\exelearning\Util\FileUtil;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -174,8 +176,10 @@ class OdeExportApiController extends DefaultApiController
             throw $this->createNotFoundException(sprintf('Attempt to access directory: %s', $relative));
         }
 
-        return new Response(file_get_contents($filePath), 200, [
-            'Content-Type' => 'text/html',
-        ]);
+        $response = new BinaryFileResponse($filePath);
+        $mimeType = FileUtil::getFileMimeType($filePath) ?: 'application/octet-stream';
+        $response->headers->set('Content-Type', $mimeType);
+
+        return $response;
     }
 }

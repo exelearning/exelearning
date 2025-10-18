@@ -5,6 +5,7 @@ namespace App\Tests\E2E\Model;
 
 use App\Tests\E2E\PageObject\WorkareaPage;
 use App\Tests\E2E\Support\Wait;
+use Facebook\WebDriver\Exception\TimeoutException;
 
 /**
  * Value object representing a navigation node inside the workarea tree.
@@ -221,55 +222,118 @@ final class Node
     /**
      * Assert that a node title is visible in the nav tree (exact match).
      * Optional $title to override the current node title (e.g., after rename).
+     * $timeoutSeconds controls how long we wait for eventual consistency (e.g., real-time propagation).
+     * When $refreshOnTimeout is true we will refresh the page once if the first wait expires.
      */
-    public function assertVisible(?string $title = null): void
+    public function assertVisible(?string $title = null, int $timeoutSeconds = 30, bool $refreshOnTimeout = false): void
     {
-        $title  ??= $this->title;
-        $client   = $this->workareaPage->getClient();
+        $title   ??= $this->title;
+        $client    = $this->workareaPage->getClient();
 
-        // Poll until the text appears
-        $client->getWebDriver()->wait(30)->until(function () use ($client, $title): bool {
-            return (bool) $client->executeScript(
-                "const name = arguments[0];
-                 const spans = [...document.querySelectorAll('#nav_list .node-text-span')];
-                 return spans.some(s => s.textContent.trim() === name);",
-                [$title]
-            );
-        });
+        $waitForPresence = function (int $seconds) use ($client, $title): void {
+            $client->getWebDriver()
+                ->wait($seconds, 250)
+                ->until(fn (): bool => $this->nodeExistsInTree($title, $this->nodeId));
+        };
 
-        $found = (bool) $client->executeScript(
-            "const name = arguments[0];
-             const spans = [...document.querySelectorAll('#nav_list .node-text-span')];
-             return spans.some(s => s.textContent.trim() === name);",
-            [$title]
-        );
+        try {
+            $waitForPresence(max(1, $timeoutSeconds));
+        } catch (TimeoutException $first) {
+            if (!$refreshOnTimeout) {
+                throw $first;
+            }
+
+            $client->getWebDriver()->navigate()->refresh();
+            Wait::settleDom(400);
+
+            try {
+                $waitForPresence(max(5, (int) ceil($timeoutSeconds / 2)));
+            } catch (TimeoutException $second) {
+                // Allow final assertion below to surface a clear failure message.
+            }
+        }
+
+        $found = $this->nodeExistsInTree($title, $this->nodeId);
 
         \PHPUnit\Framework\Assert::assertTrue(
             $found,
-            sprintf('Expected node "%s" to be visible in the tree', $title)
+            sprintf(
+                'Expected node "%s"%s to be visible in the tree',
+                $title,
+                $this->nodeId !== null ? sprintf(' (id %s)', (string) $this->nodeId) : ''
+            )
         );
     }
 
     /**
      * Assert that a node title is NOT visible in the nav tree (exact match).
+     * $timeoutSeconds allows waiting for eventual disappearance (e.g., after remote rename/delete).
+     * When $refreshWhileWaiting is true we refresh once if the first wait expires.
      */
-    public function assertNotVisible(?string $title = null): void
+    public function assertNotVisible(?string $title = null, int $timeoutSeconds = 1, bool $refreshWhileWaiting = false): void
     {
-        $title  ??= $this->title;
-        $client   = $this->workareaPage->getClient();
+        $title   ??= $this->title;
+        $client    = $this->workareaPage->getClient();
 
-        // Small settle
-        \usleep(200_000);
-        $found = (bool) $client->executeScript(
-            "const name = arguments[0];
-             const spans = [...document.querySelectorAll('#nav_list .node-text-span')];
-             return spans.some(s => s.textContent.trim() === name);",
-            [$title]
-        );
+        $waitForAbsence = function (int $seconds) use ($client, $title): void {
+            $client->getWebDriver()
+                ->wait($seconds, 200)
+                ->until(fn (): bool => !$this->nodeExistsInTree($title, $this->nodeId));
+        };
+
+        if ($timeoutSeconds > 0) {
+            try {
+                $waitForAbsence(max(1, $timeoutSeconds));
+            } catch (TimeoutException $first) {
+                if ($refreshWhileWaiting) {
+                    $client->getWebDriver()->navigate()->refresh();
+                    Wait::settleDom(400);
+
+                    try {
+                        $waitForAbsence(max(5, (int) ceil($timeoutSeconds / 2)));
+                    } catch (TimeoutException $second) {
+                        // Let the final assertion report the failure.
+                    }
+                }
+            }
+        } else {
+            \usleep(200_000);
+        }
+
+        $stillThere = $this->nodeExistsInTree($title, $this->nodeId);
 
         \PHPUnit\Framework\Assert::assertFalse(
-            $found,
-            sprintf('Node "%s" should not be visible in the tree', $title)
+            $stillThere,
+            sprintf(
+                'Node "%s"%s should not be visible in the tree',
+                $title,
+                $this->nodeId !== null ? sprintf(' (id %s)', (string) $this->nodeId) : ''
+            )
+        );
+    }
+
+    private function nodeExistsInTree(?string $title, ?int $nodeId): bool
+    {
+        $client = $this->workareaPage->getClient();
+
+        return (bool) $client->executeScript(
+            "const expectedTitle = String(arguments[0] ?? '').trim();
+             const expectedId = arguments[1] === null ? null : String(arguments[1]);
+             const nodes = Array.from(document.querySelectorAll('[data-testid=\"nav-node\"], .nav-element[nav-id]'));
+             for (const nav of nodes) {
+                 const idAttr = nav.getAttribute('data-node-id') ?? nav.getAttribute('nav-id');
+                 const span = nav.querySelector('.node-text-span');
+                 const text = span && span.textContent ? span.textContent.trim() : '';
+                 if (expectedId !== null && idAttr !== null && String(idAttr) === expectedId) {
+                     return true;
+                 }
+                 if (expectedTitle && text === expectedTitle) {
+                     return true;
+                 }
+             }
+             return false;
+            ",
+            [$title, $nodeId]
         );
     }
     
