@@ -11985,6 +11985,10 @@
         <source>You must indicate an image, a text or/and an audio for each card</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="6q_rouK" resname="An error occurred while generating the print preview.">
+        <source>An error occurred while generating the print preview.</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

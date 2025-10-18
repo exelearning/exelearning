@@ -11961,6 +11961,10 @@
         <source>You must indicate an image, a text or/and an audio for each card</source>
         <target>~Has d’indicar una imatge, un text i/o un àudio per a cada targeta</target>
       </trans-unit>
+      <trans-unit id="6q_rouK" resname="An error occurred while generating the print preview.">
+        <source>An error occurred while generating the print preview.</source>
+        <target>~S’ha produït un error en generar la previsualització d’impressió.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
