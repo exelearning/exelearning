@@ -107,23 +107,22 @@ final class NodeTest extends BaseE2ETestCase
         $specialNode->delete();
         $specialNode->assertNotVisible($specialTitle);
 
-        // # TODO!! Uncomment after fix the issue https://github.com/exelearning/exelearning/issues/370
-        // // ---------------------------
-        // // D) VERY LONG TITLE
-        // // ---------------------------
+        // ---------------------------
+        // D) VERY LONG TITLE
+        // ---------------------------
 
-        // $longTitle = 'This is a very long node title that exceeds the typical length of node names ' .
-        //     'to test how the system handles long text in the navigation tree ' . uniqid();
-        // /** @var Node $longNode */
-        // $longNode = $nodeFactory->createAndGet([
-        //     'document' => $document,
-        //     'title'    => $longTitle,
-        //     'parent'   => $root,
-        // ]);
-        // $longNode->assertVisible($longTitle);
+        $longTitle = 'This is a very long node title that exceeds the typical length of node names ' .
+            'to test how the system handles long text in the navigation tree ' . uniqid();
+        /** @var Node $longNode */
+        $longNode = $nodeFactory->createAndGet([
+            'document' => $document,
+            'title'    => $longTitle,
+            'parent'   => $root,
+        ]);
+        $longNode->assertVisible($longTitle);
 
-        // $longNode->delete();
-        // $longNode->assertNotVisible($longTitle);
+        $longNode->delete();
+        $longNode->assertNotVisible($longTitle);
 
         // ---------------------------
         // E) DEEP NESTED HIERARCHY (L1 -> L2 -> L3)
