@@ -60,9 +60,6 @@ export default class NavbarFile {
         this.exportPrintButton = this.menu.navbar.querySelector(
             '#navbar-button-export-print'
         );
-        this.exportPrintAsButton = this.menu.navbar.querySelector(
-            '#navbar-button-exportas-print'
-        );
         this.exportSCORM12Button = this.menu.navbar.querySelector(
             '#navbar-button-export-scorm12'
         );
@@ -127,7 +124,6 @@ export default class NavbarFile {
         this.setExportHTML5SPEvent();
         this.setExportHTML5SPAsEvent();
         this.setExportPrintEvent();
-        this.setExportPrintAsEvent();
         this.setExportSCORM12Event();
         this.setExportSCORM12AsEvent();
         this.setExportSCORM2004Event();
@@ -386,14 +382,6 @@ export default class NavbarFile {
         });
     }
 
-    setExportPrintAsEvent() {
-        if (!this.exportPrintAsButton) return;
-        this.exportPrintAsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.openPrintPreview();
-        });
-    }
-
     async openPrintPreview() {
         const project = eXeLearning?.app?.project;
         const sessionId = project?.odeSession;
@@ -406,15 +394,8 @@ export default class NavbarFile {
         const projectId =
             project?.odeId || window.__currentProjectId || 'unsaved';
 
-        const previewWindow = window.open('', '_blank');
-        if (previewWindow) {
-            try {
-                previewWindow.opener = null;
-            } catch (e) {}
-        }
-
         const toastData = {
-            title: _('Print / PDF'),
+            title: _('Print'),
             body: _('Generating preview...'),
             icon: 'preview',
         };
@@ -434,6 +415,8 @@ export default class NavbarFile {
         const endpointPath = `${sanitizedBasePath}/project/${safeProjectId}/export/single-page-preview`;
         const requestUrl = new URL(endpointPath, baseUrl);
         requestUrl.searchParams.set('sessionId', sessionId);
+
+        let previewWindow = null;
 
         try {
             const response = await fetch(requestUrl.toString(), {
@@ -455,11 +438,9 @@ export default class NavbarFile {
             if (toast) {
                 toast.toastBody.innerHTML = _('Opening preview...');
             }
-            if (previewWindow) {
-                previewWindow.location.href = data.url;
-            } else {
-                window.open(data.url, '_blank', 'noopener');
-            }
+
+            previewWindow = window.open(data.url, '_blank', 'noopener');
+
         } catch (error) {
             console.error('Unable to open print preview', error);
             if (toast) {

@@ -20,8 +20,6 @@
                         </ul>
                     </li>
                     <li class="dropdown-divider exe-online"></li>
-                    <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ "Print" | trans }}</a></li>
-
                     <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ "Save" | trans }}</a></li>
                     {# Online-only Save As remains hidden as before #}
                     <li class="d-none"><a id="navbar-button-save-as" class="dropdown-item exe-online" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S"><span class="small-icon new-icon"></span>{{ "Save as" | trans }}</a></li>
@@ -48,7 +46,6 @@
                                 <li><a id="navbar-button-exportas-html5" class="dropdown-item" href="#">{{ "Website" | trans }}</a></li>
                                 <li><a id="navbar-button-exportas-html5-folder" class="dropdown-item" href="#">{{ "Export to Folder (Unzipped Website)" | trans }}</a></li>
                                 <li><a id="navbar-button-exportas-html5-sp" class="dropdown-item" href="#">{{ "Single page" | trans }}</a></li>
-                                <li><a id="navbar-button-exportas-print" class="dropdown-item" href="#">{{ "Print / PDF" | trans }}</a></li>
                                 <li><a id="navbar-button-exportas-scorm12" class="dropdown-item" href="#">{{ "SCORM 1.2" | trans }}</a></li>
                                 <li class="d-none"><a id="navbar-button-exportas-scorm2004" class="dropdown-item exe-advanced" href="#">{{ "SCORM 2004" | trans }}</a></li>
                                 <li><a id="navbar-button-exportas-ims" class="dropdown-item exe-advanced" href="#">{{ "IMS CP" | trans }}</a></li>
@@ -57,6 +54,8 @@
                             </ul>
                         </li>
                     {% endif %}
+                    <li class="dropdown-divider"></li>
+                    <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ "Print" | trans }}</a></li>
                     {#<li class="dropdown dropend exe-advanced">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Upload to" | trans }}</a>
                         <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
