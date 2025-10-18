@@ -692,48 +692,48 @@
 }
 
 .SLCMP-MainContainer .exeQuextIcons-Minimize {
-    background-image: url(exequextmin.png);
+    background-image: url(exequextmin.svg);
     background-size: 100% 100%;
 }
 
 .SLCMP-MainContainer .exeQuextIcons-Hit {
-    background-image: url(exequexthits.png);
+    background-image: url(exequexthits.svg);
     background-size: 100% 100%;
 }
 
 .SLCMP-MainContainer .exeQuextIcons-FullScreen {
-    background-image: url(exequextfull.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 .SLCMP-MainContainer .exeQuextIcons-Error {
-    background-image: url(exequextrerrors.png);
+    background-image: url(exequextrerrors.svg);
     background-size: 100% 100%;
 }
 
 .SLCMP-MainContainer .exeQuextIcons-Score {
-    background-image: url(exequextscore.png);
+    background-image: url(exequextscore.svg);
     background-size: 100% 100%;
 }
 
 .SLCMP-MainContainer .exeQuextIcons-Time {
-    background-image: url(exequexttime.png);
+    background-image: url(exequexttime.svg);
     background-size: 100% 100%;
 }
 
 .SLCMP-MainContainer .exeQuextIcons-Number {
-    background-image: url(exequextnumber.png);
+    background-image: url(exequextnumber.svg);
     background-size: 100% 100%;
 }
 
 /* Full Screen */
 div:fullscreen .exeQuextIcons-FullScreen {
-    background-image: url(exequextnormal.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png);
+    background: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 

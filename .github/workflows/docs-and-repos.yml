@@ -341,6 +341,7 @@ jobs:
               <projectSourceUrl>https://github.com/exelearning/exelearning</projectSourceUrl>
               <docsUrl>https://exelearning.net</docsUrl>
               <bugTrackerUrl>https://github.com/exelearning/exelearning/issues</bugTrackerUrl>
+              <releaseNotes>https://github.com/exelearning/exelearning/releases/tag/v${{ steps.envs.outputs.VERSION }}</releaseNotes>
             </metadata>
           </package>
           "@ | Out-File exelearning.nuspec -Encoding utf8
@@ -360,6 +361,7 @@ jobs:
             -Checksum64 $checksum `
             -ChecksumType64 $checksumType
           "@ | Out-File tools\chocolateyinstall.ps1 -Encoding utf8
+          Get-ChildItem -Recurse -Filter installer.exe | Remove-Item -Force -ErrorAction SilentlyContinue
 
       - name: Install Chocolatey
         shell: pwsh
@@ -367,6 +369,7 @@ jobs:
           Set-ExecutionPolicy Bypass -Scope Process -Force
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
           Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
 
       - name: Pack nupkg
         shell: pwsh

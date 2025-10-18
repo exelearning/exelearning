@@ -802,58 +802,50 @@
 }
 
 .ODNP-MainContainer .exeQuextIcons-Minimize {
-    background-image: url(exequextmin.png);
+    background-image: url(exequextmin.svg);
     background-size: 100% 100%;
 }
 
-.ODNP-MainContainer .exeQuextIcons-IconReboot {
-    background-image: url(exequextreload.png);
-    background-size: 100% 100%;
-}
+
 
 .ODNP-MainContainer .exeQuextIcons-Hit {
-    background-image: url(exequexthits.png);
+    background-image: url(exequexthits.svg);
     background-size: 100% 100%;
 }
 
 .ODNP-MainContainer .exeQuextIcons-FullScreen {
-    background-image: url(exequextfull.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 .ODNP-MainContainer .exeQuextIcons-Error {
-    background-image: url(exequextrerrors.png);
+    background-image: url(exequextrerrors.svg);
     background-size: 100% 100%;
 }
 
 .ODNP-MainContainer .exeQuextIcons-Score {
-    background-image: url(exequextscore.png);
+    background-image: url(exequextscore.svg);
     background-size: 100% 100%;
 }
 
 .ODNP-MainContainer .exeQuextIcons-Time {
-    background-image: url(exequexttime.png);
+    background-image: url(exequexttime.svg);
     background-size: 100% 100%;
 }
 
 .ODNP-MainContainer .exeQuextIcons-Number {
-    background-image: url(exequextnumber.png);
-    background-size: 100% 100%;
-}
-
-.ODNP-MainContainer .exeQuextIcons-Life {
-    background-image: url(exequextlive.png);
+    background-image: url(exequextnumber.svg);
     background-size: 100% 100%;
 }
 
 /* Full Screen */
 div:fullscreen .exeQuextIcons-FullScreen {
-    background-image: url(exequextnormal.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png);
+    background: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
@@ -1042,7 +1034,6 @@ div:fullscreen .ODNP-LinkMinimize {
         display: none;
     }
 
-    .ODNP-MainContainer .exeQuextIcons-MoveOne,
     .ODNP-MainContainer .exeQuextIcons-Submit,
     .ODNP-MainContainer .exeQuextIcons-Video {
         height: 2em;
@@ -1190,7 +1181,6 @@ div:fullscreen .ODNP-LinkMinimize {
 
 @media screen and (max-width:235px) {
 
-    .ODNP-GameScoreBoard .exeQuextIcons-Life,
     .ODNP-GameScoreBoard .exeQuextIcons-Time {
         display: none;
     }
