@@ -69,7 +69,7 @@ Offline installers for Linux, Windows and macOS are also available on the [Relea
 
 To deploy eXeLearning in a production environment, see:
 
-- Overview: [doc/deploy/overview.md](./doc/deploy/overview.md)
+- Overview: [doc/deployment.md](./doc/deployment.md)
 - Sample Compose files: [doc/deploy/README.md](./doc/deploy/README.md)
 
 ## Development Environment
