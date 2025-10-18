@@ -8,14 +8,14 @@ const fs                              = require('fs');
 const AdmZip                          = require('adm-zip');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
-       
+
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged
   ? process.resourcesPath
   : app.getAppPath();
 
 // Optional: force a predictable path/name
-log.transports.file.resolvePath = () =>
+log.transports.file.resolvePathFn = () =>
   path.join(app.getPath('userData'), 'logs', 'main.log');
 
 // Mirror console.* to electron-log so GUI builds persist logs to file
@@ -47,14 +47,6 @@ i18n.configure({
 
 i18n.setLocale(defaultLocale);
 
-
-// Logger
-autoUpdater.logger = log;
-autoUpdater.logger.transports.file.level = 'info';
-
-// Do not download until the user confirms
-autoUpdater.autoDownload = false;
-
 /**
  * Initialise listeners and launch the first check.
  * Call this once your main window is ready.
@@ -62,56 +54,14 @@ autoUpdater.autoDownload = false;
  */
 function initUpdates(win) {
 
-// IMPORTANT! REMOVE THIS WHEN OPEN THE GH REPOSITORY!
-if (!process.env.GH_TOKEN && app.isPackaged ) {
-  log.warn('GH_TOKEN not present: updater disabled on this boot');
-  return;
+  // Logger
+  autoUpdater.logger = log;
+  autoUpdater.logger.transports.file.level = 'info';
+
+  // check on every launch
+  autoUpdater.checkForUpdatesAndNotify()
+
 }
-// IMPORTANT! REMOVE THIS WHEN OPEN THE GH REPOSITORY!
-
-  const showBox = (opts) => dialog.showMessageBox(win, opts);
-
-  autoUpdater.on('error', (err) => {
-    dialog.showErrorBox(
-      i18n.__('updater.errorTitle'),
-      err == null ? 'unknown' : (err.stack || err).toString()
-    );
-  });
-
-  autoUpdater.on('update-available', (info) => {
-    showBox({
-      type: 'info',
-      title:   i18n.__('updater.updateAvailableTitle'),
-      message: i18n.__('updater.updateAvailableMessage', { version: info.version }),
-      buttons: [i18n.__('updater.download'), i18n.__('updater.later')],
-      defaultId: 0,
-      cancelId: 1
-    }).then(({ response }) => {
-      if (response === 0) autoUpdater.downloadUpdate();
-    });
-  });
-
-  autoUpdater.on('update-not-available', () => {
-    log.info('No update found');
-  });
-
-  autoUpdater.on('update-downloaded', () => {
-    showBox({
-      type: 'info',
-      title:   i18n.__('updater.readyTitle'),
-      message: i18n.__('updater.readyMessage'),
-      buttons: [i18n.__('updater.restart'), i18n.__('updater.later')],
-      defaultId: 0,
-      cancelId: 1
-    }).then(({ response }) => {
-      if (response === 0) setImmediate(() => autoUpdater.quitAndInstall());
-    });
-  });
-
-  // Background check on every launch
-  autoUpdater.checkForUpdates();
-}
-
 
 let phpBinaryPath;
 let appDataPath;
@@ -369,7 +319,7 @@ function attachOpenHandler(win) {
       width,
       height,
       modal: false,
-      show: ALLOW_UI_IN_CI ? true : !IS_E2E,
+      show: true,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -395,9 +345,6 @@ function attachOpenHandler(win) {
 
 }
 
-const ALLOW_UI_IN_CI = process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true';
-const IS_E2E = process.env.E2E_TEST === '1' || (process.env.CI === 'true' && !ALLOW_UI_IN_CI);
-
 function createWindow() {
 
   initializePaths(); // Initialize paths before using them
@@ -410,11 +357,8 @@ function createWindow() {
   // Ensure all required directories exist and try to set permissions
   ensureAllDirectoriesWritable(env);
 
-// Skip loading window in E2E/CI
-if (!IS_E2E) {
- // Create the loading window
+  // Create the loading window
   createLoadingWindow();
-}
 
   // Check if the database exists and run Symfony commands
   checkAndCreateDatabase();
@@ -443,9 +387,7 @@ if (!IS_E2E) {
         preload: path.join(__dirname, 'preload.js'),
       },
       tabbingIdentifier: 'mainGroup',
-      // show: false
-      show: ALLOW_UI_IN_CI ? true : !IS_E2E,
-      // show: !IS_E2E  // don't actually show in E2E/CI
+      show: true,
       // titleBarStyle: 'customButtonsOnHover', // hidden title bar on macOS
     });
     
@@ -453,12 +395,10 @@ if (!IS_E2E) {
     mainWindow.setMenuBarVisibility(isDev);
     
     // Maximize the window and open it
-    if (!IS_E2E) {
-        mainWindow.maximize();
-        mainWindow.show();
-    }
+    mainWindow.maximize();
+    mainWindow.show();
 
-    if (process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true') {
+    if (process.env.CI === '1' || process.env.CI === 'true') {
       mainWindow.setAlwaysOnTop(true, 'screen-saver');
       mainWindow.show();
       mainWindow.focus();
@@ -594,10 +534,10 @@ if (!IS_E2E) {
         }
       }
     });
+  
+    // Init updater logic
+    initUpdates(mainWindow);
 
-    if (!IS_E2E) {
-      initUpdates(mainWindow);   // Init updater logic
-    }
     // If any event blocks window closing, remove it
     mainWindow.on('close', (e) => {
       // This is to ensure any preventDefault() won't stop the closing
@@ -816,8 +756,6 @@ if (!gotTheLock) {
   });
 }
 
-
-if (IS_E2E) app.disableHardwareAcceleration();
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', function () {
@@ -969,6 +907,8 @@ function runSymfonyCommands() {
     // We already created FILES_DIR in ensureAllDirectoriesWritable().
     // Also check other required directories if needed.
 
+    const iniArgs = phpIniArgs();
+
     const publicDir = path.join(basePath, 'public');
     if (!fs.existsSync(publicDir)) {
       showErrorDialog(`The public directory was not found at the path: ${publicDir}`);
@@ -982,7 +922,7 @@ function runSymfonyCommands() {
     }
     try {
       console.log('Clearing Symfony cache...');
-      execFileSync(phpBinaryPath, ['bin/console', 'cache:clear'], {
+      execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'cache:clear'], {
         env: env,
         cwd: basePath,
         windowsHide: true,
@@ -993,7 +933,7 @@ function runSymfonyCommands() {
     }
 
     console.log('Creating database tables in SQLite...');
-    execFileSync(phpBinaryPath, ['bin/console', 'doctrine:schema:update', '--force'], {
+    execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'doctrine:schema:update', '--force'], {
       env: env,
       cwd: basePath,
       windowsHide: true,
@@ -1004,9 +944,13 @@ function runSymfonyCommands() {
     if (!app.isPackaged) {
       try {
         console.log('Installing assets in public (dev/local only)...');
-        execFileSync(phpBinaryPath, ['bin/console', 'assets:install', 'public', '--no-debug', '--env=prod'], {
-          env, cwd: basePath, windowsHide: true, stdio: 'inherit',
-        });
+        execFileSync(
+          phpBinaryPath,
+          [...iniArgs, 'bin/console', 'assets:install', 'public', '--no-debug', '--env=prod'],
+          {
+            env, cwd: basePath, windowsHide: true, stdio: 'inherit',
+          },
+        );
       } catch (e) {
         console.warn('Skipping assets:install:', e.message);
       }
@@ -1015,19 +959,21 @@ function runSymfonyCommands() {
     }
 
     console.log('Creating test user...');
-    execFileSync(phpBinaryPath, [
-      'bin/console',
-      'app:create-user',
-      customEnv.TEST_USER_EMAIL,
-      customEnv.TEST_USER_PASSWORD,
-      customEnv.TEST_USER_USERNAME,
-      '--no-fail',
-    ], {
-      env: env,
-      cwd: basePath,
-      windowsHide: true,
-      stdio: 'inherit',
-    });
+    execFileSync(
+      phpBinaryPath,
+      [
+        ...iniArgs,
+        'bin/console',
+        'app:create-user',
+        customEnv.TEST_USER_EMAIL,
+        customEnv.TEST_USER_PASSWORD,
+        customEnv.TEST_USER_USERNAME,
+        '--no-fail',
+      ],
+      {
+        env, cwd: basePath, windowsHide: true, stdio: 'inherit',
+      },
+    );
 
     console.log('Symfony commands executed successfully.');
   } catch (err) {
@@ -1037,6 +983,31 @@ function runSymfonyCommands() {
 }
 
 function phpIniArgs() {
+  const maxExecutionTime = String(process.env.PHP_MAX_EXECUTION_TIME ?? '600');
+  const maxInputTime = String(process.env.PHP_MAX_INPUT_TIME ?? maxExecutionTime);
+  const memoryLimit = String(process.env.PHP_MEMORY_LIMIT ?? '512M');
+  const uploadMaxFilesize = String(process.env.PHP_UPLOAD_MAX_FILESIZE ?? '512M');
+  let postMaxSize = String(process.env.PHP_POST_MAX_SIZE ?? uploadMaxFilesize);
+
+  // Ensure POST payload limit is never lower than the upload limit.
+  const parseSize = (value) => {
+    if (!value) return 0;
+    const match = String(value).trim().match(/^(\d+)([KMG]?)/i);
+    if (!match) return Number(value) || 0;
+    const quantity = Number(match[1]);
+    const unit = match[2]?.toUpperCase();
+    switch (unit) {
+      case 'G': return quantity * 1024 * 1024 * 1024;
+      case 'M': return quantity * 1024 * 1024;
+      case 'K': return quantity * 1024;
+      default: return quantity;
+    }
+  };
+
+  if (parseSize(postMaxSize) < parseSize(uploadMaxFilesize)) {
+    postMaxSize = uploadMaxFilesize;
+  }
+
   return [
     '-dopcache.enable=1',
     '-dopcache.enable_cli=1',
@@ -1046,6 +1017,11 @@ function phpIniArgs() {
     '-dopcache.validate_timestamps=0',
     '-drealpath_cache_size=4096k',
     '-drealpath_cache_ttl=600',
+    `-dmax_execution_time=${maxExecutionTime}`,
+    `-dmax_input_time=${maxInputTime}`,
+    `-dmemory_limit=${memoryLimit}`,
+    `-dupload_max_filesize=${uploadMaxFilesize}`,
+    `-dpost_max_size=${postMaxSize}`,
   ];
 }
 
