@@ -733,10 +733,6 @@
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
         <target>Proporciona 4 elements per a cada grup: carnívors, 0, i herbívors, 1. Separa el grup i l'element amb #.</target>
       </trans-unit>
-      <trans-unit id="DCe79Ym" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
-        <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target>#Genera 10 preguntes de veritat o falsedat. Cada pregunta ha de incloure la solució (0 = fals, 1 = cert), seguida d'una suggerència i retroalimentació, totes separades per #. A més, la retroalimentació no ha de indicar explícitament si la resposta és correcta o incorrecta.</target>
-      </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
         <target>Genera 10 preguntes. La 'Solució' pot ser 0/1 per a Veritat/Fals, 0-3 per a tria única, o A-D (o combinacions) per a tria múltiple. Després, proporciona la pregunta i les opcions de resposta (2 a 4), totes separades per '#'.</target>
@@ -1013,14 +1009,6 @@
         <source>Games</source>
         <target>Jocs</target>
       </trans-unit>
-      <trans-unit id="sT5mEGg" resname="Others">
-        <source>Others</source>
-        <target>Altres</target>
-      </trans-unit>
-      <trans-unit id="g51Phoz" resname="Close panel">
-        <source>Close panel</source>
-        <target>Tanca el panell</target>
-      </trans-unit>
       <trans-unit id="WJ.kBLL" resname="Minimize">
         <source>Minimize</source>
         <target>Minimitzar</target>
@@ -1237,17 +1225,9 @@
         <source>Default iDevices</source>
         <target>iDevices per defecte</target>
       </trans-unit>
-      <trans-unit id="jfTZJsv" resname="My iDevices">
-        <source>My iDevices</source>
-        <target>Els meus iDevices</target>
-      </trans-unit>
       <trans-unit id="yIQeeyS" resname="Import iDevice">
         <source>Import iDevice</source>
         <target>Importeu l'iDevice</target>
-      </trans-unit>
-      <trans-unit id="e489ss4" resname="Visibility">
-        <source>Visibility</source>
-        <target>Visibilitat</target>
       </trans-unit>
       <trans-unit id=".zZzsFp" resname="Title">
         <source>Title</source>
@@ -1337,10 +1317,6 @@
         <source>You don't have the style used by this project.</source>
         <target>No tens l'estil utilitzat per aquest projecte.</target>
       </trans-unit>
-      <trans-unit id="PL2fcxN" resname="Theme">
-        <source>Theme</source>
-        <target>Tema</target>
-      </trans-unit>
       <trans-unit id="w4McUC5" resname="Search saved projects...">
         <source>Search saved projects...</source>
         <target>Cerca projectes desats...</target>
@@ -1381,10 +1357,6 @@
         <source>Select a file from your device</source>
         <target>Selecciona un fitxer del teu dispositiu</target>
       </trans-unit>
-      <trans-unit id="AGCgQbp" resname="Open multiple files">
-        <source>Open multiple files</source>
-        <target>Obrir múltiples fitxers</target>
-      </trans-unit>
       <trans-unit id="vV4X2fr" resname="Import error">
         <source>Import error</source>
         <target>Error d'importació</target>
@@ -1396,14 +1368,6 @@
       <trans-unit id="Fg2n1tC" resname="Error while uploading the project.">
         <source>Error while uploading the project.</source>
         <target>Error en pujar el projecte.</target>
-      </trans-unit>
-      <trans-unit id="9ssEipw" resname="Could not open the file.">
-        <source>Could not open the file.</source>
-        <target>No s'ha pogut obrir el fitxer.</target>
-      </trans-unit>
-      <trans-unit id="S1Udg4B" resname="Could not read all files.">
-        <source>Could not read all files.</source>
-        <target>No s'han pogut llegir tots els arxius.</target>
       </trans-unit>
       <trans-unit id="HhDqlPu" resname="Do you want to install it?">
         <source>Do you want to install it?</source>
@@ -1456,10 +1420,6 @@
       <trans-unit id="oBD6axx" resname="My new theme">
         <source>My new theme</source>
         <target>El meu nou tema</target>
-      </trans-unit>
-      <trans-unit id="bkrp5CF" resname="Import theme">
-        <source>Import theme</source>
-        <target>Importa el tema</target>
       </trans-unit>
       <trans-unit id="JazBvdW" resname="Delete theme">
         <source>Delete theme</source>
@@ -1580,10 +1540,6 @@
       <trans-unit id="7sUNuje" resname="Change title">
         <source>Change title</source>
         <target>Canvia títol</target>
-      </trans-unit>
-      <trans-unit id="z_qJqv_" resname="Write new title of the block:">
-        <source>Write new title of the block:</source>
-        <target>Escriu un nou títol del bloc:</target>
       </trans-unit>
       <trans-unit id="6G57oAR" resname="Block error">
         <source>Block error</source>
@@ -2352,10 +2308,6 @@
       <trans-unit id="Dptvysv" resname="Time">
         <source>Time</source>
         <target>Hora</target>
-      </trans-unit>
-      <trans-unit id="tcMdV.J" resname="Other Contents">
-        <source>Other Contents</source>
-        <target>Altres continguts</target>
       </trans-unit>
       <trans-unit id="gVB98a9" resname="Checklist">
         <source>Checklist</source>
@@ -4565,14 +4517,6 @@
         <source>Define the domain of each variable</source>
         <target>Definiu el domini de cada variable</target>
       </trans-unit>
-      <trans-unit id="2uyok9Z" resname="Highest number:">
-        <source>Highest number:</source>
-        <target>Número més gran:</target>
-      </trans-unit>
-      <trans-unit id="f8JcFAp" resname="Decimals:">
-        <source>Decimals:</source>
-        <target>Decimals:</target>
-      </trans-unit>
       <trans-unit id="Ke5uJZY" resname="No decimals">
         <source>No decimals</source>
         <target>Sense decimals</target>
@@ -5700,10 +5644,6 @@
       <trans-unit id="C6zupyt" resname="Rubric">
         <source>Rubric</source>
         <target>Rúbrica</target>
-      </trans-unit>
-      <trans-unit id="_7_zOGQ" resname="Other contents">
-        <source>Other contents</source>
-        <target>Altres continguts</target>
       </trans-unit>
       <trans-unit id="Jc_XWZN" resname="Notes">
         <source>Notes</source>
@@ -8405,10 +8345,6 @@
         <source>iDevices panel</source>
         <target>panell de iDevices</target>
       </trans-unit>
-      <trans-unit id="I66BifE" resname="Show online users">
-        <source>Show online users</source>
-        <target>Mostrar usuaris en línia</target>
-      </trans-unit>
       <trans-unit id="9G8Nzdp" resname="User menu">
         <source>User menu</source>
         <target>Menú d'usuari</target>
@@ -8492,10 +8428,6 @@
       <trans-unit id="pmNOFNX" resname="Report a bug">
         <source>Report a bug</source>
         <target>Informar d'un error</target>
-      </trans-unit>
-      <trans-unit id="fJNa7jq" resname="Structure">
-        <source>Structure</source>
-        <target>Estructura</target>
       </trans-unit>
       <trans-unit id="PTY.ZKR" resname="Import iDevices">
         <source>Import iDevices</source>

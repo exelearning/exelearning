@@ -733,10 +733,6 @@
         <source>Provide 4 elements for each of these groups: carnivores, 0, and herbivores, 1. Separate the group number and the element using the symbol #.</source>
         <target>Eman 4 elementu eman hemengo talde bakoitzeko: haragijaleak, 0, eta belarjaleak, 1. Bereizi taldearen zenbakia eta elementua # ikurra erabiliz.</target>
       </trans-unit>
-      <trans-unit id="DCe79Ym" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
-        <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), followed by a suggestion and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target>10 "egia ala gezurra" motako galdera sortu. Galdera bakoitzak soluzioa jarrita izan behar du (0 = okerra, 1 = zuzena), iradokizuna eta atzeraelikadura idatzi jarraian, denak # erabilita bereiziz. Atzeraelikadurak ez du derrigorrez zehatz azaldu behar erantzuna zuzena ala okerra den.</target>
-      </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
         <target>10 galdera sortu. Soluzioen aukerak: 0/1 ("egia ala gezurra" motako galderetarako), 0-3 (aukera bakarrekoetarako), edo A-D (edo bestekako konbinazioak) (aukera anitzekoetarako). Ondoren, jarri galdera eta erantzunetarako aukerak (2tik 4ra), denak # erabilita bereiziz.</target>
@@ -1013,14 +1009,6 @@
         <source>Games</source>
         <target>Jokoak</target>
       </trans-unit>
-      <trans-unit id="sT5mEGg" resname="Others">
-        <source>Others</source>
-        <target>Besteak</target>
-      </trans-unit>
-      <trans-unit id="g51Phoz" resname="Close panel">
-        <source>Close panel</source>
-        <target>Panela itxi</target>
-      </trans-unit>
       <trans-unit id="WJ.kBLL" resname="Minimize">
         <source>Minimize</source>
         <target>Minimizatu</target>
@@ -1237,17 +1225,9 @@
         <source>Default iDevices</source>
         <target>iDevice lehenetsiak</target>
       </trans-unit>
-      <trans-unit id="jfTZJsv" resname="My iDevices">
-        <source>My iDevices</source>
-        <target>Nire iDeviceak</target>
-      </trans-unit>
       <trans-unit id="yIQeeyS" resname="Import iDevice">
         <source>Import iDevice</source>
         <target>Inportatu iDevicea</target>
-      </trans-unit>
-      <trans-unit id="e489ss4" resname="Visibility">
-        <source>Visibility</source>
-        <target>Ikusgarritasuna</target>
       </trans-unit>
       <trans-unit id=".zZzsFp" resname="Title">
         <source>Title</source>
@@ -1337,10 +1317,6 @@
         <source>You don't have the style used by this project.</source>
         <target>Ez duzu proiektu honek erabiltzen duen estiloa.</target>
       </trans-unit>
-      <trans-unit id="PL2fcxN" resname="Theme">
-        <source>Theme</source>
-        <target>Gaia</target>
-      </trans-unit>
       <trans-unit id="w4McUC5" resname="Search saved projects...">
         <source>Search saved projects...</source>
         <target>Gordetako proiektuak bilatu...</target>
@@ -1381,10 +1357,6 @@
         <source>Select a file from your device</source>
         <target>Zure gailutik fitxategi bat aukeratu</target>
       </trans-unit>
-      <trans-unit id="AGCgQbp" resname="Open multiple files">
-        <source>Open multiple files</source>
-        <target>Fitxategi bat baino gehiago ireki</target>
-      </trans-unit>
       <trans-unit id="vV4X2fr" resname="Import error">
         <source>Import error</source>
         <target>Errorea inportatzean</target>
@@ -1396,14 +1368,6 @@
       <trans-unit id="Fg2n1tC" resname="Error while uploading the project.">
         <source>Error while uploading the project.</source>
         <target>Errorea proiektua igotzean.</target>
-      </trans-unit>
-      <trans-unit id="9ssEipw" resname="Could not open the file.">
-        <source>Could not open the file.</source>
-        <target>Ezin izan da fitxategia ireki.</target>
-      </trans-unit>
-      <trans-unit id="S1Udg4B" resname="Could not read all files.">
-        <source>Could not read all files.</source>
-        <target>Ezin izan dira fitxategi guztiak irakurri.</target>
       </trans-unit>
       <trans-unit id="HhDqlPu" resname="Do you want to install it?">
         <source>Do you want to install it?</source>
@@ -1456,10 +1420,6 @@
       <trans-unit id="oBD6axx" resname="My new theme">
         <source>My new theme</source>
         <target>Nire gai berria</target>
-      </trans-unit>
-      <trans-unit id="bkrp5CF" resname="Import theme">
-        <source>Import theme</source>
-        <target>Gai bat inportatu</target>
       </trans-unit>
       <trans-unit id="JazBvdW" resname="Delete theme">
         <source>Delete theme</source>
@@ -1580,10 +1540,6 @@
       <trans-unit id="7sUNuje" resname="Change title">
         <source>Change title</source>
         <target>Izenburua aldatu</target>
-      </trans-unit>
-      <trans-unit id="z_qJqv_" resname="Write new title of the block:">
-        <source>Write new title of the block:</source>
-        <target>Blokearen izenburu berria idatzi:</target>
       </trans-unit>
       <trans-unit id="6G57oAR" resname="Block error">
         <source>Block error</source>
@@ -2352,10 +2308,6 @@
       <trans-unit id="Dptvysv" resname="Time">
         <source>Time</source>
         <target>Denbora</target>
-      </trans-unit>
-      <trans-unit id="tcMdV.J" resname="Other Contents">
-        <source>Other Contents</source>
-        <target>Beste eduki batzuk</target>
       </trans-unit>
       <trans-unit id="gVB98a9" resname="Checklist">
         <source>Checklist</source>
@@ -4565,14 +4517,6 @@
         <source>Define the domain of each variable</source>
         <target>Aldagai bakoitzaren eremua zehaztu.</target>
       </trans-unit>
-      <trans-unit id="2uyok9Z" resname="Highest number:">
-        <source>Highest number:</source>
-        <target>Zenbakirik handiena:</target>
-      </trans-unit>
-      <trans-unit id="f8JcFAp" resname="Decimals:">
-        <source>Decimals:</source>
-        <target>Dezimalak:</target>
-      </trans-unit>
       <trans-unit id="Ke5uJZY" resname="No decimals">
         <source>No decimals</source>
         <target>Dezimalik gabe</target>
@@ -5700,10 +5644,6 @@
       <trans-unit id="C6zupyt" resname="Rubric">
         <source>Rubric</source>
         <target>Errubrika</target>
-      </trans-unit>
-      <trans-unit id="_7_zOGQ" resname="Other contents">
-        <source>Other contents</source>
-        <target>Beste edukiak</target>
       </trans-unit>
       <trans-unit id="Jc_XWZN" resname="Notes">
         <source>Notes</source>
@@ -8405,10 +8345,6 @@
         <source>iDevices panel</source>
         <target>iDevice-en panela</target>
       </trans-unit>
-      <trans-unit id="I66BifE" resname="Show online users">
-        <source>Show online users</source>
-        <target>Lineako erabiltzaileak erakutsi</target>
-      </trans-unit>
       <trans-unit id="9G8Nzdp" resname="User menu">
         <source>User menu</source>
         <target>Erabiltzaile menua</target>
@@ -8492,10 +8428,6 @@
       <trans-unit id="pmNOFNX" resname="Report a bug">
         <source>Report a bug</source>
         <target>Errore baten berri eman</target>
-      </trans-unit>
-      <trans-unit id="fJNa7jq" resname="Structure">
-        <source>Structure</source>
-        <target>Egitura</target>
       </trans-unit>
       <trans-unit id="PTY.ZKR" resname="Import iDevices">
         <source>Import iDevices</source>
