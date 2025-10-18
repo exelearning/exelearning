@@ -4433,6 +4433,10 @@
         <source>Style properties</source>
         <target>Propietats de l'estil</target>
       </trans-unit>
+      <trans-unit id="RFZSvQG" resname="Style">
+        <source>Style</source>
+        <target>Estil</target>
+      </trans-unit>
       <trans-unit id="NnZxYgo" resname="Are you sure you want to delete the style: ${theme.id}?">
         <source>Are you sure you want to delete the style: ${theme.id}?</source>
         <target>Estàs segur que vols eliminar el tema: ${theme.id}?</target>
@@ -4549,10 +4553,6 @@
         <source>An error occurred while removing the component from the database</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="78RKJPa" resname="An error occurred while saving the iDevice’s properties to the database.">
-        <source>An error occurred while saving the iDevice’s properties to the database.</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="Ak3_Wjd" resname="Discard changes">
         <source>Discard changes</source>
         <target>Descarta els canvis</target>
@@ -4579,6 +4579,10 @@
       </trans-unit>
       <trans-unit id="aG4weoA" resname="An error occurred while save component in database">
         <source>An error occurred while save component in database</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="78RKJPa" resname="An error occurred while saving the iDevice’s properties to the database.">
+        <source>An error occurred while saving the iDevice’s properties to the database.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="8g6a9xW" resname="File is too large">
@@ -10200,10 +10204,6 @@
       <trans-unit id="MQTIRXA" resname="Image Title">
         <source>Image Title</source>
         <target>Títol de la imatge</target>
-      </trans-unit>
-      <trans-unit id="RFZSvQG" resname="Style">
-        <source>Style</source>
-        <target>Estil</target>
       </trans-unit>
       <trans-unit id="rY6IWgP" resname="Dimensions">
         <source>Dimensions</source>

@@ -4433,6 +4433,10 @@
         <source>Style properties</source>
         <target>Propiedades del estilo</target>
       </trans-unit>
+      <trans-unit id="RFZSvQG" resname="Style">
+        <source>Style</source>
+        <target>Estilo</target>
+      </trans-unit>
       <trans-unit id="NnZxYgo" resname="Are you sure you want to delete the style: ${theme.id}?">
         <source>Are you sure you want to delete the style: ${theme.id}?</source>
         <target>¿Seguro que quieres eliminar el estilo: ${theme.id}?</target>
@@ -4549,10 +4553,6 @@
         <source>An error occurred while removing the component from the database</source>
         <target>Error al eliminar el componente de la base de datos</target>
       </trans-unit>
-      <trans-unit id="78RKJPa" resname="An error occurred while saving the iDevice’s properties to the database.">
-        <source>An error occurred while saving the iDevice’s properties to the database.</source>
-        <target>Error al guardar las propiedades del iDevice</target>
-      </trans-unit>
       <trans-unit id="Ak3_Wjd" resname="Discard changes">
         <source>Discard changes</source>
         <target>Descartar cambios</target>
@@ -4580,6 +4580,10 @@
       <trans-unit id="aG4weoA" resname="An error occurred while save component in database">
         <source>An error occurred while save component in database</source>
         <target>Error al guardar el componente en la base de datos</target>
+      </trans-unit>
+      <trans-unit id="78RKJPa" resname="An error occurred while saving the iDevice’s properties to the database.">
+        <source>An error occurred while saving the iDevice’s properties to the database.</source>
+        <target>Error al guardar las propiedades del iDevice</target>
       </trans-unit>
       <trans-unit id="8g6a9xW" resname="File is too large">
         <source>File is too large</source>
@@ -10200,10 +10204,6 @@
       <trans-unit id="MQTIRXA" resname="Image Title">
         <source>Image Title</source>
         <target>Título de la imagen</target>
-      </trans-unit>
-      <trans-unit id="RFZSvQG" resname="Style">
-        <source>Style</source>
-        <target>Estilo</target>
       </trans-unit>
       <trans-unit id="rY6IWgP" resname="Dimensions">
         <source>Dimensions</source>
