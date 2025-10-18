@@ -4553,8 +4553,8 @@
         <source>An error occurred while removing the component from the database</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="G91jVbs" resname="An error occurred while saving idevice's properties in database">
-        <source>An error occurred while saving idevice's properties in database</source>
+      <trans-unit id="G91jVbs" resname="An error occurred while saving the iDevice’s properties to the database.">
+        <source>An error occurred while saving the iDevice’s properties to the database.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="Ak3_Wjd" resname="Discard changes">
@@ -4577,8 +4577,8 @@
         <source>Move iDevice to page</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="td2MDS0" resname="Select the page you want to move the idevice to. This will be at the end of it.">
-        <source>Select the page you want to move the idevice to. This will be at the end of it.</source>
+      <trans-unit id="td2MDS0" resname="Select the page where you want to move the iDevice. It will be placed at the end of the page.">
+        <source>Select the page where you want to move the iDevice. It will be placed at the end of the page.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="aG4weoA" resname="An error occurred while save component in database">
@@ -4601,8 +4601,8 @@
         <source>Not allowed</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="wut7ZJN" resname="You cannot edit another idevice until you save the current one">
-        <source>You cannot edit another idevice until you save the current one</source>
+      <trans-unit id="wut7ZJN" resname="You cannot edit another iDevice until you save the current one">
+        <source>You cannot edit another iDevice until you save the current one</source>
         <target></target>
       </trans-unit>
       <trans-unit id="6b66eDm" resname="Remove Block">
