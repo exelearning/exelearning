@@ -624,6 +624,7 @@ help:
 	@echo "  test-e2e              - Run e2e tests with Paratest (chrome)"
 	@echo "  test-e2e-realtime     - Run e2e-realtime tests with Paratest (chrome)"
 	@echo "  test-e2e-offline      - Run e2e-offline tests with Paratest (chrome)"
+	@echo "  test-playwright       - Run local Playwright collaborative test (host browser)"
 	@echo "  test-shell            - Open a shell inside the exelearning container (and the chrome container)"
 	@echo "  test-local            - Run unit tests in local environment (no Docker, SQLite tmp DB)"
 	@echo "  test-unit-parallel    - Run unit tests in parallel using paratest"
@@ -645,3 +646,20 @@ help:
 
 # Set help as the default goal if no target is specified
 .DEFAULT_GOAL := help
+
+# Run local Playwright collaborative test (opens two Chromium windows)
+# Optional usage:
+#   make test-playwright BASE_HOST=http://localhost:8080 GUEST_LOGIN_PATH=/login/guest WORKAREA_PATH=/workarea VERBOSE=1
+test-playwright: check-env upd
+	@echo "Running Playwright collaborative test (local host)..."
+	yarn install
+	# Ensure required browsers are installed (idempotent)
+	yarn playwright install chromium || npx playwright install chromium
+	$(if $(BASE_HOST),BASE_HOST=$(BASE_HOST),) \
+	$(if $(GUEST_LOGIN_PATH),GUEST_LOGIN_PATH=$(GUEST_LOGIN_PATH),) \
+	$(if $(WORKAREA_PATH),WORKAREA_PATH=$(WORKAREA_PATH),) \
+	$(if $(SCREEN_WIDTH),SCREEN_WIDTH=$(SCREEN_WIDTH),) \
+	$(if $(SCREEN_HEIGHT),SCREEN_HEIGHT=$(SCREEN_HEIGHT),) \
+	$(if $(VERBOSE),VERBOSE=$(VERBOSE),) \
+	$(if $(DEBUG),DEBUG=$(DEBUG),) \
+	node tests/playwright/collab-exe.js
