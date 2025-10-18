@@ -1105,34 +1105,4 @@ table{
     .exe-web-site #siteFooter,
     .exe-web-site main.page{padding-left: 0;padding-right: 0}
     .exe-web-site main.page{padding-top:1em}
-    body.exe-single-page{
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-    .exe-single-page .package-node{
-        break-after: page;
-        page-break-after: always;
-    }
-    .exe-single-page .package-node:last-of-type{
-        break-after: auto;
-        page-break-after: auto;
-    }
-    .exe-single-page .exe-content figure,
-    .exe-single-page .exe-content pre,
-    .exe-single-page .exe-content table,
-    .exe-single-page .exe-content blockquote{
-        break-inside: avoid;
-        page-break-inside: avoid;
-    }
-    .exe-single-page .exe-content img,
-    .exe-single-page .exe-content svg,
-    .exe-single-page .exe-content video,
-    .exe-single-page .exe-content canvas,
-    .exe-single-page .exe-content iframe{
-        max-width: 100% !important;
-        height: auto !important;
-    }
-    .exe-single-page .exe-udlContent-alt-content-hide{
-        display: none !important;
-    }
 }
