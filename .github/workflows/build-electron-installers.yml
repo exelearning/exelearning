@@ -97,7 +97,8 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           rm -f vendor/nativephp/php-bin/bin/mac/arm64/php-8.3.zip
-          rm -f vendor/nativephp/php-bin/bin/mac/x86/php-8.3.zip
+          rm -f vendor/nativephp/php-bin/bin/mac/x64/php-8.3.zip
+          rm -rf vendor/nativephp/php-bin/bin/mac/x86
           rm -rf vendor/nativephp/php-bin/bin/linux
           rm -rf vendor/nativephp/php-bin/bin/win
 
