@@ -889,7 +889,7 @@ a.trivial-LinkMaximize {
 }
 
 .trivial-CancelButton {
-    background: url(exequextrerrors.png) no-repeat;
+    background: url(exequextrerrors.svg) no-repeat;
     background-size: 100% 100%;
     cursor: pointer;
     height: 1.7rem;
@@ -1206,7 +1206,7 @@ div:-moz-full-screen .trivial-CasillaDestino {
 }
 
 .trivial-MainContainer .exeQuextIcons-FullScreen {
-    background: url(exequextfull.png) no-repeat;
+    background: url(exequextfull.svg) no-repeat;
     background-size: 100% 100%;
     height: 100%;
     margin-left: 0.1em;
@@ -1222,7 +1222,7 @@ div:-moz-full-screen .trivial-CasillaDestino {
 }
 
 .trivial-MainContainer .exeQuextIcons-Minimize {
-    background: url(exequextmin.png) no-repeat;
+    background: url(exequextmin.svg) no-repeat;
     background-size: 100% 100%;
     height: 100%;
     margin-left: 0.1em;
@@ -1235,15 +1235,15 @@ div:-moz-full-screen .trivial-CasillaDestino {
 }
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png) no-repeat;
+    background: url(exequextfull.svg) no-repeat;
 }
 
 div:-webkit-full-screen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png) no-repeat;
+    background: url(exequextfull.svg) no-repeat;
 }
 
 div:-moz-full-screen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png) no-repeat;
+    background: url(exequextfull.svg) no-repeat;
 }
 
 /* Iconos */
@@ -1260,39 +1260,39 @@ div:-moz-full-screen .exeQuextIcons-FullScreen {
 }
 
 .exeQuextIcons-Minimize {
-    background: url(exequextmin.png) no-repeat;
+    background: url(exequextmin.svg) no-repeat;
     background-size: 100% 100%;
 }
 
 .exeQuextIcons-Hit {
-    background: url(exequexthits.png) no-repeat;
+    background: url(exequexthits.svg) no-repeat;
     background-size: 100% 100%;
 }
 
 .exeQuextIcons-FullScreen {
-    background: url(exequextfull.png) no-repeat;
+    background: url(exequextfull.svg) no-repeat;
     background-size: 100% 100%;
     height: 100%;
     width: 100%;
 }
 
 .exeQuextIcons-Error {
-    background: url(exequextrerrors.png) no-repeat;
+    background: url(exequextrerrors.svg) no-repeat;
     background-size: 100% 100%;
 }
 
 .exeQuextIcons-Score {
-    background: url(exequextscore.png) no-repeat;
+    background: url(exequextscore.svg) no-repeat;
     background-size: 100% 100%;
 }
 
 .exeQuextIcons-Time {
-    background: url(exequexttime.png);
+    background: url(exequexttime.svg);
     background-size: 100% 100%;
 }
 
 .exeQuextIcons-Number {
-    background: url(exequextnumber.png) no-repeat;
+    background: url(exequextnumber.svg) no-repeat;
     background-size: 100% 100%;
 }
 
