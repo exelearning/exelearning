@@ -4061,7 +4061,7 @@
         <source>Properties</source>
         <target>Propietateak</target>
       </trans-unit>
-      <trans-unit id="I_Iqn6X" resname="There are no imported styles yet">
+      <trans-unit id="dmcRfIp" resname="There are no imported styles yet">
         <source>There are no imported styles yet</source>
         <target>~Oraindik ez da inportatutako gaia</target>
       </trans-unit>
@@ -4073,7 +4073,7 @@
         <source>or drag it here</source>
         <target>~edo arrastatu hona</target>
       </trans-unit>
-      <trans-unit id="JazBvdW" resname="Delete style">
+      <trans-unit id="bXi_PNT" resname="Delete style">
         <source>Delete style</source>
         <target>Gai bat ezabatu</target>
       </trans-unit>
@@ -4085,11 +4085,11 @@
         <source>Failed to edit the style </source>
         <target>Huts egin du estiloaren gai berriaren edizioak</target>
       </trans-unit>
-      <trans-unit id="cnJ1FXy" resname="Failed to remove style">
+      <trans-unit id="VCKlH0_" resname="Failed to remove style">
         <source>Failed to remove style</source>
         <target>Huts egin du gaiaren ezabaketak</target>
       </trans-unit>
-      <trans-unit id="DOupdVJ" resname="Import style in ZIP format">
+      <trans-unit id=".tDUdOm" resname="Import style in ZIP format">
         <source>Import style in ZIP format</source>
         <target>~Inportatu gaia ZIP formatuan</target>
       </trans-unit>
@@ -4105,7 +4105,7 @@
         <source>Remove image</source>
         <target>~Irudia kendu</target>
       </trans-unit>
-      <trans-unit id="fKSXhx6" resname="Are you sure you want to delete the style: ${themeId}?">
+      <trans-unit id="vOnFuyb" resname="Are you sure you want to delete the style: ${themeId}?">
         <source>Are you sure you want to delete the style: ${themeId}?</source>
         <target>~Ziur zaude gaia ezabatu nahi duzula: ${themeId}?</target>
       </trans-unit>
@@ -4409,19 +4409,19 @@
         <source>Styles</source>
         <target>Estiloak</target>
       </trans-unit>
-      <trans-unit id="bU3Dlck" resname="Default styles">
+      <trans-unit id="AYhWjoY" resname="Default styles">
         <source>Default styles</source>
         <target>Estilo lehenetsiak</target>
       </trans-unit>
-      <trans-unit id="4xmlt_q" resname="My styles">
+      <trans-unit id="eFRdnO4" resname="My styles">
         <source>My styles</source>
         <target>Nire gaiak</target>
       </trans-unit>
-      <trans-unit id="vt7s_Yo" resname="New style">
+      <trans-unit id="xUs3hbg" resname="New style">
         <source>New style</source>
         <target>Gai berria</target>
       </trans-unit>
-      <trans-unit id="oBD6axx" resname="My new style">
+      <trans-unit id="EhkqVV8" resname="My new style">
         <source>My new style</source>
         <target>Nire gai berria</target>
       </trans-unit>
@@ -4433,7 +4433,7 @@
         <source>Style properties</source>
         <target>Estiloaren propietateak</target>
       </trans-unit>
-      <trans-unit id="0ldohLG" resname="Are you sure you want to delete the style: ${theme.id}?">
+      <trans-unit id="NnZxYgo" resname="Are you sure you want to delete the style: ${theme.id}?">
         <source>Are you sure you want to delete the style: ${theme.id}?</source>
         <target>Ziur zaude gaia ezabatu nahi duzula: ${theme.id}?</target>
       </trans-unit>
@@ -4549,7 +4549,7 @@
         <source>An error occurred while removing the component from the database</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="G91jVbs" resname="An error occurred while saving the iDevice’s properties to the database.">
+      <trans-unit id="78RKJPa" resname="An error occurred while saving the iDevice’s properties to the database.">
         <source>An error occurred while saving the iDevice’s properties to the database.</source>
         <target></target>
       </trans-unit>
@@ -4573,7 +4573,7 @@
         <source>Move iDevice to page</source>
         <target>iDevicea orrira mugitu</target>
       </trans-unit>
-      <trans-unit id="td2MDS0" resname="Select the page where you want to move the iDevice. It will be placed at the end of the page.">
+      <trans-unit id="qMGbqBh" resname="Select the page where you want to move the iDevice. It will be placed at the end of the page.">
         <source>Select the page where you want to move the iDevice. It will be placed at the end of the page.</source>
         <target></target>
       </trans-unit>
@@ -4597,7 +4597,7 @@
         <source>Not allowed</source>
         <target>Ez da baimentzen</target>
       </trans-unit>
-      <trans-unit id="wut7ZJN" resname="You cannot edit another iDevice until you save the current one">
+      <trans-unit id="b0l3acH" resname="You cannot edit another iDevice until you save the current one">
         <source>You cannot edit another iDevice until you save the current one</source>
         <target></target>
       </trans-unit>
@@ -11365,7 +11365,7 @@
         <source>The iDevice [%s] already exists</source>
         <target>[%s] iDevice-a dagoeneko existitzen da</target>
       </trans-unit>
-      <trans-unit id="niBfDzY" resname="Could not extract style">
+      <trans-unit id="0sc1irx" resname="Could not extract style">
         <source>Could not extract style</source>
         <target>~Ezin izan da gaia atera</target>
       </trans-unit>
@@ -11385,7 +11385,7 @@
         <source>The style [%s] already exists</source>
         <target>[%s] estiloa dagoeneko existitzen da</target>
       </trans-unit>
-      <trans-unit id="RRGAG5X" resname="Could not install style">
+      <trans-unit id="D6K4nc6" resname="Could not install style">
         <source>Could not install style</source>
         <target>~Ezin izan da gaia instalatu</target>
       </trans-unit>
