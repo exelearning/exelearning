@@ -798,33 +798,30 @@
 }
 
 .RLCP-GameContainer .exeQuextIcons-Time {
-    background-image: url(exequexttime.png);
+    background-image: url(exequexttime.svg);
     background-size: 100% 100%;
 }
 
-.RLCP-GameContainer .exeQuextIcons-IconReboot {
-    background-image: url(exequextreload.png);
-    background-size: 100% 100%;
-}
+
 
 
 .RLCP-GameContainer .exeQuextIcons-Minimize {
-    background-image: url(exequextmin.png);
+    background-image: url(exequextmin.svg);
     background-size: 100% 100%;
 }
 
 .RLCP-GameContainer .exeQuextIcons-Hit {
-    background-image: url(exequexthits.png);
+    background-image: url(exequexthits.svg);
     background-size: 100% 100%;
 }
 
 .RLCP-GameContainer .exeQuextIcons-Error {
-    background-image: url(exequextrerrors.png);
+    background-image: url(exequextrerrors.svg);
     background-size: 100% 100%;
 }
 
 .RLCP-GameContainer .exeQuextIcons-Score {
-    background-image: url(exequextscore.png);
+    background-image: url(exequextscore.svg);
     background-size: 100% 100%;
 }
 
@@ -839,13 +836,13 @@
 }
 
 .RLCP-GameContainer .exeQuextIcons-FullScreen {
-    background-image: url(exequextfull.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 
 .RLCP-GameContainer .exeQuextIcons-Number {
-    background-image: url(exequextnumber.png);
+    background-image: url(exequextnumber.svg);
     background-size: 100% 100%;
 }
 
@@ -858,7 +855,7 @@
 
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background-image: url(exequextnormal.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
@@ -1236,8 +1233,7 @@ div:fullscreen .RLCP-LinkMinimize {
         display: none;
     }
 
-    .RLCP-GameContainer .exeQuextIcons-MoveOne,
-    .RLCP-GameContainer .exeQuextIcons-Submit,
+       .RLCP-GameContainer .exeQuextIcons-Submit,
     .RLCP-GameContainer .exeQuextIcons-Video {
         height: 2em;
         width: 2em;

@@ -706,37 +706,37 @@ a.rosco-WordsClose:hover {
 }
 
 .exeQuextIcons-Minimize {
-    background: url(exequextmin.png) no-repeat;
+    background: url(exequextmin.svg) no-repeat;
     background-size: cover;
 }
 
 .exeQuextIcons-Hit {
-    background: url(exequexthits.png) no-repeat;
+    background: url(exequexthits.svg) no-repeat;
     background-size: cover;
 }
 
 .exeQuextIcons-FullScreen {
-    background: url(exequextfull.png) no-repeat;
+    background: url(exequextfull.svg) no-repeat;
     background-size: cover;
 }
 
 .exeQuextIcons-Error {
-    background: url(exequextrerrors.png) no-repeat;
+    background: url(exequextrerrors.svg) no-repeat;
     background-size: cover;
 }
 
 .exeQuextIcons-Score {
-    background: url(exequextscore.png) no-repeat;
+    background: url(exequextscore.svg) no-repeat;
     background-size: cover;
 }
 
 .exeQuextIcons-Time {
-    background: url(exequexttime.png);
+    background: url(exequexttime.svg);
     background-size: cover;
 }
 
 .exeQuextIcons-Number {
-    background: url(exequextnumber.png) no-repeat;
+    background: url(exequextnumber.svg) no-repeat;
     background-size: cover;
 }
 
@@ -979,22 +979,22 @@ a.rosco-WordsClose:hover {
 /* Pnatalla completa*/
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background-image: url(exequextnormal.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 div:-webkit-full-screen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png);
+    background: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 div:-moz-full-screen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png);
+    background: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png);
+    background: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
