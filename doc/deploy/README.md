@@ -18,13 +18,13 @@ This directory contains sample Docker Compose configurations for deploying eXeLe
    
    # Copy the desired configuration file
    # For PostgreSQL
-   cp ../doc/deploy/docker-compose.postgres.yml docker-compose.yml
+   curl -L https://raw.githubusercontent.com/exelearning/exelearning/main/doc/deploy/docker-compose.postgres.yml -o docker-compose.yml
    
    # For MariaDB
-   cp ../doc/deploy/docker-compose.mariadb.yml docker-compose.yml
+   curl -L https://raw.githubusercontent.com/exelearning/exelearning/main/doc/deploy/docker-compose.mariadb.yml -o docker-compose.yml
    
    # For SQLite
-   cp ../doc/deploy/docker-compose.sqlite.yml docker-compose.yml
+   curl -L https://raw.githubusercontent.com/exelearning/exelearning/main/doc/deploy/docker-compose.sqlite.yml -o docker-compose.yml
    ```
 
 2. Start the application:
@@ -37,7 +37,7 @@ This directory contains sample Docker Compose configurations for deploying eXeLe
    export DB_PASSWORD=secure_password
    
    # Start the containers
-   docker compose up -d
+   docker compose up
    ```
 
 3. Access the application at http://localhost:8080 (or the port specified in your APP_PORT variable)
