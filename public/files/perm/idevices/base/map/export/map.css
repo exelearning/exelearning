@@ -1262,12 +1262,12 @@ img.MQP-ImageMain {
 }
 
 .MQP-MainContainer .exeQuextIcons-MZGame {
-    background-image: url(mapaminimizar1.svg);
+    background-image: url(exequextmin.svg);
     background-size: 100% 100%;
 }
 
 .MQP-MainContainer .exeQuextIcons-FSGame {
-    background-image: url(mapamaximizar.svg);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
@@ -1367,15 +1367,15 @@ div:-moz-full-screen .MQP-EText {
 }
 
 div:fullscreen .exeQuextIcons-FSGame {
-    background-image: url(mapaminimizar.svg);
+    background-image: url(exequextmin.svg);
 }
 
 div:-webkit-full-screen .exeQuextIcons-FSGame {
-    background-image: url(mapaminimizar.svg);
+    background-image: url(exequextmin.svg);
 }
 
 div:-moz-full-screen .exeQuextIcons-FSGame {
-    background-image: url(mapaminimizar.svg);
+    background-image: url(exequextmin.svg);
 }
 
 div:fullscreen .MPQ-OptionsTest {
