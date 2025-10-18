@@ -424,12 +424,12 @@
 }
 
 .BFAFP-GameContainer .exeQuextIcons-FullScreen {
-    background-image: url(exequextfull.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background-image: url(exequextnormal.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
