@@ -440,7 +440,6 @@ export default class NavbarFile {
             }
 
             previewWindow = window.open(data.url, '_blank', 'noopener');
-
         } catch (error) {
             console.error('Unable to open print preview', error);
             if (toast) {
