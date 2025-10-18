@@ -34,6 +34,13 @@ $exeExport = {
             }
         }, 100);
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
+        setTimeout(() => {
+            try {
+                this.triggerPrintIfRequested();
+            } catch (err) {
+                console.error('Error: Failed to trigger print dialog');
+            }
+        }, this.delayLoadingPageTime);
     },
 
     /**
@@ -269,6 +276,16 @@ $exeExport = {
         if (eXeContent) {
             eXeContent.classList.add('post-js');
             eXeContent.classList.remove('pre-js');
+        }
+    },
+
+    /**
+     * Trigger browser print dialog when `print=1` query parameter is present.
+     */
+    triggerPrintIfRequested: function () {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('print') === '1' && typeof window.print === 'function') {
+            window.print();
         }
     }
 }
