@@ -3,6 +3,7 @@
 //   node collab-exe.js
 // Optional env:
 //   BASE_HOST=http://localhost:8080
+//   LOGIN_PATH=/login
 //   GUEST_LOGIN_PATH=/login/guest
 //   WORKAREA_PATH=/workarea
 //   SCREEN_WIDTH=1440 SCREEN_HEIGHT=900
@@ -56,11 +57,39 @@ async function waitForExeLoaded(page, label, timeout = 30000) {
 /**
  * Logs in as guest and waits for overlay hidden.
  */
-async function guestLogin(page, baseHost, guestPath = '/login/guest', workareaPath = '/workarea', label = 'A') {
-  const loginUrl = new URL(guestPath, baseHost).toString();
-  const endGoto = step(`[${label}] Go to guest login ${loginUrl}`);
+async function guestLogin(page, baseHost, guestPath = '/login/guest', workareaPath = '/workarea', label = 'A', loginPath = '/login') {
+  const loginUrl = new URL(loginPath, baseHost).toString();
+  const guestUrl = new URL(guestPath, baseHost).toString();
+  const endGotoLogin = step(`[${label}] Go to login page ${loginUrl}`);
   await page.goto(loginUrl, { waitUntil: 'domcontentloaded' });
-  endGoto();
+  endGotoLogin();
+
+  const form = page.locator('#login-form-guest');
+  await form.waitFor({ state: 'attached', timeout: 10000 });
+
+  const submitBtn = form.locator('#login-link-guest, button[type="submit"]');
+  if (!(await submitBtn.count())) {
+    throw new Error(`[${label}] Guest login submit button not found at ${loginUrl}`);
+  }
+
+  const endPrepare = step(`[${label}] Prepare guest login form`);
+  let nonceFound = false;
+  try {
+    const nonceInput = form.locator('input[name="guest_login_nonce"]');
+    await nonceInput.waitFor({ state: 'attached', timeout: 5000 });
+    const nonce = await nonceInput.inputValue();
+    nonceFound = typeof nonce === 'string' && nonce.length > 0;
+  } catch (e) {
+    nonceFound = false;
+  }
+  endPrepare(nonceFound ? 'nonce ready' : 'nonce missing');
+
+  const endSubmit = step(`[${label}] Submit guest login -> ${guestUrl}`);
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {}),
+    submitBtn.first().click()
+  ]);
+  endSubmit();
 
   const endWaitRoute = step(`[${label}] Wait redirect to ${workareaPath} or main UI`);
   await Promise.race([
@@ -516,6 +545,7 @@ async function waitForNodeText(page, text, label = 'B', timeout = 12000) {
  */
 async function run() {
   const BASE_HOST = process.env.BASE_HOST || 'http://localhost:8080';
+  const LOGIN_PATH = process.env.LOGIN_PATH || '/login';
   const GUEST_LOGIN_PATH = process.env.GUEST_LOGIN_PATH || '/login/guest';
   const WORKAREA_PATH = process.env.WORKAREA_PATH || '/workarea';
 
@@ -544,8 +574,8 @@ async function run() {
   const B = await contextB.newPage();
 
   await Promise.all([
-    guestLogin(A, BASE_HOST, GUEST_LOGIN_PATH, WORKAREA_PATH, 'A'),
-    guestLogin(B, BASE_HOST, GUEST_LOGIN_PATH, WORKAREA_PATH, 'B')
+    guestLogin(A, BASE_HOST, GUEST_LOGIN_PATH, WORKAREA_PATH, 'A', LOGIN_PATH),
+    guestLogin(B, BASE_HOST, GUEST_LOGIN_PATH, WORKAREA_PATH, 'B', LOGIN_PATH)
   ]);
 
   await Promise.all([
