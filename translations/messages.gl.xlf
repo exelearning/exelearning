@@ -4061,8 +4061,8 @@
         <source>Properties</source>
         <target>Propiedades</target>
       </trans-unit>
-      <trans-unit id="I_Iqn6X" resname="There are no imported themes yet">
-        <source>There are no imported themes yet</source>
+      <trans-unit id="I_Iqn6X" resname="There are no imported styles yet">
+        <source>There are no imported styles yet</source>
         <target>~Aínda non hai temas importados</target>
       </trans-unit>
       <trans-unit id="oU7_3QD" resname="You can check the guide to create a style or add it from a link.">
@@ -4073,8 +4073,8 @@
         <source>or drag it here</source>
         <target>~ou arrástrao aquí</target>
       </trans-unit>
-      <trans-unit id="JazBvdW" resname="Delete theme">
-        <source>Delete theme</source>
+      <trans-unit id="JazBvdW" resname="Delete style">
+        <source>Delete style</source>
         <target>Eliminar estilo</target>
       </trans-unit>
       <trans-unit id="KdeXFDb" resname="Failed to create the style">
@@ -4085,12 +4085,12 @@
         <source>Failed to edit the style </source>
         <target>~Non se puido editar o tema de estilo </target>
       </trans-unit>
-      <trans-unit id="cnJ1FXy" resname="Failed to remove theme">
-        <source>Failed to remove theme</source>
+      <trans-unit id="cnJ1FXy" resname="Failed to remove style">
+        <source>Failed to remove style</source>
         <target>Non se puido eliminar o estilo</target>
       </trans-unit>
-      <trans-unit id="DOupdVJ" resname="Import theme in ZIP format">
-        <source>Import theme in ZIP format</source>
+      <trans-unit id="DOupdVJ" resname="Import style in ZIP format">
+        <source>Import style in ZIP format</source>
         <target>~Importar tema en formato ZIP</target>
       </trans-unit>
       <trans-unit id="odnE5A." resname="Failed to install the new style">
@@ -4105,8 +4105,8 @@
         <source>Remove image</source>
         <target>~Eliminar imaxe</target>
       </trans-unit>
-      <trans-unit id="fKSXhx6" resname="Are you sure to delete the theme: ${themeId}?">
-        <source>Are you sure to delete the theme: ${themeId}?</source>
+      <trans-unit id="fKSXhx6" resname="Are you sure you want to delete the style: ${themeId}?">
+        <source>Are you sure you want to delete the style: ${themeId}?</source>
         <target>~Seguro que queres eliminar o tema: ${themeId}?</target>
       </trans-unit>
       <trans-unit id="TG2suIV" resname="Link validation tool">
@@ -4409,20 +4409,20 @@
         <source>Styles</source>
         <target>Estilos</target>
       </trans-unit>
-      <trans-unit id="bU3Dlck" resname="Default themes">
-        <source>Default themes</source>
+      <trans-unit id="bU3Dlck" resname="Default styles">
+        <source>Default styles</source>
         <target>Estilos predeterminados</target>
       </trans-unit>
-      <trans-unit id="4xmlt_q" resname="My themes">
-        <source>My themes</source>
+      <trans-unit id="4xmlt_q" resname="My styles">
+        <source>My styles</source>
         <target>Os meus estilos</target>
       </trans-unit>
-      <trans-unit id="vt7s_Yo" resname="New theme">
-        <source>New theme</source>
+      <trans-unit id="vt7s_Yo" resname="New style">
+        <source>New style</source>
         <target>Novo estilo</target>
       </trans-unit>
-      <trans-unit id="oBD6axx" resname="My new theme">
-        <source>My new theme</source>
+      <trans-unit id="oBD6axx" resname="My new style">
+        <source>My new style</source>
         <target>O meu novo estilo</target>
       </trans-unit>
       <trans-unit id="1_MZEgP" resname="Actions">
@@ -4437,8 +4437,8 @@
         <source>Style theme</source>
         <target>Tema de estilo</target>
       </trans-unit>
-      <trans-unit id="0ldohLG" resname="Are you sure to delete the theme: ${theme.id}?">
-        <source>Are you sure to delete the theme: ${theme.id}?</source>
+      <trans-unit id="0ldohLG" resname="Are you sure you want to delete the style: ${theme.id}?">
+        <source>Are you sure you want to delete the style: ${theme.id}?</source>
         <target>Está seguro de que quere eliminar o estilo: ${theme.id}?</target>
       </trans-unit>
       <trans-unit id="4oyaNcE" resname="Upload">
@@ -11369,8 +11369,8 @@
         <source>The iDevice [%s] already exists</source>
         <target>O iDevice [%s] xa existe</target>
       </trans-unit>
-      <trans-unit id="niBfDzY" resname="Could not extract theme">
-        <source>Could not extract theme</source>
+      <trans-unit id="niBfDzY" resname="Could not extract style">
+        <source>Could not extract style</source>
         <target>~Non se puido extraer o tema</target>
       </trans-unit>
       <trans-unit id="S3v5Oal" resname="Could not load style">
@@ -11389,8 +11389,8 @@
         <source>The style [%s] already exists</source>
         <target>O estilo [%s] xa existe</target>
       </trans-unit>
-      <trans-unit id="RRGAG5X" resname="Could not install theme">
-        <source>Could not install theme</source>
+      <trans-unit id="RRGAG5X" resname="Could not install style">
+        <source>Could not install style</source>
         <target>~Non se puido instalar o tema</target>
       </trans-unit>
       <trans-unit id="0k.oH2K" resname="Please create at least one page before exporting.">
