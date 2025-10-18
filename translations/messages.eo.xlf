@@ -4433,10 +4433,6 @@
         <source>Style properties</source>
         <target>~Stilaj ecoj</target>
       </trans-unit>
-      <trans-unit id="kN1bsUp" resname="Style theme">
-        <source>Style theme</source>
-        <target>~Stila temo</target>
-      </trans-unit>
       <trans-unit id="0ldohLG" resname="Are you sure you want to delete the style: ${theme.id}?">
         <source>Are you sure you want to delete the style: ${theme.id}?</source>
         <target>~Ĉu vi certas ke vi volas forigi la temon: ${theme.id}?</target>

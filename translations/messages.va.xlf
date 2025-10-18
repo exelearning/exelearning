@@ -4433,10 +4433,6 @@
         <source>Style properties</source>
         <target>Propietats de l'estil</target>
       </trans-unit>
-      <trans-unit id="kN1bsUp" resname="Style theme">
-        <source>Style theme</source>
-        <target>Estil del tema</target>
-      </trans-unit>
       <trans-unit id="0ldohLG" resname="Are you sure you want to delete the style: ${theme.id}?">
         <source>Are you sure you want to delete the style: ${theme.id}?</source>
         <target>Estàs segur que vols eliminar el tema: ${theme.id}?</target>

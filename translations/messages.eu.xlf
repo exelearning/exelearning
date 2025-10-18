@@ -4433,10 +4433,6 @@
         <source>Style properties</source>
         <target>Estiloaren propietateak</target>
       </trans-unit>
-      <trans-unit id="kN1bsUp" resname="Style theme">
-        <source>Style theme</source>
-        <target>Estiloaren gaia</target>
-      </trans-unit>
       <trans-unit id="0ldohLG" resname="Are you sure you want to delete the style: ${theme.id}?">
         <source>Are you sure you want to delete the style: ${theme.id}?</source>
         <target>Ziur zaude gaia ezabatu nahi duzula: ${theme.id}?</target>
