@@ -1333,7 +1333,7 @@ class ExportXmlUtil
         $styleCssFiles = [];
 
         // Theme js
-        foreach ($theme->getJsFiles() as $jsFile) {
+        foreach ((array) $theme->getJsFiles() as $jsFile) {
             $themeJsPath = Constants::EXPORT_DIR_THEME.Constants::SLASH.$jsFile;
             $styleJsFiles[] = $resourcesPrefix.$themeJsPath;
         }
@@ -1345,7 +1345,7 @@ class ExportXmlUtil
         }
 
         // Theme css
-        foreach ($theme->getCssFiles() as $cssFile) {
+        foreach ((array) $theme->getCssFiles() as $cssFile) {
             $themeCssPath = Constants::EXPORT_DIR_THEME.Constants::SLASH.$cssFile;
             $styleCssFiles[] = $resourcesPrefix.$themeCssPath;
         }

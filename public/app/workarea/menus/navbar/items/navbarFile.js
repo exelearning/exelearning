@@ -57,6 +57,9 @@ export default class NavbarFile {
         this.exportHTML5SPAsButton = this.menu.navbar.querySelector(
             '#navbar-button-exportas-html5-sp'
         );
+        this.exportPrintButton = this.menu.navbar.querySelector(
+            '#navbar-button-export-print'
+        );
         this.exportSCORM12Button = this.menu.navbar.querySelector(
             '#navbar-button-export-scorm12'
         );
@@ -120,6 +123,7 @@ export default class NavbarFile {
         this.setExportHTML5FolderAsEvent();
         this.setExportHTML5SPEvent();
         this.setExportHTML5SPAsEvent();
+        this.setExportPrintEvent();
         this.setExportSCORM12Event();
         this.setExportSCORM12AsEvent();
         this.setExportSCORM2004Event();
@@ -365,6 +369,102 @@ export default class NavbarFile {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5SPAsEvent();
         });
+    }
+
+    /**
+     * Open the unified print/PDF view in a new tab.
+     */
+    setExportPrintEvent() {
+        if (!this.exportPrintButton) return;
+        this.exportPrintButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.openPrintPreview();
+        });
+    }
+
+    async openPrintPreview() {
+        const project = eXeLearning?.app?.project;
+        const sessionId = project?.odeSession;
+
+        if (!sessionId) {
+            console.warn('Print preview requires an active session id.');
+            return;
+        }
+
+        const projectId =
+            project?.odeId || window.__currentProjectId || 'unsaved';
+
+        const toastData = {
+            title: _('Print'),
+            body: _('Generating preview...'),
+            icon: 'preview',
+        };
+        const toast = eXeLearning?.app?.toasts?.createToast
+            ? eXeLearning.app.toasts.createToast(toastData)
+            : null;
+
+        const baseUrl =
+            window.eXeLearning?.symfony?.baseURL || window.location.origin;
+        const basePathRaw =
+            window.eXeLearning?.symfony?.basePath !== undefined
+                ? window.eXeLearning.symfony.basePath
+                : '';
+        const trimmedBasePath = String(basePathRaw).replace(/^\/+|\/+$/g, '');
+        const sanitizedBasePath = trimmedBasePath ? `/${trimmedBasePath}` : '';
+        const safeProjectId = encodeURIComponent(projectId);
+        const endpointPath = `${sanitizedBasePath}/project/${safeProjectId}/export/single-page-preview`;
+        const requestUrl = new URL(endpointPath, baseUrl);
+        requestUrl.searchParams.set('sessionId', sessionId);
+
+        let previewWindow = null;
+
+        try {
+            const response = await fetch(requestUrl.toString(), {
+                credentials: 'include',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Unexpected status ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!data || !data.url) {
+                throw new Error('Missing preview URL in response');
+            }
+
+            if (toast) {
+                toast.toastBody.innerHTML = _('Generating preview...');
+            }
+
+            previewWindow = window.open(data.url, '_blank', 'noopener');
+        } catch (error) {
+            console.error('Unable to open print preview', error);
+            if (toast) {
+                toast.toastBody.innerHTML = _(
+                    'An error occurred while generating the preview.'
+                );
+                toast.toastBody.classList.add('error');
+            }
+            if (previewWindow) {
+                previewWindow.close();
+            }
+            if (eXeLearning?.app?.modals?.alert) {
+                eXeLearning.app.modals.alert.show({
+                    title: _('Error'),
+                    body: _(
+                        'An error occurred while generating the print preview.'
+                    ),
+                    contentId: 'error',
+                });
+            }
+        } finally {
+            if (toast) {
+                setTimeout(() => toast.remove(), 1000);
+            }
+        }
     }
 
     /**
