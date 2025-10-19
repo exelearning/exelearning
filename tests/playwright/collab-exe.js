@@ -417,9 +417,19 @@ async function addTextIdevice(page, label = 'A') {
     await quickBtn.first().click();
   } else {
     // Fallbacks
-    const leftMenu = page.locator('[data-testid="idevice-text"]');
-    if (await leftMenu.count()) await leftMenu.first().click();
-    else warn(`[${label}] Add Text button not visible`);
+    const addQuick = page.locator('[data-testid="add-text-quick"]');
+    if (await addQuick.count()) {
+      await addQuick.first().click();
+    } else {
+      const addBtn = page.locator('#eXeAddContentBtnWrapper button');
+      if (await addBtn.isVisible()) {
+        await addBtn.click();
+      } else {
+        const leftMenu = page.locator('[data-testid="idevice-text"]');
+        if (await leftMenu.count()) await leftMenu.first().click();
+        else warn(`[${label}] Add Text button not visible`);
+      }
+    }
   }
   await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 10000 });
   end();
