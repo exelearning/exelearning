@@ -11,7 +11,7 @@
       </trans-unit>
       <trans-unit id="RyY2yZU" resname="Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...">
         <source>Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...</source>
-        <target>~Crea mapas de imágenes: imágenes con puntos interactivos para mostrar imágenes, vídeos, sonidos, textos...</target>
+        <target>Crea mapas de imágenes: imágenes con puntos interactivos para mostrar imágenes, vídeos, sonidos, textos...</target>
       </trans-unit>
       <trans-unit id="uGOdiGa" resname="Show questionnaire">
         <source>Show questionnaire</source>
@@ -99,7 +99,7 @@
       </trans-unit>
       <trans-unit id="USqO9yt" resname="Do you want to save the changes of this quiz?">
         <source>Do you want to save the changes of this quiz?</source>
-        <target>~¿Quieres guardar los cambios del cuestionario?</target>
+        <target>¿Quieres guardar los cambios del cuestionario?</target>
       </trans-unit>
       <trans-unit id="zmNHhiR" resname="Do you want to save the changes of this map?">
         <source>Do you want to save the changes of this map?</source>
@@ -891,7 +891,7 @@
       </trans-unit>
       <trans-unit id="xHJHwx9" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target>~Genera 10 preguntas de verdadero o falso. Cada pregunta debe incluir la solución (0 = falso, 1 = verdadero), una sugerencia y retroalimentación, todo separado por #. La retroalimentación no debe indicar explícitamente si la respuesta es correcta o no.</target>
+        <target>Genera 10 preguntas de verdadero o falso. Cada pregunta debe incluir la solución (0 = falso, 1 = verdadero), una sugerencia y retroalimentación, todo separado por #. La retroalimentación no debe indicar explícitamente si la respuesta es correcta o no.</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
@@ -2623,7 +2623,7 @@
       </trans-unit>
       <trans-unit id="uEvZPs_" resname="Pearson\'s t-test">
         <source>Pearson\'s t-test</source>
-        <target></target>
+        <target>Prueba t de Pearson</target>
       </trans-unit>
       <trans-unit id="yGn1Vxe" resname="Spearman">
         <source>Spearman</source>
@@ -2631,7 +2631,7 @@
       </trans-unit>
       <trans-unit id="OnstoaE" resname="Kendall\'s Tau">
         <source>Kendall\'s Tau</source>
-        <target></target>
+        <target>Tau de Kendall</target>
       </trans-unit>
       <trans-unit id="ofsPM_X" resname="Phi coefficient">
         <source>Phi coefficient</source>
@@ -2779,7 +2779,7 @@
       </trans-unit>
       <trans-unit id="uXYBtiH" resname="Cramer\'s V">
         <source>Cramer\'s V</source>
-        <target></target>
+        <target>V de Cramer</target>
       </trans-unit>
       <trans-unit id="mpVp63_" resname="Inequalities">
         <source>Inequalities</source>
@@ -4187,7 +4187,7 @@
       </trans-unit>
       <trans-unit id="Zi8zlAZ" resname="or drag it here">
         <source>or drag it here</source>
-        <target>~o arrástralo aquí</target>
+        <target>o arrástralo aquí</target>
       </trans-unit>
       <trans-unit id="bXi_PNT" resname="Delete style">
         <source>Delete style</source>
@@ -4375,7 +4375,7 @@
       </trans-unit>
       <trans-unit id="F.0jKf8" resname="You can only select 5 iDevices as favourites. Please remove an iDevice so you can add another one.">
         <source>You can only select 5 iDevices as favourites. Please remove an iDevice so you can add another one.</source>
-        <target>~Solo puedes seleccionar 5 iDevices favoritos.</target>
+        <target>Solo puedes seleccionar 5 iDevices favoritos.</target>
       </trans-unit>
       <trans-unit id="1Ntsh7c" resname="Legal notes">
         <source>Legal notes</source>
@@ -4439,7 +4439,7 @@
       </trans-unit>
       <trans-unit id="CLRCDhr" resname="Manual">
         <source>Manual</source>
-        <target>~Manual</target>
+        <target>Manual</target>
       </trans-unit>
       <trans-unit id="F5YsxHN" resname="Autosaved">
         <source>Autosaved</source>
@@ -11691,7 +11691,7 @@
       </trans-unit>
       <trans-unit id="Qmo7OQW" resname="Stat">
         <source>Stat</source>
-        <target>~Estadística</target>
+        <target>Estadística</target>
       </trans-unit>
       <trans-unit id="RiWn7g_" resname="Selected letters">
         <source>Selected letters</source>
