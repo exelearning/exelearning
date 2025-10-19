@@ -9,6 +9,122 @@
         <source>Permissions error</source>
         <target>Erro de permisos</target>
       </trans-unit>
+      <trans-unit id="RyY2yZU" resname="Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...">
+        <source>Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...</source>
+        <target>~Crea mapas de imaxes: imaxes con puntos interactivos para amosar imaxes, vídeos, sons, textos...</target>
+      </trans-unit>
+      <trans-unit id="uGOdiGa" resname="Show questionnaire">
+        <source>Show questionnaire</source>
+        <target>~Mostrar cuestionario</target>
+      </trans-unit>
+      <trans-unit id="a1ZibuB" resname="Show active areas">
+        <source>Show active areas</source>
+        <target>~Mostrar áreas activas</target>
+      </trans-unit>
+      <trans-unit id="U011nkp" resname="Click here to do this activity">
+        <source>Click here to do this activity</source>
+        <target>~Fai clic aquí para realizar esta actividade</target>
+      </trans-unit>
+      <trans-unit id="_x6N4oX" resname="Select the correct options and click on the &quot;Reply&quot; button.">
+        <source>Select the correct options and click on the "Reply" button.</source>
+        <target>~Selecciona as opcións correctas e fai clic en "Responder".</target>
+      </trans-unit>
+      <trans-unit id="fRii9Tm" resname="Mark all the options in the correct order and click on the &quot;Reply&quot; button.">
+        <source>Mark all the options in the correct order and click on the "Reply" button.</source>
+        <target>~Marca todas as opcións na orde correcta e fai clic en "Responder".</target>
+      </trans-unit>
+      <trans-unit id="gcfIi2i" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
+        <source>Write the correct word o phrase and click on the "Reply" button.</source>
+        <target>~Escribe a palabra ou frase correcta e fai clic en "Responder".</target>
+      </trans-unit>
+      <trans-unit id=".gszbqv" resname="Click on">
+        <source>Click on</source>
+        <target>~Fai clic en</target>
+      </trans-unit>
+      <trans-unit id=".8Av3oX" resname="Everything is perfect! Do you want to repeat this activity?">
+        <source>Everything is perfect! Do you want to repeat this activity?</source>
+        <target>~Todo está perfecto! Queres repetir esta actividade?</target>
+      </trans-unit>
+      <trans-unit id="GhgrH8j" resname="Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?">
+        <source>Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?</source>
+        <target>~Xenial! Superaches a proba, pero seguro que podes mellorar. Queres repetir a actividade?</target>
+      </trans-unit>
+      <trans-unit id="NTHoYGH" resname="Almost perfect! You can still do it better. Do you want to repeat this activity?">
+        <source>Almost perfect! You can still do it better. Do you want to repeat this activity?</source>
+        <target>~Case perfecto! Aínda podes facelo mellor. Queres repetir a actividade?</target>
+      </trans-unit>
+      <trans-unit id="cozFfx3" resname="It is not correct! You have clicked on">
+        <source>It is not correct! You have clicked on</source>
+        <target>~Non é correcto! Fiches clic en</target>
+      </trans-unit>
+      <trans-unit id="7z2Wj4o" resname="and the correct answer is">
+        <source>and the correct answer is</source>
+        <target>~e a resposta correcta é</target>
+      </trans-unit>
+      <trans-unit id="gVp2940" resname="Great! You have visited the required dots.">
+        <source>Great! You have visited the required dots.</source>
+        <target>~Xenial! Visitaches os puntos requiridos.</target>
+      </trans-unit>
+      <trans-unit id="iBb8_uX" resname="You can do the test.">
+        <source>You can do the test.</source>
+        <target>~Podes facer a proba.</target>
+      </trans-unit>
+      <trans-unit id="QRwEk_A" resname="Select a subtitle file. Supported formats:">
+        <source>Select a subtitle file. Supported formats:</source>
+        <target>~Selecciona un arquivo de subtítulos. Formatos admitidos:</target>
+      </trans-unit>
+      <trans-unit id="aV1L_FP" resname="Map">
+        <source>Map</source>
+        <target>~Mapa</target>
+      </trans-unit>
+      <trans-unit id="fPOBkk4" resname="Return">
+        <source>Return</source>
+        <target>~Volver</target>
+      </trans-unit>
+      <trans-unit id="sziTKeZ" resname="Questionnarie">
+        <source>Questionnarie</source>
+        <target>~Cuestionario</target>
+      </trans-unit>
+      <trans-unit id="K73e9Yj" resname="Arrow">
+        <source>Arrow</source>
+        <target>~Frecha</target>
+      </trans-unit>
+      <trans-unit id="4znput7" resname="Map marker">
+        <source>Map marker</source>
+        <target>~Marcador</target>
+      </trans-unit>
+      <trans-unit id="lGiVMKM" resname="Do you want to save the changes of this presentation?">
+        <source>Do you want to save the changes of this presentation?</source>
+        <target>~Queres gardar os cambios da presentación?</target>
+      </trans-unit>
+      <trans-unit id="USqO9yt" resname="Do you want to save the changes of this quiz?">
+        <source>Do you want to save the changes of this quiz?</source>
+        <target>~Queres gardar os cambios do cuestionario?</target>
+      </trans-unit>
+      <trans-unit id="zmNHhiR" resname="Do you want to save the changes of this map?">
+        <source>Do you want to save the changes of this map?</source>
+        <target>~Queres gardar os cambios do mapa?</target>
+      </trans-unit>
+      <trans-unit id="qwizOzG" resname="Provide a slide title.">
+        <source>Provide a slide title.</source>
+        <target>~Proporciona un título para a diapositiva.</target>
+      </trans-unit>
+      <trans-unit id="J4RjpaC" resname="Hide score bar">
+        <source>Hide score bar</source>
+        <target>~Agochar barra de puntuación</target>
+      </trans-unit>
+      <trans-unit id="5fEdNHr" resname="Play the sound when scrolling the mouse over the points.">
+        <source>Play the sound when scrolling the mouse over the points.</source>
+        <target>~Reproducir o son ao pasar o rato sobre os puntos.</target>
+      </trans-unit>
+      <trans-unit id="zhQflEY" resname="Show when the mouse is over the icon or active area.">
+        <source>Show when the mouse is over the icon or active area.</source>
+        <target>~Amosar cando o rato está sobre o ícono ou área activa.</target>
+      </trans-unit>
+      <trans-unit id="IF0.2y." resname="Hide areas">
+        <source>Hide areas</source>
+        <target>~Agochar áreas</target>
+      </trans-unit>
       <trans-unit id="am0vSDJ" resname="Saved">
         <source>Saved</source>
         <target>Gardado</target>
@@ -5009,6 +5125,10 @@
         <source>Accessibility warning</source>
         <target>Advertencia sobre accesibilidade</target>
       </trans-unit>
+      <trans-unit id=".gar845" resname="Provide a word and its definition. May toggle between: &quot;Word starts&quot; or &quot;Word contains&quot;, by clicking on %s">
+        <source>Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s</source>
+        <target>~Proporciona unha palabra e a súa definición. Podes alternar entre: "A palabra comeza por" ou "A palabra contén", facendo clic en %s</target>
+      </trans-unit>
       <trans-unit id="gsp4x4D" resname="Starts with/Contains">
         <source>Starts with/Contains</source>
         <target>Comeza con/Contén</target>
@@ -5817,6 +5937,10 @@
         <source>Error message</source>
         <target>Mensaxe de erro</target>
       </trans-unit>
+      <trans-unit id="M.rjnAC" resname="Errors (number of attempts) to display the message">
+        <source>Errors (number of attempts) to display the message</source>
+        <target>~Erros (número de intentos) para amosar a mensaxe</target>
+      </trans-unit>
       <trans-unit id="I5dosEc" resname="Please write the error message.">
         <source>Please write the error message.</source>
         <target>Indique a mensaxe de erro.</target>
@@ -6608,10 +6732,6 @@
       <trans-unit id="7nyr4WG" resname="Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.">
         <source>Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.</source>
         <target>Prema no botón para cambiar de preguntas cunha resposta correcta a preguntas con varias respostas correctas posibles.</target>
-      </trans-unit>
-      <trans-unit id="Jgo0fmJ" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.">
-        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.</source>
-        <target>Introduza o texto para a actividade despregable. Para escoller as palabras, faga dobre clic nunha palabra para seleccionala e prema no botón «Mostrar/Ocultar» da parte inferior.</target>
       </trans-unit>
       <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
         <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
@@ -9641,6 +9761,10 @@
         <source>Try with fewer words</source>
         <target>Proba con menos palabras</target>
       </trans-unit>
+      <trans-unit id="u9iHD3m" resname="Show &quot;Solve&quot; button.">
+        <source>Show "Solve" button.</source>
+        <target>Amosa o botón "Resolver".</target>
+      </trans-unit>
       <trans-unit id="cjMfFzu" resname="Create word search games with additional text, images or sound.">
         <source>Create word search games with additional text, images or sound.</source>
         <target>Cree actividades tipo sopa de letras nas que se poida utilizar texto, imaxes e sons.</target>
@@ -9648,10 +9772,6 @@
       <trans-unit id="IUflPfB" resname="Find the hidden words.">
         <source>Find the hidden words.</source>
         <target>Atopa as palabras ocultas.</target>
-      </trans-unit>
-      <trans-unit id="u9iHD3m" resname="Show &quot;Solve&quot; button.">
-        <source>Show "Solve" button.</source>
-        <target>Amosa o botón "Resolver".</target>
       </trans-unit>
       <trans-unit id="NyUqrF6" resname="Diagonal">
         <source>Diagonal</source>
@@ -11892,130 +12012,6 @@
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
         <target>~Sistema</target>
-      </trans-unit>
-      <trans-unit id="RyY2yZU" resname="Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...">
-        <source>Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...</source>
-        <target>~Crea mapas de imaxes: imaxes con puntos interactivos para amosar imaxes, vídeos, sons, textos...</target>
-      </trans-unit>
-      <trans-unit id="uGOdiGa" resname="Show questionnaire">
-        <source>Show questionnaire</source>
-        <target>~Mostrar cuestionario</target>
-      </trans-unit>
-      <trans-unit id="a1ZibuB" resname="Show active areas">
-        <source>Show active areas</source>
-        <target>~Mostrar áreas activas</target>
-      </trans-unit>
-      <trans-unit id="U011nkp" resname="Click here to do this activity">
-        <source>Click here to do this activity</source>
-        <target>~Fai clic aquí para realizar esta actividade</target>
-      </trans-unit>
-      <trans-unit id="_x6N4oX" resname="Select the correct options and click on the &quot;Reply&quot; button.">
-        <source>Select the correct options and click on the "Reply" button.</source>
-        <target>~Selecciona as opcións correctas e fai clic en "Responder".</target>
-      </trans-unit>
-      <trans-unit id="fRii9Tm" resname="Mark all the options in the correct order and click on the &quot;Reply&quot; button.">
-        <source>Mark all the options in the correct order and click on the "Reply" button.</source>
-        <target>~Marca todas as opcións na orde correcta e fai clic en "Responder".</target>
-      </trans-unit>
-      <trans-unit id="gcfIi2i" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
-        <source>Write the correct word o phrase and click on the "Reply" button.</source>
-        <target>~Escribe a palabra ou frase correcta e fai clic en "Responder".</target>
-      </trans-unit>
-      <trans-unit id=".gszbqv" resname="Click on">
-        <source>Click on</source>
-        <target>~Fai clic en</target>
-      </trans-unit>
-      <trans-unit id=".8Av3oX" resname="Everything is perfect! Do you want to repeat this activity?">
-        <source>Everything is perfect! Do you want to repeat this activity?</source>
-        <target>~Todo está perfecto! Queres repetir esta actividade?</target>
-      </trans-unit>
-      <trans-unit id="GhgrH8j" resname="Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?">
-        <source>Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?</source>
-        <target>~Xenial! Superaches a proba, pero seguro que podes mellorar. Queres repetir a actividade?</target>
-      </trans-unit>
-      <trans-unit id="NTHoYGH" resname="Almost perfect! You can still do it better. Do you want to repeat this activity?">
-        <source>Almost perfect! You can still do it better. Do you want to repeat this activity?</source>
-        <target>~Case perfecto! Aínda podes facelo mellor. Queres repetir a actividade?</target>
-      </trans-unit>
-      <trans-unit id="cozFfx3" resname="It is not correct! You have clicked on">
-        <source>It is not correct! You have clicked on</source>
-        <target>~Non é correcto! Fiches clic en</target>
-      </trans-unit>
-      <trans-unit id="7z2Wj4o" resname="and the correct answer is">
-        <source>and the correct answer is</source>
-        <target>~e a resposta correcta é</target>
-      </trans-unit>
-      <trans-unit id="gVp2940" resname="Great! You have visited the required dots.">
-        <source>Great! You have visited the required dots.</source>
-        <target>~Xenial! Visitaches os puntos requiridos.</target>
-      </trans-unit>
-      <trans-unit id="iBb8_uX" resname="You can do the test.">
-        <source>You can do the test.</source>
-        <target>~Podes facer a proba.</target>
-      </trans-unit>
-      <trans-unit id="QRwEk_A" resname="Select a subtitle file. Supported formats:">
-        <source>Select a subtitle file. Supported formats:</source>
-        <target>~Selecciona un arquivo de subtítulos. Formatos admitidos:</target>
-      </trans-unit>
-      <trans-unit id="aV1L_FP" resname="Map">
-        <source>Map</source>
-        <target>~Mapa</target>
-      </trans-unit>
-      <trans-unit id="fPOBkk4" resname="Return">
-        <source>Return</source>
-        <target>~Volver</target>
-      </trans-unit>
-      <trans-unit id="sziTKeZ" resname="Questionnarie">
-        <source>Questionnarie</source>
-        <target>~Cuestionario</target>
-      </trans-unit>
-      <trans-unit id="K73e9Yj" resname="Arrow">
-        <source>Arrow</source>
-        <target>~Frecha</target>
-      </trans-unit>
-      <trans-unit id="4znput7" resname="Map marker">
-        <source>Map marker</source>
-        <target>~Marcador</target>
-      </trans-unit>
-      <trans-unit id="lGiVMKM" resname="Do you want to save the changes of this presentation?">
-        <source>Do you want to save the changes of this presentation?</source>
-        <target>~Queres gardar os cambios da presentación?</target>
-      </trans-unit>
-      <trans-unit id="USqO9yt" resname="Do you want to save the changes of this quiz?">
-        <source>Do you want to save the changes of this quiz?</source>
-        <target>~Queres gardar os cambios do cuestionario?</target>
-      </trans-unit>
-      <trans-unit id="zmNHhiR" resname="Do you want to save the changes of this map?">
-        <source>Do you want to save the changes of this map?</source>
-        <target>~Queres gardar os cambios do mapa?</target>
-      </trans-unit>
-      <trans-unit id="qwizOzG" resname="Provide a slide title.">
-        <source>Provide a slide title.</source>
-        <target>~Proporciona un título para a diapositiva.</target>
-      </trans-unit>
-      <trans-unit id="J4RjpaC" resname="Hide score bar">
-        <source>Hide score bar</source>
-        <target>~Agochar barra de puntuación</target>
-      </trans-unit>
-      <trans-unit id="5fEdNHr" resname="Play the sound when scrolling the mouse over the points.">
-        <source>Play the sound when scrolling the mouse over the points.</source>
-        <target>~Reproducir o son ao pasar o rato sobre os puntos.</target>
-      </trans-unit>
-      <trans-unit id="zhQflEY" resname="Show when the mouse is over the icon or active area.">
-        <source>Show when the mouse is over the icon or active area.</source>
-        <target>~Amosar cando o rato está sobre o ícono ou área activa.</target>
-      </trans-unit>
-      <trans-unit id="IF0.2y." resname="Hide areas">
-        <source>Hide areas</source>
-        <target>~Agochar áreas</target>
-      </trans-unit>
-      <trans-unit id=".gar845" resname="Provide a word and its definition. May toggle between: &quot;Word starts&quot; or &quot;Word contains&quot;, by clicking on %s">
-        <source>Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s</source>
-        <target>~Proporciona unha palabra e a súa definición. Podes alternar entre: "A palabra comeza por" ou "A palabra contén", facendo clic en %s</target>
-      </trans-unit>
-      <trans-unit id="M.rjnAC" resname="Errors (number of attempts) to display the message">
-        <source>Errors (number of attempts) to display the message</source>
-        <target>~Erros (número de intentos) para amosar a mensaxe</target>
       </trans-unit>
     </body>
   </file>

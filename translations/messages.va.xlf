@@ -9,6 +9,122 @@
         <source>Permissions error</source>
         <target>Error de permisos</target>
       </trans-unit>
+      <trans-unit id="RyY2yZU" resname="Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...">
+        <source>Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...</source>
+        <target>~Crea mapes d’imatges: imatges amb punts interactius per mostrar imatges, vídeos, sons, textos...</target>
+      </trans-unit>
+      <trans-unit id="uGOdiGa" resname="Show questionnaire">
+        <source>Show questionnaire</source>
+        <target>~Mostra qüestionari</target>
+      </trans-unit>
+      <trans-unit id="a1ZibuB" resname="Show active areas">
+        <source>Show active areas</source>
+        <target>~Mostra àrees actives</target>
+      </trans-unit>
+      <trans-unit id="U011nkp" resname="Click here to do this activity">
+        <source>Click here to do this activity</source>
+        <target>~Fes clic ací per fer esta activitat</target>
+      </trans-unit>
+      <trans-unit id="_x6N4oX" resname="Select the correct options and click on the &quot;Reply&quot; button.">
+        <source>Select the correct options and click on the "Reply" button.</source>
+        <target>~Selecciona les opcions correctes i fes clic en "Respondre".</target>
+      </trans-unit>
+      <trans-unit id="fRii9Tm" resname="Mark all the options in the correct order and click on the &quot;Reply&quot; button.">
+        <source>Mark all the options in the correct order and click on the "Reply" button.</source>
+        <target>~Marca totes les opcions en l’ordre correcte i fes clic en "Respondre".</target>
+      </trans-unit>
+      <trans-unit id="gcfIi2i" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
+        <source>Write the correct word o phrase and click on the "Reply" button.</source>
+        <target>~Escriu la paraula o frase correcta i fes clic en "Respondre".</target>
+      </trans-unit>
+      <trans-unit id=".gszbqv" resname="Click on">
+        <source>Click on</source>
+        <target>~Fes clic en</target>
+      </trans-unit>
+      <trans-unit id=".8Av3oX" resname="Everything is perfect! Do you want to repeat this activity?">
+        <source>Everything is perfect! Do you want to repeat this activity?</source>
+        <target>~Tot està perfecte! Vols repetir esta activitat?</target>
+      </trans-unit>
+      <trans-unit id="GhgrH8j" resname="Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?">
+        <source>Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?</source>
+        <target>~Genial! Has superat la prova, però segur que pots millorar. Vols repetir l’activitat?</target>
+      </trans-unit>
+      <trans-unit id="NTHoYGH" resname="Almost perfect! You can still do it better. Do you want to repeat this activity?">
+        <source>Almost perfect! You can still do it better. Do you want to repeat this activity?</source>
+        <target>~Quasi perfecte! Encara ho pots fer millor. Vols repetir l’activitat?</target>
+      </trans-unit>
+      <trans-unit id="cozFfx3" resname="It is not correct! You have clicked on">
+        <source>It is not correct! You have clicked on</source>
+        <target>~No és correcte! Has fet clic en</target>
+      </trans-unit>
+      <trans-unit id="7z2Wj4o" resname="and the correct answer is">
+        <source>and the correct answer is</source>
+        <target>~i la resposta correcta és</target>
+      </trans-unit>
+      <trans-unit id="gVp2940" resname="Great! You have visited the required dots.">
+        <source>Great! You have visited the required dots.</source>
+        <target>~Genial! Has visitat els punts requerits.</target>
+      </trans-unit>
+      <trans-unit id="iBb8_uX" resname="You can do the test.">
+        <source>You can do the test.</source>
+        <target>~Pots fer la prova.</target>
+      </trans-unit>
+      <trans-unit id="QRwEk_A" resname="Select a subtitle file. Supported formats:">
+        <source>Select a subtitle file. Supported formats:</source>
+        <target>~Selecciona un fitxer de subtítols. Formats suportats:</target>
+      </trans-unit>
+      <trans-unit id="aV1L_FP" resname="Map">
+        <source>Map</source>
+        <target>~Mapa</target>
+      </trans-unit>
+      <trans-unit id="fPOBkk4" resname="Return">
+        <source>Return</source>
+        <target>~Tornar</target>
+      </trans-unit>
+      <trans-unit id="sziTKeZ" resname="Questionnarie">
+        <source>Questionnarie</source>
+        <target>~Qüestionari</target>
+      </trans-unit>
+      <trans-unit id="K73e9Yj" resname="Arrow">
+        <source>Arrow</source>
+        <target>~Fletxa</target>
+      </trans-unit>
+      <trans-unit id="4znput7" resname="Map marker">
+        <source>Map marker</source>
+        <target>~Marcador</target>
+      </trans-unit>
+      <trans-unit id="lGiVMKM" resname="Do you want to save the changes of this presentation?">
+        <source>Do you want to save the changes of this presentation?</source>
+        <target>~Vols desar els canvis de la presentació?</target>
+      </trans-unit>
+      <trans-unit id="USqO9yt" resname="Do you want to save the changes of this quiz?">
+        <source>Do you want to save the changes of this quiz?</source>
+        <target>~Vols desar els canvis del qüestionari?</target>
+      </trans-unit>
+      <trans-unit id="zmNHhiR" resname="Do you want to save the changes of this map?">
+        <source>Do you want to save the changes of this map?</source>
+        <target>~Vols desar els canvis del mapa?</target>
+      </trans-unit>
+      <trans-unit id="qwizOzG" resname="Provide a slide title.">
+        <source>Provide a slide title.</source>
+        <target>~Proporciona un títol per a la diapositiva.</target>
+      </trans-unit>
+      <trans-unit id="J4RjpaC" resname="Hide score bar">
+        <source>Hide score bar</source>
+        <target>~Amaga barra de puntuació</target>
+      </trans-unit>
+      <trans-unit id="5fEdNHr" resname="Play the sound when scrolling the mouse over the points.">
+        <source>Play the sound when scrolling the mouse over the points.</source>
+        <target>~Reprodueix el so al passar el ratolí sobre els punts.</target>
+      </trans-unit>
+      <trans-unit id="zhQflEY" resname="Show when the mouse is over the icon or active area.">
+        <source>Show when the mouse is over the icon or active area.</source>
+        <target>~Mostra quan el ratolí està sobre l’icona o àrea activa.</target>
+      </trans-unit>
+      <trans-unit id="IF0.2y." resname="Hide areas">
+        <source>Hide areas</source>
+        <target>~Amaga àrees</target>
+      </trans-unit>
       <trans-unit id="am0vSDJ" resname="Saved">
         <source>Saved</source>
         <target>Guardat</target>
@@ -5009,6 +5125,10 @@
         <source>Accessibility warning</source>
         <target>Avís d'accessibilitat</target>
       </trans-unit>
+      <trans-unit id=".gar845" resname="Provide a word and its definition. May toggle between: &quot;Word starts&quot; or &quot;Word contains&quot;, by clicking on %s">
+        <source>Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s</source>
+        <target>~Proporciona una paraula i la seua definició. Pots alternar entre: "La paraula comença amb" o "La paraula conté", fent clic en %s</target>
+      </trans-unit>
       <trans-unit id="gsp4x4D" resname="Starts with/Contains">
         <source>Starts with/Contains</source>
         <target>Comença amb/Conté</target>
@@ -5817,6 +5937,10 @@
         <source>Error message</source>
         <target>Missatge d'error</target>
       </trans-unit>
+      <trans-unit id="M.rjnAC" resname="Errors (number of attempts) to display the message">
+        <source>Errors (number of attempts) to display the message</source>
+        <target>~Errors (nombre d’intents) per mostrar el missatge</target>
+      </trans-unit>
       <trans-unit id="I5dosEc" resname="Please write the error message.">
         <source>Please write the error message.</source>
         <target>Escriviu el missatge d'error.</target>
@@ -6608,10 +6732,6 @@
       <trans-unit id="7nyr4WG" resname="Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.">
         <source>Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.</source>
         <target>Fes clic al botó de commutació per canviar entre preguntes amb una resposta correcta i preguntes amb moltes respostes possibles correctes.</target>
-      </trans-unit>
-      <trans-unit id="Jgo0fmJ" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.">
-        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.</source>
-        <target>Introdueix el text per a l'activitat desplegable en el camp desplegable ja sigui enganxant el text d'una altra font o escrivint-lo directament al camp. Per seleccionar quines paraules triar, doble clic a una paraula per seleccionar-la i fes clic al botó "Mostrar/Amagar" a sota.</target>
       </trans-unit>
       <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
         <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
@@ -9641,6 +9761,10 @@
         <source>Try with fewer words</source>
         <target>Prova amb menys paraules</target>
       </trans-unit>
+      <trans-unit id="u9iHD3m" resname="Show &quot;Solve&quot; button.">
+        <source>Show "Solve" button.</source>
+        <target>Mostra el botó "Resoldre".</target>
+      </trans-unit>
       <trans-unit id="cjMfFzu" resname="Create word search games with additional text, images or sound.">
         <source>Create word search games with additional text, images or sound.</source>
         <target>Creeu activitats tipus sopa de lletres en les quals podrà utilitzar text, imatges i sons.</target>
@@ -9648,10 +9772,6 @@
       <trans-unit id="IUflPfB" resname="Find the hidden words.">
         <source>Find the hidden words.</source>
         <target>Trobeu les paraules ocultes.</target>
-      </trans-unit>
-      <trans-unit id="u9iHD3m" resname="Show &quot;Solve&quot; button.">
-        <source>Show "Solve" button.</source>
-        <target>Mostra el botó "Resoldre".</target>
       </trans-unit>
       <trans-unit id="NyUqrF6" resname="Diagonal">
         <source>Diagonal</source>
@@ -11892,130 +12012,6 @@
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
         <target>~Sistema</target>
-      </trans-unit>
-      <trans-unit id="RyY2yZU" resname="Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...">
-        <source>Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...</source>
-        <target>~Crea mapes d’imatges: imatges amb punts interactius per mostrar imatges, vídeos, sons, textos...</target>
-      </trans-unit>
-      <trans-unit id="uGOdiGa" resname="Show questionnaire">
-        <source>Show questionnaire</source>
-        <target>~Mostra qüestionari</target>
-      </trans-unit>
-      <trans-unit id="a1ZibuB" resname="Show active areas">
-        <source>Show active areas</source>
-        <target>~Mostra àrees actives</target>
-      </trans-unit>
-      <trans-unit id="U011nkp" resname="Click here to do this activity">
-        <source>Click here to do this activity</source>
-        <target>~Fes clic ací per fer esta activitat</target>
-      </trans-unit>
-      <trans-unit id="_x6N4oX" resname="Select the correct options and click on the &quot;Reply&quot; button.">
-        <source>Select the correct options and click on the "Reply" button.</source>
-        <target>~Selecciona les opcions correctes i fes clic en "Respondre".</target>
-      </trans-unit>
-      <trans-unit id="fRii9Tm" resname="Mark all the options in the correct order and click on the &quot;Reply&quot; button.">
-        <source>Mark all the options in the correct order and click on the "Reply" button.</source>
-        <target>~Marca totes les opcions en l’ordre correcte i fes clic en "Respondre".</target>
-      </trans-unit>
-      <trans-unit id="gcfIi2i" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
-        <source>Write the correct word o phrase and click on the "Reply" button.</source>
-        <target>~Escriu la paraula o frase correcta i fes clic en "Respondre".</target>
-      </trans-unit>
-      <trans-unit id=".gszbqv" resname="Click on">
-        <source>Click on</source>
-        <target>~Fes clic en</target>
-      </trans-unit>
-      <trans-unit id=".8Av3oX" resname="Everything is perfect! Do you want to repeat this activity?">
-        <source>Everything is perfect! Do you want to repeat this activity?</source>
-        <target>~Tot està perfecte! Vols repetir esta activitat?</target>
-      </trans-unit>
-      <trans-unit id="GhgrH8j" resname="Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?">
-        <source>Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?</source>
-        <target>~Genial! Has superat la prova, però segur que pots millorar. Vols repetir l’activitat?</target>
-      </trans-unit>
-      <trans-unit id="NTHoYGH" resname="Almost perfect! You can still do it better. Do you want to repeat this activity?">
-        <source>Almost perfect! You can still do it better. Do you want to repeat this activity?</source>
-        <target>~Quasi perfecte! Encara ho pots fer millor. Vols repetir l’activitat?</target>
-      </trans-unit>
-      <trans-unit id="cozFfx3" resname="It is not correct! You have clicked on">
-        <source>It is not correct! You have clicked on</source>
-        <target>~No és correcte! Has fet clic en</target>
-      </trans-unit>
-      <trans-unit id="7z2Wj4o" resname="and the correct answer is">
-        <source>and the correct answer is</source>
-        <target>~i la resposta correcta és</target>
-      </trans-unit>
-      <trans-unit id="gVp2940" resname="Great! You have visited the required dots.">
-        <source>Great! You have visited the required dots.</source>
-        <target>~Genial! Has visitat els punts requerits.</target>
-      </trans-unit>
-      <trans-unit id="iBb8_uX" resname="You can do the test.">
-        <source>You can do the test.</source>
-        <target>~Pots fer la prova.</target>
-      </trans-unit>
-      <trans-unit id="QRwEk_A" resname="Select a subtitle file. Supported formats:">
-        <source>Select a subtitle file. Supported formats:</source>
-        <target>~Selecciona un fitxer de subtítols. Formats suportats:</target>
-      </trans-unit>
-      <trans-unit id="aV1L_FP" resname="Map">
-        <source>Map</source>
-        <target>~Mapa</target>
-      </trans-unit>
-      <trans-unit id="fPOBkk4" resname="Return">
-        <source>Return</source>
-        <target>~Tornar</target>
-      </trans-unit>
-      <trans-unit id="sziTKeZ" resname="Questionnarie">
-        <source>Questionnarie</source>
-        <target>~Qüestionari</target>
-      </trans-unit>
-      <trans-unit id="K73e9Yj" resname="Arrow">
-        <source>Arrow</source>
-        <target>~Fletxa</target>
-      </trans-unit>
-      <trans-unit id="4znput7" resname="Map marker">
-        <source>Map marker</source>
-        <target>~Marcador</target>
-      </trans-unit>
-      <trans-unit id="lGiVMKM" resname="Do you want to save the changes of this presentation?">
-        <source>Do you want to save the changes of this presentation?</source>
-        <target>~Vols desar els canvis de la presentació?</target>
-      </trans-unit>
-      <trans-unit id="USqO9yt" resname="Do you want to save the changes of this quiz?">
-        <source>Do you want to save the changes of this quiz?</source>
-        <target>~Vols desar els canvis del qüestionari?</target>
-      </trans-unit>
-      <trans-unit id="zmNHhiR" resname="Do you want to save the changes of this map?">
-        <source>Do you want to save the changes of this map?</source>
-        <target>~Vols desar els canvis del mapa?</target>
-      </trans-unit>
-      <trans-unit id="qwizOzG" resname="Provide a slide title.">
-        <source>Provide a slide title.</source>
-        <target>~Proporciona un títol per a la diapositiva.</target>
-      </trans-unit>
-      <trans-unit id="J4RjpaC" resname="Hide score bar">
-        <source>Hide score bar</source>
-        <target>~Amaga barra de puntuació</target>
-      </trans-unit>
-      <trans-unit id="5fEdNHr" resname="Play the sound when scrolling the mouse over the points.">
-        <source>Play the sound when scrolling the mouse over the points.</source>
-        <target>~Reprodueix el so al passar el ratolí sobre els punts.</target>
-      </trans-unit>
-      <trans-unit id="zhQflEY" resname="Show when the mouse is over the icon or active area.">
-        <source>Show when the mouse is over the icon or active area.</source>
-        <target>~Mostra quan el ratolí està sobre l’icona o àrea activa.</target>
-      </trans-unit>
-      <trans-unit id="IF0.2y." resname="Hide areas">
-        <source>Hide areas</source>
-        <target>~Amaga àrees</target>
-      </trans-unit>
-      <trans-unit id=".gar845" resname="Provide a word and its definition. May toggle between: &quot;Word starts&quot; or &quot;Word contains&quot;, by clicking on %s">
-        <source>Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s</source>
-        <target>~Proporciona una paraula i la seua definició. Pots alternar entre: "La paraula comença amb" o "La paraula conté", fent clic en %s</target>
-      </trans-unit>
-      <trans-unit id="M.rjnAC" resname="Errors (number of attempts) to display the message">
-        <source>Errors (number of attempts) to display the message</source>
-        <target>~Errors (nombre d’intents) per mostrar el missatge</target>
       </trans-unit>
     </body>
   </file>
