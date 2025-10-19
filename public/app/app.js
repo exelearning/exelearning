@@ -61,6 +61,8 @@ class App {
         await this.showProvisionalDemoWarning();
         // To do warning (remove this as soon as possible)
         await this.showProvisionalToDoWarning();
+        // Missing strings (not extracted). See #428 (to do)
+        await this.tmpStringList();
         // Add the notranslate class to some elements
         await this.addNoTranslateForGoogle();
         // Execute the custom JavaScript code
@@ -273,6 +275,54 @@ class App {
             // Check for errors
             this.check();
         }
+    }
+
+    /**
+     * To do. Some strings are not extracted (see #428)
+     *
+     */
+    async tmpStringList() {
+        const requiredStrins = [
+            _(
+                'Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...'
+            ),
+            _('Show questionnaire'),
+            _('Show active areas'),
+            _('Click here to do this activity'),
+            _('Select the correct options and click on the "Reply" button.'),
+            _(
+                'Mark all the options in the correct order and click on the "Reply" button.'
+            ),
+            _(
+                'Write the correct word o phrase and click on the "Reply" button.'
+            ),
+            _('Click on'),
+            _('Everything is perfect! Do you want to repeat this activity?'),
+            _(
+                'Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?'
+            ),
+            _(
+                'Almost perfect! You can still do it better. Do you want to repeat this activity?'
+            ),
+            _('It is not correct! You have clicked on'),
+            _('and the correct answer is'),
+            _('Great! You have visited the required dots.'),
+            _('You can do the test.'),
+            _('Select a subtitle file. Supported formats:'),
+            _('Map'),
+            _('Return'),
+            _('Questionnarie'),
+            _('Arrow'),
+            _('Map marker'),
+            _('Do you want to save the changes of this presentation?'),
+            _('Do you want to save the changes of this quiz?'),
+            _('Do you want to save the changes of this map?'),
+            _('Provide a slide title.'),
+            _('Hide score bar'),
+            _('Play the sound when scrolling the mouse over the points.'),
+            _('Show when the mouse is over the icon or active area.'),
+            _('Hide areas'),
+        ];
     }
 
     /**
