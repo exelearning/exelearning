@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## v3.0.0-rc1 – 2025-10-19
+
+### Added
+
+- New E2E tests
+- Full translation: Spanish (es)
+- Updated translations (automated): Catalan (ca), Basque (eu), Galician (gl), Valencian (va), Esperanto (eo)
+- New score bar icons in the Games
+- Improved installation logic in the Electron installers
+
+### Fixed
+
+- Improvements to the Chocolatey packaging workflow
+- Windows and MacOS versions issues (control PHP INI settings via environment variables)
+- Application icons and logos in all versions
+- Form iDevice presentation (partial revision)
+
+### Upgraded
+
+- Node.js: 20 → 24
+
+### Removed
+
+- Unused strings in translation files
+- "API Reference" link
+- Provisional warning for beta versions
+
 ## v3.0.0-beta8 – 2025-10-16
 
 ### Added
