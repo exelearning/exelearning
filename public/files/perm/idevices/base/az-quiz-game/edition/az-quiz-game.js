@@ -147,9 +147,7 @@ var $exeDevice = {
 
     createForm: function () {
         let path = this.idevicePath,
-            wordInstructions = _(
-                'Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s',
-            );
+            wordInstructions = _('Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s');
         wordInstructions = wordInstructions.replace(
             '%s',
             `<img src="${path}roscoIcoStart.png" alt="${_('Starts with/Contains')}" title="${_('Starts with/Contains')}" />`,
