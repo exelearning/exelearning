@@ -174,7 +174,7 @@ class ThemeHelper
         $themeConfigFilePathName = $this->getThemeConfigFilePathName($themeDir, $type, $user);
 
         if ($themeConfigFilePathName && file_exists($themeConfigFilePathName)) {
-            // New theme
+            // New style
             $theme = new ThemeDto();
 
             // Set type
@@ -444,7 +444,7 @@ class ThemeHelper
         try {
             FileUtil::extractZipTo($outputFileZip, $tmpThemeDirPath);
         } catch (\Exception $e) {
-            $response['error'] = $this->translator->trans('Could not extract theme');
+            $response['error'] = $this->translator->trans('Could not extract style');
             $this->cleanupResources($outputFileZip, $tmpThemeDirPath);
 
             return $response;
@@ -489,7 +489,7 @@ class ThemeHelper
             FileUtil::extractZipTo($outputFileZip, $themeDirPath);
             $response['themeDirName'] = $theme->getName();
         } catch (\Exception $e) {
-            $response['error'] = $this->translator->trans('Could not install theme');
+            $response['error'] = $this->translator->trans('Could not install style');
         }
 
         $this->cleanupResources($outputFileZip, $tmpThemeDirPath);

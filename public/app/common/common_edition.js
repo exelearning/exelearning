@@ -40,7 +40,7 @@ var $exeDevicesEdition = {
                 }
             }
 
-            // Replace the _ function
+            // Replace the _ function (see locale.js)
             _ = function (str) {
                 if (typeof ($exeDevice.i18n) != "undefined") {
                     var lang = $("HTML").attr("lang");

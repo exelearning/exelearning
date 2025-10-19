@@ -1293,7 +1293,7 @@ export default class IdeviceNode {
         let textElement = document.createElement('p');
         let selectElement = document.createElement('select');
         textElement.innerHTML = _(
-            'Select the page you want to move the idevice to. This will be at the end of it.'
+            'Select the page where you want to move the iDevice. It will be placed at the end of the page.'
         );
         textElement.classList.add('text-info-move-to-page');
         selectElement.classList.add('select-move-to-page');
@@ -1728,7 +1728,7 @@ export default class IdeviceNode {
                     eXeLearning.app.modals.alert.show({
                         title: _('iDevice error'),
                         body: _(
-                            "An error occurred while saving idevice's properties in database"
+                            'An error occurred while saving the iDevice’s properties to the database.'
                         ),
                         contentId: 'error',
                     });
@@ -2499,7 +2499,7 @@ export default class IdeviceNode {
             eXeLearning.app.modals.alert.show({
                 title: _('Not allowed'),
                 body: _(
-                    'You cannot edit another idevice until you save the current one'
+                    'You cannot edit another iDevice until you save the current one'
                 ),
             });
         }
