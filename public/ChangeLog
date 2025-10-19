@@ -14,7 +14,6 @@
 - Automatic CSS generation from SCSS
 - Allow Electron version auto-updates
 - New `make test-playwright` command to run local Playwright collaborative tests
-- Improved PHP CS Fixer configuration
 
 ### Fixed
 
