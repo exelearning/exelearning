@@ -278,7 +278,7 @@ export default class ApiCallManager {
     }
 
     /**
-     * Delete theme
+     * Delete style
      *
      * @param {*} params
      * @returns

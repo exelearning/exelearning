@@ -328,14 +328,14 @@ export default class ModalStyleManager extends Modal {
         bodyContainer.append(themesListContainer);
         // Tables
         let defaultThemesTabData = {
-            title: _('Default themes'),
+            title: _('Default styles'),
             id: 'base-themes-tab',
             active: true,
         };
         if (Object.keys(this.themesUser).length > 0) {
             // Generate tabs
             let userThemesTabData = {
-                title: _('My themes'),
+                title: _('My styles'),
                 id: 'user-themes-tab',
             };
             let tabs = [defaultThemesTabData, userThemesTabData];
@@ -394,11 +394,11 @@ export default class ModalStyleManager extends Modal {
         buttonNewTheme.classList.add('themes-button-new');
         buttonNewTheme.classList.add('btn');
         buttonNewTheme.classList.add('btn-secondary');
-        buttonNewTheme.innerHTML = _('New theme');
+        buttonNewTheme.innerHTML = _('New style');
         // Add event
         buttonNewTheme.addEventListener('click', (event) => {
             this.themeEdition = this.themes.newTheme({
-                title: _('My new theme'),
+                title: _('My new style'),
             });
             this.modalElementBodyContent.innerHTML = '';
             this.modalElementBodyContent.append(
@@ -633,12 +633,14 @@ export default class ModalStyleManager extends Modal {
         // Click event
         actionRemoveTd.addEventListener('click', (event) => {
             eXeLearning.app.modals.confirm.show({
-                title: _('Delete theme'),
-                body: _(`Are you sure to delete the theme: ${theme.id}?`),
+                title: _('Delete style'),
+                body: _(
+                    `Are you sure you want to delete the style: ${theme.id}?`
+                ),
                 confirmButtonText: _('Delete'),
                 cancelButtonText: _('Cancel'),
                 confirmExec: () => {
-                    // Delete theme dir
+                    // Delete style dir
                     this.removeTheme(theme.id);
                 },
             });
@@ -820,7 +822,7 @@ export default class ModalStyleManager extends Modal {
         // Head text
         let editThemeText = document.createElement('p');
         editThemeText.classList.add('theme-edit-title');
-        editThemeText.innerHTML = _('Style theme') + ': ' + theme.title;
+        editThemeText.innerHTML = _('Style') + ': ' + theme.title;
         editThemeContainer.append(editThemeText);
         // Table
         editThemeContainer.append(this.makeElementEditThemeTable(theme));
@@ -1193,7 +1195,7 @@ export default class ModalStyleManager extends Modal {
     }
 
     /**
-     * New theme
+     * New style
      *
      * @param {*} fields
      */
@@ -1252,7 +1254,7 @@ export default class ModalStyleManager extends Modal {
     }
 
     /**
-     * Delete theme and load modal again
+     * Delete style and load modal again
      *
      * @param {*} id
      */
@@ -1276,7 +1278,7 @@ export default class ModalStyleManager extends Modal {
             // Show modal
             setTimeout(() => {
                 if (!this.modal._isShown) this.show(false);
-                this.showElementAlert(_('Failed to remove theme'), response);
+                this.showElementAlert(_('Failed to remove style'), response);
             }, this.timeMax);
         }
     }

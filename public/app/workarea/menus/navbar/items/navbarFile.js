@@ -436,7 +436,7 @@ export default class NavbarFile {
             }
 
             if (toast) {
-                toast.toastBody.innerHTML = _('Opening preview...');
+                toast.toastBody.innerHTML = _('Generating preview...');
             }
 
             previewWindow = window.open(data.url, '_blank', 'noopener');

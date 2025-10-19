@@ -46,17 +46,14 @@ ul#formPreview {
 }
 
 ul#formPreview .FormView_question {
-    padding: 5px;
+    padding: 10px;
     background-color: var(--file-odd);
+    margin-bottom: 6px;
 }
 
 ul#formPreview .FormView_question.dragging {
     padding: 15px;
     background-color: var(--light-exe-color);
-}
-
-ul#formPreview .FormView_question:nth-child(even) {
-    background-color: rgba(220, 220, 220, 0.8);
 }
 
 ul#formPreview .FormView_question.dragging:nth-child(even) {
@@ -83,16 +80,11 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton {
     border-radius: 50%;
     border-style: none;
     background-color: transparent;
+    opacity: .5;
 }
 
 ul#formPreview .FormView_question .QuestionLabel_actionButton:hover {
-    color: white;
-    background-color: rgb(107, 107, 107);
-}
-
-ul#formPreview .FormView_question .QuestionLabel_actionButton:focus {
-    color: white;
-    background-color: rgb(107, 107, 107);
+    opacity: 1;
 }
 
 ul#formPreview .FormView_question .QuestionLabel_edit {
@@ -101,24 +93,6 @@ ul#formPreview .FormView_question .QuestionLabel_edit {
     background-position-x: center;
     background-position-y: center;
     background-size: 16px;
-}
-
-ul#formPreview .FormView_question .QuestionLabel_edit:hover {
-    background-color: rgb(17, 204, 0);
-}
-
-ul#formPreview .FormView_question .QuestionLabel_edit:focus {
-    background-color: rgb(17, 204, 0);
-}
-
-ul#formPreview .FormView_question .QuestionLabel_remove:hover {
-    color: white;
-    background-color: rgb(204, 0, 0);
-}
-
-ul#formPreview .FormView_question .QuestionLabel_remove:focus {
-    color: white;
-    background-color: rgb(204, 0, 0);
 }
 
 ul#formPreview .FormView_question .FormViewContainer {
@@ -147,10 +121,7 @@ ul#formPreview>li {
 }
 
 ul#formPreview>li label.activity-title {
-    text-decoration: underline;
     font-weight: bold;
-    text-decoration-color: var(--dark-exe-color);
-    text-decoration-thickness: 2px;
 }
 
 ul#formPreview>li div[class*="QuestionLabel"] {
@@ -167,9 +138,8 @@ ul#formPreview>li p {
     height: 16px;
     font-size: 14px;
     color: var(--dark-exe-color);
-    background-color: var(--bg-lighter-gray);
+    background: none;
     margin-left: var(--margin-m);
-
     border: 1px solid var(--dark-exe-color);
     border-radius: 100%;
     padding: 2px;
@@ -179,16 +149,6 @@ ul#formPreview>li p {
     margin: auto;
     margin-inline: 5px;
     cursor: pointer;
-}
-
-#formIdeviceForm .exe-icon.exe-icon-clicked {
-    color: var(--light-exe-color);
-    background-color: var(--dark-exe-color);
-}
-
-#formIdeviceForm .exe-icon:hover {
-    color: var(--light-exe-color);
-    background-color: var(--dark-exe-color);
 }
 
 #formIdeviceForm .exe-icon-remove {
@@ -201,11 +161,11 @@ ul#formPreview>li p {
     border: 0px;
     border-radius: 0%;
     text-align: center;
+    filter: grayscale(1);
 }
 
 #formIdeviceForm .exe-icon-remove:hover {
-    color: var(--light-exe-color);
-    background-color: var(--remove);
+    filter: grayscale(0);
 }
 
 #formIdeviceForm .exe-icon[disabled="true"] {
@@ -223,6 +183,7 @@ ul#formPreview>li p {
 
 #formIdeviceForm .inline.footer-buttons-container {
     justify-content: right;
+    margin-top: 20px;
 }
 
 #formIdeviceForm .inline.footer-buttons-container div {
@@ -241,7 +202,7 @@ ul#formPreview>li p {
     font-size: 14px;
     color: var(--dark-exe-color);
     margin-left: var(--margin-m);
-    border: 2px solid var(--verde-cl);
+    border: 2px solid var(--brand-primary-100);
     border-radius: 5px;
     padding: 2px;
     display: flex;
@@ -289,20 +250,26 @@ ul#formPreview>li p {
     background-color: transparent;
 }
 
+#formIdeviceForm .inline.check-options input[type="checkbox"]{
+    margin-right: .2em;
+}
+
 #formIdeviceForm .inline-icon.help-icon {
-    cursor: help;
-    color: var(--dark-exe-color-04);
+    color: var(--dark-exe-color);
+    filter: grayscale(1);
     background-color: transparent;
     border-style: none;
     padding: 0px;
+    margin-left: 5px;
 }
 
-#formIdeviceForm .inline-icon.help-icon:hover {
-    color: var(--dark-exe-color);
+#formIdeviceForm .inline-icon.help-icon:hover,
+#formIdeviceForm .inline-icon.help-icon:focus {
+    filter: grayscale(0);
 }
 
 #formIdeviceForm .exe-button.add-question-button {
-    min-width: 100px;
+    min-width: 130px;
     margin: 5px;
     background-color: var(--bg-lighter-gray);
     cursor: pointer;
@@ -310,6 +277,7 @@ ul#formPreview>li p {
 
 #formIdeviceForm .exe-button.exe-button.add-question-button:hover {
     background-color: var(--dark-exe-color);
+    color: #FFF;
 }
 
 #formIdeviceForm .dropdown-popup {
@@ -321,18 +289,24 @@ ul#formPreview>li p {
     /* top: 50%;   */
     left: 50%;
     transform: translate(-50%, 0);
-    /* transform: translate(-50%, calc(50% + 10px)); */
+    background: #fff;
+    box-shadow: 0 5px 5px 5px rgba(0,0,0,0.15);
+    border-radius: 4px;
+    margin-top: 5px
 }
 
 #formIdeviceForm .dropup-popup {
     z-index: 3;
     width: auto;
     height: auto;
-    /* background-color: var(--bg-lighter-gray); */
     position: absolute;
     /* top: 50%;   */
     left: 50%;
     transform: translate(-50%, calc(-100% - 20px));
+    background: #fff;
+    box-shadow: 0 -5px 5px 5px rgba(0,0,0,0.15);
+    border-radius: 4px;
+    margin-top: -5px
 }
 
 #formIdeviceForm .question-button {
@@ -354,6 +328,18 @@ ul#formPreview>li p {
 #formIdeviceForm .dropdownPassRate {
     margin: 0 10px;
     min-width: 80px;
+}
+
+#formPreview .true-false-radio-buttons-container label{
+    margin-right: 1em!important;
+}
+
+#formPreview .true-false-radio-buttons-container label input{
+    margin-right: .5em!important;
+}
+
+#formPreview .selection-buttons-container div.inline{
+    margin: 1em 0;
 }
 
 #formIdeviceForm .true-false-radio-buttons-container p {
