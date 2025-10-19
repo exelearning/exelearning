@@ -416,7 +416,7 @@ async function addTextIdevice(page, label = 'A') {
   if (await quickBtn.count()) {
     await quickBtn.first().click();
   } else {
-    // Fallback
+    // Fallbacks
     const leftMenu = page.locator('[data-testid="idevice-text"]');
     if (await leftMenu.count()) await leftMenu.first().click();
     else warn(`[${label}] Add Text button not visible`);
