@@ -1637,7 +1637,7 @@ var $exeDevice = {
             return `<div id="removeQuestionContainer" class="formAddQuestionsContainer">
                     <input type="button" id="removeQuestion" 
                         value="${this.strings.msgERemoveQuestion}" 
-                        class="question-button"/>
+                        class="btn btn-outline-light">
                 </div>`;
         }
 
@@ -1651,7 +1651,7 @@ var $exeDevice = {
                 <div id="cancelQuestionContainer" class="formAddQuestionsContainer">
                     <input type="button" id="cancelQuestion" 
                         value="${this.strings.msgECancelQuestion}" 
-                        class="question-button"/>
+                        class="btn btn-outline-secondary">
                 </div>
                 `;
         }
@@ -1666,7 +1666,7 @@ var $exeDevice = {
             return `<div id="saveQuestionContainer" class="formAddQuestionsContainer">
                     <input type="button" id="saveQuestion" 
                         value="${this.strings.msgESaveQuestion}" 
-                        class="question-button"/>
+                        class="btn btn-primary">
                 </div>`;
         }
 
@@ -1801,6 +1801,7 @@ var $exeDevice = {
 
             // Create label for the question
             const labelElementQuestion = document.createElement("label");
+            labelElementQuestion.className = "activity-title";
             labelElementQuestion.innerHTML = `${this.strings.msgEActivity} ${selectionType || ""} ${questionType}`;
 
             // Create buttons for question actions

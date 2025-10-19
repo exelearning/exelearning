@@ -66,8 +66,8 @@ class App {
         await this.showModalLopd();
         // "Not for production use" warning
         await this.showProvisionalDemoWarning();
-        // To do warning (remove this as soon as possible)
-        await this.showProvisionalToDoWarning();
+        // To review (showProvisionalToDoWarning might be useful for future beta releases)
+        // await this.showProvisionalToDoWarning();
         // Missing strings (not extracted). See #428 (to do)
         await this.tmpStringList();
         // Add the notranslate class to some elements
