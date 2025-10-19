@@ -11893,6 +11893,130 @@
         <source>System</source>
         <target>Sistema</target>
       </trans-unit>
+      <trans-unit id="RyY2yZU" resname="Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...">
+        <source>Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uGOdiGa" resname="Show questionnaire">
+        <source>Show questionnaire</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="a1ZibuB" resname="Show active areas">
+        <source>Show active areas</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="U011nkp" resname="Click here to do this activity">
+        <source>Click here to do this activity</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_x6N4oX" resname="Select the correct options and click on the &quot;Reply&quot; button.">
+        <source>Select the correct options and click on the "Reply" button.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fRii9Tm" resname="Mark all the options in the correct order and click on the &quot;Reply&quot; button.">
+        <source>Mark all the options in the correct order and click on the "Reply" button.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gcfIi2i" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
+        <source>Write the correct word o phrase and click on the "Reply" button.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id=".gszbqv" resname="Click on">
+        <source>Click on</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id=".8Av3oX" resname="Everything is perfect! Do you want to repeat this activity?">
+        <source>Everything is perfect! Do you want to repeat this activity?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="GhgrH8j" resname="Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?">
+        <source>Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="NTHoYGH" resname="Almost perfect! You can still do it better. Do you want to repeat this activity?">
+        <source>Almost perfect! You can still do it better. Do you want to repeat this activity?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cozFfx3" resname="It is not correct! You have clicked on">
+        <source>It is not correct! You have clicked on</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7z2Wj4o" resname="and the correct answer is">
+        <source>and the correct answer is</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gVp2940" resname="Great! You have visited the required dots.">
+        <source>Great! You have visited the required dots.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="iBb8_uX" resname="You can do the test.">
+        <source>You can do the test.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="QRwEk_A" resname="Select a subtitle file. Supported formats:">
+        <source>Select a subtitle file. Supported formats:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="aV1L_FP" resname="Map">
+        <source>Map</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fPOBkk4" resname="Return">
+        <source>Return</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="sziTKeZ" resname="Questionnarie">
+        <source>Questionnarie</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="K73e9Yj" resname="Arrow">
+        <source>Arrow</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4znput7" resname="Map marker">
+        <source>Map marker</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="lGiVMKM" resname="Do you want to save the changes of this presentation?">
+        <source>Do you want to save the changes of this presentation?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="USqO9yt" resname="Do you want to save the changes of this quiz?">
+        <source>Do you want to save the changes of this quiz?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zmNHhiR" resname="Do you want to save the changes of this map?">
+        <source>Do you want to save the changes of this map?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qwizOzG" resname="Provide a slide title.">
+        <source>Provide a slide title.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="J4RjpaC" resname="Hide score bar">
+        <source>Hide score bar</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="5fEdNHr" resname="Play the sound when scrolling the mouse over the points.">
+        <source>Play the sound when scrolling the mouse over the points.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zhQflEY" resname="Show when the mouse is over the icon or active area.">
+        <source>Show when the mouse is over the icon or active area.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="IF0.2y." resname="Hide areas">
+        <source>Hide areas</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id=".gar845" resname="Provide a word and its definition. May toggle between: &quot;Word starts&quot; or &quot;Word contains&quot;, by clicking on %s">
+        <source>Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="M.rjnAC" resname="Errors (number of attempts) to display the message">
+        <source>Errors (number of attempts) to display the message</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
