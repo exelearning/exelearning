@@ -6609,8 +6609,8 @@
         <source>Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="Jgo0fmJ" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the &quot;Show/Hide&quot; button below.">
-        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the "Show/Hide" button below.</source>
+      <trans-unit id="Jgo0fmJ" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.">
+        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
