@@ -21,7 +21,7 @@ final class Selectors
     public const NAV_NODE_TEXTS   = '#nav_list .nav-element .node-text-span';
 
     // Add Text quick button inside node content
-    public const ADD_TEXT_BUTTON  = '#eXeAddContentBtnWrapper > button';
+    public const ADD_TEXT_BUTTON  = '#idevices-bottom > #text';
     // Quickbar iDevice buttons
     public const QUICK_IDEVICE_TEXT = '[data-testid="quick-idevice-text"]';
     // Left menu iDevice testid (fallback)
