@@ -3,6 +3,28 @@ import IdevicesEngine from './idevices/idevicesEngine.js';
 import StructureEngine from './structure/structureEngine.js';
 import RealTimeEventNotifier from '../../RealTimeEventNotifier/RealTimeEventNotifier.js';
 
+const sanitizeIdentifier = (value) => {
+    if (value === undefined || value === null) {
+        return null;
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed === '' ? null : trimmed;
+    }
+
+    return value;
+};
+
+const sanitizeOrderValue = (value) => {
+    if (value === undefined || value === null || value === '') {
+        return null;
+    }
+
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
 export default class projectManager {
     constructor(app) {
         this.app = app;
@@ -12,6 +34,13 @@ export default class projectManager {
         this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
         this.clientIntervalUpdate = eXeLearning.config.clientIntervalUpdate;
         this.syncIntervalTime = 250;
+        this.urlParams = new URLSearchParams(window.location.search);
+        this.explicitOdeSessionId = this.urlParams.get('odeSessionId');
+        this.requestedProjectId =
+            this.urlParams.get('projectId') ||
+            this.urlParams.get('project') ||
+            eXeLearning.symfony.requestedProjectId ||
+            null;
         if (!this.offlineInstallation) {
             this.realTimeEventNotifier = new RealTimeEventNotifier(
                 this.app.eXeLearning.mercure.url,
@@ -714,7 +743,79 @@ export default class projectManager {
         console.log(
             'public/app/workarea/project/projectManager.js:loadCurrentProject'
         );
-        let response = await this.app.api.getCurrentProject();
+        let response = null;
+        let targetSessionId = this.explicitOdeSessionId;
+
+        const shouldForceNewSession =
+            !targetSessionId &&
+            !this.requestedProjectId &&
+            !eXeLearning.symfony.odeSessionId;
+
+        if (targetSessionId || shouldForceNewSession) {
+            const firstAttempt = await this.app.api.getCurrentProject(
+                targetSessionId,
+                {
+                    projectId: this.requestedProjectId,
+                    forceNewSession: shouldForceNewSession,
+                }
+            );
+
+            if (
+                firstAttempt &&
+                (firstAttempt.responseMessage === 'SESSION_NOT_FOUND' ||
+                    firstAttempt.status === 404)
+            ) {
+                targetSessionId = null;
+                this.explicitOdeSessionId = null;
+            } else if (firstAttempt && firstAttempt.responseMessage === 'OK') {
+                response = firstAttempt;
+            } else if (firstAttempt && firstAttempt.__error) {
+                console.error('Error loading project session', firstAttempt);
+                throw new Error(firstAttempt.detail || firstAttempt.statusText);
+            }
+        }
+
+        if (!response && this.requestedProjectId) {
+            const openParams = {
+                projectId: this.requestedProjectId,
+                allowParallelSessions: true,
+            };
+            if (targetSessionId) {
+                openParams.odeSessionId = targetSessionId;
+            }
+            const openResponse =
+                await this.app.api.postSelectedOdeFile(openParams);
+            if (openResponse && openResponse.responseMessage === 'OK') {
+                targetSessionId = openResponse.odeSessionId;
+                if (openResponse.odeId) {
+                    this.requestedProjectId = String(openResponse.odeId);
+                }
+                this.setUrlSession(targetSessionId, this.requestedProjectId);
+                response = await this.app.api.getCurrentProject(
+                    targetSessionId,
+                    {
+                        projectId: this.requestedProjectId,
+                    }
+                );
+            } else if (openResponse && openResponse.responseMessage) {
+                console.error('Unable to open project', openResponse);
+                this.app.interface.loadingScreen.hide();
+                throw new Error(openResponse.responseMessage);
+            }
+        }
+
+        if (!response) {
+            response = await this.app.api.getCurrentProject(targetSessionId, {
+                projectId: this.requestedProjectId,
+                forceNewSession: true,
+            });
+        }
+        if (response && response.__error) {
+            console.error('Unexpected error loading project', response);
+            throw new Error(
+                response.detail || response.statusText || 'PROJECT_LOAD_ERROR'
+            );
+        }
         if (response && response.responseMessage == 'OK') {
             this.odeId = response.currentOdeUsers.odeId;
             this.odeVersion = response.currentOdeUsers.odeVersionId;
@@ -722,24 +823,37 @@ export default class projectManager {
             let odeSessionId = response.currentOdeUsers.odeSessionId;
 
             // Case join the shared session
-            if (eXeLearning.symfony.odeSessionId) {
+            if (
+                eXeLearning.symfony.odeSessionId &&
+                eXeLearning.symfony.odeSessionId !== odeSessionId
+            ) {
                 // Check odeSessionId and set on bbdd
                 let params = { odeSessionId: eXeLearning.symfony.odeSessionId };
                 let response =
                     await this.app.api.postJoinCurrentOdeSessionId(params);
                 if (response.responseMessage == 'OK') {
                     this.odeSession = eXeLearning.symfony.odeSessionId;
-                    window.location.replace('workarea');
+                    this.redirectToWorkarea();
                 }
+            } else if (eXeLearning.symfony.odeSessionId) {
+                eXeLearning.symfony.odeSessionId = null;
             } else if (eXeLearning.user.odePlatformId) {
                 this.loadPlatformProject(odeSessionId);
             } else if (eXeLearning.user.newOde) {
                 this.newSession(odeSessionId);
                 const urlParams = new URLSearchParams(window.location.search);
                 let jwtToken = urlParams.get('jwt_token');
-                window.location.replace('workarea' + '?jwt_token=' + jwtToken);
+                let redirectUrl = 'workarea' + '?jwt_token=' + jwtToken;
+                if (this.odeSession) {
+                    redirectUrl += `&odeSessionId=${this.odeSession}`;
+                }
+                window.location.replace(redirectUrl);
             }
             this.odeSession = response.currentOdeUsers.odeSessionId;
+            const projectIdForUrl =
+                this.requestedProjectId || this.odeId || null;
+            this.requestedProjectId = projectIdForUrl;
+            this.setUrlSession(this.odeSession, projectIdForUrl);
             if (response.isNewSession) {
                 this.isSaveAs = true;
             }
@@ -781,7 +895,11 @@ export default class projectManager {
                 this.app.project.odeId = response.odeId;
                 // Load project
                 this.odeSession = response.odeSessionId;
-                window.location.replace('workarea' + '?jwt_token=' + jwtToken);
+                let redirectUrl = 'workarea' + '?jwt_token=' + jwtToken;
+                if (this.odeSession) {
+                    redirectUrl += `&odeSessionId=${this.odeSession}`;
+                }
+                window.location.replace(redirectUrl);
             }
         }
     }
@@ -808,6 +926,33 @@ export default class projectManager {
                 this.app.project.openLoad();
             }
         });
+    }
+
+    setUrlSession(sessionId, projectId) {
+        if (!sessionId) {
+            return;
+        }
+
+        const url = new URL(window.location.href);
+        url.searchParams.set('odeSessionId', sessionId);
+        if (projectId) {
+            url.searchParams.set('projectId', projectId);
+        } else {
+            url.searchParams.delete('project');
+        }
+        window.history.replaceState({}, '', url.toString());
+        this.explicitOdeSessionId = sessionId;
+    }
+
+    redirectToWorkarea() {
+        const url = new URL(window.location.href);
+        url.pathname = `${eXeLearning.symfony.basePath.replace(/\/$/, '')}/workarea`;
+        if (this.odeSession) {
+            url.searchParams.set('odeSessionId', this.odeSession);
+        } else {
+            url.searchParams.delete('odeSessionId');
+        }
+        window.location.replace(url.toString());
     }
 
     /**
@@ -942,7 +1087,10 @@ export default class projectManager {
     async lastNodeSelected() {
         // Select last node selected and load
         let element = null;
-        let response = await this.app.api.getCurrentProject();
+        let sessionId = this.odeSession || this.explicitOdeSessionId || null;
+        let response = await this.app.api.getCurrentProject(sessionId, {
+            projectId: this.requestedProjectId,
+        });
         if (response && response.responseMessage == 'OK') {
             let pageIdElement = response.currentOdeUsers.currentPageId;
             element = this.app.menus.menuEngine.menuNav.querySelector(
@@ -2051,6 +2199,16 @@ export default class projectManager {
         actionType,
         pageId = null
     ) {
+        if (!odeNavStructureSyncId) {
+            odeNavStructureSyncId = this.structure.getSelectNodeNavId();
+        }
+
+        if (!odeNavStructureSyncId) {
+            return {
+                responseMessage: 'MISSING_NAV_NODE',
+            };
+        }
+
         let params = {
             odeSessionId: this.odeSession,
             odeIdeviceId: odeIdeviceId,
@@ -2870,7 +3028,16 @@ export default class projectManager {
         previousOdeBlockDto
     ) {
         let defaultVersion = this.odeVersion;
+        if (!defaultVersion && this.odeVersionId) {
+            defaultVersion = this.odeVersionId;
+        }
         let defaultSession = this.odeSession;
+        if (!defaultSession) {
+            defaultSession =
+                this.explicitOdeSessionId ||
+                eXeLearning.symfony.odeSessionId ||
+                null;
+        }
         let defaultOdeNavStructureSyncId = this.structure.getSelectNodeNavId();
         let defaultOdePageId = this.structure.getSelectNodePageId();
         return {
@@ -2908,20 +3075,33 @@ export default class projectManager {
         odeIdeviceDto
     ) {
         let defaultVersion = this.odeVersion;
+        if (!defaultVersion && this.odeVersionId) {
+            defaultVersion = this.odeVersionId;
+        }
         let defaultSession = this.odeSession;
+        if (!defaultSession) {
+            defaultSession =
+                this.explicitOdeSessionId ||
+                eXeLearning.symfony.odeSessionId ||
+                null;
+        }
+        const defaultProjectId = this.odeId || this.requestedProjectId;
         return {
-            odeComponentsSyncId: odeIdeviceDto.id,
-            odeVersionId: defaultVersion,
-            odeSessionId: defaultSession,
-            odeNavStructureSyncId: previousPageId,
-            odePageId: moveFrom,
-            odePagStructureSyncId: previousOdeBlockDto.id,
-            odePagStructureSyncOrder: previousOdeBlockDto.order,
-            odeBlockId: previousOdeBlockDto.blockId,
+            odeComponentsSyncId: sanitizeIdentifier(odeIdeviceDto.id),
+            odeVersionId: sanitizeIdentifier(defaultVersion),
+            odeSessionId: sanitizeIdentifier(defaultSession),
+            odeNavStructureSyncId: sanitizeIdentifier(previousPageId),
+            odePageId: sanitizeIdentifier(moveFrom),
+            odePagStructureSyncId: sanitizeIdentifier(previousOdeBlockDto.id),
+            odePagStructureSyncOrder: sanitizeOrderValue(
+                previousOdeBlockDto.order
+            ),
+            odeBlockId: sanitizeIdentifier(previousOdeBlockDto.blockId),
             blockName: previousOdeBlockDto.blockName,
             iconName: previousOdeBlockDto.iconName,
             order: previousOrder,
             isUndoLastAction: true,
+            projectId: sanitizeIdentifier(defaultProjectId),
         };
     }
 

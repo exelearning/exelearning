@@ -66,6 +66,7 @@ class ListProjectsAction extends AbstractController
             $ownerEmail = (string) $it->getUser();
             $projects[] = [
                 'id' => $odeId,
+                'odeFilesId' => $it->getId(),
                 'odeId' => $odeId,
                 'odeVersionId' => $it->getOdeVersionId(),
                 'title' => (string) $it->getTitle(),

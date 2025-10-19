@@ -1,4 +1,26 @@
 import RealTimeEventNotifier from '../../../../RealTimeEventNotifier/RealTimeEventNotifier.js';
+
+const sanitizeIdentifier = (value) => {
+    if (value === undefined || value === null) {
+        return null;
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed === '' ? null : trimmed;
+    }
+
+    return value;
+};
+
+const sanitizeOrderValue = (value) => {
+    if (value === undefined || value === null || value === '') {
+        return null;
+    }
+
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+};
 /**
  * eXeLearning
  *
@@ -1749,6 +1771,31 @@ export default class IdeviceNode {
      */
     async apiSaveIdeviceJson(saveIdevice) {
         let params = ['odeComponentsSyncId', 'jsonProperties'];
+        const isExistingComponent = Boolean(
+            sanitizeIdentifier(this.id || this.odeComponentsSyncId)
+        );
+
+        if (!isExistingComponent) {
+            params = params.concat([
+                'odeVersionId',
+                'odeSessionId',
+                'odeNavStructureSyncId',
+                'odePageId',
+                'odePagStructureSyncId',
+                'odePagStructureSyncOrder',
+                'odeBlockId',
+                'blockName',
+                'iconName',
+                'odeIdeviceId',
+                'odeIdeviceTypeName',
+            ]);
+
+            const pendingOrder = sanitizeOrderValue(this.order);
+            if (pendingOrder !== null && pendingOrder !== undefined) {
+                params.push('order');
+            }
+        }
+
         if (saveIdevice && typeof $exeDevice !== 'undefined' && $exeDevice) {
             this.jsonProperties = $exeDevice.save();
             // Add class error to idevice
@@ -2160,11 +2207,28 @@ export default class IdeviceNode {
      */
     getDictBaseValuesData() {
         let defaultVersion = eXeLearning.app.project.odeVersion;
+        if (!defaultVersion && eXeLearning.app.project.odeVersionId) {
+            defaultVersion = eXeLearning.app.project.odeVersionId;
+        }
+
         let defaultSession = eXeLearning.app.project.odeSession;
+        if (!defaultSession) {
+            defaultSession =
+                eXeLearning.app.project.explicitOdeSessionId ||
+                eXeLearning.symfony.odeSessionId ||
+                null;
+        }
+
         let defaultOdeNavStructureSyncId =
             eXeLearning.app.project.structure.getSelectNodeNavId();
         let defaultOdePageId =
             eXeLearning.app.project.structure.getSelectNodePageId();
+
+        const defaultProjectId =
+            eXeLearning.app.project.odeId ||
+            eXeLearning.app.project.requestedProjectId ||
+            eXeLearning.symfony.requestedProjectId ||
+            null;
 
         let safeBlockOrder = null;
         if (this.block && this.block.getCurrentOrder) {
@@ -2175,24 +2239,30 @@ export default class IdeviceNode {
                 safeBlockOrder = this.block.getFallbackPageOrder();
             }
         }
+        const blockIdValue = this.block
+            ? this.block.blockId || this.block.id || null
+            : null;
         return {
-            odeComponentsSyncId: this.id,
-            odeVersionId: defaultVersion,
-            odeSessionId: defaultSession,
-            odeNavStructureSyncId: this.odeNavStructureSyncId
-                ? this.odeNavStructureSyncId
-                : defaultOdeNavStructureSyncId,
-            odePageId: this.pageId ? this.pageId : defaultOdePageId,
-            odePagStructureSyncId: this.block ? this.block.id : null,
-            odePagStructureSyncOrder: safeBlockOrder,
-            odeBlockId: this.block ? this.block.blockId : null,
+            odeComponentsSyncId: sanitizeIdentifier(this.id),
+            odeVersionId: sanitizeIdentifier(defaultVersion),
+            odeSessionId: sanitizeIdentifier(defaultSession),
+            odeNavStructureSyncId: sanitizeIdentifier(
+                this.odeNavStructureSyncId || defaultOdeNavStructureSyncId
+            ),
+            odePageId: sanitizeIdentifier(this.pageId || defaultOdePageId),
+            odePagStructureSyncId: sanitizeIdentifier(
+                this.block ? this.block.id : null
+            ),
+            odePagStructureSyncOrder: sanitizeOrderValue(safeBlockOrder),
+            odeBlockId: sanitizeIdentifier(blockIdValue),
             blockName: this.block ? this.block.blockName : null,
             iconName: this.block ? this.block.iconName : null,
-            odeIdeviceId: this.odeIdeviceId,
-            odeIdeviceTypeName: this.idevice.name,
+            odeIdeviceId: sanitizeIdentifier(this.odeIdeviceId || this.id),
+            odeIdeviceTypeName: this.idevice ? this.idevice.name : null,
             jsonProperties: this.getJsonProperties(true),
             htmlView: this.getViewHTML(),
-            order: this.order,
+            order: sanitizeOrderValue(this.order),
+            projectId: sanitizeIdentifier(defaultProjectId),
         };
     }
 
@@ -2899,7 +2969,10 @@ export default class IdeviceNode {
      *
      */
     resetWindowHash() {
-        this.nodeContainer.scrollTop = this.nodeContainer.offsetTop;
+        const container = document.getElementById('node-content');
+        if (container && typeof container.scrollIntoView === 'function') {
+            container.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
     }
 
     /**
@@ -2920,7 +2993,10 @@ export default class IdeviceNode {
         }
         let element = document.getElementById(hashId);
         setTimeout(() => {
-            this.nodeContainer.scrollTop = element.offsetTop;
+            const target = document.getElementById(hashId);
+            if (target && typeof target.scrollIntoView === 'function') {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }, time);
     }
 

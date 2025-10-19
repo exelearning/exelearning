@@ -3,6 +3,7 @@ export default class OdeTitleMenu {
         this.odeTitleMenuHeadElement = document.querySelector(
             '#exe-title > .exe-title.content'
         );
+        this.defaultDocumentTitle = document.title;
         this.titleButton = document.querySelector('.title-menu-button');
         this.titleContainer = document.querySelector('#exe-title');
         const observer = new MutationObserver(this.onTitleChanged.bind(this));
@@ -39,7 +40,10 @@ export default class OdeTitleMenu {
             ? odeTitleProperty.value
             : _('Untitled document');
         this.odeTitleMenuHeadElement.textContent = odeTitleText;
-        //this.odeTitleMenuHeadElement.setAttribute('title', odeTitleText);
+        this.odeTitleMenuHeadElement.setAttribute('title', odeTitleText);
+
+        const baseTitle = this.defaultDocumentTitle || 'eXeLearning';
+        document.title = `${odeTitleText} – ${baseTitle}`;
     }
 
     setChangeTitle() {
