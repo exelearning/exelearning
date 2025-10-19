@@ -278,7 +278,7 @@ class App {
     }
 
     /**
-     * Some strings are not extracted (see #428)
+     * To do. Some strings are not extracted (see #428)
      *
      */
     async tmpStringList() {
