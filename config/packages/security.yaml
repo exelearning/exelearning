@@ -62,6 +62,7 @@ security:
         # - { path: ^/profile, roles: ROLE_USER }
 
         # Check that user is logged in
+        - { path: '^/api/session/check', roles: PUBLIC_ACCESS }
         - { path: '^/admin', roles: [IS_AUTHENTICATED_FULLY] }
         - { path: '^/workarea', roles: [IS_AUTHENTICATED_FULLY] }
         - { path: '^/api', roles: [IS_AUTHENTICATED_FULLY] }

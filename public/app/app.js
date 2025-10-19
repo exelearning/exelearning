@@ -17,6 +17,7 @@ import ThemesManager from './workarea/themes/themesManager.js';
 import UserManager from './workarea/user/userManager.js';
 import Actions from './common/app_actions.js';
 import Shortcuts from './common/shortcuts.js';
+import SessionMonitor from './common/sessionMonitor.js';
 
 class App {
     constructor(eXeLearning) {
@@ -35,6 +36,12 @@ class App {
         this.user = new UserManager(this);
         this.actions = new Actions(this);
         this.shortcuts = new Shortcuts(this);
+        this.sessionMonitor = null;
+        this.sessionExpirationHandled = false;
+
+        if (!this.eXeLearning.config.isOfflineInstallation) {
+            this.setupSessionMonitor();
+        }
     }
 
     /**
@@ -152,6 +159,108 @@ class App {
                 };
             }
         }
+    }
+
+    setupSessionMonitor() {
+        const baseInterval = Number(
+            this.eXeLearning.config.sessionCheckIntervalMs ||
+                this.eXeLearning.config.sessionCheckInterval ||
+                0
+        );
+
+        const interval = baseInterval > 0 ? baseInterval : 60000;
+
+        const checkUrl = this.composeUrl('/api/session/check');
+        const loginUrl = this.composeUrl('/login');
+
+        this.sessionMonitor = new SessionMonitor({
+            checkUrl,
+            loginUrl,
+            interval,
+            closeMercureConnections: (reason) =>
+                this.closeMercureConnections(reason),
+            onSessionInvalid: (reason) => this.handleSessionExpiration(reason),
+            onNetworkError: (error, reason) => {
+                console.debug(
+                    'SessionMonitor: temporary issue while checking the session',
+                    reason,
+                    error
+                );
+            },
+        });
+
+        window.eXeSessionMonitor = this.sessionMonitor;
+        this.sessionMonitor.start();
+    }
+
+    getBasePath() {
+        const basePath = this.eXeLearning.symfony?.basePath ?? '';
+        if (!basePath || basePath === '/') {
+            return '';
+        }
+
+        return basePath.replace(/\/+$/, '');
+    }
+
+    composeUrl(path = '') {
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        const basePath = this.getBasePath();
+
+        if (!basePath) {
+            return normalizedPath;
+        }
+
+        return `${basePath}${normalizedPath}`;
+    }
+
+    closeMercureConnections() {
+        if (this.project?.eventSource) {
+            try {
+                this.project.eventSource.close();
+            } catch (error) {
+                console.debug(
+                    'SessionMonitor: error while closing the project EventSource',
+                    error
+                );
+            }
+            this.project.eventSource = null;
+        }
+
+        const notifier = this.project?.realTimeEventNotifier;
+        if (notifier) {
+            if (typeof notifier.closeConnection === 'function') {
+                notifier.closeConnection();
+            } else if (notifier.eventSource) {
+                try {
+                    notifier.eventSource.close();
+                } catch (error) {
+                    console.debug(
+                        'SessionMonitor: error while closing the notifier EventSource',
+                        error
+                    );
+                }
+                notifier.eventSource = null;
+            }
+        }
+    }
+
+    handleSessionExpiration(reason) {
+        if (this.sessionExpirationHandled) {
+            return;
+        }
+
+        this.sessionExpirationHandled = true;
+
+        try {
+            this.project?.cleanupCurrentIdeviceTimer?.();
+        } catch (error) {
+            console.debug(
+                'SessionMonitor: error while cleaning up timers during logout',
+                error
+            );
+        }
+
+        console.info('Session expired, redirecting to login.', reason);
     }
 
     /**
