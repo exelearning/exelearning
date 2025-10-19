@@ -63,26 +63,6 @@
         .page-title {
             margin-top: 15px;
         }
-        &[mode="edition"] {
-            #eXeAddContentBtnWrapper {
-                display: none;
-            }
-        }
-        #eXeAddContentBtnWrapper {
-            display: none; /* Provisional? */
-            button {
-                border: 1px solid #d9dae5a6;
-                border-radius: 4px;
-                box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.04);
-                background-color: #fff;
-                padding: 45px 20px 5px 20px;
-                background-size: 30px auto;
-                background-repeat: no-repeat;
-                background-position: 50% 8px;
-                font-size: 12px;
-                color: var(--icon-gray);
-            }
-        }
         .form-properties {
             .exe-form-tabs {
                 margin-top: 15px;

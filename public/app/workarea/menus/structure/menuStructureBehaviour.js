@@ -918,7 +918,6 @@ export default class MenuStructureBehaviour {
         this.nodeSelected?.classList.add('selected'); // Collaborative
         this.structureEngine.nodeSelected = this.nodeSelected;
         this.setNodeIdToNodeContentElement();
-        this.createAddTextBtn();
         this.enabledActionButtons();
 
         // Testing: explicit selected state on nav nodes and ARIA sync
@@ -952,42 +951,6 @@ export default class MenuStructureBehaviour {
 
             nodeContent.setAttribute('node-selected', node.pageId);
         }
-    }
-
-    /**
-     * Create a button to add a Text iDevice
-     *
-     */
-    createAddTextBtn() {
-        // Hide any visible tooltips
-        $('body > .tooltip').hide();
-        // Remove the button
-        $('#eXeAddContentBtnWrapper').remove();
-        if ($('#properties-node-content-form').is(':visible')) {
-            return;
-        }
-        // Create the button in the right place
-        let txt = _('Add Text');
-        let bgImage = $('#list_menu_idevices #text .idevice_icon').css(
-            'background-image'
-        );
-        var addTextBtn = `
-            <div class="text-center" id="eXeAddContentBtnWrapper">
-                <button data-testid="add-text-quick">${txt}</button>
-            </div>
-        `;
-        $('#node-content').append(addTextBtn);
-        // Click the button to add a Text iDevice
-        $('#eXeAddContentBtnWrapper button')
-            .off('click')
-            .on('click', function (event) {
-                if ($('#properties-node-content-form').is(':visible')) {
-                    return;
-                }
-                $('#list_menu_idevices #text').trigger('click');
-                $('#eXeAddContentBtnWrapper').remove();
-            })
-            .css('background-image', bgImage);
     }
 
     /**
