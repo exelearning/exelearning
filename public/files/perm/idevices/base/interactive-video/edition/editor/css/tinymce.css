@@ -12,9 +12,9 @@
     src: local('Open Sans Bold'), local('OpenSans-Bold'), url(/files/perm/idevices/base/interactive-video/edition/editor/fonts/open-sans-bold.woff2) format('woff2'), url(/files/perm/idevices/base/interactive-video/edition/editor/fonts/open-sans-bold.woff) format('woff');
 }
 
-body {
+body#tinymce {
     font: 90%/1.6 'Open Sans', Arial, Verdana, Helvetica, sans-serif;
-    padding: 0;
+    padding: .5em 1em!important;
     margin: 0;
     color: #444;
     padding: 0 .5em
