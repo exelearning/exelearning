@@ -154,18 +154,7 @@
                     .node-menu-button {
                         visibility: hidden;
                     }
-                    &:hover,
-                    &:focus-within,
-                    &:focus-visible {
-                        color: var(--text);
-                        background-color: var(--gray-100);
-                        cursor: pointer;
-                        transition: var(--tr-02);
-                        .node-menu-button {
-                            display: block;
-                            visibility: visible;
-                        }
-                    }
+
                     &.dragging {
                         /*
                         border-radius: 8px;
@@ -392,6 +381,18 @@
                     display: none;
                 }
                 &.selected {
+                    &:hover,
+                    &:focus-within,
+                    &:focus-visible {
+                        color: var(--text);
+                        background-color: var(--gray-100);
+                        cursor: pointer;
+                        transition: var(--tr-02);
+                        .node-menu-button {
+                            display: block;
+                            visibility: visible;
+                        }
+                    }
                     > .nav-element-text {
                         background-color: var(--node-content-bg-color);
                         color: var(--text);

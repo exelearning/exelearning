@@ -292,6 +292,14 @@
                     }
                 }
             }
+            &.disabled {
+                opacity: .5;
+                cursor: not-allowed;
+                .idevice_category {
+                    pointer-events: none;
+                    user-select: none;
+                }
+            }
         }
     }
     .idevice_category.thick .idevice_item {

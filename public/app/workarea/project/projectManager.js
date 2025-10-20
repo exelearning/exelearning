@@ -200,6 +200,7 @@ export default class projectManager {
         overlay.appendChild(messageBox);
         targetBlock.prepend(overlay);
         targetBlock.classList.add('editing-article', 'article-disabled');
+        this.lockIdevices();
 
         return true;
     }
@@ -279,6 +280,8 @@ export default class projectManager {
     }
 
     clearUserLocks(user) {
+        this.unlockIdevices();
+
         // Find all pages blocked by this user
         for (let [pageId, lockInfo] of this.activeLocks.entries()) {
             if (lockInfo.user === user) {
@@ -287,7 +290,38 @@ export default class projectManager {
         }
     }
 
+    lockIdevices() {
+        const idevicesMenu = document.querySelector('#idevices-bottom');
+        idevicesMenu.classList.add('disabled');
+        idevicesMenu.querySelectorAll('.idevice_item').forEach((el) => {
+            el.setAttribute('tabindex', '-1');
+            el.addEventListener('keydown', (e) => e.preventDefault());
+        });
+        const listMenuIdevices = document.querySelector('#list_menu_idevices');
+        listMenuIdevices.classList.add('disabled');
+        idevicesMenu.querySelectorAll('.idevice_category').forEach((el) => {
+            el.setAttribute('tabindex', '-1');
+            el.addEventListener('keydown', (e) => e.preventDefault());
+        });
+    }
+
+    unlockIdevices() {
+        const idevicesMenu = document.querySelector('#idevices-bottom');
+        idevicesMenu.classList.remove('disabled');
+        idevicesMenu.querySelectorAll('.idevice_item').forEach((el) => {
+            el.removeAttribute('tabindex');
+            el.removeEventListener('keydown', (e) => e.preventDefault());
+        });
+        const listMenuIdevices = document.querySelector('#list_menu_idevices');
+        listMenuIdevices.classList.remove('disabled');
+        idevicesMenu.querySelectorAll('.idevice_category').forEach((el) => {
+            el.removeAttribute('tabindex');
+            el.removeEventListener('keydown', (e) => e.preventDefault());
+        });
+    }
+
     clearPageLock(pageId) {
+        this.unlockIdevices();
         const lockInfo = this.activeLocks.get(pageId);
         if (!lockInfo) return;
 
@@ -530,7 +564,8 @@ export default class projectManager {
         }
 
         if (isEditingOrInactive && isNotSameEmail) {
-            if (collaborativeMode !== 'page') {
+            // TODO Uncomment for user edit notice on idevice (iDevice mode).
+            /* if (collaborativeMode !== 'page') {
                 const overlay = document.createElement('div');
                 const messageBox = document.createElement('div');
                 const description = document.createElement('div');
@@ -566,7 +601,7 @@ export default class projectManager {
                     'editing-article',
                     'article-disabled'
                 );
-            }
+            } */
             if (shouldUnlock) {
                 const unlockBtn = document.createElement('button');
 
@@ -2946,6 +2981,23 @@ export default class projectManager {
             });
             return true;
         }
+    }
+
+    // TODO It cannot be implemented to cover all the causes, it requires real persistence.
+    checkPageCollaborativeEditing() {
+        let pageId = document
+            .getElementById('node-content')
+            .getAttribute('node-selected');
+        if (this.activeLocks.get(pageId) === false) {
+            return false;
+        }
+        eXeLearning.app.modals.alert.show({
+            title: _('Info'),
+            body: _(
+                'Someone is editing this page. Please wait until they finish editing before you can create new iDevices.'
+            ),
+        });
+        return true;
     }
 
     /**

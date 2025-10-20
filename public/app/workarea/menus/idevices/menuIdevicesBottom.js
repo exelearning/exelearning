@@ -57,6 +57,11 @@ export default class MenuIdevicesBottom {
         ideviceDiv.setAttribute('drag', 'idevice');
         ideviceDiv.setAttribute('icon-type', ideviceData.icon.type);
         ideviceDiv.setAttribute('icon-name', ideviceData.icon.name);
+        ideviceDiv.setAttribute('title', ideviceData.title);
+        ideviceDiv.setAttribute('data-bs-title', ideviceData.title);
+        ideviceDiv.setAttribute('data-bs-placement', 'top');
+        ideviceDiv.setAttribute('data-bs-toggle', 'tooltip');
+        window.bootstrap.Tooltip.getOrCreateInstance(ideviceDiv);
         // Testing: quickbar item testid
         ideviceDiv.setAttribute(
             'data-testid',
