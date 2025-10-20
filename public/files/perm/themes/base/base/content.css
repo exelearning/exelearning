@@ -449,6 +449,17 @@ button.toggler:focus {
 #teacher-mode-toggler.form-check-input:checked{background-color:#078e8e;border-color:#078e8e;font-size:.9em;margin-right:.6em}
 label[for='teacher-mode-toggler']{font-size:.9em;color:#777;position:relative;top:-.2em}
 
+/* Bootstrap buttons */
+.exe-content .btn-primary{
+    background-color: #066D6D;
+    border-color: #066D6D;
+}
+.exe-content .btn-primary:hover,
+.exe-content .btn-primary:focus{
+    background-color: #078E8E;
+    border-color: #078E8E;
+}
+
 /* Responsive design */
 @media (max-width: 767.98px) {
     #siteNav,

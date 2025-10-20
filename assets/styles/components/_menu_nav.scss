@@ -1,3 +1,5 @@
+@use '../abstracts/variables' as vars;
+
 #menu_nav {
     border: none;
     /* min-height: 48%;
@@ -125,10 +127,10 @@
                 &[nav-id=root]{
                     margin-right: 0;
                 }
-                @for $i from 1 through $max-levels {
+                @for $i from 1 through vars.$max-levels {
                     &.level#{$i} {
                         > .nav-element-text {
-                            width: calc(100% - #{($i * $step - $base-offset)});
+                            width: calc(100% - #{($i * vars.$step - vars.$base-offset)});
                         }
                     }
                 }
