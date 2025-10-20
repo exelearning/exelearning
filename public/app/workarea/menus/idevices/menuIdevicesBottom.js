@@ -103,6 +103,11 @@ export default class MenuIdevicesBottom {
         let settingIcon = document.createElement('div');
         settingIcon.classList.add('idevice_icon', 'settings-icon');
         settingIcon.id = 'setting-menuIdevices';
+        settingIcon.setAttribute('title');
+        settingIcon.setAttribute('data-bs-title', ideviceData.title);
+        settingIcon.setAttribute('data-bs-placement', 'top');
+        settingIcon.setAttribute('data-bs-toggle', 'tooltip');
+        window.bootstrap.Tooltip.getOrCreateInstance(settingIcon);
         return settingIcon;
     }
 

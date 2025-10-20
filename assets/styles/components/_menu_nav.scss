@@ -215,8 +215,6 @@
                             font-weight: normal;
                             background-color: var(--white);
                         }
-                        &:focus,
-                        &:focus-within,
                         &:focus-visible {
                             display: block !important;
                             visibility: visible !important;
@@ -248,8 +246,6 @@
                         }
                     }
                 }
-                &:focus,
-                &:focus-within,
                 &:focus-visible {
                     > .nav-element-text {
                         .node-menu-button {
@@ -382,13 +378,11 @@
                 }
                 &.selected {
                     &:hover,
-                    &:focus-within,
                     &:focus-visible {
                         color: var(--text);
-                        background-color: var(--gray-100);
                         cursor: pointer;
                         transition: var(--tr-02);
-                        .node-menu-button {
+                        > .nav-element-text > .node-menu-button {
                             display: block;
                             visibility: visible;
                         }
