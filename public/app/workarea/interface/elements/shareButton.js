@@ -108,10 +108,9 @@ export default class ShareProjectButton {
 
         urlDiv.classList.add('share-link-div-content');
 
-        const shareUrl = this.getCurrentDocumentUrl(result?.shareSessionUrl);
         urlString.classList.add('share-link-code-string');
         urlString.id = 'shareLinkCode';
-        urlString.innerHTML = `<strong>${shareUrl}</strong>`;
+        urlString.innerHTML = `<strong> ${result.shareSessionUrl}</strong>`;
 
         urlButton.id = 'shareUrlButton';
         urlButton.title = _('Copy to clipboard');
@@ -129,29 +128,5 @@ export default class ShareProjectButton {
         element.append(urlDiv);
 
         return element;
-    }
-
-    getCurrentDocumentUrl(fallbackUrl) {
-        const url = new URL(window.location.href);
-        const sessionId =
-            eXeLearning.app.project.odeSession ||
-            url.searchParams.get('odeSessionId');
-        const projectId =
-            eXeLearning.app.project.odeId ||
-            eXeLearning.app.project.requestedProjectId ||
-            url.searchParams.get('projectId');
-
-        if (sessionId) {
-            url.searchParams.set('odeSessionId', sessionId);
-        }
-        if (projectId) {
-            url.searchParams.set('projectId', projectId);
-        }
-
-        if (!sessionId && !projectId && fallbackUrl) {
-            return fallbackUrl;
-        }
-
-        return url.toString();
     }
 }

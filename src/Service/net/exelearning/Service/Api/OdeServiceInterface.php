@@ -126,7 +126,6 @@ interface OdeServiceInterface
         $elpFileName,
         $user,
         $forceCloseOdeUserPreviousSession,
-        bool $allowParallelSessions = false,
     );
 
     /**
@@ -147,7 +146,6 @@ interface OdeServiceInterface
         $forceCloseOdeUserPreviousSession,
         $isImportIdevices = false,
         $odeNavStructureSync = null,
-        bool $allowParallelSessions = false,
     );
 
     /**
@@ -222,7 +220,6 @@ interface OdeServiceInterface
         $clientIp,
         $forceCloseOdeUserPreviousSession,
         $odeValues,
-        bool $allowParallelSessions = false,
     );
 
     /**

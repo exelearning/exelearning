@@ -102,23 +102,12 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
      *
      * @return CurrentOdeUsers
      */
-    public function getCurrentSessionForUser($user, ?string $odeSessionId = null)
+    public function getCurrentSessionForUser($user)
     {
-        $queryBuilder = $this->createQueryBuilder('c')
+        return $this->createQueryBuilder('c')
             ->andWhere('c.user = :user')
             ->setParameter('user', $user)
-        ;
-
-        if (!empty($odeSessionId)) {
-            $queryBuilder
-                ->andWhere('c.odeSessionId = :odeSessionId')
-                ->setParameter('odeSessionId', $odeSessionId)
-            ;
-        } else {
-            $queryBuilder->orderBy('c.lastAction', 'DESC');
-        }
-
-        return $queryBuilder
+            ->orderBy('c.lastAction', 'DESC')
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult()

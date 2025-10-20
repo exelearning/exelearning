@@ -6733,6 +6733,10 @@
         <source>Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.</source>
         <target>Fes clic al botó de commutació per canviar entre preguntes amb una resposta correcta i preguntes amb moltes respostes possibles correctes.</target>
       </trans-unit>
+      <trans-unit id="niojgP3" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.">
+        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.</source>
+        <target>~Introdueix el text per a l’activitat en el camp corresponent, ja siga enganxant-lo o escrivint-lo directament. Per triar les paraules del desplegable, selecciona una paraula i fes clic en el botó de davall.</target>
+      </trans-unit>
       <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
         <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
         <target>~Escriviu o enganxeu el text de l'activitat d'omplir espais en blanc al camp. Seleccioneu les paraules i utilitzeu el botó de sota per ocultar-les. Podeu definir més d'una resposta possible utilitzant barres verticals per envoltar-les i separar-les. P. ex.: |gos|gat|ocell|</target>
@@ -11720,6 +11724,10 @@
       <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
         <source>abcdefghijklmnñopqrstuvwxyz</source>
         <target></target>
+      </trans-unit>
+      <trans-unit id="buoozPS" resname="Metadata creation date">
+        <source>Metadata creation date</source>
+        <target>~Data de creació de les metadades</target>
       </trans-unit>
       <trans-unit id="80CZaVs" resname="Block %e">
         <source>Block %e</source>

@@ -97,48 +97,25 @@ export default class ApiCallBaseFunctions {
      * @returns
      */
     async doAjax(url, method, data, waiting = true) {
-        if (waiting) {
-            this.addWaitingPetition();
-        }
-
-        try {
-            return await $.ajax({
-                url: url,
-                method: method,
-                data: data,
-                timeout: eXeLearning.config.clientCallWaitingTime,
-                dataType: 'json',
-            });
-        } catch (xhr) {
-            const errorResponse =
-                xhr && typeof xhr === 'object' && xhr.responseJSON
-                    ? xhr.responseJSON
-                    : null;
-
-            return {
-                __error: true,
-                status: xhr && typeof xhr.status === 'number' ? xhr.status : 0,
-                statusText:
-                    xhr && typeof xhr.statusText === 'string'
-                        ? xhr.statusText
-                        : '',
-                responseMessage:
-                    errorResponse && errorResponse.responseMessage
-                        ? errorResponse.responseMessage
-                        : null,
-                detail:
-                    errorResponse && errorResponse.detail
-                        ? errorResponse.detail
-                        : null,
-                payload: errorResponse,
-            };
-        } finally {
-            if (waiting) {
-                setTimeout(() => {
-                    this.removeWaitingPetition();
-                }, 100);
-            }
-        }
+        if (waiting) this.addWaitingPetition();
+        let response = {};
+        response = await $.ajax({
+            url: url,
+            method: method,
+            data: data,
+            timeout: eXeLearning.config.clientCallWaitingTime,
+            dataType: 'json',
+            success: function (response) {
+                return response;
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                return { error: errorThrown };
+            },
+        });
+        setTimeout(() => {
+            this.removeWaitingPetition();
+        }, 100);
+        return response;
     }
 
     /**
