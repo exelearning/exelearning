@@ -198,6 +198,7 @@ class CreateProjectAction extends AbstractController
 
         $payload = [
             'id' => $odeId,
+            'odeFilesId' => $last?->getId(),
             'odeId' => $odeId,
             'odeVersionId' => $last?->getOdeVersionId(),
             'title' => (string) ($last?->getTitle() ?? ''),
@@ -263,6 +264,7 @@ class CreateProjectAction extends AbstractController
 
         $payload = [
             'id' => $odeId,
+            'odeFilesId' => $of->getId(),
             'odeId' => $odeId,
             'odeVersionId' => $odeVersionId,
             'title' => $title,

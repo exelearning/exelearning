@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## v3.0.0-rc1 – 2025-10-19
+
+### Added
+
+- New print functionality in the "File" menu
+- New E2E tests
+- Full translation: Spanish (es)
+- Updated translations (automated): Catalan (ca), Basque (eu), Galician (gl), Valencian (va), Esperanto (eo)
+- New score bar icons in the Games
+- Improved installation logic in the Electron installers
+- Session expiration detection and automatic login redirect
+- Automatic CSS generation from SCSS
+- Allow Electron version auto-updates
+- New `make test-playwright` command to run local Playwright collaborative tests
+
+### Fixed
+
+- Improvements to the Chocolatey packaging workflow
+- Issues in Windows and macOS versions (control PHP INI settings via environment variables)
+- Application icons and logos across all versions
+- Form iDevice presentation (partial revision)
+
+### Upgraded
+
+- Deploy documentation
+- Node.js: 20 → 24
+
+### Removed
+
+- Unused strings in translation files
+- "API Reference" link
+- Provisional warning for beta versions
+- Main CSS file (now generated automatically from SCSS files)
+
 ## v3.0.0-beta8 – 2025-10-16
 
 ### Added

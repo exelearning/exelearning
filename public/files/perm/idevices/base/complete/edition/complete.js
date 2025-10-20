@@ -92,9 +92,7 @@ var $exeDevice = {
         msgs.msgEShowMinimize = _('Show minimized.');
         msgs.msgERebootActivity = _('Repeat activity');
         msgs.msgCustomMessage = _('Error message');
-        msgs.msgNumFaildedAttemps = _(
-            'Errors (number of attempts) to display the message',
-        );
+        msgs.msgNumFaildedAttemps = _('Errors (number of attempts) to display the message');
         msgs.msgEnterCustomMessage = _('Please write the error message.');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.',

@@ -436,7 +436,7 @@ export default class NavbarFile {
             }
 
             if (toast) {
-                toast.toastBody.innerHTML = _('Opening preview...');
+                toast.toastBody.innerHTML = _('Generating preview...');
             }
 
             previewWindow = window.open(data.url, '_blank', 'noopener');
@@ -603,8 +603,16 @@ export default class NavbarFile {
      *
      */
     newProjectEvent() {
-        let odeSessionId = eXeLearning.app.project.odeSession;
-        this.newSession(odeSessionId);
+        const basePath = eXeLearning.symfony.basePath || '';
+        let workareaPath = 'workarea';
+        if (basePath) {
+            const normalizedBase = basePath.endsWith('/')
+                ? basePath.slice(0, -1)
+                : basePath;
+            workareaPath = `${normalizedBase}/workarea`;
+        }
+
+        window.open(workareaPath, '_blank', 'noopener');
     }
 
     /**

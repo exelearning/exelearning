@@ -9,6 +9,7 @@ use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersSyncChangesServiceInterface;
 use App\Service\net\exelearning\Service\FilesDir\FilesDirServiceInterface;
+use App\Settings;
 use App\Translation\net\exelearning\Translation\Translator;
 use App\Util\net\exelearning\Util\SettingsUtil;
 use Doctrine\ORM\EntityManagerInterface;
@@ -63,7 +64,10 @@ class WorkareaController extends DefaultWorkareaController
     public function workareaAction(Request $request)
     {
         // Get odeSessionId
-        $odeSessionId = $request->get('shareCode');
+        $requestedOdeSessionId = $request->query->get('odeSessionId');
+        $odeSessionId = $requestedOdeSessionId ?? $request->get('shareCode');
+
+        $requestedProjectId = $request->query->get('projectId') ?? $request->query->get('project');
 
         // Get elpFileName
         $odePlatformNew = $request->get('newOde');
@@ -253,6 +257,9 @@ class WorkareaController extends DefaultWorkareaController
                     'platformIntegration' => $platformIntegration,
                     'userStyles' => $userStyles,
                     'userIdevices' => $userIdevices,
+                    'countUserAutosaveSpace' => Settings::COUNT_USER_AUTOSAVE_SPACE_ODE_FILES,
+                    'userStorageMaxDiskSpaceBytes' => SettingsUtil::getUserStorageMaxDiskSpaceInBytes(),
+                    'userRecentOdeFilesAmount' => Settings::USER_RECENT_ODE_FILES_AMOUNT,
                 ],
                 'symfony' => [
                     'odeSessionId' => $odeSessionId,
@@ -269,6 +276,7 @@ class WorkareaController extends DefaultWorkareaController
                     'ideviceTypeBase' => $ideviceTypeBase,
                     'ideviceTypeUser' => $ideviceTypeUser,
                     'ideviceVisibilityPreferencePre' => $ideviceVisibilityPreferencePre,
+                    'requestedProjectId' => $requestedProjectId,
                 ],
                 'mercure' => $mercure,
             ]

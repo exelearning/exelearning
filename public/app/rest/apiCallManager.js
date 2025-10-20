@@ -1,13 +1,237 @@
 import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
 
+const stripTrailingSlashes = (value) => {
+    if (typeof value !== 'string') {
+        return '';
+    }
+
+    let result = value;
+    while (result.length > 0 && result.endsWith('/')) {
+        result = result.slice(0, -1);
+    }
+
+    return result;
+};
+
 export default class ApiCallManager {
     constructor(app) {
         this.app = app;
         this.apiUrlBase = `${app.eXeLearning.symfony.baseURL}`;
         this.apiUrlBasePath = `${app.eXeLearning.symfony.basePath}`;
         this.apiUrlParameters = `${this.apiUrlBase}${this.apiUrlBasePath}/api/parameter-management/parameters/data/list`;
+        if (
+            this.apiUrlBasePath === 'undefined' ||
+            this.apiUrlBasePath === 'null'
+        ) {
+            this.apiUrlBasePath = '';
+        }
+        const sanitizedBase = stripTrailingSlashes(this.apiUrlBase);
+        const normalizedBasePath = stripTrailingSlashes(this.apiUrlBasePath);
+        const basePath = normalizedBasePath
+            ? `${normalizedBasePath.startsWith('/') ? '' : '/'}${normalizedBasePath}`
+            : '';
+        const combinedBase = stripTrailingSlashes(
+            `${sanitizedBase}${basePath}`
+        );
+        this.apiPlatformBaseUrl = `${combinedBase}/api/v2`;
         this.func = new ApiCallBaseFunctions();
         this.endpoints = {};
+    }
+
+    buildApiV2Url(path) {
+        const suffix = path.startsWith('/') ? path : `/${path}`;
+        return `${this.apiPlatformBaseUrl}${suffix}`;
+    }
+
+    getConfigValue(key, fallback = null) {
+        const app = this.app || {};
+        const eXe = app.eXeLearning || {};
+        const config = eXe.config || {};
+        if (Object.prototype.hasOwnProperty.call(config, key)) {
+            return config[key];
+        }
+
+        return fallback;
+    }
+
+    parseBytes(value) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return Math.max(value, 0);
+        }
+
+        const parsed = parseInt(value, 10);
+
+        if (Number.isFinite(parsed)) {
+            return Math.max(parsed, 0);
+        }
+
+        return 0;
+    }
+
+    parseTimestamp(value) {
+        if (value === null || value === undefined) {
+            return null;
+        }
+
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value;
+        }
+
+        const parsed = parseInt(value, 10);
+
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    formatFileSize(bytes, decimals = 2) {
+        const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const safeBytes = Number.isFinite(bytes) ? bytes : 0;
+
+        if (safeBytes <= 0) {
+            return `0 ${units[0]}`;
+        }
+
+        const factor = Math.min(
+            Math.floor(Math.log(safeBytes) / Math.log(1024)),
+            units.length - 1
+        );
+        const value = safeBytes / Math.pow(1024, factor);
+        const precision = Number.isFinite(decimals) ? decimals : 2;
+
+        return `${Number(value.toFixed(precision))} ${units[factor]}`;
+    }
+
+    shouldCountAutosaveSpace() {
+        const raw = this.getConfigValue('countUserAutosaveSpace', true);
+
+        if (typeof raw === 'string') {
+            const lowered = raw.toLowerCase();
+            if (lowered === 'false' || lowered === '0') {
+                return false;
+            }
+            if (lowered === 'true' || lowered === '1') {
+                return true;
+            }
+        }
+
+        return Boolean(raw);
+    }
+
+    getUserStorageLimitBytes() {
+        const raw = this.getConfigValue('userStorageMaxDiskSpaceBytes', 0);
+        return this.parseBytes(raw);
+    }
+
+    getRecentProjectsLimit() {
+        const raw = this.getConfigValue('userRecentOdeFilesAmount', 3);
+        const parsed = parseInt(raw, 10);
+
+        if (Number.isFinite(parsed) && parsed > 0) {
+            return parsed;
+        }
+
+        return 3;
+    }
+
+    extractProjectsCollection(response) {
+        if (Array.isArray(response)) {
+            return response;
+        }
+
+        if (response && Array.isArray(response.items)) {
+            return response.items;
+        }
+
+        if (response && Array.isArray(response.projects)) {
+            return response.projects;
+        }
+
+        if (response && Array.isArray(response['hydra:member'])) {
+            return response['hydra:member'];
+        }
+
+        return null;
+    }
+
+    normalizeProject(project) {
+        if (!project || typeof project !== 'object') {
+            return null;
+        }
+
+        const sizeBytes = this.parseBytes(project.size);
+        let timestamp = null;
+
+        if (
+            project.updatedAt &&
+            typeof project.updatedAt === 'object' &&
+            Object.prototype.hasOwnProperty.call(project.updatedAt, 'timestamp')
+        ) {
+            timestamp = this.parseTimestamp(project.updatedAt.timestamp);
+        } else {
+            timestamp = this.parseTimestamp(project.updatedAt);
+        }
+
+        const identifier =
+            project.odeFilesId ??
+            project.id ??
+            project.odeId ??
+            project.fileName ??
+            project.odeVersionId ??
+            null;
+
+        const normalizedId = identifier !== null ? String(identifier) : null;
+        const odeId = project.odeId ?? project.id ?? normalizedId;
+
+        return {
+            item: {
+                id: normalizedId,
+                odeFilesId: project.odeFilesId ?? null,
+                odeId: odeId !== null ? String(odeId) : null,
+                odeVersionId: project.odeVersionId ?? null,
+                odePlatformId: project.odePlatformId ?? null,
+                title: project.title ?? '',
+                versionName: project.versionName ?? '',
+                fileName: project.fileName ?? '',
+                size: String(sizeBytes),
+                sizeFormatted: this.formatFileSize(sizeBytes),
+                isManualSave: Boolean(project.isManualSave),
+                updatedAt: { timestamp: timestamp },
+                properties: project.properties ?? {},
+                owner_id: project.owner_id ?? null,
+                owner_email: project.owner_email ?? null,
+            },
+            sizeBytes: sizeBytes,
+        };
+    }
+
+    buildLegacyProjectPayload(projects) {
+        const includeAutosave = this.shouldCountAutosaveSpace();
+        const normalizedProjects = [];
+        let usedSpace = 0;
+
+        projects.forEach((project) => {
+            const normalized = this.normalizeProject(project);
+            if (!normalized) {
+                return;
+            }
+
+            normalizedProjects.push(normalized.item);
+            if (includeAutosave || normalized.item.isManualSave) {
+                usedSpace += normalized.sizeBytes;
+            }
+        });
+
+        const maxDiskSpace = this.getUserStorageLimitBytes();
+        const freeSpace = Math.max(maxDiskSpace - usedSpace, 0);
+
+        return {
+            odeFilesSync: normalizedProjects,
+            maxDiskSpace: maxDiskSpace,
+            maxDiskSpaceFormatted: this.formatFileSize(maxDiskSpace),
+            usedSpace: usedSpace,
+            usedSpaceFormatted: this.formatFileSize(usedSpace),
+            freeSpace: freeSpace,
+            freeSpaceFormatted: this.formatFileSize(freeSpace),
+        };
     }
 
     /**
@@ -38,9 +262,52 @@ export default class ApiCallManager {
      *
      * @returns
      */
-    async getCurrentProject() {
-        let url = this.endpoints.api_current_ode_users_for_user_get.path;
-        return await this.func.get(url);
+    async getCurrentProject(odeSessionId = null, options = {}) {
+        const { forceNewSession = false, projectId = null } = options;
+        let response = {};
+        if (this.apiPlatformBaseUrl) {
+            let url = this.buildApiV2Url('/me/current-project');
+            const params = new URLSearchParams();
+            if (odeSessionId) {
+                params.set('odeSessionId', odeSessionId);
+            }
+            if (projectId) {
+                params.set('projectId', projectId);
+            }
+            if (forceNewSession) {
+                params.set('forceNewSession', '1');
+            }
+            const query = params.toString();
+            if (query) {
+                url = `${url}?${query}`;
+            }
+            response = await this.func.get(url);
+            if (response && response.responseMessage) {
+                return response;
+            }
+        }
+
+        if (this.endpoints.api_current_ode_users_for_user_get) {
+            let url = this.endpoints.api_current_ode_users_for_user_get.path;
+            const params = new URLSearchParams();
+            if (odeSessionId) {
+                params.set('odeSessionId', odeSessionId);
+            }
+            if (projectId) {
+                params.set('projectId', projectId);
+            }
+            if (forceNewSession) {
+                params.set('forceNewSession', '1');
+            }
+            const query = params.toString();
+            if (query) {
+                const separator = url.includes('?') ? '&' : '?';
+                url = `${url}${separator}${query}`;
+            }
+            response = await this.func.get(url);
+        }
+
+        return response;
     }
 
     /**
@@ -102,8 +369,23 @@ export default class ApiCallManager {
      * @returns
      */
     async getUserOdeFiles() {
-        let url = this.endpoints.api_odes_user_get_ode_list.path;
-        return await this.func.get(url);
+        if (this.apiPlatformBaseUrl) {
+            const response = await this.func.get(
+                this.buildApiV2Url('/projects')
+            );
+            const projects = this.extractProjectsCollection(response);
+
+            if (Array.isArray(projects)) {
+                return { odeFiles: this.buildLegacyProjectPayload(projects) };
+            }
+        }
+
+        if (this.endpoints.api_odes_user_get_ode_list) {
+            let url = this.endpoints.api_odes_user_get_ode_list.path;
+            return await this.func.get(url);
+        }
+
+        return {};
     }
 
     /**
@@ -112,8 +394,41 @@ export default class ApiCallManager {
      * @returns
      */
     async getRecentUserOdeFiles() {
-        let url = this.endpoints.api_odes_get_user_recent_ode_list.path;
-        return await this.func.get(url);
+        if (this.apiPlatformBaseUrl) {
+            const response = await this.func.get(
+                this.buildApiV2Url('/projects')
+            );
+            const projects = this.extractProjectsCollection(response);
+
+            if (Array.isArray(projects)) {
+                const normalized = projects
+                    .map((project) => this.normalizeProject(project))
+                    .filter((project) => project && project.item)
+                    .map((project) => project.item)
+                    .sort((a, b) => {
+                        const tsA =
+                            a.updatedAt && a.updatedAt.timestamp
+                                ? a.updatedAt.timestamp
+                                : 0;
+                        const tsB =
+                            b.updatedAt && b.updatedAt.timestamp
+                                ? b.updatedAt.timestamp
+                                : 0;
+                        return tsB - tsA;
+                    });
+
+                const limit = this.getRecentProjectsLimit();
+
+                return normalized.slice(0, limit);
+            }
+        }
+
+        if (this.endpoints.api_odes_get_user_recent_ode_list) {
+            let url = this.endpoints.api_odes_get_user_recent_ode_list.path;
+            return await this.func.get(url);
+        }
+
+        return [];
     }
 
     /**
@@ -143,9 +458,9 @@ export default class ApiCallManager {
      * @param {*} odeFileName
      * @returns
      */
-    async postSelectedOdeFile(odeFileName) {
+    async postSelectedOdeFile(data) {
         let url = this.endpoints.api_odes_ode_elp_open.path;
-        return await this.func.post(url, odeFileName);
+        return await this.func.post(url, data);
     }
 
     /**
@@ -278,7 +593,7 @@ export default class ApiCallManager {
     }
 
     /**
-     * Delete theme
+     * Delete style
      *
      * @param {*} params
      * @returns

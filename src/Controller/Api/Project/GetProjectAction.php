@@ -58,6 +58,7 @@ class GetProjectAction extends AbstractController
 
             $payload = [
                 'id' => $projectId,
+                'odeFilesId' => $last->getId(),
                 'odeId' => $projectId,
                 'odeVersionId' => $last->getOdeVersionId(),
                 'title' => (string) ($last->getTitle() ?? ''),
