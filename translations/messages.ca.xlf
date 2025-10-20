@@ -12013,6 +12013,14 @@
         <source>System</source>
         <target>~Sistema</target>
       </trans-unit>
+      <trans-unit id="niojgP3" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.">
+        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.</source>
+        <target>~Introdueix el text per a l’activitat al camp corresponent, ja sigui enganxant-lo o escrivint-lo directament. Per triar les paraules del desplegable, selecciona una paraula i fes clic al botó de sota.</target>
+      </trans-unit>
+      <trans-unit id="buoozPS" resname="Metadata creation date">
+        <source>Metadata creation date</source>
+        <target>~Data de creació de les metadades</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

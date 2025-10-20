@@ -12013,6 +12013,14 @@
         <source>System</source>
         <target>~Sistemo</target>
       </trans-unit>
+      <trans-unit id="niojgP3" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.">
+        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.</source>
+        <target>~Enigu la tekston por la agado en la konvena kampo, algluu ĝin aŭ tajpu rekte. Por elekti la vortojn de la falmenuo, elektu vorton kaj alklaku la suban butonon.</target>
+      </trans-unit>
+      <trans-unit id="buoozPS" resname="Metadata creation date">
+        <source>Metadata creation date</source>
+        <target>~Dato de kreado de metadatenoj</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
