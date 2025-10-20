@@ -51,8 +51,6 @@ class ProjectItem
     #[Groups(['project:read'])]
     public string $id;
     #[Groups(['project:read'])]
-    public ?string $odeFilesId = null;
-    #[Groups(['project:read'])]
     public string $odeId;
     #[Groups(['project:read'])]
     public ?string $odeVersionId = null;

@@ -66,27 +66,10 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $this->userHelper->saveUserTheme($user, Constants::THEME_DEFAULT);
 
         // Check if user has already an open session
-        $requestedSessionId = $request->query->get('odeSessionId');
-        $forceNewSession = filter_var(
-            $request->query->get('forceNewSession'),
-            FILTER_VALIDATE_BOOL
-        );
-
-        $currentOdeUserForUser = null;
-        if (!$forceNewSession || $requestedSessionId) {
-            $currentOdeUserForUser = $currentOdeUsersRepository->getCurrentSessionForUser(
-                $databaseUser->getUserIdentifier(),
-                $requestedSessionId
-            );
-        }
+        $currentOdeUserForUser = $currentOdeUsersRepository->getCurrentSessionForUser($databaseUser->getUserIdentifier());
 
         // If there isn't currentOdeUser for user create a new session
         if (empty($currentOdeUserForUser)) {
-            if ($requestedSessionId) {
-                return new JsonResponse([
-                    'responseMessage' => 'SESSION_NOT_FOUND',
-                ], JsonResponse::HTTP_NOT_FOUND);
-            }
             $odeId = Util::generateId();
             $odeVersionId = Util::generateId();
             $odeSessionId = Util::generateId();
@@ -167,12 +150,12 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
         $odeNavStructureSync = $odeNavStructureSyncRepo->find($odeNavStructureSyncId);
 
-        if (!$odeNavStructureSync instanceof OdeNavStructureSync) {
-            $responseData['responseMessage'] = 'Invalid navigation node identifier';
-            $jsonData = $this->getJsonSerialized($responseData);
-
-            return new JsonResponse($jsonData, JsonResponse::HTTP_BAD_REQUEST, [], true);
-        }
+        $lockParams = [
+            'resourceId' => $request->get('blockId'),
+            'user' => $user,
+            'odeSessionId' => $odeSessionId,
+            'forceUnlock' => (false === $odeComponentFlag), // Explicit force flag
+        ];
 
         try {
             // Check current_idevice of concurrent users
@@ -185,13 +168,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
             if ($isIdeviceFree) {
                 // Update CurrentOdeUsers
-                $updated = $this->currentOdeUsersService->updateCurrentIdevice($odeNavStructureSync, $odeBlockId, $odeIdeviceId, $databaseUser, $odeCurrentUsersFlags);
-                if (null === $updated) {
-                    $responseData['responseMessage'] = 'Unable to register the current edition session';
-                    $jsonData = $this->getJsonSerialized($responseData);
-
-                    return new JsonResponse($jsonData, JsonResponse::HTTP_CONFLICT, [], true);
-                }
+                $this->currentOdeUsersService->updateCurrentIdevice($odeNavStructureSync, $odeBlockId, $odeIdeviceId, $databaseUser, $odeCurrentUsersFlags);
 
                 $expiresAt = (new \DateTime())->modify('+'.Constants::RESOURCE_LOCK_TIMEOUT_SECONDS.' seconds')->getTimestamp();
 
