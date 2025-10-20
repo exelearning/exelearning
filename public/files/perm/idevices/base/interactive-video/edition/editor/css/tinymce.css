@@ -14,7 +14,7 @@
 
 body#tinymce {
     font: 90%/1.6 'Open Sans', Arial, Verdana, Helvetica, sans-serif;
-    padding: 1em!important;
+    padding: .5em 1em!important;
     margin: 0;
     color: #444;
     padding: 0 .5em
