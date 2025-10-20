@@ -6733,6 +6733,10 @@
         <source>Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.</source>
         <target>Klikatu txandakatze-botoian erantzun zuzen bakarra duten galderen eta erantzun zuzen posible asko dituzten galderen artean aldatzeko.</target>
       </trans-unit>
+      <trans-unit id="niojgP3" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.">
+        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.</source>
+        <target>~Sartu testua jarduerarako dagokion eremuan, itsatsiz edo zuzenean idatziz. Goitibeherako aukerak hautatzeko, hautatu hitz bat eta egin klik beheko botoian.</target>
+      </trans-unit>
       <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
         <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
         <target>Idatzi edo itsatsi testua zurian egindako jarduera betetzeko. Hautatu hitzak eta erabili beheko botoia ezkutatzeko. Erantzun posible bat baino gehiago defini ditzakezu barra bertikalak erabiliz, haiek inguratu eta bereizteko. Adib.: : |txakurra|katua|txoria|</target>
@@ -11720,6 +11724,10 @@
       <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
         <source>abcdefghijklmnñopqrstuvwxyz</source>
         <target></target>
+      </trans-unit>
+      <trans-unit id="buoozPS" resname="Metadata creation date">
+        <source>Metadata creation date</source>
+        <target>~Metadatuen sorrera data</target>
       </trans-unit>
       <trans-unit id="80CZaVs" resname="Block %e">
         <source>Block %e</source>

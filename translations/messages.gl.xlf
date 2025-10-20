@@ -6733,6 +6733,10 @@
         <source>Click the toggle button to switch between questions with one correct answer and questions with many possible correct answers.</source>
         <target>Prema no botón para cambiar de preguntas cunha resposta correcta a preguntas con varias respostas correctas posibles.</target>
       </trans-unit>
+      <trans-unit id="niojgP3" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.">
+        <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.</source>
+        <target>~Introduce o texto para a actividade no campo correspondente, xa sexa pegándoo ou escribíndoo directamente. Para escoller as palabras do despregable, selecciona unha palabra e fai clic no botón de abaixo.</target>
+      </trans-unit>
       <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
         <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
         <target>~Escribe ou pega o texto da actividade de completar ocos no campo. Selecciona as palabras e usa o botón de embaixo para ocultalas. Podes definir máis dunha resposta posible usando barras verticais para rodealas e separalas. Por exemplo: |can|gato|paxaro|</target>
@@ -11720,6 +11724,10 @@
       <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
         <source>abcdefghijklmnñopqrstuvwxyz</source>
         <target></target>
+      </trans-unit>
+      <trans-unit id="buoozPS" resname="Metadata creation date">
+        <source>Metadata creation date</source>
+        <target>~Data de creación dos metadatos</target>
       </trans-unit>
       <trans-unit id="80CZaVs" resname="Block %e">
         <source>Block %e</source>

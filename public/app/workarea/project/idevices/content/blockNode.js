@@ -1743,10 +1743,7 @@ export default class IdeviceBlockNode {
      *
      */
     resetWindowHash() {
-        const container = document.getElementById('node-content');
-        if (container && typeof container.scrollIntoView === 'function') {
-            container.scrollIntoView({ behavior: 'auto', block: 'start' });
-        }
+        window.location.hash = 'node-content';
     }
 
     /**
@@ -1757,10 +1754,7 @@ export default class IdeviceBlockNode {
     goWindowToBlock(time) {
         let hashId = this.blockId;
         setTimeout(() => {
-            const target = document.getElementById(hashId);
-            if (target && typeof target.scrollIntoView === 'function') {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+            window.location.hash = hashId;
         }, time);
     }
 

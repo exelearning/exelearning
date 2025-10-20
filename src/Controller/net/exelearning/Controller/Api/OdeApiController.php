@@ -682,14 +682,8 @@ class OdeApiController extends DefaultApiController
 
         // Collect parameters
         $elpFileName = $request->get('elpFileName');
-        $projectId = $request->get('projectId') ?? $request->get('odeId');
-        $odeFilesId = $request->get('odeFilesId');
         $odeSessionId = $request->get('odeSessionId');
         $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession');
-        $allowParallelSessions = filter_var(
-            $request->get('allowParallelSessions'),
-            FILTER_VALIDATE_BOOL
-        );
 
         if (
             $request->request->has('forceCloseOdeUserPreviousSession')
@@ -698,19 +692,6 @@ class OdeApiController extends DefaultApiController
             $forceCloseOdeUserPreviousSession = true;
         } else {
             $forceCloseOdeUserPreviousSession = false;
-        }
-
-        if (empty($elpFileName) && (!empty($projectId) || !empty($odeFilesId))) {
-            $odeFilesRepo = $this->entityManager->getRepository(OdeFiles::class);
-            if (!empty($odeFilesId)) {
-                $odeFile = $odeFilesRepo->find($odeFilesId);
-            } else {
-                $odeFile = $odeFilesRepo->getLastFileForOde($projectId);
-            }
-
-            if ($odeFile) {
-                $elpFileName = $odeFile->getFileName();
-            }
         }
 
         $user = $this->getUser();
@@ -724,8 +705,7 @@ class OdeApiController extends DefaultApiController
                 $odeSessionId,
                 $elpFileName,
                 $databaseUser,
-                $forceCloseOdeUserPreviousSession,
-                $allowParallelSessions
+                $forceCloseOdeUserPreviousSession
             );
 
             if ('OK' !== $odeValues['responseMessage']) {
@@ -742,8 +722,7 @@ class OdeApiController extends DefaultApiController
                 $databaseUser,
                 $clientIp,
                 $forceCloseOdeUserPreviousSession,
-                $odeValues,
-                $allowParallelSessions
+                $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
             $result['responseMessage'] = 'error: '.$e->getMessage();
@@ -789,10 +768,6 @@ class OdeApiController extends DefaultApiController
         $elpFileName = $request->get('odeFileName');
         $elpFilePath = $request->get('odeFilePath');
         $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession');
-        $allowParallelSessions = filter_var(
-            $request->get('allowParallelSessions'),
-            FILTER_VALIDATE_BOOL
-        );
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
@@ -843,10 +818,7 @@ class OdeApiController extends DefaultApiController
                     $elpFileName,
                     $elpFilePath,
                     $databaseUser,
-                    $forceCloseOdeUserPreviousSession,
-                    false,
-                    null,
-                    $allowParallelSessions
+                    $forceCloseOdeUserPreviousSession
                 );
             } catch (\Exception $e) {
                 $result['responseMessage'] = $this->translator->trans('The file content is wrong');
@@ -871,8 +843,7 @@ class OdeApiController extends DefaultApiController
                 $databaseUser,
                 $clientIp,
                 $forceCloseOdeUserPreviousSession,
-                $odeValues,
-                $allowParallelSessions
+                $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
             $result['responseMessage'] = 'error: '.$e->getMessage();

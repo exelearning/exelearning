@@ -66,24 +66,7 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
     public function insertOrUpdateFromOdeNavStructureSync($odeNavStructureSync, $user, $clientIp)
     {
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
-
-        if (null === $odeNavStructureSync) {
-            $this->logger->warning(
-                'updateCurrentIdevice: missing OdeNavStructureSync entity',
-                [
-                    'user' => $user->getUserIdentifier(),
-                    'odeSessionId' => null,
-                    'odeNavStructureSyncId' => null,
-                ]
-            );
-
-            return null;
-        }
-
-        $currentOdeSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser(
-            $user->getUserIdentifier(),
-            $odeNavStructureSync->getOdeSessionId()
-        );
+        $currentOdeSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUserIdentifier());
 
         if (!empty($currentOdeSessionForUser)) {
             $currentOdeSessionForUser->setCurrentPageId($odeNavStructureSync->getOdePageId());
@@ -132,41 +115,8 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
      */
     public function updateCurrentIdevice($odeNavStructureSync, $blockId, $odeIdeviceId, $user, $odeCurrentUsersFlags)
     {
-        if (!$odeNavStructureSync instanceof OdeNavStructureSync) {
-            $this->logger->warning('updateCurrentIdevice: invalid OdeNavStructureSync payload', [
-                'user' => $user->getUserIdentifier(),
-                'receivedType' => is_object($odeNavStructureSync) ? get_class($odeNavStructureSync) : gettype($odeNavStructureSync),
-            ]);
-
-            return null;
-        }
-
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
-        $currentOdeSessionForUser = null;
-        if ($odeNavStructureSync->getOdeSessionId()) {
-            $currentOdeSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser(
-                $user->getUserIdentifier(),
-                $odeNavStructureSync->getOdeSessionId()
-            );
-        }
-
-        if (null === $currentOdeSessionForUser) {
-            // Fallback for legacy flows where the DTO still carries the previous session identifier
-            $currentOdeSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser(
-                $user->getUserIdentifier()
-            );
-        }
-
-        if (null === $currentOdeSessionForUser) {
-            $this->logger->warning('updateCurrentIdevice: no current_ode_users row found for user/session', [
-                'user' => $user->getUserIdentifier(),
-                'odeSessionId' => $odeNavStructureSync->getOdeSessionId(),
-                'nodeSessionIdFallback' => $currentOdeUsersRepository->getCurrentSessionForUser($user->getUserIdentifier())?->getOdeSessionId(),
-                'odeNavStructureSyncId' => $odeNavStructureSync->getId(),
-            ]);
-
-            return null;
-        }
+        $currentOdeSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUserIdentifier());
 
         if (null === $currentOdeSessionForUser) {
             $this->logger->info('Current session for user not found when updating current idevice', [
@@ -383,10 +333,7 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
 
         $odeId = null;
 
-        $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser(
-            $user->getUsername(),
-            $odeSessionId
-        );
+        $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
 
         if ((!empty($currentSessionForUser)) && ($currentSessionForUser->getOdeSessionId() == $odeSessionId)) {
             $odeId = $currentSessionForUser->getOdeId();
@@ -409,10 +356,7 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
 
         $odeVersionId = null;
 
-        $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser(
-            $user->getUsername(),
-            $odeSessionId
-        );
+        $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
 
         if ((!empty($currentSessionForUser)) && ($currentSessionForUser->getOdeSessionId() == $odeSessionId)) {
             $odeVersionId = $currentSessionForUser->getOdeVersionId();
