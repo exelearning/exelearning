@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <theme>
-  <name>adulto</name>
-  <title>Adultos</title>
+  <name>zen</name>
+  <title>Zen</title>
   <version>2025</version>
   <compatibility>3.0</compatibility>
   <author>tresipunt</author>
   <license>Creative Commons by-sa</license>
   <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
-  <description>Tema visual para adultos.</description>
+  <description>Equilibrio y claridad.</description>
   <downloadable>0</downloadable>
 </theme>
 
@@ -32,7 +32,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 -->
 
 <!--  Font license
-Copyright 2020 The Open Sans Project Authors (https://github.com/googlefonts/opensans)
+Font: Inter
+Designer: Rasmus Andersson
+Source: https://fonts.google.com/specimen/Inter
+License: SIL Open Font License (OFL) Version 1.1
+License URL: https://openfontlicense.org
+
+Copyright (c) 2016-2020 The Inter Project Authors (https://github.com/rsms/inter)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is available with a FAQ at:
