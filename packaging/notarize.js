@@ -36,7 +36,6 @@ exports.default = async function notarizing(context) {
     return;
   }
 
-  const appName = "'eXeLearning',
   const appleId = process.env.APPLE_ID;
   const appleIdPassword =
     process.env.APPLE_APP_SPECIFIC_PASSWORD || process.env.APPLE_APP_PASSWORD;
