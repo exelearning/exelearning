@@ -22,7 +22,7 @@
 
         jqueryScript.addEventListener("load", function (event) {
 
-            let mediaelementScriptPath = `${basePath}/app/common/mediaelement/exe_mediaelement.js`;
+            let mediaelementScriptPath = `${basePath}/app/common/exe_media/exe_media.js`;
             let mediaelementScript = document.createElement("script");
             mediaelementScript.id = "mediaelementScript";
             mediaelementScript.src = mediaelementScriptPath;
@@ -44,6 +44,14 @@
             head.append(langsScript);
 
             langsScript.addEventListener("load", function (event) {
+
+                let mediaelementStylePath = `${basePath}/app/common/exe_media/exe_media.css`;
+                let mediaelementStyle = document.createElement("link");
+                mediaelementStyle.id = "mediaelementStyle";
+                mediaelementStyle.href = mediaelementStylePath;
+                mediaelementStyle.rel = "stylesheet";
+                mediaelementStyle.type = "text/css";
+                head.append(mediaelementStyle);
 
                 let adminStylePath = `${basePath}/${assetsPath}files/perm/idevices/base/interactive-video/edition/editor/css/admin.css`;
                 let adminStyle = document.createElement("link");

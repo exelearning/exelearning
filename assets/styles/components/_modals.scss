@@ -248,6 +248,10 @@
         }
     }
 
+    #modalGenericIframeContainer .modal-content {
+        padding-top: 0;
+    }
+
     .modal-header {
         padding: 5px 10px;
 
@@ -1876,8 +1880,7 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
                         justify-content: flex-start;
                         align-items: center;
                         .username {
-                            font-size: var(--h4-fs);
-                            font-weight: 500;
+                            font-size: 15px;
                         }
                     }
                 }

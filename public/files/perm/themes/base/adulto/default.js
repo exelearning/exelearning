@@ -86,6 +86,9 @@ var myTheme = {
         });
         // Search form
         this.searchForm();
+
+        // mover .page-title dentro de .page-content
+        this.movePageTitle();
     },
     inIframe: function () {
         try {
@@ -129,10 +132,43 @@ var myTheme = {
             myTheme.param(this, act);
         });
     },
+
+    // function that move the h2 outside the header
+    movePageTitle: function () {
+        const tryMove = () => {
+            const $header = $('.page > header.page-header');
+            const $title = $header.find('.page-title').first();
+
+            // Search container of content
+            let $content = $('.page-content').first();
+            if (!$content.length)
+                $content = $('.content, main .content').first();
+            if (!$content.length) $content = $('#main, #content').first();
+            if (!$content.length && $header.length)
+                $content = $header.nextAll(':not(header)').first();
+            if (!$content.length && $header.length) $content = $header.parent();
+
+            if ($header.length && $title.length && $content.length) {
+                $content.prepend($title); // move it to the start
+                return true;
+            }
+            return false;
+        };
+
+        if (tryMove()) return;
+
+        const observer = new MutationObserver(() => {
+            if (tryMove()) observer.disconnect();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    },
+    // 🔼
 };
+
 $(function () {
     myTheme.init();
 });
+
 $.fn.isInViewport = function () {
     var elementTop = $(this).offset().top;
     var elementBottom = elementTop + $(this).outerHeight();

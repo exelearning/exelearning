@@ -19,12 +19,15 @@
   font-weight: 700;
   font-style: normal;
 }
+
 a{
     text-decoration: none;
 }
 
 .page-title{
-    display: none;
+    font-weight: bold;
+    color: white;
+    margin-top: 40px;
 }
 
 .page > header .package-title,
@@ -80,8 +83,9 @@ main header:not(#head) {
     border-bottom: 2px solid #282573;
 }
 
-.page > header .package-title, .exe-single-page .package-header h1{
-    /* padding-left: 160px; */
+.page > header .package-title,
+.exe-single-page .package-header h1{
+    padding-left: 32px;
     color: #282573;
 }
 
@@ -594,13 +598,11 @@ body.siteNav-off button#siteNavToggler .sr-av{
 /* Table */
 
 table{
-    display: block;
+    display: table;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100% !important;
     margin: 2em 0 !important;
-    width: auto !important;
-    height: auto !important;
 }
 
 /* Licenses */
@@ -789,7 +791,7 @@ flex: 0 0 48px;
 
 /* Modo docente */
 
-.form-check{
+.exe-export .form-check{
     float: none;
     position: absolute;
     top: 18px;
@@ -805,32 +807,32 @@ flex: 0 0 48px;
     background-size: 28px;
 
 }
-.form-check-label{
+.exe-export .form-check-label{
     display: none;
 }
-.form-switch .form-check-input{
+.exe-export .form-switch .form-check-input{
     width: 2.6em;
     height: 1.4em;
 }
-.form-check-input:checked{
+.exe-export .form-check-input:checked{
     background-color: #FFCC00;
     border-color: #FFCC00;
 }
-.form-check-input:focus{
+.exe-export .form-check-input:focus{
     border-color: #FFCC00;
     box-shadow: 0 0 0 .25rem rgba(255, 204, 0, 0.25);
 }
-.form-check label{
+.exe-export .form-check label{
     width: 64px;
     font-size: 1rem;
 }
-.form-switch .form-check-input:focus{
+.exe-export .form-switch .form-check-input:focus{
     background-image: url(img/switch.svg);
     background-size: 19px;
     background-repeat: no-repeat;
     background-position: left 1.6px center;
 }
-.mode-teacher .form-switch .form-check-input:focus{
+.exe-export .mode-teacher .form-switch .form-check-input:focus{
     background-image: url(img/switch_white.svg);
     background-position: right 1.6px center;
 }
@@ -896,16 +898,16 @@ flex: 0 0 48px;
         display: none;
     }
 
-    .form-check{
+    .exe-export .form-check{
         right: 182px;
     }
-    .form-check:hover{
+    .exe-export .form-check:hover{
         background-color: transparent;
     }
-    .form-check-label{
+    .exe-export .form-check-label{
         display: none;
     }
-    .form-check-input{
+    .exe-export .form-check-input{
         margin: 0 !important;
     }
     .exe-teacher-mode-toggler .page > header .package-title, .exe-teacher-mode-toggler.siteNav-off .page > header .package-title{
@@ -1084,14 +1086,14 @@ flex: 0 0 48px;
     .nav-buttons .nav-button-left{
         right: 80px;
     }
-    .form-check{
+    .exe-export .form-check{
         right: 150px;
     }
-    .form-switch .form-check-input{
+    .exe-export .form-switch .form-check-input{
         width: 2.5em;
         height: 1.5em;
     }
-    .form-switch .form-check-input:focus{
+    .exe-export .form-switch .form-check-input:focus{
         background-size: 16px;
     }
     button#siteNavToggler{
@@ -1126,7 +1128,7 @@ flex: 0 0 48px;
         height: 26px;
     }
     .exe-single-page .package-header h1{
-        padding-left: 60px;
+        padding-left: 20px;
         overflow: hidden;
         text-overflow: ellipsis;
         word-wrap: break-word;

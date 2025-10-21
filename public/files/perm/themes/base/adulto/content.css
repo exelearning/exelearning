@@ -12,17 +12,18 @@
   src: local("Open Sans Bold"), local("OpenSans-Bold"), url(fonts/open-sans-bold.woff2) format("woff2"), url(fonts/open-sans-bold.woff) format("woff");
 }
 
-.page-title{
-    display: none;
-}
-.page > header .package-title, .siteNav-off .page > header .package-title, .exe-single-page .package-header h1{
+
+.page > header .package-title,
+.siteNav-off .page > header .package-title,
+.exe-single-page .package-header h1{
     width: calc(100% - 470px);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.exe-teacher-mode-toggler .page > header .package-title, .exe-teacher-mode-toggler.siteNav-off .page > header .package-title{
+.exe-teacher-mode-toggler .page > header .package-title,
+.exe-teacher-mode-toggler.siteNav-off .page > header .package-title{
     width: calc(100% - 550px);
 }
 
@@ -62,6 +63,14 @@ main header:not(#head) {
     background-color: #fff;
     /* background:#fff url(img/logo.png) no-repeat 32px 15px/ 132px; */
     border-bottom: 1px solid #FFCC00;
+}
+
+.page-title{
+    font-weight: bold;
+}
+
+.exe-single-page .page-title{
+    margin-top: 20px;
 }
 
 .page > header .package-title{
@@ -134,11 +143,16 @@ body.exe-export, body.exe-web-site{
     font-weight: 700;
 }
 
-.exe-content .package-title, .exe-single-page .package-header h1{
+.exe-content .package-title,
+.exe-single-page .package-header h1{
     font-size: 1.7rem;
     text-align: left;
     font-weight: 700;
     color: #282573;
+}
+
+.exe-single-page .package-header > h1{
+    padding-left: 32px !important;
 }
 
 .exe-single-page .package-node{
@@ -738,7 +752,7 @@ body.siteNav-off button#searchBarTogger{
 
 /* Modo docente */
 
-.form-check{
+.exe-export .form-check{
     float: none;
     position: absolute;
     top: 18px;
@@ -754,32 +768,32 @@ body.siteNav-off button#searchBarTogger{
     background-size: 28px;
 
 }
-.form-check-label{
+.exe-export .form-check-label{
     display: none;
 }
-.form-switch .form-check-input{
+.exe-export .form-switch .form-check-input{
     width: 2.6em;
     height: 1.4em;
 }
-.form-check-input:checked{
+.exe-export .form-check-input:checked{
     background-color: #FFCC00;
     border-color: #FFCC00;
 }
-.form-check-input:focus{
+.exe-export  .form-check-input:focus{
     border-color: #FFCC00;
     box-shadow: 0 0 0 .25rem rgba(255, 204, 0, 0.25);
 }
-.form-check label{
+.exe-export  .form-check label{
     width: 64px;
     font-size: 1rem;
 }
-.form-switch .form-check-input:focus{
+.exe-export  .form-switch .form-check-input:focus{
     background-image: url(img/switch.svg);
     background-size: 16px;
     background-repeat: no-repeat;
     background-position: left 1.6px center;
 }
-.mode-teacher .form-switch .form-check-input:focus{
+.exe-export  .mode-teacher .form-switch .form-check-input:focus{
     background-image: url(img/switch_white.svg);
     background-position: right 1.6px center;
 }
@@ -844,16 +858,16 @@ body.siteNav-off button#searchBarTogger{
     .page-counter-label{
         display: none;
     }
-    .form-check{
+    .exe-export .form-check{
         right: 182px;
     }
-    .form-check:hover{
+    .exe-export .form-check:hover{
         background-color: transparent;
     }
-    .form-check-label{
+    .exe-export .form-check-label{
         display: none;
     }
-    .form-check-input{
+    .exe-export .form-check-input{
         margin: 0 !important;
     }
     .exe-teacher-mode-toggler .page > header .package-title, .exe-teacher-mode-toggler.siteNav-off .page > header .package-title{
@@ -1064,14 +1078,14 @@ body.siteNav-off button#searchBarTogger{
     {
         padding: 0 30px;
     }
-    .form-check{
+    .exe-export .form-check{
         right: 120px;
     }
-    .form-switch .form-check-input{
+    .exe-export .form-switch .form-check-input{
         width: 2.5em;
         height: 1.5em;
     }
-    .form-switch .form-check-input:focus{
+    .exe-export .form-switch .form-check-input:focus{
         background-size: 16px;
     }
     .exe-teacher-mode-toggler .page > header .package-title, .exe-teacher-mode-toggler.siteNav-off .page > header .package-title{
@@ -1083,18 +1097,19 @@ body.siteNav-off button#searchBarTogger{
     .exe-teacher-mode-toggler.exe-web-site .page-counter{
         right: 210px;
     }
+    .page-title{
+    margin-top: 32px;
+    }
 }
 
 /* Table */
 
 table{
-    display: block;
+    display: table;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100% !important;
-    margin: 2em 0 !important;
-    width: auto !important;
-    height: auto !important;
+    margin: 2em 0 !important; 
 }
 
 @media print {
