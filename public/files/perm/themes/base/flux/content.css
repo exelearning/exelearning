@@ -1,0 +1,1161 @@
+@charset "UTF-8";
+@font-face {
+  font-family: "Fredoka";
+  src: url('fonts/Fredoka-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Fredoka";
+  src: url('fonts/Fredoka-SemiBold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Fredoka";
+  src: url('fonts/Fredoka-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+}
+
+a{
+    text-decoration: none;
+}
+
+.page-title{
+    font-weight: bold;
+    color: white;
+    margin-top: 40px;
+}
+
+.page > header .package-title,
+.siteNav-off .page > header .package-title{
+    padding-left: 24px;
+    width: calc(100% - 470px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.exe-teacher-mode-toggler .page > header .package-title,
+.exe-teacher-mode-toggler.siteNav-off .page > header .package-title{
+    width: calc(100% - 550px);
+}
+
+.exe-scorm .page header .page-title,
+.exe-ims .page header .page-title,
+.exe-epub .page header .page-title{
+    width: 100%;
+}
+
+.exe-scorm .page > header .package-title,
+.exe-scorm .siteNav-off .page > header .package-title,
+.exe-ims .page > header .package-title,
+.exe-ims .siteNav-off .page > header .package-title,
+.exe-epub .page > header .package-title,
+.exe-epub .siteNav-off .page > header .package-title,
+.exe-ims .page > header .package-title,
+.exe-single-page .package-header h1
+{
+    width: 100%;
+}
+
+
+main header:not(#head) {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+}
+
+.page > header{
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 400;
+    height: 100px;
+    display: flex !important;
+    align-items: center;
+    background:#fff;
+    /* background:#fff url(img/logo.png) no-repeat 24px 15px/ 132px; */
+    border-bottom: 2px solid #282573;
+}
+
+.page > header .package-title,
+.exe-single-page .package-header h1{
+    padding-left: 32px;
+    color: #282573;
+}
+
+body.exe-export {
+    padding: 1em 0;
+}
+
+body.exe-export.exe-scorm, body.exe-export.exe-ims, body.exe-export.exe-epub{
+    padding: 0;
+}
+
+body.exe-web-site{
+    padding: 0;
+}
+
+body.exe-export, body.exe-web-site{
+    font-family: "Fredoka", Arial, Verdana, Helvetica, sans-serif;
+    font-size: 120%;;
+}
+
+.exe-content a{
+    color: #0d77d1;
+}
+.exe-content a:hover,
+.exe-content a:focus{
+    color: #0a60ab;
+    text-decoration: none;
+}
+
+.exe-download-package-link a{
+    background: #282573;
+    color: #fff;
+}
+
+#node-content-container.exe-content #node-content{
+    padding-top: 20px;
+    padding-bottom: 20px;
+    max-width: 1280px;
+    margin: 0 auto;
+    display: block;
+}
+
+.exe-content{
+    color: #333;
+    background-color: #F4F4F4;
+    background: url(img/background.png);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.js .exe-export .exe-content{
+    min-height: calc(100vh - 30px);
+}
+
+.js .in-iframe .exe-content{
+    min-height: 0;
+}
+
+.sr-av{
+    display: none;
+}
+
+.exe-content .package-title, .exe-single-page .package-header h1{
+    font-size: 1.7rem;
+    text-align: left;
+    font-weight: 600;
+}
+
+.exe-single-page .package-node{
+    margin-bottom: 3.5em;
+}
+
+.exe-content .box{
+    margin: 35px 0;
+    border: none;
+}
+
+.exe-web-site .exe-content .box{
+    margin: 40px 0;
+}
+
+.exe-content .box-head {
+  border-bottom: 0;
+}
+
+#node-content-container.exe-content .box{
+    border: 1px dotted #ddd;
+}
+#node-content-container.exe-content .box.hidden-idevices{
+    border-style: solid;
+}
+
+.exe-content .box header{
+    min-height: 60px;
+    border-bottom: 1px solid #E4E4E4;
+}
+
+.exe-content .box-head .box-title{
+    color: #282573;
+    font-size: 1.65rem !important;
+    font-weight: 400;
+}
+
+.exe-content .box-head .exe-icon {
+    float: left;
+}
+
+.exe-web-site .page-content,
+#exe-client-search,
+.exe-web-site main > header,
+.exe-export .exe-content
+{
+    max-width: 1280px;
+    padding: 0 60px;
+    margin: 0 auto;
+}
+
+.exe-single-page .exe-content{
+    max-width: 100% !important;
+}
+
+.exe-single-page .exe-content main, .exe-single-page .exe-content footer{
+    max-width: 1280px;
+    margin: 0 auto;
+}
+.exe-single-page .exe-content main{
+    padding-top: 4em;
+}
+
+.exe-web-site .exe-content{
+    max-width: none;
+    padding: 0;
+}
+
+.exe-scorm .exe-export main, .exe-ims .exe-export main, .exe-epub .exe-export main{
+    padding-top: 5em;
+    padding-bottom: 1em;
+}
+
+body.exe-export.exe-scorm .exe-content, body.exe-export.exe-ims .exe-content, body.exe-export.exe-epub .exe-content{
+    padding: 0 40px;
+}
+.exe-content.cover-on .exe-interactive-video,
+.exe-content .exe-interactive-video{
+    width: 100%;
+}
+
+.exe-export main{
+    padding-top: 1.5em;
+}
+.exe-web-site main{
+    padding-top: 4.5em;
+}
+
+/* siteNav */
+#siteNav{
+    float:left;
+    padding: 100px 16px 48px 16px;
+    background-color: #2C2977;
+    height: calc(100vh - 100px);
+    border-radius: 0 40px 40px 0;
+    width: 330px;
+    z-index: 1;
+    position: fixed;
+    transition: left 0.3s ease;
+    left: 0;
+    top: 100px;
+    overflow: visible;
+    border-top: 2px solid #6D68D9;
+    border-right: 2px solid #6D68D9;
+    border-bottom: 2px solid #6D68D9;
+}
+#siteNav::-webkit-scrollbar {
+  display: none;
+}
+
+#siteNav > ul{
+  max-height: calc(100vh - 230px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+}
+
+#siteNav > ul::-webkit-scrollbar {
+  display: none;
+}
+
+#siteFooterExtra{
+    margin-bottom:2em;
+    color: #555;
+    font-size: .95em;
+}
+#siteNav .other-section{
+    display: none;
+}
+#sidebar-nav.fixed, #sidebar-nav{
+    position: fixed;
+
+}
+body.siteNav-off #siteNav{
+    left: -330px;
+}
+.exe-web-site main.page{
+    box-sizing: border-box;
+    width: 100%;
+    padding-left: 330px;
+    padding-bottom: 24px;
+    transition: padding 0.3s ease;
+}
+.exe-web-site #siteFooter{
+    padding-left: 390px;
+    padding-right: 60px;
+    padding-bottom: 2em;
+    transition: padding 0.3s ease;
+}
+body.exe-web-site.siteNav-off #siteFooter{
+    padding-right: 0;
+}
+
+.exe-scorm #siteFooter, .exe-ims #siteFooter, .exe-epub #siteFooter{
+    padding-bottom: 40px;
+}
+body.siteNav-off main.page,
+body.siteNav-off #siteFooter{
+    padding-left: 20px;
+}
+#siteNav ul, #siteNav li{
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#siteNav li{
+    margin-bottom: 6px;
+}
+
+#siteNav a{
+    color: #fff;
+    display: block;
+    padding: 8px 15px;
+    border-radius: 8px;
+    transition: background-color 0.5s ease;
+    font-weight: 400;
+}
+
+#siteNav a.active{
+    color: #282573;
+    background-color: #FFCC00;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+#siteNav a.package-link{
+    color: #fff;
+    margin-top: 10px;
+    background:#191748 url(img/book_white.svg) no-repeat 8px center;
+    padding-left: 42px;
+}
+
+#siteNav a.package-link.active{
+    background: #FFCC00 url(img/book_color.svg) no-repeat 8px center !important;
+    color: #282573;
+}
+
+#siteNav a.package-link:hover{
+    background: #FFCC00 url(img/book_color.svg) no-repeat 8px center !important;
+    color: #282573;
+}
+#siteNav a.package-link:focus{
+    background: #FFCC00 url(img/book_color.svg) no-repeat 8px center !important;
+    color: #282573;
+}
+
+#siteNav a:hover{
+    background: #E6B800;
+    text-decoration: none;
+    color: #282573;
+}
+
+#siteNav ul ul a{
+    padding-left: 35px;
+    font-size: .95em;
+    background-color: #FFE580 ;
+    color: #282573;
+}
+
+.current-page-parent a{
+    background-color: #FFE580 ;
+    margin-bottom: 6px;
+    color: #282573 !important;
+}
+
+#siteNav ul ul ul a{
+    padding-left: 55px;
+    font-size: .9em;
+}
+
+#siteNav ul ul ul ul a{
+    padding-left: 75px;
+}
+
+.daddy{
+    background: #282573 url(img/arrow_down_menu.svg) no-repeat right 16px center / 22px !important;
+}
+.active .active.daddy{
+    background: #FFD940 url(img/arrow.svg) no-repeat right 16px center / 22px !important;
+}
+.active .daddy{
+    background: #FFE580 url(img/arrow_down.svg) no-repeat right 16px center / 22px !important;
+}
+#siteNav .current-page-parent > .daddy{
+    background: #FFE580 url(img/arrow.svg) no-repeat right 16px center / 22px !important;
+    margin-bottom: 6px;
+}
+.current-page-parent .daddy{
+        background: #FFE580 url(img/arrow_down.svg) no-repeat right 16px center / 22px !important;
+}
+.daddy:hover{
+        background: #FFD940 url(img/arrow_down.svg) no-repeat right 16px center / 22px !important;
+}
+.active.daddy:hover{
+    background: #FFD940 url(img/arrow.svg) no-repeat right 16px center / 22px !important;
+}
+
+
+/* pagination */
+.nav-buttons .nav-button,
+button.toggler {
+    position: fixed;
+    top: 18px;
+    right: 65px;
+    display: inline-block;
+    width: auto;
+    height: auto;
+    background-image: url(img/back_arrow.svg);
+    background-size: 20px;
+    background-color: #FFCC00;
+    background-repeat: no-repeat;
+    border-radius: 8px;
+    z-index: 999;
+    border: 0;
+    transition: background-color 0.5s ease;
+    padding: 18px;
+    color: #282573;
+    font-weight: 400;
+}
+
+.nav-buttons span.nav-button{
+    opacity: .5;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+.nav-buttons .nav-button-left{
+    background-position: left 14px center;
+    padding-left: 48px;
+    right: 180px;
+}
+.nav-buttons .nav-button-right{
+    background-position: right 14px center;
+    padding-right: 48px;
+    background-image: url(img/forward_arrow.svg);
+    right: 20px;
+}
+
+.nav-buttons a:hover,
+.nav-buttons a:focus,
+button.toggler:hover,
+button.toggler:focus {
+    background-color: #EBB800;
+    border-color: #EBB800;
+    text-decoration: none;
+    color: #282573;
+}
+button#siteNavToggler{
+    left: 10px;
+    top: 130px;
+    background: url(img/menu_open.svg) no-repeat 12px / 32px;
+    width: 106px;
+    height: 40px;
+    border-radius: 8px;
+    box-sizing: content-box;
+    padding: 8px;
+}
+
+#siteNavToggler:hover{
+    background-color: #1c1a56;
+    z-index: 2;
+}
+body.siteNav-off button#siteNavToggler{
+    left:0;
+    top: 130px;
+    padding: 8px 8px 8px 17px;
+    border-radius: 0 8px 8px 0;
+    background: #FFCC00 url(img/menu_closed.svg) no-repeat 16px / 32px;
+}
+body.siteNav-off button#siteNavToggler:hover{
+    background-color: #EBB800;
+}
+
+#siteNavToggler .sr-av{
+    visibility: visible;
+    position: static;
+    padding-left: 24px;
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 400;
+    display: inline;
+}
+
+body.siteNav-off button#siteNavToggler .sr-av{
+    color: #282573;
+}
+
+#exe-client-search-reset span,
+#packageLicense .license-label {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+.box-toggle span{
+    display: none;
+}
+
+/* Box toggler */
+.box{
+  background-color: #ffffff;
+  border: 1px solid #EAECF0;
+  border-radius: 12px;
+  padding: 2.25rem;
+  margin-bottom: 32px;
+}
+
+.exe-export .box{
+    position: relative;
+}
+.exe-export .box-toggle{
+    width: 40px;
+    height: 40px;
+    background: url(img/arrow.svg);
+    background-size: auto 32px;
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: 50%;
+    border: 0;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    transition: transform 0.2s ease-in-out;
+}
+
+
+.exe-export .minimized .box-toggle{
+    transform: rotate(180deg);
+}
+
+
+#node-content-container.exe-content .box-head .exe-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 40px;
+}
+
+#node-content-container.exe-content .box-head .exe-icon img{
+    height: 40px;
+}
+
+.exe-export .box-icon img{
+    display: block;
+    float: left;
+    margin-right: 10px;
+}
+
+.exe-export .box-icon img{
+    width: 40px;
+    height: auto;
+}
+
+.exe-export .box-title {
+    padding-top: 5px;
+}
+
+.exe-export .box.minimized .box-head{
+    border-bottom: 1px solid #ddd;
+}
+
+.exe-export .box.no-header.minimized .box-head{
+    border-color: #fff;
+}
+
+.exe-export .box.no-header .box-content{
+    background: none;
+    border: none;
+    padding: 20px 0;
+}
+.exe-export #siteFooterContent{
+    background-color: white;
+    padding: 14px;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 1160px;
+    margin: 0 auto;
+}
+#siteFooterContent #packageLicense{
+    margin: 0;
+}
+
+/* Table */
+
+table{
+    display: table;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100% !important;
+    margin: 2em 0 !important;
+}
+
+/* Licenses */
+#packageLicense{text-align:left;font-size:.9em;color:#555;line-height:1em;margin:2.5em 0 2em 0;border:1px solid transparent;border-radius:2px}
+#packageLicense p{margin:0}
+#packageLicense a{color:#666;text-transform:capitalize;display:inline-block;white-space:nowrap;text-overflow: ellipsis;max-width:100%;overflow:hidden;line-height:15px}
+#packageLicense a:hover,
+#packageLicense a:focus{text-decoration:none;color:#B04721}
+#packageLicense.propietary{position:absolute;overflow:hidden;clip:rect(0,0,0,0);height:0}
+#packageLicense.cc{padding:0 20px 0 90px;background:url(default_licenses.gif) no-repeat 0 0}
+#packageLicense.cc-by-sa{background-position:0 -100px}
+#packageLicensea.cc-by-nd{background-position:0 -200px}
+#packageLicense.cc-by-nc{background-position:0 -300px}
+#packageLicense.cc-by-nc-sa{background-position:0 -400px}
+#packageLicense.cc-by-nc-nd{background-position:0 -500px}
+#packageLicense.cc-0{background-position:0 -600px}
+
+
+/* iDevice buttons */
+.exe-content .iDevice_buttons input{
+    background: #fff;
+    color: #555;
+    border: 1px solid #ccc;
+    padding: 4px 10px;
+    border-radius: 4px;
+    transition: 0.5s ease;
+}
+.exe-content .iDevice_buttons input:hover,
+.exe-content .iDevice_buttons input:focus{
+    box-shadow: 2px 2px 4px #dbdbdb;
+    color: #000;
+    border-color: #bbb
+}
+
+
+/* Icons */
+
+.exeQuextIcons-Number{
+    background-image: url(img/exequextnumber.svg) !important;
+}
+.exeQuextIcons-Hit{
+    background-image: url(img/exequexthits.svg) !important;
+}
+.exeQuextIcons-Error{
+    background-image: url(img/exequextrerrors.svg) !important;
+}
+.exeQuextIcons-Score{
+    background-image: url(img/exequextscore.svg) !important;
+}
+.exeQuextIcons-TXGame{
+    background-image: url(img/exequexthits.svg) !important;
+}
+.exeQuextIcons-Areas{
+    background-image: url(img/exequexthits.svg) !important;
+}
+.exeQuextIcons-MZGame, .exeQuextIcons-Minimize{
+    background-image: url(img/exequextmin.svg) !important;
+}
+.exeQuextIcons-FSGame, .exeQuextIcons-FullScreen{
+    background-image: url(img/exequextfull.svg) !important;
+}
+.exeQuextIcons34-Time{
+    background-image: url(img/exequexttime.svg) !important;
+}
+
+/* Page counter */
+.page-counter {
+    text-align: right;
+    margin: 0 0 .5em 0;
+    font-size: .9em;
+    color: #777;
+    font-weight: 400;
+    background: #fff
+}
+
+.exe-web-site .page-counter {
+    position: fixed;
+    top: 38px;
+    right: 366px;
+    margin: 0;
+    padding: 0;
+    font-size: .9em;
+    color: #777;
+    text-align: right;
+}
+
+body.exe-teacher-mode-toggler.exe-web-site .page-counter {
+    right: 450px;
+}
+
+
+/* Search bar */
+ body.siteNav-off.exe-search-on button#searchBarTogger, body.exe-search-on button#searchBarTogger{
+    display: inline-block;
+}
+#exe-client-search-form p{
+    margin-top: 4em;
+}
+#exe-client-search-form p{
+    display: flex;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 6px;
+}
+
+button#searchBarTogger{
+    right: auto;
+    left: 260px;
+    top: 136px;
+    background: #FFCC00 url(img/search.svg) no-repeat center / 28px;
+    width: 48px;
+    height: 48px;
+    display: none;
+}
+body.siteNav-off button#searchBarTogger{
+    top: 220px;
+    left: 0px;
+    padding-left: 50px;
+    border-radius: 0 8px 8px 0;
+    display: none;
+}
+#exe-client-search{
+    display: none;
+    margin-bottom: 30px;
+}
+#exe-client-search-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: inline;
+    height: 48px;
+}
+#exe-client-search-submit {
+    text-indent: -999em;
+    background: #FFCC00 url(img/search.svg) no-repeat center / 28px;
+    border: none;
+    border-radius: 4px;
+    background-position: center;
+}
+#exe-client-search-reset.visible {
+    background:#282573 url(img/menu_open.svg) no-repeat center / 28px;
+    background-size: auto 40px;
+    display: inline-block;
+    vertical-align: middle;
+    border-radius: 4px
+}
+#exe-client-search-submit,#exe-client-search-reset.visible{
+height: 48px;
+flex: 0 0 48px;
+}
+#exe-client-search-reset:hover,
+#exe-client-search-reset:focus{
+    opacity: 1;
+}
+#exe-client-search-submit:hover,
+#exe-client-search-submit:focus{
+    background-color: #FFCC00;
+}
+#exe-client-search-results-list ul,
+#exe-client-search-results-list li{
+    margin:2em 0;
+    padding:0;
+    list-style:none;
+}
+#exe-client-search-results-list li{
+    margin:0 0 1em 0;
+}
+#exe-client-search-results-list p{
+    margin-top: 2em;
+}
+
+#exe-client-search-results-list ul, #exe-client-search-results-list p{
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 2.25rem;
+}
+
+/* Accesibilidad */
+.exe-atools-on #eXeAtools #eXeAtoolsSet {
+    display: flex;
+    padding: 6px 4px;
+}
+#eXeAtools select{
+    position: static !important;
+}
+
+/* Modo docente */
+
+.exe-export .form-check{
+    float: none;
+    position: absolute;
+    top: 18px;
+    right: 335px;
+    display: flex;
+    align-items: center;
+    padding: 4px 36px 4px 4px;
+    margin: 0 10px 0 0;
+    height: 64px;
+    background-image: url(img/teacher_hat.svg);
+    background-repeat: no-repeat;
+    background-position: right center;
+    background-size: 28px;
+
+}
+.exe-export .form-check-label{
+    display: none;
+}
+.exe-export .form-switch .form-check-input{
+    width: 2.6em;
+    height: 1.4em;
+}
+.exe-export .form-check-input:checked{
+    background-color: #FFCC00;
+    border-color: #FFCC00;
+}
+.exe-export .form-check-input:focus{
+    border-color: #FFCC00;
+    box-shadow: 0 0 0 .25rem rgba(255, 204, 0, 0.25);
+}
+.exe-export .form-check label{
+    width: 64px;
+    font-size: 1rem;
+}
+.exe-export .form-switch .form-check-input:focus{
+    background-image: url(img/switch.svg);
+    background-size: 19px;
+    background-repeat: no-repeat;
+    background-position: left 1.6px center;
+}
+.exe-export .mode-teacher .form-switch .form-check-input:focus{
+    background-image: url(img/switch_white.svg);
+    background-position: right 1.6px center;
+}
+
+
+/* Responsive design */
+
+@media (max-width: 1440px){
+.siteNav-off #siteNavToggler .sr-av{
+    display: none;
+}
+.siteNav-off #siteNavToggler{
+    width: 50px;
+}
+}
+
+@media (max-width: 1200px){
+    body.cover-on #activity{
+        width: 100% !important;
+    }
+    #activity{
+        width: 100%;
+        margin: 0 auto;
+    }
+    #activity #player{
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+
+@media (max-width: 1024px){
+
+    .nav-buttons .nav-button span{
+        display: none;
+    }
+
+    .nav-buttons .nav-button{
+        height: 60px;
+    }
+
+    .nav-buttons .nav-button-right{
+        right: 20px;
+        background-position: center;
+    }
+
+    .nav-buttons .nav-button-left{
+        right: 100px;
+        background-position: center;
+    }
+
+    .page > header .package-title, .siteNav-off .page > header .package-title{
+    width: calc(100% - 240px);
+    }
+    .exe-web-site .page-counter{
+        left: auto;
+        right: 80px;
+        top: 72px;
+    }
+    .exe-search-on .nav-buttons .nav-button-left,.exe-search-on .nav-buttons .nav-button-right{
+        top: 12px;
+    }
+    .page-counter-label{
+        display: none;
+    }
+
+    .exe-export .form-check{
+        right: 182px;
+    }
+    .exe-export .form-check:hover{
+        background-color: transparent;
+    }
+    .exe-export .form-check-label{
+        display: none;
+    }
+    .exe-export .form-check-input{
+        margin: 0 !important;
+    }
+    .exe-teacher-mode-toggler .page > header .package-title, .exe-teacher-mode-toggler.siteNav-off .page > header .package-title{
+    width: calc(100% - 280px);
+    }
+}
+
+@media (max-width: 750px) {
+    .exe-web-site .page-content, #exe-client-search{
+        padding: 0 20px;
+    }
+    #sidebar-nav {
+        position: static !important;
+        width: 100%;
+        padding: 200px 0 0 0;
+    }
+    #siteNav{
+        float: none;
+        border-right: 0;
+        width: 100%;
+        background-color: #282573;
+        height: auto;
+        padding: 16px 16px 8px 16px;
+        border-radius: 0;
+        position: static;
+        border: 0;
+    }
+    body.siteNav-off #siteNav{
+        display: none;
+    }
+    #siteNav a{
+        width: 100%;
+        max-width: none;
+    }
+    button#siteNavToggler{
+        background: #fff url(img/menu_open_color.svg) no-repeat 12px center / 32px;
+    }
+    body.siteNav-off button#siteNavToggler{
+        background: #fff url(img/menu_closed.svg) no-repeat 12px center / 32px;
+    }
+    body.siteNav-off button#siteNavToggler, button#siteNavToggler{
+        position: absolute;
+        z-index: 0;
+        font-weight: 600;
+        border: 1px solid #282573;
+        right: 16px;
+        left: 16px;
+        top: 120px;
+        border-radius: 0.75rem;
+        width: auto;
+        height: 26px;
+        padding: 16px;
+    }
+    button#siteNavToggler:hover,
+    body.siteNav-off button#siteNavToggler:hover{
+        background-color: #FFCC00;
+    }
+    button#siteNavToggler span,
+    button#siteNavToggler .sr-av{
+        display: block;
+        color: #000000;
+        overflow: visible;
+        width: auto;
+        height: auto;
+        text-align: left;
+        padding-left: 40px;
+        position: relative;
+        top: -2px;
+    }
+    .exe-web-site main.page{
+        padding-left: 0;
+        padding-top: 0;
+    }
+    body.siteNav-off button#siteNavToggler .sr-av{
+        color: #000 !important;
+        text-align: left;
+        padding-left: 40px;
+        width: auto;
+        height: auto;
+        display: block;
+    }
+
+    body.siteNav-off main.page,
+    body.siteNav-off #siteFooter{
+        padding: 0;
+    }
+
+    .exe-web-site .exe-content .box{
+        margin-top: 20px;
+    }
+    /* .page > header,
+    .siteNav-off .page > header{
+        background: #fff url(img/logo_responsive.png) no-repeat 32px 15px/ 32px;
+    } */
+    .page > header .package-title,
+    .siteNav-off .page > header .package-title,
+    .exe-single-page .package-header h1 {
+        padding-left: 24px;
+    }
+    .siteNav-off #siteNavToggler .sr-av{
+        display: inline-block;
+        width: 100% !important;
+    }
+    .exe-search-on.siteNav-off button#siteNavToggler,
+    .exe-search-on button#siteNavToggler{
+        right: 100px;
+        height: 30px;
+    }
+    body.siteNav-off button#searchBarTogger,
+    body button#searchBarTogger{
+        left: auto;
+        right: 20px;
+        top: 120px;
+        height: 64px;
+        border-radius: 0.75em;
+        width: 68px;
+        position: absolute;
+        z-index: 0;
+    }
+    #exe-client-search-text{
+        height: 54px;
+    }
+    #exe-client-search-form p{
+        height: 54px;
+        margin-top: 1em;
+    }
+    #exe-client-search-submit{
+        background: #FFCC00 no-repeat url(img/search.svg) center / 26px;
+    }
+    #exe-client-search-reset.visible{
+        background: #282573 url(img/menu_open.svg) no-repeat center / 26px;
+    }
+    #exe-client-search-submit, #exe-client-search-reset.visible{
+        height: 54px;
+        flex: 0 0 54px;
+    }
+    .exe-client-search-results{
+        padding-bottom: 24px !important;
+    }
+    .exe-web-site #siteFooter #siteFooterContent{
+        margin: 0 auto;
+    }
+    .exe-web-site #siteFooter{
+        padding: 0 20px 2em 20px !important;
+    }
+    #packageLicense{
+        margin: 0 0 1em 0;
+    }
+}
+@media (max-width: 650px) {
+    html{
+        font-size: 0.75rem !important;
+    }
+    /* .page > header,
+    .siteNav-off .page > header{
+        background: #fff url(img/logo_responsive.png) no-repeat 14px 26px/ 20px;
+    } */
+    .page > header .package-title, .siteNav-off .page > header .package-title {
+        padding-left: 24px;
+        width: calc(100% - 124px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        height: auto;
+        white-space: normal;
+        word-wrap: break-word;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+    .nav-buttons .nav-button-left, .nav-buttons .nav-button-right{
+        height: 50px;
+        width: 50px;
+        padding: 0;
+        top: 25px !important;
+    }
+    .nav-buttons .nav-button-left{
+        right: 80px;
+    }
+    .exe-export .form-check{
+        right: 150px;
+    }
+    .exe-export .form-switch .form-check-input{
+        width: 2.5em;
+        height: 1.5em;
+    }
+    .exe-export .form-switch .form-check-input:focus{
+        background-size: 16px;
+    }
+    button#siteNavToggler{
+        background: #fff url(img/menu_open_color.svg) no-repeat 12px center / 24px;
+    }
+    button#siteNavToggler span,
+    button#siteNavToggler .sr-av,
+    body.siteNav-off button#siteNavToggler .sr-av{
+        padding-left: 24px;
+        top: 0;
+    }
+    body.siteNav-off button#siteNavToggler{
+        background: #fff url(img/menu_closed.svg) no-repeat 12px / 24px;
+    }
+    .box-title{
+        width: calc(100% - 32px);
+    }
+    .exe-export .box-toggle{
+        background-position: center;
+        background-size: auto 24px;
+        width: 32px;
+        height: 32px;
+    }
+    body.siteNav-off button#searchBarTogger, body button#searchBarTogger{
+        height: 60px;
+    }
+    .exe-web-site .page-counter{
+        right: 50px;
+        top: 66px
+    }
+    .exe-search-on.siteNav-off button#siteNavToggler, .exe-search-on button#siteNavToggler{
+        height: 26px;
+    }
+    .exe-single-page .package-header h1{
+        padding-left: 20px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        word-wrap: break-word;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        white-space: normal;
+        height: auto;
+    }
+    .exe-scorm .exe-export main, .exe-ims .exe-export main, .exe-pub .exe-export main{
+        padding-top: 7em;
+    }
+}
+
+@media print {
+    html body{background:#fff}
+    .exe-content{color:#000;padding:0}
+    @page{margin:1.5cm}
+    body #header,body #emptyHeader,body #nodeDecoration{height:auto!important;min-height:0;border:none;padding:0}
+    body #headerContent{padding-top:40px}
+    #packageLicense.cc{background:none;padding-left:0}
+    .exe-export .box-toggle{display:none}
+    /* Website */
+    .exe-web-site #siteNav,
+    .exe-web-site .nav-buttons,
+    .exe-web-site button.toggler{display:none}
+    .exe-web-site #siteFooter,
+    .exe-web-site main.page{padding-left: 0;padding-right: 0}
+    .exe-web-site main.page{padding-top:1em;}
+}

@@ -57,6 +57,17 @@
             }
         }
     }
+    &.disabled {
+        opacity: .5;
+        cursor: not-allowed;
+        .idevice_item {
+            pointer-events: none;
+            user-select: none;
+        }
+    }
+}
+body:has(#node-content[mode='edition']) #idevices-bottom{
+    display:none!important;
 }
 
 

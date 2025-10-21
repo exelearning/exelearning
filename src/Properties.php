@@ -39,7 +39,7 @@ class Properties
             'category' => self::TRANS_PREFIX.'General settings',
         ],
         'theme' => [
-            'title' => self::TRANS_PREFIX.'Style theme',
+            'title' => self::TRANS_PREFIX.'Style',
             'value' => Constants::THEME_DEFAULT,
             'type' => 'text',
             'hide' => true,

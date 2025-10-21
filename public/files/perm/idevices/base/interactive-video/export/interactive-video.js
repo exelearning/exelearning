@@ -1878,25 +1878,21 @@ var $interactivevideo = {
 }
 
 $(function () {
+    var contentElement = document.getElementById("exe-interactive-video-contents");
 
-    if (document.getElementById("exe-interactive-video-contents")) {
-        var jsonParse = document.getElementById("exe-interactive-video-contents").innerHTML
-        var regexp = new RegExp('(style=".+?)">', 'g');
-        var results = jsonParse.match(regexp);
-        if (results) {
-            results.forEach(function (match) {
-                results = match;
-                var matchReplace = results.replace(/"/g, "");
-                jsonParse = jsonParse.replace(results, matchReplace);
-            })
-            jsonParse = jsonParse.replace(/\\=/g, '\'');
-            jsonParse = jsonParse.replace(/\\&quot;/g, '\'');
+    if (contentElement) {
+        try {
+            var jsonContent = contentElement.textContent || contentElement.innerHTML;
+            jsonContent = jsonContent.trim();
+
+            InteractiveVideo = JSON.parse(jsonContent);
+        } catch (error) {
+            console.error("Interactive Video: Error parsing JSON", error);
+            InteractiveVideo = { slides: [], i18n: $interactivevideo.i18n };
         }
-        InteractiveVideo = JSON.parse(jsonParse);
     }
 
     $interactivevideo.init();
-
 });
 
 /*

@@ -15,11 +15,14 @@
     display: none;
 }
 
+.form-IDevice .form-instructions{
+    margin-top: .5em;
+}
+
 .form-IDevice .form-buttons-container {
     margin-top: 10px;
     padding-top: 20px;
     padding-bottom: 20px;
-    border-top: 1px solid gray;
     display: flex;
     justify-content: flex-start;
     align-items: center;
@@ -29,7 +32,6 @@
 .form-IDevice .form-results-container {
     margin-top: 10px;
     padding: 5px 60px 5px;
-    border-top: 1px solid gray;
     justify-content: flex-start;
     flex-direction: column;
     align-items: center;
@@ -40,19 +42,19 @@
 .form-IDevice ul.FRMP-PREVIEW {
     min-height: 50px;
     list-style-type: none;
-    padding: 0.5em;
+    padding: 0;
     margin: 0;
 }
 
 .form-IDevice ul.FRMP-PREVIEW>li {
-    padding: 0.7em;
+    padding: 0;
+    margin: .5em 0;
 }
 
 
 
 .form-IDevice ul.FRMP-PREVIEW .FormView_question {
-    background-color: #f2f2f2;
-    padding: 0.8em;
+    padding: .5em 0;
 }
 
 .form-IDevice ul.FRMP-PREVIEW .FormView_question .activity-title {
@@ -60,7 +62,7 @@
 }
 
 .form-IDevice ul.FRMP-PREVIEW .FormView_question:nth-child(even) {
-    background-color: rgba(220, 220, 220, 0.8);
+    background: none;
 }
 
 .FormView_question .selection-buttons-container input[type="radio"],

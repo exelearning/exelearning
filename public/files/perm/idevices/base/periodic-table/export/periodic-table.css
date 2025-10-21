@@ -21,35 +21,34 @@ table.PTP-table-container .PTP-table-container th,
 
 }
 
-table.PTP-periodic-table {
-	width: 100%;
-	border-collapse: collapse;
-	table-layout: fixed;
-	user-select: none;
-	-webkit-user-select: none;
-	-moz-user-select: none;
-	-ms-user-select: none;
+.PTP-MainContainer table.PTP-periodic-table {
+	display: table !important;
+	width: 100% !important;
+	border-collapse: collapse !important;
+	table-layout: fixed !important;
+	user-select: none !important;
 }
 
-table.PTP-periodic-table td {
-	border: 1px solid #ccc;
-	position: relative;
-	aspect-ratio: 1 / 1;
-	overflow: hidden;
-	vertical-align: middle;
-	text-align: center;
-	user-select: none;
-	-webkit-user-select: none;
-	-moz-user-select: none;
-	-ms-user-select: none;
+.PTP-MainContainer table.PTP-periodic-table td {
+	border: 1px solid #ccc !important;
+	position: relative !important;
+	aspect-ratio: 1 / 1 !important;
+	overflow: hidden !important;
+	vertical-align: middle !important;
+	text-align: center !important;
+	user-select: none !important;
 }
 
-table.PTP-periodic-table th {
-	user-select: none;
-	-webkit-user-select: none;
-	-moz-user-select: none;
-	-ms-user-select: none;
+
+.PTP-MainContainer table.PTP-periodic-table,
+.PTP-MainContainer table.PTP-periodic-table td,
+.PTP-MainContainer table.PTP-periodic-table th {
+	 user-select: none !important;
+	-webkit-user-select: none !important;
+	-moz-user-select: none !important;
+	-ms-user-select: none !important;
 }
+
 
 .PTP-QuestionData {
 	color: #00008B;
@@ -132,29 +131,35 @@ table.PTP-periodic-table th {
 	transform: translateX(-50%);
 }
 
-
-
-.PTP-separate-row {
-	width: 83.33%;
-	max-width: 1200;
-	margin: 0 auto;
-	border-collapse: collapse;
-	background: #fff;
-	box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-	table-layout: fixed;
-	margin-top: 0.6em;
+.PTP-MainContainer table.PTP-separate-row {
+	display: table !important;
+	width: 83.33% !important;
+	max-width: 1200px !important;
+	margin: 0.6em auto 0 auto !important;
+	border-collapse: collapse !important;
+	background: #fff !important;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.2) !important;
+	table-layout: fixed !important;
+	user-select: none !important;
 }
 
-.PTP-separate-row td {
-	border: 1px solid #ccc;
-	position: relative;
-	aspect-ratio: 1 / 1;
-	overflow: hidden;
-	vertical-align: middle;
-	text-align: center;
+.PTP-MainContainer table.PTP-separate-row td {
+	border: 1px solid #ccc !important;
+	position: relative !important;
+	aspect-ratio: 1 / 1 !important;
+	overflow: hidden !important;
+	vertical-align: middle !important;
+	text-align: center !important;
+	user-select: none !important;
 }
 
-
+.PTP-MainContainer table.PTP-separate-row,
+.PTP-MainContainer table.PTP-separate-row td {
+	user-select:  none !important;
+	-webkit-user-select: none !important;
+	-moz-user-select: none !important;
+	-ms-user-select: none !important;
+}
 
 .PTP-lightbox {
 	position: absolute;
@@ -1127,37 +1132,37 @@ ul.PTP-SolutionsList input[type=text] {
 }
 
 .PTP-GameContainer .exeQuextIcons-Minimize {
-	background-image: url(exequextmin.png);
+	background-image: url(exequextmin.svg);
 	background-size: 100% 100%;
 }
 
 .PTP-GameContainer .exeQuextIcons-Hit {
-	background-image: url(exequexthits.png);
+	background-image: url(exequexthits.svg);
 	background-size: 100% 100%;
 }
 
 .PTP-GameContainer .exeQuextIcons-FullScreen {
-	background-image: url(exequextfull.png);
+	background-image: url(exequextfull.svg);
 	background-size: 100% 100%;
 }
 
 .PTP-GameContainer .exeQuextIcons-Error {
-	background-image: url(exequextrerrors.png);
+	background-image: url(exequextrerrors.svg);
 	background-size: 100% 100%;
 }
 
 .PTP-GameContainer .exeQuextIcons-Score {
-	background-image: url(exequextscore.png);
+	background-image: url(exequextscore.svg);
 	background-size: 100% 100%;
 }
 
 .PTP-GameContainer .exeQuextIcons-Time {
-	background-image: url(exequexttime.png);
+	background-image: url(exequexttime.svg);
 	background-size: 100% 100%;
 }
 
 .PTP-GameContainer .exeQuextIcons-Number {
-	background-image: url(exequextnumber.png);
+	background-image: url(exequextnumber.svg);
 	background-size: 100% 100%;
 }
 
@@ -1167,17 +1172,17 @@ ul.PTP-SolutionsList input[type=text] {
 
 
 div:fullscreen .exeQuextIcons-FullScreen {
-	background-image: url(exequextnormal.png);
+	background-image: url(exequextfull.svg);
 	background-size: 100% 100%;
 }
 
 div:-webkit-full-screen .exeQuextIcons-FullScreen {
-	background: url(exequextnormal.png);
+	background: url(exequextfull.svg);
 	background-size: 100% 100%;
 }
 
 div:-moz-full-screen .exeQuextIcons-FullScreen {
-	background: url(exequextnormal.png);
+	background: url(exequextfull.svg);
 	background-size: 100% 100%;
 }
 

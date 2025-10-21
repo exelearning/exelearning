@@ -841,7 +841,7 @@
 }
 
 .DescubreQP-GameContainer .exeQuextIcons-Minimize {
-    background-image: url(exequextmin.png);
+    background-image: url(exequextmin.svg);
     background-size: 100% 100%;
 }
 
@@ -851,46 +851,41 @@
 }
 
 .DescubreQP-GameContainer .exeQuextIcons-Hit {
-    background-image: url(exequexthits.png);
+    background-image: url(exequexthits.svg);
     background-size: 100% 100%;
 }
 
 .DescubreQP-GameContainer .exeQuextIcons-FullScreen {
-    background-image: url(exequextfull.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 .DescubreQP-GameContainer .exeQuextIcons-Error {
-    background-image: url(exequextrerrors.png);
+    background-image: url(exequextrerrors.svg);
     background-size: 100% 100%;
 }
 
 .DescubreQP-GameContainer .exeQuextIcons-Score {
-    background-image: url(exequextscore.png);
+    background-image: url(exequextscore.svg);
     background-size: 100% 100%;
 }
 
 
 
 .DescubreQP-GameContainer .exeQuextIcons-Number {
-    background-image: url(exequextnumber.png);
-    background-size: 100% 100%;
-}
-
-.DescubreQP-GameContainer .exeQuextIcons-Life {
-    background-image: url(exequextlive.png);
+    background-image: url(exequextnumber.svg);
     background-size: 100% 100%;
 }
 
 /* Full Screen */
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background-image: url(exequextnormal.png);
+    background-image: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
 div:fullscreen .exeQuextIcons-FullScreen {
-    background: url(exequextnormal.png);
+    background: url(exequextfull.svg);
     background-size: 100% 100%;
 }
 
@@ -1068,7 +1063,7 @@ div:fullscreen .DescubreQP-Multimedia {
         display: none;
     }
 
-    .DescubreQP-GameContainer .exeQuextIcons-MoveOne,
+   
     .DescubreQP-MainContainer .exeQuextIcons-Submit,
     .DescubreQP-GameContainer .exeQuextIcons-Video {
         height: 2em;
@@ -1216,7 +1211,6 @@ div:fullscreen .DescubreQP-Multimedia {
 
 @media screen and (max-width:235px) {
 
-    .DescubreQP-GameScoreBoard .exeQuextIcons-Life,
     .DescubreQP-GameScoreBoard .exeQuextIcons-Time {
         display: none;
     }

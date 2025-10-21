@@ -1020,10 +1020,10 @@ var $exeDevices = {
                         text = game.msgs.msgUncompletedActivity;
 
                     if (state === 1) {
-                        icon = 'exequextrerrors.png';
+                        icon = 'exequextrerrors.svg';
                         text = game.msgs.msgUnsuccessfulActivity.replace('%s', formattedScore);
                     } else if (state === 2) {
-                        icon = 'exequexthits.png';
+                        icon = 'exequexthits.svg';
                         text = game.msgs.msgSuccessfulActivity.replace('%s', formattedScore);
                     }
 

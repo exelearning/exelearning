@@ -1,5 +1,6 @@
 /**
  * Interactive Video iDevice (edition)
+ * Updated: 2025-10-18 - Fixed jwplayer dynamic loading
  *
  * Released under Attribution-ShareAlike 4.0 International License.
  * Author: Ignacio Gros (http://gros.es/) for http://exelearning.net/
@@ -71,7 +72,12 @@ var iAdmin = {
         hasPlayed: false,
         getPosition: function () {
             var type = iAdmin.video.type;
-            if (type == "mediateca") return parseInt(jwplayer().getPosition());
+            if (type == "mediateca") {
+                if (typeof jwplayer !== 'undefined') {
+                    return parseInt(jwplayer().getPosition());
+                }
+                return 0;
+            }
             else if (type == "youtube") {
                 try {
                     return parseInt(iAdmin.video.player.getCurrentTime());
@@ -1572,6 +1578,20 @@ var iAdmin = {
 }
 
 function enableVideoPlayer(video, image, h, w) {
+    if (typeof jwplayer === 'undefined') {
+        console.warn('jwplayer not loaded yet, loading now...');
+        var script = document.createElement('script');
+        script.src = 'https://mediateca.educa.madrid.org/includes/player/exelearning/jwplayer.js';
+        script.onload = function() {
+            setupJWPlayer(video, image, h, w);
+        };
+        document.head.appendChild(script);
+    } else {
+        setupJWPlayer(video, image, h, w);
+    }
+}
+
+function setupJWPlayer(video, image, h, w) {
     jwplayer.key = 'XnH21IkIBjAQp06byW5kPeU1Eq1vLpjEllpVdA==';
     jwplayer("player").setup({
         sources: [{

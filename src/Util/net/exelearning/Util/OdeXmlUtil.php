@@ -2227,22 +2227,41 @@ class OdeXmlUtil
             $result['type'] = 'quick-questions-video';
             $odeComponentsSync->setOdeIdeviceTypeName('quick-questions-video');
         }
-        // Change type to interactive-video if exe-interactive-video is in tags
         $isInteractiveVideoContent = str_contains($haystack, 'exe-interactive-video');
         if ($isInteractiveVideoContent) {
-            // Set type
             $odeComponentsSync->setOdeIdeviceTypeName('interactive-video');
             $result['type'] = 'interactive-video';
-            // Change html cdata var interactiveVideo
-            $originalHtml = $haystack;
 
-            $pattern = '#<script[^>]*>//<!\[CDATA\[\s*var\s+InteractiveVideo\s*=\s*(\{(?:[^{}]|(?1))*\})\s*//\]\]></script>#';
+            $pattern = '#<script[^>]*>\s*(?:\/\/<!\[CDATA\[\s*)?var\s+InteractiveVideo\s*=\s*(\{(?:[^{}]++|(?1))*\})\s*(?:\/\/\]\]>\s*)?<\/script>#si';
 
-            $replacement = '<div id="exe-interactive-video-contents" style="display: none">$1</div>';
+            $new = @preg_replace_callback($pattern, function ($m) {
+                $jsonLike = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $jsonLike = preg_replace('/(^|\s)\/\/[^\n\r]*/m', '$1', $jsonLike);
+                $jsonLike = preg_replace('/,\s*([}\]])/', '$1', $jsonLike);
 
-            $new = @preg_replace($pattern, $replacement, $originalHtml);
+                $probe = json_decode($jsonLike);
 
-            $haystack = (null === $new) ? $originalHtml : $new;
+                if (JSON_ERROR_NONE !== json_last_error()) {
+                    $jsonLike = preg_replace_callback('/"((?:[^"\\\\]|\\\\.)*)"/', function ($mm) {
+                        $content = $mm[1];
+                        $content = str_replace(['\\"', '"'], ['\"', '\"'], $content);
+
+                        return '"'.$content.'"';
+                    }, $jsonLike);
+
+                    $probe = json_decode($jsonLike);
+                }
+
+                if (JSON_ERROR_NONE !== json_last_error()) {
+                    return $m[0];
+                }
+
+                return '<script id="exe-interactive-video-contents" type="application/json">'
+                    .$jsonLike
+                    .'</script>';
+            }, $haystack);
+
+            $haystack = (null !== $new) ? $new : $haystack;
         }
 
         $isGeogebra = str_contains($haystack, 'auto-geogebra');

@@ -556,7 +556,7 @@ class ExportXmlUtil
      *
      * @return SimpleXMLElement
      */
-    public static function createSCORMimslrm($odeId, $odeProperties)
+    public static function createSCORMimslrm($odeId, $odeProperties, $translator)
     {
         $lom = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><lom></lom>');
 
@@ -625,8 +625,7 @@ class ExportXmlUtil
         $dateTime = $date->addChild('dateTime', $formatted);
         $dateTime->addAttribute('uniqueElementName', 'dateTime');
         $description = $date->addChild('description');
-        // TODO change the phrase to the ODE's language
-        $descriptionString = $description->addChild('string', 'Fecha de creación de los metadatos');
+        $descriptionString = $description->addChild('string', $translator->trans('Metadata creation date', [], null, substr($langValue, 0, 2)));
         $descriptionString->addAttribute('language', $langValue);
 
         $metaMetadata = $lom->addChild('metaMetadata');
@@ -650,8 +649,7 @@ class ExportXmlUtil
 
         $description = $date->addChild('description');
 
-        // TODO change the phrase to the ODE's language
-        $string = $description->addChild('string', 'Fecha de creación de los metadatos');
+        $string = $description->addChild('string', $translator->trans('Metadata creation date', [], null, substr($langValue, 0, 2)));
         $string->addAttribute('language', $langValue);
 
         $metadataSchema = $metaMetadata->addChild('metadataSchema', 'LOM-ESv1.0');
@@ -1333,7 +1331,7 @@ class ExportXmlUtil
         $styleCssFiles = [];
 
         // Theme js
-        foreach ($theme->getJsFiles() as $jsFile) {
+        foreach ((array) $theme->getJsFiles() as $jsFile) {
             $themeJsPath = Constants::EXPORT_DIR_THEME.Constants::SLASH.$jsFile;
             $styleJsFiles[] = $resourcesPrefix.$themeJsPath;
         }
@@ -1345,7 +1343,7 @@ class ExportXmlUtil
         }
 
         // Theme css
-        foreach ($theme->getCssFiles() as $cssFile) {
+        foreach ((array) $theme->getCssFiles() as $cssFile) {
             $themeCssPath = Constants::EXPORT_DIR_THEME.Constants::SLASH.$cssFile;
             $styleCssFiles[] = $resourcesPrefix.$themeCssPath;
         }

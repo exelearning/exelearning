@@ -25,9 +25,9 @@ jobs:
 
       # Install Node.js and npm
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
-          node-version: '22'  # Use the version you need
+          node-version: '24'  # Use the version you need
           package-manager-cache: false 
 
       - name: Setup PHP
@@ -57,8 +57,9 @@ jobs:
       #     sudo snap install snapcraft --classic
 
       # Install composer dependencies
-      - name: Install composer dependencies
-        run: composer install --optimize-autoloader --no-interaction --no-progress
+      - name: Install composer dependencies (no dev)
+        run: |
+          composer install --no-dev --classmap-authoritative --optimize-autoloader --no-interaction --no-progress
 
       # Extract version from tag
       - name: Get version from tag or commit
@@ -77,37 +78,6 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: choco install make --yes
         shell: pwsh
-
-      # Use the Makefile to install the nativephp/php pacakge
-      - name: Install nativephp using Makefile
-        run: |
-          make install-php-bin
-        shell: bash
-
-      # Remove unnecessary PHP versions on each platform
-      - name: Remove unnecessary PHP versions (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          rm -f vendor/nativephp/php-bin/bin/linux/x64/php-8.3.zip
-          rm -rf vendor/nativephp/php-bin/bin/linux/arm64/          
-          rm -rf vendor/nativephp/php-bin/bin/mac
-          rm -rf vendor/nativephp/php-bin/bin/win
-
-      - name: Remove unnecessary PHP versions (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          rm -f vendor/nativephp/php-bin/bin/mac/arm64/php-8.3.zip
-          rm -f vendor/nativephp/php-bin/bin/mac/x86/php-8.3.zip
-          rm -rf vendor/nativephp/php-bin/bin/linux
-          rm -rf vendor/nativephp/php-bin/bin/win
-
-      - name: Remove unnecessary PHP versions (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: |
-          rm -f vendor/nativephp/php-bin/bin/win/x64/php-8.3.zip
-          rm -rf vendor/nativephp/php-bin/bin/mac
-          rm -rf vendor/nativephp/php-bin/bin/linux
 
       - name: Decode Windows certificate
         if: matrix.os == 'windows-latest'
@@ -170,8 +140,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-
+        os: [ubuntu-latest, macos-latest, windows-latest]        
     steps:
       - name: Download installers
         uses: actions/download-artifact@v5
@@ -180,26 +149,13 @@ jobs:
           path: installers
 
       # ---------- Ubuntu test ----------
-      - name: Set up Node.js (for CDP)
-        if: matrix.os == 'ubuntu-latest'
-
-        uses: actions/setup-node@v5
-        with:
-          node-version: '24'
-          package-manager-cache: false
-
-      - name: Install CDP helper
-        if: matrix.os == 'ubuntu-latest'
-        run: npm i chrome-remote-interface
-        shell: bash
-
       - name: Test install on Linux (.deb only)
         if: matrix.os == 'ubuntu-latest'
         run: |
           set -euo pipefail
 
           sudo apt-get update
-          sudo apt-get install -y xvfb xdotool imagemagick curl openbox || true
+          sudo apt-get install -y xvfb xdotool imagemagick curl openbox dbus-x11 || true
           sudo apt-get install -y --no-install-recommends \
             libgtk-3-0 libnss3 libxss1 libgbm1 libxshmfence1 libdrm2 \
             libatk-bridge2.0-0 libatspi2.0-0 libx11-xcb1 libxtst6 || true
@@ -207,7 +163,7 @@ jobs:
 
           installer=$(ls installers/*.deb 2>/dev/null || true)
           if [ -z "$installer" ]; then echo "No .deb installer found" >&2; exit 1; fi
-          sudo dpkg -i "$installer" || sudo apt-get -f install -y
+          sudo apt-get install -y "./$installer" || { sudo apt-get -f install -y && sudo apt-get install -y "./$installer"; }
 
           # X virtual
           Xvfb :99 -screen 0 1280x800x24 >/tmp/xvfb.log 2>&1 &
@@ -217,16 +173,17 @@ jobs:
           openbox >/tmp/openbox.log 2>&1 &
           sleep 1
 
-          export ALLOW_UI_IN_CI=1
           export ELECTRON_DISABLE_SANDBOX=1
           export ELECTRON_DISABLE_GPU=1
 
+          echo "Opening eXeLearning app..."
           app_cmd="/opt/eXeLearning/exelearning"
           command -v exelearning >/dev/null 2>&1 && app_cmd="$(command -v exelearning)" || true
-          "$app_cmd" --remote-debugging-port=9222 > ubuntu-app.log 2>&1 &
+          dbus-run-session -- "$app_cmd" > ubuntu-app.log 2>&1 &
           APP_PID=$!
           echo "App pid: $APP_PID"
 
+          echo "Waiting until eXeLearning is opened..."
           # Wait until the server responds or the window appears
           end=$((SECONDS + ${APP_BOOT_TIMEOUT:-120}))
           until curl -sf "http://localhost:${APP_PORT:-41309}/" >/dev/null 2>&1 || \
@@ -235,38 +192,14 @@ jobs:
             sleep 1
           done
 
-          # Activate window / screenshot 1
-          WID=$(xdotool search --name "eXeLearning" | head -n1 || true)
-          [ -n "$WID" ] && xdotool windowactivate "$WID" || true
+          echo "eXeLearning is already opened, taking first screenshot..."
           sleep ${SCREENSHOT_DELAY:-4}
           import -display :99 -window root ubuntu-screenshot-1.png || true
 
-          # --- CDP: click "Preview" without keys ---
-          node - <<'NODE'
-          const CDP = require('chrome-remote-interface');
-          (async () => {
-            const targets = await CDP.List();
-            // el renderer principal suele tener la URL de tu servidor embebido
-            const target =
-              targets.find(t => (t.url||'').includes('http://localhost:41309')) ||
-              targets.find(t => (t.title||'').includes('eXeLearning')) ||
-              targets[0];
-            const client = await CDP({ target });
-            const { Runtime } = client;
-            await Runtime.evaluate({ expression: `
-              (function(){
-                const btn = document.getElementById('navbar-button-preview');
-                if (btn) btn.click();
-                else if (window.eXeLearning?.app?.menu?.navbarFile?.previewEvent) {
-                  window.eXeLearning.app.menu.navbarFile.previewEvent();
-                }
-                'ok';
-              })();
-            `});
-            await client.close();
-          })();
-          NODE
+          echo "Sending Ctrl+P to the current focused window..."          
+          xdotool key ctrl+p
 
+          echo "Taking second screenshot..."
           sleep ${SCREENSHOT_DELAY:-4}
           import -display :99 -window root ubuntu-screenshot-2.png || true
 
@@ -291,7 +224,6 @@ jobs:
           cp -R "$APP_PATH" /Applications/
           hdiutil detach "$VOL" || true
 
-          export ALLOW_UI_IN_CI=1
           export ELECTRON_DISABLE_GPU=1
 
           # Open app and wait for readiness
@@ -320,89 +252,128 @@ jobs:
           LOG2="$HOME/Library/Application Support/eXeLearning/log/main.log"
           if [ -f "$LOG1" ]; then cp "$LOG1" mac-app.log; elif [ -f "$LOG2" ]; then cp "$LOG2" mac-app.log; fi
 
-      # ---------- Windows test ----------
-      - name: Test install on Windows (NSIS .exe only)
+
+      # ---------- Windows test (auto-launch after install) ----------
+      - name: Test install on Windows (auto-launch after install)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          $exe = Get-ChildItem installers\*.exe | Select-Object -First 1
-          if (-not $exe) { Write-Error "No NSIS .exe installer found"; exit 1 }
-          Start-Process $exe.FullName -ArgumentList "/S" -Wait -NoNewWindow
+          $ErrorActionPreference = 'Stop'
 
-          # Actively poll for installed eXeLearning.exe until timeout
-          $timeoutSec = [int]($env:INSTALL_POLL_TIMEOUT ?? 240)
-          $intervalSec = [int]($env:INSTALL_POLL_INTERVAL ?? 2)
-          $deadline = (Get-Date).AddSeconds($timeoutSec)
+          # Settings
+          $procName       = 'eXeLearning'
+          $port           = [int]($env:APP_PORT ?? 41309)
+          $installTimeout = [int]($env:INSTALL_POLL_TIMEOUT ?? 240)
+          $bootTimeout    = [int]($env:APP_BOOT_TIMEOUT ?? 120)
+          $shotDelay      = [int]($env:SCREENSHOT_DELAY ?? 4)
+
+          # Find installer (NSIS "Setup.exe")
+          $installer = Get-ChildItem installers\*Setup*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $installer) { throw "No Windows installer found in 'installers'." }
+
+          # Install; with runAfterFinish=true the app should auto-launch
+          Start-Process $installer.FullName -Wait -NoNewWindow
+
+          # Wait for the auto-launched process to appear
+          $deadline = (Get-Date).AddSeconds($installTimeout)
+          $proc = $null
           do {
-            $found = $false
-            if (Test-Path "C:\Program Files\eXeLearning\eXeLearning.exe") { $found = $true }
-            elseif (Test-Path "C:\Program Files (x86)\eXeLearning\eXeLearning.exe") { $found = $true }
-            elseif (Test-Path (Join-Path $env:LOCALAPPDATA "Programs\eXeLearning\eXeLearning.exe")) { $found = $true }
-            if (-not $found) { Start-Sleep -Seconds $intervalSec }
-          } until ($found -or (Get-Date) -ge $deadline)
+            $proc = Get-Process -Name $procName -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $proc) { Start-Sleep -Seconds 1 }
+          } until ($proc -or (Get-Date) -ge $deadline)
 
-          $exePath = "C:\Program Files\eXeLearning\eXeLearning.exe"
-          if (-not (Test-Path $exePath)) { $exePath = "C:\Program Files (x86)\eXeLearning\eXeLearning.exe" }
-          if (-not (Test-Path $exePath)) { $exePath = Join-Path $env:LOCALAPPDATA "Programs\eXeLearning\eXeLearning.exe" }
-          if (-not (Test-Path $exePath)) { Write-Error "eXeLearning.exe not found after install"; exit 1 }
-          Write-Host "Found eXeLearning.exe at: $exePath"
+          # Fallback: if auto-launch didn't happen, locate and launch manually
+          if (-not $proc) {
+            Write-Host "Auto-launch not detected; locating installed EXE to launch manually..."
+            $exePath = $null
+            $exePath = @(
+              (Join-Path $env:LOCALAPPDATA 'Programs\eXeLearning\eXeLearning.exe'),
+              (Join-Path ${env:ProgramFiles} 'eXeLearning\eXeLearning.exe'),
+              (Join-Path ${env:ProgramFiles(x86)} 'eXeLearning\eXeLearning.exe')
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $exePath) {
+              $exePath = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object FullName
+            }
+            if (-not $exePath) { throw "Installed EXE not found to launch." }
 
-          $env:ALLOW_UI_IN_CI = "1"
+            [Environment]::SetEnvironmentVariable("ELECTRON_ENABLE_LOGGING","1","Process")
+            [Environment]::SetEnvironmentVariable("ELECTRON_DISABLE_GPU","1","Process")
 
-          # Load assemblies and launch
-          Add-Type -AssemblyName System.Windows.Forms
-          Add-Type -AssemblyName System.Drawing
-          [System.Windows.Forms.Application]::EnableVisualStyles()
+            $proc = Start-Process -FilePath $exePath -PassThru
+            try { $null = $proc.WaitForInputIdle(10000) } catch {}
+          }
 
-          $proc = Start-Process -FilePath $exePath -PassThru
-          $timeoutSec = [int]($env:APP_BOOT_TIMEOUT ?? 120)
-          try { $proc.WaitForInputIdle(10000) } catch {}
-          $end = (Get-Date).AddSeconds($timeoutSec)
+          # Readiness: either window handle is available OR HTTP port responds
+          $ready = $false
+          $deadline = (Get-Date).AddSeconds($bootTimeout)
           do {
-            Start-Sleep -Milliseconds 900
-            try { $proc.Refresh() } catch {}
-            $ready = $proc.MainWindowHandle -ne 0
+            Start-Sleep -Milliseconds 700
+
+            try { $alive = -not $proc.HasExited } catch { $alive = $true }
+            if (-not $alive) { throw "Process exited before readiness." }
+
+            # 1) Window handle
+            if ($proc.MainWindowHandle -ne 0) { $ready = $true }
+
+            # 2) HTTP endpoint
             if (-not $ready) {
               try {
-                $resp = Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 -Uri ("http://localhost:{0}/" -f ($env:APP_PORT ?? 41309)) -ErrorAction SilentlyContinue
+                $resp = Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 -Uri ("http://localhost:{0}/" -f $port) -ErrorAction SilentlyContinue
                 if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) { $ready = $true }
               } catch {}
             }
-          } until ($ready -or (Get-Date) -ge $end)
+          } until ($ready -or (Get-Date) -ge $deadline)
 
-          # Bring window to front (by title or by PID)
-          $ws = New-Object -ComObject WScript.Shell
-          $null = $ws.AppActivate("eXeLearning")
-          if ($proc.MainWindowHandle -eq 0) {
-            # fallback: try by generic title "Untitled document" if that's the case
-            $null = $ws.AppActivate("Untitled")
+          if (-not $ready) {
+            Write-Error "Timed out waiting for readiness ($bootTimeout s)."
+            $log1 = Join-Path $env:APPDATA "eXeLearning\logs\main.log"
+            $log2 = Join-Path $env:APPDATA "eXeLearning\log\main.log"
+            if (Test-Path $log1) { Get-Content $log1 -Tail 200 }
+            elseif (Test-Path $log2) { Get-Content $log2 -Tail 200 }
+            exit 1
           }
 
-          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 4)
+          # Bring window to foreground (best-effort)
+          try {
+            $ws = New-Object -ComObject WScript.Shell
+            $null = $ws.AppActivate($procName)
+            if ($proc.MainWindowHandle -eq 0) { $null = $ws.AppActivate("Untitled") }
+          } catch {}
 
-          # First screenshot
+          Start-Sleep -Seconds $shotDelay
+
+          # Screenshot 1
+          Add-Type -AssemblyName System.Windows.Forms
+          Add-Type -AssemblyName System.Drawing
+          [System.Windows.Forms.Application]::EnableVisualStyles()
           $bmp = New-Object Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
           $g = [Drawing.Graphics]::FromImage($bmp)
           $g.CopyFromScreen([System.Drawing.Point]::Empty,[System.Drawing.Point]::Empty,$bmp.Size)
           $bmp.Save("windows-screenshot-1.png")
           $g.Dispose(); $bmp.Dispose()
 
-          # Send Ctrl+P, wait and second screenshot
+          # Send Ctrl+P and Screenshot 2
           [System.Windows.Forms.SendKeys]::SendWait("^p")
-
-          Start-Sleep -Seconds ($env:SCREENSHOT_DELAY ?? 3)
-
+          Start-Sleep -Seconds ([int]($env:SCREENSHOT_DELAY ?? 3))
           $bmp2 = New-Object Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
           $g2 = [Drawing.Graphics]::FromImage($bmp2)
           $g2.CopyFromScreen([System.Drawing.Point]::Empty,[System.Drawing.Point]::Empty,$bmp2.Size)
           $bmp2.Save("windows-screenshot-2.png")
           $g2.Dispose(); $bmp2.Dispose()
 
-          # Logs (electron-log)
+          # Collect logs if available
           $log1 = Join-Path $env:APPDATA "eXeLearning\logs\main.log"
           $log2 = Join-Path $env:APPDATA "eXeLearning\log\main.log"
           if (Test-Path $log1) { Copy-Item $log1 windows-app.log -ErrorAction SilentlyContinue }
           elseif (Test-Path $log2) { Copy-Item $log2 windows-app.log -ErrorAction SilentlyContinue }
+
+          # Optional: close the app
+          try {
+            if ($proc.MainWindowHandle -ne 0) { $proc.CloseMainWindow() | Out-Null }
+            Start-Sleep -Seconds 2
+            if (-not $proc.HasExited) { $proc.Kill() }
+          } catch {}
+
 
       - name: Upload screenshots and logs (per OS)
         uses: actions/upload-artifact@v4

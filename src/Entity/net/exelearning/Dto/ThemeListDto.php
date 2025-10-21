@@ -59,7 +59,7 @@ class ThemeListDto extends BaseDto
                     $user
                 );
                 $response['path'] = $themeDir;
-                // Delete theme dir
+                // Delete style dir
                 try {
                     $fileHelper->deleteDir($themeDir);
                     $response['deleted'] = true;

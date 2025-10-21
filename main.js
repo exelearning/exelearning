@@ -8,14 +8,14 @@ const fs                              = require('fs');
 const AdmZip                          = require('adm-zip');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
-       
+
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged
   ? process.resourcesPath
   : app.getAppPath();
 
 // Optional: force a predictable path/name
-log.transports.file.resolvePath = () =>
+log.transports.file.resolvePathFn = () =>
   path.join(app.getPath('userData'), 'logs', 'main.log');
 
 // Mirror console.* to electron-log so GUI builds persist logs to file
@@ -28,6 +28,8 @@ console.error = (...args) => { log.error(...args); origConsole.error(...args); }
 process.on('uncaughtException', (e) => log.error('uncaughtException:', e));
 process.on('unhandledRejection', (e) => log.error('unhandledRejection:', e));
 
+autoUpdater.logger = log;
+autoUpdater.allowPrerelease = true;
 
 // ──────────────  i18n bootstrap  ──────────────
 // Pick correct path depending on whether the app is packaged.
@@ -46,72 +48,6 @@ i18n.configure({
 });
 
 i18n.setLocale(defaultLocale);
-
-
-// Logger
-autoUpdater.logger = log;
-autoUpdater.logger.transports.file.level = 'info';
-
-// Do not download until the user confirms
-autoUpdater.autoDownload = false;
-
-/**
- * Initialise listeners and launch the first check.
- * Call this once your main window is ready.
- * @param {BrowserWindow} win - Main renderer window.
- */
-function initUpdates(win) {
-
-// IMPORTANT! REMOVE THIS WHEN OPEN THE GH REPOSITORY!
-if (!process.env.GH_TOKEN && app.isPackaged ) {
-  log.warn('GH_TOKEN not present: updater disabled on this boot');
-  return;
-}
-// IMPORTANT! REMOVE THIS WHEN OPEN THE GH REPOSITORY!
-
-  const showBox = (opts) => dialog.showMessageBox(win, opts);
-
-  autoUpdater.on('error', (err) => {
-    dialog.showErrorBox(
-      i18n.__('updater.errorTitle'),
-      err == null ? 'unknown' : (err.stack || err).toString()
-    );
-  });
-
-  autoUpdater.on('update-available', (info) => {
-    showBox({
-      type: 'info',
-      title:   i18n.__('updater.updateAvailableTitle'),
-      message: i18n.__('updater.updateAvailableMessage', { version: info.version }),
-      buttons: [i18n.__('updater.download'), i18n.__('updater.later')],
-      defaultId: 0,
-      cancelId: 1
-    }).then(({ response }) => {
-      if (response === 0) autoUpdater.downloadUpdate();
-    });
-  });
-
-  autoUpdater.on('update-not-available', () => {
-    log.info('No update found');
-  });
-
-  autoUpdater.on('update-downloaded', () => {
-    showBox({
-      type: 'info',
-      title:   i18n.__('updater.readyTitle'),
-      message: i18n.__('updater.readyMessage'),
-      buttons: [i18n.__('updater.restart'), i18n.__('updater.later')],
-      defaultId: 0,
-      cancelId: 1
-    }).then(({ response }) => {
-      if (response === 0) setImmediate(() => autoUpdater.quitAndInstall());
-    });
-  });
-
-  // Background check on every launch
-  autoUpdater.checkForUpdates();
-}
-
 
 let phpBinaryPath;
 let appDataPath;
@@ -369,7 +305,7 @@ function attachOpenHandler(win) {
       width,
       height,
       modal: false,
-      show: ALLOW_UI_IN_CI ? true : !IS_E2E,
+      show: true,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -395,9 +331,6 @@ function attachOpenHandler(win) {
 
 }
 
-const ALLOW_UI_IN_CI = process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true';
-const IS_E2E = process.env.E2E_TEST === '1' || (process.env.CI === 'true' && !ALLOW_UI_IN_CI);
-
 function createWindow() {
 
   initializePaths(); // Initialize paths before using them
@@ -410,11 +343,8 @@ function createWindow() {
   // Ensure all required directories exist and try to set permissions
   ensureAllDirectoriesWritable(env);
 
-// Skip loading window in E2E/CI
-if (!IS_E2E) {
- // Create the loading window
+  // Create the loading window
   createLoadingWindow();
-}
 
   // Check if the database exists and run Symfony commands
   checkAndCreateDatabase();
@@ -443,9 +373,7 @@ if (!IS_E2E) {
         preload: path.join(__dirname, 'preload.js'),
       },
       tabbingIdentifier: 'mainGroup',
-      // show: false
-      show: ALLOW_UI_IN_CI ? true : !IS_E2E,
-      // show: !IS_E2E  // don't actually show in E2E/CI
+      show: true,
       // titleBarStyle: 'customButtonsOnHover', // hidden title bar on macOS
     });
     
@@ -453,12 +381,10 @@ if (!IS_E2E) {
     mainWindow.setMenuBarVisibility(isDev);
     
     // Maximize the window and open it
-    if (!IS_E2E) {
-        mainWindow.maximize();
-        mainWindow.show();
-    }
+    mainWindow.maximize();
+    mainWindow.show();
 
-    if (process.env.ALLOW_UI_IN_CI === '1' || process.env.ALLOW_UI_IN_CI === 'true') {
+    if (process.env.CI === '1' || process.env.CI === 'true') {
       mainWindow.setAlwaysOnTop(true, 'screen-saver');
       mainWindow.show();
       mainWindow.focus();
@@ -594,10 +520,7 @@ if (!IS_E2E) {
         }
       }
     });
-
-    if (!IS_E2E) {
-      initUpdates(mainWindow);   // Init updater logic
-    }
+  
     // If any event blocks window closing, remove it
     mainWindow.on('close', (e) => {
       // This is to ensure any preventDefault() won't stop the closing
@@ -614,6 +537,9 @@ if (!IS_E2E) {
     handleAppExit();
   });
 }
+
+
+
 
 function createLoadingWindow() {
   loadingWindow = new BrowserWindow({
@@ -816,9 +742,18 @@ if (!gotTheLock) {
   });
 }
 
-
-if (IS_E2E) app.disableHardwareAcceleration();
 app.whenReady().then(createWindow);
+
+//-------------------------------------------------------------------
+// Auto updates
+//
+// This will immediately download an update, then install when the
+// app quits.
+//-------------------------------------------------------------------
+app.on('ready', function()  {
+  autoUpdater.checkForUpdatesAndNotify();
+});
+
 
 app.on('window-all-closed', function () {
   if (phpServer) {
@@ -969,6 +904,8 @@ function runSymfonyCommands() {
     // We already created FILES_DIR in ensureAllDirectoriesWritable().
     // Also check other required directories if needed.
 
+    const iniArgs = phpIniArgs();
+
     const publicDir = path.join(basePath, 'public');
     if (!fs.existsSync(publicDir)) {
       showErrorDialog(`The public directory was not found at the path: ${publicDir}`);
@@ -982,7 +919,7 @@ function runSymfonyCommands() {
     }
     try {
       console.log('Clearing Symfony cache...');
-      execFileSync(phpBinaryPath, ['bin/console', 'cache:clear'], {
+      execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'cache:clear'], {
         env: env,
         cwd: basePath,
         windowsHide: true,
@@ -993,7 +930,7 @@ function runSymfonyCommands() {
     }
 
     console.log('Creating database tables in SQLite...');
-    execFileSync(phpBinaryPath, ['bin/console', 'doctrine:schema:update', '--force'], {
+    execFileSync(phpBinaryPath, [...iniArgs, 'bin/console', 'doctrine:schema:update', '--force'], {
       env: env,
       cwd: basePath,
       windowsHide: true,
@@ -1004,9 +941,13 @@ function runSymfonyCommands() {
     if (!app.isPackaged) {
       try {
         console.log('Installing assets in public (dev/local only)...');
-        execFileSync(phpBinaryPath, ['bin/console', 'assets:install', 'public', '--no-debug', '--env=prod'], {
-          env, cwd: basePath, windowsHide: true, stdio: 'inherit',
-        });
+        execFileSync(
+          phpBinaryPath,
+          [...iniArgs, 'bin/console', 'assets:install', 'public', '--no-debug', '--env=prod'],
+          {
+            env, cwd: basePath, windowsHide: true, stdio: 'inherit',
+          },
+        );
       } catch (e) {
         console.warn('Skipping assets:install:', e.message);
       }
@@ -1015,19 +956,21 @@ function runSymfonyCommands() {
     }
 
     console.log('Creating test user...');
-    execFileSync(phpBinaryPath, [
-      'bin/console',
-      'app:create-user',
-      customEnv.TEST_USER_EMAIL,
-      customEnv.TEST_USER_PASSWORD,
-      customEnv.TEST_USER_USERNAME,
-      '--no-fail',
-    ], {
-      env: env,
-      cwd: basePath,
-      windowsHide: true,
-      stdio: 'inherit',
-    });
+    execFileSync(
+      phpBinaryPath,
+      [
+        ...iniArgs,
+        'bin/console',
+        'app:create-user',
+        customEnv.TEST_USER_EMAIL,
+        customEnv.TEST_USER_PASSWORD,
+        customEnv.TEST_USER_USERNAME,
+        '--no-fail',
+      ],
+      {
+        env, cwd: basePath, windowsHide: true, stdio: 'inherit',
+      },
+    );
 
     console.log('Symfony commands executed successfully.');
   } catch (err) {
@@ -1037,6 +980,31 @@ function runSymfonyCommands() {
 }
 
 function phpIniArgs() {
+  const maxExecutionTime = String(process.env.PHP_MAX_EXECUTION_TIME ?? '600');
+  const maxInputTime = String(process.env.PHP_MAX_INPUT_TIME ?? maxExecutionTime);
+  const memoryLimit = String(process.env.PHP_MEMORY_LIMIT ?? '512M');
+  const uploadMaxFilesize = String(process.env.PHP_UPLOAD_MAX_FILESIZE ?? '512M');
+  let postMaxSize = String(process.env.PHP_POST_MAX_SIZE ?? uploadMaxFilesize);
+
+  // Ensure POST payload limit is never lower than the upload limit.
+  const parseSize = (value) => {
+    if (!value) return 0;
+    const match = String(value).trim().match(/^(\d+)([KMG]?)/i);
+    if (!match) return Number(value) || 0;
+    const quantity = Number(match[1]);
+    const unit = match[2]?.toUpperCase();
+    switch (unit) {
+      case 'G': return quantity * 1024 * 1024 * 1024;
+      case 'M': return quantity * 1024 * 1024;
+      case 'K': return quantity * 1024;
+      default: return quantity;
+    }
+  };
+
+  if (parseSize(postMaxSize) < parseSize(uploadMaxFilesize)) {
+    postMaxSize = uploadMaxFilesize;
+  }
+
   return [
     '-dopcache.enable=1',
     '-dopcache.enable_cli=1',
@@ -1046,6 +1014,11 @@ function phpIniArgs() {
     '-dopcache.validate_timestamps=0',
     '-drealpath_cache_size=4096k',
     '-drealpath_cache_ttl=600',
+    `-dmax_execution_time=${maxExecutionTime}`,
+    `-dmax_input_time=${maxInputTime}`,
+    `-dmemory_limit=${memoryLimit}`,
+    `-dupload_max_filesize=${uploadMaxFilesize}`,
+    `-dpost_max_size=${postMaxSize}`,
   ];
 }
 
@@ -1132,43 +1105,116 @@ function showErrorDialog(message) {
   dialog.showErrorBox('Error', message);
 }
 
+// Helper: resolve platform and arch folders used in extraResources
+function resolvePhpRuntimeRoot() {
+  const plat = process.platform === 'win32' ? 'win' : (process.platform === 'darwin' ? 'mac' : 'linux');
+  // En mac "universal" de Electron puede ejecutarse como arm64 o x64 (Rosetta).
+  const arch = (process.platform === 'darwin')
+    ? (process.arch === 'arm64' ? 'arm64' : 'x64')
+    : 'x64';
+
+  // Todo lo que copies con extraResources vive fuera del asar, bajo resourcesPath.
+  // Estructura final esperada: <resources>/php/<plat>/<arch>/(php.exe|php)
+  return path.join(process.resourcesPath, 'php', plat, arch);
+}
+
 /**
- * Gets the path to the embedded PHP binary, extracting it if needed.
- * 
- * @returns {string} The path to the PHP executable.
+ * Pick the first existing file from candidates.
+ * @param {string[]} candidates
+ */
+function pickExisting(candidates) {
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p) && fs.statSync(p).isFile()) return p;
+    } catch (_) {}
+  }
+  return null;
+}
+
+/**
+ * Ensure exec bit on POSIX.
+ * @param {string} p
+ */
+function ensureExecIfNeeded(p) {
+  if (process.platform !== 'win32') {
+    try { fs.chmodSync(p, 0o755); } catch (_) {}
+  }
+}
+
+/**
+ * Try to resolve system PHP for dev.
+ */
+function findSystemPhp() {
+  try {
+    const which = process.platform === 'win32' ? 'where' : 'which';
+    const out = execFileSync(which, ['php'], { windowsHide: true, stdio: 'pipe' })
+      .toString().split(/\r?\n/)[0].trim();
+    return out || null;
+  } catch (_) { return null; }
+}
+
+/**
+ * Resolve the embedded PHP binary path across mac (universal), Linux, and Windows.
+ * - macOS packaged: <Resources>/php/mac/php  (fat binary)
+ * - Linux packaged: <Resources>/php/linux/<arch>/php
+ * - Windows packaged: <Resources>/php/win/x64/php.exe
+ * - dev: ./runtime/php/... or fallback to system "php"
  */
 function getPhpBinaryPath() {
-  const versionTag = app.getVersion(); // o un hash del ZIP
-  const phpBinaryDir = path.join(app.getPath('userData'), 'php-bin', `php-8.4-${versionTag}`);
-  const phpBinName = process.platform === 'win32' ? 'php.exe' : 'php';
-  const phpBinaryPathFinal = path.join(phpBinaryDir, phpBinName);
+  const isPackaged = app.isPackaged;
+  const binWin = 'php.exe';
+  const binNix = 'php';
 
-  if (!fs.existsSync(phpBinaryPathFinal)) {
-    // Clean old php-bin
-    const root = path.join(app.getPath('userData'), 'php-bin');
-    try {
-      for (const d of fs.readdirSync(root)) {
-        if (d.startsWith('php-8.4-') && d !== `php-8.4-${versionTag}`) {
-          fs.rmSync(path.join(root, d), { recursive: true, force: true });
-        }
-      }
-    } catch (_) {}
-
-    fs.mkdirSync(phpBinaryDir, { recursive: true });
-
-    const phpZipPath = path.join(
-      basePath, 'vendor', 'nativephp', 'php-bin', 'bin',
-      process.platform === 'win32' ? 'win' : process.platform === 'darwin' ? 'mac' : 'linux',
-      process.arch === 'arm64' && process.platform === 'darwin' ? 'arm64' : 'x64',
-      'php-8.4.zip'
-    );
-
-    const zip = new (require('adm-zip'))(phpZipPath);
-    zip.extractAllTo(phpBinaryDir, true);
-    if (process.platform !== 'win32') fs.chmodSync(phpBinaryPathFinal, 0o755);
+  if (process.platform === 'darwin') {
+    // Universal: single FAT binary path in packaged app
+    const prod = path.join(process.resourcesPath, 'php', 'mac', binNix);
+    // In dev, keep arch layout from runtime/php/mac/<arch>/*
+    const devArch = (process.arch === 'arm64') ? 'arm64' : 'x64';
+    const dev = [
+      path.join(app.getAppPath(), 'runtime', 'php', 'mac', devArch, binNix),
+      path.join(app.getAppPath(), 'runtime', 'php', 'mac', devArch, 'php-8.4', 'bin', binNix),
+      path.join(app.getAppPath(), 'runtime', 'php', 'mac', devArch, 'php-8.4', binNix)
+    ];
+    const chosen = pickExisting(isPackaged ? [prod] : [...dev, prod]);
+    if (chosen) { ensureExecIfNeeded(chosen); return chosen; }
+    if (!isPackaged) { const sys = findSystemPhp(); if (sys) return sys; }
+    throw new Error('php-runtime-missing (mac): ' + [prod, ...dev].join(' | '));
   }
 
-  return phpBinaryPathFinal;
+  if (process.platform === 'linux') {
+    // Keep per-arch layout; default to x64. If someday arm64 is present, it will just work.
+    const arch = (process.arch === 'arm64') ? 'arm64' : 'x64';
+    const prod = path.join(process.resourcesPath, 'php', 'linux', arch, binNix);
+    const dev = [
+      path.join(app.getAppPath(), 'runtime', 'php', 'linux', arch, binNix),
+      path.join(app.getAppPath(), 'runtime', 'php', 'linux', arch, 'php-8.4', 'bin', binNix),
+      // Fallback to x64 in dev if you’re on arm64 but only prepared x64 runtime
+      ...(arch === 'arm64' ? [
+        path.join(app.getAppPath(), 'runtime', 'php', 'linux', 'x64', binNix),
+        path.join(app.getAppPath(), 'runtime', 'php', 'linux', 'x64', 'php-8.4', 'bin', binNix),
+      ] : []),
+    ];
+    const chosen = pickExisting(isPackaged ? [prod] : [...dev, prod]);
+    if (chosen) { ensureExecIfNeeded(chosen); return chosen; }
+    if (!isPackaged) { const sys = findSystemPhp(); if (sys) return sys; }
+    throw new Error('php-runtime-missing (linux): ' + [prod, ...dev].join(' | '));
+  }
+
+  if (process.platform === 'win32') {
+    // We ship x64 on Windows
+    const prod = path.join(process.resourcesPath, 'php', 'win', 'x64', binWin);
+    const dev = [
+      path.join(app.getAppPath(), 'runtime', 'php', 'win', 'x64', binWin),
+      path.join(app.getAppPath(), 'runtime', 'php', 'win', 'x64', 'php-8.4', 'php.exe'),
+      path.join(app.getAppPath(), 'runtime', 'php', 'win', 'x64', 'php-8.4', 'bin', 'php.exe'),
+    ];
+    const chosen = pickExisting(isPackaged ? [prod] : [...dev, prod]);
+    if (chosen) return chosen;
+    if (!isPackaged) { const sys = findSystemPhp(); if (sys) return sys; }
+    throw new Error('php-runtime-missing (win): ' + [prod, ...dev].join(' | '));
+  }
+
+  throw new Error(`unsupported platform: ${process.platform}`);
 }
 
 // Helper: translated or default fallback (handles missing/bad translations)

@@ -651,9 +651,9 @@ video {
     line-height: 35px;
     width: 35px;
     height: 35px;
-    background: #fff url(../img/exe_powered_logo.png) no-repeat 0 50%;
+    background: #fff url(../img/exe_powered_logo.png) no-repeat 3px 50%;
     display: block;
-    background-size: auto 23px;
+    background-size: auto 20px;
     text-decoration: none;
     transition: .5s;
     opacity: .8
