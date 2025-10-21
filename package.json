@@ -24,6 +24,7 @@
         "adm-zip": "^0.5.16",
         "chmodr": "^1.2.0",
         "electron-log": "^5.4.0",
+        "electron-notarize": "^1.2.2",
         "electron-updater": "^6.6.2",
         "i18n": "^0.15.1"
     },
@@ -51,6 +52,7 @@
             }
         ],
         "afterPack": "packaging/afterPack.js",
+        "afterSign": "packaging/notarize.js",
         "asar": true,
         "disableDefaultIgnoredFiles": true,
         "files": [
@@ -111,7 +113,10 @@
                 "from": "packaging/keys/",
                 "to": "keys/"
             },
-            { "from": "runtime/php", "to": "php" }
+            {
+                "from": "runtime/php",
+                "to": "php"
+            }
         ],
         "win": {
             "target": [
@@ -140,7 +145,13 @@
             "createDesktopShortcut": true,
             "createStartMenuShortcut": true,
             "shortcutName": "eXeLearning",
-            "preCompressedFileExtensions": [".zip", ".7z", ".gz", ".bz2", ".xz"]
+            "preCompressedFileExtensions": [
+                ".zip",
+                ".7z",
+                ".gz",
+                ".bz2",
+                ".xz"
+            ]
         },
         "msiWrapped": {
             "oneClick": true,
@@ -195,7 +206,9 @@
                     ]
                 }
             ],
-            "icon": "public/exe_elp.icns"        
+            "icon": "public/exe_elp.icns",
+            "entitlements": "packaging/entitlements.mac.plist",
+            "entitlementsInherit": "packaging/entitlements.mac.inherit.plist"
         }
     },
     "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"

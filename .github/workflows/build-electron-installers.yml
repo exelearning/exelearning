@@ -104,6 +104,9 @@ jobs:
           # Only set signing secrets if they exist
           WIN_CSC_LINK: ${{ secrets.CERT_P12 != '' && './windows-cert.pfx' || '' }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # choose publish mode depending on trigger:
           # - when triggered by a release.prereleased -> publish (PUBLISH=always)
           # - when triggered by push/merged PR -> do not publish (PUBLISH=never)
