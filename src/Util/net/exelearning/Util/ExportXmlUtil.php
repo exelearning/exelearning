@@ -345,6 +345,7 @@ class ExportXmlUtil
             ++$indexNode;
         }
 
+        $indexNode = 0;
         // Pages organization
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             if (isset($visiblesPages[$odeNavStructureSync->getOdePageId()])) {
@@ -382,6 +383,7 @@ class ExportXmlUtil
                 if (
                     isset($pagePropertiesDict['visibility'])
                     && 'false' === $pagePropertiesDict['visibility']
+                    && 0 != $indexNode
                 ) {
                     $visible = 'false';
                 }
@@ -389,6 +391,7 @@ class ExportXmlUtil
                 $item->addAttribute('isvisible', $visible);
 
                 $title = $item->addChild('title', $odePageName);
+                ++$indexNode;
             }
         }
 
