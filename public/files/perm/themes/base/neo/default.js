@@ -135,19 +135,18 @@ var myTheme = {
 
     // function that move the h2 outside the header
     movePageTitle: function () {
-
         const tryMove = () => {
             const $header = $('.page > header.page-header');
             const $title = $header.find('.page-title').first();
 
             // Search container of content
             let $content = $('.page-content').first();
-            if (!$content.length) $content = $('.content, main .content').first();
+            if (!$content.length)
+                $content = $('.content, main .content').first();
             if (!$content.length) $content = $('#main, #content').first();
             if (!$content.length && $header.length)
                 $content = $header.nextAll(':not(header)').first();
-            if (!$content.length && $header.length)
-                $content = $header.parent();
+            if (!$content.length && $header.length) $content = $header.parent();
 
             if ($header.length && $title.length && $content.length) {
                 $content.prepend($title); // move it to the start
@@ -162,7 +161,7 @@ var myTheme = {
             if (tryMove()) observer.disconnect();
         });
         observer.observe(document.body, { childList: true, subtree: true });
-    }
+    },
     // 🔼
 };
 
