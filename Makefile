@@ -171,12 +171,11 @@ test-e2e-offline: check-docker check-env css-dev
 	@docker compose --profile e2e run --rm -e APP_ENV=test -e APP_ONLINE_MODE=0 exelearning composer --no-cache phpunit-e2e-offline
 
 # Test the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-test-electron: install-php-bin
+test-electron: fail-on-windows install-php-bin
 	@echo "Running Electron E2E tests with Playwright..."
 	yarn install
 	#yarn test
 	yarn playwright test tests/electron
-	$(MAKE) remove-php-bin
 
 # Open a shell inside the exelearning container ready for running phpunit
 test-shell: check-docker check-env css-dev
@@ -461,18 +460,47 @@ export-elp-ims:
 	@$(MAKE) export-elp FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
 
-# Install nativephp/php-bin package temporarily without modifying composer.json
+# Temporarily installs nativephp/php-bin, extracts the runtime to runtime/php/...,
+# and removes the dev package so vendor/nativephp/php-bin is not included in the build.
+# Works on macOS, Linux, and Git Bash (MSYS/MINGW/CYGWIN). Does not use PowerShell.
 install-php-bin:
-	@echo "Installing nativephp/php-bin temporarily..."
-	composer require --dev nativephp/php-bin
+	@echo "Fetching nativephp/php-bin without dev mode (temp dir)..."
+	@set -e; \
+	TMPDIR="$$(mktemp -d)"; \
+	composer create-project --no-dev --no-scripts --no-interaction --prefer-dist nativephp/php-bin "$$TMPDIR/php-bin"; \
+	OS_NAME="$$(uname -s)"; \
+	extract_zip() { _zip="$$1"; _dest="$$2"; rm -rf "$$_dest"; mkdir -p "$$_dest"; \
+	  if command -v unzip >/dev/null 2>&1; then unzip -q -o "$$_zip" -d "$$_dest"; else bsdtar -xf "$$_zip" -C "$$_dest"; fi; }; \
+	case "$$OS_NAME" in \
+	  Linux) \
+	    echo "Preparing embedded PHP for Linux..."; \
+	    extract_zip "$$TMPDIR/php-bin/bin/linux/x64/php-8.4.zip" "runtime/php/linux/x64"; \
+	    [ -x "runtime/php/linux/x64/php-8.4/bin/php" ] && ln -sf "php-8.4/bin/php" "runtime/php/linux/x64/php" || true ;; \
+	  Darwin) \
+	    echo "Preparing embedded PHP for macOS..."; \
+	    extract_zip "$$TMPDIR/php-bin/bin/mac/arm64/php-8.4.zip" "runtime/php/mac/arm64"; \
+	    extract_zip "$$TMPDIR/php-bin/bin/mac/x64/php-8.4.zip"   "runtime/php/mac/x64"; \
+	    copy_php_bin() { root="$$1"; dest="$$root/php"; src=""; \
+	      for c in "$$root/php" "$$root/php-8.4/php" "$$root/php-8.4/bin/php" "$$root/bin/php"; do [ -x "$$c" ] && src="$$c" && break; done; \
+	      [ -z "$$src" ] && { echo "PHP binary not found under $$root"; exit 1; }; \
+	      [ "$$src" != "$$dest" ] && cp -f "$$src" "$$dest"; chmod +x "$$dest" || true; }; \
+	    copy_php_bin "runtime/php/mac/arm64"; copy_php_bin "runtime/php/mac/x64" ;; \
+	  MINGW*|MSYS*|CYGWIN*) \
+	    echo "Preparing embedded PHP for Windows (Git Bash)..."; \
+	    extract_zip "$$TMPDIR/php-bin/bin/win/x64/php-8.4.zip" "runtime/php/win/x64"; \
+	    if [ -f "runtime/php/win/x64/php-8.4/php.exe" ]; then \
+	      cp -f "runtime/php/win/x64/php-8.4/php.exe" "runtime/php/win/x64/php.exe"; \
+	    elif [ -f "runtime/php/win/x64/php-8.4/bin/php.exe" ]; then \
+	      cp -f "runtime/php/win/x64/php-8.4/bin/php.exe" "runtime/php/win/x64/php.exe"; \
+	    fi ;; \
+	  *) echo "Unsupported OS"; exit 1 ;; \
+	esac; \
+	rm -rf "$$TMPDIR"; \
+	echo "Embedded PHP runtime prepared under runtime/php/*"
 
-# Remove nativephp/php-bin package without modifying composer.json
-remove-php-bin:
-	@echo "Removing nativephp/php-bin temporarily..."
-	composer remove --dev nativephp/php-bin --no-scripts
 
 # Run the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-run-app: install-php-bin css-node
+run-app: fail-on-windows css-node install-php-bin
 ifeq ($(SYSTEM_OS),windows)
 	powershell -Command "$$env:EXELEARNING_DEBUG_MODE='$(DEBUG)'; yarn start"	
 	#set EXELEARNING_DEBUG_MODE=$(DEBUG) && yarn start
@@ -480,11 +508,9 @@ else
 	EXELEARNING_DEBUG_MODE=$(DEBUG) yarn start
 endif
 
-	$(MAKE) remove-php-bin
-
 # Package the application with the specified version
 # Usage: make package VERSION=1.0.0
-package: install-php-bin css-node
+package: fail-on-windows css-node install-php-bin
 ifndef VERSION
 	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
 endif
@@ -507,9 +533,6 @@ endif
 	@echo "Restoring fixed version v0.0.0-alpha in Constants.php and 0.0.0-alpha in package.json..."
 	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = 'v0.0.0-alpha';|" src/Constants.php && rm -f src/Constants.php.bak
 	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"0.0.0-alpha\"|" package.json && rm -f package.json.bak
-	
-	# Remove php-bin
-	$(MAKE) remove-php-bin
 	
 	@echo "Package created successfully with version $(VERSION)"
 	@echo "Installer files available in the dist/ directory"

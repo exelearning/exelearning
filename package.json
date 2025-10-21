@@ -50,6 +50,7 @@
                 "releaseType": "prerelease"
             }
         ],
+        "afterPack": "packaging/afterPack.js",
         "asar": true,
         "disableDefaultIgnoredFiles": true,
         "files": [
@@ -109,7 +110,8 @@
             {
                 "from": "packaging/keys/",
                 "to": "keys/"
-            }
+            },
+            { "from": "runtime/php", "to": "php" }
         ],
         "win": {
             "target": [
@@ -124,6 +126,12 @@
                     "arch": [
                         "x64"
                     ]
+                },
+                {
+                    "target": "portable",
+                    "arch": [
+                        "x64"
+                    ]
                 }
             ],
             "icon": "public/exelearning.ico",
@@ -133,15 +141,20 @@
         },
         "nsis": {
             "oneClick": true,
+            "runAfterFinish": true,
             "perMachine": false,
             "createDesktopShortcut": true,
             "createStartMenuShortcut": true,
-            "shortcutName": "eXeLearning"
+            "shortcutName": "eXeLearning",
+            "preCompressedFileExtensions": [".zip", ".7z", ".gz", ".bz2", ".xz"]
         },
         "msiWrapped": {
-            "runAfterFinish": false,
-            "perMachine": false,
-            "oneClick": true
+            "oneClick": true,
+            "runAfterFinish": true,
+            "perMachine": false
+        },
+        "portable": {
+          "artifactName": "${productName}-${version}-portable.${ext}"
         },
         "linux": {
             "executableName": "exelearning",
@@ -191,7 +204,7 @@
                     ]
                 }
             ],
-            "icon": "public/exe_elp.icns"
+            "icon": "public/exe_elp.icns"        
         }
     },
     "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
