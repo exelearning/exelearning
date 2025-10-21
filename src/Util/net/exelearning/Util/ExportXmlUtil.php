@@ -2393,7 +2393,7 @@ class ExportXmlUtil
         if (isset($idevicePropertiesDict['visibility']) && 'false' == $idevicePropertiesDict['visibility']) {
             $class .= ' novisible';
         }
-        
+
         // Teacher-only checkbox on iDevices
         if (
             (isset($idevicePropertiesDict['teacherOnly']) && 'true' == $idevicePropertiesDict['teacherOnly'])
@@ -2825,6 +2825,12 @@ class ExportXmlUtil
         if (!isset($odeNavStructureSyncs[$indexNode])) {
             return false;
         }
+
+        if (0 == $indexNode) {
+            // The first page is always visible
+            return true;
+        }
+
         $currentNavSync = $odeNavStructureSyncs[$indexNode];
 
         // Get properties of the current page
