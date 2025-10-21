@@ -14,18 +14,18 @@
 - Interactive Video iDevice decoding problem
 - True/False iDevice errors on Save/Cancel
 - New UI presentation and functionality issues
-- "Download CSV" functionality in the "Progress report" and the "Link validation" options
+- "Download CSV" functionality in the "Progress report" and "Link validation" options
 - Share URL link when executing the application in a folder other than the root
 
 ### Upgraded
 
-- actions/setup-node: 5  → 6
-- node: 24-alpine  → 25-alpine
-- symfony/form: 7.3.3  → 7.3.4
-- symfony/http-client: 7.3.3  → 7.3.4
-- symfony/phpunit-bridge: 7.3.3  → 7.3.4
-- symfony/runtime: 7.3.1  → 7.3.4
-- symfony/web-profiler-bundle: 7.3.3  → 7.3.4
+- actions/setup-node: 5 → 6
+- node: 24-alpine → 25-alpine
+- symfony/form: 7.3.3 → 7.3.4
+- symfony/http-client: 7.3.3 → 7.3.4
+- symfony/phpunit-bridge: 7.3.3 → 7.3.4
+- symfony/runtime: 7.3.1 → 7.3.4
+- symfony/web-profiler-bundle: 7.3.3 → 7.3.4
 
 ### Removed
 
