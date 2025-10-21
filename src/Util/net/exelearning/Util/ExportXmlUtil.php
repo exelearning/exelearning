@@ -2191,6 +2191,10 @@ class ExportXmlUtil
             $class .= ' minimized';
         }
 
+        if (isset($blockPropertiesDict['visibility']) && 'false' == $blockPropertiesDict['visibility']) {
+            $class .= ' novisible';
+        }
+
         // Teacher-only checkbox on blocks
         if (
             (isset($blockPropertiesDict['teacherOnly']) && 'true' == $blockPropertiesDict['teacherOnly'])
@@ -2385,6 +2389,11 @@ class ExportXmlUtil
         if (!$odeComponentsSync->getHtmlView()) {
             $class .= ' db-no-data';
         }
+
+        if (isset($idevicePropertiesDict['visibility']) && 'false' == $idevicePropertiesDict['visibility']) {
+            $class .= ' novisible';
+        }
+        
         // Teacher-only checkbox on iDevices
         if (
             (isset($idevicePropertiesDict['teacherOnly']) && 'true' == $idevicePropertiesDict['teacherOnly'])

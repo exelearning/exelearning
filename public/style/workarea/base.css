@@ -692,6 +692,16 @@ video {
     display: none;
 }
 
+/* BOX no visible */
+.exe-export article.novisible.box{
+    display: none  !important;
+}
+
+/* iDevice no visible */
+.exe-export article.box .idevice_node.novisible{
+    display: none  !important;
+}
+
 /* Teacher mode */
 html:not(.mode-teacher) .js .teacher-only {
     display: none !important;
