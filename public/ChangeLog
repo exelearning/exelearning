@@ -8,6 +8,7 @@
 - Improved iDevices presentation
 - Bootstrap switches replacing system checkboxes in iDevices and the work area
 - Several improvements and refactoring of the Windows installer build process
+- Full translation: Valencian (va)
 
 ### Fixed
 
