@@ -462,6 +462,8 @@ article.box {
                     padding: 0;
                     flex-wrap: wrap;
                     gap: .1rem;
+                    cursor: pointer; 
+                    user-select: none; 
                 }
 
                 .toggle-item+.toggle-item {
@@ -472,6 +474,7 @@ article.box {
                     cursor: pointer;
                     margin-right: 12px;
                     margin-top: 0;
+                    user-select: none
                 }
 
                 .toggle-control {
