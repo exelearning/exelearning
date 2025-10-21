@@ -432,8 +432,8 @@ var $exeDevice = {
                                 <span class="TOF-ENumQuestions" id="tofENumQuestions">0</span>
                             </div>
                         </div>
-                        ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                    </fieldset>
+                    </fieldset>                        
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}          
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}

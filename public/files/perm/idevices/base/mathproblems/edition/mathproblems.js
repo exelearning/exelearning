@@ -243,69 +243,69 @@ var $exeDevice = {
                                 <label for="eCQTime" class="mb-0">${_('Time (s)')}:</label>
                                 <input type="number" name="eCQTime" id="eCQTime" value="180" min="1" max="3600" class="form-control" style="width:7ch" />
                             </div>
-                        </div>
-                        <div id="eCQformulaDiv" class="mb-3 d-flex flex-wrap align-items-center gap-2">
-                            <label for="eCQformula" class="mb-0">${_('Formula')}:</label>
-                            <input id="eCQformula" type="text" value="{b}*{h}/2" class="form-control" style="width:50%" />
-                            <span><span class="sr-av">${_('Operations:')}</span> <a href="https://www.w3schools.com/js/js_arithmetic.asp" target="_blank" rel="noopener" hreflang="en" title="+  -  *  /  **  ()">${_('Help')}</a> - <a href="https://www.w3schools.com/js/js_math.asp" target="_blank" rel="noopener" hreflang="en" title="JavaScript Math">${_('More')}</a></span>
-                        </div>
-                        <div class="mb-3">
-                            <label for="eCQwording" class="mb-1 d-block">${_('Question text:')}</label>
-                            <textarea name="eCQwording" id="eCQwording" class="exe-html-editor form-control" rows="6">${_('Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m')}</textarea>
-                        </div>
-                        <div class="mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="eCQDefinidedVariables" class="toggle-input" />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
+                            <div id="eCQformulaDiv" class="mb-3 d-flex flex-wrap align-items-center gap-2">
+                                <label for="eCQformula" class="mb-0">${_('Formula')}:</label>
+                                <input id="eCQformula" type="text" value="{b}*{h}/2" class="form-control" style="width:50%" />
+                                <span><span class="sr-av">${_('Operations:')}</span> <a href="https://www.w3schools.com/js/js_arithmetic.asp" target="_blank" rel="noopener" hreflang="en" title="+  -  *  /  **  ()">${_('Help')}</a> - <a href="https://www.w3schools.com/js/js_math.asp" target="_blank" rel="noopener" hreflang="en" title="JavaScript Math">${_('More')}</a></span>
+                            </div>
+                            <div class="mb-3">
+                                <label for="eCQwording" class="mb-1 d-block">${_('Question text:')}</label>
+                                <textarea name="eCQwording" id="eCQwording" class="exe-html-editor form-control" rows="6">${_('Calculate in square metres the surface of a triangle with a base of {b}m and a height of {h}m')}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <span class="toggle-item" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" id="eCQDefinidedVariables" class="toggle-input" />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label for="eCQDefinidedVariables" class="toggle-label">${_('Define the domain of each variable')}</label>
                                 </span>
-                                <label for="eCQDefinidedVariables" class="toggle-label">${_('Define the domain of each variable')}</label>
-                            </span>
-                        </div>
-                        <p id="eQCVariablesContainer"></p>
-                        <div id="eCQAleaContainer">
-                            <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="eCQmin" class="mb-0">${_('Smallest number')}:</label>
-                                    <input id="eCQmin" type="text" value="1" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
+                            </div>
+                            <p id="eQCVariablesContainer"></p>
+                            <div id="eCQAleaContainer">
+                                <div class="mb-3 d-flex flex-wrap align-items-center gap-3">
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                        <label for="eCQmin" class="mb-0">${_('Smallest number')}:</label>
+                                        <input id="eCQmin" type="text" value="1" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                        <label for="eCQmax" class="mb-0">${_('Highest number')}:</label>
+                                        <input id="eCQmax" type="text" value="10" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
+                                    </div>
                                 </div>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="eCQmax" class="mb-0">${_('Highest number')}:</label>
-                                    <input id="eCQmax" type="text" value="10" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
+                                <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                                    <label for="eCQdecimals" class="mb-0">${_('Decimals')}:</label>
+                                    <select id="eCQdecimals" class="form-control" style="max-width:16ch">
+                                        <option value="0">${_('No decimals')}</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                    </select>
                                 </div>
                             </div>
-                            <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                                <label for="eCQdecimals" class="mb-0">${_('Decimals')}:</label>
-                                <select id="eCQdecimals" class="form-control" style="max-width:16ch">
-                                    <option value="0">${_('No decimals')}</option>
-                                    <option value="1">1</option>
-                                    <option value="2">2</option>
-                                    <option value="3">3</option>
-                                </select>
+                            <div class="mb-3">
+                                <a href="#" id="eCQfeedbackLink">${_('Feedback (optional)')}</a>
+                                <div id="eCQfeedbackQuestionDiv" style="display:none" class="mt-2">
+                                    <label for="eCQfeedbackQuestion" class="sr-av">${_('Feedback (optional)')}</label>
+                                    <textarea name="eCQfeedbackQuestion" id="eCQfeedbackQuestion" class="exe-html-editor form-control" rows="4"></textarea>
+                                    <span class="info d-block mt-1">${_('Use the Feedback to add an explanation or the right formula.')}</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <a href="#" id="eCQfeedbackLink">${_('Feedback (optional)')}</a>
-                            <div id="eCQfeedbackQuestionDiv" style="display:none" class="mt-2">
-                                <label for="eCQfeedbackQuestion" class="sr-av">${_('Feedback (optional)')}</label>
-                                <textarea name="eCQfeedbackQuestion" id="eCQfeedbackQuestion" class="exe-html-editor form-control" rows="4"></textarea>
-                                <span class="info d-block mt-1">${_('Use the Feedback to add an explanation or the right formula.')}</span>
+                            <div class="MTOE-ENavigationButtons gap-2">
+                                <a href="#" id="eCQAdd" class="MTOE-ENavigationButton" title="${_('Add question')}"><img src="${$exeDevice.idevicePath}quextIEAdd.png" alt="${_('Add question')}" class="MTOE-EButtonImage b-add" /></a>
+                                <a href="#" id="eCQFirst" class="MTOE-ENavigationButton" title="${_('First question')}"><img src="${$exeDevice.idevicePath}quextIEFirst.png" alt="${_('First question')}" class="MTOE-EButtonImage b-first" /></a>
+                                <a href="#" id="eCQPrevious" class="MTOE-ENavigationButton" title="${_('Previous question')}"><img src="${$exeDevice.idevicePath}quextIEPrev.png" alt="${_('Previous question')}" class="MTOE-EButtonImage b-prev" /></a>
+                                <label class="sr-av" for="eCQNumberQuestion">${_('Question number:')}:</label><input type="text" class="MTOE-NumberQuestion form-control" id="eCQNumberQuestion" value="1"/>
+                                <a href="#" id="eCQNext" class="MTOE-ENavigationButton" title="${_('Next question')}"><img src="${$exeDevice.idevicePath}quextIENext.png" alt="${_('Next question')}" class="MTOE-EButtonImage b-next" /></a>
+                                <a href="#" id="eCQLast" class="MTOE-ENavigationButton" title="${_('Last question')}"><img src="${$exeDevice.idevicePath}quextIELast.png" alt="${_('Last question')}" class="MTOE-EButtonImage b-last" /></a>
+                                <a href="#" id="eCQDelete" class="MTOE-ENavigationButton" title="${_('Delete question')}"><img src="${$exeDevice.idevicePath}quextIEDelete.png" alt="${_('Delete question')}" class="MTOE-EButtonImage b-delete" /></a>
+                                <a href="#" id="eCQCopy" class="MTOE-ENavigationButton" title="${_('Copy question')}"><img src="${$exeDevice.idevicePath}quextIECopy.png" alt="${_('Copy question')}" class="MTOE-EButtonImage b-copy" /></a>
+                                <a href="#" id="eCQCut" class="MTOE-ENavigationButton" title="${_('Cut question')}"><img src="${$exeDevice.idevicePath}quextIECut.png" alt="${_('Cut question')}" class="MTOE-EButtonImage b-cut" /></a>
+                                <a href="#" id="eCQPaste" class="MTOE-ENavigationButton" title="${_('Paste question')}"><img src="${$exeDevice.idevicePath}quextIEPaste.png" alt="${_('Paste question')}" class="MTOE-EButtonImage b-paste" /></a>
                             </div>
-                        </div>
-                        <div class="MTOE-ENavigationButtons gap-2">
-                            <a href="#" id="eCQAdd" class="MTOE-ENavigationButton" title="${_('Add question')}"><img src="${$exeDevice.idevicePath}quextIEAdd.png" alt="${_('Add question')}" class="MTOE-EButtonImage b-add" /></a>
-                            <a href="#" id="eCQFirst" class="MTOE-ENavigationButton" title="${_('First question')}"><img src="${$exeDevice.idevicePath}quextIEFirst.png" alt="${_('First question')}" class="MTOE-EButtonImage b-first" /></a>
-                            <a href="#" id="eCQPrevious" class="MTOE-ENavigationButton" title="${_('Previous question')}"><img src="${$exeDevice.idevicePath}quextIEPrev.png" alt="${_('Previous question')}" class="MTOE-EButtonImage b-prev" /></a>
-                            <label class="sr-av" for="eCQNumberQuestion">${_('Question number:')}:</label><input type="text" class="MTOE-NumberQuestion form-control" id="eCQNumberQuestion" value="1"/>
-                            <a href="#" id="eCQNext" class="MTOE-ENavigationButton" title="${_('Next question')}"><img src="${$exeDevice.idevicePath}quextIENext.png" alt="${_('Next question')}" class="MTOE-EButtonImage b-next" /></a>
-                            <a href="#" id="eCQLast" class="MTOE-ENavigationButton" title="${_('Last question')}"><img src="${$exeDevice.idevicePath}quextIELast.png" alt="${_('Last question')}" class="MTOE-EButtonImage b-last" /></a>
-                            <a href="#" id="eCQDelete" class="MTOE-ENavigationButton" title="${_('Delete question')}"><img src="${$exeDevice.idevicePath}quextIEDelete.png" alt="${_('Delete question')}" class="MTOE-EButtonImage b-delete" /></a>
-                            <a href="#" id="eCQCopy" class="MTOE-ENavigationButton" title="${_('Copy question')}"><img src="${$exeDevice.idevicePath}quextIECopy.png" alt="${_('Copy question')}" class="MTOE-EButtonImage b-copy" /></a>
-                            <a href="#" id="eCQCut" class="MTOE-ENavigationButton" title="${_('Cut question')}"><img src="${$exeDevice.idevicePath}quextIECut.png" alt="${_('Cut question')}" class="MTOE-EButtonImage b-cut" /></a>
-                            <a href="#" id="eCQPaste" class="MTOE-ENavigationButton" title="${_('Paste question')}"><img src="${$exeDevice.idevicePath}quextIEPaste.png" alt="${_('Paste question')}" class="MTOE-EButtonImage b-paste" /></a>
-                        </div>
-                        <div class="MTOE-ENumQuestionDiv" id="eCQENumQuestionDiv">
-                            <div class="MTOE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="MTOE-ENumQuestions" id="eCQNumQuestions">1</span>
+                            <div class="MTOE-ENumQuestionDiv" id="eCQENumQuestionDiv">
+                                <div class="MTOE-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div> <span class="MTOE-ENumQuestions" id="eCQNumQuestions">1</span>
+                            </div>
                         </div>
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
