@@ -126,12 +126,6 @@
                     "arch": [
                         "x64"
                     ]
-                },
-                {
-                    "target": "portable",
-                    "arch": [
-                        "x64"
-                    ]
                 }
             ],
             "icon": "public/exelearning.ico",
@@ -152,9 +146,6 @@
             "oneClick": true,
             "runAfterFinish": true,
             "perMachine": false
-        },
-        "portable": {
-          "artifactName": "${productName}-${version}-portable.${ext}"
         },
         "linux": {
             "executableName": "exelearning",
