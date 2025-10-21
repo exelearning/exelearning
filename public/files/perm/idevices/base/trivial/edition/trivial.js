@@ -1154,8 +1154,9 @@ var $exeDevice = {
                                 <span class="TRVLE-ENumQuestions" id="trivialENumQuestions">0</span>
                             </div>
                         </div>
+                    </fieldset>
                         ${$exeDevicesEdition.iDevice.common.getTextFieldset("after")}
-                    </div>
+                </div>
                     ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
                     ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                     ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
