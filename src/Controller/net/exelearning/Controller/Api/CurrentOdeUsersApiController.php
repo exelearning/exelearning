@@ -407,7 +407,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
         // Base URL
         $symfonyBaseUrl = $request->getSchemeAndHttpHost();
-        $symfonyBasePath = $request->getBaseURL();
+        $symfonyBasePath = $this->getParameter('base_path') ?? '';
         $symfonyFullUrl = $symfonyBaseUrl.$symfonyBasePath;
 
         $response['shareSessionUrl'] = $symfonyFullUrl.Constants::SLASH.self::URL_WORKAREA_ROUTE.self::SESSION_ID_URL_PARAMETER.$currentOdeSessionId;
