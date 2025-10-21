@@ -6,16 +6,16 @@
 
 - New "Flux", "Neo", "Nova" and "Zen" styles
 - Improved iDevices presentation
-- Bootstrap switches instead of system checkboxes in iDevices and work area
-- Several improvements and refactorings of the Windows installer build
+- Bootstrap switches replacing system checkboxes in iDevices and the work area
+- Several improvements and refactoring of the Windows installer build process
 
 ### Fixed
 
-- Interactive Video iDevice decoding problem
-- True/False iDevice errors on Save/Cancel
-- New UI presentation and functionality issues
-- "Download CSV" functionality in the "Progress report" and "Link validation" options
-- Share URL link when executing the application in a folder other than the root
+- Interactive Video iDevice decoding issue
+- True/False iDevice errors on Save and Cancel actions
+- Presentation and functionality issues in the new UI
+- "Download CSV" functionality in the "Progress Report" and "Link Validation" tools
+- Share URL link when running the application from a subfolder instead of the root directory
 
 ### Upgraded
 
@@ -29,7 +29,7 @@
 
 ### Removed
 
-- "Test" style (for testing only)
+- "Test" style (used for testing only)
 
 ## v3.0.0-rc1 – 2025-10-19
 
