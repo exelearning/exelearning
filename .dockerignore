@@ -56,3 +56,5 @@ deploy/
 # Ignore SQLite database
 exelearning.db
 symfony.lock
+
+runtime/

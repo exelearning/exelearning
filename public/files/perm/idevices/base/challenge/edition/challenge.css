@@ -286,84 +286,86 @@ label[for=desafioActivitySCORM] {
     list-style: none
 }
 
-.desafioToggle {
-    margin: 0 0 10px;
-    box-sizing: border-box;
-    font-size: 0;
-    display: flex;
-    -webkit-box-orient: horizontal;
-    -webkit-box-direction: normal;
-    flex-flow: row nowrap;
-    -webkit-box-pack: start;
-    justify-content: flex-start;
-    -webkit-box-align: stretch;
-    align-items: stretch;
+
+#desafioIdeviceForm .desafioToggle {
+    margin: 0 0 10px !important;
+    box-sizing: border-box !important;
+    font-size: 0 !important;
+    display: flex !important;
+    -webkit-box-orient: horizontal !important;
+    -webkit-box-direction: normal !important;
+    flex-flow: row nowrap !important;
+    -webkit-box-pack: start !important;
+    justify-content: flex-start !important;
+    -webkit-box-align: stretch !important;
+    align-items: stretch !important;
 }
 
-.desafioToggle input {
-    width: 0;
-    height: 0;
-    position: absolute;
-    left: -9999px;
+#desafioIdeviceForm .desafioToggle input {
+    width: 0 !important;
+    height: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
 }
 
-.desafioToggle input+label {
-    cursor: pointer;
-    margin: 0;
-    padding: .75rem 1.5rem;
-    box-sizing: border-box;
-    position: relative;
-    display: inline-block;
-    border: solid 1px #DDD;
-    background-color: #FFF;
-    font-size: 1rem;
-    line-height: 110%;
-    text-align: center;
-    box-shadow: 0 0 0 rgba(255, 255, 255, 0);
-    -webkit-transition: border-color .15s ease-out, color .25s ease-out, background-color .15s ease-out, box-shadow .15s ease-out;
-    transition: border-color .15s ease-out, color .25s ease-out, background-color .15s ease-out, box-shadow .15s ease-out;
+#desafioIdeviceForm .desafioToggle input+label {
+    cursor: pointer !important;
+    margin: 0 !important;
+    padding: .75rem 1.5rem !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    display: inline-block !important;
+    border: solid 1px #DDD !important;
+    background-color: #FFF !important;
+    font-size: 1rem !important;
+    line-height: 110% !important;
+    text-align: center !important;
+    box-shadow: 0 0 0 rgba(255, 255, 255, 0) !important;
+    -webkit-transition: border-color .15s ease-out, color .25s ease-out, background-color .15s ease-out, box-shadow .15s ease-out !important;
+    transition: border-color .15s ease-out, color .25s ease-out, background-color .15s ease-out, box-shadow .15s ease-out !important;
 }
 
-.desafioToggle input+label:first-of-type {
-    border-radius: 6px 0 0 6px;
-    border-right: none;
+#desafioIdeviceForm .desafioToggle input+label:first-of-type {
+    border-radius: 6px 0 0 6px !important;
+    border-right: none !important;
 }
 
-.desafioToggle input+label:last-of-type {
-    border-radius: 0 6px 6px 0;
-    border-left: none;
+#desafioIdeviceForm .desafioToggle input+label:last-of-type {
+    border-radius: 0 6px 6px 0 !important;
+    border-left: none !important;
 }
 
-.desafioToggle input:hover+label {
-    border-color: var(--brand-primary, #0BA1A1);
+#desafioIdeviceForm .desafioToggle input:hover+label {
+    border-color: var(--brand-primary, #0BA1A1) !important;
 }
 
-.desafioToggle input:checked+label {
-    background-color: var(--brand-primary, #0BA1A1);
-    color: #fff;
-    border-color: var(--brand-primary, #0BA1A1);
-    z-index: 1;
+#desafioIdeviceForm .desafioToggle input:checked+label {
+    background-color: var(--brand-primary, #0BA1A1) !important;
+    color: #fff !important;
+    border-color: var(--brand-primary, #0BA1A1) !important;
+    z-index: 1 !important;
 }
 
-.desafioToggle input:focus+label {
-    outline: dotted 1px #CCC;
-    outline-offset: .45rem;
+#desafioIdeviceForm.desafioToggle input:focus+label {
+    outline: dotted 1px #CCC !important;
+    outline-offset: .45rem !important;
 }
 
 @media (max-width: 400px) {
-    .desafioToggle input+label {
-        padding: .75rem .25rem;
-        -webkit-box-flex: 0;
-        flex: 0 0 50%;
-        display: -webkit-box;
-        display: flex;
-        -webkit-box-pack: center;
-        justify-content: center;
-        -webkit-box-align: center;
-        align-items: center;
-        flex-wrap: wrap;
+    #desafioIdeviceForm .desafioToggle input+label {
+        padding: .75rem .25rem !important;
+        -webkit-box-flex: 0 !important;
+        flex: 0 0 50% !important;
+        display: -webkit-box !important;
+        display: flex !important;
+        -webkit-box-pack: center !important;
+        justify-content: center !important;
+        -webkit-box-align: center !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
     }
 }
+
 
 .desafioTypeGameHelp {
     display: none;

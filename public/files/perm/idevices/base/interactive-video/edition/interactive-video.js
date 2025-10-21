@@ -334,19 +334,9 @@ var $exeDevice = {
             $('body').append(wrapper);
 
             // Get the data
-            let previousData = stringToHTML(originalHTML);
+
+            var previousData = stringToHTML(originalHTML);
             var jsonParse = previousData.querySelector("#exe-interactive-video-contents").innerHTML;
-            var regexp = new RegExp('(style=".+?)">', 'g');
-            var results = jsonParse.match(regexp);
-            if (results) {
-                results.forEach(function (match) {
-                    results = match;
-                    var matchReplace = results.replace(/"/g, "");
-                    jsonParse = jsonParse.replace(results, matchReplace);
-                })
-                jsonParse = jsonParse.replace(/\\=/g, '\'');
-                jsonParse = jsonParse.replace(/\\&quot;/g, '\'');
-            }
             InteractiveVideo = JSON.parse(jsonParse);
             if (typeof (InteractiveVideo) == 'object' && typeof (InteractiveVideo.slides) == 'object') {
                 top.interactiveVideoEditor.activityToSave = InteractiveVideo;
@@ -602,9 +592,9 @@ var $exeDevice = {
 				<p id="exe-interactive-video-file" class="js-hidden">\
 					<a href="'+ myVideo + '">' + myVideo.split('.').pop() + '</a>\
 				</p>\
-				<div id="exe-interactive-video-contents" style="display: none">\
+				<script id="exe-interactive-video-contents" type="application/json">\
 					\n' + contents + '\
-				</div>\
+				</script>\
 			</div>';
 
         html += contentAfter;

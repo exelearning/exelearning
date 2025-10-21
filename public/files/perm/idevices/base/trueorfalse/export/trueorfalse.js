@@ -28,7 +28,7 @@ var $trueorfalse = {
     init: function () { },
 
     renderView: function (data, accesibility, template, ideviceId) {
-
+        if (!data || typeof data !== 'object' || Object.keys(data).length === 0) return false;
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
         const medias = $trueorfalse.extractMediaElements(data.questionsGame);
         const htmlContent = $trueorfalse.createInterfaceTrueOrFalse(ldata);
@@ -59,6 +59,7 @@ var $trueorfalse = {
 
 
     renderBehaviour(data, accesibility, ideviceId) {
+        if (!data || typeof data !== 'object' || Object.keys(data).length === 0) return false;
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
 
         const questionsHtml = $trueorfalse.generateTrueFalseQuizHtml(ldata);

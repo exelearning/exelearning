@@ -363,13 +363,13 @@ var $exeDevice = {
                     <legend><a href="#">${_('Questions')}</a></legend>
                     <div class="desafio-EPanel" id="desafioEPanel">
                         <div class="desafioToggle d-flex align-items-center mb-3">
-                            <div class="form-check form-check-inline m-0">
+                            <div class="m-0">
                                 <input class="desafio-Type" checked="checked" id="desafioEDesafio" type="radio" name="dsfDesRet" value="0" />
-                                <label  for="desafioEDesafio">${_('Challenge')}</label>
+                                <label id="labelDesafio" for="desafioEDesafio">${_('Challenge')}</label>
                             </div>
-                            <div class="form-check form-check-inline m-0">
+                            <div class="m-0">
                                 <input class="desafio-Type" id="desafioEReto" type="radio" name="dsfDesRet" value="1" />
-                                <label  for="desafioEReto">${_('Trials')}</label>
+                                <label id="labelReto"  for="desafioEReto">${_('Trials')}</label>
                             </div>
                             </div>
                         <div class="desafio-EDAtaGame">

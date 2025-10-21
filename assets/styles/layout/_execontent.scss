@@ -4,6 +4,9 @@
     border-radius: 8px;
     &:not(.properties-page) {
         height: calc(100vh - 105px - 80px);
+        &:has(#node-content[mode='edition']) {
+            height: calc(100vh - 110px);
+        }
     }
     .box {
         border-radius: var(--radius);
