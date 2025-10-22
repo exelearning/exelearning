@@ -29,7 +29,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
  */
 #[AsCommand(
     name: 'elp:convert',
-    description: 'Convert old ELP files to the current format',
+    description: 'Convert old .elp files to the current format (.elpx)',
 )]
 class ElpConvertCommand extends Command
 {
