@@ -717,6 +717,14 @@ article.box {
     border-radius: 8px;
 }
 
+#node-content .box .idevice-content-block.dragging{
+    display:none;
+}
+
+#node-content .box .box-head ~ .idevice-content-block.dragging {
+    display:block;
+}
+
 #node-content .idevice-content-block.out {
     opacity: 0.3;
 }
