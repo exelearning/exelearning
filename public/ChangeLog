@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v3.0.0-rc3 – 2025-10-22
+
+### Added
+
+- New default file extension: elp  → elpx
+- Notarizing macOS version
+- Styles information (detailed description and recognitions)
+
+### Fixed
+
+- Rubric iDevice median score calculation
+- JavaScript errors when there's more than one UDL iDevice in a page
+- Favorites iDevices panel accessibility issues
+
+---
+
 ## v3.0.0-rc2 – 2025-10-21
 
 ### Added
