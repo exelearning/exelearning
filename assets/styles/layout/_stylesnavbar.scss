@@ -118,6 +118,7 @@
                     border: 1px solid transparent;
                     margin-left: 2px;
                     margin-right: 2px;
+                    border: 1px solid var(--gray-100);
                     &.selected {
                         border: 1px solid var(--brand-primary);
                         &:hover {
