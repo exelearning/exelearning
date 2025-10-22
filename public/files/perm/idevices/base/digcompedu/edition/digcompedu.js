@@ -9,7 +9,9 @@ var $exeDevice = {
     name: _('DigCompEdu: Digital Competence Manager'),
 
     prefix: 'digcompedu',
-    dataLangSelectId: 'digcompeduDataLang',
+    dataLangSelectId: 'digcompeduFrameworkSelector',
+    granularityFieldsetId: 'digcompeduGranularity',
+    granularityName: 'digcompeduGranularity',
     displayModeName: 'digcompeduDisplayMode',
     levelFilterClass: 'digcompedu-level-filter',
     searchInputId: 'digcompeduSearch',
@@ -30,7 +32,7 @@ var $exeDevice = {
 
     defaultLang: 'es',
     levelOrder: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
-    jsonPathTemplate: '../data/digcompedu.{lang}.json',
+    jsonPathTemplate: '../data/digcompedu_{lang}.json',
 
     ideviceBody: null,
     idevicePreviousData: null,
@@ -39,6 +41,10 @@ var $exeDevice = {
     rowsData: null,
     selectedIds: null,
     activeLang: null,
+    selectionGranularity: 'indicator',
+    frameworkHasIndicators: false,
+    levelLookup: null,
+    competenceLookup: null,
     summaryTableHtml: '',
     summaryTextHtml: '',
     fullscreenPreviousFocus: null,
@@ -61,6 +67,8 @@ var $exeDevice = {
                 ? this.idevicePreviousData.digcompeduSelected
                 : []
         );
+        this.selectionGranularity =
+            this.idevicePreviousData.digcompeduGranularity || 'indicator';
         this.activeLang = this.idevicePreviousData.digcompeduDataLang || this.defaultLang;
         this.summaryTableHtml = this.idevicePreviousData.digcompeduSummaryTableHtml || '';
         this.summaryTextHtml = this.idevicePreviousData.digcompeduSummaryTextHtml || '';
@@ -69,6 +77,7 @@ var $exeDevice = {
             .then((data) => {
                 this.frameworkData = data;
                 this.prepareLookupStructures();
+                this.ensureGranularityCompatibility();
                 this.createForm();
                 this.renderTable();
                 this.restoreInterfaceState();
@@ -109,6 +118,7 @@ var $exeDevice = {
             digcompeduSelected: Array.from(this.selectedIds),
             digcompeduDisplayMode: displayMode,
             digcompeduDataLang: dataLang,
+            digcompeduGranularity: this.selectionGranularity,
             digcompeduSummaryTableHtml: this.summaryTableHtml,
             digcompeduSummaryTextHtml: this.summaryTextHtml,
         };
@@ -210,55 +220,103 @@ var $exeDevice = {
     prepareLookupStructures: function () {
         this.indicatorLookup = {};
         this.rowsData = [];
+        this.levelLookup = {};
+        this.competenceLookup = {};
+        this.frameworkHasIndicators = false;
 
         const frameworkAreas = this.frameworkData.digcompedu || [];
         frameworkAreas.forEach((area) => {
             const areaNumber = area.area;
             const areaTitle = area.title;
 
-            area.competences.forEach((competence) => {
+            (area.competences || []).forEach((competence) => {
                 const competenceCode = String(competence.competence);
                 const competenceTitle = competence.title;
                 const competenceIndex = this.obtainCompetenceIndex(competenceCode);
+                const competenceId = this.composeCompetenceId(competenceCode);
 
-                competence.stages.forEach((stage) => {
+                (competence.stages || []).forEach((stage) => {
                     const stageCode = stage.stage;
-                    const stageTitle = stage.title;
+                    const stageTitle = stage.title || '';
 
-                    stage.levels.forEach((level) => {
+                    (stage.levels || []).forEach((level) => {
                         const levelCode = level.nivel;
-                        const levelTitle = level.title;
+                        const levelTitle = level.title || '';
                         const performanceStatement = level.performance_statements || '';
                         const levelExamples = Array.isArray(level.examples) ? level.examples : [];
+                        const levelId = this.composeLevelId(competenceCode, levelCode);
+                        const groupKey = `${areaNumber}::${competenceCode}::${levelCode}`;
 
-                        level.achievement_indicators.forEach((indicator) => {
-                            const indicatorNumber = indicator.indicator;
-                            const indicatorTitle = indicator.title;
-                            const indicatorId = this.composeIndicatorId(competenceCode, levelCode, indicatorNumber);
-                            const groupKey = `${areaNumber}::${competenceCode}::${levelCode}`;
+                        const indicators = Array.isArray(level.achievement_indicators)
+                            ? level.achievement_indicators.filter(Boolean)
+                            : [];
+
+                        if (indicators.length > 0) {
+                            this.frameworkHasIndicators = true;
+                            indicators.forEach((indicator) => {
+                                const indicatorNumber = indicator.indicator;
+                                const indicatorTitle = indicator.title || '';
+                                const entryId = this.composeIndicatorId(
+                                    competenceCode,
+                                    levelCode,
+                                    indicatorNumber
+                                );
+
+                                const entry = {
+                                    entryId,
+                                    type: 'indicator',
+                                    areaNumber,
+                                    areaTitle,
+                                    competenceCode,
+                                    competenceTitle,
+                                    competenceIndex,
+                                    competenceId,
+                                    stageCode,
+                                    stageTitle,
+                                    levelCode,
+                                    levelTitle,
+                                    levelId,
+                                    performanceStatement,
+                                    levelExamples,
+                                    indicatorNumber,
+                                    indicatorTitle,
+                                    groupKey,
+                                };
+
+                                entry.searchIndex = this.composeSearchIndex(entry);
+                                this.rowsData.push(entry);
+                                this.indicatorLookup[entryId] = entry;
+                                this.registerLookupEntry(levelId, competenceId, entryId);
+                            });
+                        } else {
+                            const entryId = levelId;
 
                             const entry = {
-                                indicatorId,
+                                entryId,
+                                type: 'level',
                                 areaNumber,
                                 areaTitle,
                                 competenceCode,
                                 competenceTitle,
                                 competenceIndex,
+                                competenceId,
                                 stageCode,
                                 stageTitle,
                                 levelCode,
                                 levelTitle,
+                                levelId,
                                 performanceStatement,
                                 levelExamples,
-                                indicatorNumber,
-                                indicatorTitle,
+                                indicatorNumber: null,
+                                indicatorTitle: '',
                                 groupKey,
                             };
 
                             entry.searchIndex = this.composeSearchIndex(entry);
                             this.rowsData.push(entry);
-                            this.indicatorLookup[indicatorId] = entry;
-                        });
+                            this.indicatorLookup[entryId] = entry;
+                            this.registerLookupEntry(levelId, competenceId, entryId);
+                        }
                     });
                 });
             });
@@ -276,6 +334,26 @@ var $exeDevice = {
     },
 
     /**
+     * Compose a normalized competence identifier.
+     * @param {string} competenceCode
+     * @returns {string}
+     */
+    composeCompetenceId: function (competenceCode) {
+        const normalizedCompetence = String(competenceCode).replace('.', '');
+        return `C${normalizedCompetence}`;
+    },
+
+    /**
+     * Compose a deterministic level identifier.
+     * @param {string} competenceCode
+     * @param {string} levelCode
+     * @returns {string}
+     */
+    composeLevelId: function (competenceCode, levelCode) {
+        return `${this.composeCompetenceId(competenceCode)}.${levelCode}`;
+    },
+
+    /**
      * Compose a deterministic indicator identifier.
      * @param {string} competenceCode
      * @param {string} levelCode
@@ -283,8 +361,7 @@ var $exeDevice = {
      * @returns {string}
      */
     composeIndicatorId: function (competenceCode, levelCode, indicatorNumber) {
-        const normalizedCompetence = competenceCode.replace('.', '');
-        return `C${normalizedCompetence}.${levelCode}.I${indicatorNumber}`;
+        return `${this.composeLevelId(competenceCode, levelCode)}.I${indicatorNumber}`;
     },
 
     /**
@@ -293,18 +370,74 @@ var $exeDevice = {
      * @returns {string}
      */
     composeSearchIndex: function (entry) {
-        const stageComposite = `${entry.stageCode}. ${entry.stageTitle}`;
         const parts = [
             entry.areaTitle,
             entry.competenceTitle,
-            stageComposite,
+            entry.stageCode,
+            entry.stageTitle,
             entry.levelCode,
             entry.levelTitle,
             entry.performanceStatement,
-            entry.levelExamples.join(' '),
-            entry.indicatorTitle,
+            (entry.levelExamples || []).join(' '),
         ];
-        return this.removeDiacritics(parts.join(' ').toLowerCase());
+
+        if (entry.indicatorNumber !== null && entry.indicatorNumber !== undefined) {
+            parts.push(String(entry.indicatorNumber));
+        }
+        if (entry.indicatorTitle) {
+            parts.push(entry.indicatorTitle);
+        }
+
+        return this.removeDiacritics(parts.filter(Boolean).join(' ').toLowerCase());
+    },
+
+    /**
+     * Register entry identifiers within competence and level lookup tables.
+     * @param {string} levelId
+     * @param {string} competenceId
+     * @param {string} entryId
+     */
+    registerLookupEntry: function (levelId, competenceId, entryId) {
+        if (!this.levelLookup[levelId]) {
+            this.levelLookup[levelId] = [];
+        }
+        if (this.levelLookup[levelId].indexOf(entryId) === -1) {
+            this.levelLookup[levelId].push(entryId);
+        }
+
+        if (!this.competenceLookup[competenceId]) {
+            this.competenceLookup[competenceId] = [];
+        }
+        if (this.competenceLookup[competenceId].indexOf(entryId) === -1) {
+            this.competenceLookup[competenceId].push(entryId);
+        }
+    },
+
+    /**
+     * Extract associated level identifier from any stored entry identifier.
+     * @param {string} entryId
+     * @returns {string}
+     */
+    extractLevelIdFromEntryId: function (entryId) {
+        if (!entryId) {
+            return '';
+        }
+        const indicatorSeparator = entryId.indexOf('.I');
+        return indicatorSeparator === -1 ? entryId : entryId.substring(0, indicatorSeparator);
+    },
+
+    /**
+     * Ensure current granularity configuration is valid for the loaded framework.
+     */
+    ensureGranularityCompatibility: function () {
+        const allowed = ['competence', 'level', 'indicator'];
+        if (allowed.indexOf(this.selectionGranularity) === -1) {
+            this.selectionGranularity = this.frameworkHasIndicators ? 'indicator' : 'level';
+        }
+
+        if (!this.frameworkHasIndicators && this.selectionGranularity === 'indicator') {
+            this.selectionGranularity = 'level';
+        }
     },
 
     /**
@@ -360,8 +493,10 @@ var $exeDevice = {
      */
     renderFiltersMarkup: function () {
         const displayMode = this.idevicePreviousData.digcompeduDisplayMode || 'table';
-        const dataLangOptions = `<option value="es"${this.activeLang === 'es' ? ' selected' : ''}>es</option>
-                                <option value="en"${this.activeLang === 'en' ? ' selected' : ''}>en</option>`;
+        const frameworkOptions = `
+            <option value="es"${this.activeLang === 'es' ? ' selected' : ''}>${_('Español (MRCDD detallado)')}</option>
+            <option value="en"${this.activeLang === 'en' ? ' selected' : ''}>${_('English (DigCompEdu core)')}</option>
+        `;
 
         return `
             <section class="digcompedu-filters" aria-label="${_('Display options')}">
@@ -375,12 +510,18 @@ var $exeDevice = {
                         ${_('Table + textual summary')}
                     </label>
                 </div>
-                <div>
-                    <label for="${this.dataLangSelectId}">${_('Language for data')}</label>
+                <div class="digcompedu-selector-group">
+                    <label for="${this.dataLangSelectId}">${_('Competency framework')}</label>
                     <select id="${this.dataLangSelectId}">
-                        ${dataLangOptions}
+                        ${frameworkOptions}
                     </select>
                 </div>
+                <fieldset class="digcompedu-filter-group digcompedu-granularity" aria-labelledby="${this.granularityFieldsetId}Legend">
+                    <legend id="${this.granularityFieldsetId}Legend">${_('Selection granularity')}</legend>
+                    ${this.renderGranularityOption('competence', _('Competences'))}
+                    ${this.renderGranularityOption('level', _('Levels'))}
+                    ${this.renderGranularityOption('indicator', _('Indicators'), !this.frameworkHasIndicators)}
+                </fieldset>
                 <div class="digcompedu-search">
                     <label for="${this.searchInputId}">${_('Search indicators')}</label>
                     <input type="search" id="${this.searchInputId}" placeholder="${_('Search by area, competence, indicator...')}">
@@ -410,6 +551,26 @@ var $exeDevice = {
             <label for="${id}">
                 <input type="checkbox" id="${id}" class="${this.levelFilterClass}" value="${levelCode}"${isChecked ? ' checked' : ''}>
                 ${levelCode}
+            </label>
+        `;
+    },
+
+    /**
+     * Render granularity option radio input.
+     * @param {string} value
+     * @param {string} label
+     * @param {boolean} [isDisabled=false]
+     * @returns {string}
+     */
+    renderGranularityOption: function (value, label, isDisabled) {
+        const id = `${this.prefix}-granularity-${value}`;
+        const isChecked = this.selectionGranularity === value;
+        const disabledAttribute = isDisabled ? ' disabled' : '';
+
+        return `
+            <label for="${id}">
+                <input type="radio" name="${this.granularityName}" id="${id}" value="${value}"${isChecked ? ' checked' : ''}${disabledAttribute}>
+                ${label}
             </label>
         `;
     },
@@ -497,9 +658,21 @@ var $exeDevice = {
                 if (newLang === this.activeLang) {
                     return;
                 }
-                this.reloadForLanguage(newLang);
+                this.handleFrameworkChange(newLang);
             });
         }
+
+        const granularityInputs = this.ideviceBody.querySelectorAll(
+            `input[name="${this.granularityName}"]`
+        );
+        granularityInputs.forEach((input) => {
+            input.addEventListener('change', (event) => {
+                if (!event.target.checked) {
+                    return;
+                }
+                this.handleGranularityChange(event.target.value);
+            });
+        });
 
         const fullscreenBtn = this.ideviceBody.querySelector(`#${this.fullscreenTriggerId}`);
         if (fullscreenBtn) {
@@ -538,6 +711,52 @@ var $exeDevice = {
         }
 
         document.addEventListener('keydown', this.handleGlobalKeydown.bind(this));
+
+        this.updateGranularityControls();
+    },
+
+    /**
+     * Handle user changes to selection granularity.
+     * @param {string} value
+     */
+    handleGranularityChange: function (value) {
+        const allowed = ['competence', 'level', 'indicator'];
+        let targetValue = allowed.indexOf(value) !== -1 ? value : this.selectionGranularity;
+
+        if (targetValue === 'indicator' && !this.frameworkHasIndicators) {
+            targetValue = 'level';
+        }
+
+        if (this.selectionGranularity === targetValue) {
+            this.updateGranularityControls();
+            return;
+        }
+
+        this.selectionGranularity = targetValue;
+        this.summaryTableHtml = '';
+        this.summaryTextHtml = '';
+        this.updateGranularityControls();
+        this.updateSelectionInputs();
+    },
+
+    /**
+     * Synchronize granularity radio controls with current state.
+     */
+    updateGranularityControls: function () {
+        if (!this.frameworkHasIndicators && this.selectionGranularity === 'indicator') {
+            this.selectionGranularity = 'level';
+        }
+
+        const granularityInputs = this.ideviceBody
+            ? this.ideviceBody.querySelectorAll(`input[name="${this.granularityName}"]`)
+            : [];
+
+        granularityInputs.forEach((input) => {
+            if (input.value === 'indicator') {
+                input.disabled = !this.frameworkHasIndicators;
+            }
+            input.checked = input.value === this.selectionGranularity;
+        });
     },
 
     /**
@@ -598,25 +817,23 @@ var $exeDevice = {
             `${entry.competenceCode}. ${entry.competenceTitle}`,
             'competence'
         );
-        const stageCell = this.createCell(
-            'td',
-            `${entry.stageCode}. ${entry.stageTitle}`,
-            'stage'
-        );
-        const levelCell = this.createCell(
-            'td',
-            `${entry.levelCode}. ${entry.levelTitle}`,
-            'level'
-        );
+        const stageLabel = entry.stageTitle
+            ? `${entry.stageCode}. ${entry.stageTitle}`
+            : entry.stageCode || '';
+        const stageCell = this.createCell('td', stageLabel, 'stage');
+        const levelLabel = entry.levelTitle
+            ? `${entry.levelCode}. ${entry.levelTitle}`
+            : entry.levelCode || '';
+        const levelCell = this.createCell('td', levelLabel, 'level');
         const performanceCell = this.createPerformanceCell(entry);
 
         const indicatorCell = document.createElement('td');
         indicatorCell.classList.add('digcompedu-indicator');
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.name = entry.indicatorId;
-        checkbox.value = entry.indicatorId;
-        checkbox.checked = this.selectedIds.has(entry.indicatorId);
+        checkbox.name = entry.entryId;
+        checkbox.value = entry.entryId;
+        checkbox.checked = this.selectedIds.has(entry.entryId);
         checkbox.dataset.area = entry.areaNumber;
         checkbox.dataset.areaTitle = entry.areaTitle;
         checkbox.dataset.competence = entry.competenceCode;
@@ -624,24 +841,41 @@ var $exeDevice = {
         checkbox.dataset.stage = entry.stageCode;
         checkbox.dataset.stageTitle = entry.stageTitle;
         checkbox.dataset.level = entry.levelCode;
-        checkbox.dataset.indicator = entry.indicatorNumber;
-        checkbox.dataset.indicatorTitle = entry.indicatorTitle;
-        checkbox.setAttribute('aria-label', `Indicator ${entry.indicatorNumber}: ${entry.indicatorTitle}`);
+        checkbox.dataset.levelId = entry.levelId;
+        checkbox.dataset.competenceId = entry.competenceId;
+        checkbox.dataset.entryType = entry.type;
+        if (entry.type === 'indicator') {
+            checkbox.dataset.indicator = entry.indicatorNumber;
+            checkbox.dataset.indicatorTitle = entry.indicatorTitle;
+            checkbox.setAttribute(
+                'aria-label',
+                `${_('Indicator')} ${entry.indicatorNumber}: ${entry.indicatorTitle}`
+            );
+        } else {
+            checkbox.setAttribute(
+                'aria-label',
+                `${_('Level')} ${entry.levelCode}: ${entry.performanceStatement}`
+            );
+        }
 
         checkbox.addEventListener('change', (event) => {
             this.handleIndicatorToggle(event.target);
         });
 
         const indicatorLabel = document.createElement('label');
-        indicatorLabel.setAttribute('for', entry.indicatorId);
-        const strong = document.createElement('strong');
-        strong.textContent = `${entry.indicatorNumber}. `;
-        const titleSpan = document.createElement('span');
-        titleSpan.textContent = entry.indicatorTitle;
-        indicatorLabel.appendChild(strong);
-        indicatorLabel.appendChild(titleSpan);
+        indicatorLabel.setAttribute('for', entry.entryId);
+        if (entry.type === 'indicator') {
+            const strong = document.createElement('strong');
+            strong.textContent = `${entry.indicatorNumber}. `;
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = entry.indicatorTitle;
+            indicatorLabel.appendChild(strong);
+            indicatorLabel.appendChild(titleSpan);
+        } else {
+            indicatorLabel.textContent = entry.performanceStatement || entry.levelTitle || entry.levelCode;
+        }
 
-        checkbox.id = entry.indicatorId;
+        checkbox.id = entry.entryId;
         indicatorCell.appendChild(checkbox);
         indicatorCell.appendChild(indicatorLabel);
 
@@ -715,14 +949,48 @@ var $exeDevice = {
      * @param {HTMLInputElement} checkbox
      */
     handleIndicatorToggle: function (checkbox) {
-        if (checkbox.checked) {
-            this.selectedIds.add(checkbox.value);
-        } else {
-            this.selectedIds.delete(checkbox.value);
+        const entry = this.indicatorLookup[checkbox.value];
+        if (!entry) {
+            return;
         }
+
+        const targetIds = this.getSelectionTargetIds(entry);
+
+        if (checkbox.checked) {
+            targetIds.forEach((id) => this.selectedIds.add(id));
+        } else {
+            targetIds.forEach((id) => this.selectedIds.delete(id));
+        }
+
         this.summaryTableHtml = '';
         this.summaryTextHtml = '';
+        this.updateSelectionInputs();
         this.updateSelectionCounter();
+    },
+
+    /**
+     * Determine which identifiers should be toggled based on granularity and entry type.
+     * @param {Object} entry
+     * @returns {string[]}
+     */
+    getSelectionTargetIds: function (entry) {
+        if (!entry) {
+            return [];
+        }
+
+        if (entry.type === 'level') {
+            return [entry.entryId];
+        }
+
+        if (this.selectionGranularity === 'competence') {
+            return this.competenceLookup[entry.competenceId] || [entry.entryId];
+        }
+
+        if (this.selectionGranularity === 'level') {
+            return this.levelLookup[entry.levelId] || [entry.entryId];
+        }
+
+        return [entry.entryId];
     },
 
     /**
@@ -735,8 +1003,8 @@ var $exeDevice = {
         }
         const count = this.selectedIds.size;
         counter.textContent = count === 0
-            ? _('No indicators selected.')
-            : _('Selected indicators: ') + count;
+            ? _('No items selected.')
+            : _('Selected items: ') + count;
     },
 
     /**
@@ -789,6 +1057,7 @@ var $exeDevice = {
         const checkboxes = this.ideviceBody.querySelectorAll(`#${this.tableBodyId} input[type="checkbox"]`);
         checkboxes.forEach((checkbox) => {
             checkbox.checked = this.selectedIds.has(checkbox.value);
+            checkbox.indeterminate = false;
         });
     },
 
@@ -1112,18 +1381,27 @@ var $exeDevice = {
                         strong.textContent = `${levelCode} for competence ${competenceCode}. `;
                         item.appendChild(strong);
 
+                        const hasIndicatorEntries = indicators.some((indicator) => indicator.type === 'indicator');
+                        const descriptor = hasIndicatorEntries ? 'indicator(s)' : 'level(s)';
                         const text = document.createTextNode(
-                            `${competence.title} because it contributes to the digital competence development with indicator(s) `
+                            `${competence.title} because it contributes to the digital competence development with ${descriptor} `
                         );
                         item.appendChild(text);
 
                         const descriptions = indicators.map((indicator, index) => {
                             const prefix = indicators.length > 1 && index === indicators.length - 1 ? _('and ') : '';
-                            return `${prefix}${_('indicator')} ${indicator.indicatorNumber}. ${indicator.indicatorTitle}`;
+                            if (indicator.type === 'indicator') {
+                                return `${prefix}${_('indicator')} ${indicator.indicatorNumber}. ${indicator.indicatorTitle}`;
+                            }
+                            const statement = indicator.performanceStatement || indicator.levelTitle || '';
+                            const levelLabel = `${_('level')} ${indicator.levelCode}`;
+                            return `${prefix}${levelLabel}: ${statement}`.trim();
                         });
 
-                        const finalSentence = descriptions.join(indicators.length > 2 ? '; ' : ' ');
-                        item.appendChild(document.createTextNode(finalSentence + '.'));
+                        const finalSentence = descriptions.join(indicators.length > 2 ? '; ' : ' ').trim();
+                        if (finalSentence.length > 0) {
+                            item.appendChild(document.createTextNode(`${finalSentence}.`));
+                        }
                         list.appendChild(item);
                     });
                 });
@@ -1157,33 +1435,95 @@ var $exeDevice = {
     },
 
     /**
-     * Reload framework data when language changes.
+     * Handle framework switching while preserving selection state.
      * @param {string} newLang
      */
-    reloadForLanguage: function (newLang) {
-        this.activeLang = newLang;
+    handleFrameworkChange: function (newLang) {
+        if (!newLang || newLang === this.activeLang) {
+            return;
+        }
+
+        const previousLang = this.activeLang;
+        const previousSelections = Array.from(this.selectedIds);
+        const previousHadIndicators = this.frameworkHasIndicators;
+
         this.ideviceBody.classList.add('digcompedu-loading');
-        this.loadFrameworkData(newLang)
+
+        return this.loadFrameworkData(newLang)
             .then((data) => {
+                this.activeLang = newLang;
                 this.frameworkData = data;
                 this.prepareLookupStructures();
+                this.ensureGranularityCompatibility();
+
+                const mappedSelections = this.transitionSelections(
+                    previousSelections,
+                    previousHadIndicators
+                );
+
+                this.selectedIds = mappedSelections;
                 this.renderTable();
                 this.updateSelectionInputs();
                 this.updateSelectionCounter();
                 this.summaryTableHtml = '';
                 this.summaryTextHtml = '';
                 this.updateSummaryPreview();
+                this.updateGranularityControls();
                 this.ideviceBody.classList.remove('digcompedu-loading');
             })
             .catch((error) => {
-                console.error('DigCompEdu language reload failed:', error);
-                eXe.app.alert(_('Unable to change language. The previous data will remain loaded.'));
-                const langSelect = this.ideviceBody.querySelector(`#${this.dataLangSelectId}`);
-                if (langSelect) {
-                    langSelect.value = this.defaultLang;
+                console.error('DigCompEdu framework change failed:', error);
+                if (typeof eXe !== 'undefined' && eXe.app && typeof eXe.app.alert === 'function') {
+                    eXe.app.alert(_('Unable to change framework. The previous data will remain loaded.'));
+                }
+                const frameworkSelect = this.ideviceBody.querySelector(`#${this.dataLangSelectId}`);
+                if (frameworkSelect) {
+                    frameworkSelect.value = previousLang;
                 }
                 this.ideviceBody.classList.remove('digcompedu-loading');
+                throw error;
             });
+    },
+
+    /**
+     * Map previous selections to the newly loaded framework.
+     * @param {string[]} previousSelections
+     * @param {boolean} previousHadIndicators
+     * @returns {Set<string>}
+     */
+    transitionSelections: function (previousSelections, previousHadIndicators) {
+        const mapped = new Set();
+
+        previousSelections.forEach((id) => {
+            if (previousHadIndicators && !this.frameworkHasIndicators) {
+                const levelId = this.extractLevelIdFromEntryId(id);
+                if (this.indicatorLookup[levelId]) {
+                    mapped.add(levelId);
+                }
+                return;
+            }
+
+            if (!previousHadIndicators && this.frameworkHasIndicators) {
+                const levelId = this.extractLevelIdFromEntryId(id);
+                const indicatorIds = this.levelLookup[levelId] || [];
+                indicatorIds.forEach((indicatorId) => mapped.add(indicatorId));
+                return;
+            }
+
+            if (this.indicatorLookup[id]) {
+                mapped.add(id);
+            }
+        });
+
+        return mapped;
+    },
+
+    /**
+     * Legacy helper kept for backward compatibility.
+     * @param {string} newLang
+     */
+    reloadForLanguage: function (newLang) {
+        this.handleFrameworkChange(newLang);
     },
 
     /**

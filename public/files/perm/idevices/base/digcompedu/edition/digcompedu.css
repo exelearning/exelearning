@@ -28,6 +28,11 @@
 .digcompedu-filters { display: flex; flex-direction: column; gap: 12px; }
 .digcompedu-filter-group { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
 .digcompedu-filters label, .digcompedu-actions button { display: inline-flex; gap: .5rem; align-items: center; margin: 4px 8px 4px 0; cursor: pointer; }
+.digcompedu-selector-group { display: flex; flex-direction: column; gap: 4px; }
+.digcompedu-selector-group label { margin: 0; cursor: default; font-weight: 600; }
+.digcompedu-selector-group select { padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; background-color: #fff; }
+.digcompedu-granularity label { margin: 0 12px 0 0; }
+.digcompedu-granularity input[type="radio"] { margin-right: 4px; }
 .digcompedu-search input[type="search"] { width: 100%; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
 .digcompedu-search label { display: flex; flex-direction: column; gap: 4px; margin: 0; }
 .digcompedu-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 12px; }
