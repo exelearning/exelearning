@@ -1,5 +1,4 @@
 tinymce.addI18n('all',{
-"Effects (accordion, tabs, pagination...)": _("Effects (accordion, tabs, pagination...)"),
 "Audio recorder": _("Audio recorder"),
 "Dialog Window": _("Dialog Window"),
 "Tooltip": _("Tooltip"),
@@ -365,6 +364,12 @@ tinymce.addI18n('all',{
 "Please write a quote": _("Please write a quote"),
 // Effects
 "Effects": _("Effects"),
+"Effects (accordion, tabs, pagination...)": _("Effects (accordion, tabs, pagination...)"),
+"Accordion": _("Accordion"),
+"Tabs": _("Tabs"),
+"Pagination": _("Pagination"),
+"Carousel": _("Carousel"),
+"Timeline": _("Timeline"),
 "Please do not overuse these effects.": _("Please do not overuse these effects."),
 "Choose a type:": _("Choose a type:"),
 "Collapsible content panels for presenting information in a limited space.": _("Collapsible content panels for presenting information in a limited space."),
@@ -403,6 +408,7 @@ tinymce.addI18n('all',{
 "Pages": _("Pages"),
 "Tooltip title": _("Tooltip title"),
 "The tooltip will show the Link title.": _("The tooltip will show the Link title."),
+"The tooltip will show the term and its definition.": _("The tooltip will show the term and its definition."),
 "Close behaviour:": _("Close behaviour:"),
 "Automatically close the tooltip when moving the mouse out of the link": _("Automatically close the tooltip when moving the mouse out of the link"),
 "Close button: It will close the tooltip when clicked": _("Close button: It will close the tooltip when clicked"),

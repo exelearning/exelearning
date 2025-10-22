@@ -1634,6 +1634,17 @@
         min-height: 250px;
         max-height: 60vh;
     }
+    .properties-body-container {
+        .property-row.hidden,
+        .properties-group.hidden {
+            display: none !important;
+        }
+    }
+
+    .properties-body-container .property-row:not(.hidden):has(.toggle-item) {
+        margin-bottom: 16px;
+    }
+
 
     .properties-body-container {
         .exe-properties-form-content {
@@ -1664,7 +1675,22 @@
                             margin-left: 17.5%;
                         }
                     }
+                    .property-row:not(.hidden):has(.toggle-item) {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        margin-left: 16.5%;
+                    }
+                    .property-row:not(.hidden):has(.toggle-item) > :nth-child(1),
+                    .property-row:not(.hidden):has(.toggle-item) > :nth-child(2) {
+                        width: auto !important;
+                        margin-left:0;
+                        margin-right: 10px;
+                        text-align: left;
+                    }
+
                 }
+
             }
         }
     }
@@ -1693,6 +1719,42 @@
             }
         }
     }
+    .form-properties[modal-content-id="page-properties"],
+    .form-properties[modal-content-id="preferences"],
+    .form-properties[modal-content-id="idevice-properties"],
+    .form-properties[modal-content-id="block-properties"] {
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 0;
+            .property-row:has(.toggle-item) {
+                margin-bottom: 20px;
+            }
+            flex-wrap: nowrap;
+            gap: 8px;
+        }
+        .toggle-item + .toggle-item { border-top: 1px solid rgba(0,0,0,.04); }
+        .toggle-label { cursor: pointer; margin-left: 12px; margin-right: 0; margin-top: 0; white-space: nowrap; }
+        .toggle-control { position: relative; display: inline-flex; align-items: center; width: 36px; min-width: 36px; flex: 0 0 36px; }
+        .toggle-input {
+            position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; cursor: pointer; margin: 0;
+        }
+        .toggle-visual {
+            display: inline-block; width: 36px; height: 20px; border-radius: 999px;
+            background: var(--gray-400, #ccc);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+            transition: background 160ms ease, box-shadow 160ms ease;
+            position: relative; cursor: pointer; pointer-events: none;
+        }
+        .toggle-visual::after {
+            content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+            background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.15); transition: transform 160ms ease;
+        }
+        .toggle-input:checked + .toggle-visual { background: var(--brand-primary, #0BA1A1); }
+        .toggle-input:checked + .toggle-visual::after { transform: translateX(16px); }
+        .toggle-input:disabled + .toggle-visual { opacity: .5; filter: grayscale(.3); cursor: not-allowed; }
+    }
     .form-properties[modal-content-id="idevice-properties"],
     .form-properties[modal-content-id="block-properties"] {
         .properties-body-container {
@@ -1711,6 +1773,18 @@
                         cursor: pointer;
                         user-select: none;
                     }
+                }
+
+                &:not(.hidden):has(.toggle-item) {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                &:has(.toggle-item) > label {
+                    max-width: none !important;
+                    text-align: left !important;
+                    margin: 0 !important;
+                    white-space: nowrap;
                 }
                 input[type="text"] {
                     flex: 1 1 auto;
@@ -1733,6 +1807,9 @@
             #cssClass {
                 margin-top: 15px;
                 > label {
+                    #modalProperties .form-properties[modal-content-id="block-properties"] .properties-body-container .property-row:has(.toggle-item) {
+                        margin-bottom: 18px !important;
+                    }
                     text-align: right;
                     min-width: 90px;
                 }
@@ -1744,10 +1821,59 @@
                 }
             }
         }
+        .property-row.is-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;        
+            .toggle-item,
+            .toggle-label {
+                cursor: pointer;
+                user-select: none;
+            }
+        }
+    }
+
+    .form-properties[modal-content-id="block-properties"] {
+        .properties-body-container {
+            .exe-properties-form-content {
+                .exe-table-content {
+                    #minimized {
+                        margin-bottom: 8px !important;
+                    }
+                }
+            }
+        }
     }
 
     #versionControl {
         display: none;
+    }
+    .property-row.is-toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .property-row.is-toggle-row > .toggle-item {
+        width: auto !important;
+        margin-right: 10px;
+        text-align: left;
+    }
+
+    .property-row.is-toggle-row > .toggle-label {
+        max-width: none !important;
+        text-align: left !important;
+        margin: 0 !important;
+        white-space: nowrap;
+    }
+
+
+    .toggle-input:focus-visible + .toggle-visual {
+        outline: 2px solid var(--brand-primary, #0BA1A1);
+        outline-offset: 2px;
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
     }
 }
 

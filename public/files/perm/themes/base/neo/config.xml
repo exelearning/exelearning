@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <theme>
-  <name>infantil</name>
-  <title>Infantil</title>
+  <name>neo</name>
+  <title>Neo</title>
   <version>2025</version>
   <compatibility>3.0</compatibility>
   <author>tresipunt</author>
   <license>Creative Commons by-sa</license>
   <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
-  <description>Visual theme for youth.</description>
+  <description>Innovación con propósito.</description>
   <downloadable>0</downloadable>
 </theme>
 
@@ -33,7 +33,8 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 -->
 
 <!--  Font license
-Copyright (c) 2021, Milena Brandao.
+Copyright (c) 2014, Vernon Adams (vern@newtypography.co.uk),
+with Reserved Font Name "Nunito".
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is available with a FAQ at:

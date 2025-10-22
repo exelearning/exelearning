@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## v3.0.0-rc2 – 2025-10-21
+
+### Added
+
+- New "Flux", "Neo", "Nova" and "Zen" styles
+- Improved iDevices presentation
+- Bootstrap switches replacing system checkboxes in iDevices and the work area
+- Several improvements and refactoring of the Windows installer build process
+- Full translation: Valencian (va)
+
+### Fixed
+
+- Interactive Video iDevice decoding issue
+- True/False iDevice errors on Save and Cancel actions
+- Presentation and functionality issues in the new UI
+- "Download CSV" functionality in the "Progress Report" and "Link Validation" tools
+- Share URL link when running the application from a subfolder instead of the root directory
+
+### Upgraded
+
+- actions/setup-node: 5 → 6
+- node: 24-alpine → 25-alpine
+- symfony/form: 7.3.3 → 7.3.4
+- symfony/http-client: 7.3.3 → 7.3.4
+- symfony/phpunit-bridge: 7.3.3 → 7.3.4
+- symfony/runtime: 7.3.1 → 7.3.4
+- symfony/web-profiler-bundle: 7.3.3 → 7.3.4
+
+### Removed
+
+- "Test" style (used for testing only)
+- Export "Metadata (XML)"
+
+---
+
 ## v3.0.0-rc1 – 2025-10-19
 
 ### Added
@@ -33,6 +68,8 @@
 - "API Reference" link
 - Provisional warning for beta versions
 - Main CSS file (now generated automatically from SCSS files)
+
+---
 
 ## v3.0.0-beta8 – 2025-10-16
 

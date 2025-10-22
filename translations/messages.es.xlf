@@ -11431,7 +11431,7 @@
       </trans-unit>
       <trans-unit id="PKzTL5n" resname="Search bar (Website export only)">
         <source>Search bar (Website export only)</source>
-        <target>Buscador (solo en al exportar un sitio web)</target>
+        <target>Buscador (solo al exportar un sitio web)</target>
       </trans-unit>
       <trans-unit id="jb5jN3p" resname="A search box will be added to every page of the website.">
         <source>A search box will be added to every page of the website.</source>
