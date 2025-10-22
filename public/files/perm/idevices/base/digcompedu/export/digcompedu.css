@@ -1,0 +1,16 @@
+.digcompeduIdeviceContent { font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #0f172a; }
+.digcompeduIdeviceContent h3 { margin: 0 0 8px; }
+.digcompedu-summary-wrapper { margin: 8px 0 12px; overflow: auto; }
+.digcompedu-summary-table { width: 100%; border-collapse: collapse; }
+.digcompedu-summary-table th, .digcompedu-summary-table td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: center; }
+.digcompedu-text-summary { margin-top: 12px; line-height: 1.5; }
+.digcompedu-empty { padding: 8px; background: #fff8e1; border: 1px solid #ffe082; border-radius: 6px; color: #8a6d3b; }
+.digcompedu-text-summary h6 { margin: 12px 0 6px; font-size: 1rem; }
+.digcompedu-text-summary ul { margin: 0 0 8px 18px; padding: 0; }
+.digcompedu-text-summary li { margin-bottom: 6px; }
+.area1 { background-color: #f9d2bf; }
+.area2 { background-color: #9dd3b3; }
+.area3 { background-color: #9fb9e7; }
+.area4 { background-color: #7adad0; }
+.area5 { background-color: #c8a6c2; }
+.area6 { background-color: #eda8b6; }
