@@ -2410,8 +2410,11 @@ class ExportXmlUtil
             // JSON iDevices need some extra attributes
             if ('json' == $typeComponent) {
                 $ideviceContainer->addAttribute('data-idevice-component-type', $typeComponent);
-                $ideviceContainer->addAttribute('data-idevice-json-data', $odeComponentsSync->getJsonProperties());
-                $ideviceContainer->addAttribute('data-idevice-template', $ideviceTypeData['template']);
+
+                if ('text' !== $ideviceTypeName) {
+                    $ideviceContainer->addAttribute('data-idevice-json-data', $odeComponentsSync->getJsonProperties());
+                    $ideviceContainer->addAttribute('data-idevice-template', $ideviceTypeData['template']);
+                }
                 // Properties
                 /* To review:
                 foreach ($idevicePropertiesDict as $key => $value) {
