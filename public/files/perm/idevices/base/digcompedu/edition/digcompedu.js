@@ -43,6 +43,7 @@ var $exeDevice = {
     summaryTextHtml: '',
     fullscreenPreviousFocus: null,
     modalPreviousFocus: null,
+    fullscreenPlaceholder: null,
     editionBasePath: null,
     dataLoadPromises: {},
     frameworkDataCache: {},
@@ -332,7 +333,7 @@ var $exeDevice = {
                                         <th scope="col">${_('Stage')}</th>
                                         <th scope="col">${_('Level')}</th>
                                         <th scope="col">${_('Indicator')}</th>
-                                        <th scope="col">${_('Performance and examples')}</th>
+                                        <th scope="col" class="digcompedu-performance-col">${_('Performance and examples')}</th>
                                     </tr>
                                 </thead>
                                 <tbody id="${this.tableBodyId}"></tbody>
@@ -359,7 +360,8 @@ var $exeDevice = {
      */
     renderFiltersMarkup: function () {
         const displayMode = this.idevicePreviousData.digcompeduDisplayMode || 'table';
-        const dataLangOptions = `<option value="es"${this.activeLang === 'es' ? ' selected' : ''}>es</option>`;
+        const dataLangOptions = `<option value="es"${this.activeLang === 'es' ? ' selected' : ''}>es</option>
+                                <option value="en"${this.activeLang === 'en' ? ' selected' : ''}>en</option>`;
 
         return `
             <section class="digcompedu-filters" aria-label="${_('Display options')}">
@@ -501,7 +503,14 @@ var $exeDevice = {
 
         const fullscreenBtn = this.ideviceBody.querySelector(`#${this.fullscreenTriggerId}`);
         if (fullscreenBtn) {
-            fullscreenBtn.addEventListener('click', this.enterFullscreen.bind(this));
+            fullscreenBtn.addEventListener('click', () => {
+                const expanded = fullscreenBtn.getAttribute('aria-expanded') === 'true';
+                if (expanded) {
+                    this.exitFullscreen();
+                } else {
+                    this.enterFullscreen();
+                }
+            });
         }
 
         const fullscreenClose = this.ideviceBody.querySelector(`#${this.fullscreenCloseId}`);
@@ -789,16 +798,25 @@ var $exeDevice = {
     enterFullscreen: function () {
         const overlay = this.ideviceBody.querySelector(`#${this.fullscreenOverlayId}`);
         const fullscreenBtn = this.ideviceBody.querySelector(`#${this.fullscreenTriggerId}`);
+        const editorRoot = this.ideviceBody.querySelector('.digcompedu-editor');
+        const layout = this.ideviceBody.querySelector('.digcompedu-layout');
         if (!overlay) {
             return;
         }
         const wrapper = overlay.querySelector('.digcompedu-fullscreen-content');
-        if (wrapper) {
-            wrapper.innerHTML = '';
-            const tableClone = this.ideviceBody.querySelector('.digcompedu-table-wrapper');
-            if (tableClone) {
-                wrapper.appendChild(tableClone.cloneNode(true));
+        if (wrapper && layout && editorRoot) {
+            if (!this.fullscreenPlaceholder) {
+                this.fullscreenPlaceholder = document.createElement('div');
+                this.fullscreenPlaceholder.className = 'digcompedu-fullscreen-placeholder';
+                this.fullscreenPlaceholder.setAttribute('aria-hidden', 'true');
+                this.fullscreenPlaceholder.style.display = 'none';
             }
+            if (!this.fullscreenPlaceholder.parentNode) {
+                layout.parentNode.insertBefore(this.fullscreenPlaceholder, layout);
+            }
+            wrapper.innerHTML = '';
+            wrapper.appendChild(layout);
+            editorRoot.classList.add('digcompedu-is-fullscreen');
         }
 
         overlay.setAttribute('aria-hidden', 'false');
@@ -821,8 +839,28 @@ var $exeDevice = {
     exitFullscreen: function () {
         const overlay = this.ideviceBody.querySelector(`#${this.fullscreenOverlayId}`);
         const fullscreenBtn = this.ideviceBody.querySelector(`#${this.fullscreenTriggerId}`);
+        const editorRoot = this.ideviceBody.querySelector('.digcompedu-editor');
         if (!overlay) {
             return;
+        }
+        const wrapper = overlay.querySelector('.digcompedu-fullscreen-content');
+        const layout = wrapper ? wrapper.querySelector('.digcompedu-layout') : null;
+        if (layout) {
+            if (this.fullscreenPlaceholder && this.fullscreenPlaceholder.parentNode) {
+                this.fullscreenPlaceholder.parentNode.insertBefore(layout, this.fullscreenPlaceholder);
+            } else if (editorRoot) {
+                editorRoot.insertBefore(layout, editorRoot.firstChild);
+            }
+        }
+        if (wrapper) {
+            wrapper.innerHTML = '';
+        }
+        if (this.fullscreenPlaceholder) {
+            this.fullscreenPlaceholder.remove();
+            this.fullscreenPlaceholder = null;
+        }
+        if (editorRoot) {
+            editorRoot.classList.remove('digcompedu-is-fullscreen');
         }
 
         overlay.setAttribute('aria-hidden', 'true');

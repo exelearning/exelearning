@@ -12,8 +12,14 @@
 .digcompedu-table thead th { background: #f8fafc; position: sticky; top: 0; z-index: 1; text-align: left; }
 .digcompedu-indicator { display: flex; gap: 0.75rem; align-items: flex-start; min-width: 0; }
 .digcompedu-indicator input[type="checkbox"] { flex-shrink: 0; margin-top: 4px; }
-.digcompedu-indicator label { flex: 1 1 0%; display: block; word-break: break-word; overflow-wrap: anywhere; line-height: 1.45; min-width: 0; }
-.digcompedu-indicator strong { white-space: nowrap; }
+.digcompedu-indicator label { flex: 1 1 0%; display: block; word-break: break-word; overflow-wrap: anywhere; line-height: 1.45; min-width: 0; white-space: normal; }
+.digcompedu-indicator label {
+  display: block;
+  white-space: normal;
+  max-width: 320px;
+}
+.digcompedu-indicator label span { display: inline; white-space: normal; }
+.digcompedu-indicator strong { margin-right: 0.35rem; }
 .digcompedu-performance p { margin: 0 0 4px; }
 .digcompedu-performance ul { margin: 4px 0 0 18px; padding: 0; }
 .digcompedu-performance strong { display: inline-block; margin-right: 4px; }
@@ -35,9 +41,10 @@
 .digcompedu-fullscreen-overlay { position: fixed; inset: 0; background: #0b1220cc; display: grid; grid-template-rows: auto 1fr; padding: 16px; z-index: 9999; }
 .digcompedu-fullscreen-overlay[aria-hidden="true"] { display: none !important; }
 .digcompedu-fullscreen-header { display: flex; justify-content: space-between; align-items: center; color: #fff; }
-.digcompedu-fullscreen-content { background: #fff; border-radius: 8px; padding: 12px; overflow: auto; }
+.digcompedu-fullscreen-content { background: #fff; border-radius: 8px; padding: 12px; overflow: auto; display: flex; flex-direction: column; }
 .digcompedu-fullscreen-close { background: #fff; border: 0; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
 .digcompedu-overlay-open { overflow: hidden; }
+.digcompedu-fullscreen-content > .digcompedu-layout { flex: 1 1 auto; }
 
 /* Modal */
 .digcompedu-modal { position: fixed; inset: 0; display: grid; place-items: center; background: #0b122080; z-index: 9998; }
@@ -64,6 +71,10 @@
 .digcompedu-toolbar-tip { font-size: 0.85rem; color: #475569; margin: 0; }
 .digcompedu-error { color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; padding: 12px; border-radius: 6px; }
 .digcompedu-fullscreen-overlay .digcompedu-table-wrapper { max-height: unset; }
+.digcompedu-performance-col,
+.digcompedu-table .digcompedu-performance { display: none; }
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-performance-col,
+.digcompedu-editor.digcompedu-is-fullscreen .digcompedu-table .digcompedu-performance { display: table-cell; }
 
 /* Area color helpers */
 .area1 { background-color: #f9d2bf; }
