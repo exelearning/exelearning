@@ -44,6 +44,14 @@ class Translator implements TranslatorInterface, TranslatorBagInterface, LocaleA
             $translated = $this->translator->trans($id, $parameters, $domain, 'en');
         }
 
+        // // elp → elpx (to review - #498)
+        $translated = str_replace(' (elp)', ' (elpx)', $translated);
+        $translated = str_replace(' .elp ', ' .elpx ', $translated);
+        $translated = str_replace(' elp ', ' elpx ', $translated);
+        if (str_ends_with($translated, '.elp')) {
+            $translated .= 'x';
+        }
+
         // Remove ~ prefix if present
         if (str_starts_with($translated, '~')) {
             return substr($translated, 1);

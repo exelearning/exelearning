@@ -42,6 +42,7 @@
         window.eXeLearning = {
             version: "{{ constant('App\\Constants::APP_VERSION' ) }}",
             expires: "{{ constant('App\\Constants::DEMO_EXPIRATION_DATE' ) }}",
+            extension: "{{ constant('App\\Constants::FILE_EXTENSION_ELP' ) }}",
             user: "{{ user | json_encode }}",
             config: "{{ config | json_encode }}",
             symfony: "{{ symfony | json_encode }}",
