@@ -56,11 +56,6 @@ jobs:
       #   run: |
       #     sudo snap install snapcraft --classic
 
-      # Install composer dependencies
-      - name: Install composer dependencies (no dev)
-        run: |
-          composer install --no-dev --classmap-authoritative --optimize-autoloader --no-interaction --no-progress
-
       # Extract version from tag
       - name: Get version from tag or commit
         id: get_version

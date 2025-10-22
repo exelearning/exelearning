@@ -459,11 +459,14 @@ export-elp-epub3:
 export-elp-ims:
 	@$(MAKE) export-elp FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
+install-composer-dependencies:
+	@echo "Install composer dependencies (no dev)"
+	@composer install --no-dev --classmap-authoritative --optimize-autoloader --no-interaction --no-progress
 
 # Temporarily installs nativephp/php-bin, extracts the runtime to runtime/php/...,
 # and removes the dev package so vendor/nativephp/php-bin is not included in the build.
 # Works on macOS, Linux, and Git Bash (MSYS/MINGW/CYGWIN). Does not use PowerShell.
-install-php-bin:
+install-php-bin: install-composer-dependencies
 	@echo "Fetching nativephp/php-bin without dev mode (temp dir)..."
 	@set -e; \
 	TMPDIR="$$(mktemp -d)"; \
