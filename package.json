@@ -48,7 +48,8 @@
         "publish": [
             {
                 "provider": "github",
-                "releaseType": "prerelease"
+                "releaseType": "prerelease",
+                "channel": "latest"
             }
         ],
         "afterPack": "packaging/afterPack.js",
