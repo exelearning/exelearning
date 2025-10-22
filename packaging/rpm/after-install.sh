@@ -8,7 +8,7 @@ set -euo pipefail
 APP_RESOURCES="/opt/eXeLearning/resources"
 
 # Copy bundled GPG key into rpm keyring directory
-install -D -m 644 "$APP_RESOURCES/keys/exelearning.gpg" /etc/pki/rpm-gpg/RPM-GPG-KEY-exelearning
+install -D -m 644 "$APP_RESOURCES/keys/exelearning.key" /etc/pki/rpm-gpg/RPM-GPG-KEY-exelearning
 
 # Create YUM/DNF repo file
 cat > /etc/yum.repos.d/exelearning.repo <<EOF
