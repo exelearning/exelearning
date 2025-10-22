@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>DigCompEdu Icon</title>
   <rect width="120" height="120" rx="16" ry="16" fill="#2B7FB9"/>
   <path d="M24 36h72v12H24z" fill="#FFFFFF" opacity="0.9"/>
   <path d="M24 56h52v12H24z" fill="#FFFFFF" opacity="0.75"/>

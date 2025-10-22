@@ -45,6 +45,7 @@ var $exeDevice = {
     modalPreviousFocus: null,
     editionBasePath: null,
     dataLoadPromises: {},
+    frameworkDataCache: {},
 
     /**
      * Initialize editor with previous data if available.
@@ -120,64 +121,86 @@ var $exeDevice = {
      * @returns {Promise<Object>}
      */
     loadFrameworkData: function (lang) {
-        if (window.DigCompEduData && window.DigCompEduData[lang]) {
-            return Promise.resolve(this.cloneFrameworkData(window.DigCompEduData[lang]));
+        if (this.frameworkDataCache[lang]) {
+            return Promise.resolve(this.cloneFrameworkData(this.frameworkDataCache[lang]));
         }
 
         if (this.dataLoadPromises[lang]) {
             return this.dataLoadPromises[lang].then((data) => this.cloneFrameworkData(data));
         }
 
-        const url = this.resolveEditionResource('../data/digcompedu.' + lang + '.js');
-        const loadingPromise = new Promise((resolve, reject) => {
-            const scriptId = `digcompedu-data-${lang}`;
-            const existingScript = document.getElementById(scriptId);
-            if (existingScript) {
-                if (window.DigCompEduData && window.DigCompEduData[lang]) {
-                    delete this.dataLoadPromises[lang];
-                    resolve(window.DigCompEduData[lang]);
+        const url = this.resolveEditionResource(
+            this.jsonPathTemplate.replace('{lang}', lang)
+        );
+
+        const loadViaXHR = () =>
+            new Promise((resolve, reject) => {
+                if (typeof XMLHttpRequest === 'undefined') {
+                    reject(new Error('XMLHttpRequest is not available in this environment.'));
                     return;
                 }
-
-                existingScript.addEventListener('load', () => {
-                    if (window.DigCompEduData && window.DigCompEduData[lang]) {
-                        delete this.dataLoadPromises[lang];
-                        resolve(window.DigCompEduData[lang]);
-                    } else {
-                        delete this.dataLoadPromises[lang];
-                        reject(new Error('DigCompEdu data script loaded without data.'));
-                    }
-                });
-                existingScript.addEventListener('error', () => {
-                    delete this.dataLoadPromises[lang];
-                    reject(new Error(`Failed to load ${existingScript.src}`));
-                });
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.id = scriptId;
-            script.src = url;
-            script.dataset.digcompeduData = lang;
-            script.onload = () => {
-                if (window.DigCompEduData && window.DigCompEduData[lang]) {
-                    script.setAttribute('data-digcompedu-loaded', 'true');
-                    delete this.dataLoadPromises[lang];
-                    resolve(window.DigCompEduData[lang]);
-                } else {
-                    delete this.dataLoadPromises[lang];
-                    reject(new Error('DigCompEdu data script loaded without data.'));
+                const request = new XMLHttpRequest();
+                request.open('GET', url, true);
+                if (typeof request.overrideMimeType === 'function') {
+                    request.overrideMimeType('application/json');
                 }
-            };
-            script.onerror = () => {
-                delete this.dataLoadPromises[lang];
-                reject(new Error(`Failed to load ${script.src}`));
-            };
-            document.head.appendChild(script);
-        });
+                request.onreadystatechange = function () {
+                    if (request.readyState !== 4) {
+                        return;
+                    }
+                    if ((request.status >= 200 && request.status < 300) || request.status === 0) {
+                        try {
+                            resolve(JSON.parse(request.responseText));
+                        } catch (parseError) {
+                            reject(parseError);
+                        }
+                    } else {
+                        reject(new Error(`Failed to load ${url}: ${request.status}`));
+                    }
+                };
+                request.onerror = function () {
+                    reject(new Error(`Network error while loading ${url}`));
+                };
+                request.send();
+            });
 
-        this.dataLoadPromises[lang] = loadingPromise;
-        return loadingPromise.then((data) => this.cloneFrameworkData(data));
+        const shouldUseFetch =
+            typeof fetch === 'function' &&
+            (typeof window === 'undefined' ||
+                !window.location ||
+                window.location.protocol !== 'file:');
+
+        const fetchPromise = shouldUseFetch
+            ? fetch(url, { cache: 'no-cache' })
+                  .then((response) => {
+                      if (!response.ok) {
+                          throw new Error(
+                              `Failed to load ${response.url || url}: ${response.status}`
+                          );
+                      }
+                      return response.json();
+                  })
+                  .catch((error) => {
+                      if (typeof XMLHttpRequest === 'function') {
+                          return loadViaXHR().catch((xhrError) => {
+                              throw xhrError || error;
+                          });
+                      }
+                      throw error;
+                  })
+            : loadViaXHR();
+
+        this.dataLoadPromises[lang] = fetchPromise
+            .then((data) => {
+                this.frameworkDataCache[lang] = data;
+                return data;
+            })
+            .catch((error) => {
+                delete this.dataLoadPromises[lang];
+                throw error;
+            });
+
+        return this.dataLoadPromises[lang].then((data) => this.cloneFrameworkData(data));
     },
 
     /**
@@ -187,29 +210,29 @@ var $exeDevice = {
         this.indicatorLookup = {};
         this.rowsData = [];
 
-        const frameworkAreas = this.frameworkData.marco_referencia_competencia_digital_docente || [];
+        const frameworkAreas = this.frameworkData.digcompedu || [];
         frameworkAreas.forEach((area) => {
             const areaNumber = area.area;
-            const areaTitle = area.titulo;
+            const areaTitle = area.title;
 
-            area.competencias.forEach((competence) => {
-                const competenceCode = String(competence.competencia);
-                const competenceTitle = competence.titulo;
+            area.competences.forEach((competence) => {
+                const competenceCode = String(competence.competence);
+                const competenceTitle = competence.title;
                 const competenceIndex = this.obtainCompetenceIndex(competenceCode);
 
-                competence.etapas.forEach((stage) => {
-                    const stageCode = stage.etapa;
-                    const stageTitle = stage.titulo;
+                competence.stages.forEach((stage) => {
+                    const stageCode = stage.stage;
+                    const stageTitle = stage.title;
 
-                    stage.niveles.forEach((level) => {
+                    stage.levels.forEach((level) => {
                         const levelCode = level.nivel;
-                        const levelTitle = level.titulo;
-                        const performanceStatement = level.afirmaciones_desempeño || '';
-                        const levelExamples = Array.isArray(level.ejemplos) ? level.ejemplos : [];
+                        const levelTitle = level.title;
+                        const performanceStatement = level.performance_statements || '';
+                        const levelExamples = Array.isArray(level.examples) ? level.examples : [];
 
-                        level.indicadores_logro.forEach((indicator) => {
-                            const indicatorNumber = indicator.indicador;
-                            const indicatorTitle = indicator.titulo;
+                        level.achievement_indicators.forEach((indicator) => {
+                            const indicatorNumber = indicator.indicator;
+                            const indicatorTitle = indicator.title;
                             const indicatorId = this.composeIndicatorId(competenceCode, levelCode, indicatorNumber);
                             const groupKey = `${areaNumber}::${competenceCode}::${levelCode}`;
 
@@ -955,30 +978,30 @@ var $exeDevice = {
         const bodyRow = document.createElement('tr');
         const tbody = document.createElement('tbody');
 
-        const frameworkAreas = this.frameworkData.marco_referencia_competencia_digital_docente || [];
+        const frameworkAreas = this.frameworkData.digcompedu || [];
 
         frameworkAreas.forEach((area) => {
             const areaTh = document.createElement('th');
             areaTh.scope = 'col';
-            areaTh.colSpan = area.competencias.length;
+            areaTh.colSpan = area.competences.length;
             areaTh.classList.add(`area${area.area}`);
-            areaTh.textContent = `${area.area}. ${area.titulo}`;
+            areaTh.textContent = `${area.area}. ${area.title}`;
             areasRow.appendChild(areaTh);
 
-            area.competencias.forEach((competence) => {
+            area.competences.forEach((competence) => {
                 const compTh = document.createElement('th');
-                compTh.textContent = competence.competencia;
+                compTh.textContent = competence.competence;
                 compTh.classList.add(`area${area.area}`);
                 competencesRow.appendChild(compTh);
 
-                const compIndex = this.obtainCompetenceIndex(String(competence.competencia));
+                const compIndex = this.obtainCompetenceIndex(String(competence.competence));
                 const cell = document.createElement('td');
                 cell.classList.add(`a${area.area}c${compIndex}`, 'cell-level');
                 cell.textContent = '';
 
                 const areaGroup = grouped[area.area];
                 if (areaGroup) {
-                    const competenceGroup = areaGroup.competences[String(competence.competencia)];
+                    const competenceGroup = areaGroup.competences[String(competence.competence)];
                     if (competenceGroup) {
                         const highestLevel = this.obtainHighestLevel(Object.keys(competenceGroup.indicatorsByLevel));
                         if (highestLevel) {
