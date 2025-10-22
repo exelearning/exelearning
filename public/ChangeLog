@@ -4,15 +4,15 @@
 
 ### Added
 
-- New default file extension: elp  → elpx
-- Notarizing macOS version
-- Styles information (detailed description and recognitions)
+- New default file extension: elp → elpx
+- Notarization of the macOS version
+- Information about styles (detailed descriptions and recognitions)
 
 ### Fixed
 
 - Rubric iDevice median score calculation
-- JavaScript errors when there's more than one UDL iDevice in a page
-- Favorites iDevices panel accessibility issues
+- JavaScript errors when more than one UDL iDevice is present on a page
+- Accessibility issues in the Favorite iDevices panel
 
 ---
 
