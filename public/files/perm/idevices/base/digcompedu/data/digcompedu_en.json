@@ -1,0 +1,1581 @@
+{
+    "digcompedu": [
+        {
+            "area": 1,
+            "title": "Professional Engagement",
+            "competences": [
+                {
+                    "competence": 1.1,
+                    "title": "Organisational communication",
+                    "descripcion": "To use digital technologies to enhance organisational communication with learners, parents and third parties. To contribute to collaboratively developing and improving the organisation’s communication strategies.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can use the organisation's digital communication channels (e.g. email, intranet) to communicate with colleagues and learners for a variety of purposes. I am aware of the need to adapt my communication style to the audience and purpose.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use the organisation’s communication channels routinely to communicate with colleagues, learners, parents and others. I can make an informed choice on which channel to use depending on my purpose and audience.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I confidently and proactively use a range of digital communication channels to communicate with others. I can select the most appropriate channel for my purpose. I evaluate the effectiveness of my communication and can adapt my communication strategies when needed.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have integrated a range of digital communication tools and strategies into my practice. I can critically evaluate the effectiveness of the organisation’s communication strategy and suggest improvements. I can guide colleagues in selecting and using appropriate digital communication channels and strategies.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can critically evaluate the organisation’s current communication strategies. I am able to devise, implement and evaluate new, effective digital communication strategies for my organisation. I can support my colleagues to develop their digital communication strategies and skills.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a coherent and comprehensive digital communication strategy. I am a role model for others. I can anticipate the need for new tools and strategies. I can lead innovation in digital communication at my organisation and beyond.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 1.2,
+                    "title": "Professional collaboration",
+                    "descripcion": "To use digital technologies to engage in professional collaboration with colleagues, sharing and exchanging knowledge and experience, and collaboratively developing pedagogical resources.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use digital technologies (e.g. email, online documents) to collaborate with colleagues on simple tasks (e.g. jointly producing a lesson plan).",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use a range of digital platforms and tools to collaborate with colleagues, exchanging resources and teaching experiences.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use collaborative digital technologies to work with colleagues on joint projects, within my organisation or with educators from other organisations.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have integrated collaborative digital tools and platforms into my practice and use them strategically to enhance collaboration with colleagues. I guide colleagues on their use of collaborative digital tools and platforms.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use a range of digital technologies to innovate my professional collaboration practices. I am able to critically evaluate and select appropriate technologies for collaboration. I support my colleagues to develop their professional collaboration skills through digital technologies.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I am an expert in using digital technologies for professional collaboration. I can develop new collaboration formats using digital tools. I can act as a role model and mentor for colleagues.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 1.3,
+                    "title": "Reflective practice",
+                    "descripcion": "To individually and collectively reflect on, critically assess and actively develop one’s own digital pedagogical practice and that of one’s educational community.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can reflect on my digital pedagogical practice and identify strengths and weaknesses. I am aware of possibilities for improvement.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can reflect, on my own and with colleagues, on my pedagogical practice with digital technologies and identify how it can be improved. I experiment with new digital pedagogical approaches.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I consistently reflect on my own and others’ pedagogical practice with digital technologies. I can discuss and reflect with colleagues on the pedagogical benefits and challenges of using digital technologies. I can independently and with colleagues adapt and develop my digital pedagogical methods.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I systematically evaluate my digital pedagogical practice and that of my organisation and can develop solutions for identified challenges. I support colleagues in reflecting on and developing their digital pedagogical practice.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I systematically use digital technologies to reflect on and document my pedagogical innovations. I can support colleagues in applying a range of methods for reflective practice.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I develop new concepts and methods of reflective practice using digital means. I lead reflective practice and knowledge-creation in my field of expertise and educational community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 1.4,
+                    "title": "Digital Continuous Professional Development (CPD)",
+                    "descripcion": "To source, select and engage in digital learning opportunities, both individually and as part of an educational organisation, for one’s continuous professional development.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can identify my digital learning needs. I can find online resources (e.g. online tutorials, videos) which help me to improve my digital skills.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use online sources and communities to find resources for my professional development. I can evaluate the relevance and reliability of the resources and sources I find.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I select and use different online sources and digital tools to enhance my professional development. I share resources and ideas with colleagues online.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I strategically use a variety of digital sources for my continuous professional development. I can critically assess the validity and reliability of the sources I find. I am an active member of online communities of practice.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I strategically use digital technologies to engage in a continuous process of professional development, adapting my strategies to my evolving needs. I support colleagues in devising their digital continuous professional development plans.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can create online professional development activities for colleagues. I am a recognised expert and source of inspiration for colleagues.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 1.5,
+                    "title": null,
+                    "descripcion": null,
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": null,
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": null,
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": null,
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": null,
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": null,
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": null,
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "area": 2,
+            "title": "Digital Resources",
+            "competences": [
+                {
+                    "competence": 2.1,
+                    "title": "Selecting digital resources",
+                    "descripcion": "To identify, assess and select digital resources for teaching and learning. To consider the specific learning objective, context, pedagogical approach, and learner group, when selecting digital resources and planning their use.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can identify and select relevant digital resources for my subject area from a limited range of sources with which I am familiar (e.g. my organisation's learning platform, publishers’ websites).",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can independently search for, assess and select digital resources for teaching and learning. I can manage and organise digital resources for my learners and for my own use.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I select a wide range of digital resources and use them creatively in different learning contexts and scenarios. I share resources with colleagues and learners.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I strategically use a range of digital resource search and selection strategies. I can critically evaluate and select a wide variety of digital resources to design inclusive learning scenarios. I can advise colleagues on suitable resources for specific learning goals and contexts.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I experiment with and develop new forms and formats of digital resources. I use a wide range of strategies to identify, evaluate and select digital resources and can support colleagues in doing so.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise innovative strategies for selecting and evaluating digital resources. I am an inspiration to others. I am able to contribute to the body of professional knowledge on the topic.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 2.2,
+                    "title": "Creating and modifying digital resources",
+                    "descripcion": "To create and modify digital resources and to consider the specific learning objective, context, pedagogical approach and learner group, when doing so.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can create simple digital resources (e.g. text, tables, images, mindmaps). I can make simple modifications to existing digital resources, where this is permitted.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can create and modify a variety of digital resources in different formats. I am aware of copyright rules when creating and modifying resources.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I regularly create and modify a range of digital resources. I can select appropriate authoring tools. I can apply and modify open licenses and respect copyright restrictions.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have integrated the creation and modification of digital resources into my teaching practice. I can use a range of different authoring tools and strategies and I can advise colleagues on which to choose for a given purpose. I confidently apply copyright and licensing rules.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can produce complex, interactive digital learning resources. I reflect critically on the purpose and suitability of different digital authoring tools and can support colleagues in their use of such tools.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive digital authoring strategy and a wide repertoire of approaches. I am a role model for colleagues. I am able to contribute to the body of professional knowledge on the topic.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 2.3,
+                    "title": "Managing, protecting and sharing digital resources",
+                    "descripcion": "To manage and organise digital content for learners and colleagues. To securely protect sensitive digital content. To use and share digital resources, respecting copyright and privacy rules.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can manage my digital resources and make them available to learners and colleagues (e.g. by attaching them to an e-mail or uploading them to a learning platform).",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can manage, share and publish digital resources using a range of digital platforms and tools. I am aware of the need to protect sensitive resources. I can apply simple copyright licenses to the resources I create.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use a range of digital platforms and tools to manage, share and publish digital resources. I can select the most appropriate platform or tool for a given purpose. I take appropriate measures to protect sensitive content. I can explain the main principles of copyright and licensing to learners.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I strategically use a variety of digital platforms and tools to manage, protect and share digital resources. I am confident in applying copyright and licensing rules. I can advise learners and colleagues on copyright rules.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive digital content strategy. I am able to evaluate the suitability of different tools and platforms and can support colleagues in choosing the most appropriate ones. I support learners and colleagues in understanding and applying copyright and licensing rules.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise innovative strategies for managing, protecting and sharing digital content. I am an inspiration to others. I am able to contribute to the body of professional knowledge on the topic.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "area": 3,
+            "title": "Teaching and Learning",
+            "competences": [
+                {
+                    "competence": 3.1,
+                    "title": "Teaching",
+                    "descripcion": "To plan for, implement and monitor the use of digital technologies in the teaching and learning process. To manage and orchestrate digital teaching and learning strategies. To experiment with and develop new formats and pedagogical methods for teaching.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use digital technologies in class for presentations and to share content with learners. I am aware of a limited range of digital teaching strategies.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I integrate digital technologies at different stages of a lesson (e.g. for presentation, practice, assessment). I can manage the use of digital technologies in a classroom or other learning setting.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use a range of digital technologies and can select appropriate ones for a given learning objective and context. I can orchestrate the use of digital technologies in different learning scenarios (e.g. whole-class teaching, group work, individual work).",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can confidently manage and orchestrate complex digital teaching and learning scenarios. I guide learners in their use of digital technologies. I experiment with new digital formats and pedagogical methods.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design and manage complex, digitally-enhanced learning experiences. I can critically evaluate and develop my repertoire of digital teaching strategies. I support colleagues in their use of digital teaching strategies.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive repertoire of digital teaching strategies which I constantly adapt and extend. I can develop innovative pedagogical methods and formats. I am a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 3.2,
+                    "title": "Guidance",
+                    "descripcion": "To use digital technologies to provide guidance, feedback and support to individuals and groups of learners. To experiment with and develop new formats and methods for offering guidance and support.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use digital technologies (e.g. email, learning platforms) to provide guidance and feedback to learners. I can monitor learners’ activities on digital platforms.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use a range of digital technologies to provide guidance, support and feedback to learners. I use the monitoring features of digital platforms to inform my guidance and support.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I strategically use digital technologies to provide timely guidance and targeted assistance to learners. I can adapt my guidance strategies to the needs of individuals and groups of learners.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a wide repertoire of digitally-enhanced guidance strategies which I adapt to learners' needs. I use digital technologies to provide peer-support and peer-guidance. I support colleagues in their use of digital guidance strategies.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design and implement comprehensive strategies for digitally-enhanced guidance. I can critically evaluate the effectiveness of different guidance formats and strategies and support colleagues in developing their strategies.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise novel solutions for providing digitally-enhanced guidance. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 3.3,
+                    "title": "Collaborative learning",
+                    "descripcion": "To use digital technologies to foster and enhance learner collaboration. To enable learners to use digital technologies as part of collaborative assignments, as a means of enhancing communication, collaboration and co-operative knowledge creation.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I am aware of the potential of digital technologies for fostering learner collaboration. I use digital technologies to enable learners to communicate and collaborate on simple assignments.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design and implement collaborative learning activities which require learners to use digital technologies. I can choose appropriate digital technologies for a given collaborative learning activity.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design and implement collaborative learning activities that enable learners to use digital technologies for shared knowledge-creation. I can guide learners in their use of collaborative technologies.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have integrated digitally-enhanced collaborative learning strategies into my teaching practice. I can use a variety of collaborative digital technologies and can select the most appropriate ones for a given context. I can support learners in developing their digital collaboration skills.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise and manage complex, digitally-enhanced collaborative learning scenarios. I support learners in engaging in complex knowledge co-creation. I can support colleagues in developing their digitally-enhanced collaborative learning strategies.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise novel collaborative learning formats. I am an expert on digitally-enhanced collaborative learning and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 3.4,
+                    "title": "Self-regulated learning",
+                    "descripcion": "To use digital technologies to support self-regulated learning, i.e. to enable learners to plan, monitor and reflect on their own learning, provide evidence of progress, share insights and creatively come up with solutions.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can support learners in their use of digital technologies for simple learning activities, e.g. finding information for a project.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can support learners in their use of digital technologies for a variety of learning activities. I can design learning activities that require learners to use digital technologies to collect, create and present information.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities that enable learners to plan, document and monitor their own learning process. I can support learners in using digital technologies to reflect on and showcase their learning.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities that foster learners’ self-regulated learning skills. I have a wide repertoire of strategies for using digital technologies to support self-regulated learning, which I can adapt to different contexts. I support colleagues in developing strategies for fostering learners' self-regulated learning.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise complex learning scenarios, which empower learners to take control of their learning. I have a comprehensive and flexible repertoire of strategies for fostering self-regulated learning which I continuously expand and improve. I can support colleagues in choosing and using strategies for fostering self-regulated learning.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise novel formats and strategies for fostering learners' self-regulated learning skills. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "area": 4,
+            "title": "Assessment",
+            "competences": [
+                {
+                    "competence": 4.1,
+                    "title": "Assessment strategies",
+                    "descripcion": "To use digital technologies for diagnostic, formative and summative assessment. To enhance the variety and suitability of assessment formats and approaches.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use simple digital technologies, e.g. online quizzes, to assess learners’ progress.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use a range of digital technologies to assess learners' progress. I can select appropriate digital assessment formats for different purposes.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design and implement digital assessment strategies. I use a variety of digital assessment formats and can select the most appropriate ones for a given purpose. I can guide learners in their use of digital assessment tools.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive digital assessment strategy. I have a wide repertoire of digital assessment formats which I can adapt to different contexts. I can support colleagues in developing their digital assessment strategies.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise and implement innovative and complex digital assessment strategies. I can critically evaluate and improve existing digital assessment strategies. I can support colleagues in choosing and implementing appropriate digital assessment strategies.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I devise novel assessment formats and strategies. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 4.2,
+                    "title": "Analysing evidence",
+                    "descripcion": "To generate, select, analyse and interpret digital evidence on learner activity, performance and progress, in order to inform teaching and learning.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can access and interpret the data on learner activity and performance that is generated by the digital technologies I use.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use the data that is generated by the digital tools and platforms I use to identify learners who are struggling and to adapt my teaching.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I strategically use the data that is generated by digital tools and platforms to provide targeted support to learners and to evaluate the effectiveness of my teaching strategies.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive strategy for analysing and interpreting digital data to inform my teaching. I use a variety of data sources and analytical tools. I can support colleagues in their use of digital data to inform their teaching.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise innovative and sophisticated strategies for analysing digital data on learner activity. I can critically evaluate the data generated and the analytical methods used. I support colleagues in their use of digital data for improving teaching and learning.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I devise novel methods for analysing and interpreting digital data on learner activity. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 4.3,
+                    "title": "Feedback and Planning",
+                    "descripcion": "To use digital technologies to provide timely and targeted feedback to learners. To adapt teaching strategies and to provide targeted support, based on the evidence generated by the digital technologies used. To enable learners and parents to understand the evidence provided by digital technologies and to use it for decision-making.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use digital technologies to provide feedback to learners. I adapt my teaching based on the evidence of learner progress I obtain from digital technologies.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use a range of digital tools and technologies to provide timely feedback to learners. I use the evidence from digital technologies to make informed decisions about my teaching strategies and about providing support to learners.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use a variety of digitally-enhanced feedback methods and strategies. I make informed decisions on my teaching strategies and on providing targeted support to learners. I can explain the evidence provided by digital technologies to learners and parents.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive strategy for digitally-enhanced feedback and planning. I empower learners to use digital technologies for peer- and self-assessment. I can help learners and parents to interpret digital evidence and use it for decision-making.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise and implement innovative and complex strategies for providing feedback and for planning my teaching. I can support learners in interpreting digital evidence and using it for decision-making. I support colleagues in developing their strategies for digitally-enhanced feedback and planning.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I devise novel formats and methods for digitally-enhanced feedback and planning. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "area": 5,
+            "title": "Empowering Learners",
+            "competences": [
+                {
+                    "competence": 5.1,
+                    "title": "Accessibility and inclusion",
+                    "descripcion": "To ensure access for all learners to learning resources and activities. To address learners’ diverse needs, by using digital technologies. To consider and respond to learners’ (digital) expectations, abilities, uses and misconceptions, as well as the contextual, physical or cognitive constraints to their using digital technologies.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I am aware that learners have different abilities and needs with regard to digital technologies. I can choose digital technologies that are accessible to my learners.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can choose digital technologies and teaching strategies which cater for a diversity of learners and their needs. I am aware of common digital misconceptions and can address them.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use a variety of digital technologies and teaching strategies to cater for the diversity of learners and their needs. I can ensure that all learners have access to digital resources and activities.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive and inclusive teaching strategy which caters for a diversity of learners and their digital needs. I use a variety of digital strategies to foster learners’ engagement. I can support colleagues in developing inclusive digital teaching strategies.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise complex and innovative strategies for inclusive digital teaching. I can support colleagues in choosing and implementing digital technologies and strategies for inclusive education.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise novel solutions for inclusive digital teaching. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 5.2,
+                    "title": "Differentiation and personalisation",
+                    "descripcion": "To use digital technologies to address learners’ diverse learning needs, by allowing learners to advance at different levels and speeds, and to follow individual learning pathways and goals.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use digital technologies to provide learning activities that address the same learning objective at different levels of difficulty.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I use digital technologies to provide learners with differentiated learning activities. I enable learners to progress at their own pace.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design and manage differentiated learning activities that cater for a diversity of learners. I enable learners to follow individual learning pathways.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive strategy for providing differentiated and personalised learning. I have a wide repertoire of digital strategies which I can adapt to different contexts. I can support colleagues in developing strategies for differentiation and personalisation.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise complex and innovative strategies for differentiation and personalisation. I can critically evaluate and improve existing strategies. I can support colleagues in choosing and implementing strategies for differentiation and personalisation.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I devise novel formats and methods for providing differentiated and personalised learning. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 5.3,
+                    "title": "Actively engaging learners",
+                    "descripcion": "To use digital technologies to foster learners’ active and creative engagement with a subject matter. To use digital technologies as part of a pedagogical strategy that fosters learners’ transversal skills, deep thinking and creative expression. To open up learning to real-world contexts, which involve learners themselves in hands-on activities, scientific investigation or complex problem solving.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can use digital technologies (e.g. multimedia, interactive quizzes) to present a subject matter in a way that is engaging and stimulating for learners.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities that use digital technologies to foster learners' active engagement with a subject matter.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design and manage learning activities that require learners to actively and creatively participate in a subject matter. I foster learners' complex thinking skills.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a wide repertoire of digitally-enhanced strategies which I use to foster learners' active engagement and creativity. I support colleagues in using digital technologies to actively engage learners.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise and implement complex and innovative strategies for actively engaging learners. I can critically evaluate and improve existing strategies. I can support colleagues in choosing and implementing strategies for actively engaging learners.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I devise novel formats and methods for actively engaging learners. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "area": 6,
+            "title": "Facilitating Learners’ Digital Competence",
+            "competences": [
+                {
+                    "competence": 6.1,
+                    "title": "Information and media literacy",
+                    "descripcion": "To incorporate learning activities, assignments and assessments which require learners to articulate their information needs; to find information and resources in digital environments; to organise, process, analyse and interpret information; and to compare and critically evaluate the credibility and reliability of information and its sources.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can guide learners on how to find information and resources in digital environments.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities which require learners to find, select and evaluate digital information and resources.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities which empower learners to critically evaluate digital information and its sources.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive strategy for developing learners' information and media literacy. I can guide learners on how to compare and critically evaluate the credibility and reliability of information and its sources. I support colleagues in developing learners' information and media literacy.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise complex and innovative strategies for developing learners' information and media literacy. I can critically evaluate and improve existing strategies. I can support colleagues in developing learners’ information and media literacy.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I devise novel formats and methods for developing learners’ information and media literacy. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 6.2,
+                    "title": "Digital communication and collaboration",
+                    "descripcion": "To incorporate learning activities, assignments and assessments which require learners to use digital technologies effectively and responsibly for communication, collaboration and civic participation.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can teach learners the basic rules of online communication and collaboration.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities which require learners to use digital technologies for communication and collaboration.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities which empower learners to communicate and collaborate in digital environments in an effective and responsible way.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive strategy for developing learners’ digital communication and collaboration skills. I can guide learners in their use of digital technologies for civic participation. I support colleagues in developing learners’ digital communication and collaboration skills.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise complex and innovative strategies for developing learners’ digital communication and collaboration skills. I can critically evaluate and improve existing strategies. I can support colleagues in developing learners’ digital communication and collaboration skills.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I devise novel formats and methods for developing learners’ digital communication and collaboration skills. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 6.3,
+                    "title": "Digital content creation",
+                    "descripcion": "To incorporate learning activities, assignments and assessments which require learners to express themselves through digital means, and to modify and create digital content in different formats. To teach learners how copyright and licenses apply to digital content, how to reference sources and attribute licenses.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can guide learners in their use of digital tools for creating simple digital content (e.g. text, images).",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities which require learners to create digital content in different formats. I can teach learners the basics of copyright.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities which empower learners to create complex, multi-modal digital content. I can teach learners how to reference sources and apply licenses.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive strategy for developing learners’ digital content creation skills. I can teach learners how to choose the most appropriate digital tools, formats and strategies for their purpose. I can support colleagues in developing learners’ digital content creation skills.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise complex and innovative strategies for developing learners’ digital content creation skills. I can critically evaluate and improve existing strategies. I can support colleagues in developing learners’ digital content creation skills.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I devise novel formats and methods for developing learners’ digital content creation skills. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 6.4,
+                    "title": "Safety",
+                    "descripcion": "To enable learners to protect devices, content, personal data and privacy in digital environments. To empower learners to protect their physical and psychological health, and to be aware of digital technologies for social well-being and social inclusion. To enable learners to be aware of the environmental impact of digital technologies and their use.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can explain to learners basic rules for protecting their devices and their personal online identity.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can explain to learners strategies for protecting their devices and their personal online identity and I encourage them to apply these strategies.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I ensure that learners apply different strategies for protecting their devices and their personal online identity. I can design learning activities which raise learners' awareness of online risks and threats.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities that empower learners to take a proactive approach towards their online safety. I can support learners in developing their resilience to online threats. I can guide colleagues on teaching online safety.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can develop comprehensive and up-to-date learning resources on online safety. I am able to teach learners how to adapt their safety strategies to new and evolving threats. I support colleagues in devising teaching strategies for online safety.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I am an expert on online safety. I am an inspiration to colleagues and the wider community. I can devise innovative strategies to promote online safety in my organisation.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "competence": 6.5,
+                    "title": "Problem solving",
+                    "descripcion": "To incorporate learning activities which empower learners to identify and solve technical problems when operating devices and using digital environments. To enable learners to identify their digital competence gaps and to support them in finding ways to overcome them.",
+                    "stages": [
+                        {
+                            "stage": "A",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "A1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can guide learners in solving basic technical problems (e.g. how to log on, how to save a file).",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "A2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities which require learners to identify and solve simple technical problems.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "B",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "B1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can design learning activities which empower learners to independently solve technical problems and to choose the appropriate digital tools for a given purpose.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "B2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I have a comprehensive strategy for developing learners’ digital problem-solving skills. I empower learners to identify their digital competence needs and I support them in addressing them. I support colleagues in developing learners’ digital problem-solving skills.",
+                                    "examples": null
+                                }
+                            ]
+                        },
+                        {
+                            "stage": "C",
+                            "title": null,
+                            "levels": [
+                                {
+                                    "nivel": "C1",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I can devise complex and innovative strategies for developing learners’ digital problem-solving skills. I can critically evaluate and improve existing strategies. I can support colleagues in developing learners’ digital problem-solving skills.",
+                                    "examples": null
+                                },
+                                {
+                                    "nivel": "C2",
+                                    "title": null,
+                                    "achievement_indicators": null,
+                                    "performance_statements": "I devise novel formats and methods for developing learners’ digital problem-solving skills. I am an expert in the field and a source of inspiration for my colleagues and the wider community.",
+                                    "examples": null
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
