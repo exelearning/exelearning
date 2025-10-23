@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## v3.0.0-rc4 – 2025-10-23
+
+### Added
+
+- New button to minify an iDevice in the work area
+- New "Insert template" button in TinyMCE
+- Declared .elpx as a file association in the Electron builder configuration
+- Updated packaging scripts for Debian/Ubuntu (APT) and RPM-based distributions, including GPG key and source configuration
+- Improved application update mechanism with robust checks to ensure the embedded PHP runtime works correctly, especially on Windows
+- Several improvements and fixes in the Windows installer workflow
+- Full translations: Basque (eu), Galician (gl), Valencian (va)
+- Updated translations (automated): Catalan (ca), Esperanto (eo)
+
+### Fixed
+
+- "Visible in export" preference in exported contents
+- Import of a block or an iDevice on a page
+- Removed unnecessary `data-idevice-json-data` and `data-idevice-template` attributes in Text iDevices
+- Progress Report iDevice: sort iDevices by block order on each page
+- Enable MathJax rendering when previewing and printing
+- Untranslated strings in TinyMCE
+
+---
+
 ## v3.0.0-rc3 – 2025-10-22
 
 ### Added
