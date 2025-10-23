@@ -48,6 +48,8 @@
         "publish": [
             {
                 "provider": "github",
+                "owner": "exelearning",
+                "repo": "exelearning",
                 "releaseType": "prerelease",
                 "channel": "latest"
             }
@@ -64,6 +66,15 @@
             ".env.dist",
             "translations/en.json",
             "translations/es.json"
+        ],
+        "fileAssociations": [
+          {
+            "ext": "elpx",
+            "name": "eXeLearning Project",
+            "description": "eXeLearning project file",
+            "role": "Editor",
+            "mimeType": "application/x-exelearning-elpx"
+          }
         ],
         "extraResources": [
             {

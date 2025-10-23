@@ -18,6 +18,10 @@ const basePath = app.isPackaged
 log.transports.file.resolvePathFn = () =>
   path.join(app.getPath('userData'), 'logs', 'main.log');
 
+ // files to open after app ready
+let pendingOpenFiles = [];
+
+
 // Mirror console.* to electron-log so GUI builds persist logs to file
 const origConsole = { log: console.log, error: console.error, warn: console.warn };
 console.log = (...args) => { log.info(...args); origConsole.log(...args); };
@@ -33,6 +37,14 @@ autoUpdater.logger = log;
 autoUpdater.allowPrerelease = true;
 autoUpdater.autoDownload = true;
 
+// Force the relaseType
+autoUpdater.setFeedURL({
+  provider: 'github',
+  owner: 'exelearning',
+  repo: 'exelearning',
+  channel: 'latest',
+  releaseType: 'release',
+});
 
 // ──────────────  i18n bootstrap  ──────────────
 // Pick correct path depending on whether the app is packaged.
@@ -777,7 +789,19 @@ if (!gotTheLock) {
   });
 }
 
-app.whenReady().then(createWindow);
+bootstrapFileOpenHandlers();
+
+app.whenReady().then(() => {
+  createWindow();
+
+  // Flush queued files after UI is ready
+  if (pendingOpenFiles.length && mainWindow && !mainWindow.isDestroyed()) {
+    for (const f of pendingOpenFiles) {
+      mainWindow.webContents.send('app:open-file', f);
+    }
+    pendingOpenFiles = [];
+  }
+});
 
 //-------------------------------------------------------------------
 // Auto updates
@@ -1331,6 +1355,60 @@ function assertWindowsPhpUsableOrGuide() {
     app.quit();
   }
 }
+
+/**
+ * Handle files passed on startup (Windows/Linux: process.argv, macOS: 'open-file')
+ */
+function bootstrapFileOpenHandlers() {
+  // Windows/Linux: file paths come in process.argv
+  // argv[0] = exe, argv[1] = first arg (might be a file)
+  if (process.platform !== 'darwin') {
+    const args = process.argv.slice(1);
+    for (const a of args) {
+      if (a && /\.elpx$/i.test(a) && !a.startsWith('-')) {
+        pendingOpenFiles.push(a);
+      }
+    }
+  }
+
+  // macOS: 'open-file' is emitted for each file, before or after 'ready'
+  app.on('open-file', (event, filePath) => {
+    event.preventDefault(); // prevent default OS handling
+    if (app.isReady() && mainWindow) {
+      // Send immediately if UI is ready
+      mainWindow.webContents.send('app:open-file', filePath);
+    } else {
+      // Queue until UI is ready
+      pendingOpenFiles.push(filePath);
+    }
+  });
+
+  // Single instance lock: collect files from second invocations (Win/Linux)
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    app.quit();
+    return;
+  }
+
+  app.on('second-instance', (_event, argv) => {
+    // Bring to front
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+
+    // On Windows, file path is usually the last arg
+    const files = argv.filter(a => /\.elpx$/i.test(a));
+    for (const f of files) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app:open-file', f);
+      } else {
+        pendingOpenFiles.push(f);
+      }
+    }
+  });
+}
+
 
 
 // Helper: translated or default fallback (handles missing/bad translations)
