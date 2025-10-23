@@ -95,8 +95,8 @@ class CreateProjectAction extends AbstractController
         // Only accept ELP/ZIP for this endpoint; reject XML as invalid ELP
         $origName = $file->getClientOriginalName() ?: '';
         $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-        if (!in_array($ext, ['elp', 'zip'])) {
-            return $this->json(['title' => 'Invalid ELP', 'detail' => 'Unsupported file type', 'type' => '/errors/422'], 422);
+        if (!in_array($ext, [\App\Constants::FILE_EXTENSION_ELP, 'elp', 'zip'])) {
+            return $this->json(['title' => 'Invalid file', 'detail' => 'Unsupported file type', 'type' => '/errors/422'], 422);
         }
 
         // Move to a temporary safe location

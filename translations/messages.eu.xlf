@@ -11,119 +11,119 @@
       </trans-unit>
       <trans-unit id="RyY2yZU" resname="Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...">
         <source>Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...</source>
-        <target>~Sortu irudi-mapa: irudi interaktiboak dituen puntuekin irudiak, bideoak, soinuak, testuak erakusteko...</target>
+        <target>Sortu irudi-mapak: puntu interaktiboak dituzten irudiak, bideoak, soinuak, testuak azaleratzeko...</target>
       </trans-unit>
       <trans-unit id="uGOdiGa" resname="Show questionnaire">
         <source>Show questionnaire</source>
-        <target>~Erakutsi galdeketa</target>
+        <target>Erakutsi galdetegia</target>
       </trans-unit>
       <trans-unit id="a1ZibuB" resname="Show active areas">
         <source>Show active areas</source>
-        <target>~Erakutsi aktibo dauden eremuak</target>
+        <target>Erakutsi aktibo dauden eremuak</target>
       </trans-unit>
       <trans-unit id="U011nkp" resname="Click here to do this activity">
         <source>Click here to do this activity</source>
-        <target>~Egin klik hemen jarduera hau egiteko</target>
+        <target>Sakatu hemen jarduera hau egiteko</target>
       </trans-unit>
       <trans-unit id="_x6N4oX" resname="Select the correct options and click on the &quot;Reply&quot; button.">
         <source>Select the correct options and click on the "Reply" button.</source>
-        <target>~Hautatu aukerak zuzena eta egin klik "Erantzun" botoian.</target>
+        <target>Hautatu aukera zuzenak eta egin klik "Erantzun" botoian.</target>
       </trans-unit>
       <trans-unit id="fRii9Tm" resname="Mark all the options in the correct order and click on the &quot;Reply&quot; button.">
         <source>Mark all the options in the correct order and click on the "Reply" button.</source>
-        <target>~Markatu aukerak zuzena den ordenean eta egin klik "Erantzun" botoian.</target>
+        <target>Markatu aukera guztiak ordena egokian eta sakatu "Erantzun" botoian.</target>
       </trans-unit>
       <trans-unit id="gcfIi2i" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
-        <target>~Idatzi hitza edo esaldi zuzena eta egin klik "Erantzun" botoian.</target>
+        <target>Idatzi hitz edo esaldi zuzena eta sakatu "Erantzun" botoian.</target>
       </trans-unit>
       <trans-unit id=".gszbqv" resname="Click on">
         <source>Click on</source>
-        <target>~Egin klik</target>
+        <target>Sakatu</target>
       </trans-unit>
       <trans-unit id=".8Av3oX" resname="Everything is perfect! Do you want to repeat this activity?">
         <source>Everything is perfect! Do you want to repeat this activity?</source>
-        <target>~Dena perfektua da! Jarduera hau errepikatu nahi duzu?</target>
+        <target>Dena perfektua da! Jarduera hau errepikatu nahi duzu?</target>
       </trans-unit>
       <trans-unit id="GhgrH8j" resname="Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?">
         <source>Great! You have passed the test, but you can improve it surely. Do you want to repeat this activity?</source>
-        <target>~Oso ondo! Proba gainditu duzu, baina ziur hobetu dezakezu. Jarduera hau errepikatu nahi duzu?</target>
+        <target>Bikain! Proba gainditu duzu, baina ziur hobetu dezakezula. Jarduera hau errepikatu nahi duzu?</target>
       </trans-unit>
       <trans-unit id="NTHoYGH" resname="Almost perfect! You can still do it better. Do you want to repeat this activity?">
         <source>Almost perfect! You can still do it better. Do you want to repeat this activity?</source>
-        <target>~Ia perfektua! Oraindik hobetu dezakezu. Jarduera hau errepikatu nahi duzu?</target>
+        <target>Ia perfektua! Oraindik hobetu dezakezu. Jarduera hau errepikatu nahi duzu?</target>
       </trans-unit>
       <trans-unit id="cozFfx3" resname="It is not correct! You have clicked on">
         <source>It is not correct! You have clicked on</source>
-        <target>~Ez da zuzena! Klik egin duzu</target>
+        <target>Ez da zuzena! Klik egin duzu</target>
       </trans-unit>
       <trans-unit id="7z2Wj4o" resname="and the correct answer is">
         <source>and the correct answer is</source>
-        <target>~eta erantzun zuzena da</target>
+        <target>eta erantzun zuzena da</target>
       </trans-unit>
       <trans-unit id="gVp2940" resname="Great! You have visited the required dots.">
         <source>Great! You have visited the required dots.</source>
-        <target>~Oso ondo! Beharrezko puntu guztiak bisitatu dituzu.</target>
+        <target>Bikain! Eskatutako puntuak bisitatu dituzu.</target>
       </trans-unit>
       <trans-unit id="iBb8_uX" resname="You can do the test.">
         <source>You can do the test.</source>
-        <target>~Proba egin dezakezu.</target>
+        <target>Proba egin dezakezu.</target>
       </trans-unit>
       <trans-unit id="QRwEk_A" resname="Select a subtitle file. Supported formats:">
         <source>Select a subtitle file. Supported formats:</source>
-        <target>~Hautatu azpititulu-fitxategi bat. Onartutako formatuek:</target>
+        <target>Hautatu azpititulu-fitxategi bat. Onartutako formatuak:</target>
       </trans-unit>
       <trans-unit id="aV1L_FP" resname="Map">
         <source>Map</source>
-        <target>~Mapa</target>
+        <target>Mapa</target>
       </trans-unit>
       <trans-unit id="fPOBkk4" resname="Return">
         <source>Return</source>
-        <target>~Itzuli</target>
+        <target>Itzuli</target>
       </trans-unit>
       <trans-unit id="sziTKeZ" resname="Questionnarie">
         <source>Questionnarie</source>
-        <target>~Galdeketa</target>
+        <target>Galdetegia</target>
       </trans-unit>
       <trans-unit id="K73e9Yj" resname="Arrow">
         <source>Arrow</source>
-        <target>~Gezia</target>
+        <target>Gezia</target>
       </trans-unit>
       <trans-unit id="4znput7" resname="Map marker">
         <source>Map marker</source>
-        <target>~Markatzailea</target>
+        <target>Mapa-markatzailea</target>
       </trans-unit>
       <trans-unit id="lGiVMKM" resname="Do you want to save the changes of this presentation?">
         <source>Do you want to save the changes of this presentation?</source>
-        <target>~Gorde nahi dituzu aurkezpen honetako aldaketak?</target>
+        <target>Gorde nahi dituzu aurkezpen honetako aldaketak?</target>
       </trans-unit>
       <trans-unit id="USqO9yt" resname="Do you want to save the changes of this quiz?">
         <source>Do you want to save the changes of this quiz?</source>
-        <target>~Gorde nahi dituzu galdeketako aldaketak?</target>
+        <target>Gorde nahi dituzu galdetegi honetako aldaketak?</target>
       </trans-unit>
       <trans-unit id="zmNHhiR" resname="Do you want to save the changes of this map?">
         <source>Do you want to save the changes of this map?</source>
-        <target>~Gorde nahi dituzu mapako aldaketak?</target>
+        <target>Gorde nahi dituzu mapa honetako aldaketak?</target>
       </trans-unit>
       <trans-unit id="qwizOzG" resname="Provide a slide title.">
         <source>Provide a slide title.</source>
-        <target>~Eman diapositibaren izenburua.</target>
+        <target>Eman diapositiba izenburua.</target>
       </trans-unit>
       <trans-unit id="J4RjpaC" resname="Hide score bar">
         <source>Hide score bar</source>
-        <target>~Ezkutatu puntuazio barra</target>
+        <target>Ezkutatu puntuazio barra</target>
       </trans-unit>
       <trans-unit id="5fEdNHr" resname="Play the sound when scrolling the mouse over the points.">
         <source>Play the sound when scrolling the mouse over the points.</source>
-        <target>~Puntuetan saguarekin pasatzean soinua erreproduzitu</target>
+        <target>Erreproduzitu soinua sagua puntuen gainean mugitzean</target>
       </trans-unit>
       <trans-unit id="zhQflEY" resname="Show when the mouse is over the icon or active area.">
         <source>Show when the mouse is over the icon or active area.</source>
-        <target>~Erakutsi saguaren gainean ikonoa edo eremu aktiboa dagoenean</target>
+        <target>Erakutsi sagua ikonoaren edo area aktiboaren gainean dagoenean</target>
       </trans-unit>
       <trans-unit id="IF0.2y." resname="Hide areas">
         <source>Hide areas</source>
-        <target>~Ezkutatu eremuak</target>
+        <target>Ezkutatu eremuak</target>
       </trans-unit>
       <trans-unit id="am0vSDJ" resname="Saved">
         <source>Saved</source>
@@ -275,7 +275,7 @@
       </trans-unit>
       <trans-unit id="7rl.d.M" resname="No file selected">
         <source>No file selected</source>
-        <target>~Ez da fitxategirik hautatu</target>
+        <target>Ez da fitxategirik hautatu</target>
       </trans-unit>
       <trans-unit id="cb8vJM8" resname="Supported formats">
         <source>Supported formats</source>
@@ -371,7 +371,7 @@
       </trans-unit>
       <trans-unit id="HqMcS6o" resname="AI">
         <source>AI</source>
-        <target>~IA</target>
+        <target>AA</target>
       </trans-unit>
       <trans-unit id="PiZUDcG" resname="Add questions">
         <source>Add questions</source>
@@ -891,7 +891,7 @@
       </trans-unit>
       <trans-unit id="xHJHwx9" resname="Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect">
         <source>Generate 10 true or false questions. Each question must include the solution (0 = false, 1 = true), a suggestion, and feedback, all separated by #. Additionally, the feedback must not explicitly indicate whether the response is correct or incorrect</source>
-        <target>~Sortu 10 egia edo gezurra galdera. Galdera bakoitzak irtenbidea (0 = gezurra, 1 = egia), proposamena eta feedback-a izan behar ditu, guztiak # bidez bereizita. Gainera, feedback-ak ez du argi adierazi behar erantzuna zuzena edo okerra den.</target>
+        <target>Sortu egia-gezurra 10 galdera. Galdera bakoitzak soluzioa (0 = gezurra, 1 = egia), iradokizun bat eta feedback bat izan behar ditu, guztia #batez bereizita. Horrez gain, atzeraelikadurak ez du esplizituki adierazi behar erantzuna zuzena edo okerra den.</target>
       </trans-unit>
       <trans-unit id="qONCUb7" resname="Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.">
         <source>Generate 10 questions. The 'Solution' can be 0/1 for True/False, 0-3 for single-choice, or A-D (or combinations) for multiple-choice. Then provide the question and the answer options (2 to 4), all separated by '#'.</source>
@@ -3995,43 +3995,43 @@
       </trans-unit>
       <trans-unit id="tmHbmhG" resname="Imported">
         <source>Imported</source>
-        <target>~Inportatua</target>
+        <target>Inportatua</target>
       </trans-unit>
       <trans-unit id="syHNb_G" resname="Tools to display information, organize resources or enrich content with accessibility and diverse media.">
         <source>Tools to display information, organize resources or enrich content with accessibility and diverse media.</source>
-        <target>~Tresnak informazioa erakusteko, baliabideak antolatzeko edo edukia irisgarritasun eta hedabide desberdinekin aberasteko.</target>
+        <target>Informazioa erakusteko, baliabideak antolatzeko edo edukiak irisgarritasunarekin eta hainbat komunikabiderekin aberasteko tresnak.</target>
       </trans-unit>
       <trans-unit id="UzOi88i" resname="Quizzes and other tools to check knowledge or progress, with the option to provide feedback.">
         <source>Quizzes and other tools to check knowledge or progress, with the option to provide feedback.</source>
-        <target>~Galderak eta beste tresnak ezagutza edo aurrerapena egiaztatzeko, iradokizunak emateko aukera barne.</target>
+        <target>Ezagutza edo aurrerapena egiaztatzeko galdetegiak eta bestelako tresnak, atzeraelikadura emateko aukera izanik.</target>
       </trans-unit>
       <trans-unit id="u3Cobad" resname="Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.">
         <source>Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.</source>
-        <target>~Joko mekanikak erabiliz ikaskuntza motibatzeko eta indartzeko baliabideak, ebaluazio presiorik gabe.</target>
+        <target>Ebaluazio-presiorik gabeko ikaskuntza motibatzeko eta indartzeko joko-mekanika erabiltzen duten baliabideak.</target>
       </trans-unit>
       <trans-unit id="MovwyhB" resname="Exercises that require direct interaction, encouraging active learning and trial-and-error.">
         <source>Exercises that require direct interaction, encouraging active learning and trial-and-error.</source>
-        <target>~Ariketa interakzio zuzena eskatzen dutenak, ikaskuntza aktiboa eta saiatu-oker metodoa sustatuz.</target>
+        <target>Zuzeneko interakzioa eskatzen duten ariketak, ikaskuntza aktiboa eta saiakuntza-errorea bultzatuz.</target>
       </trans-unit>
       <trans-unit id="kA_LL.P" resname="Sciencie">
         <source>Sciencie</source>
-        <target>~Zientzia</target>
+        <target>Zientzia</target>
       </trans-unit>
       <trans-unit id="JzukSIl" resname="Resources designed to work on specific subject areas or topics.">
         <source>Resources designed to work on specific subject areas or topics.</source>
-        <target>~Baliabideak gai edo arlo jakinetan lan egiteko diseinatuta.</target>
+        <target>Gai edo arlo jakin batzuk lantzeko baliabideak.</target>
       </trans-unit>
       <trans-unit id="w7FotCy" resname="Select or drag to place the iDevice on the page.">
         <source>Select or drag to place the iDevice on the page.</source>
-        <target>~Hautatu edo arrastatu iDevice-a orrian jartzeko.</target>
+        <target>Hautatu edo arrastatu iDevice-a orrian jartzeko.</target>
       </trans-unit>
       <trans-unit id="brRgELp" resname="Click to upload the file">
         <source>Click to upload the file</source>
-        <target>~Klik egin fitxategia igotzeko</target>
+        <target>Sakatu fitxategia igotzeko</target>
       </trans-unit>
       <trans-unit id="HEyq1hx" resname="Import iDevice in ZIP format">
         <source>Import iDevice in ZIP format</source>
-        <target>~Inportatu iDevice ZIP formatuan</target>
+        <target>Inportatu iDevice ZIP formatuan</target>
       </trans-unit>
       <trans-unit id="o1s3geg" resname="Failed to install the new iDevice">
         <source>Failed to install the new iDevice</source>
@@ -4063,7 +4063,7 @@
       </trans-unit>
       <trans-unit id="6q_rouK" resname="An error occurred while generating the print preview.">
         <source>An error occurred while generating the print preview.</source>
-        <target>~Errorea gertatu da inprimatzeko aurrebista sortzean.</target>
+        <target>Errorea gertatu da inprimatzeko aurrebista sortzean.</target>
       </trans-unit>
       <trans-unit id=".2bNgXe" resname="New file">
         <source>New file</source>
@@ -4179,15 +4179,15 @@
       </trans-unit>
       <trans-unit id="dmcRfIp" resname="There are no imported styles yet">
         <source>There are no imported styles yet</source>
-        <target>~Oraindik ez da inportatutako gaia</target>
+        <target>Oraindik ez dago inportatutako estilorik</target>
       </trans-unit>
       <trans-unit id="oU7_3QD" resname="You can check the guide to create a style or add it from a link.">
         <source>You can check the guide to create a style or add it from a link.</source>
-        <target>~Gida kontsulta dezakezu estilo bat sortzeko edo esteka baten bidez gehitzeko.</target>
+        <target>Estilo bat sortzeko gida kontsulta dezakezu, edo esteka batetik gehitzeko.</target>
       </trans-unit>
       <trans-unit id="Zi8zlAZ" resname="or drag it here">
         <source>or drag it here</source>
-        <target>~edo arrastatu hona</target>
+        <target>edo arrastatu hona</target>
       </trans-unit>
       <trans-unit id="bXi_PNT" resname="Delete style">
         <source>Delete style</source>
@@ -4207,7 +4207,7 @@
       </trans-unit>
       <trans-unit id=".tDUdOm" resname="Import style in ZIP format">
         <source>Import style in ZIP format</source>
-        <target>~Inportatu gaia ZIP formatuan</target>
+        <target>Inportatu gaia ZIP formatuan</target>
       </trans-unit>
       <trans-unit id="odnE5A." resname="Failed to install the new style">
         <source>Failed to install the new style</source>
@@ -4219,11 +4219,11 @@
       </trans-unit>
       <trans-unit id="RwB4tEC" resname="Remove image">
         <source>Remove image</source>
-        <target>~Irudia kendu</target>
+        <target>Irudia kendu</target>
       </trans-unit>
       <trans-unit id="vOnFuyb" resname="Are you sure you want to delete the style: ${themeId}?">
         <source>Are you sure you want to delete the style: ${themeId}?</source>
-        <target>~Ziur zaude gaia ezabatu nahi duzula: ${themeId}?</target>
+        <target>Ziur zaude estiloa ezabatu nahi duzula: ${themeId}?</target>
       </trans-unit>
       <trans-unit id="TG2suIV" resname="Link validation tool">
         <source>Link validation tool</source>
@@ -4259,7 +4259,7 @@
       </trans-unit>
       <trans-unit id="jb.15_T" resname="Upload iDevice file">
         <source>Upload iDevice file</source>
-        <target>~Igo iDevice fitxategia</target>
+        <target>Igo iDevice fitxategia</target>
       </trans-unit>
       <trans-unit id="TbY2TF0" resname="Broken links">
         <source>Broken links</source>
@@ -4303,11 +4303,11 @@
       </trans-unit>
       <trans-unit id="1tMjRQx" resname="Drag an iDevice in and start building">
         <source>Drag an iDevice in and start building</source>
-        <target>~Arrastatu iDevice bat eta hasi eraikitzen</target>
+        <target>Arrastatu iDevice bat eta hasi sortzen</target>
       </trans-unit>
       <trans-unit id="YfHiFNW" resname="Just drag an iDevice onto this page to start designing your content.">
         <source>Just drag an iDevice onto this page to start designing your content.</source>
-        <target>~Arrastatu iDevice bat orri honetara zure edukia diseinatzeko.</target>
+        <target>Arrastatu iDevice bat orri honetara zure edukia diseinatzeko.</target>
       </trans-unit>
       <trans-unit id="9SQZbAa" resname="Add Text">
         <source>Add Text</source>
@@ -4363,7 +4363,7 @@
       </trans-unit>
       <trans-unit id="Ha6Z1ij" resname="Filter items">
         <source>Filter items</source>
-        <target>~Elementuak iragazi</target>
+        <target>Elementuak iragazi</target>
       </trans-unit>
       <trans-unit id="yIQeeyS" resname="Import iDevice">
         <source>Import iDevice</source>
@@ -4371,11 +4371,11 @@
       </trans-unit>
       <trans-unit id="dRNHWgg" resname="Activate">
         <source>Activate</source>
-        <target>~Aktibatu</target>
+        <target>Aktibatu</target>
       </trans-unit>
       <trans-unit id="F.0jKf8" resname="You can only select 5 iDevices as favourites. Please remove an iDevice so you can add another one.">
         <source>You can only select 5 iDevices as favourites. Please remove an iDevice so you can add another one.</source>
-        <target>~5 iDevice soilik hauta ditzakezu gustuko gisa. Mesedez, kendu bat beste bat gehitzeko.</target>
+        <target>5 iDevice soilik hauta ditzakezu gogoko gisa. Mesedez, kendu iDevice bat beste bat gehitu ahal izateko.</target>
       </trans-unit>
       <trans-unit id="1Ntsh7c" resname="Legal notes">
         <source>Legal notes</source>
@@ -4439,7 +4439,7 @@
       </trans-unit>
       <trans-unit id="CLRCDhr" resname="Manual">
         <source>Manual</source>
-        <target>~Eskuliburua</target>
+        <target>Eskuliburua</target>
       </trans-unit>
       <trans-unit id="F5YsxHN" resname="Autosaved">
         <source>Autosaved</source>
@@ -4459,7 +4459,7 @@
       </trans-unit>
       <trans-unit id="OZeulWK" resname="Search...">
         <source>Search...</source>
-        <target>~Bilatu...</target>
+        <target>Bilatu...</target>
       </trans-unit>
       <trans-unit id="SdNWA5t" resname="Search">
         <source>Search</source>
@@ -4591,7 +4591,7 @@
       </trans-unit>
       <trans-unit id="wY6FkJp" resname="Edit title">
         <source>Edit title</source>
-        <target>~Izenburua editatu</target>
+        <target>Izenburua editatu</target>
       </trans-unit>
       <trans-unit id="96llu5l" resname="Move up">
         <source>Move up</source>
@@ -4679,7 +4679,7 @@
       </trans-unit>
       <trans-unit id="U7kZ6Nk" resname="Delete iDevice? This cannot be undone.">
         <source>Delete iDevice? This cannot be undone.</source>
-        <target>~Ezabatu iDevice-a? Ekintza hau ez da desegin daiteke.</target>
+        <target>iDevice-a ezabatu? Ekintza hau ezin da desegin.</target>
       </trans-unit>
       <trans-unit id="BFMIJG_" resname="Discard all changes?">
         <source>Discard all changes?</source>
@@ -4727,7 +4727,7 @@
       </trans-unit>
       <trans-unit id="fXgNxXg" resname="iDevice deleted. Now the box is empty. Delete the box too?">
         <source>iDevice deleted. Now the box is empty. Delete the box too?</source>
-        <target>~iDevice-a ezabatu da. Orain kaxa hutsik dago. Ezabatu kaxa ere?</target>
+        <target>iDevice-a ezabatuta. Orain kaxa hutsik dago. Kaxa ere ezabatu?</target>
       </trans-unit>
       <trans-unit id="fxYTEKl" resname="Failed to load the iDevice.">
         <source>Failed to load the iDevice.</source>
@@ -4759,19 +4759,19 @@
       </trans-unit>
       <trans-unit id="V5xJrEH" resname="This page is being edited by:">
         <source>This page is being edited by:</source>
-        <target>~Orri hau honakoak editatzen ari dira:</target>
+        <target>Orrialde hau editatzen ari da:</target>
       </trans-unit>
       <trans-unit id="tDt2D_." resname="at">
         <source>at</source>
-        <target>~etan</target>
+        <target>etan</target>
       </trans-unit>
       <trans-unit id="TjKSsPk" resname="This resource is being edited by:">
         <source>This resource is being edited by:</source>
-        <target>~Baliabide hau honakoak editatzen ari dira:</target>
+        <target>Baliabide hau editatzen ari da:</target>
       </trans-unit>
       <trans-unit id="RSemhX_" resname="Force Unlock">
         <source>Force Unlock</source>
-        <target>~Indarrez desblokeatu</target>
+        <target>Indarrez desblokeatzea</target>
       </trans-unit>
       <trans-unit id="yvB7wsp" resname="The project has been saved.">
         <source>The project has been saved.</source>
@@ -4803,7 +4803,7 @@
       </trans-unit>
       <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
         <source>You are editing an iDevice. Please close it before continuing</source>
-        <target>~iDevice bat editatzen ari zara. Mesedez, jarraitu aurretik itxi ezazu.</target>
+        <target>iDevice bat editatzen ari zara. Mesedez, jarraitu aurretik itxi ezazu.</target>
       </trans-unit>
       <trans-unit id="_t85EMU" resname="Required">
         <source>Required</source>
@@ -5127,7 +5127,7 @@
       </trans-unit>
       <trans-unit id=".gar845" resname="Provide a word and its definition. May toggle between: &quot;Word starts&quot; or &quot;Word contains&quot;, by clicking on %s">
         <source>Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s</source>
-        <target>~Eman hitz bat eta bere definizioa. Aldatu ahal izango duzu: "Hitzak hasi" edo "Hitzak dauka", egin klik %s-ean</target>
+        <target>Eman hitz bat eta definizioa. Txandakatu dezakezu: "Hitza hasten da" edo "Hitzak dauka", hemen klik eginez %s-ean</target>
       </trans-unit>
       <trans-unit id="gsp4x4D" resname="Starts with/Contains">
         <source>Starts with/Contains</source>
@@ -5855,7 +5855,7 @@
       </trans-unit>
       <trans-unit id="rVwkH5V" resname="Percent">
         <source>Percent</source>
-        <target>~Portzentajea</target>
+        <target>Ehunekoa</target>
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
         <source>&amp;percnt; right to see the feedback</source>
@@ -5939,7 +5939,7 @@
       </trans-unit>
       <trans-unit id="M.rjnAC" resname="Errors (number of attempts) to display the message">
         <source>Errors (number of attempts) to display the message</source>
-        <target>~Akatsak (saio kopurua) mezua erakusteko</target>
+        <target>Akatsak (saiakera-kopurua) mezua bistaratzeko</target>
       </trans-unit>
       <trans-unit id="I5dosEc" resname="Please write the error message.">
         <source>Please write the error message.</source>
@@ -6039,7 +6039,7 @@
       </trans-unit>
       <trans-unit id="St1Ka3l" resname="Accent marks">
         <source>Accent marks</source>
-        <target>~Azentuak</target>
+        <target>Azentuak</target>
       </trans-unit>
       <trans-unit id="i3AJ6Na" resname="Difficulty">
         <source>Difficulty</source>
@@ -6735,7 +6735,7 @@
       </trans-unit>
       <trans-unit id="niojgP3" resname="Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.">
         <source>Enter the text for the drop-down activity in the drop-down field either by pasting the text from another source or by typing it directly into the field. To select which words to choose, double-click on a word to select it and click on the button below.</source>
-        <target>~Sartu testua jarduerarako dagokion eremuan, itsatsiz edo zuzenean idatziz. Goitibeherako aukerak hautatzeko, hautatu hitz bat eta egin klik beheko botoian.</target>
+        <target>Idatzi testua jarduerari dagokion eremuan, beste iturri batetik itsatsiz edo zuzenean idatziz. Goitibeherako aukerak hautatzeko, bi aldiz klik egin hitz baten gainean eta beheko botoian klik egin.</target>
       </trans-unit>
       <trans-unit id="dGiBumO" resname="Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|">
         <source>Type or paste the text for the fill-in-the-blank activity into the field. Select the words and use the button below to hide them. You can define more than one possible answer using vertical bars to surround and separate them. E.g.: |dog|cat|bird|</source>
@@ -6807,7 +6807,7 @@
       </trans-unit>
       <trans-unit id="x7hS_ih" resname="Insert a GeoGebra activity from www.geogebra.org. It requires an Internet connection.">
         <source>Insert a GeoGebra activity from www.geogebra.org. It requires an Internet connection.</source>
-        <target>~Sartu GeoGebra jarduera www.geogebra.org-tik. Interneteko konexioa beharrezkoa da.</target>
+        <target>Sartu GeoGebra jarduera www.geogebra.org-tik. Interneteko konexioa beharrezkoa da.</target>
       </trans-unit>
       <trans-unit id="_voUbyf" resname="General Settings">
         <source>General Settings</source>
@@ -7031,7 +7031,7 @@
       </trans-unit>
       <trans-unit id="xDBQP79" resname="Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.">
         <source>Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.</source>
-        <target>~Ziur zaude irudiaren deskribapena sartzen ez duzula jarraitu nahi? Horregatik, irudia ez da erabilgarri egon daiteke erabiltzaile batzuentzat, testu nabigatzailea erabiltzen dutenei edo irudiak itzalita dituztenei.</target>
+        <target>Ziur zaude jarraitu nahi duzula irudi-deskribapenik sartu gabe? Hori gabe, irudia ez da irisgarria izango desgaitasuna duten erabiltzaile batzuentzat, edo testu-nabigatzaile bat erabiltzen dutenentzat, edo sarean irudiak itzalita dituztenentzat.</target>
       </trans-unit>
       <trans-unit id="aSTeHg2" resname="Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.">
         <source>Create interactive challenges in which students progressively reveal sections of a concealed image and then choose the correct answer based on the visual clues.</source>
@@ -7827,15 +7827,15 @@
       </trans-unit>
       <trans-unit id="F7TCatN" resname="Smallest number">
         <source>Smallest number</source>
-        <target>~Zenbaki txikiena</target>
+        <target>Zenbakirik txikiena</target>
       </trans-unit>
       <trans-unit id="kotZZWz" resname="Highest number">
         <source>Highest number</source>
-        <target>~Zenbaki handiena</target>
+        <target>Zenbakirik handiena</target>
       </trans-unit>
       <trans-unit id="JVTGXYH" resname="Decimals">
         <source>Decimals</source>
-        <target>~Hamarrentalak</target>
+        <target>Hamartarrak</target>
       </trans-unit>
       <trans-unit id="Ke5uJZY" resname="No decimals">
         <source>No decimals</source>
@@ -8855,7 +8855,7 @@
       </trans-unit>
       <trans-unit id="0Zyv4s9" resname="lives">
         <source>lives</source>
-        <target>~bizitzak</target>
+        <target>bizitzak</target>
       </trans-unit>
       <trans-unit id="TLxnz_g" resname="Play the introduction video">
         <source>Play the introduction video</source>
@@ -8935,7 +8935,7 @@
       </trans-unit>
       <trans-unit id="y.iaDMv" resname="Games with local videos or audios can't be exported">
         <source>Games with local videos or audios can't be exported</source>
-        <target>~Bideo edo audio lokalekin dituzten jokoak ezin dira esportatu</target>
+        <target>Tokiko bideoak edo audioak dituzten jokoak ezin dira esportatu</target>
       </trans-unit>
       <trans-unit id="i66zYWo" resname="Video test">
         <source>Video test</source>
@@ -8971,7 +8971,7 @@
       </trans-unit>
       <trans-unit id="BrjnoAt" resname="That second is not part of the video. Please check the video duration.">
         <source>That second is not part of the video. Please check the video duration.</source>
-        <target>~Segundo hori ez da bideoaren parte. Mesedez, egiaztatu bideoaren iraupena.</target>
+        <target>Segundo hori ez da bideoaren parte. Mesedez, egiaztatu bideoaren iraupena.</target>
       </trans-unit>
       <trans-unit id="y9T7U06" resname="There is already a question in that second.">
         <source>There is already a question in that second.</source>
@@ -8979,11 +8979,11 @@
       </trans-unit>
       <trans-unit id="VcWni3Z" resname="Write the message to be displayed when passing the game">
         <source>Write the message to be displayed when passing the game</source>
-        <target>~Idatzi jokoa gainditzean erakutsiko den mezua</target>
+        <target>Idatzi jokoa pasatzean erakutsi beharreko mezua</target>
       </trans-unit>
       <trans-unit id="ojpSm9R" resname="Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)">
         <source>Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)</source>
-        <target>~Erabili YouTube URL bat edo hautatu fitxategi bat (mp4, ogg, webm, mp3, wav)</target>
+        <target>Erabili YouTube esteka bat edo hautatu fitxategi bat (mp4, ogg, webm, mp3, wav)</target>
       </trans-unit>
       <trans-unit id="v5lFr7s" resname="Create activities consisting on a video with interactive questions.">
         <source>Create activities consisting on a video with interactive questions.</source>
@@ -9211,11 +9211,11 @@
       </trans-unit>
       <trans-unit id="Tx2FicQ" resname="The right answer will be shown after this text.">
         <source>The right answer will be shown after this text.</source>
-        <target>~Erantzun zuzena testu honen ondoren erakutsiko da.</target>
+        <target>Erantzun zuzena testu honen ondoren erakutsiko da.</target>
       </trans-unit>
       <trans-unit id="0PirVoy" resname="after">
         <source>after</source>
-        <target>~ondoren</target>
+        <target>ondoren</target>
       </trans-unit>
       <trans-unit id="c.rPMSz" resname="optional">
         <source>optional</source>
@@ -9251,7 +9251,7 @@
       </trans-unit>
       <trans-unit id="61_1EWE" resname="You must indicate an image, a text or/and an audio for each card">
         <source>You must indicate an image, a text or/and an audio for each card</source>
-        <target>~Irudi bat, testu bat eta/edo audio bat adierazi behar duzu txartel bakoitzarentzat</target>
+        <target>Txartel bakoitzeko irudi bat, testu bat edota audio bat adierazi behar dituzu.</target>
       </trans-unit>
       <trans-unit id="vr2VDvg" resname="Maximum number of activities: 30">
         <source>Maximum number of activities: 30</source>
@@ -9443,7 +9443,7 @@
       </trans-unit>
       <trans-unit id="_iRtiV6" resname="Free response">
         <source>Free response</source>
-        <target>~Erantzun askea</target>
+        <target>Erantzun libre</target>
       </trans-unit>
       <trans-unit id="sG1LWBS" resname="This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.">
         <source>This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.</source>
@@ -9739,7 +9739,7 @@
       </trans-unit>
       <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
         <source>Action &amp; Expression</source>
-        <target>~Ekintza eta adierazpena</target>
+        <target>Ekintza &amp; Adierazpena</target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>
@@ -11391,7 +11391,7 @@
       </trans-unit>
       <trans-unit id="LAdjrpD" resname="Primary author/s of the resource.">
         <source>Primary author/s of the resource.</source>
-        <target>~Baliabidearen egile nagusia.</target>
+        <target>Baliabidearen egile nagusia/k.</target>
       </trans-unit>
       <trans-unit id="wx6YU0S" resname="Export options">
         <source>Export options</source>
@@ -11491,7 +11491,7 @@
       </trans-unit>
       <trans-unit id="0sc1irx" resname="Could not extract style">
         <source>Could not extract style</source>
-        <target>~Ezin izan da gaia atera</target>
+        <target>Ezin izan da estiloa atera</target>
       </trans-unit>
       <trans-unit id="S3v5Oal" resname="Could not load style">
         <source>Could not load style</source>
@@ -11499,7 +11499,7 @@
       </trans-unit>
       <trans-unit id="qEE0Zw." resname="The style is not installable">
         <source>The style is not installable</source>
-        <target>~Ezin da estiloa instalatu</target>
+        <target>Ezin da estiloa instalatu</target>
       </trans-unit>
       <trans-unit id="NvChAor" resname="Invalid style name">
         <source>Invalid style name</source>
@@ -11511,7 +11511,7 @@
       </trans-unit>
       <trans-unit id="D6K4nc6" resname="Could not install style">
         <source>Could not install style</source>
-        <target>~Ezin izan da gaia instalatu</target>
+        <target>Ezin izan da estiloa instalatu</target>
       </trans-unit>
       <trans-unit id="0k.oH2K" resname="Please create at least one page before exporting.">
         <source>Please create at least one page before exporting.</source>
@@ -11611,115 +11611,115 @@
       </trans-unit>
       <trans-unit id="ldQmgCC" resname="Show feedback">
         <source>Show feedback</source>
-        <target>~Erakutsi iruzkinak</target>
+        <target>Erakutsi atzeraelikadura</target>
       </trans-unit>
       <trans-unit id="IIWdrDp" resname="Hide feedback">
         <source>Hide feedback</source>
-        <target>~Ezkutatu iruzkinak</target>
+        <target>Ezkutatu atzeraelikadura</target>
       </trans-unit>
       <trans-unit id="qXxIKiI" resname="Menu">
         <source>Menu</source>
-        <target>~Menua</target>
+        <target>Menua</target>
       </trans-unit>
       <trans-unit id="uPK90IF" resname="Your score is">
         <source>Your score is</source>
-        <target>~Zure puntuazioa da</target>
+        <target>Zure puntuazioa honakoa da</target>
       </trans-unit>
       <trans-unit id="b6hmtD_" resname="Error retrieving data">
         <source>Error retrieving data</source>
-        <target>~Errorea datuak eskuratzean</target>
+        <target>Errorea datuak eskuratzean</target>
       </trans-unit>
       <trans-unit id="iM.0BJl" resname="This might not work in this ePub reader.">
         <source>This might not work in this ePub reader.</source>
-        <target>~Baliteke honek ez funtzionatzea ePub irakurgailu honetan.</target>
+        <target>Baliteke ez funtzionatzea ePub irakurgailu honetan.</target>
       </trans-unit>
       <trans-unit id="oORf9iD" resname="This activity does not work in ePub format.">
         <source>This activity does not work in ePub format.</source>
-        <target>~Jarduera honek ez du ePub formatuan funtzionatzen.</target>
+        <target>Jarduera honek ez du ePub formatuan funtzionatzen.</target>
       </trans-unit>
       <trans-unit id="MA7trt8" resname="Search all pages">
         <source>Search all pages</source>
-        <target>~Bilatu orrialde guztietan</target>
+        <target>Bilatu orrialde guztietan</target>
       </trans-unit>
       <trans-unit id="l1Hcq.m" resname="No results found for %">
         <source>No results found for %</source>
-        <target>~Ez da emaitzarik aurkitu %-(r)entzat</target>
+        <target>Ez da emaitzarik aurkitu %-(r)entzat</target>
       </trans-unit>
       <trans-unit id="s_Ykup3" resname="Search results for %">
         <source>Search results for %</source>
-        <target>~Bilaketaren emaitzak %-(r)entzat</target>
+        <target>Bilaketaren emaitzak %-(r)entzat</target>
       </trans-unit>
       <trans-unit id="QJSMbTz" resname="Hide results">
         <source>Hide results</source>
-        <target>~Ezkutatu emaitzak</target>
+        <target>Ezkutatu emaitzak</target>
       </trans-unit>
       <trans-unit id="vZ3g5lk" resname="Full size">
         <source>Full size</source>
-        <target>~Tamaina osoa</target>
+        <target>Tamaina osoa</target>
       </trans-unit>
       <trans-unit id="Y.SUx2B" resname="Accessibility tools">
         <source>Accessibility tools</source>
-        <target>~Irisgarritasun tresnak</target>
+        <target>Irisgarritasun tresnak</target>
       </trans-unit>
       <trans-unit id=".LN5KpH" resname="Default typography">
         <source>Default typography</source>
-        <target>~Letra-tipo lehenetsia</target>
+        <target>Letra-tipo lehenetsia</target>
       </trans-unit>
       <trans-unit id="Y_lcdMn" resname="Increase text size">
         <source>Increase text size</source>
-        <target>~Handitu testuaren tamaina</target>
+        <target>Handitu testuaren tamaina</target>
       </trans-unit>
       <trans-unit id="83VcOiT" resname="Decrease text size">
         <source>Decrease text size</source>
-        <target>~Txikitu testuaren tamaina</target>
+        <target>Txikitu testuaren tamaina</target>
       </trans-unit>
       <trans-unit id="OLinVBN" resname="Stop reading">
         <source>Stop reading</source>
-        <target>~Utzi irakurtzeari</target>
+        <target>Utzi irakurtzeari</target>
       </trans-unit>
       <trans-unit id="nfZSB2j" resname="Translate">
         <source>Translate</source>
-        <target>~Itzuli</target>
+        <target>Itzuli</target>
       </trans-unit>
       <trans-unit id="h_JJhAn" resname="Light/dark mode">
         <source>Light/dark mode</source>
-        <target>~Argi/ilun modua</target>
+        <target>Argi/ilun modua</target>
       </trans-unit>
       <trans-unit id="WA9z9oQ" resname="Teacher mode">
         <source>Teacher mode</source>
-        <target>~Irakasle modua</target>
+        <target>Irakasle modua</target>
       </trans-unit>
       <trans-unit id="zp1nkll" resname="Hangman Game">
         <source>Hangman Game</source>
-        <target>~Zintzilikario jokoa</target>
+        <target>Hangman jokoa</target>
       </trans-unit>
       <trans-unit id="Qmo7OQW" resname="Stat">
         <source>Stat</source>
-        <target>~Estatistika</target>
+        <target>Estatistika</target>
       </trans-unit>
       <trans-unit id="RiWn7g_" resname="Selected letters">
         <source>Selected letters</source>
-        <target>~Hautatutako letrak</target>
+        <target>Hautatutako letrak</target>
       </trans-unit>
       <trans-unit id="D.9uOUj" resname="Other word">
         <source>Other word</source>
-        <target>~Beste hitz bat</target>
+        <target>Beste hitz bat</target>
       </trans-unit>
       <trans-unit id="QCsa0JO" resname="Game Over">
         <source>Game Over</source>
-        <target>~Jokoa amaitu da</target>
+        <target>Jokoa amaitu da</target>
       </trans-unit>
       <trans-unit id="rXfx2XN" resname="Reload the game?">
         <source>Reload the game?</source>
-        <target>~Berriro kargatu jokoa?</target>
+        <target>Berriro kargatu jokoa?</target>
       </trans-unit>
       <trans-unit id="84o0Zr9" resname="Click &quot;Play&quot; to start a new game.">
         <source>Click "Play" to start a new game.</source>
-        <target>~Egin klik "Jokatu" botoian partida berria hasteko.</target>
+        <target>Sakatu "Jokatu" botoian partida berria hasteko.</target>
       </trans-unit>
       <trans-unit id="JP_t.5h" resname="Click &quot;Another word&quot; to continue.">
         <source>Click "Another word" to continue.</source>
-        <target>~Egin klik "Beste hitz bat" botoian jarraitzeko.</target>
+        <target>Sakatu "Beste hitz bat" botoian jarraitzeko.</target>
       </trans-unit>
       <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
         <source>abcdefghijklmnñopqrstuvwxyz</source>
@@ -11727,7 +11727,7 @@
       </trans-unit>
       <trans-unit id="buoozPS" resname="Metadata creation date">
         <source>Metadata creation date</source>
-        <target>~Metadatuen sorrera data</target>
+        <target>Metadatuen sorrera data</target>
       </trans-unit>
       <trans-unit id="80CZaVs" resname="Block %e">
         <source>Block %e</source>
@@ -11755,7 +11755,7 @@
       </trans-unit>
       <trans-unit id="_9u.dBq" resname="Page not found">
         <source>Page not found</source>
-        <target>~Orri ez da aurkitu</target>
+        <target>Orria ez da aurkitu</target>
       </trans-unit>
       <trans-unit id="2heQoGd" resname="Sorry, but the page cannot be displayed.">
         <source>Sorry, but the page cannot be displayed.</source>
@@ -11783,7 +11783,7 @@
       </trans-unit>
       <trans-unit id="XB.DIlH" resname="Hello again! Please enter your credentials.">
         <source>Hello again! Please enter your credentials.</source>
-        <target>~Kaixo berriro! Mesedez, sartu zure kredentzialak.</target>
+        <target>Kaixo berriro! Mesedez, sartu zure kredentzialak.</target>
       </trans-unit>
       <trans-unit id="ogY89LI" resname="Logged in as">
         <source>Logged in as</source>
@@ -11791,7 +11791,7 @@
       </trans-unit>
       <trans-unit id="5U_Vq54" resname="Work area">
         <source>Work area</source>
-        <target>~Lan eremua</target>
+        <target>Lan eremua</target>
       </trans-unit>
       <trans-unit id="JZi_tm0" resname="Email">
         <source>Email</source>
@@ -11823,7 +11823,7 @@
       </trans-unit>
       <trans-unit id="VXFwlwn" resname="Settings">
         <source>Settings</source>
-        <target>~Ezarpenak</target>
+        <target>Ezarpenak</target>
       </trans-unit>
       <trans-unit id="9G8Nzdp" resname="User menu">
         <source>User menu</source>
@@ -11935,7 +11935,7 @@
       </trans-unit>
       <trans-unit id="EJDvYR8" resname="Save and exit">
         <source>Save and exit</source>
-        <target>~Gorde eta irten</target>
+        <target>Gorde eta irten</target>
       </trans-unit>
       <trans-unit id="0uAquVg" resname="This is a demo version!">
         <source>This is a demo version!</source>
@@ -12019,7 +12019,7 @@
       </trans-unit>
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
-        <target>~Sistema</target>
+        <target>Sistema</target>
       </trans-unit>
     </body>
   </file>

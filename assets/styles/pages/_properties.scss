@@ -241,6 +241,15 @@
                     }
                 }
             }
+            @media (min-width: 1400px) {
+                #collapse-export{
+                    overflow: auto;
+                }
+                #collapse-export .property-row{
+                    max-width: 45%;
+                    float: left;
+                }
+            }
         }
     }
     .footer {

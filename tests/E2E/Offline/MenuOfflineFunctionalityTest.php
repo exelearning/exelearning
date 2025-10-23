@@ -252,6 +252,7 @@ class MenuOfflineFunctionalityTest extends BaseE2ETestCase
 
     public function testExportAsXmlOfflineUsesElectronSaveAs(): void
     {
+        /* To review ("Metadata (XML)" export is currently hidden)
         $client = $this->initOfflineClientWithMock();
 
         $this->openOfflineExportMenu($client);
@@ -260,6 +261,7 @@ class MenuOfflineFunctionalityTest extends BaseE2ETestCase
         $this->waitForMockCall($client, 'saveAs');
         $exportCalls = (int) $client->executeScript('return (window.__MockApiCalls && window.__MockApiCalls.getOdeExportDownload) || 0;');
         $this->assertGreaterThanOrEqual(1, $exportCalls);
+        */
     }
 
     public function testToolbarSaveUsesElectronSave(): void
