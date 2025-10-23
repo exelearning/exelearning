@@ -162,6 +162,9 @@
                         display: none; /* To review (styles description) */
                     }
                 }
+                textarea#theme-info-key-description{
+                    min-height: 7em;
+                }
             }
             #importedstylescontent {
                 .user-theme-empty-info {
