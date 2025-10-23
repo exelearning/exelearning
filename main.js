@@ -28,8 +28,11 @@ console.error = (...args) => { log.error(...args); origConsole.error(...args); }
 process.on('uncaughtException', (e) => log.error('uncaughtException:', e));
 process.on('unhandledRejection', (e) => log.error('unhandledRejection:', e));
 
+autoUpdater.channel = 'latest';
 autoUpdater.logger = log;
 autoUpdater.allowPrerelease = true;
+autoUpdater.autoDownload = true;
+
 
 // ──────────────  i18n bootstrap  ──────────────
 // Pick correct path depending on whether the app is packaged.
@@ -376,6 +379,10 @@ function createWindow() {
 
   // Check if the database exists and run Symfony commands
   checkAndCreateDatabase();
+
+  // Check if the php binary is runable exists and run Symfony commands
+  assertWindowsPhpUsableOrGuide();
+
   runSymfonyCommands();
 
   // Start the embedded PHP server
@@ -778,10 +785,27 @@ app.whenReady().then(createWindow);
 // This will immediately download an update, then install when the
 // app quits.
 //-------------------------------------------------------------------
-app.on('ready', function()  {
-  autoUpdater.checkForUpdatesAndNotify();
-});
+app.on('ready', () => {
+  if (!app.isPackaged) return; // don't check updates in dev
 
+  autoUpdater.on('error', (err) => {
+    // downgrade to info if it's just "no versions"
+    if (err && /No published versions on GitHub/i.test(err.message)) {
+      log.info('AutoUpdater: no GitHub releases yet; skipping.');
+    } else {
+      log.warn(`AutoUpdater error: ${err?.stack || err}`);
+    }
+  });
+
+  // Important: catch the returned Promise
+  void autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+    if (err && /No published versions on GitHub/i.test(err.message)) {
+      log.info('AutoUpdater: no releases yet; skipping.');
+    } else {
+      log.warn(`AutoUpdater check failed: ${err?.stack || err}`);
+    }
+  });
+});
 
 app.on('window-all-closed', function () {
   if (phpServer) {
@@ -1252,6 +1276,62 @@ function getPhpBinaryPath() {
 
   throw new Error(`unsupported platform: ${process.platform}`);
 }
+
+// --- Windows-only VC++ runtime check for embedded PHP ---
+function assertWindowsPhpUsableOrGuide() {
+  // Run only on Windows
+  if (process.platform !== 'win32') return;
+
+  const VC_REDIST_URL = 'https://aka.ms/vs/17/release/vc_redist.x64.exe';
+
+  try {
+    // Quick probe: if PHP starts, dependencies are fine.
+    execFileSync(phpBinaryPath, ['-v'], { windowsHide: true, stdio: 'pipe' });
+    return;
+  } catch (err) {
+    // Optional: check registry to see if the VC++ 2015–2022 (x64) runtime is installed
+    let vcredistInstalled = false;
+    try {
+      const out = execFileSync('reg', [
+        'query',
+        'HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64',
+        '/v',
+        'Installed'
+      ], { windowsHide: true, stdio: 'pipe' }).toString();
+      vcredistInstalled = /\bInstalled\s+REG_DWORD\s+0x1\b/i.test(out);
+    } catch (_) {
+      // If the key is missing or unreadable, assume it's not installed.
+      vcredistInstalled = false;
+    }
+
+    // Build a user-friendly message
+    const message = vcredistInstalled
+      ? 'PHP could not be started. The embedded PHP binary may be corrupted or incompatible.'
+      : 'Microsoft Visual C++ 2015–2022 (x64) is required to run the embedded PHP on Windows.';
+
+    const detail = vcredistInstalled
+      ? 'Please reinstall eXeLearning or replace the embedded PHP runtime.'
+      : 'Click “Install VC++ now” to download it from Microsoft. After installing, reopen eXeLearning.';
+
+    // Offer to open the official installer link
+    const { shell } = require('electron');
+    const buttons = vcredistInstalled ? ['Exit'] : ['Install VC++ now', 'Exit'];
+    const choice = dialog.showMessageBoxSync({
+      type: 'error',
+      buttons,
+      defaultId: 0,
+      cancelId: buttons.length - 1,
+      message,
+      detail
+    });
+
+    if (!vcredistInstalled && choice === 0) {
+      shell.openExternal(VC_REDIST_URL);
+    }
+    app.quit();
+  }
+}
+
 
 // Helper: translated or default fallback (handles missing/bad translations)
 function tOrDefault(key, fallback) {
