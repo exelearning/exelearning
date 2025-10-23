@@ -618,12 +618,14 @@ export default class NavbarFile {
 
         const label = document.createElement('label');
         label.classList.add('form-label', 'theme-info-key');
+        label.setAttribute('for', 'theme-info-key-' + key);
         label.textContent = config.title;
         group.appendChild(label);
 
         switch (config.tag) {
             case 'text': {
                 const input = document.createElement('input');
+                input.id = 'theme-info-key-' + key;
                 input.type = 'text';
                 input.classList.add('form-control', 'theme-info-value-text');
                 input.disabled = true;
@@ -633,6 +635,7 @@ export default class NavbarFile {
             }
             case 'textarea': {
                 const textarea = document.createElement('textarea');
+                textarea.id = 'theme-info-key-' + key;
                 textarea.classList.add('form-control', 'theme-info-value-text');
                 textarea.disabled = true;
                 textarea.value = value;

@@ -12021,6 +12021,74 @@
         <source>System</source>
         <target>~Sistemo</target>
       </trans-unit>
+      <trans-unit id="obgj9Qf" resname="Someone is editing this page. Please wait until they finish editing before you can create new iDevices.">
+        <source>Someone is editing this page. Please wait until they finish editing before you can create new iDevices.</source>
+        <target>~Iu redaktas ĉi tiun paĝon. Bonvolu atendi ĝis ili finos redakti antaŭ ol krei novajn iDevices.</target>
+      </trans-unit>
+      <trans-unit id="fTgJugq" resname="Accordion">
+        <source>Accordion</source>
+        <target>~Aŭrkordo</target>
+      </trans-unit>
+      <trans-unit id="DbL5UmT" resname="Tabs">
+        <source>Tabs</source>
+        <target>~Langetoj</target>
+      </trans-unit>
+      <trans-unit id="1IhUdFE" resname="Pagination">
+        <source>Pagination</source>
+        <target>~Paĝigo</target>
+      </trans-unit>
+      <trans-unit id=".GkUmi3" resname="Carousel">
+        <source>Carousel</source>
+        <target>~Karusel</target>
+      </trans-unit>
+      <trans-unit id="rnkTmZx" resname="Timeline">
+        <source>Timeline</source>
+        <target>~Tempolinio</target>
+      </trans-unit>
+      <trans-unit id="qQTzJDT" resname="The tooltip will show the term and its definition.">
+        <source>The tooltip will show the term and its definition.</source>
+        <target>~La informfenestro montros la terminon kaj ĝian difinon.</target>
+      </trans-unit>
+      <trans-unit id="Wohf2qf" resname="2 columns">
+        <source>2 columns</source>
+        <target>~2 kolumnoj</target>
+      </trans-unit>
+      <trans-unit id="Ms_.hjc" resname="3 columns">
+        <source>3 columns</source>
+        <target>~3 kolumnoj</target>
+      </trans-unit>
+      <trans-unit id="cCddVEn" resname="Image (left) + Text (right)">
+        <source>Image (left) + Text (right)</source>
+        <target>~Bildoj (maldekstre) + Teksto (dekstre)</target>
+      </trans-unit>
+      <trans-unit id="Q_dQhbV" resname="Text (left) + Image (right)">
+        <source>Text (left) + Image (right)</source>
+        <target>~Teksto (maldekstre) + Bildo (dekstre)</target>
+      </trans-unit>
+      <trans-unit id="8i_8x6b" resname="Table with column headers">
+        <source>Table with column headers</source>
+        <target>~Tabelo kun kolumnaĵoj</target>
+      </trans-unit>
+      <trans-unit id="J9ZNkZN" resname="Table with row headers">
+        <source>Table with row headers</source>
+        <target>~Tabelo kun vicoj-ĉapoj</target>
+      </trans-unit>
+      <trans-unit id="jWB5Rjd" resname="Table with column and row headers">
+        <source>Table with column and row headers</source>
+        <target>~Tabelo kun kolumnaĵoj kaj vicoj-ĉapoj</target>
+      </trans-unit>
+      <trans-unit id="ptz5.00" resname="2 videos">
+        <source>2 videos</source>
+        <target>~2 filmetoj</target>
+      </trans-unit>
+      <trans-unit id="oIw46Mu" resname="2 images">
+        <source>2 images</source>
+        <target>~2 bildoj</target>
+      </trans-unit>
+      <trans-unit id="9g8u1YG" resname="3 images">
+        <source>3 images</source>
+        <target>~3 bildoj</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

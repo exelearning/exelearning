@@ -535,7 +535,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         inputUpload.type = 'file';
         inputUpload.name = 'local-ode-file-upload';
         inputUpload.id = 'local-ode-modal-file-upload';
-        inputUpload.accept = '.elp,.zip';
+        inputUpload.accept = '.' + eXeLearning.extension + ',.elp,.zip';
         inputUpload.addEventListener('change', () => {
             const file = inputUpload.files[0];
             if (file) this.largeFilesUpload(file);
@@ -767,7 +767,21 @@ export default class modalOpenUserOdeFiles extends Modal {
                     'ADD',
                     null
                 );
-                eXeLearning.app.project.updateUserPage(selectedNavId);
+                try {
+                    const newOdeBlockSync =
+                        await eXeLearning.app.api.postObtainOdeBlockSync({
+                            odeBlockId: response.odeBlockId,
+                        });
+                    if (newOdeBlockSync && newOdeBlockSync.blockId) {
+                        await eXeLearning.app.project.addOdeBlock(
+                            newOdeBlockSync
+                        );
+                    } else {
+                        eXeLearning.app.project.updateUserPage(selectedNavId);
+                    }
+                } catch (_e) {
+                    eXeLearning.app.project.updateUserPage(selectedNavId);
+                }
             }
         } else {
             if (isImportIdevices) {

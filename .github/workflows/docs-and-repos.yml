@@ -321,7 +321,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path tools | Out-Null
 
-          @"
+          @'
           <?xml version="1.0"?>
           <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
             <metadata>
@@ -344,10 +344,11 @@ jobs:
               <releaseNotes>https://github.com/exelearning/exelearning/releases/tag/v${{ steps.envs.outputs.VERSION }}</releaseNotes>
             </metadata>
           </package>
-          "@ | Out-File exelearning.nuspec -Encoding utf8
+          '@ | Out-File exelearning.nuspec -Encoding utf8
 
-          @"
-          $ErrorActionPreference = 'Stop'
+          @'
+          $ErrorActionPreference = 'Stop'  # stop on errors
+
           $packageName  = 'exelearning'
           $url          = '${{ steps.envs.outputs.URL }}'
           $checksum     = '${{ steps.envs.outputs.SHA256 }}'
@@ -360,8 +361,12 @@ jobs:
             -Url64bit $url `
             -Checksum64 $checksum `
             -ChecksumType64 $checksumType
-          "@ | Out-File tools\chocolateyinstall.ps1 -Encoding utf8
-          Get-ChildItem -Recurse -Filter installer.exe | Remove-Item -Force -ErrorAction SilentlyContinue
+          '@ | Out-File tools\chocolateyinstall.ps1 -Encoding utf8
+
+          # Show the script content to help audit
+          Write-Host '--- chocolateyinstall.ps1 ---'
+          Get-Content -Raw tools\chocolateyinstall.ps1
+
 
       - name: Install Chocolatey
         shell: pwsh
@@ -370,10 +375,22 @@ jobs:
           [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
           Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
+      - name: Remove installer.exe before packing
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Filter installer.exe | Remove-Item -Force -ErrorAction SilentlyContinue
+          Write-Host "installer.exe removed before choco pack to keep .nupkg lightweight."
 
       - name: Pack nupkg
         shell: pwsh
         run: choco pack exelearning.nuspec
+
+      - name: Self-test install/uninstall
+        shell: pwsh
+        run: |
+          $v = '${{ steps.envs.outputs.VERSION }}'
+          choco install exelearning --source . --version $v -y --no-progress
+          choco uninstall exelearning -y --no-progress
 
       - name: Push to Chocolatey
         shell: pwsh

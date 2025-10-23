@@ -341,7 +341,6 @@ var $exeDevice = {
                         </div>
                     </div>
                 </fieldset>
-
                 ${$exeDevice.getTextFieldset("after")}
             </div>
 
