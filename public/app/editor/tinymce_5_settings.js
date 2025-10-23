@@ -10,7 +10,7 @@ var $exeTinyMCE = {
     buttons1:
         'toggletoolbars | bold italic | formatselect fontsizeselect fontselect | forecolor backcolor',
     buttons2:
-        'alignleft aligncenter alignright alignjustify clearfloat addcontent | bullist numlist definitionlist | exelink unlink | outdent indent | blockquote blockquoteandcite | ltr rtl',
+        'alignleft aligncenter alignright alignjustify | template clearfloat addcontent | bullist numlist definitionlist | exelink unlink | outdent indent | blockquote blockquoteandcite | ltr rtl',
     buttons3:
         'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exeaudio abcmusic | codemagic | fullscreen',
     browser_spellcheck: true,
@@ -42,68 +42,70 @@ var $exeTinyMCE = {
     language: 'all', // We set all so we can use eXe's i18n mechanism in all.js,
     edicuatex_url: '/app/common/edicuatex/index.html',
     edicuatex_mathjax_url: '/app/common/exe_math/tex-mml-svg.js',
-    templates: [
-        {
-            title: '2 ' + 'columns' + ' 50% 50%',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/2-50-50.html`,
-        },
-        {
-            title: '2 ' + 'columns' + ' 30% 70%',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/2-30-70.html`,
-        },
-        {
-            title: '2 ' + 'columns' + ' 70% 30%',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/2-70-30.html`,
-        },
-        {
-            title: '3 ' + 'columns',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/3.html`,
-        },
-        {
-            title: 'Image (left) + Text (right)',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/img-txt.html`,
-        },
-        {
-            title: 'Text (left) + Image (right)',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/txt-img.html`,
-        },
-        {
-            title: 'Table with column headers',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/table-thead-th.html`,
-        },
-        {
-            title: 'Table with row headers',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/table-tbody-th.html`,
-        },
-        {
-            title: 'Table with column and row headers',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/table-th.html`,
-        },
-        {
-            title: '2 ' + 'videos',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/2-videos.html`,
-        },
-        {
-            title: '2 ' + 'images',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/2-images.html`,
-        },
-        {
-            title: '3 ' + 'images',
-            description: '',
-            url: `libs/tinymce_5/js/tinymce/templates/3-images.html`,
-        },
-    ],
+    getTemplates: function () {
+        return [
+            {
+                title: _('2 columns') + ' 50% 50%',
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/2-50-50.html`,
+            },
+            {
+                title: _('2 columns') + ' 30% 70%',
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/2-30-70.html`,
+            },
+            {
+                title: _('2 columns') + ' 70% 30%',
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/2-70-30.html`,
+            },
+            {
+                title: _('3 columns'),
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/3.html`,
+            },
+            {
+                title: _('Image (left) + Text (right)'),
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/img-txt.html`,
+            },
+            {
+                title: _('Text (left) + Image (right)'),
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/txt-img.html`,
+            },
+            {
+                title: _('Table with column headers'),
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/table-thead-th.html`,
+            },
+            {
+                title: _('Table with row headers'),
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/table-tbody-th.html`,
+            },
+            {
+                title: _('Table with column and row headers'),
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/table-th.html`,
+            },
+            {
+                title: _('2 videos'),
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/2-videos.html`,
+            },
+            {
+                title: _('2 images'),
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/2-images.html`,
+            },
+            {
+                title: _('3 images'),
+                description: '',
+                url: `libs/tinymce_5/js/tinymce/templates/3-images.html`,
+            },
+        ];
+    },
     table_default_styles: {
         width: '100%',
     },
@@ -234,7 +236,7 @@ var $exeTinyMCE = {
             content_css: this.getContentCSS(),
             contextmenu: this.contextmenu,
             browser_spellcheck: this.browser_spellcheck,
-            templates: this.templates,
+            templates: this.getTemplates(),
             table_default_styles: this.table_default_styles,
             table_class_list: this.getAvailableClasses(),
             rel_list: this.rel_list,
