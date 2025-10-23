@@ -56,11 +56,6 @@ jobs:
       #   run: |
       #     sudo snap install snapcraft --classic
 
-      # Install composer dependencies
-      - name: Install composer dependencies (no dev)
-        run: |
-          composer install --no-dev --classmap-authoritative --optimize-autoloader --no-interaction --no-progress
-
       # Extract version from tag
       - name: Get version from tag or commit
         id: get_version
@@ -87,11 +82,6 @@ jobs:
           else
             echo "No CERT_P12 secret set, skipping certificate decode"
           fi
-        shell: bash
-
-      - name: Build Symfony assets into public
-        run: |
-          php -d detect_unicode=0 bin/console assets:install public --no-debug --env=prod
         shell: bash
 
       # Use the Makefile package target

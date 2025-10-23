@@ -70,7 +70,7 @@ function inferKnownExt(suggestedName) {
   try {
     const ext = (path.extname(suggestedName || '') || '').toLowerCase().replace(/^\./, '');
     if (!ext) return null;
-    if (ext === 'elp' || ext === 'zip' || ext === 'epub' || ext === 'xml') return `.${ext}`;
+    if (ext === 'elpx' || ext === 'zip' || ext === 'epub' || ext === 'xml') return `.${ext}`;
     return null;
   } catch (_e) {
     return null;
@@ -85,6 +85,34 @@ function ensureExt(filePath, suggestedName) {
   const inferred = inferKnownExt(suggestedName);
   return inferred ? (filePath + inferred) : filePath;
 }
+
+function isLegacyElp(p) {
+  try { return typeof p === 'string' && /\.elp$/i.test(p); } catch (_) { return false; }
+}
+
+function proposeElpxPath(currentPath) {
+  try {
+    const dir  = currentPath ? path.dirname(currentPath) : app.getPath('documents');
+    const base = currentPath ? path.basename(currentPath, path.extname(currentPath)) : 'document';
+    return path.join(dir, `${base}.elpx`);
+  } catch (_e) {
+    return 'document.elpx';
+  }
+}
+
+async function promptElpxSave(owner, currentPath, titleKey, buttonKey) {
+  const { filePath, canceled } = await dialog.showSaveDialog(owner, {
+    title: tOrDefault(titleKey, defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
+    defaultPath: proposeElpxPath(currentPath),
+    buttonLabel: tOrDefault(buttonKey, defaultLocale === 'es' ? 'Guardar' : 'Save'),
+    filters: [{ name: 'eXeLearning project', extensions: ['elpx'] }],
+  });
+  if (canceled || !filePath) return null;
+  // force .elpx if not incluted
+  return ensureExt(filePath, 'document.elpx');
+}
+
+
 
 // ──────────────  Simple settings (no external deps)  ──────────────
 // Persist user choices under userData/settings.json
@@ -435,7 +463,7 @@ function createWindow() {
         } catch (_e) {}
         const overrideName = wcId ? nextDownloadNameByWC.get(wcId) : null;
         if (wcId && nextDownloadNameByWC.has(wcId)) nextDownloadNameByWC.delete(wcId);
-        const suggestedName = overrideName || item.getFilename() || 'document.elp';
+        const suggestedName = overrideName || item.getFilename() || 'document.elpx';
         // Determine a safe target WebContents (can be null in some cases)
         // Allow renderer to define a project key (optional)
         let projectKey = 'default';
@@ -813,29 +841,37 @@ ipcMain.handle('app:save', async (e, { downloadUrl, projectKey, suggestedName })
         key = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
       }
     } catch (_er) {}
+
     let targetPath = getSavedPath(key);
+    const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
+
     if (!targetPath) {
-      const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
-      const { filePath, canceled } = await dialog.showSaveDialog(owner, {
-        title: tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project'),
-        defaultPath: suggestedName || 'document.elp',
-        buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save')
-      });
-      if (canceled || !filePath) return false;
-      targetPath = ensureExt(filePath, suggestedName || 'document.elp');
+      // non remembered path → ask
+      const picked = await promptElpxSave(owner, null, 'save.dialogTitle', 'save.button');
+      if (!picked) return false;
+      targetPath = picked;
+      setSavedPath(key, targetPath);
+    } else if (isLegacyElp(targetPath)) {
+      // remembered path is .elp → forzar "Saves as...” to .elpx
+      const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button');
+      if (!picked) return false;
+      targetPath = picked;
       setSavedPath(key, targetPath);
     } else {
-      const fixed = ensureExt(targetPath, suggestedName || 'document.elp');
+      // remembered path not .elp; ensure ext
+      const fixed = ensureExt(targetPath, suggestedName || 'document.elpx');
       if (fixed !== targetPath) {
         targetPath = fixed;
         setSavedPath(key, targetPath);
       }
     }
+
     return await streamToFile(downloadUrl, targetPath, wc);
   } catch (_e) {
     return false;
   }
 });
+
 
 ipcMain.handle('app:saveAs', async (e, { downloadUrl, projectKey, suggestedName }) => {
   const senderWindow = BrowserWindow.fromWebContents(e.sender);
@@ -843,11 +879,11 @@ ipcMain.handle('app:saveAs', async (e, { downloadUrl, projectKey, suggestedName 
   const key = projectKey || 'default';
   const { filePath, canceled } = await dialog.showSaveDialog(senderWindow, {
     title: tOrDefault('saveAs.dialogTitle', defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
-    defaultPath: suggestedName || 'document.elp',
+    defaultPath: suggestedName || 'document.elpx',
     buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save')
   });
   if (canceled || !filePath) return false;
-  const finalPath = ensureExt(filePath, suggestedName || 'document.elp');
+  const finalPath = ensureExt(filePath, suggestedName || 'document.elpx');
   setSavedPath(key, finalPath);
   if (typeof downloadUrl === 'string' && downloadUrl && wc) {
     return await streamToFile(downloadUrl, finalPath, wc);
@@ -862,13 +898,13 @@ ipcMain.handle('app:setSavedPath', async (_e, { projectKey, filePath }) => {
   return true;
 });
 
-// Open system file picker for .elp files (offline open)
+// Open system file picker for .elpx files (offline open)
 ipcMain.handle('app:openElp', async (e) => {
   const senderWindow = BrowserWindow.fromWebContents(e.sender);
   const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
     title: tOrDefault('open.dialogTitle', defaultLocale === 'es' ? 'Abrir proyecto' : 'Open project'),
     properties: ['openFile'],
-    filters: [{ name: 'eXeLearning project', extensions: ['elp', 'zip'] }]
+    filters: [{ name: 'eXeLearning project', extensions: ['elpx', 'elp', 'zip'] }]
   });
   if (canceled || !filePaths || !filePaths.length) return null;
   return filePaths[0];
