@@ -381,7 +381,7 @@ function createWindow() {
   checkAndCreateDatabase();
 
   // Check if the php binary is runable exists and run Symfony commands
-  assertPhpUsableOrGuide();
+  assertWindowsPhpUsableOrGuide();
 
   runSymfonyCommands();
 
