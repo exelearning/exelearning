@@ -1,6 +1,6 @@
 {
     "name": "exelearning",
-    "version": "0.0.0-alpha",
+    "version": "1.0.0-rc2",
     "license": "AGPL-3.0-or-later",
     "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
     "main": "main.js",
@@ -48,6 +48,8 @@
         "publish": [
             {
                 "provider": "github",
+                "owner": "exelearning",
+                "repo": "exelearning",
                 "releaseType": "prerelease",
                 "channel": "latest"
             }
@@ -64,6 +66,15 @@
             ".env.dist",
             "translations/en.json",
             "translations/es.json"
+        ],
+        "fileAssociations": [
+          {
+            "ext": "elpx",
+            "name": "eXeLearning Project",
+            "description": "eXeLearning project file",
+            "role": "Editor",
+            "mimeType": "application/x-exelearning-elpx"
+          }
         ],
         "extraResources": [
             {
