@@ -57,12 +57,22 @@ export default class MenuIdevicesBottom {
         ideviceDiv.setAttribute('drag', 'idevice');
         ideviceDiv.setAttribute('icon-type', ideviceData.icon.type);
         ideviceDiv.setAttribute('icon-name', ideviceData.icon.name);
+        ideviceDiv.setAttribute('title', ideviceData.title);
+        ideviceDiv.setAttribute('data-bs-title', ideviceData.title);
+        ideviceDiv.setAttribute('data-bs-placement', 'top');
+        ideviceDiv.setAttribute('data-bs-toggle', 'tooltip');
+        window.bootstrap.Tooltip.getOrCreateInstance(ideviceDiv);
         // Testing: quickbar item testid
         ideviceDiv.setAttribute(
             'data-testid',
             `quick-idevice-${ideviceData.id}`
         );
         ideviceDiv.append(this.elementDivIcon(ideviceData));
+        // Accessibility (visually-hidden text)
+        let ideviceDivDesc = document.createElement('span');
+        ideviceDivDesc.className = 'visually-hidden';
+        ideviceDivDesc.textContent = ideviceData.title;
+        ideviceDiv.append(ideviceDivDesc);
 
         return ideviceDiv;
     }
@@ -98,6 +108,11 @@ export default class MenuIdevicesBottom {
         let settingIcon = document.createElement('div');
         settingIcon.classList.add('idevice_icon', 'settings-icon');
         settingIcon.id = 'setting-menuIdevices';
+        settingIcon.setAttribute('title', _('iDevices'));
+        settingIcon.setAttribute('data-bs-title', _('iDevices'));
+        settingIcon.setAttribute('data-bs-placement', 'top');
+        settingIcon.setAttribute('data-bs-toggle', 'tooltip');
+        window.bootstrap.Tooltip.getOrCreateInstance(settingIcon);
         return settingIcon;
     }
 

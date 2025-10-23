@@ -292,12 +292,17 @@ var $exeDevice = {
                 ? $exeDevice.challengesGame.length - 1
                 : num;
 
+        const hide = sel => $(sel).addClass('js-hidden');
+        const show = sel => $(sel).removeClass('js-hidden');
+
+        hide('label[for="desafioEDSolution"], #desafioEDSolution');
+        hide('label[for="desafioEDTitle"], #desafioEDTitle');
+        show('label[for="desafioECTitle"], #desafioECTitle');
+        show('label[for="desafioECSolution"], #desafioECSolution');
+
         $('#desafioENumQuestionDiv').show();
         $('#desafioSelects').hide();
-        $('label[for=desafioEDSolution], #desafioEDSolution').hide();
-        $('label[for=desafioEDTitle], #desafioEDTitle').hide();
-        $('label[for=desafioECTitle], #desafioECTitle').show();
-        $('label[for=desafioECSolution], #desafioECSolution').show();
+
         $('#desafioENavigationButtons').show();
 
         const c = $exeDevice.challengesGame[num];
@@ -363,13 +368,13 @@ var $exeDevice = {
                     <legend><a href="#">${_('Questions')}</a></legend>
                     <div class="desafio-EPanel" id="desafioEPanel">
                         <div class="desafioToggle d-flex align-items-center mb-3">
-                            <div class="form-check form-check-inline m-0">
+                            <div class="m-0">
                                 <input class="desafio-Type" checked="checked" id="desafioEDesafio" type="radio" name="dsfDesRet" value="0" />
-                                <label  for="desafioEDesafio">${_('Challenge')}</label>
+                                <label id="labelDesafio" for="desafioEDesafio">${_('Challenge')}</label>
                             </div>
-                            <div class="form-check form-check-inline m-0">
+                            <div class="m-0">
                                 <input class="desafio-Type" id="desafioEReto" type="radio" name="dsfDesRet" value="1" />
-                                <label  for="desafioEReto">${_('Trials')}</label>
+                                <label id="labelReto"  for="desafioEReto">${_('Trials')}</label>
                             </div>
                             </div>
                         <div class="desafio-EDAtaGame">
@@ -1074,13 +1079,18 @@ var $exeDevice = {
     },
 
     showDesafio: function () {
+
+        const hide = sel => $(sel).addClass('js-hidden');
+        const show = sel => $(sel).removeClass('js-hidden');
+
+        show('label[for="desafioEDSolution"], #desafioEDSolution');
+        show('label[for="desafioEDTitle"], #desafioEDTitle');
+        hide('label[for="desafioECTitle"], #desafioECTitle');
+        hide('label[for="desafioECSolution"], #desafioECSolution');
+
         $exeDevice.typeActive = 0;
-        $('#desafioSelects').css('display','flex');
+        $('#desafioSelects').css('display', 'flex');
         $('#desafioENavigationButtons').hide();
-        $('label[for=desafioECSolution], #desafioECSolution').hide();
-        $('label[for=desafioECTitle], #desafioECTitle').hide();
-        $('label[for=desafioEDTitle], #desafioEDTitle').show();
-        $('label[for=desafioEDSolution], #desafioEDSolution').show();
         $('#desafioENumQuestionDiv').hide();
         $('#desafioEDTitle').val($exeDevice.desafioTitle);
         $('#desafioEDSolution').val($exeDevice.desafioSolution);

@@ -50,12 +50,9 @@ export default class NavbarFile {
     setTooltips() {
         // See eXeLearning.app.common.initTooltips
         // Avoid binding tooltips to dropdown toggles to prevent Bootstrap instance conflicts
-        $('.main-menu-right button:not([data-bs-toggle="dropdown"])')
+        $('.main-menu-right > button')
             .attr('data-bs-placement', 'bottom')
             .tooltip();
-        $('#exeUserMenuToggler').on('click mouseleave', function () {
-            $(this).tooltip('hide');
-        });
     }
 
     /**
@@ -270,43 +267,82 @@ export default class NavbarFile {
      * @returns {String}
      */
     json2Csv(objArray, headerTitles) {
-        var array =
-            typeof objArray != 'object' ? JSON.parse(objArray) : objArray;
-        var str = '';
-        var line = '';
-        array.sort(function (a, b) {
-            if (a.brokenLinksError < b.brokenLinksError) {
-                return -1;
+        // Parse objArray if it's a JSON string
+        const parsedObj =
+            typeof objArray === 'string' ? JSON.parse(objArray) : objArray;
+
+        // Determine which array to export based on headerTitles
+        // If headerTitles contains 'Link' or 'Error' → brokenLinks
+        // If headerTitles contains 'File' → usedFiles
+        let dataArray = [];
+        let keyMap = {};
+
+        if (headerTitles.includes('Link') || headerTitles.includes('Error')) {
+            dataArray = parsedObj.brokenLinks || [];
+            keyMap = {
+                Link: 'brokenLinks',
+                Error: 'brokenLinksError',
+                Times: 'nTimesBrokenLinks',
+                'Page name': 'pageNamesBrokenLinks',
+                'Block name': 'blockNamesBrokenLinks',
+                Type: 'typeComponentSyncBrokenLinks',
+                'Block position': 'orderComponentSyncBrokenLinks',
+            };
+        } else if (headerTitles.includes('File')) {
+            dataArray = parsedObj.usedFiles || [];
+            keyMap = {
+                File: 'usedFiles',
+                Path: 'usedFilesPath',
+                Size: 'usedFilesSize',
+                'Page name': 'pageNamesUsedFiles',
+                'Block name': 'blockNamesUsedFiles',
+                Type: 'typeComponentSyncUsedFiles',
+                'Block position': 'orderComponentSyncUsedFiles',
+            };
+        } else {
+            // Unknown type, return empty CSV with headers
+            return headerTitles.join(',') + '\r\n';
+        }
+
+        // CSV string initialization
+        let csv = '';
+        csv += headerTitles.join(',') + '\r\n';
+
+        // Add data rows
+        dataArray.forEach((item) => {
+            // For brokenLinks, skip rows where Error is null/undefined
+            if (
+                keyMap['Error'] &&
+                (item[keyMap['Error']] === null ||
+                    item[keyMap['Error']] === undefined)
+            ) {
+                return;
             }
-            if (a.brokenLinksError > b.brokenLinksError) {
-                return 1;
-            }
-            return 0;
+
+            const row = headerTitles
+                .map((title) => {
+                    let value = item[keyMap[title]];
+
+                    if (value === null || value === undefined) value = '';
+
+                    // Escape commas, quotes, and newlines
+                    if (
+                        typeof value === 'string' &&
+                        (value.includes(',') ||
+                            value.includes('"') ||
+                            value.includes('\n'))
+                    ) {
+                        value = `"${value.replace(/"/g, '""')}"`;
+                    }
+
+                    return value;
+                })
+                .join(',');
+
+            csv += row + '\r\n';
         });
-        for (var i = 0; i < 1; i++) {
-            line = '';
-            Object.keys(headerTitles).forEach((key) => {
-                line +=
-                    headerTitles[key] +
-                    eXeLearning.app.api.parameters.csvItemSeparator;
-            });
-            line = line.slice(0, -1);
-            str += line + '\r\n';
-        }
-        for (var i = 0; i < array.length; i++) {
-            line = '';
-            for (var index in array[i]) {
-                if (array[i][index] == null) {
-                    array[i][index] = 200;
-                }
-                line +=
-                    array[i][index] +
-                    eXeLearning.app.api.parameters.csvItemSeparator;
-            }
-            line = line.slice(0, -1);
-            str += line + '\r\n';
-        }
-        return str;
+
+        return csv;
     }
 
     /**

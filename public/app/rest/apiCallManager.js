@@ -278,7 +278,7 @@ export default class ApiCallManager {
     }
 
     /**
-     * Delete theme
+     * Delete style
      *
      * @param {*} params
      * @returns
@@ -519,7 +519,10 @@ export default class ApiCallManager {
      * @returns
      */
     async getOdeDownload(odeSessionId) {
-        return await this.getOdeExportDownload(odeSessionId, 'elp');
+        return await this.getOdeExportDownload(
+            odeSessionId,
+            eXeLearning.extension
+        );
     }
 
     /**

@@ -179,7 +179,7 @@ export default class NavbarFile {
         // No imported style
         if (Object.keys(this.userThemes).length === 0) {
             infoText.innerHTML = `
-        <p class="empty-title">${_('There are no imported themes yet')}...</p>
+        <p class="empty-title">${_('There are no imported styles yet')}...</p>
         <p class="info-description">
             ${_('You can check the guide to create a style or add it from a link.')}
         </p>`;
@@ -413,8 +413,10 @@ export default class NavbarFile {
             e.preventDefault();
             e.stopPropagation();
             eXeLearning.app.modals.confirm.show({
-                title: _('Delete theme'),
-                body: _(`Are you sure to delete the theme: ${themeId}?`),
+                title: _('Delete style'),
+                body: _(
+                    `Are you sure you want to delete the style: ${themeId}?`
+                ),
                 confirmButtonText: _('Delete'),
                 cancelButtonText: _('Cancel'),
                 confirmExec: () => {
@@ -477,7 +479,7 @@ export default class NavbarFile {
         } else {
             // Show modal
             setTimeout(() => {
-                this.showElementAlert(_('Failed to remove theme'), response);
+                this.showElementAlert(_('Failed to remove style'), response);
             }, 1000);
         }
     }
@@ -539,7 +541,7 @@ export default class NavbarFile {
         let label = document.createElement('label');
         label.setAttribute('for', inputFile.id);
         label.classList.add('visually-hidden');
-        label.textContent = _('Import theme in ZIP format');
+        label.textContent = _('Import style in ZIP format');
         inputFile.addEventListener('change', (event) => {
             Array.from(inputFile.files).forEach((theme) => {
                 this.addNewReader(theme);
@@ -616,12 +618,14 @@ export default class NavbarFile {
 
         const label = document.createElement('label');
         label.classList.add('form-label', 'theme-info-key');
+        label.setAttribute('for', 'theme-info-key-' + key);
         label.textContent = config.title;
         group.appendChild(label);
 
         switch (config.tag) {
             case 'text': {
                 const input = document.createElement('input');
+                input.id = 'theme-info-key-' + key;
                 input.type = 'text';
                 input.classList.add('form-control', 'theme-info-value-text');
                 input.disabled = true;
@@ -631,6 +635,7 @@ export default class NavbarFile {
             }
             case 'textarea': {
                 const textarea = document.createElement('textarea');
+                textarea.id = 'theme-info-key-' + key;
                 textarea.classList.add('form-control', 'theme-info-value-text');
                 textarea.disabled = true;
                 textarea.value = value;

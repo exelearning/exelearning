@@ -121,9 +121,11 @@ class MenuOfflineExportsPackagesTest extends BaseE2ETestCase
 
     public function testExportAsXmlOfflineUsesElectronSaveAs(): void
     {
+        /* To review ("Metadata (XML)" export is currently hidden)
         $client = $this->client();
         $this->openOfflineExportMenu($client);
         $this->clickMenuItem($client, '#navbar-button-exportas-xml-properties');
         $this->waitSaveAs($client);
+        */
     }
 }

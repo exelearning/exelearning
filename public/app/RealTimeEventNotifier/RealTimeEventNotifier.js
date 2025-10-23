@@ -85,6 +85,12 @@ export default class RealTimeEventNotifier {
         // Manejar errores
         this.eventSource.onerror = function (error) {
             console.info('Error en la conexión a Mercure:', error);
+            if (
+                typeof window !== 'undefined' &&
+                window.eXeSessionMonitor?.handleMercureError
+            ) {
+                window.eXeSessionMonitor.handleMercureError(error);
+            }
             that.retryCount++;
             if (that.retryCount < 10) {
                 console.info(`Automatic reconnection #${that.retryCount}`);
@@ -99,6 +105,20 @@ export default class RealTimeEventNotifier {
         };
 
         return this.eventSource;
+    }
+
+    closeConnection() {
+        if (this.eventSource) {
+            try {
+                this.eventSource.close();
+            } catch (error) {
+                console.debug(
+                    'RealTimeEventNotifier: error closing EventSource',
+                    error
+                );
+            }
+            this.eventSource = null;
+        }
     }
 
     resetRetryCount() {

@@ -65,6 +65,8 @@ security:
 
         # Admin area restricted to ROLE_ADMIN
         - { path: '^/admin', roles: [ROLE_ADMIN] }
+        # Check that user is logged in
+        - { path: '^/api/session/check', roles: PUBLIC_ACCESS }
         - { path: '^/workarea', roles: [IS_AUTHENTICATED_FULLY] }
         - { path: '^/api', roles: [IS_AUTHENTICATED_FULLY] }
 

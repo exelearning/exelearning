@@ -131,7 +131,7 @@ class ExportSCORM12Service implements ExportServiceInterface
         $odeId = $this->currentOdeUsersService->getOdeIdByOdeSessionId($user, $odeSessionId);
 
         // imslrm.xml
-        $imslrm = ExportXmlUtil::createSCORMimslrm($odeId, $odeProperties);
+        $imslrm = ExportXmlUtil::createSCORMimslrm($odeId, $odeProperties, $this->translator);
         $imslrm->saveXML($exportDirPath.Constants::SCORM_IMSLRM_NAME);
 
         // ismanifest.xml

@@ -651,9 +651,9 @@ video {
     line-height: 35px;
     width: 35px;
     height: 35px;
-    background: #fff url(../img/exe_powered_logo.png) no-repeat 0 50%;
+    background: #fff url(../img/exe_powered_logo.png) no-repeat 3px 50%;
     display: block;
-    background-size: auto 23px;
+    background-size: auto 20px;
     text-decoration: none;
     transition: .5s;
     opacity: .8
@@ -690,6 +690,16 @@ video {
 /* Box toggler */
 .exe-export article.minimized .box-content{
     display: none;
+}
+
+/* BOX no visible */
+.exe-export article.novisible.box{
+    display: none  !important;
+}
+
+/* iDevice no visible */
+.exe-export article.box .idevice_node.novisible{
+    display: none  !important;
 }
 
 /* Teacher mode */

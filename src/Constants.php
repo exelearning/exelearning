@@ -128,7 +128,7 @@ class Constants
     public const EXPORT_EPUB3_EXPORT_DIR_EPUB = 'EPUB';
 
     // Export types
-    public const EXPORT_TYPE_ELP = 'elp';
+    public const EXPORT_TYPE_ELP = 'elpx';
     public const EXPORT_TYPE_HTML5 = 'html5';
     public const EXPORT_TYPE_HTML5_SP = 'html5-sp';
     public const EXPORT_TYPE_SCORM12 = 'scorm12';
@@ -234,7 +234,7 @@ class Constants
     public const FILE_EXTENSION_HTML = 'html';
     public const FILE_EXTENSION_HTM = 'htm';
     public const FILE_EXTENSION_XHTML = 'xhtml';
-    public const FILE_EXTENSION_ELP = 'elp';
+    public const FILE_EXTENSION_ELP = 'elpx';
     public const FILE_EXTENSION_ZIP = 'zip';
     public const FILE_EXTENSION_EPUB = 'epub';
     public const FILE_EXTENSION_XML = 'xml';
@@ -248,9 +248,11 @@ class Constants
     public const BLOCK_ELP_NAME = 'block';
     public const DEFAULT_ELP_NAME = 'untitled';
 
-    // ELP files extencion
+    // ELP files extension
     public const ELP_FILES_AVAILABLE_EXTS = [
-        self::FILE_EXTENSION_ELP, self::FILE_EXTENSION_ZIP,
+        self::FILE_EXTENSION_ELP,
+        self::FILE_EXTENSION_ZIP,
+        'elp',
     ];
     public const ELP_LOCAL_FILES_AVAILABLE_EXTS = [
         self::FILE_EXTENSION_ELP,
@@ -258,6 +260,7 @@ class Constants
         self::FILE_EXTENSION_XML,
         self::IDEVICE_ELP_NAME,
         self::BLOCK_ELP_NAME,
+        'elp',
     ];
 
     // ELP properties

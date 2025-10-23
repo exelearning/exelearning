@@ -307,6 +307,7 @@ var $exeDevice = {
     },
 
     createForm: function () {
+        const showSolveBtn = _('Show "Solve" button.');
         const path = $exeDevice.idevicePath,
             html = `
         <div id="sopaQEIdeviceForm">
@@ -336,7 +337,7 @@ var $exeDevice = {
                                 <input type="checkbox" id="sopaEShowResolve" class="toggle-input" checked />
                                 <span class="toggle-visual"></span>
                             </span>
-                            <label class="toggle-label mb-0" for="sopaEShowResolve">${_('Show "Solve" button.')}</label>
+                            <label class="toggle-label mb-0" for="sopaEShowResolve">${showSolveBtn}</label>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
                             <span class="mb-0">${_('Accept')}:</span>
