@@ -295,12 +295,13 @@ jobs:
             $proc = Start-Process -FilePath $exePath -PassThru
             try { $null = $proc.WaitForInputIdle(10000) } catch {}
           }
+          Start-Sleep -Seconds 4
 
           # Readiness: either window handle is available OR HTTP port responds
           $ready = $false
           $deadline = (Get-Date).AddSeconds($bootTimeout)
           do {
-            Start-Sleep -Milliseconds 700
+            Start-Sleep -Seconds 4
 
             try { $alive = -not $proc.HasExited } catch { $alive = $true }
             if (-not $alive) { throw "Process exited before readiness." }
