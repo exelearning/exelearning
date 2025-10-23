@@ -90,8 +90,12 @@ article.box {
                 }
             }
             .btn-move-down-idevice {
-                    margin-right: 6px;
-                }
+                margin-right: 6px;
+            }
+            .btn-minify-idevice {
+                margin-left: 6px;
+                border-radius: 6px;
+            }
             &[loading="true"] {
                 opacity: 0.8;
                 transition: none !important;
