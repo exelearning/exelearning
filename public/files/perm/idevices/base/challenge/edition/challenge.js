@@ -292,12 +292,17 @@ var $exeDevice = {
                 ? $exeDevice.challengesGame.length - 1
                 : num;
 
+        const hide = sel => $(sel).addClass('js-hidden');
+        const show = sel => $(sel).removeClass('js-hidden');
+
+        hide('label[for="desafioEDSolution"], #desafioEDSolution');
+        hide('label[for="desafioEDTitle"], #desafioEDTitle');
+        show('label[for="desafioECTitle"], #desafioECTitle');
+        show('label[for="desafioECSolution"], #desafioECSolution');
+
         $('#desafioENumQuestionDiv').show();
         $('#desafioSelects').hide();
-        $('label[for=desafioEDSolution], #desafioEDSolution').hide();
-        $('label[for=desafioEDTitle], #desafioEDTitle').hide();
-        $('label[for=desafioECTitle], #desafioECTitle').show();
-        $('label[for=desafioECSolution], #desafioECSolution').show();
+
         $('#desafioENavigationButtons').show();
 
         const c = $exeDevice.challengesGame[num];
@@ -1074,13 +1079,18 @@ var $exeDevice = {
     },
 
     showDesafio: function () {
+
+        const hide = sel => $(sel).addClass('js-hidden');
+        const show = sel => $(sel).removeClass('js-hidden');
+
+        show('label[for="desafioEDSolution"], #desafioEDSolution');
+        show('label[for="desafioEDTitle"], #desafioEDTitle');
+        hide('label[for="desafioECTitle"], #desafioECTitle');
+        hide('label[for="desafioECSolution"], #desafioECSolution');
+
         $exeDevice.typeActive = 0;
-        $('#desafioSelects').css('display','flex');
+        $('#desafioSelects').css('display', 'flex');
         $('#desafioENavigationButtons').hide();
-        $('label[for=desafioECSolution], #desafioECSolution').hide();
-        $('label[for=desafioECTitle], #desafioECTitle').hide();
-        $('label[for=desafioEDTitle], #desafioEDTitle').show();
-        $('label[for=desafioEDSolution], #desafioEDSolution').show();
         $('#desafioENumQuestionDiv').hide();
         $('#desafioEDTitle').val($exeDevice.desafioTitle);
         $('#desafioEDSolution').val($exeDevice.desafioSolution);

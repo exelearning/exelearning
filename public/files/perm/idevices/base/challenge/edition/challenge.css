@@ -346,9 +346,13 @@ label[for=desafioActivitySCORM] {
     z-index: 1 !important;
 }
 
-#desafioIdeviceForm.desafioToggle input:focus+label {
+#desafioIdeviceForm .desafioToggle input:focus+label {
     outline: dotted 1px #CCC !important;
     outline-offset: .45rem !important;
+}
+
+#desafioIdeviceForm .js-hidden {
+    display: none !important;
 }
 
 @media (max-width: 400px) {
