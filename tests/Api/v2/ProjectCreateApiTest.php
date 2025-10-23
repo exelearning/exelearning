@@ -65,7 +65,7 @@ class ProjectCreateApiTest extends WebTestCase
         $this->assertTrue($client->getResponse()->headers->has('Location'));
         $json = json_decode($client->getResponse()->getContent(), true);
         $this->assertNotEmpty($json['id'] ?? null);
-        $this->assertMatchesRegularExpression('/^[A-Z0-9]{20}_[A-Z0-9]{20}\.elp$/', $json['fileName'] ?? '');
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{20}_[A-Z0-9]{20}\.elpx$/', $json['fileName'] ?? '');
         $this->assertArrayHasKey('properties', $json);
         $this->assertNotEmpty($json['properties']['pp_title'] ?? null);
     }
@@ -91,7 +91,7 @@ class ProjectCreateApiTest extends WebTestCase
 
         $this->assertSame(201, $client->getResponse()->getStatusCode(), $client->getResponse()->getContent());
         $json = json_decode($client->getResponse()->getContent(), true);
-        $this->assertMatchesRegularExpression('/^[A-Z0-9]{20}_[A-Z0-9]{20}\.elp$/', $json['fileName'] ?? '');
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{20}_[A-Z0-9]{20}\.elpx$/', $json['fileName'] ?? '');
         $this->assertArrayHasKey('properties', $json);
     }
 

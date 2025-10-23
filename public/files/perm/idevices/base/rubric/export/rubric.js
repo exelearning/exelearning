@@ -135,7 +135,6 @@ var $rubric = {
     $("tbody input:checked").each(function () {
       res += parseFloat(this.value);
     });
-    res = Math.round(res * 10) / 10;
     if (isNaN(res)) res = "";
     else {
       // Show score out of 10

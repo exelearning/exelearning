@@ -68,6 +68,11 @@ export default class MenuIdevicesBottom {
             `quick-idevice-${ideviceData.id}`
         );
         ideviceDiv.append(this.elementDivIcon(ideviceData));
+        // Accessibility (visually-hidden text)
+        let ideviceDivDesc = document.createElement('span');
+        ideviceDivDesc.className = 'visually-hidden';
+        ideviceDivDesc.textContent = ideviceData.title;
+        ideviceDiv.append(ideviceDivDesc);
 
         return ideviceDiv;
     }

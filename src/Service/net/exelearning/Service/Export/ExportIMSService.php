@@ -228,6 +228,12 @@ class ExportIMSService implements ExportServiceInterface
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
                     $ideviceId = $odeComponentsSync->getOdeIdeviceId();
+                    $ideviceTypeName = $odeComponentsSync->getOdeIdeviceTypeName();
+
+                    // Skip text idevices - they don't need data-idevice-json-data attribute
+                    if ('text' === $ideviceTypeName) {
+                        continue;
+                    }
                     if (!isset($odeComponentsSyncCloneArray[$ideviceId])) {
                         continue;
                     }
