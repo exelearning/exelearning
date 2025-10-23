@@ -247,7 +247,7 @@ var $text = {
     createFeedbackHTML(title, content) {
         return `
             <div class="iDevice_buttons feedback-button js-required">
-                <input type="button" class="feedbacktooglebutton" value="${title}" />
+                <input type="button" class="feedbacktooglebutton" value="${title}">
             </div>
             <div class="feedback js-feedback js-hidden">${content}</div>`;
     }

@@ -92,7 +92,7 @@ class ElpExportCommandTest extends KernelTestCase
             'scorm2004',
             'ims',
             'epub3',
-            'elp',
+            'elpx',
         ];
 
         $combinations = [];

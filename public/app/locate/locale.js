@@ -8,7 +8,13 @@ export default class Locale {
             return this.getGUITranslation(s);
         };
         window.c_ = (s) => {
-            return this.getContentTranslation(s);
+            // elp → elpx (to review - #498)
+            var s = this.getContentTranslation(s);
+            s = s.replace(' (elp)', ' (elpx)');
+            s = s.replace(' .elp ', ' .elpx ');
+            s = s.replace(' elp ', ' elpx ');
+            if (s.endsWith('.elp')) s += 'x';
+            return s;
         };
     }
 

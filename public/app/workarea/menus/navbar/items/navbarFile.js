@@ -1107,12 +1107,12 @@ export default class NavbarFile {
         let odeSessionId = eXeLearning.app.project.odeSession;
         let response = await eXeLearning.app.api.getOdeExportDownload(
             odeSessionId,
-            'elp'
+            eXeLearning.extension
         );
         if (response['responseMessage'] == 'OK') {
             this.electronSave(
                 response['urlZipFile'],
-                'elp',
+                eXeLearning.extension,
                 response['exportProjectName']
             );
             toast.toastBody.innerHTML = _('File generated.');
@@ -1153,14 +1153,17 @@ export default class NavbarFile {
             let odeSessionId = eXeLearning.app.project.odeSession;
             let response = await eXeLearning.app.api.getOdeExportDownload(
                 odeSessionId,
-                'elp'
+                eXeLearning.extension
             );
             if (response && response.responseMessage === 'OK') {
                 const url = response['urlZipFile'];
                 const suggested =
                     response['exportProjectName'] || 'document.elp';
                 const key = window.__currentProjectId || 'default';
-                const safeName = this.normalizeSuggestedName(suggested, 'elp');
+                const safeName = this.normalizeSuggestedName(
+                    suggested,
+                    eXeLearning.extension
+                );
                 if (
                     window.electronAPI &&
                     typeof window.electronAPI.saveAs === 'function'
@@ -2116,7 +2119,7 @@ export default class NavbarFile {
                             ? $name
                             : 'document.elp';
                     // Try to infer a typeKey from the extension for better naming
-                    let typeKey = 'elp';
+                    let typeKey = eXeLearning.extension;
                     try {
                         if (/export-html5-sp/i.test(suggested))
                             typeKey = 'export-html5-sp';
@@ -2160,7 +2163,10 @@ export default class NavbarFile {
     electronSave(url, typeKey, suggestedName) {
         const keyBase = window.__currentProjectId || 'default';
         // For standard project save (ELP), reuse the base key so Save after Save As uses same path
-        const key = typeKey === 'elp' ? keyBase : `${keyBase}:${typeKey}`;
+        const key =
+            typeKey === eXeLearning.extension
+                ? keyBase
+                : `${keyBase}:${typeKey}`;
         const safeName = this.normalizeSuggestedName(suggestedName, typeKey);
         if (
             window.electronAPI &&
@@ -2197,7 +2203,8 @@ export default class NavbarFile {
             const lower = (typeKey || '').toLowerCase();
             let ext = '';
             if (lower.endsWith('epub3')) ext = '.epub';
-            else if (lower.endsWith('elp')) ext = '.elp';
+            else if (lower.endsWith(eXeLearning.extension))
+                ext = '.' + eXeLearning.extension;
             else if (lower.includes('xml')) ext = '.xml';
             else ext = '.zip';
             if (!hasDot) base += ext;
