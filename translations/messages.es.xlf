@@ -11343,7 +11343,7 @@
       </trans-unit>
       <trans-unit id="ZT.NQle" resname="Teacher only">
         <source>Teacher only</source>
-        <target>Solo el docente</target>
+        <target>Visible sólo en modo docente</target>
       </trans-unit>
       <trans-unit id="37wivZ3" resname="ID">
         <source>ID</source>
