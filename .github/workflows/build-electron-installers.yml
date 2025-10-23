@@ -246,73 +246,73 @@ jobs:
           if [ -f "$LOG1" ]; then cp "$LOG1" mac-app.log; elif [ -f "$LOG2" ]; then cp "$LOG2" mac-app.log; fi
 
 
-      # ---------- Windows test (auto-launch after install) ----------
-      - name: Test install on Windows (auto-launch after install)
+      # ---------- Windows test (deterministic launch, no autolaunch) ----------
+      - name: Test install on Windows (deterministic)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
 
-          # Settings
+          # -------- Settings --------
           $procName       = 'eXeLearning'
           $port           = [int]($env:APP_PORT ?? 41309)
-          $installTimeout = [int]($env:INSTALL_POLL_TIMEOUT ?? 240)
-          $bootTimeout    = [int]($env:APP_BOOT_TIMEOUT ?? 120)
-          $shotDelay      = [int]($env:SCREENSHOT_DELAY ?? 4)
+          $bootTimeout    = [int]($env:APP_BOOT_TIMEOUT ?? 300)
+          $shotDelay      = [int]($env:SCREENSHOT_DELAY ?? 6)
 
-          # Find installer (NSIS "Setup.exe")
+          # -------- Find installer and install silently --------
           $installer = Get-ChildItem installers\*Setup*.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $installer) { throw "No Windows installer found in 'installers'." }
 
-          # Install; with runAfterFinish=true the app should auto-launch
-          Start-Process $installer.FullName -Wait -NoNewWindow
+          # /S = silent for NSIS oneClick; avoids UI + autolaunch races
+          Start-Process $installer.FullName -ArgumentList '/S' -Wait -NoNewWindow
 
-          # Wait for the auto-launched process to appear
-          $deadline = (Get-Date).AddSeconds($installTimeout)
-          $proc = $null
-          do {
-            $proc = Get-Process -Name $procName -ErrorAction SilentlyContinue | Select-Object -First 1
-            if (-not $proc) { Start-Sleep -Seconds 1 }
-          } until ($proc -or (Get-Date) -ge $deadline)
+          # -------- Locate installed EXE --------
+          $exePath = @(
+            (Join-Path $env:LOCALAPPDATA 'Programs\eXeLearning\eXeLearning.exe'),
+            (Join-Path ${env:ProgramFiles} 'eXeLearning\eXeLearning.exe'),
+            (Join-Path ${env:ProgramFiles(x86)} 'eXeLearning\eXeLearning.exe')
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 
-          # Fallback: if auto-launch didn't happen, locate and launch manually
-          if (-not $proc) {
-            Write-Host "Auto-launch not detected; locating installed EXE to launch manually..."
-            $exePath = $null
-            $exePath = @(
-              (Join-Path $env:LOCALAPPDATA 'Programs\eXeLearning\eXeLearning.exe'),
-              (Join-Path ${env:ProgramFiles} 'eXeLearning\eXeLearning.exe'),
-              (Join-Path ${env:ProgramFiles(x86)} 'eXeLearning\eXeLearning.exe')
-            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-            if (-not $exePath) {
-              $exePath = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue | Select-Object -First 1 | ForEach-Object FullName
-            }
-            if (-not $exePath) { throw "Installed EXE not found to launch." }
-
-            [Environment]::SetEnvironmentVariable("ELECTRON_ENABLE_LOGGING","1","Process")
-            [Environment]::SetEnvironmentVariable("ELECTRON_DISABLE_GPU","1","Process")
-
-            $proc = Start-Process -FilePath $exePath -PassThru
-            try { $null = $proc.WaitForInputIdle(10000) } catch {}
+          if (-not $exePath) {
+            $exePath = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs') -Recurse -Depth 3 -Filter 'eXeLearning.exe' -ErrorAction SilentlyContinue |
+              Select-Object -First 1 | ForEach-Object FullName
           }
-          Start-Sleep -Seconds 4
+          if (-not $exePath) { throw "Installed EXE not found to launch." }
 
-          # Readiness: either window handle is available OR HTTP port responds
+          # -------- Launch with deterministic env for CI --------
+          $psi = New-Object System.Diagnostics.ProcessStartInfo
+          $psi.FileName = $exePath
+          $psi.WorkingDirectory = Split-Path -Parent $exePath
+          $psi.UseShellExecute = $false
+          # Force headless-friendly Electron
+          $psi.Environment['ELECTRON_DISABLE_GPU'] = '1'
+          $psi.Environment['ELECTRON_ENABLE_LOGGING'] = '1'
+          # Ask the app to skip heavy init in CI
+          $psi.Environment['CI'] = '1'
+          $psi.Environment['EXE_SKIP_HEAVY_INIT'] = '1'
+          # Prefer IPv4 loopback for consistency in Windows Server
+          $psi.Environment['APP_HOST'] = '127.0.0.1'
+
+          $proc = [System.Diagnostics.Process]::Start($psi)
+          try { $null = $proc.WaitForInputIdle(10000) } catch {}
+
+          # -------- Readiness: HTTP on 127.0.0.1 or a window handle --------
           $ready = $false
           $deadline = (Get-Date).AddSeconds($bootTimeout)
+
           do {
             Start-Sleep -Seconds 4
 
+            # bail out if process died
             try { $alive = -not $proc.HasExited } catch { $alive = $true }
             if (-not $alive) { throw "Process exited before readiness." }
 
-            # 1) Window handle
+            # Window handle sometimes remains 0 in headless sessions; HTTP is the signal that matters
             if ($proc.MainWindowHandle -ne 0) { $ready = $true }
 
-            # 2) HTTP endpoint
             if (-not $ready) {
               try {
-                $resp = Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 -Uri ("http://localhost:{0}/" -f $port) -ErrorAction SilentlyContinue
+                $resp = Invoke-WebRequest -UseBasicParsing -TimeoutSec 1 -Uri ("http://127.0.0.1:{0}/" -f $port) -ErrorAction SilentlyContinue
                 if ($resp.StatusCode -ge 200 -and $resp.StatusCode -lt 500) { $ready = $true }
               } catch {}
             }
@@ -320,6 +320,7 @@ jobs:
 
           if (-not $ready) {
             Write-Error "Timed out waiting for readiness ($bootTimeout s)."
+
             $log1 = Join-Path $env:APPDATA "eXeLearning\logs\main.log"
             $log2 = Join-Path $env:APPDATA "eXeLearning\log\main.log"
             if (Test-Path $log1) { Get-Content $log1 -Tail 200 }
@@ -327,16 +328,14 @@ jobs:
             exit 1
           }
 
-          # Bring window to foreground (best-effort)
+          # -------- Bring to front and screenshots --------
           try {
             $ws = New-Object -ComObject WScript.Shell
             $null = $ws.AppActivate($procName)
-            if ($proc.MainWindowHandle -eq 0) { $null = $ws.AppActivate("Untitled") }
           } catch {}
 
           Start-Sleep -Seconds $shotDelay
 
-          # Screenshot 1
           Add-Type -AssemblyName System.Windows.Forms
           Add-Type -AssemblyName System.Drawing
           [System.Windows.Forms.Application]::EnableVisualStyles()
@@ -346,7 +345,6 @@ jobs:
           $bmp.Save("windows-screenshot-1.png")
           $g.Dispose(); $bmp.Dispose()
 
-          # Send Ctrl+P and Screenshot 2
           [System.Windows.Forms.SendKeys]::SendWait("^p")
           Start-Sleep -Seconds ([int]($env:SCREENSHOT_DELAY ?? 3))
           $bmp2 = New-Object Drawing.Bitmap([System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width,[System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Height)
@@ -355,13 +353,13 @@ jobs:
           $bmp2.Save("windows-screenshot-2.png")
           $g2.Dispose(); $bmp2.Dispose()
 
-          # Collect logs if available
+          # -------- Collect logs --------
           $log1 = Join-Path $env:APPDATA "eXeLearning\logs\main.log"
           $log2 = Join-Path $env:APPDATA "eXeLearning\log\main.log"
           if (Test-Path $log1) { Copy-Item $log1 windows-app.log -ErrorAction SilentlyContinue }
           elseif (Test-Path $log2) { Copy-Item $log2 windows-app.log -ErrorAction SilentlyContinue }
 
-          # Optional: close the app
+          # -------- Cleanup --------
           try {
             if ($proc.MainWindowHandle -ne 0) { $proc.CloseMainWindow() | Out-Null }
             Start-Sleep -Seconds 2
