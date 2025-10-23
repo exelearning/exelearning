@@ -59,7 +59,7 @@ var $casestudy = {
                 '.exe-casestudy-container',
             );
         }
-        
+
     },
 
     createInterfaceCaseStudy: function (data) {
@@ -89,7 +89,7 @@ var $casestudy = {
         const node = document.getElementById(ideviceId);
         if (!node || eXe.app.isInExe() || !htmlString) return htmlString;
 
-        const idRes = node.getAttribute('id-resource') || '';
+        const idRes = ideviceId;
         if (!idRes) return htmlString;
 
         const basePath = document.documentElement.id === 'exe-index'
@@ -166,7 +166,7 @@ var $casestudy = {
             .on('click', '.CSP-FeedbackBtn', function () {
                 const $activityDiv = $(this).closest('.CSP-ActivityDiv');
                 const $fb = $activityDiv.find('.CSP-FeedbackText');
-                $fb.slideToggle(200,function(){
+                $fb.slideToggle(200, function () {
                     $exeDevices.iDevice.gamification.math.updateLatex('.CSP-FeedbackText');
                 });
 
