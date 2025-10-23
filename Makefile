@@ -171,12 +171,11 @@ test-e2e-offline: check-docker check-env css-dev
 	@docker compose --profile e2e run --rm -e APP_ENV=test -e APP_ONLINE_MODE=0 exelearning composer --no-cache phpunit-e2e-offline
 
 # Test the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-test-electron: install-php-bin
+test-electron: fail-on-windows install-php-bin
 	@echo "Running Electron E2E tests with Playwright..."
 	yarn install
 	#yarn test
 	yarn playwright test tests/electron
-	$(MAKE) remove-php-bin
 
 # Open a shell inside the exelearning container ready for running phpunit
 test-shell: check-docker check-env css-dev
@@ -382,15 +381,15 @@ migrate: check-docker check-env upd
 tmp-cleanup: check-docker check-env upd
 	docker compose exec exelearning composer --no-cache tmp-cleanup
 
-# Convert an ELP file via Docker using STDIN
-# Usage: make convert-elp INPUT=path/to/input.elp OUTPUT=path/to/output.elp [DEBUG=debug]
+# Convert a legacy .elp file to .elpx via Docker using STDIN
+# Usage: make convert-elp INPUT=/abs/path.elp OUTPUT=/abs/path.elpx [DEBUG=debug]
 # Important! Only works with absolute paths!
 convert-elp: fail-on-windows check-docker check-env upd
 ifndef INPUT
 	$(error INPUT is required. Use INPUT=/absolute/path/to/file.elp)
 endif
 ifndef OUTPUT
-	$(error OUTPUT is required. Use OUTPUT=/absolute/path/to/output.elp)
+	$(error OUTPUT is required. Use OUTPUT=/absolute/path/to/output.elpx)
 endif
 	$(eval EXPANDED_INPUT := $(call EXPAND_PATH,$(INPUT)))
 	@if [ ! -f "$(EXPANDED_INPUT)" ]; then \
@@ -398,7 +397,7 @@ endif
 	  exit 1; \
 	fi
 	@mkdir -p $(dir $(OUTPUT))
-	@echo "Converting ELP file..."
+	@echo "Converting ELP → ELPX..."
 	@# Generate a temporary filename inside the container
 	$(eval TEMP_OUTPUT := /tmp/converted_$(shell date +%s).elp)
 	
@@ -412,9 +411,9 @@ endif
 	
 	@echo "✅ Done. Output saved to $(OUTPUT)"
 
-# Export an ELP file via Docker in a given format using STDIN
-# Usage: make export-elp FORMAT=html5 INPUT=/abs/path.elp OUTPUT=/abs/output/folder [DEBUG=debug] [BASE_URL=https://example.com]
-export-elp: fail-on-windows check-docker check-env upd
+# Export an ELPX file via Docker in a given format using STDIN
+# Usage: make export-elpx FORMAT=html5 INPUT=/abs/path.elpx OUTPUT=/abs/output/folder [DEBUG=debug] [BASE_URL=https://example.com]
+export-elpx: fail-on-windows check-docker check-env upd
 ifndef FORMAT
 	$(error FORMAT is required. Use FORMAT=html5, scorm12, etc.)
 endif
@@ -444,35 +443,67 @@ endif
 
 	@echo "✅ Done. Exported files saved to $(OUTPUT)"
 
-# Usage: make export-elp-html5 INPUT=/abs/file.elp OUTPUT=/abs/output/dir
-export-elp-html5:
-	@$(MAKE) export-elp FORMAT=html5 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+# Usage: make export-elpx-html5 INPUT=/abs/file.elp OUTPUT=/abs/output/dir
+export-html5:
+	@$(MAKE) export-elpx FORMAT=html5 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-export-elp-scorm12:
-	@$(MAKE) export-elp FORMAT=scorm12 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+export-scorm12:
+	@$(MAKE) export-elpx FORMAT=scorm12 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-export-elp-scorm2004:
-	@$(MAKE) export-elp FORMAT=scorm2004 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+export-scorm2004:
+	@$(MAKE) export-elpx FORMAT=scorm2004 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-export-elp-epub3:
-	@$(MAKE) export-elp FORMAT=epub3 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+export-epub3:
+	@$(MAKE) export-elpx FORMAT=epub3 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-export-elp-ims:
-	@$(MAKE) export-elp FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+export-ims:
+	@$(MAKE) export-elpx FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
+install-composer-dependencies:
+	@echo "Install composer dependencies (no dev)"
+	@composer install --no-dev --classmap-authoritative --optimize-autoloader --no-interaction --no-progress
 
-# Install nativephp/php-bin package temporarily without modifying composer.json
-install-php-bin:
-	@echo "Installing nativephp/php-bin temporarily..."
-	composer require --dev nativephp/php-bin
+# Temporarily installs nativephp/php-bin, extracts the runtime to runtime/php/...,
+# and removes the dev package so vendor/nativephp/php-bin is not included in the build.
+# Works on macOS, Linux, and Git Bash (MSYS/MINGW/CYGWIN). Does not use PowerShell.
+install-php-bin: install-composer-dependencies
+	@echo "Fetching nativephp/php-bin without dev mode (temp dir)..."
+	@set -e; \
+	TMPDIR="$$(mktemp -d)"; \
+	composer create-project --no-dev --no-scripts --no-interaction --prefer-dist nativephp/php-bin "$$TMPDIR/php-bin"; \
+	OS_NAME="$$(uname -s)"; \
+	extract_zip() { _zip="$$1"; _dest="$$2"; rm -rf "$$_dest"; mkdir -p "$$_dest"; \
+	  if command -v unzip >/dev/null 2>&1; then unzip -q -o "$$_zip" -d "$$_dest"; else bsdtar -xf "$$_zip" -C "$$_dest"; fi; }; \
+	case "$$OS_NAME" in \
+	  Linux) \
+	    echo "Preparing embedded PHP for Linux..."; \
+	    extract_zip "$$TMPDIR/php-bin/bin/linux/x64/php-8.4.zip" "runtime/php/linux/x64"; \
+	    [ -x "runtime/php/linux/x64/php-8.4/bin/php" ] && ln -sf "php-8.4/bin/php" "runtime/php/linux/x64/php" || true ;; \
+	  Darwin) \
+	    echo "Preparing embedded PHP for macOS..."; \
+	    extract_zip "$$TMPDIR/php-bin/bin/mac/arm64/php-8.4.zip" "runtime/php/mac/arm64"; \
+	    extract_zip "$$TMPDIR/php-bin/bin/mac/x64/php-8.4.zip"   "runtime/php/mac/x64"; \
+	    copy_php_bin() { root="$$1"; dest="$$root/php"; src=""; \
+	      for c in "$$root/php" "$$root/php-8.4/php" "$$root/php-8.4/bin/php" "$$root/bin/php"; do [ -x "$$c" ] && src="$$c" && break; done; \
+	      [ -z "$$src" ] && { echo "PHP binary not found under $$root"; exit 1; }; \
+	      [ "$$src" != "$$dest" ] && cp -f "$$src" "$$dest"; chmod +x "$$dest" || true; }; \
+	    copy_php_bin "runtime/php/mac/arm64"; copy_php_bin "runtime/php/mac/x64" ;; \
+	  MINGW*|MSYS*|CYGWIN*) \
+	    echo "Preparing embedded PHP for Windows (Git Bash)..."; \
+	    extract_zip "$$TMPDIR/php-bin/bin/win/x64/php-8.4.zip" "runtime/php/win/x64"; \
+	    if [ -f "runtime/php/win/x64/php-8.4/php.exe" ]; then \
+	      cp -f "runtime/php/win/x64/php-8.4/php.exe" "runtime/php/win/x64/php.exe"; \
+	    elif [ -f "runtime/php/win/x64/php-8.4/bin/php.exe" ]; then \
+	      cp -f "runtime/php/win/x64/php-8.4/bin/php.exe" "runtime/php/win/x64/php.exe"; \
+	    fi ;; \
+	  *) echo "Unsupported OS"; exit 1 ;; \
+	esac; \
+	rm -rf "$$TMPDIR"; \
+	echo "Embedded PHP runtime prepared under runtime/php/*"
 
-# Remove nativephp/php-bin package without modifying composer.json
-remove-php-bin:
-	@echo "Removing nativephp/php-bin temporarily..."
-	composer remove --dev nativephp/php-bin --no-scripts
 
 # Run the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-run-app: install-php-bin css-node
+run-app: fail-on-windows css-node install-php-bin
 ifeq ($(SYSTEM_OS),windows)
 	powershell -Command "$$env:EXELEARNING_DEBUG_MODE='$(DEBUG)'; yarn start"	
 	#set EXELEARNING_DEBUG_MODE=$(DEBUG) && yarn start
@@ -480,11 +511,9 @@ else
 	EXELEARNING_DEBUG_MODE=$(DEBUG) yarn start
 endif
 
-	$(MAKE) remove-php-bin
-
 # Package the application with the specified version
 # Usage: make package VERSION=1.0.0
-package: install-php-bin css-node
+package: fail-on-windows css-node install-php-bin
 ifndef VERSION
 	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
 endif
@@ -507,9 +536,6 @@ endif
 	@echo "Restoring fixed version v0.0.0-alpha in Constants.php and 0.0.0-alpha in package.json..."
 	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = 'v0.0.0-alpha';|" src/Constants.php && rm -f src/Constants.php.bak
 	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"0.0.0-alpha\"|" package.json && rm -f package.json.bak
-	
-	# Remove php-bin
-	$(MAKE) remove-php-bin
 	
 	@echo "Package created successfully with version $(VERSION)"
 	@echo "Installer files available in the dist/ directory"
@@ -587,17 +613,17 @@ help:
 	@echo "  lint-js               - Check JavaScript files indentation"
 	@echo "  fix-js                - Indent JavaScript files with 4 spaces"
 	@echo ""
-	@echo "ELP Processing:"
+	@echo "ELPX Processing:"
 	@echo ""
-	@echo "  convert-elp           - Convert eXeLearning v2.x file to v3.0 format"
-	@echo "  export-elp            - Export .elp file to any supported format (requires FORMAT, INPUT, OUTPUT)"
-	@echo "  export-elp-html5      - Export .elp to HTML5 format (alias for export-elp FORMAT=html5)"
-	@echo "  export-elp-html5-sp   - Export .elp to single-page HTML5 format (alias for FORMAT=html5-sp)"
-	@echo "  export-elp-scorm12    - Export .elp to SCORM 1.2 format (alias for FORMAT=scorm12)"
-	@echo "  export-elp-scorm2004  - Export .elp to SCORM 2004 format (alias for FORMAT=scorm2004)"
-	@echo "  export-elp-ims        - Export .elp to IMS format (alias for FORMAT=ims)"
-	@echo "  export-elp-epub3      - Export .elp to EPUB 3 format (alias for FORMAT=epub3)"
-	@echo "  export-elp-elp        - Re-export .elp file (alias for FORMAT=elp)"
+	@echo "  convert-elp            - Convert eXeLearning v2.x (elp) file to v3.0 (elpx) format"
+	@echo "  export-elpx            - Export .elp file to any supported format (requires FORMAT, INPUT, OUTPUT)"
+	@echo "  export-html5           - Export .elp to HTML5 format (alias for export-elpx FORMAT=html5)"
+	@echo "  export-html5-sp        - Export .elp to single-page HTML5 format (alias for FORMAT=html5-sp)"
+	@echo "  export-scorm12         - Export .elp to SCORM 1.2 format (alias for FORMAT=scorm12)"
+	@echo "  export-scorm2004       - Export .elp to SCORM 2004 format (alias for FORMAT=scorm2004)"
+	@echo "  export-ims             - Export .elp to IMS format (alias for FORMAT=ims)"
+	@echo "  export-epub3           - Export .elp to EPUB 3 format (alias for FORMAT=epub3)"
+	@echo "  export-elpx            - Re-export .elp file (alias for FORMAT=elpx)"
 	@echo ""
 	@echo "Data:"
 	@echo ""

@@ -137,8 +137,22 @@ $exeExport = {
                             break;
                         case 'json':
                             let jsonDataText = ideviceNode.getAttribute('data-idevice-json-data');
-                            let jsonData = JSON.parse(jsonDataText);
-                            if (jsonData.exportScorm && jsonData.exportScorm.saveScore) isSCORM = true;
+                            let jsonData = null;
+                            
+                            // Parse JSON data or create empty object if not valid
+                            try {
+                                if (jsonDataText) {
+                                    jsonData = JSON.parse(jsonDataText);
+                                }
+                            } catch (e) {
+                                jsonData = null;
+                            }
+                            
+                            // Check for SCORM data if jsonData is valid
+                            if (jsonData && jsonData.exportScorm && jsonData.exportScorm.saveScore) {
+                                isSCORM = true;
+                            }
+                            break;
                     }
                 }
             })
@@ -195,7 +209,22 @@ $exeExport = {
             ideviceNode.classList.add('loading');
             // Get json data
             let jsonDataText = ideviceNode.getAttribute('data-idevice-json-data');
-            let jsonData = JSON.parse(jsonDataText);
+            let jsonData = null;
+
+            // Parse JSON data or create empty object if not valid
+            try {
+                if (jsonDataText) {
+                    jsonData = JSON.parse(jsonDataText);
+                }
+            } catch (e) {
+                jsonData = null;
+            }
+
+            // If jsonData is not an object, create an empty one
+            if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
+                jsonData = {};
+            }
+
             jsonData.ideviceId = ideviceNode.id;
             // Get accesibility
             let accesibility = null;
@@ -217,6 +246,7 @@ $exeExport = {
         // Clear interval
         clearInterval(window[intervalName]);
     },
+
 
     /**
      * Get idevice export object

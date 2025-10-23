@@ -21,7 +21,7 @@ var $exeDevice = {
   titleText: _("Title"),
   linktitleText: _("Link Title"),
   authorText: _("Author"),
-  linkauthorText: _("Link Author"),
+  linkauthorText: _("Author URL"),
   licenseText: _("License"),
 
   // ::: iDevice default data :::
