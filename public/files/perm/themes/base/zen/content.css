@@ -60,7 +60,7 @@ main header:not(#head) {
 .page > header .package-title,
 .siteNav-off .page > header .package-title,
 .exe-single-page .package-header h1{
-    padding-left: 32px;
+    padding-left: 80px;
     width: calc(100% - 470px);
     white-space: nowrap;
     overflow: hidden;
@@ -663,7 +663,7 @@ button#searchBarTogger{
     right: auto;
     left: 304px;
     top: 136px;
-    background: #282573 url(img/search.svg) no-repeat center / 32px;
+    background: #00758F url(img/search.svg) no-repeat center / 32px;
     width: 48px;
     height: 48px;
     display: none;
@@ -888,7 +888,7 @@ body.siteNav-off button#searchBarTogger{
         padding: 16px;
         height: 20px;
         border: 1px solid #EBE9E9;
-        background: #ffffff;
+        background: #fff url(img/menu_open.svg) no-repeat 12px center / 32px;
         font-weight: 700;
         position: absolute;
         z-index: 0;
@@ -917,7 +917,7 @@ body.siteNav-off button#searchBarTogger{
         width: auto;
         padding: 16px;
         height: 20px;
-        background: #282573 url(img/menu_closed.svg) no-repeat 12px / 32px;
+        background: #00758F url(img/menu_closed.svg) no-repeat 12px / 32px;
         font-weight: 700;
     }
 

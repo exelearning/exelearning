@@ -97,11 +97,14 @@ var $exeDevice = {
         }
 
         data.forEach(row => {
-            if (!row) return;
+            if (!row) {
+                console.warn("Se encontró una fila nula o indefinida en 'data'.");
+                return;
+            }
 
             const rawPageId = (row.odePageId != null) ? String(row.odePageId).trim() : '';
-            if (!rawPageId) return;
             const rawParentId = (row.odeParentPageId != null && row.odeParentPageId !== '') ? String(row.odeParentPageId).trim() : null;
+            if (!rawPageId) return;
 
             if (!pageIndex[rawPageId]) {
                 const order = Number(row.ode_nav_structure_sync_order) || 0;
@@ -116,21 +119,26 @@ var $exeDevice = {
                     navIsActive: row.navIsActive,
                     components: [],
                     children: [],
-                    url: (!rawParentId && order === 1) ? 'index' : $exeDevice.normalizeFileName(row.pageName || '')
+                    url: (!rawParentId && order === 1) ? 'index' : $eXeInforme.normalizeFileName(row.pageName)
                 };
             }
+
             if (row.componentId) {
-                const dataIDs = $exeDevice.getEvaluatioID(row.htmlViewer, row.jsonProperties) || {};
+                const dataIDs = $eXeInforme.getEvaluatioID(row.htmlViewer, row.jsonProperties);
+                const ideviceID = dataIDs.ideviceID || row.ode_idevice_id || '';
+                const evaluationID = dataIDs.evaluationID || '';
+                const evaluation = dataIDs.evaluation || null;
                 pageIndex[rawPageId].components.push({
-                    ideviceID: dataIDs.ideviceID || row.ode_idevice_id || '',
-                    evaluationID: dataIDs.evaluationID || '',
-                    evaluation: dataIDs.evaluation,
+                    ideviceID: ideviceID,
+                    evaluationID: evaluationID,
+                    evaluation: evaluation,
                     componentId: row.componentId,
                     ode_pag_structure_sync_id: row.ode_pag_structure_sync_id,
                     componentSessionId: row.componentSessionId,
                     componentPageId: row.componentPageId,
                     ode_block_id: row.ode_block_id,
                     blockName: row.blockName,
+                    blockOrder: Number(row.blockOrder) || 0,  // ✅ CAMPO AGREGADO
                     ode_idevice_id: row.ode_idevice_id,
                     odeIdeviceTypeName: row.odeIdeviceTypeName,
                     ode_components_sync_order: Number(row.ode_components_sync_order) || 0,
@@ -139,29 +147,39 @@ var $exeDevice = {
             }
         });
 
+        // ✅ ORDENAMIENTO CORREGIDO
+        Object.values(pageIndex).forEach(p => {
+            if (Array.isArray(p.components) && p.components.length > 1) {
+                p.components.sort((a, b) => {
+                    // Ordenar primero por blockOrder
+                    const orderDiff = (a.blockOrder || 0) - (b.blockOrder || 0);
+                    if (orderDiff !== 0) return orderDiff;
+
+                    // Si tienen el mismo blockOrder, usar ode_components_sync_order
+                    return (a.ode_components_sync_order || 0) - (b.ode_components_sync_order || 0);
+                });
+            }
+        });
+
         Object.values(pageIndex).forEach(page => {
-            if (page.parentId && pageIndex[page.parentId]) {
-                pageIndex[page.parentId].children.push(page);
+            const pid = page.parentId;
+            if (pid && pageIndex[pid]) {
+                pageIndex[pid].children.push(page);
             } else {
                 rootPages.push(page);
             }
         });
-        const sortByOrder = (a, b) => Number(a.ode_nav_structure_sync_order) - Number(b.ode_nav_structure_sync_order);
-        const sortComponents = (a, b) => Number(a.ode_components_sync_order) - Number(b.ode_components_sync_order);
 
-        Object.values(pageIndex).forEach(page => {
-            if (Array.isArray(page.components)) {
-                page.components.sort(sortComponents);
-            }
-            if (Array.isArray(page.children)) {
-                page.children.sort(sortByOrder);
+        const sortByOrder = (a, b) => (a.ode_nav_structure_sync_order - b.ode_nav_structure_sync_order);
+        Object.values(pageIndex).forEach(p => {
+            if (Array.isArray(p.children) && p.children.length > 1) {
+                p.children.sort(sortByOrder);
             }
         });
-
         rootPages.sort(sortByOrder);
+
         return rootPages;
     },
-
 
     getEvaluatioID(htmlwiew, idevicejson) {
         let leval = { evaluation: false, ideviceID: '', evaluationID: '' };

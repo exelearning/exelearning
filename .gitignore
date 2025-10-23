@@ -95,3 +95,5 @@ data_persistent/
 symfony.lock
 .phpunit.cache
 .idea/
+
+runtime/

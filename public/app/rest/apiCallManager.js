@@ -568,7 +568,10 @@ export default class ApiCallManager {
      * @returns
      */
     async getOdeDownload(odeSessionId) {
-        return await this.getOdeExportDownload(odeSessionId, 'elp');
+        return await this.getOdeExportDownload(
+            odeSessionId,
+            eXeLearning.extension
+        );
     }
 
     /**

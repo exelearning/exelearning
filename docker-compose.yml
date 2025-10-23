@@ -41,7 +41,7 @@ services:
 
   # Watches SCSS changes and compiles main.scss to main.css using sass
   scss-watcher:
-    image: node:24-alpine
+    image: node:25-alpine
     container_name: scss-watcher
     working_dir: /app
     volumes:

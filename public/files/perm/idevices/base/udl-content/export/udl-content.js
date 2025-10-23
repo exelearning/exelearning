@@ -54,7 +54,7 @@ var $udlcontent = {
         $(this).addClass("udl-contentIdevice-" + type);
       }
 
-      var iDeviceId = $(this).attr("id");
+      var iDeviceId = $(this).parents('.idevice_node').attr("id");
 
       if ($udlcontent.altContentLinks == 'bottom') $(this).addClass("exe-udlContent-alt-bottom");
 

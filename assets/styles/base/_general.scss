@@ -111,6 +111,15 @@ body {
             pointer-events: none;
             width: 0;
         }
+        @media (min-width: 992px) {
+            .exe-properties-form-content #collapse-export{
+                overflow: auto;
+            }
+            .exe-properties-form-content #collapse-export .property-row{
+                max-width: 45%;
+                float: left;
+            }
+        }
     }
 }
 

@@ -279,9 +279,9 @@ export default class IdeviceNode {
             case 'edition':
                 blockButtonsHTML = `
                 <div class="exe-actions-menu">
-                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-save-idevice" type="button" id=saveIdevice${id} title="${_('Save')}"><span class="small-icon save-icon-green"></span>${_('Save')}</button>
-                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice exe-advanced" type="button" id=deleteIdevice${id} title="${_('Delete')}"><span class="small-icon delete-icon-green"</span></button>
-                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center btn-undo-idevice" type="button" id=undoIdevice${id} title="${_('Discard changes')}"><span class="small-icon undo-icon-green"></span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-save-idevice" type="button" id=saveIdevice${id} title="${_('Save')}"><span class="small-icon save-icon-green" aria-hidden="true"></span>${_('Save')}</button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice exe-advanced" type="button" id=deleteIdevice${id} title="${_('Delete')}"><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete')}</span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center btn-undo-idevice" type="button" id=undoIdevice${id} title="${_('Discard changes')}"><span class="small-icon undo-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Discard changes')}</span></button>
                 </div>`;
                 // Check links (disabled) <li><button class="dropdown-item button-action-block" id="checkLinksIdevice${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
                 this.ideviceButtons.innerHTML = blockButtonsHTML;
@@ -301,19 +301,28 @@ export default class IdeviceNode {
                     // In some cases the idevice will not be able to be edited
                     blockButtonEditClass = '';
                 }
+                // Set the Minify iDevice icon
+                let minifyIdeviceIcon = 'chevron-down-icon-green';
+                const iDevice = $(
+                    "div.idevice_body[idevice-id='" + this.odeIdeviceId + "']"
+                );
+                if (iDevice.is(':hidden')) {
+                    minifyIdeviceIcon = 'chevron-up-icon-green';
+                }
                 blockButtonsHTML = `
                 <div class="dropdown exe-actions-menu">
-                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up-idevice" type="button" id=moveUpIdevice${id} title="${_('Move up')}"><span class="small-icon arrow-up-icon-green"</span></button>
-                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down-idevice" type="button" id=moveDownIdevice${id} title="${_('Move down')}"><span class="small-icon arrow-down-icon-green"</span></button>
-                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-edit-idevice ${blockButtonEditClass}" type="button" id=editIdevice${id} title="${_('Edit')}" ${blockButtonEditClass}><span class="small-icon edit-icon-green"></span>${_('Edit')}</button>
-                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice" type="button" id=deleteIdevice${id} title="${_('Delete')}"><span class="small-icon delete-icon-green"</span></button>                    
-                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center exe-advanced" type="button" id="dropdownMenuButtonIdevice${id}" data-bs-toggle="dropdown" aria-expanded="false" title="${_('Actions')}"><span class="micro-icon dots-menu-horizontal-icon-green"</span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up-idevice" type="button" id=moveUpIdevice${id} title="${_('Move up')}"><span class="small-icon arrow-up-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move up')}</span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down-idevice" type="button" id=moveDownIdevice${id} title="${_('Move down')}"><span class="small-icon arrow-down-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move down')}</span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-edit-idevice ${blockButtonEditClass}" type="button" id=editIdevice${id} title="${_('Edit')}" ${blockButtonEditClass}><span class="small-icon edit-icon-green" aria-hidden="true"></span>${_('Edit')}</button>
+                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice" type="button" id=deleteIdevice${id} title="${_('Delete')}"><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete')}</span></button>                    
+                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center exe-advanced" type="button" id="dropdownMenuButtonIdevice${id}" data-bs-toggle="dropdown" aria-expanded="false" title="${_('Actions')}"><span class="micro-icon dots-menu-horizontal-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Actions')}</span></button>
                     <ul class="dropdown-menu${dropdownColumns} button-action-block exe-advanced" aria-labelledby="dropdownMenuButtonIdevice${id}">
-                        <li><button class="dropdown-item button-action-block" id="propertiesIdevice${id}"><span class="small-icon settings-icon-green"></span>${_('Properties')}</button></li>
-                        <li><button class="dropdown-item button-action-block" id="cloneIdevice${id}"><span class="small-icon duplicate-icon-green"></span>${_('Clone')}</button></li>
-                        <li><button class="dropdown-item button-action-block" id="moveIdevice${id}"><span class="small-icon move-icon-green"></span>${_('Move to')}</button></li>
-                        <li class="exe-advanced"><button class="dropdown-item button-action-block" id="exportIdevice${id}"><span class="small-icon download-icon-green"></span>${_('Export')}</span></button></li>
-                     </ul>
+                        <li><button class="dropdown-item button-action-block" id="propertiesIdevice${id}"><span class="small-icon settings-icon-green" aria-hidden="true"></span>${_('Properties')}</button></li>
+                        <li><button class="dropdown-item button-action-block" id="cloneIdevice${id}"><span class="small-icon duplicate-icon-green" aria-hidden="true"></span>${_('Clone')}</button></li>
+                        <li><button class="dropdown-item button-action-block" id="moveIdevice${id}"><span class="small-icon move-icon-green" aria-hidden="true"></span>${_('Move to')}</button></li>
+                        <li class="exe-advanced"><button class="dropdown-item button-action-block" id="exportIdevice${id}"><span class="small-icon download-icon-green" aria-hidden="true"></span>${_('Export')}</span></button></li>
+                    </ul>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-minify-idevice" type="button" id=minifyIdevice${id} title="${_('Toggle content')}"><span id="minifyIdevice${id}icon" class="small-icon ${minifyIdeviceIcon}" aria-hidden="true"></span><span class='visually-hidden'>${_('Toggle content')}</span></button>
                 </div>`;
                 // Check links (disabled) <li><button class="dropdown-item button-action-block" id="checkLinksIdevice${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
                 this.ideviceButtons.innerHTML = blockButtonsHTML;
@@ -328,6 +337,7 @@ export default class IdeviceNode {
                 this.addBehaviouCloneIdeviceButton();
                 this.addBehaviourMoveToPageIdeviceButton();
                 this.addBehaviourExportIdeviceButton();
+                this.addBehaviourMinifyIdeviceButton();
                 this.addNoTranslateForGoogle();
                 // Check links (disabled) this.addBehaviouCheckBrokenLinksIdeviceButton();
                 break;
@@ -1182,6 +1192,34 @@ export default class IdeviceNode {
                             );
                         }
                     });
+            });
+    }
+
+    /**
+     *
+     */
+    addBehaviourMinifyIdeviceButton() {
+        this.ideviceButtons
+            .querySelector('#minifyIdevice' + this.odeIdeviceId)
+            .addEventListener('click', (element) => {
+                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                const iDevice = $(
+                    "div.idevice_body[idevice-id='" + this.odeIdeviceId + "']"
+                );
+                if (iDevice.length != 1) return false;
+                const icn = this.ideviceButtons.querySelector(
+                    '#minifyIdevice' + this.odeIdeviceId + 'icon'
+                );
+                if (icn.classList.contains('chevron-down-icon-green')) {
+                    icn.classList.remove('chevron-down-icon-green');
+                    icn.classList.add('chevron-up-icon-green');
+                    iDevice.hide();
+                } else {
+                    icn.classList.remove('chevron-up-icon-green');
+                    icn.classList.add('chevron-down-icon-green');
+                    iDevice.show();
+                }
+                return false;
             });
     }
 
