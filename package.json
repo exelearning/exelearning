@@ -1,6 +1,6 @@
 {
     "name": "exelearning",
-    "version": "1.0.0-rc2",
+    "version": "0.0.0-alpha",
     "license": "AGPL-3.0-or-later",
     "description": "eXeLearning 3 is an AGPL-licensed free/libre tool to create and publish open educational resources.",
     "main": "main.js",
