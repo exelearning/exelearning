@@ -767,7 +767,21 @@ export default class modalOpenUserOdeFiles extends Modal {
                     'ADD',
                     null
                 );
-                eXeLearning.app.project.updateUserPage(selectedNavId);
+                try {
+                    const newOdeBlockSync =
+                        await eXeLearning.app.api.postObtainOdeBlockSync({
+                            odeBlockId: response.odeBlockId,
+                        });
+                    if (newOdeBlockSync && newOdeBlockSync.blockId) {
+                        await eXeLearning.app.project.addOdeBlock(
+                            newOdeBlockSync
+                        );
+                    } else {
+                        eXeLearning.app.project.updateUserPage(selectedNavId);
+                    }
+                } catch (_e) {
+                    eXeLearning.app.project.updateUserPage(selectedNavId);
+                }
             }
         } else {
             if (isImportIdevices) {
