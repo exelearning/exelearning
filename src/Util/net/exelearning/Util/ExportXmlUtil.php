@@ -2363,11 +2363,9 @@ class ExportXmlUtil
         $ideviceProperties = $odeComponentsSync->getOdeComponentsSyncProperties();
         $idevicePropertiesDict = [];
 
-        if ($exportDynamicPage) {
-            foreach ($ideviceProperties as $property) {
-                if ($property->getValue()) {
-                    $idevicePropertiesDict[$property->getKey()] = $property->getValue();
-                }
+        foreach ($ideviceProperties as $property) {
+            if ($property->getValue()) {
+                $idevicePropertiesDict[$property->getKey()] = $property->getValue();
             }
         }
 
