@@ -44,7 +44,7 @@
         "directories": {
             "output": "dist"
         },
-        "compression": "store",
+        "compression": "normal",
         "publish": [
             {
                 "provider": "github",

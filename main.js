@@ -785,10 +785,27 @@ app.whenReady().then(createWindow);
 // This will immediately download an update, then install when the
 // app quits.
 //-------------------------------------------------------------------
-app.on('ready', function()  {
-  autoUpdater.checkForUpdatesAndNotify();
-});
+app.on('ready', () => {
+  if (!app.isPackaged) return; // don't check updates in dev
 
+  autoUpdater.on('error', (err) => {
+    // downgrade to info if it's just "no versions"
+    if (err && /No published versions on GitHub/i.test(err.message)) {
+      log.info('AutoUpdater: no GitHub releases yet; skipping.');
+    } else {
+      log.warn(`AutoUpdater error: ${err?.stack || err}`);
+    }
+  });
+
+  // Important: catch the returned Promise
+  void autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+    if (err && /No published versions on GitHub/i.test(err.message)) {
+      log.info('AutoUpdater: no releases yet; skipping.');
+    } else {
+      log.warn(`AutoUpdater check failed: ${err?.stack || err}`);
+    }
+  });
+});
 
 app.on('window-all-closed', function () {
   if (phpServer) {
