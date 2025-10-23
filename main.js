@@ -18,6 +18,10 @@ const basePath = app.isPackaged
 log.transports.file.resolvePathFn = () =>
   path.join(app.getPath('userData'), 'logs', 'main.log');
 
+ // files to open after app ready
+let pendingOpenFiles = [];
+
+
 // Mirror console.* to electron-log so GUI builds persist logs to file
 const origConsole = { log: console.log, error: console.error, warn: console.warn };
 console.log = (...args) => { log.info(...args); origConsole.log(...args); };
@@ -28,8 +32,19 @@ console.error = (...args) => { log.error(...args); origConsole.error(...args); }
 process.on('uncaughtException', (e) => log.error('uncaughtException:', e));
 process.on('unhandledRejection', (e) => log.error('unhandledRejection:', e));
 
+autoUpdater.channel = 'latest';
 autoUpdater.logger = log;
 autoUpdater.allowPrerelease = true;
+autoUpdater.autoDownload = true;
+
+// Force the relaseType
+autoUpdater.setFeedURL({
+  provider: 'github',
+  owner: 'exelearning',
+  repo: 'exelearning',
+  channel: 'latest',
+  releaseType: 'release',
+});
 
 // ──────────────  i18n bootstrap  ──────────────
 // Pick correct path depending on whether the app is packaged.
@@ -70,7 +85,7 @@ function inferKnownExt(suggestedName) {
   try {
     const ext = (path.extname(suggestedName || '') || '').toLowerCase().replace(/^\./, '');
     if (!ext) return null;
-    if (ext === 'elp' || ext === 'zip' || ext === 'epub' || ext === 'xml') return `.${ext}`;
+    if (ext === 'elpx' || ext === 'zip' || ext === 'epub' || ext === 'xml') return `.${ext}`;
     return null;
   } catch (_e) {
     return null;
@@ -85,6 +100,34 @@ function ensureExt(filePath, suggestedName) {
   const inferred = inferKnownExt(suggestedName);
   return inferred ? (filePath + inferred) : filePath;
 }
+
+function isLegacyElp(p) {
+  try { return typeof p === 'string' && /\.elp$/i.test(p); } catch (_) { return false; }
+}
+
+function proposeElpxPath(currentPath) {
+  try {
+    const dir  = currentPath ? path.dirname(currentPath) : app.getPath('documents');
+    const base = currentPath ? path.basename(currentPath, path.extname(currentPath)) : 'document';
+    return path.join(dir, `${base}.elpx`);
+  } catch (_e) {
+    return 'document.elpx';
+  }
+}
+
+async function promptElpxSave(owner, currentPath, titleKey, buttonKey) {
+  const { filePath, canceled } = await dialog.showSaveDialog(owner, {
+    title: tOrDefault(titleKey, defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
+    defaultPath: proposeElpxPath(currentPath),
+    buttonLabel: tOrDefault(buttonKey, defaultLocale === 'es' ? 'Guardar' : 'Save'),
+    filters: [{ name: 'eXeLearning project', extensions: ['elpx'] }],
+  });
+  if (canceled || !filePath) return null;
+  // force .elpx if not incluted
+  return ensureExt(filePath, 'document.elpx');
+}
+
+
 
 // ──────────────  Simple settings (no external deps)  ──────────────
 // Persist user choices under userData/settings.json
@@ -348,6 +391,10 @@ function createWindow() {
 
   // Check if the database exists and run Symfony commands
   checkAndCreateDatabase();
+
+  // Check if the php binary is runable exists and run Symfony commands
+  assertWindowsPhpUsableOrGuide();
+
   runSymfonyCommands();
 
   // Start the embedded PHP server
@@ -435,7 +482,7 @@ function createWindow() {
         } catch (_e) {}
         const overrideName = wcId ? nextDownloadNameByWC.get(wcId) : null;
         if (wcId && nextDownloadNameByWC.has(wcId)) nextDownloadNameByWC.delete(wcId);
-        const suggestedName = overrideName || item.getFilename() || 'document.elp';
+        const suggestedName = overrideName || item.getFilename() || 'document.elpx';
         // Determine a safe target WebContents (can be null in some cases)
         // Allow renderer to define a project key (optional)
         let projectKey = 'default';
@@ -742,7 +789,19 @@ if (!gotTheLock) {
   });
 }
 
-app.whenReady().then(createWindow);
+bootstrapFileOpenHandlers();
+
+app.whenReady().then(() => {
+  createWindow();
+
+  // Flush queued files after UI is ready
+  if (pendingOpenFiles.length && mainWindow && !mainWindow.isDestroyed()) {
+    for (const f of pendingOpenFiles) {
+      mainWindow.webContents.send('app:open-file', f);
+    }
+    pendingOpenFiles = [];
+  }
+});
 
 //-------------------------------------------------------------------
 // Auto updates
@@ -750,10 +809,27 @@ app.whenReady().then(createWindow);
 // This will immediately download an update, then install when the
 // app quits.
 //-------------------------------------------------------------------
-app.on('ready', function()  {
-  autoUpdater.checkForUpdatesAndNotify();
-});
+app.on('ready', () => {
+  if (!app.isPackaged) return; // don't check updates in dev
 
+  autoUpdater.on('error', (err) => {
+    // downgrade to info if it's just "no versions"
+    if (err && /No published versions on GitHub/i.test(err.message)) {
+      log.info('AutoUpdater: no GitHub releases yet; skipping.');
+    } else {
+      log.warn(`AutoUpdater error: ${err?.stack || err}`);
+    }
+  });
+
+  // Important: catch the returned Promise
+  void autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+    if (err && /No published versions on GitHub/i.test(err.message)) {
+      log.info('AutoUpdater: no releases yet; skipping.');
+    } else {
+      log.warn(`AutoUpdater check failed: ${err?.stack || err}`);
+    }
+  });
+});
 
 app.on('window-all-closed', function () {
   if (phpServer) {
@@ -813,29 +889,37 @@ ipcMain.handle('app:save', async (e, { downloadUrl, projectKey, suggestedName })
         key = await wc.executeJavaScript('window.__currentProjectId || "default"', true);
       }
     } catch (_er) {}
+
     let targetPath = getSavedPath(key);
+    const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
+
     if (!targetPath) {
-      const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
-      const { filePath, canceled } = await dialog.showSaveDialog(owner, {
-        title: tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project'),
-        defaultPath: suggestedName || 'document.elp',
-        buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save')
-      });
-      if (canceled || !filePath) return false;
-      targetPath = ensureExt(filePath, suggestedName || 'document.elp');
+      // non remembered path → ask
+      const picked = await promptElpxSave(owner, null, 'save.dialogTitle', 'save.button');
+      if (!picked) return false;
+      targetPath = picked;
+      setSavedPath(key, targetPath);
+    } else if (isLegacyElp(targetPath)) {
+      // remembered path is .elp → forzar "Saves as...” to .elpx
+      const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button');
+      if (!picked) return false;
+      targetPath = picked;
       setSavedPath(key, targetPath);
     } else {
-      const fixed = ensureExt(targetPath, suggestedName || 'document.elp');
+      // remembered path not .elp; ensure ext
+      const fixed = ensureExt(targetPath, suggestedName || 'document.elpx');
       if (fixed !== targetPath) {
         targetPath = fixed;
         setSavedPath(key, targetPath);
       }
     }
+
     return await streamToFile(downloadUrl, targetPath, wc);
   } catch (_e) {
     return false;
   }
 });
+
 
 ipcMain.handle('app:saveAs', async (e, { downloadUrl, projectKey, suggestedName }) => {
   const senderWindow = BrowserWindow.fromWebContents(e.sender);
@@ -843,11 +927,11 @@ ipcMain.handle('app:saveAs', async (e, { downloadUrl, projectKey, suggestedName 
   const key = projectKey || 'default';
   const { filePath, canceled } = await dialog.showSaveDialog(senderWindow, {
     title: tOrDefault('saveAs.dialogTitle', defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
-    defaultPath: suggestedName || 'document.elp',
+    defaultPath: suggestedName || 'document.elpx',
     buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save')
   });
   if (canceled || !filePath) return false;
-  const finalPath = ensureExt(filePath, suggestedName || 'document.elp');
+  const finalPath = ensureExt(filePath, suggestedName || 'document.elpx');
   setSavedPath(key, finalPath);
   if (typeof downloadUrl === 'string' && downloadUrl && wc) {
     return await streamToFile(downloadUrl, finalPath, wc);
@@ -862,13 +946,13 @@ ipcMain.handle('app:setSavedPath', async (_e, { projectKey, filePath }) => {
   return true;
 });
 
-// Open system file picker for .elp files (offline open)
+// Open system file picker for .elpx files (offline open)
 ipcMain.handle('app:openElp', async (e) => {
   const senderWindow = BrowserWindow.fromWebContents(e.sender);
   const { canceled, filePaths } = await dialog.showOpenDialog(senderWindow, {
     title: tOrDefault('open.dialogTitle', defaultLocale === 'es' ? 'Abrir proyecto' : 'Open project'),
     properties: ['openFile'],
-    filters: [{ name: 'eXeLearning project', extensions: ['elp', 'zip'] }]
+    filters: [{ name: 'eXeLearning project', extensions: ['elpx', 'elp', 'zip'] }]
   });
   if (canceled || !filePaths || !filePaths.length) return null;
   return filePaths[0];
@@ -1216,6 +1300,116 @@ function getPhpBinaryPath() {
 
   throw new Error(`unsupported platform: ${process.platform}`);
 }
+
+// --- Windows-only VC++ runtime check for embedded PHP ---
+function assertWindowsPhpUsableOrGuide() {
+  // Run only on Windows
+  if (process.platform !== 'win32') return;
+
+  const VC_REDIST_URL = 'https://aka.ms/vs/17/release/vc_redist.x64.exe';
+
+  try {
+    // Quick probe: if PHP starts, dependencies are fine.
+    execFileSync(phpBinaryPath, ['-v'], { windowsHide: true, stdio: 'pipe' });
+    return;
+  } catch (err) {
+    // Optional: check registry to see if the VC++ 2015–2022 (x64) runtime is installed
+    let vcredistInstalled = false;
+    try {
+      const out = execFileSync('reg', [
+        'query',
+        'HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64',
+        '/v',
+        'Installed'
+      ], { windowsHide: true, stdio: 'pipe' }).toString();
+      vcredistInstalled = /\bInstalled\s+REG_DWORD\s+0x1\b/i.test(out);
+    } catch (_) {
+      // If the key is missing or unreadable, assume it's not installed.
+      vcredistInstalled = false;
+    }
+
+    // Build a user-friendly message
+    const message = vcredistInstalled
+      ? 'PHP could not be started. The embedded PHP binary may be corrupted or incompatible.'
+      : 'Microsoft Visual C++ 2015–2022 (x64) is required to run the embedded PHP on Windows.';
+
+    const detail = vcredistInstalled
+      ? 'Please reinstall eXeLearning or replace the embedded PHP runtime.'
+      : 'Click “Install VC++ now” to download it from Microsoft. After installing, reopen eXeLearning.';
+
+    // Offer to open the official installer link
+    const { shell } = require('electron');
+    const buttons = vcredistInstalled ? ['Exit'] : ['Install VC++ now', 'Exit'];
+    const choice = dialog.showMessageBoxSync({
+      type: 'error',
+      buttons,
+      defaultId: 0,
+      cancelId: buttons.length - 1,
+      message,
+      detail
+    });
+
+    if (!vcredistInstalled && choice === 0) {
+      shell.openExternal(VC_REDIST_URL);
+    }
+    app.quit();
+  }
+}
+
+/**
+ * Handle files passed on startup (Windows/Linux: process.argv, macOS: 'open-file')
+ */
+function bootstrapFileOpenHandlers() {
+  // Windows/Linux: file paths come in process.argv
+  // argv[0] = exe, argv[1] = first arg (might be a file)
+  if (process.platform !== 'darwin') {
+    const args = process.argv.slice(1);
+    for (const a of args) {
+      if (a && /\.elpx$/i.test(a) && !a.startsWith('-')) {
+        pendingOpenFiles.push(a);
+      }
+    }
+  }
+
+  // macOS: 'open-file' is emitted for each file, before or after 'ready'
+  app.on('open-file', (event, filePath) => {
+    event.preventDefault(); // prevent default OS handling
+    if (app.isReady() && mainWindow) {
+      // Send immediately if UI is ready
+      mainWindow.webContents.send('app:open-file', filePath);
+    } else {
+      // Queue until UI is ready
+      pendingOpenFiles.push(filePath);
+    }
+  });
+
+  // Single instance lock: collect files from second invocations (Win/Linux)
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    app.quit();
+    return;
+  }
+
+  app.on('second-instance', (_event, argv) => {
+    // Bring to front
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+
+    // On Windows, file path is usually the last arg
+    const files = argv.filter(a => /\.elpx$/i.test(a));
+    for (const f of files) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app:open-file', f);
+      } else {
+        pendingOpenFiles.push(f);
+      }
+    }
+  });
+}
+
+
 
 // Helper: translated or default fallback (handles missing/bad translations)
 function tOrDefault(key, fallback) {

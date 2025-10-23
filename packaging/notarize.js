@@ -50,21 +50,13 @@ exports.default = async function notarizing(context) {
     return;
   }
 
-  const appName = packager && packager.appInfo
-    ? packager.appInfo.productFilename
-    : (context.packager && context.packager.appInfo
-      ? context.packager.appInfo.productFilename
-      : null);
-  const appBundleId = packager && packager.appInfo
-    ? packager.appInfo.appId
-    : (context.packager && context.packager.appInfo
-      ? context.packager.appInfo.appId
-      : null);
+  // Default fixed values (hardcoded as you suggested)
+  const DEFAULT_APP_NAME = 'eXeLearning';
+  const DEFAULT_BUNDLE_ID = 'es.intef.exelearning';
 
-  if (!appName || !appBundleId) {
-    console.warn('⚠️  Could not determine app name or bundle id from packager. Skipping notarization.');
-    return;
-  }
+  // Allow CI to override if needed
+  const appName = process.env.APP_NAME || DEFAULT_APP_NAME;
+  const appBundleId = process.env.FIXED_BUNDLE_ID || DEFAULT_BUNDLE_ID;
 
   const appPath = `${appOutDir}/${appName}.app`;
 

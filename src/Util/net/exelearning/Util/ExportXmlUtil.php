@@ -345,6 +345,7 @@ class ExportXmlUtil
             ++$indexNode;
         }
 
+        $indexNode = 0;
         // Pages organization
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             if (isset($visiblesPages[$odeNavStructureSync->getOdePageId()])) {
@@ -382,6 +383,7 @@ class ExportXmlUtil
                 if (
                     isset($pagePropertiesDict['visibility'])
                     && 'false' === $pagePropertiesDict['visibility']
+                    && 0 != $indexNode
                 ) {
                     $visible = 'false';
                 }
@@ -389,6 +391,7 @@ class ExportXmlUtil
                 $item->addAttribute('isvisible', $visible);
 
                 $title = $item->addChild('title', $odePageName);
+                ++$indexNode;
             }
         }
 
@@ -2191,6 +2194,10 @@ class ExportXmlUtil
             $class .= ' minimized';
         }
 
+        if (isset($blockPropertiesDict['visibility']) && 'false' == $blockPropertiesDict['visibility']) {
+            $class .= ' novisible';
+        }
+
         // Teacher-only checkbox on blocks
         if (
             (isset($blockPropertiesDict['teacherOnly']) && 'true' == $blockPropertiesDict['teacherOnly'])
@@ -2356,11 +2363,9 @@ class ExportXmlUtil
         $ideviceProperties = $odeComponentsSync->getOdeComponentsSyncProperties();
         $idevicePropertiesDict = [];
 
-        if ($exportDynamicPage) {
-            foreach ($ideviceProperties as $property) {
-                if ($property->getValue()) {
-                    $idevicePropertiesDict[$property->getKey()] = $property->getValue();
-                }
+        foreach ($ideviceProperties as $property) {
+            if ($property->getValue()) {
+                $idevicePropertiesDict[$property->getKey()] = $property->getValue();
             }
         }
 
@@ -2385,6 +2390,11 @@ class ExportXmlUtil
         if (!$odeComponentsSync->getHtmlView()) {
             $class .= ' db-no-data';
         }
+
+        if (isset($idevicePropertiesDict['visibility']) && 'false' == $idevicePropertiesDict['visibility']) {
+            $class .= ' novisible';
+        }
+
         // Teacher-only checkbox on iDevices
         if (
             (isset($idevicePropertiesDict['teacherOnly']) && 'true' == $idevicePropertiesDict['teacherOnly'])
@@ -2398,7 +2408,10 @@ class ExportXmlUtil
         }
 
         $ideviceContainer->addAttribute('id', $odeComponentsSync->getOdeIdeviceId());
-        $ideviceContainer->addAttribute('id-resource', $idevicesMapping[$odeComponentsSync->getOdeIdeviceId()]);
+        // Avoid invalid HTML in the Text iDevice
+        if ('text' !== $ideviceTypeName) {
+            $ideviceContainer->addAttribute('id-resource', $idevicesMapping[$odeComponentsSync->getOdeIdeviceId()]);
+        }
         $ideviceContainer->addAttribute('class', $class);
 
         if ($exportDynamicPage && $ideviceTypeData) {
@@ -2410,8 +2423,11 @@ class ExportXmlUtil
             // JSON iDevices need some extra attributes
             if ('json' == $typeComponent) {
                 $ideviceContainer->addAttribute('data-idevice-component-type', $typeComponent);
-                $ideviceContainer->addAttribute('data-idevice-json-data', $odeComponentsSync->getJsonProperties());
-                $ideviceContainer->addAttribute('data-idevice-template', $ideviceTypeData['template']);
+
+                if ('text' !== $ideviceTypeName) {
+                    $ideviceContainer->addAttribute('data-idevice-json-data', $odeComponentsSync->getJsonProperties());
+                    $ideviceContainer->addAttribute('data-idevice-template', $ideviceTypeData['template']);
+                }
                 // Properties
                 /* To review:
                 foreach ($idevicePropertiesDict as $key => $value) {
@@ -2816,6 +2832,12 @@ class ExportXmlUtil
         if (!isset($odeNavStructureSyncs[$indexNode])) {
             return false;
         }
+
+        if (0 == $indexNode) {
+            // The first page is always visible
+            return true;
+        }
+
         $currentNavSync = $odeNavStructureSyncs[$indexNode];
 
         // Get properties of the current page

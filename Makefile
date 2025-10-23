@@ -381,15 +381,15 @@ migrate: check-docker check-env upd
 tmp-cleanup: check-docker check-env upd
 	docker compose exec exelearning composer --no-cache tmp-cleanup
 
-# Convert an ELP file via Docker using STDIN
-# Usage: make convert-elp INPUT=path/to/input.elp OUTPUT=path/to/output.elp [DEBUG=debug]
+# Convert a legacy .elp file to .elpx via Docker using STDIN
+# Usage: make convert-elp INPUT=/abs/path.elp OUTPUT=/abs/path.elpx [DEBUG=debug]
 # Important! Only works with absolute paths!
 convert-elp: fail-on-windows check-docker check-env upd
 ifndef INPUT
 	$(error INPUT is required. Use INPUT=/absolute/path/to/file.elp)
 endif
 ifndef OUTPUT
-	$(error OUTPUT is required. Use OUTPUT=/absolute/path/to/output.elp)
+	$(error OUTPUT is required. Use OUTPUT=/absolute/path/to/output.elpx)
 endif
 	$(eval EXPANDED_INPUT := $(call EXPAND_PATH,$(INPUT)))
 	@if [ ! -f "$(EXPANDED_INPUT)" ]; then \
@@ -397,7 +397,7 @@ endif
 	  exit 1; \
 	fi
 	@mkdir -p $(dir $(OUTPUT))
-	@echo "Converting ELP file..."
+	@echo "Converting ELP → ELPX..."
 	@# Generate a temporary filename inside the container
 	$(eval TEMP_OUTPUT := /tmp/converted_$(shell date +%s).elp)
 	
@@ -411,9 +411,9 @@ endif
 	
 	@echo "✅ Done. Output saved to $(OUTPUT)"
 
-# Export an ELP file via Docker in a given format using STDIN
-# Usage: make export-elp FORMAT=html5 INPUT=/abs/path.elp OUTPUT=/abs/output/folder [DEBUG=debug] [BASE_URL=https://example.com]
-export-elp: fail-on-windows check-docker check-env upd
+# Export an ELPX file via Docker in a given format using STDIN
+# Usage: make export-elpx FORMAT=html5 INPUT=/abs/path.elpx OUTPUT=/abs/output/folder [DEBUG=debug] [BASE_URL=https://example.com]
+export-elpx: fail-on-windows check-docker check-env upd
 ifndef FORMAT
 	$(error FORMAT is required. Use FORMAT=html5, scorm12, etc.)
 endif
@@ -443,27 +443,30 @@ endif
 
 	@echo "✅ Done. Exported files saved to $(OUTPUT)"
 
-# Usage: make export-elp-html5 INPUT=/abs/file.elp OUTPUT=/abs/output/dir
-export-elp-html5:
-	@$(MAKE) export-elp FORMAT=html5 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+# Usage: make export-elpx-html5 INPUT=/abs/file.elp OUTPUT=/abs/output/dir
+export-html5:
+	@$(MAKE) export-elpx FORMAT=html5 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-export-elp-scorm12:
-	@$(MAKE) export-elp FORMAT=scorm12 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+export-scorm12:
+	@$(MAKE) export-elpx FORMAT=scorm12 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-export-elp-scorm2004:
-	@$(MAKE) export-elp FORMAT=scorm2004 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+export-scorm2004:
+	@$(MAKE) export-elpx FORMAT=scorm2004 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-export-elp-epub3:
-	@$(MAKE) export-elp FORMAT=epub3 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+export-epub3:
+	@$(MAKE) export-elpx FORMAT=epub3 INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-export-elp-ims:
-	@$(MAKE) export-elp FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
+export-ims:
+	@$(MAKE) export-elpx FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
+install-composer-dependencies:
+	@echo "Install composer dependencies (no dev)"
+	@composer install --no-dev --classmap-authoritative --optimize-autoloader --no-interaction --no-progress
 
 # Temporarily installs nativephp/php-bin, extracts the runtime to runtime/php/...,
 # and removes the dev package so vendor/nativephp/php-bin is not included in the build.
 # Works on macOS, Linux, and Git Bash (MSYS/MINGW/CYGWIN). Does not use PowerShell.
-install-php-bin:
+install-php-bin: install-composer-dependencies
 	@echo "Fetching nativephp/php-bin without dev mode (temp dir)..."
 	@set -e; \
 	TMPDIR="$$(mktemp -d)"; \
@@ -610,17 +613,17 @@ help:
 	@echo "  lint-js               - Check JavaScript files indentation"
 	@echo "  fix-js                - Indent JavaScript files with 4 spaces"
 	@echo ""
-	@echo "ELP Processing:"
+	@echo "ELPX Processing:"
 	@echo ""
-	@echo "  convert-elp           - Convert eXeLearning v2.x file to v3.0 format"
-	@echo "  export-elp            - Export .elp file to any supported format (requires FORMAT, INPUT, OUTPUT)"
-	@echo "  export-elp-html5      - Export .elp to HTML5 format (alias for export-elp FORMAT=html5)"
-	@echo "  export-elp-html5-sp   - Export .elp to single-page HTML5 format (alias for FORMAT=html5-sp)"
-	@echo "  export-elp-scorm12    - Export .elp to SCORM 1.2 format (alias for FORMAT=scorm12)"
-	@echo "  export-elp-scorm2004  - Export .elp to SCORM 2004 format (alias for FORMAT=scorm2004)"
-	@echo "  export-elp-ims        - Export .elp to IMS format (alias for FORMAT=ims)"
-	@echo "  export-elp-epub3      - Export .elp to EPUB 3 format (alias for FORMAT=epub3)"
-	@echo "  export-elp-elp        - Re-export .elp file (alias for FORMAT=elp)"
+	@echo "  convert-elp            - Convert eXeLearning v2.x (elp) file to v3.0 (elpx) format"
+	@echo "  export-elpx            - Export .elp file to any supported format (requires FORMAT, INPUT, OUTPUT)"
+	@echo "  export-html5           - Export .elp to HTML5 format (alias for export-elpx FORMAT=html5)"
+	@echo "  export-html5-sp        - Export .elp to single-page HTML5 format (alias for FORMAT=html5-sp)"
+	@echo "  export-scorm12         - Export .elp to SCORM 1.2 format (alias for FORMAT=scorm12)"
+	@echo "  export-scorm2004       - Export .elp to SCORM 2004 format (alias for FORMAT=scorm2004)"
+	@echo "  export-ims             - Export .elp to IMS format (alias for FORMAT=ims)"
+	@echo "  export-epub3           - Export .elp to EPUB 3 format (alias for FORMAT=epub3)"
+	@echo "  export-elpx            - Re-export .elp file (alias for FORMAT=elpx)"
 	@echo ""
 	@echo "Data:"
 	@echo ""
