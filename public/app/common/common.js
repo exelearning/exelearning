@@ -160,7 +160,7 @@ var $exe = {
                         }
                     });
                     if (typeof (window.MathJax) == 'object' && typeof (MathJax.typesetPromise) == 'function') {
-                        if (typeof (eXeLearning) != 'undefined') MathJax.typesetPromise();
+                        MathJax.typesetPromise();
                         $exe.math.createLinks();
                     }
                 } else {
