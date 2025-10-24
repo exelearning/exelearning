@@ -504,7 +504,11 @@ class App {
      *
      */
     async showProvisionalDemoWarning() {
-        if (eXeLearning.version.indexOf('-') === -1) {
+        if (
+            eXeLearning.version.indexOf('-alpha') === -1 &&
+            eXeLearning.version.indexOf('-beta') === -1 &&
+            eXeLearning.version.indexOf('-rc') === -1
+        ) {
             return;
         }
 
