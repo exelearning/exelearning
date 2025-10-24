@@ -611,6 +611,19 @@ class OdeApiController extends DefaultApiController
 
         $responseData = [];
 
+        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
+        $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+
+        $odeNavStructureSync = null;
+        if (!empty($odeNavStructureSyncId)) {
+            $odeNavStructureSync = $odeNavStructureSyncRepo->find($odeNavStructureSyncId);
+        } elseif (!empty($odeSessionId)) {
+            // If no explicit nav structure id, try to get the nav structure associated to the session
+            $odeNavStructureSync = $odeNavStructureSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
+        }
+
+        $numOdeNavStructureSync = count($odeNavStructureSync);
+
         $currentOdeUserRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentOdeUsers = $currentOdeUserRepo->getCurrentUsers($odeId, $odeversionId, $odeSessionId);
         $totalCurrentOdeUsers = count((array) $currentOdeUsers);
@@ -619,7 +632,7 @@ class OdeApiController extends DefaultApiController
         $odeComponentsSync = $odeComponentsSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
 
         // Check if ode components are empty and number of current users
-        if (1 == $totalCurrentOdeUsers && !empty($odeComponentsSync)) {
+        if (1 == $totalCurrentOdeUsers && (!empty($odeComponentsSync) || 1 < $numOdeNavStructureSync)) {
             $responseData['askSave'] = true;
         } elseif (empty($odeComponentsSync)) {
             $responseData['leaveEmptySession'] = true;
