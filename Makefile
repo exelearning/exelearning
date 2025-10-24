@@ -540,6 +540,133 @@ endif
 	@echo "Package created successfully with version $(VERSION)"
 	@echo "Installer files available in the dist/ directory"
 
+
+## --------- START OF TEMPORARY WINDOWS SIGN
+
+# --- Windows local signing (Git Bash only) -----------------------------------
+# Adds an interactive flow to package the app for Windows using a given Git tag
+# and perform local code-signing with signtool.exe (two-pass: SHA-1 + appended SHA-256).
+#
+# Required:
+#   - Run from Git Bash / MSYS2 (not cmd / PowerShell) -> guarded by fail-on-windows
+#   - Windows SDK signtool.exe available in PATH (or tweak SIGNTOOL below)
+#   - CERT_THUMBPRINT : certificate thumbprint (for /sha1)
+#   - GH_TOKEN       : GitHub token for publishing (electron-builder)
+#   - GH_REPO        : repo in "owner/name" form, e.g. exelearning/exelearning
+#
+# Behavior:
+#   - Prompts for TAG if not provided (TAG or VERSION can be given; TAG wins)
+#   - git fetch --tags && checkout the requested tag (detached HEAD)
+#   - Verifies variables, ensures Git is clean enough for packaging
+#   - Cleans vendor/, node_modules/, var/cache/* and dist/ before packaging
+#   - Calls: make package VERSION=<tag> PUBLISH=always (forces publish)
+#   - Signs every produced .exe and .msi under dist/ (two-pass signing)
+#
+# Usage:
+#   make package-windows-local-sign
+#   (or provide upfront) TAG=v3.0.0 CERT_THUMBPRINT=... GH_TOKEN=... GH_REPO=exelearning/exelearning
+#
+# Optional:
+#   - TIME_SERVER overrides timestamp server (default: http://time.certum.pl)
+
+# --- Windows local packaging & signing (Git Bash only) ------------------------
+
+# Default RFC3161 timestamp server (Certum). Override with: make ... TIMESTAMP_URL=https://timestamp.digicert.com
+TIMESTAMP_URL ?= http://time.certum.pl
+
+# Package & sign on a Windows machine with Git Bash + SimplySignDesktop.
+# Usage:
+#   make package-windows-local-sign
+#   (it will prompt for TAG, GH_TOKEN and CERT_THUMBPRINT if not set)
+# Or non-interactive:
+#   make package-windows-local-sign TAG=v3.0.0 GH_TOKEN=xxxx CERT_THUMBPRINT=ABCDEF123...
+package-windows-local-sign: fail-on-windows
+	@set -euo pipefail; \
+	# Ensure we are on Windows Git Bash/MSYS/Cygwin
+	OS_NAME="$$(uname -s)"; \
+	case "$$OS_NAME" in MINGW*|MSYS*|CYGWIN*) echo "Detected Git Bash on Windows ($$OS_NAME)";; *) echo "❌ This target must be run in Git Bash on Windows."; exit 1;; esac; \
+	\
+	# Ask for TAG if missing (accept VERSION too)
+	if [ -z "$${TAG:-}" ] && [ -z "$${VERSION:-}" ]; then \
+		read -p "Enter tag to build (e.g. v3.0.0): " TAG; \
+	fi; \
+	TAG="$${TAG:-$${VERSION:-}}"; \
+	[ -n "$$TAG" ] || { echo "❌ Tag is required."; exit 1; }; \
+	\
+	# Ask for GH_TOKEN (used by electron-builder publisher)
+	if [ -z "$${GH_TOKEN:-}" ]; then \
+		read -s -p "Paste GH_TOKEN (repo scope): " GH_TOKEN; echo; export GH_TOKEN; \
+	fi; \
+	[ -n "$$GH_TOKEN" ] || { echo "❌ GH_TOKEN is required."; exit 1; }; \
+	\
+	# Ask for CERT_THUMBPRINT (accept legacy CERT_HUMBPRINT var)
+	if [ -z "$${CERT_THUMBPRINT:-}" ] && [ -n "$${CERT_HUMBPRINT:-}" ]; then CERT_THUMBPRINT="$$CERT_HUMBPRINT"; fi; \
+	if [ -z "$${CERT_THUMBPRINT:-}" ]; then \
+		read -p "Enter certificate SHA1 thumbprint (no spaces): " CERT_THUMBPRINT; \
+	fi; \
+	# Normalize (strip spaces)
+	CERT_THUMBPRINT="$$(echo "$$CERT_THUMBPRINT" | tr -d '[:space:]')"; \
+	[ -n "$$CERT_THUMBPRINT" ] || { echo "❌ CERT_THUMBPRINT is required."; exit 1; }; \
+	export CERT_THUMBPRINT; \
+	\
+	# Prefer the system signtool if available (electron-builder respects SIGNTOOL_PATH)
+	if [ -z "$${SIGNTOOL_PATH:-}" ]; then \
+		SIGNTOOL_PATH="$$(powershell -NoProfile -Command '$(Get-Command signtool.exe -ErrorAction SilentlyContinue).Source' 2>/dev/null | tr -d '\r')" || true; \
+		[ -n "$$SIGNTOOL_PATH" ] || SIGNTOOL_PATH="signtool.exe"; \
+	fi; \
+	export SIGNTOOL_PATH; \
+	echo "→ Using signtool: $$SIGNTOOL_PATH"; \
+	\
+	# Fetch & checkout the exact tag
+	echo "→ Fetching tags and switching to $$TAG"; \
+	git fetch --tags --prune; \
+	git rev-parse -q --verify "refs/tags/$$TAG" >/dev/null || { echo "❌ Tag $$TAG not found."; exit 1; }; \
+	git switch --detach "$$TAG" 2>/dev/null || git checkout -f "$$TAG"; \
+	\
+	# Cleanup to ensure a clean build
+	echo "→ Cleaning vendor/, node_modules/, var/cache/* and dist/"; \
+	rm -rf vendor node_modules dist || true; \
+	[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true; \
+	\
+	# Build & publish via existing 'package' target (this updates versions, runs electron-builder and publishes)
+	# electron-builder will try to sign automatically on Windows if it can resolve a certificate in the store.
+	# We also export SIGNTOOL_PATH to force a modern signtool when present.
+	export DEBUG=$${DEBUG:-electron-builder}; \
+	$(MAKE) package VERSION="$$TAG" PUBLISH=always; \
+	\
+	# Extra safety: dual-sign key artifacts and extra binaries (e.g., php.exe) in-place.
+	# If electron-builder already signed them, signtool will append a SHA-256 signature (/as).
+	$(MAKE) win-sign-artifacts CERT_THUMBPRINT="$$CERT_THUMBPRINT" TIMESTAMP_URL="$(TIMESTAMP_URL)" SIGNTOOL_PATH="$$SIGNTOOL_PATH" || true; \
+	echo "✅ package-windows-local-sign done."
+
+# Internal: dual-sign *.exe/*.msi in dist/, the main exe under win-unpacked/, and runtime php.exe if present.
+# Requires: CERT_THUMBPRINT (SHA-1), optional: TIMESTAMP_URL and SIGNTOOL_PATH
+win-sign-artifacts:
+	@set -euo pipefail; \
+	case "$$(uname -s)" in MINGW*|MSYS*|CYGWIN*) : ;; *) echo "❌ Must run in Git Bash on Windows."; exit 1;; esac; \
+	[ -n "$${CERT_THUMBPRINT:-}" ] || { echo "❌ CERT_THUMBPRINT is required."; exit 1; }; \
+	SIGNTOOL="$${SIGNTOOL_PATH:-signtool.exe}"; \
+	TS_URL="$${TIMESTAMP_URL:-$(TIMESTAMP_URL)}"; \
+	sign_one() { \
+		f="$$1"; \
+		if [ -f "$$f" ]; then \
+			echo "→ Signing (SHA-1)  $$f"; \
+			"$$SIGNTOOL" sign /sha1 "$$CERT_THUMBPRINT" /tr "$$TS_URL" /td sha256 /fd sha1 /v "$$f"; \
+			echo "→ Appending (SHA-256) $$f"; \
+			"$$SIGNTOOL" sign /sha1 "$$CERT_THUMBPRINT" /tr "$$TS_URL" /td sha256 /fd sha256 /as /v "$$f"; \
+		fi; \
+	}; \
+	for f in dist/win-unpacked/*.exe dist/*Setup*.exe dist/*.msi dist/win-unpacked/resources/php/win/x64/php.exe; do \
+		[ -e "$$f" ] && sign_one "$$f" || true; \
+	done; \
+	echo "ℹ️  Note: if electron-builder already uploaded artifacts, re-run build with PUBLISH=never and upload after signing if you need fully signed releases."
+
+
+## --------- END OF TEMPORARY WINDOWS SIGN
+
+
+
+
 # Copy the vendor/ directory from the container to the local host
 # Use this when you want to inspect or debug vendor code locally
 pull-vendor: check-docker check-env upd
