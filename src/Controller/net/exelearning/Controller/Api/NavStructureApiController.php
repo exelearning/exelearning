@@ -2,6 +2,7 @@
 
 namespace App\Controller\net\exelearning\Controller\Api;
 
+use App\Constants;
 use App\Entity\net\exelearning\Dto\OdeNavStructureSyncDataSaveDto;
 use App\Entity\net\exelearning\Dto\OdeNavStructureSyncDto;
 use App\Entity\net\exelearning\Dto\OdeNavStructureSyncListDto;
@@ -148,7 +149,7 @@ class NavStructureApiController extends DefaultApiController
                 $request->setLocale($localeUserPreferences);
                 $request->setDefaultLocale($localeUserPreferences);
                 $this->translator->setLocale($request->getLocale());
-                $pageName = $this->translator->trans('New page');
+                $pageName = $this->translator->trans(Constants::ODE_PAGE_NAME);
                 $firstNode = true;
                 if (empty($odeNavStructureSyncIdParent) || (null == $odeNavStructureSyncIdParent) || ('' == $odeNavStructureSyncIdParent)) {
                     $odeNavStructureSyncIdParent = 'root';
