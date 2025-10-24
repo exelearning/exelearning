@@ -585,13 +585,32 @@ win-validate-gh-token:
 win-inject-publish-config:
 	@. ./.win-sign.env; node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));(p.build||(p.build={}));let pub=(p.build.publish||(p.build.publish=[]));let g=pub.find(x=>x&&x.provider==='github');if(!g){g={provider:'github',releaseType:'prerelease',channel:'latest'};pub.push(g);}g.owner=process.env.GH_OWNER||g.owner;g.repo=process.env.GH_REPO||g.repo;p.build.publish=pub;fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Ensured build.publish GitHub (owner/repo)')"
 
-# Inject ONLY what 26.x expects: win.signtoolOptions.certificateSha1 + win.forceCodeSigning
+# Inject ONLY what 26.x expects:
+#  - win.certificateSha1  (thumbprint en el almacén de Windows)
+#  - win.signIgnore       (para NO intentar firmar ejecutables embebidos)
 win-inject-sign-config:
-	@. ./.win-sign.env; node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));(p.build||(p.build={}));(p.build.win||(p.build.win={}));(p.build.win.signtoolOptions||(p.build.win.signtoolOptions={}));p.build.win.signtoolOptions.certificateSha1=process.env.CERT_THUMBPRINT;p.build.win.forceCodeSigning=true;fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Injected win.signtoolOptions.certificateSha1 + forceCodeSigning')"
+	@. ./.win-sign.env; node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8')); \
+	(p.build||(p.build={})); (p.build.win||(p.build.win={})); \
+	p.build.win.certificateSha1 = process.env.CERT_THUMBPRINT; \
+	const ignore = p.build.win.signIgnore || []; \
+	const add = pat => { if(!ignore.includes(pat)) ignore.push(pat); }; \
+	add('**/resources/php/**/php.exe'); \
+	add('**/vendor/symfony/**/hiddeninput.exe'); \
+	p.build.win.signIgnore = ignore; \
+	fs.writeFileSync('package.json', JSON.stringify(p,null,2)); \
+	console.log('Injected win.certificateSha1 + win.signIgnore')"
 
-# Remove temporary signing settings from package.json
+# Cleanup: remove the temporary signing keys we injected
 win-cleanup-sign-config:
-	@node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));if(p.build&&p.build.win){if(p.build.win.signtoolOptions){delete p.build.win.signtoolOptions.certificateSha1;if(!Object.keys(p.build.win.signtoolOptions).length){delete p.build.win.signtoolOptions;}}delete p.build.win.forceCodeSigning;}fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Cleaned temporary signing settings')"
+	@node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8')); \
+	if(p.build && p.build.win){ delete p.build.win.certificateSha1; \
+	  if(p.build.win.signIgnore){ \
+	    p.build.win.signIgnore = p.build.win.signIgnore.filter(x => !/resources\/php\/.*\/php\.exe|vendor\/symfony\/.*\/hiddeninput\.exe/.test(x)); \
+	    if(p.build.win.signIgnore.length===0) delete p.build.win.signIgnore; \
+	  } \
+	} \
+	fs.writeFileSync('package.json', JSON.stringify(p,null,2)); \
+	console.log('Cleaned signing settings')"
 
 # Full flow: fetch tag, clean, inject config, build+publish, cleanup
 package-windows-local-sign: fail-on-windows .win-sign.env win-validate-gh-token
