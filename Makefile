@@ -568,77 +568,53 @@ endif
 #
 # Optional:
 #   - TIME_SERVER overrides timestamp server (default: http://time.certum.pl)
+
+
+
 # ---------------------------------------------------------------------------
 # Windows local packaging (Git Bash). electron-builder signs using thumbprint.
 # ---------------------------------------------------------------------------
 
-.SILENT: win-sign-vars win-inject-sign-config win-cleanup-sign-config \
-         win-sign-vars-clean package-windows-local-sign
-.PHONY:  win-sign-vars win-inject-sign-config win-cleanup-sign-config \
-         win-sign-vars-clean package-windows-local-sign
+.SILENT: win-sign-vars win-sign-vars-clean package-windows-local-sign
+.PHONY:  win-sign-vars win-sign-vars-clean package-windows-local-sign
 
-# Default RFC3161 TSA. Override: make ... TIMESTAMP_URL=https://timestamp.digicert.com
+# Default RFC3161 TSA. Override with: make ... TIMESTAMP_URL=https://timestamp.digicert.com
 TIMESTAMP_URL ?= http://time.certum.pl
 
-# Auto-generate the env file if missing
+# Auto-create the env file if missing
 .win-sign.env:
 	@$(MAKE) win-sign-vars
 
-# Collect TAG, GH_TOKEN and CERT_THUMBPRINT (saved to .win-sign.env, chmod 600)
+# Collect TAG, GH_TOKEN and CERT_THUMBPRINT; save to .win-sign.env (gitignore it)
 win-sign-vars: fail-on-windows
-	@bash -lc 'set -Eeuo pipefail; umask 077; \
-	  TAGV="$${TAG:-}"; TOK="$${GH_TOKEN:-}"; TH="$${CERT_THUMBPRINT:-}"; \
-	  TS="$${TIMESTAMP_URL:-$(TIMESTAMP_URL)}"; \
-	  if [ -z "$$TAGV" ]; then printf "Tag (e.g. v3.0.0): "; IFS= read -r TAGV; fi; \
-	  if [ -z "$$TOK" ]; then printf "GH_TOKEN (repo scope): "; IFS= read -rs TOK; echo; fi; \
-	  if [ -z "$$TH" ]; then printf "Cert SHA1 thumbprint: "; IFS= read -r TH; fi; \
-	  TH="$$(printf "%s" "$$TH" | tr -d "[[:space:]]")"; \
-	  [ -n "$$TAGV" ] || { echo "ERROR: TAG is required."; exit 1; }; \
-	  [ -n "$$TOK" ] || { echo "ERROR: GH_TOKEN is required."; exit 1; }; \
-	  [ -n "$$TH" ] || { echo "ERROR: CERT_THUMBPRINT is required."; exit 1; }; \
-	  printf "TAG=%s\nGH_TOKEN=%s\nCERT_THUMBPRINT=%s\nTIMESTAMP_URL=%s\n" "$$TAGV" "$$TOK" "$$TH" "$$TS" > .win-sign.env; \
-	  chmod 600 .win-sign.env; echo "Saved .win-sign.env (gitignore recommended)"'
+	@umask 077; TAGV="$${TAG:-}"; TOK="$${GH_TOKEN:-}"; TH="$${CERT_THUMBPRINT:-}"; TS="$${TIMESTAMP_URL:-$(TIMESTAMP_URL)}"; \
+	[ -n "$$TAGV" ] || { printf "Tag (e.g. v3.0.0): "; IFS= read -r TAGV; }; \
+	[ -n "$$TOK" ] || { printf "GH_TOKEN (repo scope): "; IFS= read -rs TOK; echo; }; \
+	[ -n "$$TH" ] || { printf "Cert SHA1 thumbprint: "; IFS= read -r TH; }; \
+	TH="$$(printf "%s" "$$TH" | tr -d "[[:space:]]")"; \
+	[ -n "$$TAGV" ] && [ -n "$$TOK" ] && [ -n "$$TH" ] || { echo "ERROR: missing values"; exit 1; }; \
+	printf "TAG=%s\nGH_TOKEN=%s\nCERT_THUMBPRINT=%s\nTIMESTAMP_URL=%s\n" "$$TAGV" "$$TOK" "$$TH" "$$TS" > .win-sign.env; \
+	chmod 600 .win-sign.env; echo "Saved .win-sign.env"
 
 win-sign-vars-clean:
-	@bash -lc 'set -Eeuo pipefail; rm -f .win-sign.env; echo "Removed .win-sign.env"'
-
-# Inject win.certificateSha1 and rfc3161TimeStampServer into package.json (temporary)
-win-inject-sign-config:
-	@bash -lc 'set -Eeuo pipefail; \
-	  [ -f .win-sign.env ] || { echo "Run: make win-sign-vars"; exit 1; }; \
-	  set -a; . ./.win-sign.env; set +a; \
-	  command -v node >/dev/null 2>&1 || { echo "ERROR: Node.js is required."; exit 1; }; \
-	  node -e "const fs=require(\"fs\"); const p=JSON.parse(fs.readFileSync(\"package.json\",\"utf8\")); \
-	    (p.build||(p.build={})); (p.build.win||(p.build.win={})); \
-	    p.build.win.certificateSha1=process.env.CERT_THUMBPRINT; \
-	    p.build.win.rfc3161TimeStampServer=process.env.TIMESTAMP_URL||\"$(TIMESTAMP_URL)\"; \
-	    fs.writeFileSync(\"package.json\", JSON.stringify(p,null,2)); \
-	    console.log(\"Injected certificateSha1 and timestamp server\")"'
-
-# Remove temporary signing settings from package.json
-win-cleanup-sign-config:
-	@bash -lc 'set -Eeuo pipefail; \
-	  node -e "const fs=require(\"fs\"); const p=JSON.parse(fs.readFileSync(\"package.json\",\"utf8\")); \
-	    if(p.build&&p.build.win){ delete p.build.win.certificateSha1; delete p.build.win.rfc3161TimeStampServer; } \
-	    fs.writeFileSync(\"package.json\", JSON.stringify(p,null,2)); \
-	    console.log(\"Cleaned signing settings\")"'
+	@rm -f .win-sign.env; echo "Removed .win-sign.env"
 
 # Full flow: fetch tag, clean, inject signing config, build+publish, cleanup
 package-windows-local-sign: fail-on-windows .win-sign.env
-	@bash -lc 'set -Eeuo pipefail; \
-	  set -a; . ./.win-sign.env; set +a; \
-	  echo "git fetch + checkout $$TAG"; \
-	  git fetch --tags --prune; \
-	  git rev-parse -q --verify "refs/tags/$$TAG" >/dev/null || { echo "ERROR: Tag not found: $$TAG"; exit 1; }; \
-	  git switch --detach "$$TAG" 2>/dev/null || git checkout -f "$$TAG"; \
-	  echo "clean"; rm -rf vendor node_modules dist || true; \
-	  [ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true; \
-	  # Avoid PFX env collision
-	  unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD; \
-	  $(MAKE) win-inject-sign-config; \
-	  DEBUG=$${DEBUG:-electron-builder} GH_TOKEN="$$GH_TOKEN" $(MAKE) package VERSION="$$TAG" PUBLISH=always; \
-	  $(MAKE) win-cleanup-sign-config; \
-	  echo "Done."'
+	@. ./.win-sign.env; echo "git fetch + checkout $$TAG"
+	@. ./.win-sign.env; git fetch --tags --prune
+	@. ./.win-sign.env; git rev-parse -q --verify "refs/tags/$$TAG" >/dev/null || { echo "ERROR: Tag not found: $$TAG"; exit 1; }
+	@. ./.win-sign.env; git switch --detach "$$TAG" 2>/dev/null || git checkout -f "$$TAG"
+	@echo "clean"
+	@rm -rf vendor node_modules dist || true
+	@[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
+	# Inject temporary signing config into package.json (certificateSha1 + TSA)
+	@. ./.win-sign.env; DEFAULT_TSA="$(TIMESTAMP_URL)" node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));(p.build||(p.build={}));(p.build.win||(p.build.win={}));p.build.win.certificateSha1=process.env.CERT_THUMBPRINT;p.build.win.rfc3161TimeStampServer=process.env.TIMESTAMP_URL||process.env.DEFAULT_TSA;fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Injected signing settings')"
+	# Build & publish (electron-builder will sign on Windows using certificateSha1)
+	@. ./.win-sign.env; DEBUG=$${DEBUG:-electron-builder} GH_TOKEN="$$GH_TOKEN" $(MAKE) package VERSION="$$TAG" PUBLISH=always
+	# Cleanup: remove temporary signing config from package.json
+	@node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));if(p.build&&p.build.win){delete p.build.win.certificateSha1;delete p.build.win.rfc3161TimeStampServer;}fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Cleaned signing settings')"
+	@echo "Done."
 
 
 
