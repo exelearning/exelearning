@@ -852,7 +852,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#seleccionaEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#seleccionaEPercentajeQuestionsValue').val()),
             10,
         );
         if (isNaN(percentaje)) return;
@@ -1268,10 +1268,10 @@ var $exeDevice = {
                                     </span>
                                     <label class="toggle-label" for="seleccionaEShowSolution">${_('Show solutions')}.</label>
                                 </div>
-                                <label for="seleccionaETimeShowSolution" class="mb-0 d-flex align-items-center gap-2">
-                                    <span>${_('Show solution time (seconds)')}</span>
+                                <div class="mb-0 d-flex align-items-center gap-2">
                                     <input type="number" name="seleccionaETimeShowSolution" id="seleccionaETimeShowSolution" value="3" min="1" max="9" class="form-control" />
-                                </label>
+                                    <label for="seleccionaETimeShowSolution">${_('Show solution time (seconds)')}</label>
+                                </div>
                             </div>
                             <div class="toggle-item mb-3" data-target="seleccionaEAudioFeedBack">
                                 <span class="toggle-control">
@@ -1324,10 +1324,10 @@ var $exeDevice = {
                                     </span>
                                     <label class="toggle-label" for="seleccionaEUseLives">${_('Use lives')}.</label>
                                 </div>
-                                <label for="seleccionaENumberLives" class="mb-0 d-flex align-items-center gap-2 SLCNE-ELivesNumber">
-                                    <span>${_('Number of lives')}:</span>
+                                <div class="mb-0 d-flex align-items-center gap-2 SLCNE-ELivesNumber">
                                     <input type="number" name="seleccionaENumberLives" id="seleccionaENumberLives" value="3" min="1" max="5" class="form-control" />
-                                </label>
+                                    <label for="seleccionaENumberLives">${_('Number of lives')}:</label>
+                                </div>
                             </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item toggle-related" data-target="seleccionaEHasFeedBack">
@@ -1337,10 +1337,10 @@ var $exeDevice = {
                                     </span>
                                     <label class="toggle-label" for="seleccionaEHasFeedBack">${_('Feedback')}.</label>
                                 </div>
-                                <label for="seleccionaEPercentajeFB" class="mb-0 d-flex align-items-center gap-2">
+                                <div class="mb-0 d-flex align-items-center gap-2">
                                     <input type="number" name="seleccionaEPercentajeFB" id="seleccionaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" />
-                                    <span>${_('&percnt; right to see the feedback')}</span>
-                                </label>
+                                    <label for="seleccionaEPercentajeFB">${_('&percnt; right to see the feedback')}</label>
+                                </div>
                             </div>
                             <div id="seleccionaEFeedbackP" class="SLCNE-EFeedbackP mb-3">
                                 <textarea id="seleccionaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
@@ -1352,9 +1352,15 @@ var $exeDevice = {
                                     <img src="${path}quextIEPlay.png" alt="${_('Play')}" class="SLCNE-ENavigationButton" />
                                 </a>
                             </div>
-                            <div class="toggle-item toggle-related mb-3" data-target="seleccionaEPercentajeQuestions">
-                                <label for="seleccionaEPercentajeQuestions" class="toggle-label">%${_('Questions')}:</label>
-                                <input type="number" name="seleccionaEPercentajeQuestions" id="seleccionaEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
+                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
+                                <div class="toggle-item toggle-related m-0" data-target="seleccionaEPercentajeQuestions">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="seleccionaEPercentajeQuestions" checked>
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="seleccionaEPercentajeQuestions">%${_('Questions')}:</label>
+                                </div>
+                                <input type="number" name="seleccionaEPercentajeQuestionsValue" id="seleccionaEPercentajeQuestionsValue" value="100" min="1" max="100" class="form-control" />
                                 <span id="seleccionaENumeroPercentaje" class="ms-2">1/1</span>
                             </div>
                             <div class="toggle-item mb-3" data-target="seleccionaModeBoard">
@@ -1363,6 +1369,18 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="seleccionaModeBoard">${_('Digital whiteboard mode')}</label>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <label for="seleccionaEGlobalTimes">${_('Time per question')}:</label>
+                                <select id="seleccionaEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
+                                    <option value="0" selected>15s</option>
+                                    <option value="1">30s</option>
+                                    <option value="2">1m</option>
+                                    <option value="3">3m</option>
+                                    <option value="4">5m</option>
+                                    <option value="5">10m</option>
+                                </select>
+                                <button id="seleccionaGlobalTimeButton" class="btn btn-primary" type="button">${_("Accept")}</button> 
                             </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item" data-target="seleccionaEEvaluation">
@@ -1883,6 +1901,8 @@ var $exeDevice = {
             typeof game.evaluationID != 'undefined' ? game.evaluationID : '';
         game.weighted =
             typeof game.weighted != 'undefined' ? game.weighted : 100;
+        game.globalTime =
+            typeof game.globalTime != 'undefined' ? game.globalTime : 0;
 
         $exeDevice.id =
             typeof game.id !== 'undefined'
@@ -1916,7 +1936,7 @@ var $exeDevice = {
         );
         $('#seleccionaECustomScore').prop('checked', game.customScore);
         $('#seleccionaECustomScore').prop('disabled', game.order == 2);
-        $('#seleccionaEPercentajeQuestions').prop('disabled', game.order == 2);
+        $('#seleccionaEPercentajeQuestionsValue').prop('disabled', game.order == 2);
         $('#seleccionaECustomMessages').prop('checked', game.customMessages);
         $('#seleccionaECustomMessages').prop('disabled', game.order == 2);
         $('#seleccionaEAudioFeedBack').prop('checked', game.audioFeedBach);
@@ -1936,9 +1956,10 @@ var $exeDevice = {
             'disabled',
             game.gameMode == 0 && game.useLives,
         );
-        $('#seleccionaEPercentajeQuestions').val(game.percentajeQuestions);
+        $('#seleccionaEPercentajeQuestionsValue').val(game.percentajeQuestions);
         $('#seleccionaEEvaluation').prop('checked', game.evaluation);
         $('#seleccionaEEvaluationID').val(game.evaluationID);
+        $('#seleccionaEGlobalTimes').val(game.globalTime);
 
         $('#seleccionaEEvaluationID').prop('disabled', !game.evaluation);
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
@@ -2362,12 +2383,11 @@ var $exeDevice = {
             gameMode = parseInt($('input[name=slcgamemode]:checked').val()),
             order = parseInt($('input[name=slcgameorder]:checked').val()),
             audioFeedBach = $('#seleccionaEAudioFeedBack').is(':checked'),
-            percentajeQuestions = parseInt(
-                clear($('#seleccionaEPercentajeQuestions').val()),
-            ),
+            percentajeQuestions = parseInt(clear($('#seleccionaEPercentajeQuestionsValue').val())),
             evaluation = $('#seleccionaEEvaluation').is(':checked'),
             evaluationID = $('#seleccionaEEvaluationID').val(),
-            id = $exeDevice.getIdeviceID();
+            id = $exeDevice.getIdeviceID(),
+            globalTime = parseInt($('#seleccionaEGlobalTimes').val(), 10);
 
         if (!itinerary) return false;
 
@@ -2484,6 +2504,7 @@ var $exeDevice = {
             evaluation: evaluation,
             evaluationID: evaluationID,
             id: id,
+            globalTime: globalTime,
         };
     },
 
@@ -2519,7 +2540,7 @@ var $exeDevice = {
             $seleccionaETimeShowSolution = $('#seleccionaETimeShowSolution'),
             $seleccionaEShowSolution = $('#seleccionaEShowSolution'),
             $seleccionaEPercentajeQuestions = $(
-                '#seleccionaEPercentajeQuestions',
+                '#seleccionaEPercentajeQuestionsValue',
             ),
             $seleccionaENumberQuestion = $('#seleccionaENumberQuestion'),
             $quickMultipleQEIdeviceForm = $('#quickMultipleQEIdeviceForm'),
@@ -2645,6 +2666,15 @@ var $exeDevice = {
         $('#seleccionaEPaste').on('click', (e) => {
             e.preventDefault();
             $exeDevice.pasteQuestion();
+        });
+
+        $('#seleccionaGlobalTimeButton').on('click', (e) => {
+            e.preventDefault();
+            const selectedTime = parseInt($('#seleccionaEGlobalTimes').val(), 10);
+            for (let i = 0; i < $exeDevice.selectsGame.length; i++) {
+                $exeDevice.selectsGame[i].time = selectedTime;
+            }
+            $(`input.SLCNE-Times[name='slctime'][value='${selectedTime}']`).prop('checked', true);
         });
 
         $('#seleccionaEPlayVideo').on('click', (e) => {
@@ -3049,7 +3079,7 @@ var $exeDevice = {
         }
 
         $('#seleccionaECustomMessages').prop('disabled', type == 2);
-        $('#seleccionaEPercentajeQuestions').prop('disabled', type == 2);
+        $('#seleccionaEPercentajeQuestionsValue').prop('disabled', type == 2);
 
         if (type == 2) {
             $('#seleccionaGotoCorrect').show();
