@@ -48,8 +48,6 @@
         "publish": [
             {
                 "provider": "github",
-                "owner": "exelearning",
-                "repo": "exelearning",
                 "releaseType": "prerelease",
                 "channel": "latest"
             }
