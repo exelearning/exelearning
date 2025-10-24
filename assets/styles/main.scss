@@ -48,11 +48,10 @@ body:has(iframe.tox-edit-area__iframe[style="height: 100%; width: 100%;"]) .idev
     position: fixed !important;
     bottom: 18px;
     left: 0;
-    background-color: transparent !important;
     width: calc(100% - 14px) !important;
     border-radius: 0 !important;
     border: none !important;
-    background: linear-gradient(0deg,rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 1) 80%, rgba(255, 255, 255, 0) 100%);
+    background: none !important;
 }
 
 body:has(iframe.tox-edit-area__iframe[style="height: 100%; width: 100%;"]) .idevice_actions [data-bs-toggle='dropdown'],
