@@ -498,46 +498,6 @@ var $exeDevice = {
         }
     },
 
-    getRandomAllowedValue: function (str) {
-        str = str.trim().replace(/\s+/g, ' ');
-        const regex =
-            /^((!?-?\d+(?:\.\d+)? - -?\d+(?:\.\d+)?(#\d+)?|!?-?\d+(?:\.\d+)? - \d+(?:\.\d+)?(#\d+)?|!?-?\d+(?:\.\d+)?)\s*,\s*)*(!?-?\d+(?:\.\d+)? - -?\d+(?:\.\d+)?(#\d+)?|!?-?\d+(?:\.\d+)? - \d+(?:\.\d+)?(#\d+)?|!?-?\d+(?:\.\d+)?)$/;
-
-        if (!regex.test(str)) return null;
-
-        const elements = str.split(/\s*,\s*/);
-
-        let allowed = new Set();
-        let disallowed = new Set();
-
-        elements.forEach((el) => {
-            let skip = 1;
-            let range = el;
-            if (el.includes('#')) {
-                [range, skip] = el.split('#');
-                skip = Number(skip);
-            }
-            const exclude = range.startsWith('!');
-            const value = exclude ? range.substring(1) : range;
-            if (value.includes('-')) {
-                const [start, end] = value.split(' - ').map(Number);
-                for (let i = start; i <= end; i += skip) {
-                    exclude ? disallowed.add(i) : allowed.add(i);
-                }
-            } else {
-                exclude
-                    ? disallowed.add(Number(value))
-                    : allowed.add(Number(value));
-            }
-        });
-
-        allowed = [...allowed].filter((value) => !disallowed.has(value));
-
-        if (!allowed.length) return null;
-
-        const randomIndex = Math.floor(Math.random() * allowed.length);
-        return allowed[randomIndex];
-    },
 
     addQuestion: function () {
         if ($exeDevice.validateQuestion() != false) {
