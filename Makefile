@@ -583,7 +583,9 @@ win-validate-gh-token:
 
 # Ensure build.publish has GitHub with owner/repo
 win-inject-publish-config:
-	@. ./.win-sign.env; node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));(p.build||(p.build={}));let pub=(p.build.publish||(p.build.publish=[]));let g=pub.find(x=>x&&x.provider==='github');if(!g){g={provider:'github',releaseType:'prerelease',channel:'latest'};pub.push(g);}g.owner=process.env.GH_OWNER||g.owner;g.repo=process.env.GH_REPO||g.repo;p.build.publish=pub;fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Ensured build.publish GitHub (owner/repo)')"
+	@. ./.win-sign.env; \
+	export GH_OWNER GH_REPO; \
+	node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));(p.build||(p.build={}));let pub=(p.build.publish||(p.build.publish=[]));let g=pub.find(x=>x&&x.provider==='github');if(!g){g={provider:'github',releaseType:'prerelease',channel:'latest'};pub.push(g);}g.owner=process.env.GH_OWNER||g.owner;g.repo=process.env.GH_REPO||g.repo;p.build.publish=pub;fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Ensured build.publish GitHub (owner/repo set)')"
 
 # Inject ONLY what 26.x expects:
 #  - win.certificateSha1  (thumbprint en el almacén de Windows)
@@ -611,7 +613,6 @@ package-windows-local-sign: fail-on-windows .win-sign.env win-validate-gh-token
 	@echo "clean"; rm -rf vendor node_modules dist || true
 	@[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
 	@$(MAKE) win-inject-publish-config
-	@$(MAKE) win-inject-sign-config
 	@. ./.win-sign.env; DEBUG=$${DEBUG:-electron-builder} GH_TOKEN="$$GH_TOKEN" $(MAKE) package VERSION="$$TAG" PUBLISH=always
 	@$(MAKE) win-cleanup-sign-config
 	@echo "Done."
