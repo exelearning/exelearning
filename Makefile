@@ -601,8 +601,6 @@ package-windows-local-sign: fail-on-windows .win-sign.env win-validate-gh-token
 	@. ./.win-sign.env; git switch --detach "$$TAG" 2>/dev/null || git checkout -f "$$TAG"
 	@echo "clean"; rm -rf vendor node_modules dist || true
 	@[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
-	# Ensure no PFX env vars override store-based signing
-	@unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
 	@$(MAKE) win-inject-publish-config
 	@$(MAKE) win-inject-sign-config
 	@. ./.win-sign.env; DEBUG=$${DEBUG:-electron-builder} GH_TOKEN="$$GH_TOKEN" $(MAKE) package VERSION="$$TAG" PUBLISH=always
