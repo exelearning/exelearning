@@ -587,27 +587,17 @@ win-inject-publish-config:
 
 # Inject ONLY what 26.x expects:
 #  - win.certificateSha1  (thumbprint en el almacén de Windows)
-#  - win.signIgnore       (para NO intentar firmar ejecutables embebidos)
 win-inject-sign-config:
 	@. ./.win-sign.env; node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8')); \
 	(p.build||(p.build={})); (p.build.win||(p.build.win={})); \
 	p.build.win.certificateSha1 = process.env.CERT_THUMBPRINT; \
-	const ignore = p.build.win.signIgnore || []; \
-	const add = pat => { if(!ignore.includes(pat)) ignore.push(pat); }; \
-	add('**/resources/php/**/php.exe'); \
-	add('**/vendor/symfony/**/hiddeninput.exe'); \
-	p.build.win.signIgnore = ignore; \
 	fs.writeFileSync('package.json', JSON.stringify(p,null,2)); \
-	console.log('Injected win.certificateSha1 + win.signIgnore')"
+	console.log('Injected win.certificateSha1')"
 
 # Cleanup: remove the temporary signing keys we injected
 win-cleanup-sign-config:
 	@node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8')); \
 	if(p.build && p.build.win){ delete p.build.win.certificateSha1; \
-	  if(p.build.win.signIgnore){ \
-	    p.build.win.signIgnore = p.build.win.signIgnore.filter(x => !/resources\/php\/.*\/php\.exe|vendor\/symfony\/.*\/hiddeninput\.exe/.test(x)); \
-	    if(p.build.win.signIgnore.length===0) delete p.build.win.signIgnore; \
-	  } \
 	} \
 	fs.writeFileSync('package.json', JSON.stringify(p,null,2)); \
 	console.log('Cleaned signing settings')"
