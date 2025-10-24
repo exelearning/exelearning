@@ -544,9 +544,7 @@ endif
 ## --------- START OF TEMPORARY WINDOWS SIGN
 
 # ---------------------------------------------------------------------------
-# Windows local packaging: sign via Windows cert store + publish to GitHub
-# - Uses win.certificateSubjectName (required) and win.signtoolOptions.certificateSha1 (optional)
-# - Lets electron-builder pick the default RFC3161 TSA
+# Windows local packaging (Git Bash). electron-builder signs via thumbprint.
 # ---------------------------------------------------------------------------
 
 .SILENT: win-sign-vars win-sign-vars-clean win-inject-publish-config \
@@ -556,57 +554,46 @@ endif
          win-inject-sign-config win-cleanup-sign-config \
          win-validate-gh-token package-windows-local-sign
 
-# 1) Collect TAG, GH_TOKEN, CERT_THUMBPRINT, owner/repo -> .win-sign.env (gitignore it)
+# Create .win-sign.env if missing
 .win-sign.env:
 	@$(MAKE) win-sign-vars
 
+# Ask for TAG, GH_TOKEN, CERT_THUMBPRINT, GH_OWNER, GH_REPO; save to .win-sign.env (gitignore it)
 win-sign-vars: fail-on-windows
 	@umask 077; \
-	TAGV="$${TAG:-}"; TOK="$${GH_TOKEN:-}"; TH="$${CERT_THUMBPRINT:-}"; \
-	# Try to infer owner/repo from package.json publish, else ask.
-	OWNER_DEF=$$(node -e "try{const p=require('./package.json');const a=(p.build&&p.build.publish||[]).find(x=>x&&x.provider==='github')||{};process.stdout.write(a.owner||'');}catch(e){process.stdout.write('');}"); \
-	REPO_DEF=$$(node -e "try{const p=require('./package.json');const a=(p.build&&p.build.publish||[]).find(x=>x&&x.provider==='github')||{};process.stdout.write(a.repo||'');}catch(e){process.stdout.write('');}"); \
-	OWN="$${GH_OWNER:-$$OWNER_DEF}"; REP="$${GH_REPO:-$$REPO_DEF}"; \
+	TAGV="$${TAG:-}"; TOK="$${GH_TOKEN:-}"; TH="$${CERT_THUMBPRINT:-}"; OWN="$${GH_OWNER:-}"; REP="$${GH_REPO:-}"; \
 	[ -n "$$TAGV" ] || { printf "Tag (e.g. v3.0.0): "; IFS= read -r TAGV; }; \
-	[ -n "$$TOK" ]  || { printf "GH_TOKEN (repo scope): "; IFS= read -rs TOK; echo; }; \
+	[ -n "$$TOK" ]  || { printf "GH_TOKEN (repo/public_repo scope): "; IFS= read -rs TOK; echo; }; \
 	[ -n "$$TH" ]   || { printf "Cert SHA1 thumbprint: "; IFS= read -r TH; }; \
 	[ -n "$$OWN" ]  || { printf "GitHub owner [exelearning]: "; IFS= read -r OWN; OWN="$${OWN:-exelearning}"; }; \
 	[ -n "$$REP" ]  || { printf "GitHub repo [exelearning]: "; IFS= read -r REP; REP="$${REP:-exelearning}"; }; \
 	TH="$$(printf "%s" "$$TH" | tr -d "[[:space:]]")"; \
-	# Derive Subject CN from the store (CurrentUser\My) for certificateSubjectName
-	SUBJ="$$(powershell -NoProfile -Command \
-		\"$t='$$TH'.ToUpper();$c=Get-ChildItem Cert:\\CurrentUser\\My | ? { \$_.Thumbprint -eq $t }; \
-		  if(\$c){\$sn=\$c.GetNameInfo([System.Security.Cryptography.X509Certificates.X509NameType]::SimpleName,\$false); \
-		  if([string]::IsNullOrEmpty(\$sn)){ \$sn=\$c.Subject }; \$sn} \" 2>/dev/null | tr -d '\r')"; \
 	[ -n "$$TAGV" ] && [ -n "$$TOK" ] && [ -n "$$TH" ] && [ -n "$$OWN" ] && [ -n "$$REP" ] || { echo "ERROR: missing values"; exit 1; }; \
-	printf "TAG=%s\nGH_TOKEN=%s\nCERT_THUMBPRINT=%s\nCERT_SUBJECTNAME=%s\nGH_OWNER=%s\nGH_REPO=%s\n" \
-	  "$$TAGV" "$$TOK" "$$TH" "$$SUBJ" "$$OWN" "$$REP" > .win-sign.env; \
+	printf "TAG=%s\nGH_TOKEN=%s\nCERT_THUMBPRINT=%s\nGH_OWNER=%s\nGH_REPO=%s\n" "$$TAGV" "$$TOK" "$$TH" "$$OWN" "$$REP" > .win-sign.env; \
 	chmod 600 .win-sign.env; echo "Saved .win-sign.env"
 
 win-sign-vars-clean:
 	@rm -f .win-sign.env; echo "Removed .win-sign.env"
 
-# 2) Optional: fail early if GH_TOKEN is invalid (avoids building to then 401)
+# Fail early if GH_TOKEN is invalid (avoids building then 401)
 win-validate-gh-token:
 	@. ./.win-sign.env; \
 	STATUS=$$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: token $$GH_TOKEN" https://api.github.com/user ); \
 	[ "$$STATUS" = "200" ] || { echo "ERROR: GH_TOKEN not valid (HTTP $$STATUS)"; exit 1; }
 
-# 3) Ensure build.publish includes GitHub with owner/repo
+# Ensure build.publish has GitHub with owner/repo
 win-inject-publish-config:
 	@. ./.win-sign.env; node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));(p.build||(p.build={}));let pub=(p.build.publish||(p.build.publish=[]));let g=pub.find(x=>x&&x.provider==='github');if(!g){g={provider:'github',releaseType:'prerelease',channel:'latest'};pub.push(g);}g.owner=process.env.GH_OWNER||g.owner;g.repo=process.env.GH_REPO||g.repo;p.build.publish=pub;fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Ensured build.publish GitHub (owner/repo)')"
 
-# 4) Inject signing config:
-#    - certificateSubjectName at root (what builder expects to create cscInfo)
-#    - signtoolOptions.certificateSha1 to disambiguate (optional but helpful)
+# Inject ONLY what 26.x expects: win.signtoolOptions.certificateSha1 + win.forceCodeSigning
 win-inject-sign-config:
-	@. ./.win-sign.env; node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));(p.build||(p.build={}));(p.build.win||(p.build.win={}));(p.build.win.signtoolOptions||(p.build.win.signtoolOptions={}));if(process.env.CERT_SUBJECTNAME){p.build.win.certificateSubjectName=process.env.CERT_SUBJECTNAME;}p.build.win.signtoolOptions.certificateSha1=process.env.CERT_THUMBPRINT;fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Injected win.certificateSubjectName + win.signtoolOptions.certificateSha1')"
+	@. ./.win-sign.env; node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));(p.build||(p.build={}));(p.build.win||(p.build.win={}));(p.build.win.signtoolOptions||(p.build.win.signtoolOptions={}));p.build.win.signtoolOptions.certificateSha1=process.env.CERT_THUMBPRINT;p.build.win.forceCodeSigning=true;fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Injected win.signtoolOptions.certificateSha1 + forceCodeSigning')"
 
-# 5) Cleanup signing keys (keep repo clean)
+# Remove temporary signing settings from package.json
 win-cleanup-sign-config:
-	@node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));if(p.build&&p.build.win){delete p.build.win.certificateSubjectName;if(p.build.win.signtoolOptions){delete p.build.win.signtoolOptions.certificateSha1;if(!Object.keys(p.build.win.signtoolOptions).length){delete p.build.win.signtoolOptions;}}}fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Cleaned temporary signing settings')"
+	@node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));if(p.build&&p.build.win){if(p.build.win.signtoolOptions){delete p.build.win.signtoolOptions.certificateSha1;if(!Object.keys(p.build.win.signtoolOptions).length){delete p.build.win.signtoolOptions;}}delete p.build.win.forceCodeSigning;}fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Cleaned temporary signing settings')"
 
-# 6) Full flow
+# Full flow: fetch tag, clean, inject config, build+publish, cleanup
 package-windows-local-sign: fail-on-windows .win-sign.env win-validate-gh-token
 	@. ./.win-sign.env; echo "git fetch + checkout $$TAG"
 	@. ./.win-sign.env; git fetch --tags --prune
@@ -614,6 +601,7 @@ package-windows-local-sign: fail-on-windows .win-sign.env win-validate-gh-token
 	@. ./.win-sign.env; git switch --detach "$$TAG" 2>/dev/null || git checkout -f "$$TAG"
 	@echo "clean"; rm -rf vendor node_modules dist || true
 	@[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
+	# Ensure no PFX env vars override store-based signing
 	@unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
 	@$(MAKE) win-inject-publish-config
 	@$(MAKE) win-inject-sign-config
