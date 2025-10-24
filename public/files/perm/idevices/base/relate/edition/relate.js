@@ -1089,7 +1089,7 @@ var $exeDevice = {
                     return;
                 }
                 if (!file.type || !(file.type.match('text/plain') || file.type.match('application/json') || file.type.match('application/xml') || file.type.match('text/xml'))) {
-                    eXe.appalert(_('Please select a text file (.txt) or a Moodle XML file (.xml)'));
+                    eXe.app.alert(_('Please select a text file (.txt) or a Moodle XML file (.xml)'));
                     return;
                 }
 
