@@ -411,12 +411,12 @@ var $exeDevice = {
         });
     },
     validateIntervals: function (domain) {
-        const allowedCharactersRegex = /^[0-9\s\-!]+$/;
+        const allowedCharactersRegex = /^[0-9\s\-!.]+$/;
         let dm = domain.replace(/\s+/g, ' ').trim();
         if (!allowedCharactersRegex.test(dm)) {
             return false;
         }
-        const formatRegex = /^(!?-?\d+)(\s+-\s+!?-?\d+)?$/;
+        const formatRegex = /^(!?-?\d+(?:\.\d+)?)(\s+-\s+!?-?\d+(?:\.\d+)?)?$/;
         let isValid = formatRegex.test(dm);
         if (isValid && dm.includes(' - ')) {
             let [start, end] = dm.split(' - ').map(Number);
@@ -426,7 +426,7 @@ var $exeDevice = {
     },
 
     validateIntervalsWithHash: function (domain) {
-        const regex = /^-?\d+\s+-\s*-?\d+\s+#\s*\d+$/;
+        const regex = /^-?\d+(?:\.\d+)?\s+-\s*-?\d+(?:\.\d+)?\s*#\s*\d+(?:\.\d+)?$/;
         let dm = domain.replace(/\s+/g, ' ').trim();
         if (!regex.test(dm)) {
             return false;
@@ -501,7 +501,7 @@ var $exeDevice = {
     getRandomAllowedValue: function (str) {
         str = str.trim().replace(/\s+/g, ' ');
         const regex =
-            /^((!?-?\d+ - -?\d+(#\d+)?|!?-?\d+ - \d+(#\d+)?|!?-?\d+)\s*,\s*)*(!?-?\d+ - -?\d+(#\d+)?|!?-?\d+ - \d+(#\d+)?|!?-?\d+)$/;
+            /^((!?-?\d+(?:\.\d+)? - -?\d+(?:\.\d+)?(#\d+)?|!?-?\d+(?:\.\d+)? - \d+(?:\.\d+)?(#\d+)?|!?-?\d+(?:\.\d+)?)\s*,\s*)*(!?-?\d+(?:\.\d+)? - -?\d+(?:\.\d+)?(#\d+)?|!?-?\d+(?:\.\d+)? - \d+(?:\.\d+)?(#\d+)?|!?-?\d+(?:\.\d+)?)$/;
 
         if (!regex.test(str)) return null;
 
@@ -522,7 +522,6 @@ var $exeDevice = {
             if (value.includes('-')) {
                 const [start, end] = value.split(' - ').map(Number);
                 for (let i = start; i <= end; i += skip) {
-                    // Se utiliza el valor de skip para incrementar el índice.
                     exclude ? disallowed.add(i) : allowed.add(i);
                 }
             } else {
@@ -1253,9 +1252,9 @@ var $exeDevice = {
             '.MTOE-ValuesInput',
             function () {
                 const valorInicial = $(this).val();
-                const valorFiltrado = valorInicial.replace(/[^0-9,#!\- ]/g, ''); // Se añade un espacio al final de la clase de caracteres.
+                const valorFiltrado = valorInicial.replace(/[^0-9,#!\-. ]/g, '');
                 if (valorFiltrado !== valorInicial) {
-                    $(this).val(valorFiltrado); // Asignar el valor filtrado de vuelta al input
+                    $(this).val(valorFiltrado);
                 }
             },
         );
