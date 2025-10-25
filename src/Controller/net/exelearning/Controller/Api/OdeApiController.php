@@ -12,6 +12,7 @@ use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdeFiles;
 use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
+use App\Entity\net\exelearning\Entity\OdePropertiesSync;
 use App\Exception\net\exelearning\Exception\Logical\AutosaveRecentSaveException;
 use App\Exception\net\exelearning\Exception\Logical\UserAlreadyOpenSessionException;
 use App\Exception\net\exelearning\Exception\Logical\UserInsufficientSpaceException;
@@ -611,15 +612,46 @@ class OdeApiController extends DefaultApiController
 
         $responseData = [];
 
+        // Look for number of odeNavStructureSync
+        $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+        $odeNavStructureSync = $odeNavStructureSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
+        $numOdeNavStructureSync = count((array) $odeNavStructureSync);
+
+        $hasChangedPageName = false;
+        $titlePage = Constants::ODE_PAGE_NAME;
+        if ($this->translator->trans($titlePage) != $odeNavStructureSync[0]->getPageName()
+            // TO DELETE WHEN New Page is translated correctly in first node
+            && $titlePage != $odeNavStructureSync[0]->getPageName()
+        ) {
+            $hasChangedPageName = true;
+        }
+
         $currentOdeUserRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentOdeUsers = $currentOdeUserRepo->getCurrentUsers($odeId, $odeversionId, $odeSessionId);
         $totalCurrentOdeUsers = count((array) $currentOdeUsers);
+
+        $odePropertiesSyncRepo = $this->entityManager->getRepository(OdePropertiesSync::class);
+        $odePropertiesSync = $odePropertiesSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
+        $hasChangesOdeProperties = false;
+
+        if (!empty($odePropertiesSync) && !$hasChangedPageName) {
+            foreach ($odePropertiesSync as $odePropertySync) {
+                $property = $odePropertySync->getValue();
+                $key = $odePropertySync->getKey();
+                if (('pp_title' == $key || 'pp_author' == $key || 'pp_description' == $key || 'pp_extraHeadContent' == $key || 'footer' == $key)
+                    && '' != $property) {
+                    $hasChangesOdeProperties = true;
+                    break;
+                }
+            }
+        }
 
         $odeComponentsSyncRepo = $this->entityManager->getRepository(OdeComponentsSync::class);
         $odeComponentsSync = $odeComponentsSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
 
         // Check if ode components are empty and number of current users
-        if (1 == $totalCurrentOdeUsers && !empty($odeComponentsSync)) {
+        if (1 == $totalCurrentOdeUsers && (!empty($odeComponentsSync) || 1 < $numOdeNavStructureSync)
+            || true === $hasChangesOdeProperties || true === $hasChangedPageName) {
             $responseData['askSave'] = true;
         } elseif (empty($odeComponentsSync)) {
             $responseData['leaveEmptySession'] = true;
