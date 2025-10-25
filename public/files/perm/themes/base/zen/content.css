@@ -20,7 +20,6 @@
     width: 100%;
 }
 
-
 main header:not(#head) {
     padding: 0 !important;
     margin: 0 !important;
@@ -149,6 +148,10 @@ body.exe-export, body.exe-web-site{
 .exe-content .box-head {
     border-bottom: 0;
     margin-bottom: 16px !important;
+}
+
+.exe-content .box-head + .box-content {
+    padding-top: 1em;
 }
 
 #node-content-container.exe-content .box{
