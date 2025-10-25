@@ -1,5 +1,6 @@
 const { app, BrowserWindow, dialog, session, ipcMain }  = require('electron');
 const { autoUpdater }                 = require('electron-updater');
+
 const log                             = require('electron-log');
 const path                            = require('path');
 const i18n                            = require('i18n');
@@ -8,6 +9,8 @@ const fs                              = require('fs');
 const AdmZip                          = require('adm-zip');
 const http                            = require('http'); // Import the http module to check server availability and downloads
 const https                           = require('https');
+
+const { initAutoUpdater }             = require('./update-manager');
 
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged
@@ -22,6 +25,11 @@ log.transports.file.resolvePathFn = () =>
 let pendingOpenFiles = [];
 
 
+autoUpdater.logger = log;
+autoUpdater.allowPrerelease = true;
+autoUpdater.autoDownload = true;
+autoUpdater.forceDevUpdateConfig = true;
+
 // Mirror console.* to electron-log so GUI builds persist logs to file
 const origConsole = { log: console.log, error: console.error, warn: console.warn };
 console.log = (...args) => { log.info(...args); origConsole.log(...args); };
@@ -31,20 +39,6 @@ console.error = (...args) => { log.error(...args); origConsole.error(...args); }
 // Safety: capture crashes/unhandled
 process.on('uncaughtException', (e) => log.error('uncaughtException:', e));
 process.on('unhandledRejection', (e) => log.error('unhandledRejection:', e));
-
-autoUpdater.channel = 'latest';
-autoUpdater.logger = log;
-autoUpdater.allowPrerelease = true;
-autoUpdater.autoDownload = true;
-
-// Force the relaseType
-autoUpdater.setFeedURL({
-  provider: 'github',
-  owner: 'exelearning',
-  repo: 'exelearning',
-  channel: 'latest',
-  releaseType: 'release',
-});
 
 // ──────────────  i18n bootstrap  ──────────────
 // Pick correct path depending on whether the app is packaged.
@@ -460,6 +454,16 @@ function createWindow() {
 
     mainWindow.loadURL(`http://localhost:${customEnv.APP_PORT}`);
 
+    // Check for updates
+    mainWindow.webContents.on('did-finish-load', () => {
+      try {
+        const updater = initAutoUpdater({ mainWindow, autoUpdater, logger: log, streamToFile });
+        void updater.checkForUpdatesAndNotify().catch(err => log.warn('update check failed', err));
+      } catch (e) {
+        log.warn && log.warn('Failed to init updater after load', e);
+      }
+    });
+
     // Intercept downloads: first time ask path, then overwrite same path
     session.defaultSession.on('will-download', async (event, item, webContents) => {
       try {
@@ -803,33 +807,6 @@ app.whenReady().then(() => {
   }
 });
 
-//-------------------------------------------------------------------
-// Auto updates
-//
-// This will immediately download an update, then install when the
-// app quits.
-//-------------------------------------------------------------------
-app.on('ready', () => {
-  if (!app.isPackaged) return; // don't check updates in dev
-
-  autoUpdater.on('error', (err) => {
-    // downgrade to info if it's just "no versions"
-    if (err && /No published versions on GitHub/i.test(err.message)) {
-      log.info('AutoUpdater: no GitHub releases yet; skipping.');
-    } else {
-      log.warn(`AutoUpdater error: ${err?.stack || err}`);
-    }
-  });
-
-  // Important: catch the returned Promise
-  void autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-    if (err && /No published versions on GitHub/i.test(err.message)) {
-      log.info('AutoUpdater: no releases yet; skipping.');
-    } else {
-      log.warn(`AutoUpdater check failed: ${err?.stack || err}`);
-    }
-  });
-});
 
 app.on('window-all-closed', function () {
   if (phpServer) {
