@@ -59,6 +59,7 @@
         "files": [
             "main.js",
             "preload.js",
+            "update-manager.js",
             "composer.json",
             "composer.lock",
             ".env.dist",
