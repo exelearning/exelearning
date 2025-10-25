@@ -1,4 +1,3 @@
-console.log('hola');
 var $exeTinyMCE = {
     // imagetools is disabled because it generates base64 images
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
