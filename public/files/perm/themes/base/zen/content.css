@@ -580,18 +580,17 @@ button.toggler:focus {
 
 /* iDevice buttons */
 .exe-content .iDevice_buttons input{
-    background: #fff;
-    color: #555;
-    border: 1px solid #ccc;
+    background: #1A8FA9;
+    color: #fff;
+    border: 1px solid #1A8FA9;
     padding: 4px 10px;
     border-radius: 4px;
     transition: 0.5s ease;
 }
 .exe-content .iDevice_buttons input:hover,
 .exe-content .iDevice_buttons input:focus{
-    box-shadow: 2px 2px 4px #dbdbdb;
-    color: #000;
-    border-color: #bbb
+    background: #005771;
+    border-color: #005771
 }
 
 /* Icons */
