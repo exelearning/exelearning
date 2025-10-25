@@ -199,16 +199,33 @@ export default class modalOpenUserOdeFiles extends Modal {
         const meta = document.createElement('div');
         meta.classList.add('ode-meta');
         const size = ode.sizeFormatted;
-        const date = new Date(ode.updatedAt.timestamp * 1000).toLocaleString(
-            'es-ES'
-        );
+
+        // Get ODE date
+        const ISOdate = ode.updatedAt;
+        const date = new Date(ISOdate);
+        const lang = document.documentElement.lang || 'en';
+        // Keep a consistent format
+        const opciones = {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false, // No AM/PM
+        };
+        let formattedDate = date.toLocaleString(lang, opciones);
+        // Some langs use a comma to separate date and hour
+        formattedDate = formattedDate.replace(',', ' -');
+        // No " -";
+        formattedDate = formattedDate.replace(' -', '');
+
         const version = ode.versionName || '0';
         meta.innerHTML = `
             <span class="ode-badge">v${version}</span>
             <span class="dot">•</span>
             <span>${size}</span>
             <span class="dot">•</span>
-            <span>${date}</span>
+            <span>${formattedDate}</span>
             <span class="dot">•</span>
             <span>${ode.isManualSave ? _('Manual') : _('Autosaved')}</span>
         `;
