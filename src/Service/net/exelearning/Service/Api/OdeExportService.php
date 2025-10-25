@@ -1929,13 +1929,13 @@ class OdeExportService implements OdeExportServiceInterface
             'ǜ' => 'uu',
             '&' => '-',
         ];
-        $special_chars = ['¨', '`', '@', '^', '+', '¿', '?', '[', ']', '/', '\\', '=', '<', '>', ':', ';', ',', "'", '"', '$', '#', '*', '(', ')', '|', '~', '`', '!', '!', '{', '}', '%', '+', '’', '«', '»', '”', '“', chr(0)];
+        $special_chars = ['¨', '`', '@', '^', '+', '¿', '?', '[', ']', '/', '\\', '=', '<', '>', ':', ';', ',', "'", '"', '$', '#', '*', '(', ')', '|', '~', '`', '¡', '!', '{', '}', '%', '+', '’', '«', '»', '”', '“', chr(0)];
         $newFileName = strtolower($fileName);
         $newFileName = strtr($newFileName, $replacements);
         $newFileName = str_replace($special_chars, '', $newFileName);
         $newFileName = str_replace(' ', '-', $newFileName);
         $newFileName = preg_replace('/_+/', '_', $newFileName);
-        $newFileName = preg_replace('/[\x00-\x1F\x7F]/u', '', $newFileName);
+        $newFileName = preg_replace('/[\x00-\x1F\x7F\x{1F600}-\x{1F6FF}]/u', '', $newFileName);
         $newFileName = preg_replace('/[\-\.]+/', '-', $newFileName);
         $newFileName = trim($newFileName, '-.');
 
