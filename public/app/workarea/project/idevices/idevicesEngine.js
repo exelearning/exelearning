@@ -2008,9 +2008,7 @@ export default class IdevicesEngine {
         let eXeNodeLinks = document.querySelectorAll("a[href^='exe-node']");
         if (eXeNodeLinks.length > 0) {
             let pages = eXeLearning.app.project.structure.data;
-            let buttonsPages = document.querySelectorAll(
-                'span.nav-element-text'
-            );
+            let buttonsPages = document.querySelectorAll('.nav-element-text');
 
             eXeNodeLinks.forEach((link) => {
                 let pageElement = null;
