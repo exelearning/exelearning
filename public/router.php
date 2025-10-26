@@ -4,7 +4,7 @@
  * Serves static files for offline mode in eXeLearning
  */
 
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 $requestedFile = __DIR__ . $uri;
 
 /**
@@ -46,8 +46,7 @@ function serveFile(string $path, array $mimeTypes): void {
 
     $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
     $contentType = $mimeTypes[$extension] ?? 'application/octet-stream';
-
-    header("Content-Type: {$contentType}");
+	header("Content-Type: {$contentType}; charset=UTF-8");
     readfile($path);
     exit;
 }
