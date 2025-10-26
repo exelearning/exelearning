@@ -943,10 +943,10 @@ export default class IdevicesEngine {
                         ideviceData,
                         this.nodeContentElement
                     );
-                    // Send operation log action to db: source = new iDevice id, destination = its block
+                    // Send operation log action to bbdd
                     let additionalData = {};
                     eXeLearning.app.project.sendOdeOperationLog(
-                        ideviceNode.odeIdeviceId,
+                        null,
                         ideviceNode.blockId,
                         'ADD_IDEVICE',
                         additionalData
@@ -1653,9 +1653,6 @@ export default class IdevicesEngine {
         this.nodeContentLoadScreenElement.classList.add('loading');
         this.nodeContentLoadScreenElement.classList.remove('hidden');
         this.nodeContentLoadScreenElement.classList.remove('hiding');
-        // Testing: explicit visibility flag and content readiness
-        this.nodeContentLoadScreenElement.setAttribute('data-visible', 'true');
-        this.nodeContentElement?.setAttribute('data-ready', 'false');
         // Clear timeout loading screen
         if (this.hideNodeContanerLoadScreenTimeout) {
             clearTimeout(this.hideNodeContanerLoadScreenTimeout);
@@ -1672,12 +1669,6 @@ export default class IdevicesEngine {
         this.hideNodeContanerLoadScreenTimeout = setTimeout(() => {
             this.nodeContentLoadScreenElement.classList.add('hidden');
             this.nodeContentLoadScreenElement.classList.remove('hiding');
-            // Testing: explicit visibility flag and content readiness
-            this.nodeContentLoadScreenElement.setAttribute(
-                'data-visible',
-                'false'
-            );
-            this.nodeContentElement?.setAttribute('data-ready', 'true');
         }, ms);
     }
 
@@ -2008,7 +1999,9 @@ export default class IdevicesEngine {
         let eXeNodeLinks = document.querySelectorAll("a[href^='exe-node']");
         if (eXeNodeLinks.length > 0) {
             let pages = eXeLearning.app.project.structure.data;
-            let buttonsPages = document.querySelectorAll('nav-element-text');
+            let buttonsPages = document.querySelectorAll(
+                '.nav-element-text'
+            );
 
             eXeNodeLinks.forEach((link) => {
                 let pageElement = null;
