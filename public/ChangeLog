@@ -20,6 +20,7 @@
 - Missing font file in the "Zen" style
 - Effects not initialized immediately after saving an iDevice
 - TinyMCE templates presentation issues (missing CSS)
+- Problem with image selection in predefined templates
 - TinyMCE image plugin: recognition data removed when opening another tab
 - Resources report / Broken links report column titles
 - Minor UI presentation issues
