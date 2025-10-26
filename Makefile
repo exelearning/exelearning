@@ -542,85 +542,83 @@ endif
 
 
 ## --------- START OF TEMPORARY WINDOWS SIGN
+## --------- WINDOWS SIGN (streamlined) ---------
 
-# ---------------------------------------------------------------------------
-# Windows local packaging (Git Bash). electron-builder signs via thumbprint.
-# ---------------------------------------------------------------------------
+.SILENT: check-release-env eb-inject-config eb-cleanup-config \
+         package-windows-local-sign
+.PHONY:  check-release-env eb-inject-config eb-cleanup-config \
+         package-windows-local-sign
 
-.SILENT: win-sign-vars win-sign-vars-clean win-inject-publish-config \
-         win-inject-sign-config win-cleanup-sign-config \
-         win-validate-gh-token package-windows-local-sign
-.PHONY:  win-sign-vars win-sign-vars-clean win-inject-publish-config \
-         win-inject-sign-config win-cleanup-sign-config \
-         win-validate-gh-token package-windows-local-sign
+# Resolve owner/repo from GitHub Actions (GITHUB_REPOSITORY="owner/repo")
+REPO_SLUG      ?= $(GITHUB_REPOSITORY)
+REPO_OWNER     ?= $(if $(REPO_SLUG),$(word 1,$(subst /, ,$(REPO_SLUG))),)
+REPO_NAME      ?= $(if $(REPO_SLUG),$(word 2,$(subst /, ,$(REPO_SLUG))),)
 
-# Create .win-sign.env if missing
-.win-sign.env:
-	@$(MAKE) win-sign-vars
+# Accept multiple aliases for certificate thumbprint
+CERT_SHA1      ?= $(or $(CERT_THUMBPRINT),$(CERTIFICATE_SHA1),$(WIN_CERTIFICATE_SHA1))
 
-# Ask for TAG, GH_TOKEN, CERT_THUMBPRINT, GH_OWNER, GH_REPO; save to .win-sign.env (gitignore it)
-win-sign-vars: fail-on-windows
-	@umask 077; \
-	TAGV="$${TAG:-}"; TOK="$${GH_TOKEN:-}"; TH="$${CERT_THUMBPRINT:-}"; OWN="$${GH_OWNER:-}"; REP="$${GH_REPO:-}"; \
-	[ -n "$$TAGV" ] || { printf "Tag (e.g. v3.0.0): "; IFS= read -r TAGV; }; \
-	[ -n "$$TOK" ]  || { printf "GH_TOKEN (repo/public_repo scope): "; IFS= read -rs TOK; echo; }; \
-	[ -n "$$TH" ]   || { printf "Cert SHA1 thumbprint: "; IFS= read -r TH; }; \
-	[ -n "$$OWN" ]  || { printf "GitHub owner [exelearning]: "; IFS= read -r OWN; OWN="$${OWN:-exelearning}"; }; \
-	[ -n "$$REP" ]  || { printf "GitHub repo [exelearning]: "; IFS= read -r REP; REP="$${REP:-exelearning}"; }; \
-	TH="$$(printf "%s" "$$TH" | tr -d "[[:space:]]")"; \
-	[ -n "$$TAGV" ] && [ -n "$$TOK" ] && [ -n "$$TH" ] && [ -n "$$OWN" ] && [ -n "$$REP" ] || { echo "ERROR: missing values"; exit 1; }; \
-	printf "TAG=%s\nGH_TOKEN=%s\nCERT_THUMBPRINT=%s\nGH_OWNER=%s\nGH_REPO=%s\n" "$$TAGV" "$$TOK" "$$TH" "$$OWN" "$$REP" > .win-sign.env; \
-	chmod 600 .win-sign.env; echo "Saved .win-sign.env"
+# Sanitize incoming VERSION (strip leading "v")
+SANITIZED_VERSION = $(patsubst v%,%,$(strip $(VERSION)))
 
-win-sign-vars-clean:
-	@rm -f .win-sign.env; echo "Removed .win-sign.env"
+# Fail fast if required env/inputs are missing
+check-release-env:
+	@: $(if $(VERSION),,$(error VERSION is not set. Usage: make package-windows-local-sign VERSION=vX.Y.Z CERT_THUMBPRINT=...))
+	@: $(if $(or $(GH_TOKEN),$(GITHUB_TOKEN),$(GITHUB_RELEASE_TOKEN)),,$(error GH_TOKEN or GITHUB_TOKEN is required to publish to GitHub))
+	@: $(if $(REPO_OWNER),,$(error REPO_OWNER is not set and GITHUB_REPOSITORY is empty))
+	@: $(if $(REPO_NAME),,$(error REPO_NAME is not set and GITHUB_REPOSITORY is empty))
+	@: $(if $(CERT_SHA1),,$(error Set CERT_THUMBPRINT (or CERTIFICATE_SHA1/WIN_CERTIFICATE_SHA1) with your certificate SHA1 thumbprint))
 
-# Fail early if GH_TOKEN is invalid (avoids building then 401)
-win-validate-gh-token:
-	@. ./.win-sign.env; \
-	STATUS=$$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: token $$GH_TOKEN" https://api.github.com/user ); \
-	[ "$$STATUS" = "200" ] || { echo "ERROR: GH_TOKEN not valid (HTTP $$STATUS)"; exit 1; }
+# Inject ephemeral config into package.json:
+# - build.publish[{ provider: "github", owner, repo, channel: "latest", releaseType: "prerelease" }]
+# - win.certificateSha1
+eb-inject-config:
+	node -e "const fs=require('fs');const pth='package.json';\
+	 const s=fs.readFileSync(pth,'utf8'); const pj=JSON.parse(s); \
+	 pj.build=pj.build||{}; \
+	 const pubArr = Array.isArray(pj.build.publish) ? pj.build.publish : (pj.build.publish? [pj.build.publish] : []); \
+	 let gh = pubArr.find(x=>x&&x.provider==='github'); \
+	 if(!gh){ gh={provider:'github', channel:'latest', releaseType:'prerelease'}; pubArr.unshift(gh); } \
+	 gh.owner=process.env.REPO_OWNER||gh.owner; \
+	 gh.repo =process.env.REPO_NAME ||gh.repo; \
+	 pj.build.publish=pubArr; \
+	 pj.build.win=pj.build.win||{}; \
+	 pj.build.win.certificateSha1 = process.env.CERT_SHA1 || pj.build.win.certificateSha1; \
+	 fs.writeFileSync(pth, JSON.stringify(pj,null,2)); \
+	 fs.writeFileSync('.eb-injected.sentinel','1'); \
+	 console.log('Injected: publish→github(owner/repo), win.certificateSha1');"
 
-# Ensure build.publish has GitHub with owner/repo
-win-inject-publish-config:
-	@. ./.win-sign.env; \
-	export GH_OWNER GH_REPO; \
-	node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));(p.build||(p.build={}));let pub=(p.build.publish||(p.build.publish=[]));let g=pub.find(x=>x&&x.provider==='github');if(!g){g={provider:'github',releaseType:'prerelease',channel:'latest'};pub.push(g);}g.owner=process.env.GH_OWNER||g.owner;g.repo=process.env.GH_REPO||g.repo;p.build.publish=pub;fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('Ensured build.publish GitHub (owner/repo set)')"
+# Remove only what we injected (win.certificateSha1). No tocamos owner/repo si ya existían previamente.
+eb-cleanup-config:
+	@if [ -f .eb-injected.sentinel ]; then \
+	  node -e "const fs=require('fs');const pth='package.json';\
+	    const pj=JSON.parse(fs.readFileSync(pth,'utf8')); \
+	    if(pj.build && pj.build.win){ delete pj.build.win.certificateSha1; } \
+	    fs.writeFileSync(pth, JSON.stringify(pj,null,2)); \
+	    console.log('Cleaned: win.certificateSha1');"; \
+	  rm -f .eb-injected.sentinel; \
+	fi
 
-# Inject ONLY what 26.x expects:
-#  - win.certificateSha1  (thumbprint en el almacén de Windows)
-win-inject-sign-config:
-	@. ./.win-sign.env; node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8')); \
-	(p.build||(p.build={})); (p.build.win||(p.build.win={})); \
-	p.build.win.certificateSha1 = process.env.CERT_THUMBPRINT; \
-	fs.writeFileSync('package.json', JSON.stringify(p,null,2)); \
-	console.log('Injected win.certificateSha1')"
-
-# Cleanup: remove the temporary signing keys we injected
-win-cleanup-sign-config:
-	@node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8')); \
-	if(p.build && p.build.win){ delete p.build.win.certificateSha1; \
-	} \
-	fs.writeFileSync('package.json', JSON.stringify(p,null,2)); \
-	console.log('Cleaned signing settings')"
-
-# Full flow: fetch tag, clean, inject config, build+publish, cleanup
-package-windows-local-sign: fail-on-windows .win-sign.env win-validate-gh-token
-	@. ./.win-sign.env; echo "git fetch + checkout $$TAG"
-	@. ./.win-sign.env; git fetch --tags --prune
-	@. ./.win-sign.env; git rev-parse -q --verify "refs/tags/$$TAG" >/dev/null || { echo "ERROR: Tag not found: $$TAG"; exit 1; }
-	@. ./.win-sign.env; git switch --detach "$$TAG" 2>/dev/null || git checkout -f "$$TAG"
-	@echo "clean"; rm -rf vendor node_modules dist || true
+# Windows packaging with local certificate store thumbprint
+# Usage:
+#   make package-windows-local-sign VERSION=v3.0.0 CERT_THUMBPRINT=<SHA1> [REPO_OWNER=ateeducacion REPO_NAME=exelearning] [PUBLISH=always]
+package-windows-local-sign: fail-on-windows check-release-env eb-inject-config
+	@echo "→ Tag/version: $(VERSION)  (sanitized: $(SANITIZED_VERSION))"
+	@echo "→ Repo: $(REPO_OWNER)/$(REPO_NAME)"
+	@echo "→ Cert SHA1: $(CERT_SHA1)"
+	@echo "Cleaning previous build artifacts..."; rm -rf vendor node_modules dist || true
 	@[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
-	@$(MAKE) win-inject-publish-config
-	@. ./.win-sign.env; DEBUG=$${DEBUG:-electron-builder} GH_TOKEN="$$GH_TOKEN" $(MAKE) package VERSION="$$TAG" PUBLISH=always
-	@$(MAKE) win-cleanup-sign-config
-	@echo "Done."
 
+	# Build & publish (re-use your existing 'package' flow)
+	# We pass VERSION as tag (with v-prefix as you venías usando).
+	@DEBUG=electron-builder \
+	 GH_TOKEN="$${GH_TOKEN:-$${GITHUB_TOKEN:-$${GITHUB_RELEASE_TOKEN}}}" \
+	 REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" \
+	 $(MAKE) package VERSION="$(VERSION)" PUBLISH=$(if $(PUBLISH),$(PUBLISH),always)
 
+	@$(MAKE) eb-cleanup-config
+	@echo "✔ Windows package (signed) built & published for $(VERSION)"
+## --------- END WINDOWS SIGN (streamlined) ---------
 
-
-## --------- END OF TEMPORARY WINDOWS SIGN
 
 
 
