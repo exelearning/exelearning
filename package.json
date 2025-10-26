@@ -48,7 +48,7 @@
         "publish": [
             {
                 "provider": "github",
-                "owner": "ateeducacion",
+                "owner": "exelearning",
                 "repo": "exelearning",
                 "releaseType": "prerelease",
                 "channel": "latest"

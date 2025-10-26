@@ -24,11 +24,9 @@ log.transports.file.resolvePathFn = () =>
  // files to open after app ready
 let pendingOpenFiles = [];
 
-
 autoUpdater.logger = log;
 autoUpdater.allowPrerelease = true;
-// autoUpdater.autoDownload = true;
-autoUpdater.forceDevUpdateConfig = true;
+autoUpdater.forceDevUpdateConfig = false;
 // We control the flow with our own dialogs
 autoUpdater.autoDownload = false;
 

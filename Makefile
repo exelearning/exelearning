@@ -541,53 +541,35 @@ endif
 	@echo "Installer files available in the dist/ directory"
 
 
-## --------- START OF TEMPORARY WINDOWS SIGN
-## --------- WINDOWS SIGN (streamlined) ---------
+## --------- WINDOWS LOCAL SIGN ---------
 
 .SILENT: check-release-env eb-inject-config eb-cleanup-config \
          package-windows-local-sign
 .PHONY:  check-release-env eb-inject-config eb-cleanup-config \
          package-windows-local-sign
 
-# Resolve owner/repo from GitHub Actions (GITHUB_REPOSITORY="owner/repo")
-REPO_SLUG      ?= $(GITHUB_REPOSITORY)
-REPO_OWNER     ?= $(if $(REPO_SLUG),$(word 1,$(subst /, ,$(REPO_SLUG))),)
-REPO_NAME      ?= $(if $(REPO_SLUG),$(word 2,$(subst /, ,$(REPO_SLUG))),)
-
 # Accept multiple aliases for certificate thumbprint
 CERT_SHA1      ?= $(or $(CERT_THUMBPRINT),$(CERTIFICATE_SHA1),$(WIN_CERTIFICATE_SHA1))
-
-# Sanitize incoming VERSION (strip leading "v")
-SANITIZED_VERSION = $(patsubst v%,%,$(strip $(VERSION)))
 
 # Fail fast if required env/inputs are missing
 check-release-env:
 	@: $(if $(VERSION),,$(error VERSION is not set. Usage: make package-windows-local-sign VERSION=vX.Y.Z CERT_THUMBPRINT=...))
 	@: $(if $(or $(GH_TOKEN),$(GITHUB_TOKEN),$(GITHUB_RELEASE_TOKEN)),,$(error GH_TOKEN or GITHUB_TOKEN is required to publish to GitHub))
-	@: $(if $(REPO_OWNER),,$(error REPO_OWNER is not set and GITHUB_REPOSITORY is empty))
-	@: $(if $(REPO_NAME),,$(error REPO_NAME is not set and GITHUB_REPOSITORY is empty))
 	@: $(if $(CERT_SHA1),,$(error Set CERT_THUMBPRINT (or CERTIFICATE_SHA1/WIN_CERTIFICATE_SHA1) with your certificate SHA1 thumbprint))
 
 # Inject ephemeral config into package.json:
-# - build.publish[{ provider: "github", owner, repo, channel: "latest", releaseType: "prerelease" }]
 # - win.certificateSha1
 eb-inject-config:
 	node -e "const fs=require('fs');const pth='package.json';\
 	 const s=fs.readFileSync(pth,'utf8'); const pj=JSON.parse(s); \
 	 pj.build=pj.build||{}; \
-	 const pubArr = Array.isArray(pj.build.publish) ? pj.build.publish : (pj.build.publish? [pj.build.publish] : []); \
-	 let gh = pubArr.find(x=>x&&x.provider==='github'); \
-	 if(!gh){ gh={provider:'github', channel:'latest', releaseType:'prerelease'}; pubArr.unshift(gh); } \
-	 gh.owner=process.env.REPO_OWNER||gh.owner; \
-	 gh.repo =process.env.REPO_NAME ||gh.repo; \
-	 pj.build.publish=pubArr; \
 	 pj.build.win=pj.build.win||{}; \
 	 pj.build.win.certificateSha1 = process.env.CERT_SHA1 || pj.build.win.certificateSha1; \
 	 fs.writeFileSync(pth, JSON.stringify(pj,null,2)); \
 	 fs.writeFileSync('.eb-injected.sentinel','1'); \
-	 console.log('Injected: publish→github(owner/repo), win.certificateSha1');"
+	 console.log('Injected: win.certificateSha1');"
 
-# Remove only what we injected (win.certificateSha1). No tocamos owner/repo si ya existían previamente.
+# Remove only what we injected (win.certificateSha1).
 eb-cleanup-config:
 	@if [ -f .eb-injected.sentinel ]; then \
 	  node -e "const fs=require('fs');const pth='package.json';\
@@ -600,10 +582,9 @@ eb-cleanup-config:
 
 # Windows packaging with local certificate store thumbprint
 # Usage:
-#   make package-windows-local-sign VERSION=v3.0.0 CERT_THUMBPRINT=<SHA1> [REPO_OWNER=ateeducacion REPO_NAME=exelearning] [PUBLISH=always]
+#   make package-windows-local-sign VERSION=v3.0.0 CERT_THUMBPRINT=<SHA1> [PUBLISH=always]
 package-windows-local-sign: fail-on-windows check-release-env eb-inject-config
-	@echo "→ Tag/version: $(VERSION)  (sanitized: $(SANITIZED_VERSION))"
-	@echo "→ Repo: $(REPO_OWNER)/$(REPO_NAME)"
+	@echo "→ Tag/version: $(VERSION)"
 	@echo "→ Cert SHA1: $(CERT_SHA1)"
 	@echo "Cleaning previous build artifacts..."; rm -rf vendor node_modules dist || true
 	@[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
@@ -612,15 +593,11 @@ package-windows-local-sign: fail-on-windows check-release-env eb-inject-config
 	# We pass VERSION as tag (with v-prefix as you venías usando).
 	@DEBUG=electron-builder \
 	 GH_TOKEN="$${GH_TOKEN:-$${GITHUB_TOKEN:-$${GITHUB_RELEASE_TOKEN}}}" \
-	 REPO_OWNER="$(REPO_OWNER)" REPO_NAME="$(REPO_NAME)" \
 	 $(MAKE) package VERSION="$(VERSION)" PUBLISH=$(if $(PUBLISH),$(PUBLISH),always)
 
 	@$(MAKE) eb-cleanup-config
 	@echo "✔ Windows package (signed) built & published for $(VERSION)"
-## --------- END WINDOWS SIGN (streamlined) ---------
-
-
-
+## --------- END WINDOWS LOCAL SIGN ---------
 
 
 # Copy the vendor/ directory from the container to the local host
