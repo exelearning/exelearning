@@ -27,8 +27,10 @@ let pendingOpenFiles = [];
 
 autoUpdater.logger = log;
 autoUpdater.allowPrerelease = true;
-autoUpdater.autoDownload = true;
+// autoUpdater.autoDownload = true;
 autoUpdater.forceDevUpdateConfig = true;
+// We control the flow with our own dialogs
+autoUpdater.autoDownload = false;
 
 // Mirror console.* to electron-log so GUI builds persist logs to file
 const origConsole = { log: console.log, error: console.error, warn: console.warn };
@@ -68,6 +70,7 @@ let mainWindow;
 let loadingWindow;
 let phpServer;
 let isShuttingDown = false; // Flag to ensure the app only shuts down once
+let updaterInited = false; // guard
 
 // Environment variables container
 let customEnv;
@@ -456,11 +459,15 @@ function createWindow() {
 
     // Check for updates
     mainWindow.webContents.on('did-finish-load', () => {
-      try {
-        const updater = initAutoUpdater({ mainWindow, autoUpdater, logger: log, streamToFile });
-        void updater.checkForUpdatesAndNotify().catch(err => log.warn('update check failed', err));
-      } catch (e) {
-        log.warn && log.warn('Failed to init updater after load', e);
+      if (!updaterInited) {
+        try {
+          const updater = initAutoUpdater({ mainWindow, autoUpdater, logger: log, streamToFile });
+          // Init updater once
+          updaterInited = true;
+          void updater.checkForUpdatesAndNotify().catch(err => log.warn('update check failed', err));
+        } catch (e) {
+          log.warn && log.warn('Failed to init updater after load', e);
+        }
       }
     });
 

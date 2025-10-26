@@ -27,7 +27,7 @@ function initAutoUpdater({ mainWindow, autoUpdater, logger = console, streamToFi
   if (!autoUpdater) throw new Error('autoUpdater is required');
 
   // default generic URL that points to "latest" release assets
-  const DEFAULT_GENERIC_BASE = 'https://github.com/ateeducacion/exelearning/releases/latest/download/';
+  const DEFAULT_GENERIC_BASE = 'https://github.com/exelearning/exelearning/releases/latest/download/';
   const baseUrl = (typeof genericBaseUrl === 'string' && genericBaseUrl.length) ? genericBaseUrl : DEFAULT_GENERIC_BASE;
 
   // Configure autoUpdater for generic provider (we keep autoDownload=false so user decides)
