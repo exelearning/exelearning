@@ -12,6 +12,7 @@
 ### Fixed
 
 - "Invalid data" in the "Open" dialog
+- Internal links in eXe with the new UI
 - Exported file names were generated using incorrect characters/symbols
 - Missing confirmation before closing a project
 - Text iDevice with feedback. Feedback `fieldset` open by default
