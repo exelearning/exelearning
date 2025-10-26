@@ -187,6 +187,15 @@ interface OdeServiceInterface
     );
 
     /**
+     * Imports pages from an ELPX/ELP file into the current session.
+     */
+    public function importElpPages(
+        string $elpFilePath,
+        string $currentSessionId,
+        ?string $parentNodeId = null,
+    ): array;
+
+    /**
      * Check if scorm content is editable.
      *
      * @param string $zipFileName

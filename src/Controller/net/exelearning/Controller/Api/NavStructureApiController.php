@@ -11,6 +11,7 @@ use App\Helper\net\exelearning\Helper\FileHelper;
 use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Properties;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
+use App\Service\net\exelearning\Service\Api\OdeServiceInterface;
 use App\Util\net\exelearning\Util\FileUtil;
 use App\Util\net\exelearning\Util\Util;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,6 +30,7 @@ class NavStructureApiController extends DefaultApiController
     private $userHelper;
     private $translator;
     private $currentOdeUsersService;
+    private $odeService;
 
     public function __construct(
         EntityManagerInterface $entityManager,
@@ -37,6 +39,7 @@ class NavStructureApiController extends DefaultApiController
         UserHelper $userHelper,
         TranslatorInterface $translator,
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
+        OdeServiceInterface $odeService,
         HubInterface $hub,
         SerializerInterface $serializer,
     ) {
@@ -44,6 +47,7 @@ class NavStructureApiController extends DefaultApiController
         $this->userHelper = $userHelper;
         $this->translator = $translator;
         $this->currentOdeUsersService = $currentOdeUsersService;
+        $this->odeService = $odeService;
         parent::__construct($entityManager, $logger, $serializer, $hub);
     }
 
@@ -883,6 +887,151 @@ class NavStructureApiController extends DefaultApiController
         $jsonData = $this->getJsonSerialized($responseData);
 
         return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
+    #[Route('/{odeNavStructureSyncId}/import-elp', methods: ['POST'], name: 'api_nav_structures_import_elp_as_children')]
+    public function importElpAsChildrenAction(string $odeNavStructureSyncId, Request $request): JsonResponse
+    {
+        $responseData = [];
+        $odeSessionId = $request->request->get('odeSessionId');
+        $uploadedFile = $request->files->get('file');
+
+        if (empty($odeNavStructureSyncId) || empty($odeSessionId) || empty($uploadedFile)) {
+            $responseData['responseMessage'] = 'error: invalid data';
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, $this->status, [], true);
+        }
+
+        $tempFilePath = null;
+
+        try {
+            $odeNavStructureRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+            $parentNode = $odeNavStructureRepo->find($odeNavStructureSyncId);
+
+            if (empty($parentNode) || $parentNode->getOdeSessionId() !== $odeSessionId) {
+                $responseData['responseMessage'] = 'error: data not found';
+                $jsonData = $this->getJsonSerialized($responseData);
+
+                return new JsonResponse($jsonData, $this->status, [], true);
+            }
+
+            $tmpDir = $this->fileHelper->getOdeSessionTmpDir($odeSessionId);
+            if (false === $tmpDir) {
+                throw new \RuntimeException('Unable to access temporary directory');
+            }
+
+            $extension = $uploadedFile->guessExtension() ?: $uploadedFile->getClientOriginalExtension() ?: 'zip';
+            $tempFileName = 'import-child-'.Util::generateId().'.'.$extension;
+            $uploadedFile->move($tmpDir, $tempFileName);
+            $tempFilePath = $tmpDir.DIRECTORY_SEPARATOR.$tempFileName;
+
+            $existingChildren = $odeNavStructureRepo->findBy(
+                ['odeNavStructureSync' => $parentNode],
+                ['odeNavStructureSyncOrder' => 'ASC']
+            );
+
+            $importedNodes = $this->odeService->importElpPages(
+                $tempFilePath,
+                $odeSessionId,
+                $parentNode->getOdePageId()
+            );
+
+            $importedChildren = array_filter(
+                $importedNodes,
+                static fn (OdeNavStructureSync $node) => $parentNode->getOdePageId() === $node->getOdeParentPageId()
+            );
+
+            foreach ($importedChildren as $node) {
+                $node->setOdeNavStructureSync($parentNode);
+                $this->entityManager->persist($node);
+            }
+
+            if (!empty($importedChildren)) {
+                $this->reassignSiblingOrder($existingChildren, $importedChildren);
+                $this->entityManager->flush();
+            }
+
+            $responseData['responseMessage'] = 'OK';
+            $responseData['structure'] = $this->buildNavStructureListDto($odeSessionId);
+
+            $this->publish($odeSessionId, 'structure-changed');
+        } catch (\Throwable $throwable) {
+            $this->logger->error(
+                'Error importing ELP as children: '.$throwable->getMessage(),
+                [
+                    'file' => $throwable->getFile(),
+                    'line' => $throwable->getLine(),
+                    'odeNavStructureSyncId' => $odeNavStructureSyncId,
+                    'odeSessionId' => $odeSessionId,
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+            $responseData['responseMessage'] = 'error: import failed';
+        } finally {
+            if (!empty($tempFilePath) && file_exists($tempFilePath)) {
+                FileUtil::removeFile($tempFilePath);
+            }
+        }
+
+        $jsonData = $this->getJsonSerialized($responseData);
+
+        return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
+    /**
+     * Builds a DTO representation of the full navigation tree for the provided session.
+     */
+    private function buildNavStructureListDto(string $odeSessionId): OdeNavStructureSyncListDto
+    {
+        $repo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+        $navStructure = $repo->getNavStructure($odeSessionId);
+
+        $responseData = new OdeNavStructureSyncListDto();
+        $responseData->setOdeSessionId($odeSessionId);
+
+        $loadOdePagStructureSyncs = false;
+        $loadOdeComponentsSync = false;
+        $loadOdeNavStructureSyncProperties = true;
+        $loadOdePagStructureSyncProperties = false;
+        $loadOdeComponentsSyncProperties = false;
+
+        foreach ($navStructure as $navStructureElem) {
+            $structureDto = new OdeNavStructureSyncDto();
+            $structureDto->loadFromEntity(
+                $navStructureElem,
+                $loadOdePagStructureSyncs,
+                $loadOdeComponentsSync,
+                $loadOdeNavStructureSyncProperties,
+                $loadOdePagStructureSyncProperties,
+                $loadOdeComponentsSyncProperties
+            );
+            $responseData->addStructure($structureDto);
+        }
+
+        return $responseData;
+    }
+
+    /**
+     * Keeps existing siblings first and appends new nodes afterwards, assigning sequential order.
+     *
+     * @param OdeNavStructureSync[] $existingNodes
+     * @param OdeNavStructureSync[] $newNodes
+     */
+    private function reassignSiblingOrder(array $existingNodes, array $newNodes): void
+    {
+        $order = 0;
+
+        foreach ($existingNodes as $node) {
+            $node->setOdeNavStructureSyncOrder(++$order);
+            $this->entityManager->persist($node);
+        }
+
+        foreach ($newNodes as $node) {
+            $node->setOdeNavStructureSyncOrder(++$order);
+            $this->entityManager->persist($node);
+        }
     }
 
     /**

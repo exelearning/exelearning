@@ -2215,6 +2215,102 @@ class OdeService implements OdeServiceInterface
     }
 
     /**
+     * Imports the navigation nodes contained in an ELP/ELPX file into the current session.
+     *
+     * @return OdeNavStructureSync[]
+     */
+    public function importElpPages(string $elpFilePath, string $currentSessionId, ?string $parentNodeId = null): array
+    {
+        if (!is_file($elpFilePath)) {
+            throw new \InvalidArgumentException('Uploaded ELPX file not found');
+        }
+
+        $parentNavStructure = null;
+        if (!empty($parentNodeId)) {
+            $parentNavStructure = $this->entityManager->getRepository(OdeNavStructureSync::class)->findOneBy([
+                'odeSessionId' => $currentSessionId,
+                'odePageId' => $parentNodeId,
+            ]);
+
+            if (!$parentNavStructure) {
+                throw new \InvalidArgumentException('Parent node not found');
+            }
+        }
+
+        $sessionTmpDir = $this->fileHelper->getOdeSessionTmpDir($currentSessionId);
+        if (false === $sessionTmpDir) {
+            throw new \RuntimeException('Unable to resolve session temporary directory');
+        }
+
+        $importDir = $sessionTmpDir.DIRECTORY_SEPARATOR.'elp-import-'.Util::generateId();
+        if (!FileUtil::createDir($importDir)) {
+            throw new \RuntimeException('Unable to create temporary import directory');
+        }
+
+        $importedNavStructures = [];
+
+        try {
+            Util::checkPhpZipExtension();
+            FileUtil::extractZipTo($elpFilePath, $importDir);
+
+            [$contentFilePath, $isNewOdeXml] = $this->getElpContentFilePath($importDir);
+            $elpContentFileContent = FileUtil::getFileContent($contentFilePath);
+
+            $tempSessionId = Util::generateId();
+            if ($isNewOdeXml) {
+                $odeResponse = OdeXmlUtil::readOdeXml($tempSessionId, $elpContentFileContent);
+            } else {
+                $odeResponse = OdeXmlUtil::readOldExeXml($tempSessionId, $elpContentFileContent, $this->translator);
+            }
+
+            $importedNavStructures = $odeResponse['odeNavStructureSyncs'] ?? [];
+
+            foreach ($importedNavStructures as $odeNavStructureSync) {
+                $this->refreshNavStructureSessionData($odeNavStructureSync, $currentSessionId);
+
+                if (null === $odeNavStructureSync->getOdeParentPageId()) {
+                    $odeNavStructureSync->setOdeParentPageId($parentNodeId);
+                    $odeNavStructureSync->setOdeNavStructureSync($parentNavStructure);
+                }
+
+                $this->persistNavStructureTree($odeNavStructureSync);
+            }
+
+            $this->entityManager->flush();
+
+            $resourcesDir = $importDir.DIRECTORY_SEPARATOR.Constants::PERMANENT_SAVE_CONTENT_DIRNAME.
+                DIRECTORY_SEPARATOR.Constants::PERMANENT_SAVE_CONTENT_RESOURCES_DIRNAME;
+            $this->copyImportedComponentResources($importedNavStructures, $currentSessionId, $resourcesDir);
+        } catch (PhpZipExtensionException $exception) {
+            $this->logger->error(
+                $exception->getDescription(),
+                [
+                    'className' => $exception->getClassName(),
+                    'phpZipExtensionInstalled' => $exception->getZipExtensionInstalled(),
+                    'file:' => $this, 'line' => __LINE__,
+                ]
+            );
+            throw $exception;
+        } catch (\Throwable $throwable) {
+            $this->logger->error(
+                'Error importing ELP file: '.$throwable->getMessage(),
+                [
+                    'file' => $throwable->getFile(),
+                    'line' => $throwable->getLine(),
+                    'odeSessionId' => $currentSessionId,
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+            throw $throwable;
+        } finally {
+            FileUtil::removeDir($importDir);
+        }
+
+        return $importedNavStructures;
+    }
+
+    /**
      * Removes elp from files and database.
      *
      * @param OdeFiles $odeFile
@@ -2345,6 +2441,122 @@ class OdeService implements OdeServiceInterface
             Constants::EXPORT_DIR_THEME;
 
         $dirCopied = FileUtil::copyDir($sourceDir, $destinationDir);
+    }
+
+    /**
+     * Returns the path to the XML content file contained in the imported package.
+     *
+     * @return array{0:string,1:bool}
+     */
+    private function getElpContentFilePath(string $importDir): array
+    {
+        $candidates = [
+            [$importDir.DIRECTORY_SEPARATOR.Constants::PERMANENT_SAVE_CONTENT_FILENAME, true],
+            [$importDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V3, false],
+            [$importDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V2, false],
+        ];
+
+        foreach ($candidates as [$path, $isNew]) {
+            if (file_exists($path)) {
+                return [$path, $isNew];
+            }
+        }
+
+        throw new \RuntimeException('content.xml file not found in imported project');
+    }
+
+    /**
+     * Updates session-related references for the imported navigation tree.
+     */
+    private function refreshNavStructureSessionData(OdeNavStructureSync $odeNavStructureSync, string $sessionId): void
+    {
+        $odeNavStructureSync->setOdeSessionId($sessionId);
+
+        foreach ($odeNavStructureSync->getOdeNavStructureSyncProperties() as $property) {
+            $property->setOdeNavStructureSync($odeNavStructureSync);
+        }
+
+        foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
+            $odePagStructureSync->setOdeSessionId($sessionId);
+            $odePagStructureSync->setOdeNavStructureSync($odeNavStructureSync);
+
+            foreach ($odePagStructureSync->getOdePagStructureSyncProperties() as $odePagStructureSyncProperty) {
+                $odePagStructureSyncProperty->setOdePagStructureSync($odePagStructureSync);
+            }
+
+            foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
+                $odeComponentsSync->setOdeSessionId($sessionId);
+                $odeComponentsSync->setOdePagStructureSync($odePagStructureSync);
+
+                foreach ($odeComponentsSync->getOdeComponentsSyncProperties() as $odeComponentsSyncProperty) {
+                    $odeComponentsSyncProperty->setOdeComponentsSync($odeComponentsSync);
+                }
+            }
+        }
+    }
+
+    /**
+     * Persists a navigation node and all of its nested entities.
+     */
+    private function persistNavStructureTree(OdeNavStructureSync $odeNavStructureSync): void
+    {
+        $this->entityManager->persist($odeNavStructureSync);
+
+        foreach ($odeNavStructureSync->getOdeNavStructureSyncProperties() as $property) {
+            $this->entityManager->persist($property);
+        }
+
+        foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
+            $this->entityManager->persist($odePagStructureSync);
+
+            foreach ($odePagStructureSync->getOdePagStructureSyncProperties() as $odePagStructureSyncProperty) {
+                $this->entityManager->persist($odePagStructureSyncProperty);
+            }
+
+            foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
+                $this->entityManager->persist($odeComponentsSync);
+
+                foreach ($odeComponentsSync->getOdeComponentsSyncProperties() as $odeComponentsSyncProperty) {
+                    $this->entityManager->persist($odeComponentsSyncProperty);
+                }
+            }
+        }
+    }
+
+    /**
+     * Copies component resource directories from the imported package into the session.
+     */
+    private function copyImportedComponentResources(array $odeNavStructures, string $sessionId, string $resourcesDir): void
+    {
+        if (empty($odeNavStructures) || !is_dir($resourcesDir)) {
+            return;
+        }
+
+        $copiedResources = [];
+
+        foreach ($odeNavStructures as $odeNavStructureSync) {
+            foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
+                foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
+                    $odeIdeviceId = $odeComponentsSync->getOdeIdeviceId();
+                    if (empty($odeIdeviceId) || isset($copiedResources[$odeIdeviceId])) {
+                        continue;
+                    }
+
+                    $sourcePath = $resourcesDir.DIRECTORY_SEPARATOR.$odeIdeviceId;
+                    if (!is_dir($sourcePath)) {
+                        continue;
+                    }
+
+                    $destinationPath = $this->fileHelper->getOdeComponentsSyncDir($sessionId, $odeIdeviceId);
+                    if (false === $destinationPath) {
+                        continue;
+                    }
+
+                    FileUtil::copyDir($sourcePath, $destinationPath);
+                    $copiedResources[$odeIdeviceId] = true;
+                }
+            }
+        }
     }
 
     /**
