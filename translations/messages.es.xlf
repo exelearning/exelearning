@@ -4979,7 +4979,7 @@
       </trans-unit>
       <trans-unit id="_3OOL2E" resname="You can only play this game with internet connection.">
         <source>You can only play this game with internet connection.</source>
-        <target>A este juego sólo se puede jugar con conexión a internet.</target>
+        <target>A este juego solo se puede jugar con conexión a internet.</target>
       </trans-unit>
       <trans-unit id="H_2KK7l" resname="Right! | Excellent! | Great! | Very good! | Perfect!">
         <source>Right! | Excellent! | Great! | Very good! | Perfect!</source>
@@ -5007,11 +5007,11 @@
       </trans-unit>
       <trans-unit id="Qu_mg9f" resname="You can only save the score once!">
         <source>You can only save the score once!</source>
-        <target>¡Sólo puede guardar la puntuación una vez!</target>
+        <target>¡Solo puede guardar la puntuación una vez!</target>
       </trans-unit>
       <trans-unit id="X33SxG9" resname="You can only save once">
         <source>You can only save once</source>
-        <target>Sólo puede guardar una vez</target>
+        <target>Solo puede guardar una vez</target>
       </trans-unit>
       <trans-unit id="4IrzEUL" resname="Your score">
         <source>Your score</source>
@@ -5019,7 +5019,7 @@
       </trans-unit>
       <trans-unit id="tkO8L2Z" resname="Your score will be saved after each question. You can only play once.">
         <source>Your score will be saved after each question. You can only play once.</source>
-        <target>Su puntuación se guardará después de cada pregunta. Sólo puede jugar una vez.</target>
+        <target>Su puntuación se guardará después de cada pregunta. Solo puede jugar una vez.</target>
       </trans-unit>
       <trans-unit id="yAG1pgz" resname="Your score will be automatically saved after each question.">
         <source>Your score will be automatically saved after each question.</source>
@@ -5539,7 +5539,7 @@
       </trans-unit>
       <trans-unit id="mmRsg4Q" resname="You can only add ten trials to a challenge.">
         <source>You can only add ten trials to a challenge.</source>
-        <target>Sólo puede añadir diez retos a un desafío.</target>
+        <target>Solo puede añadir diez retos a un desafío.</target>
       </trans-unit>
       <trans-unit id="Qw2MhQA" resname="Create escape room type activities in which players will have to complete trials before solving the final challenge.">
         <source>Create escape room type activities in which players will have to complete trials before solving the final challenge.</source>
@@ -5715,7 +5715,7 @@
       </trans-unit>
       <trans-unit id="TOvreKm" resname="You can only use text at this item's level">
         <source>You can only use text at this item's level</source>
-        <target>Sólo puedes poner texto en un nivel de este ítem</target>
+        <target>Solo puedes poner texto en un nivel de este ítem</target>
       </trans-unit>
       <trans-unit id="h7B_73H" resname="Brilliant! You've passed yout test!">
         <source>Brilliant! You've passed yout test!</source>
@@ -5791,7 +5791,7 @@
       </trans-unit>
       <trans-unit id="GS3eQME" resname="Great job! Only %s cards left to be placed correctly. Strive for perfection!">
         <source>Great job! Only %s cards left to be placed correctly. Strive for perfection!</source>
-        <target>¡Magnífico! Tan sólo te han quedado %s tarjetas por colocar correctamente. Busca la perfección</target>
+        <target>¡Magnífico! Tan solo te han quedado %s tarjetas por colocar correctamente. Busca la perfección</target>
       </trans-unit>
       <trans-unit id="yDVB9rY" resname="Your score will be automatically saved at the end of the game.">
         <source>Your score will be automatically saved at the end of the game.</source>
@@ -5799,11 +5799,11 @@
       </trans-unit>
       <trans-unit id="Oj4Rjgy" resname="Your score will be automatically saved at the end of the game. You can only play once.">
         <source>Your score will be automatically saved at the end of the game. You can only play once.</source>
-        <target>Su puntuación se guardará automáticamente al finalizar el juego. Sólo puedes jugar una vez.</target>
+        <target>Su puntuación se guardará automáticamente al finalizar el juego. Solo puedes jugar una vez.</target>
       </trans-unit>
       <trans-unit id="h15xRoJ" resname="You can only save your score after finishing the game.">
         <source>You can only save your score after finishing the game.</source>
-        <target>Sólo puedes guardar tu puntuación tras finalizar la partida.</target>
+        <target>Solo puedes guardar tu puntuación tras finalizar la partida.</target>
       </trans-unit>
       <trans-unit id="JQTT0h4" resname="Please provide at least one question">
         <source>Please provide at least one question</source>
@@ -6847,7 +6847,7 @@
       </trans-unit>
       <trans-unit id=".Rk8uO0" resname="The button will only be displayed when exporting as SCORM and while editing in eXeLearning.">
         <source>The button will only be displayed when exporting as SCORM and while editing in eXeLearning.</source>
-        <target>Este botón sólo se mostrará en la exportación a SCORM y cuando se esté editando con eXeLearning.</target>
+        <target>Este botón solo se mostrará en la exportación a SCORM y cuando se esté editando con eXeLearning.</target>
       </trans-unit>
       <trans-unit id="LjhASK4" resname="Provide a valid GeoGebra URL or activity ID.">
         <source>Provide a valid GeoGebra URL or activity ID.</source>
@@ -7547,7 +7547,7 @@
       </trans-unit>
       <trans-unit id="LSZmeau" resname="Only one interactive video per page.">
         <source>Only one interactive video per page.</source>
-        <target>Sólo un vídeo interactivo por página.</target>
+        <target>Solo un vídeo interactivo por página.</target>
       </trans-unit>
       <trans-unit id="gYfXU0D" resname="Exit the fullscreen mode (Esc) to see the current slide">
         <source>Exit the fullscreen mode (Esc) to see the current slide</source>
@@ -7611,7 +7611,7 @@
       </trans-unit>
       <trans-unit id="R5KPHB6" resname="You can only add one Interactive Video iDevice per page.">
         <source>You can only add one Interactive Video iDevice per page.</source>
-        <target>Sólo puede añadir un vídeo interactivo por página.</target>
+        <target>Solo puede añadir un vídeo interactivo por página.</target>
       </trans-unit>
       <trans-unit id="uSbcaZn" resname="Mediateca">
         <source>Mediateca</source>
@@ -9399,7 +9399,7 @@
       </trans-unit>
       <trans-unit id="ZVD8Fa6" resname="You can only play once.">
         <source>You can only play once.</source>
-        <target>Sólo puede jugar una vez.</target>
+        <target>Solo puede jugar una vez.</target>
       </trans-unit>
       <trans-unit id="7x617g9" resname="Players">
         <source>Players</source>
@@ -10243,7 +10243,7 @@
       </trans-unit>
       <trans-unit id="VLuF9Vi" resname="Id should start with a letter, followed only by letters, numbers, dashes, dots, colons or underscores.">
         <source>Id should start with a letter, followed only by letters, numbers, dashes, dots, colons or underscores.</source>
-        <target>El Id (identificador) deberá comenzar con una letra, seguida sólo por letras, números, guiones, puntos, dos puntos o guiones bajos.</target>
+        <target>El Id (identificador) deberá comenzar con una letra, seguida solo por letras, números, guiones, puntos, dos puntos o guiones bajos.</target>
       </trans-unit>
       <trans-unit id="onOYB.t" resname="Anchor">
         <source>Anchor</source>
@@ -10835,7 +10835,7 @@
       </trans-unit>
       <trans-unit id="GxYaUja" resname="Specify the languages only if they are different from the rest of the content.">
         <source>Specify the languages only if they are different from the rest of the content.</source>
-        <target>Especifique los idiomas sólo si son distintos de la lengua del resto del contenido.</target>
+        <target>Especifique los idiomas solo si son distintos de la lengua del resto del contenido.</target>
       </trans-unit>
       <trans-unit id="Vuyo4K0" resname="Please write a quote">
         <source>Please write a quote</source>
@@ -11343,7 +11343,7 @@
       </trans-unit>
       <trans-unit id="ZT.NQle" resname="Teacher only">
         <source>Teacher only</source>
-        <target>Visible sólo en modo docente</target>
+        <target>Visible solo en modo docente</target>
       </trans-unit>
       <trans-unit id="37wivZ3" resname="ID">
         <source>ID</source>

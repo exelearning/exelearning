@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## v3.0.0-rc5 – 2025-10-27
+
+### Added
+
+- Full translation: Catalan (ca)
+- New Windows installation icons
+- New iDevice icons in all styles
+- iDevices: Reviewed icons and positions in the iDevices panel
+
+### Fixed
+
+- "Invalid data" error in the "Open" dialog
+- Internal links in eXe with the new UI
+- Problems with special characters and symbols in page titles and exported HTML files
+- Missing confirmation before closing a project
+- Text iDevice with feedback: `fieldset` open by default
+- Issues with style information
+- Missing font file in the "Zen" style
+- Effects not initialized immediately after saving an iDevice
+- TinyMCE templates presentation issues (missing CSS)
+- Problem with image selection in predefined templates
+- TinyMCE image plugin: recognition data removed when opening another tab
+- Resources report / Broken links report column titles
+- Minor UI presentation issues
+
+### Upgraded
+
+- Licenses: attributions for third-party libraries
+
+### Removed
+
+- Fluent Emoji icons from the "Flux" and "Neo" styles
+- Lucide icons from the "Nova" and "Zen" styles
+
+---
+
 ## v3.0.0-rc4 – 2025-10-23
 
 ### Added

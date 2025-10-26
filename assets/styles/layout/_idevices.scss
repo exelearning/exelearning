@@ -5,6 +5,11 @@ article.box {
         .btn.disabled {
             opacity: .2
         }
+        .idevice_node.idevice-element-in-content[mode='edition'] {
+            &:hover {
+                box-shadow: none !important;
+            }
+        }
         .idevice_node {
             &:hover {
                 box-shadow: 0 2px 7px 0 rgba(0, 0, 0, 0.14) !important;

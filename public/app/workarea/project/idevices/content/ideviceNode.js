@@ -1235,7 +1235,7 @@ export default class IdeviceNode {
      */
     addTooltips() {
         $(
-            'button.btn-action-menu:not([data-bs-toggle="dropdown"])',
+            'button.btn-action-menu:not([data-bs-toggle="dropdown"]):not(.btn-edit-idevice):not(.btn-save-idevice)',
             this.ideviceButtons
         ).addClass('exe-app-tooltip');
         eXeLearning.app.common.initTooltips(this.ideviceButtons);
@@ -2429,11 +2429,8 @@ export default class IdeviceNode {
                 // Only load current idevice
                 await this.loadInitScriptIdevice('export');
                 // Load plugins
-                setTimeout(
-                    () => this.loadLegacyExeFunctionalitiesExport(),
-                    100
-                );
             }
+            setTimeout(() => this.loadLegacyExeFunctionalitiesExport(), 100);
             this.engine.unsetIdeviceActive();
         } else {
             this.toogleIdeviceButtonsState(false);
@@ -2697,6 +2694,8 @@ export default class IdeviceNode {
     loadLegacyExeFunctionalitiesExport() {
         // Legacy $exeABCmusic object
         $exeABCmusic.init();
+
+        $exeFX.init();
     }
 
     /**
