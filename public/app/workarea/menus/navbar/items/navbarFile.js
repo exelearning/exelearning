@@ -591,54 +591,64 @@ export default class NavbarFile {
 
         this.importElpButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
+            eXeLearning.app.modals.confirm.show({
+                title: _('Import (.elpx…)'),
+                body: _(
+                    'Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.'
+                ),
+                confirmButtonText: _('Continue'),
+                cancelButtonText: _('Cancel'),
+                focusFirstInputText: true,
+                confirmExec: () => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.elpx,.elp,.zip';
+                    input.classList.add('visually-hidden');
+                    document.body.appendChild(input);
 
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.elpx,.elp,.zip';
-            input.classList.add('visually-hidden');
-            document.body.appendChild(input);
-
-            input.addEventListener('change', () => {
-                if (!input.files || !input.files.length) {
-                    input.remove();
-                    return;
-                }
-
-                const file = input.files[0];
-                const formData = new FormData();
-                formData.append(
-                    'odeSessionId',
-                    eXeLearning.app.project.odeSession
-                );
-                formData.append('file', file);
-
-                eXeLearning.app.api
-                    .postImportElpToRoot(formData)
-                    .then((response) => {
-                        if (response.responseMessage === 'OK') {
-                            eXeLearning.app.project.openLoad();
-                        } else {
-                            const message =
-                                response.responseMessage ||
-                                _('Unexpected error importing file.');
-                            eXeLearning.app.modals.alert.show({
-                                title: _('Error'),
-                                body: message,
-                            });
+                    input.addEventListener('change', () => {
+                        if (!input.files || !input.files.length) {
+                            input.remove();
+                            return;
                         }
-                    })
-                    .catch(() => {
-                        eXeLearning.app.modals.alert.show({
-                            title: _('Error'),
-                            body: _('Unexpected error importing file.'),
-                        });
-                    })
-                    .finally(() => {
-                        input.remove();
-                    });
-            });
 
-            input.click();
+                        const file = input.files[0];
+                        const formData = new FormData();
+                        formData.append(
+                            'odeSessionId',
+                            eXeLearning.app.project.odeSession
+                        );
+                        formData.append('file', file);
+
+                        eXeLearning.app.api
+                            .postImportElpToRoot(formData)
+                            .then((response) => {
+                                if (response.responseMessage === 'OK') {
+                                    eXeLearning.app.project.openLoad();
+                                } else {
+                                    const message =
+                                        response.responseMessage ||
+                                        _('Unexpected error importing file.');
+                                    eXeLearning.app.modals.alert.show({
+                                        title: _('Error'),
+                                        body: message,
+                                    });
+                                }
+                            })
+                            .catch(() => {
+                                eXeLearning.app.modals.alert.show({
+                                    title: _('Error'),
+                                    body: _('Unexpected error importing file.'),
+                                });
+                            })
+                            .finally(() => {
+                                input.remove();
+                            });
+                    });
+
+                    input.click();
+                },
+            });
         });
     }
 
