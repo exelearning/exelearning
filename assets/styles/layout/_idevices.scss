@@ -113,7 +113,9 @@ article.box {
                     opacity: 0.2;
                 }
             }
-
+            &[loading="true"] * {
+                border-color: transparent !important;
+            }
             &[loading="false"] {
                 opacity: 1;
                 visibility: visible;
