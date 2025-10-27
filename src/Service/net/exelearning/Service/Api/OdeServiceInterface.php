@@ -193,6 +193,7 @@ interface OdeServiceInterface
         string $elpFilePath,
         string $currentSessionId,
         ?string $parentNodeId = null,
+        int $startingOrder = 0,
     ): array;
 
     /**

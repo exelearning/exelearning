@@ -931,26 +931,17 @@ class NavStructureApiController extends DefaultApiController
                 ['odeNavStructureSyncOrder' => 'ASC']
             );
 
-            $importedNodes = $this->odeService->importElpPages(
+            $maxChildOrder = 0;
+            foreach ($existingChildren as $childNode) {
+                $maxChildOrder = max($maxChildOrder, (int) $childNode->getOdeNavStructureSyncOrder());
+            }
+
+            $this->odeService->importElpPages(
                 $tempFilePath,
                 $odeSessionId,
-                $parentNode->getOdePageId()
+                $parentNode->getOdePageId(),
+                $maxChildOrder
             );
-
-            $importedChildren = array_filter(
-                $importedNodes,
-                static fn (OdeNavStructureSync $node) => $parentNode->getOdePageId() === $node->getOdeParentPageId()
-            );
-
-            foreach ($importedChildren as $node) {
-                $node->setOdeNavStructureSync($parentNode);
-                $this->entityManager->persist($node);
-            }
-
-            if (!empty($importedChildren)) {
-                $this->reassignSiblingOrder($existingChildren, $importedChildren);
-                $this->entityManager->flush();
-            }
 
             $responseData['responseMessage'] = 'OK';
             $responseData['structure'] = $this->buildNavStructureListDto($odeSessionId);
@@ -1011,27 +1002,6 @@ class NavStructureApiController extends DefaultApiController
         }
 
         return $responseData;
-    }
-
-    /**
-     * Keeps existing siblings first and appends new nodes afterwards, assigning sequential order.
-     *
-     * @param OdeNavStructureSync[] $existingNodes
-     * @param OdeNavStructureSync[] $newNodes
-     */
-    private function reassignSiblingOrder(array $existingNodes, array $newNodes): void
-    {
-        $order = 0;
-
-        foreach ($existingNodes as $node) {
-            $node->setOdeNavStructureSyncOrder(++$order);
-            $this->entityManager->persist($node);
-        }
-
-        foreach ($newNodes as $node) {
-            $node->setOdeNavStructureSyncOrder(++$order);
-            $this->entityManager->persist($node);
-        }
     }
 
     /**

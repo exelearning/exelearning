@@ -274,6 +274,20 @@ export default class MenuStructureBehaviour {
                 fileName.endsWith('.zip');
 
             if (isProjectFile) {
+                const refreshStructure = (targetId = false) => {
+                    if (
+                        this.structureEngine &&
+                        typeof this.structureEngine
+                            .resetDataAndStructureData === 'function'
+                    ) {
+                        this.structureEngine.resetDataAndStructureData(
+                            targetId
+                        );
+                    } else {
+                        eXeLearning.app.project.openLoad();
+                    }
+                };
+
                 const selectedNav =
                     this.nodeSelected &&
                     this.nodeSelected.getAttribute('nav-id');
@@ -291,7 +305,7 @@ export default class MenuStructureBehaviour {
                         .postImportElpToRoot(formData)
                         .then((response) => {
                             if (response.responseMessage === 'OK') {
-                                eXeLearning.app.project.openLoad();
+                                refreshStructure(false);
                             } else if (response.responseMessage) {
                                 eXeLearning.app.modals.alert.show({
                                     title: _('Error'),
@@ -310,9 +324,7 @@ export default class MenuStructureBehaviour {
                         .postImportElpAsChild(selectedNav, formData)
                         .then((response) => {
                             if (response.responseMessage === 'OK') {
-                                this.structureEngine.resetStructureData(
-                                    selectedNav
-                                );
+                                refreshStructure(selectedNav);
                             } else if (response.responseMessage) {
                                 eXeLearning.app.modals.alert.show({
                                     title: _('Error'),

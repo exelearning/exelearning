@@ -963,18 +963,7 @@ class OdeApiController extends DefaultApiController
                 $maxRootOrder = max($maxRootOrder, (int) $rootNode->getOdeNavStructureSyncOrder());
             }
 
-            $importedNodes = $this->odeService->importElpPages($tempFilePath, $odeSessionId, null);
-            $importedRootNodes = array_values(
-                array_filter(
-                    $importedNodes,
-                    static fn (OdeNavStructureSync $node) => null === $node->getOdeParentPageId()
-                )
-            );
-
-            if (!empty($importedRootNodes)) {
-                $this->appendNodesAfterExisting($existingRootNodes, $importedRootNodes);
-                $this->entityManager->flush();
-            }
+            $this->odeService->importElpPages($tempFilePath, $odeSessionId, null, $maxRootOrder);
 
             $responseData['responseMessage'] = 'OK';
             $responseData['structure'] = $this->buildNavStructureListDto($odeSessionId);
@@ -1538,27 +1527,5 @@ class OdeApiController extends DefaultApiController
         }
 
         return $responseData;
-    }
-
-    /**
-     * Reassigns sequential order values keeping existing siblings first and new nodes last.
-     *
-     * @param OdeNavStructureSync[] $existingNodes
-     * @param OdeNavStructureSync[] $newNodes
-     */
-    private function appendNodesAfterExisting(array $existingNodes, array $newNodes): void
-    {
-        $order = 0;
-
-        foreach ($existingNodes as $node) {
-            $node->setOdeNavStructureSyncOrder(++$order);
-            $this->entityManager->persist($node);
-        }
-
-        foreach ($newNodes as $node) {
-            $node->setOdeNavStructureSync(null);
-            $node->setOdeNavStructureSyncOrder(++$order);
-            $this->entityManager->persist($node);
-        }
     }
 }

@@ -592,7 +592,7 @@ export default class NavbarFile {
         this.importElpButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             eXeLearning.app.modals.confirm.show({
-                title: _('Import (.elpx…)'),
+                title: _('Import (.elpx...)'),
                 body: _(
                     'Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.'
                 ),
@@ -620,11 +620,33 @@ export default class NavbarFile {
                         );
                         formData.append('file', file);
 
+                        const refreshStructure = (targetId = false) => {
+                            const structure =
+                                eXeLearning?.app?.project?.structure;
+                            if (
+                                structure &&
+                                typeof structure.resetDataAndStructureData ===
+                                    'function'
+                            ) {
+                                structure.resetDataAndStructureData(targetId);
+                            } else {
+                                eXeLearning.app.project.openLoad();
+                            }
+                        };
+
                         eXeLearning.app.api
                             .postImportElpToRoot(formData)
                             .then((response) => {
                                 if (response.responseMessage === 'OK') {
-                                    eXeLearning.app.project.openLoad();
+                                    const structure =
+                                        eXeLearning?.app?.project?.structure;
+                                    const selectedNodeId =
+                                        structure &&
+                                        typeof structure.getSelectNodeNavId ===
+                                            'function'
+                                            ? structure.getSelectNodeNavId()
+                                            : null;
+                                    refreshStructure(selectedNodeId || false);
                                 } else {
                                     const message =
                                         response.responseMessage ||
