@@ -12021,8 +12021,8 @@
         <source>System</source>
         <target>~Sistemo</target>
       </trans-unit>
-      <trans-unit id="obgj9Qf" resname="Someone is editing this page. Please wait until they finish editing before you can create new iDevices.">
-        <source>Someone is editing this page. Please wait until they finish editing before you can create new iDevices.</source>
+      <trans-unit id="obgj9Qf" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
+        <source>Someone else is editing this page. Please wait until they finish before adding new iDevices.</source>
         <target>~Iu redaktas ĉi tiun paĝon. Bonvolu atendi ĝis ili finos redakti antaŭ ol krei novajn iDevices.</target>
       </trans-unit>
       <trans-unit id="fTgJugq" resname="Accordion">
@@ -12089,7 +12089,7 @@
         <source>3 images</source>
         <target>~3 bildoj</target>
       </trans-unit>
-            <trans-unit id="7JewVxf" resname="Mark all the options in the correct order and click on the 'Reply' button.">
+      <trans-unit id="7JewVxf" resname="Mark all the options in the correct order and click on the 'Reply' button.">
         <source>Mark all the options in the correct order and click on the 'Reply' button.</source>
         <target>~Marku ĉiujn elektojn en ĝusta ordo kaj alklaku sur la butonon 'Respondi'.</target>
       </trans-unit>

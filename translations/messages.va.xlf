@@ -12021,8 +12021,8 @@
         <source>System</source>
         <target>Sistema</target>
       </trans-unit>
-      <trans-unit id="obgj9Qf" resname="Someone is editing this page. Please wait until they finish editing before you can create new iDevices.">
-        <source>Someone is editing this page. Please wait until they finish editing before you can create new iDevices.</source>
+      <trans-unit id="obgj9Qf" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
+        <source>Someone else is editing this page. Please wait until they finish before adding new iDevices.</source>
         <target>~Algú està editant esta pàgina. Per favor, espera que acabe abans d’afegir nous iDevices.</target>
       </trans-unit>
       <trans-unit id="fTgJugq" resname="Accordion">
@@ -12089,7 +12089,7 @@
         <source>3 images</source>
         <target>3 imatges</target>
       </trans-unit>
-            <trans-unit id="7JewVxf" resname="Mark all the options in the correct order and click on the 'Reply' button.">
+      <trans-unit id="7JewVxf" resname="Mark all the options in the correct order and click on the 'Reply' button.">
         <source>Mark all the options in the correct order and click on the 'Reply' button.</source>
         <target>~Marca totes les opcions en l'orde correcte i fes clic en 'Respon'.</target>
       </trans-unit>
