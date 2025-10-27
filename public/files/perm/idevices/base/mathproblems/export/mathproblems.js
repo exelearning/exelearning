@@ -170,29 +170,48 @@ var $eXeMathProblems = {
     },
 
     validateIntervals: function (domain) {
-        const allowedCharactersRegex = /^[0-9\s\-!]+$/;
+        const allowedCharactersRegex = /^[0-9\s\-!.]+$/;
         let dm = domain.replace(/\s+/g, ' ').trim();
         if (!allowedCharactersRegex.test(dm)) {
             return false;
         }
-        const formatRegex = /^(!?-?\d+)(\s+-\s+!?-?\d+)?$/;
+        const formatRegex = /^(!?-?\d+(?:\.\d+)?)(\s+-\s+!?-?\d+(?:\.\d+)?)?$/;
         let isValid = formatRegex.test(dm);
         if (isValid && dm.includes(' - ')) {
-            let [start, end] = dm.split(' - ').map(Number); // Convierte los números y compara
+            let [start, end] = dm.split(' - ').map(Number); 
             isValid = start <= end;
         }
         return isValid;
     },
 
     validateIntervalsWithHash: function (domain) {
-        const regex = /^-?\d+\s+-\s*-?\d+\s+#\s*\d+$/;
-        if (!regex.test(domain.trim())) {
+        const regex = /^-?\d+(?:\.\d+)?\s+-\s*-?\d+(?:\.\d+)?\s*#\s*\d+(?:\.\d+)?$/;
+        let dm = domain.replace(/\s+/g, ' ').trim();
+        if (!regex.test(dm)) {
+            return false;
+        }
+        if (!dm.includes(' - ')) {
             return false;
         }
         let [interval, hashNumber] = domain.split('#');
-        let [start, end] = interval.split('-').map((str) => Number(str.trim()));
+        let [start, end] = interval
+            .split(' - ')
+            .map((str) => Number(str.trim()));
         let hashNum = Number(hashNumber.trim());
         return start < end && hashNum > 0;
+    },
+
+    removeTrailingZeros: function (num) {
+        let str = num.toString();
+        if (str.includes('.')) {
+            str = str.replace(/\.?0+$/, '');
+        }
+        return str === '' ? '0' : str;
+    },
+
+    getDecimalPlaces: function (numStr) {
+        const parts = numStr.toString().split('.');
+        return parts.length > 1 ? parts[1].length : 0;
     },
 
     processSimpleExpression: function (str) {
@@ -208,9 +227,29 @@ var $eXeMathProblems = {
                         definedSet.add(item),
                     );
                 } else {
-                    let [start, end] = value.split(' - ').map(Number);
-                    for (let i = start; i <= end; i++) {
-                        exclude ? disallowed.add(i) : definedSet.add(i);
+                    let [startStr, endStr] = value.split(' - ').map(s => s.trim());
+                    let start = Number(startStr);
+                    let end = Number(endStr);
+    
+                    if (Number.isInteger(start) && Number.isInteger(end)) {
+                        for (let i = start; i <= end; i++) {
+                            exclude ? disallowed.add(i) : definedSet.add(i);
+                        }
+                    } else {
+
+                        let decimalsStart = this.getDecimalPlaces(startStr);
+                        let decimalsEnd = this.getDecimalPlaces(endStr);
+                        let minDecimals = Math.max(decimalsStart, decimalsEnd);
+
+                        let step = 1 / Math.pow(10, minDecimals);
+
+                        for (let i = start; i <= end; i += step) {
+                            let value = Number(i.toFixed(minDecimals));
+                            if (value <= end) {
+                                let cleanValue = Number(this.removeTrailingZeros(value.toFixed(minDecimals)));
+                                exclude ? disallowed.add(cleanValue) : definedSet.add(cleanValue);
+                            }
+                        }
                     }
                 }
             } else {
@@ -225,12 +264,24 @@ var $eXeMathProblems = {
     },
 
     processRangedExpression: function (str) {
-        let [range, step] = str.split('#');
-        step = Number(step);
-        let [start, end] = range.split(' - ').map(Number);
+        let [range, stepStr] = str.split('#');
+        let step = Number(stepStr);
+        let [startStr, endStr] = range.split(' - ').map(s => s.trim());
+        let start = Number(startStr);
+        let end = Number(endStr);
         let result = [];
+
+        let decimalsInStep = this.getDecimalPlaces(stepStr);
+        let decimalsInStart = this.getDecimalPlaces(startStr);
+        let decimalsInEnd = this.getDecimalPlaces(endStr);
+        let maxDecimals = Math.max(decimalsInStep, decimalsInStart, decimalsInEnd);
+        
         for (let i = start; i <= end; i += step) {
-            result.push(i);
+            let value = Number(i.toFixed(maxDecimals));
+            if (value <= end) {
+                let cleanValue = Number(this.removeTrailingZeros(value.toFixed(maxDecimals)));
+                result.push(cleanValue);
+            }
         }
         if (!result.length) return [1];
         return result;

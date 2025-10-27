@@ -88,7 +88,7 @@ var $form = {
         const time = this.formatTime(ldata.time * 60)
 
 
-    const htmlContent = `<div class="game-evaluation-ids js-hidden" data-id="${ldata.id}" data-evaluationb="${ldata.evaluation}" data-evaluationid="${ldata.evaluationID}"></div>
+        const htmlContent = `<div class="game-evaluation-ids js-hidden" data-id="${ldata.id}" data-evaluationb="${ldata.evaluation}" data-evaluationid="${ldata.evaluationID}"></div>
 
             <div id="frmMainContainer-${ldata.id}" class="form-IDevice" data-id="${ldata.id}">
                 <div class="form-Data js-hidden">${json}</div>
@@ -329,8 +329,8 @@ var $form = {
         if (isInExe || $node.length == 0) return htmlString;
 
         let dir = $('html').is('#exe-index')
-            ? 'content/resources/' + $node.first().attr('id-resource')
-            : '../content/resources/' + $node.first().attr('id-resource');
+            ? 'content/resources/' + data.ideviceId + '/'
+            : '../content/resources/' + data.ideviceId + '/'
         const custom = $('html').is('#exe-index')
             ? 'custom/'
             : '../custom/';

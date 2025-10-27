@@ -61,6 +61,7 @@
         "files": [
             "main.js",
             "preload.js",
+            "update-manager.js",
             "composer.json",
             "composer.lock",
             ".env.dist",
@@ -68,13 +69,13 @@
             "translations/es.json"
         ],
         "fileAssociations": [
-          {
-            "ext": "elpx",
-            "name": "eXeLearning Project",
-            "description": "eXeLearning project file",
-            "role": "Editor",
-            "mimeType": "application/x-exelearning-elpx"
-          }
+            {
+                "ext": "elpx",
+                "name": "eXeLearning Project",
+                "description": "eXeLearning project file",
+                "role": "Editor",
+                "mimeType": "application/x-exelearning-elpx"
+            }
         ],
         "extraResources": [
             {
@@ -148,7 +149,15 @@
             "icon": "public/exelearning.ico",
             "legalTrademarks": "INTEF",
             "signAndEditExecutable": true,
-            "verifyUpdateCodeSignature": false
+            "verifyUpdateCodeSignature": false,
+            "signtoolOptions": {
+                "rfc3161TimeStampServer": "http://time.certum.pl",
+                "timeStampServer": "http://time.certum.pl",
+                "signingHashAlgorithms": [
+                    "sha1",
+                    "sha256"
+                ]
+            }
         },
         "nsis": {
             "oneClick": true,
@@ -222,8 +231,8 @@
             "entitlements": "packaging/entitlements.mac.plist",
             "entitlementsInherit": "packaging/entitlements.mac.inherit.plist"
         },
-         "dmg": {
-          "format": "ULFO"
+        "dmg": {
+            "format": "ULFO"
         }
     },
     "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"

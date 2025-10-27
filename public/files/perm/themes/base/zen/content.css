@@ -9,6 +9,11 @@
   font-style: italic;
   src: local("Inter Italic"), local("Inter Italic"), url(fonts/Inter-Italic.woff2) format("woff2"), url(fonts/Inter-Italic.woff) format("woff");
 }
+@font-face {
+  font-family: "Inter";
+  font-style: bold;
+  src: local("Inter Bold"), local("Inter Bold"), url(fonts/Inter-Bold.woff2) format("woff2"), url(fonts/Inter-Bold.woff) format("woff");
+}
 
 .page-title{
     font-weight: bold;
@@ -19,7 +24,6 @@
 .exe-single-page .package-header h1{
     width: 100%;
 }
-
 
 main header:not(#head) {
     padding: 0 !important;
@@ -149,6 +153,10 @@ body.exe-export, body.exe-web-site{
 .exe-content .box-head {
     border-bottom: 0;
     margin-bottom: 16px !important;
+}
+
+.exe-content .box-head + .box-content {
+    padding-top: 1em;
 }
 
 #node-content-container.exe-content .box{
@@ -577,18 +585,17 @@ button.toggler:focus {
 
 /* iDevice buttons */
 .exe-content .iDevice_buttons input{
-    background: #fff;
-    color: #555;
-    border: 1px solid #ccc;
+    background: #1A8FA9;
+    color: #fff;
+    border: 1px solid #1A8FA9;
     padding: 4px 10px;
     border-radius: 4px;
     transition: 0.5s ease;
 }
 .exe-content .iDevice_buttons input:hover,
 .exe-content .iDevice_buttons input:focus{
-    box-shadow: 2px 2px 4px #dbdbdb;
-    color: #000;
-    border-color: #bbb
+    background: #005771;
+    border-color: #005771
 }
 
 /* Icons */

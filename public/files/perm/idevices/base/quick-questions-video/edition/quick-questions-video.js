@@ -885,6 +885,18 @@ var $exeDevice = {
                                     </span>
                                     <label class="toggle-label" for="vquextEModeBoard">${_('Digital whiteboard mode')}</label>
                                 </div>
+                                <div class="d-flex align-items-center gap-2 mb-3">
+                                    <label for="vquextEGlobalTimes">${_('Time per question')}:</label>
+                                    <select id="vquextEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
+                                        <option value="0" selected>15s</option>
+                                        <option value="1">30s</option>
+                                        <option value="2">1m</option>
+                                        <option value="3">3m</option>
+                                        <option value="4">5m</option>
+                                        <option value="5">10m</option>
+                                    </select>
+                                    <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_("Accept")}</button> 
+                                </div>
                                 <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
                                     <div class="toggle-item mb-0">
                                         <span class="toggle-control">
@@ -1239,6 +1251,8 @@ var $exeDevice = {
             typeof game.evaluation != 'undefined' ? game.evaluation : false;
         game.evaluationID =
             typeof game.evaluationID != 'undefined' ? game.evaluationID : '';
+        game.globalTime =
+            typeof game.globalTime != 'undefined' ? game.globalTime : 0;
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
@@ -1288,6 +1302,7 @@ var $exeDevice = {
         $('#vquextEEvaluation').prop('checked', game.evaluation);
         $('#vquextEEvaluationID').val(game.evaluationID);
         $('#vquextEEvaluationID').prop('disabled', !game.evaluation);
+        $('#vquextEGlobalTimes').val(game.globalTime);
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
         $exeDevice.showSelectOrder(game.customMessages);
@@ -1631,6 +1646,7 @@ var $exeDevice = {
             modeBoard = $('#vquextEModeBoard').is(':checked'),
             evaluation = $('#vquextEEvaluation').is(':checked'),
             evaluationID = $('#vquextEEvaluationID').val(),
+            globalTime = parseInt($('#vquextEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1739,6 +1755,7 @@ var $exeDevice = {
             modeBoard,
             evaluation,
             evaluationID,
+            globalTime,
             id,
         };
     },
@@ -2043,6 +2060,15 @@ var $exeDevice = {
         $('#vquextEEvaluationHelpLnk').click(function () {
             $('#vquextEEvaluationHelp').toggle();
             return false;
+        });
+
+        $('#vquextGlobalTimeButton').on('click', function (e) {
+            e.preventDefault();
+            const selectedTime = parseInt($('#vquextEGlobalTimes').val(), 10);
+            for (let i = 0; i < $exeDevice.questionsGame.length; i++) {
+                $exeDevice.questionsGame[i].time = selectedTime;
+            }
+            $('input.VDQXTE-Times[name="vqxtime"][value="' + selectedTime + '"]').prop('checked', true);
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();

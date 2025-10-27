@@ -95,6 +95,16 @@ export default class MenuIdevicesCompose {
      * @param {*} idevices
      */
     createDivCategoryIdevices(categoryTitle, idevices, icon) {
+        // The Text iDevice should be in the first place
+        if (categoryTitle == this.categoriesTitle.information) {
+            // Find the object widh id == "text"
+            const index = idevices.findIndex((obj) => obj.id === 'text');
+            if (index > -1) {
+                // Put Text in the first place
+                const [item] = idevices.splice(index, 1);
+                idevices.unshift(item);
+            }
+        }
         let nodeDivCategory = this.elementDivCategory(categoryTitle);
         nodeDivCategory.append(this.elementLabelCategory(categoryTitle, icon));
         nodeDivCategory.append(this.elementDivIdevicesParent(idevices, icon));

@@ -1,4 +1,9 @@
 import RealTimeEventNotifier from '../../../../RealTimeEventNotifier/RealTimeEventNotifier.js';
+import {
+    downloadComponentFile,
+    buildComponentFileName,
+    buildComponentStorageKey,
+} from './componentDownloadHelper.js';
 /**
  * eXeLearning
  *
@@ -933,16 +938,26 @@ export default class IdeviceBlockNode {
             odeBlockId,
             null
         );
-        if (response['response'].includes('responseMessage')) {
+        const responseBody = response['response'];
+        if (
+            typeof responseBody === 'string' &&
+            responseBody.includes('responseMessage')
+        ) {
             // Response to show always on 3
-            let bodyResponse = response['response'].split('"');
+            let bodyResponse = responseBody.split('"');
             eXeLearning.app.modals.alert.show({
                 title: _('Download error'),
                 body: bodyResponse[3],
                 contentId: 'error',
             });
         } else {
-            window.open(response['url']);
+            const downloadUrl = response['url'];
+            if (downloadUrl) {
+                const fileName = buildComponentFileName(odeBlockId, '.block');
+                await downloadComponentFile(downloadUrl, fileName, {
+                    absoluteKey: buildComponentStorageKey(odeBlockId, 'block'),
+                });
+            }
         }
     }
 
