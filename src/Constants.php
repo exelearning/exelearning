@@ -243,11 +243,13 @@ class Constants
     // ELP files extension
     public const ELP_FILES_AVAILABLE_EXTS = [
         self::FILE_EXTENSION_ELP,
+        self::FILE_EXTENSION_EPUB,
         self::FILE_EXTENSION_ZIP,
         'elp',
     ];
     public const ELP_LOCAL_FILES_AVAILABLE_EXTS = [
         self::FILE_EXTENSION_ELP,
+        self::FILE_EXTENSION_EPUB,
         self::FILE_EXTENSION_ZIP,
         self::FILE_EXTENSION_XML,
         self::IDEVICE_ELP_NAME,

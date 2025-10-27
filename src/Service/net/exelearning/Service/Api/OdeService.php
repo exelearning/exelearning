@@ -1522,9 +1522,16 @@ class OdeService implements OdeServiceInterface
         }
 
         $fileName = Constants::PERMANENT_SAVE_CONTENT_FILENAME;
-        $xmlFilePathName = $odeSessionDistDirPath.$fileName;
+        
+        // In case of epub, the content.xml is inside EPUB dir       
+        if (strtolower(pathinfo($elpFileName, PATHINFO_EXTENSION)) !== Constants::FILE_EXTENSION_EPUB) {
+            $xmlFilePathName = $odeSessionDistDirPath.$fileName;
+        } else {
+            // In case of epub, the content.xml is inside EPUB dir
+            $xmlFilePathName = $odeSessionDistDirPath.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB.DIRECTORY_SEPARATOR.$fileName;
+       }
 
-        // Check if it's new xml or an old version of xml
+       // Check if it's new xml or an old version of xml
         $isNewOdeXml = file_exists($xmlFilePathName);
         if (!$isNewOdeXml) {
             $fileName = Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V3;
