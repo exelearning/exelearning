@@ -3,3 +3,5 @@
 /* Form iDevice (selected words) */
 body#tinymce{padding:1em}
 #tinymce u{font-style:italic;text-decoration:none;opacity:.5}
+/* Download package iDevice */
+.exe-table.exe-package-info {caption-side:top;margin:0 auto}

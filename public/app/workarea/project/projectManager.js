@@ -2994,7 +2994,7 @@ export default class projectManager {
         eXeLearning.app.modals.alert.show({
             title: _('Info'),
             body: _(
-                'Someone is editing this page. Please wait until they finish editing before you can create new iDevices.'
+                'Someone else is editing this page. Please wait until they finish before adding new iDevices.'
             ),
         });
         return true;

@@ -377,8 +377,8 @@ body [dir='rtl'] {
     text-align: start
 }
 
-/* IE6, IE7 */
 /* Autoclear */
+.exe-content .idevice_body,
 .exe-clear {
     overflow: auto
 }

@@ -1085,11 +1085,11 @@ var $exeDevice = {
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
-                    alert(_('Please select a text file (.txt) or a Moodle XML file (.xml)'));
+                    eXe.app.alert(_('Please select a text file (.txt) or a Moodle XML file (.xml)'));
                     return;
                 }
                 if (!file.type || !(file.type.match('text/plain') || file.type.match('application/json') || file.type.match('application/xml') || file.type.match('text/xml'))) {
-                    alert(_('Please select a text file (.txt) or a Moodle XML file (.xml)'));
+                    eXe.app.alert(_('Please select a text file (.txt) or a Moodle XML file (.xml)'));
                     return;
                 }
 

@@ -1024,7 +1024,7 @@ var $exeDevice = {
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
-                    alert(_('Please select a JSON file (.json)'));
+                    eXe.app.alert(_('Please select a JSON file (.json)'));
                     return;
                 }
                 if (
@@ -1036,7 +1036,7 @@ var $exeDevice = {
                         file.type.match('text/xml')
                     )
                 ) {
-                    alert(_('Please select a JSON file (.json)'));
+                    eXe.app.alert(_('Please select a JSON file (.json)'));
                     return;
                 }
                 const reader = new FileReader();

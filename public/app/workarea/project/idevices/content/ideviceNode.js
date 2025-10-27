@@ -1,4 +1,9 @@
 import RealTimeEventNotifier from '../../../../RealTimeEventNotifier/RealTimeEventNotifier.js';
+import {
+    downloadComponentFile,
+    buildComponentFileName,
+    buildComponentStorageKey,
+} from './componentDownloadHelper.js';
 /**
  * eXeLearning
  *
@@ -1235,7 +1240,7 @@ export default class IdeviceNode {
      */
     addTooltips() {
         $(
-            'button.btn-action-menu:not([data-bs-toggle="dropdown"])',
+            'button.btn-action-menu:not([data-bs-toggle="dropdown"]):not(.btn-edit-idevice):not(.btn-save-idevice)',
             this.ideviceButtons
         ).addClass('exe-app-tooltip');
         eXeLearning.app.common.initTooltips(this.ideviceButtons);
@@ -1284,16 +1289,32 @@ export default class IdeviceNode {
             odeBlockId,
             odeIdeviceId
         );
-        if (response['response'].includes('responseMessage')) {
+        const responseBody = response['response'];
+        if (
+            typeof responseBody === 'string' &&
+            responseBody.includes('responseMessage')
+        ) {
             // Response to show always on 3
-            let bodyResponse = response['response'].split('"');
+            let bodyResponse = responseBody.split('"');
             eXeLearning.app.modals.alert.show({
                 title: _('Download error'),
                 body: bodyResponse[3],
                 contentId: 'error',
             });
         } else {
-            window.open(response['url']);
+            const downloadUrl = response['url'];
+            if (downloadUrl) {
+                const fileName = buildComponentFileName(
+                    odeIdeviceId,
+                    '.idevice'
+                );
+                await downloadComponentFile(downloadUrl, fileName, {
+                    absoluteKey: buildComponentStorageKey(
+                        odeIdeviceId,
+                        'idevice'
+                    ),
+                });
+            }
         }
     }
 
@@ -2429,11 +2450,8 @@ export default class IdeviceNode {
                 // Only load current idevice
                 await this.loadInitScriptIdevice('export');
                 // Load plugins
-                setTimeout(
-                    () => this.loadLegacyExeFunctionalitiesExport(),
-                    100
-                );
             }
+            setTimeout(() => this.loadLegacyExeFunctionalitiesExport(), 100);
             this.engine.unsetIdeviceActive();
         } else {
             this.toogleIdeviceButtonsState(false);
@@ -2697,6 +2715,8 @@ export default class IdeviceNode {
     loadLegacyExeFunctionalitiesExport() {
         // Legacy $exeABCmusic object
         $exeABCmusic.init();
+
+        $exeFX.init();
     }
 
     /**
