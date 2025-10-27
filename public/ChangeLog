@@ -15,6 +15,7 @@
 - actions/download-artifact: 5 → 6
 - actions/upload-artifact: 5 → 6
 - doctrine/doctrine-migrations-bundle: 3.4.2 → 3.5.0
+- rector/rector: 2.2.3 → 2.2.6
 - symfony/security-bundle: 7.3.3 → 7.3.4
 
 ---
