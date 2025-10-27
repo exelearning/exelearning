@@ -2,6 +2,7 @@
 
 namespace App\EventSubscriber;
 
+use App\Settings;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -40,7 +41,7 @@ class LocaleSubscriber implements EventSubscriberInterface
         }
         // If neither session nor route has _locale, use the browser's preferred language
         else {
-            $preferredLocale = $request->getPreferredLanguage(['en', 'es']) ?: $this->defaultLocale;
+            $preferredLocale = $request->getPreferredLanguage(array_keys(Settings::LOCALES)) ?: $this->defaultLocale;
             $request->setLocale($preferredLocale);
             $session->set('_locale', $preferredLocale);  // Save preferred locale to the session
         }

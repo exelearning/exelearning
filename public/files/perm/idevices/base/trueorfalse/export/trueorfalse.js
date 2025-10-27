@@ -45,14 +45,14 @@ var $trueorfalse = {
 
     extractMediaElements: function (items) {
         if (!Array.isArray(items)) return ''
- 
+
         const tmp = document.createElement('div')
         const set = new Set()
 
         for (const { question = '', feedback = '', suggestion = '', baseText = '' } of items) {
             tmp.innerHTML = `${question} ${feedback} ${suggestion} ${baseText}`
             tmp.querySelectorAll('img, audio, video').forEach(el => set.add(el.outerHTML))
-            tmp.innerHTML = '' 
+            tmp.innerHTML = ''
         }
         return `<div class="questionsMedia" style="display:none">${[...set].join('')}</div>`
     },
@@ -98,7 +98,7 @@ var $trueorfalse = {
             );
         }
 
-        
+
     },
 
     initScormData: function (ldata) {
@@ -193,7 +193,7 @@ var $trueorfalse = {
         const node = document.getElementById(ideviceId);
         if (!node || eXe.app.isInExe() || !htmlString) return htmlString;
 
-        const idRes = node.getAttribute('id-resource') || '';
+        const idRes = ideviceId;
         if (!idRes) return htmlString;
 
         const basePath = document.documentElement.id === 'exe-index'
@@ -310,7 +310,7 @@ var $trueorfalse = {
                 ? 'TOFP-EHidden'
                 : '';
         const display = mOptions.isScorm == 2 ? 'block' : 'none';
-    const html = `
+        const html = `
     <div class="game-evaluation-ids js-hidden" data-id="${mOptions.id}" data-evaluationb="${mOptions.evaluation}" data-evaluationid="${mOptions.evaluationID}"></div>
         <div class="TOFP-instructions">${mOptions.eXeGameInstructions}</div>
         <div class="TOFP-MainContainer" data-instance="${instance}" id="tofPMainContainer-${instance}">

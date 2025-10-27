@@ -5,6 +5,7 @@
 */
 .exe-download-package-instructions .exe-table {
 	caption-side: top;
+	margin: 0 auto;
 }
 .exe-download-package-instructions .exe-table caption {
 	font-size: 1.2em;

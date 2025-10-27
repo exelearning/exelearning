@@ -83,7 +83,7 @@ var $magnifier = {
         } else {
             $exeDevices.iDevice.gamification.math.updateLatex('.exe-magnifier-container');
         }
-        
+
 
     },
 
@@ -93,8 +93,8 @@ var $magnifier = {
         if (isInExe || $node.length == 0 || !data.imageResource) return data.imageResource;
 
         const pathMedia = $('html').is('#exe-index')
-            ? 'content/resources/' + $node.attr('id-resource') + '/'
-            : '../content/resources/' + $node.attr('id-resource') + '/';
+            ? 'content/resources/' + data.ideviceId + '/'
+            : '../content/resources/' + data.ideviceId + '/';
 
         const parts = data.imageResource.split(/[/\\]/),
             name = parts.pop(),
@@ -109,8 +109,8 @@ var $magnifier = {
         if (isInExe || $node.length == 0) return data.textTextarea;
 
         const dir = $('html').is('#exe-index')
-            ? 'content/resources/' + $node.attr('id-resource') + '/'
-            : '../content/resources/' + $node.attr('id-resource') + '/';
+            ? 'content/resources/' + data.ideviceId + '/'
+            : '../content/resources/' + data.ideviceId + '/';
         const custom = $('html').is('#exe-index')
             ? 'custom/'
             : '../custom/';

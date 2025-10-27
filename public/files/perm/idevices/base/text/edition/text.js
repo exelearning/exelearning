@@ -199,6 +199,9 @@ var $exeDevice = {
 
             if (el.tagName === "TEXTAREA" || key.toLowerCase().includes("textarea")) {
                 $(el).val(val);
+                if (`${key}` == this.feedbackTextareaId && val != '') {
+                    $("#" + this.feedbackId).removeClass("exe-fieldset-closed").addClass("exe-fieldset-open")
+                }
             } else if (el.tagName === "INPUT") {
                 const useTranslation = isValid(data[key]);
                 const displayValue = useTranslation ? c_(val) : val;
