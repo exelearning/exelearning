@@ -2,11 +2,15 @@
 
 ## v3.0.0-rc6 – 2025-10-28
 
-- Release to validate improvements in installers and "new version available" notifications
-
 ### Added
 
-- Renamed style icons
+- New "Import (.elpx…)" functionality in the "File" menu to import .elpx, .elp, and editable .zip files
+
+### Upgraded
+
+- actions/download-artifact: 5 → 6
+- doctrine/doctrine-migrations-bundle: 3.4.2 → 3.5.0
+- symfony/security-bundle: 7.3.3 → 7.3.4
 
 ---
 
