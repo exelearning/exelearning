@@ -3731,8 +3731,7 @@
       </trans-unit>
       <trans-unit id="GVu.XTz" resname="No .json files found in the \'docs\' folder.">
         <source>No .json files found in the \'docs\' folder.</source>
-        <target>Non se atoparon ficheiros .json no cartafol \'docs\'.
-</target>
+        <target>Non se atoparon ficheiros .json no cartafol \'docs\'.</target>
       </trans-unit>
       <trans-unit id="3U32W5O" resname="No .json files found in the 'docs' folder.">
         <source>No .json files found in the 'docs' folder.</source>
@@ -4576,8 +4575,7 @@
       </trans-unit>
       <trans-unit id="HMP7DeK" resname="Select the Google Drive directory where the project will be uploaded:">
         <source>Select the Google Drive directory where the project will be uploaded:</source>
-        <target>Seleccione o directorio de destino en Google Drive:
-</target>
+        <target>Seleccione o directorio de destino en Google Drive:</target>
       </trans-unit>
       <trans-unit id="9Mm2eRT" resname="An error occurred while saving block's properties in database">
         <source>An error occurred while saving block's properties in database</source>
@@ -12023,8 +12021,8 @@
         <source>System</source>
         <target>Sistema</target>
       </trans-unit>
-      <trans-unit id="obgj9Qf" resname="Someone is editing this page. Please wait until they finish editing before you can create new iDevices.">
-        <source>Someone is editing this page. Please wait until they finish editing before you can create new iDevices.</source>
+      <trans-unit id="obgj9Qf" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
+        <source>Someone else is editing this page. Please wait until they finish before adding new iDevices.</source>
         <target>~Alguén está a editar esta páxina. Por favor, espera a que remate antes de engadir novos iDevices.</target>
       </trans-unit>
       <trans-unit id="fTgJugq" resname="Accordion">
@@ -12090,6 +12088,238 @@
       <trans-unit id="9g8u1YG" resname="3 images">
         <source>3 images</source>
         <target>3 imaxes</target>
+      </trans-unit>
+      <trans-unit id="7JewVxf" resname="Mark all the options in the correct order and click on the 'Reply' button.">
+        <source>Mark all the options in the correct order and click on the 'Reply' button.</source>
+        <target>~Marca todas as opcións na orde correcta e fai clic en 'Responder'.</target>
+      </trans-unit>
+      <trans-unit id="1Uv.8KU" resname="Write the correct word o phrase and click on the 'Reply' button.">
+        <source>Write the correct word o phrase and click on the 'Reply' button.</source>
+        <target>~Escribe a palabra ou frase correcta e fai clic en 'Responder'.</target>
+      </trans-unit>
+      <trans-unit id="NT8emLb" resname="Point">
+        <source>Point</source>
+        <target>~Punto</target>
+      </trans-unit>
+      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+        <target>~Debes revisar o %s&amp;percnt;  dos contidos da actividade antes de completar o cuestionario.</target>
+      </trans-unit>
+      <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
+        <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
+        <target>~Non superaches esta proba. Debes revisar os seus contidos e tentalo de novo. Queres repetir esta actividade?</target>
+      </trans-unit>
+      <trans-unit id="wITS3E8" resname="Subtitles">
+        <source>Subtitles</source>
+        <target>~Subtítulos</target>
+      </trans-unit>
+      <trans-unit id="p1GMehK" resname="The question marked as next in case of success does not exist.">
+        <source>The question marked as next in case of success does not exist.</source>
+        <target>~A pregunta marcada como seguinte en caso de éxito non existe.</target>
+      </trans-unit>
+      <trans-unit id="LeOpK1j" resname="The question marked as next in case of error does not exist.">
+        <source>The question marked as next in case of error does not exist.</source>
+        <target>~A pregunta marcada como seguinte en caso de erro non existe.</target>
+      </trans-unit>
+      <trans-unit id="ba_wdXQ" resname="You must indicate a title for this point.">
+        <source>You must indicate a title for this point.</source>
+        <target>~Debes indicar un título para este punto.</target>
+      </trans-unit>
+      <trans-unit id="xK6t01n" resname="You must mark a point on the map.">
+        <source>You must mark a point on the map.</source>
+        <target>~Debes marcar un punto no mapa.</target>
+      </trans-unit>
+      <trans-unit id="lpAEkR5" resname="You must draw an area on the map.">
+        <source>You must draw an area on the map.</source>
+        <target>~Debes debuxar unha área no mapa.</target>
+      </trans-unit>
+      <trans-unit id="n8rcPWg" resname="Select an audio file.">
+        <source>Select an audio file.</source>
+        <target>~Selecciona un ficheiro de audio.</target>
+      </trans-unit>
+      <trans-unit id="RldIKEd" resname="Error in the submap.">
+        <source>Error in the submap.</source>
+        <target>~Erro no submapa.</target>
+      </trans-unit>
+      <trans-unit id="uUeUHlo" resname="You must indicate one point at least.">
+        <source>You must indicate one point at least.</source>
+        <target>~Debes indicar polo menos un punto.</target>
+      </trans-unit>
+      <trans-unit id="M4qH7Ay" resname="You must close all the edited maps before saving the activity.">
+        <source>You must close all the edited maps before saving the activity.</source>
+        <target>~Debes pechar todos os mapas editados antes de gardar a actividade.</target>
+      </trans-unit>
+      <trans-unit id="KGtJNRC" resname="You must close the edited presentation before saving the activity.">
+        <source>You must close the edited presentation before saving the activity.</source>
+        <target>~Debes pechar a presentación editada antes de gardar a actividade.</target>
+      </trans-unit>
+      <trans-unit id="trEwQnv" resname="There must be at least one slide in the presentation.">
+        <source>There must be at least one slide in the presentation.</source>
+        <target>~Debe haber polo menos unha diapositiva na presentación.</target>
+      </trans-unit>
+      <trans-unit id="T_wgZpR" resname="Indicate, using commas, the correct order in which points must be clicked">
+        <source>Indicate, using commas, the correct order in which points must be clicked</source>
+        <target>~Indica, usando comas, a orde correcta na que se deben facer clic nos puntos</target>
+      </trans-unit>
+      <trans-unit id="K.oLNZO" resname="Assessment">
+        <source>Assessment</source>
+        <target>~Avaliación</target>
+      </trans-unit>
+      <trans-unit id="kN1WEsB" resname="Click on the active areas or image icons.">
+        <source>Click on the active areas or image icons.</source>
+        <target>~Fai clic nas áreas activas ou iconas de imaxe.</target>
+      </trans-unit>
+      <trans-unit id="3S7zvT5" resname="Visited points">
+        <source>Visited points</source>
+        <target>~Puntos visitados</target>
+      </trans-unit>
+      <trans-unit id="Z_erAJ9" resname="Identify Spot">
+        <source>Identify Spot</source>
+        <target>~Identificar punto</target>
+      </trans-unit>
+      <trans-unit id="0tv0gq." resname="Quiz">
+        <source>Quiz</source>
+        <target>~Proba</target>
+      </trans-unit>
+      <trans-unit id="WbcXn4C" resname="Percentage of visited contents necessary to be able to carry out the activity questionnaire">
+        <source>Percentage of visited contents necessary to be able to carry out the activity questionnaire</source>
+        <target>~Porcentaxe de contidos visitados necesarios para poder realizar o cuestionario da actividade</target>
+      </trans-unit>
+      <trans-unit id="qrLfvL6" resname="Percentage of questionnaire questions">
+        <source>Percentage of questionnaire questions</source>
+        <target>~Porcentaxe de preguntas do cuestionario</target>
+      </trans-unit>
+      <trans-unit id="ViRXl6m" resname="Percentage of questions">
+        <source>Percentage of questions</source>
+        <target>~Porcentaxe de preguntas</target>
+      </trans-unit>
+      <trans-unit id="3SaNCTl" resname="Close map">
+        <source>Close map</source>
+        <target>~Pechar mapa</target>
+      </trans-unit>
+      <trans-unit id="MF5bsM." resname="URL:">
+        <source>URL:</source>
+        <target>~URL:</target>
+      </trans-unit>
+      <trans-unit id="r.t2gAo" resname="Add point">
+        <source>Add point</source>
+        <target>~Engadir punto</target>
+      </trans-unit>
+      <trans-unit id="BLRU8pT" resname="First point">
+        <source>First point</source>
+        <target>~Primeiro punto</target>
+      </trans-unit>
+      <trans-unit id="aM3uWcL" resname="Previous point">
+        <source>Previous point</source>
+        <target>~Punto anterior</target>
+      </trans-unit>
+      <trans-unit id="psVYtzn" resname="Point number">
+        <source>Point number</source>
+        <target>~Número de punto</target>
+      </trans-unit>
+      <trans-unit id="Y5a4Un_" resname="Next Point">
+        <source>Next Point</source>
+        <target>~Seguinte punto</target>
+      </trans-unit>
+      <trans-unit id="F9.lXSp" resname="Last point">
+        <source>Last point</source>
+        <target>~Último punto</target>
+      </trans-unit>
+      <trans-unit id=".kAqpe4" resname="Delete point">
+        <source>Delete point</source>
+        <target>~Eliminar punto</target>
+      </trans-unit>
+      <trans-unit id="j1nAaAs" resname="Copy point">
+        <source>Copy point</source>
+        <target>~Copiar punto</target>
+      </trans-unit>
+      <trans-unit id="y5_XTAH" resname="Cut point">
+        <source>Cut point</source>
+        <target>~Cortar punto</target>
+      </trans-unit>
+      <trans-unit id="ubCFUNH" resname="Paste point">
+        <source>Paste point</source>
+        <target>~Pegar punto</target>
+      </trans-unit>
+      <trans-unit id="ii4yOfr" resname="Number of points">
+        <source>Number of points</source>
+        <target>~Número de puntos</target>
+      </trans-unit>
+      <trans-unit id="0uw0IQw" resname="Simple">
+        <source>Simple</source>
+        <target>~Simple</target>
+      </trans-unit>
+      <trans-unit id="3.EXYl6" resname="Edit map points">
+        <source>Edit map points</source>
+        <target>~Editar puntos do mapa</target>
+      </trans-unit>
+      <trans-unit id="MnWGio8" resname="Edit presentation points">
+        <source>Edit presentation points</source>
+        <target>~Editar puntos da presentación</target>
+      </trans-unit>
+      <trans-unit id="gi2kFJd" resname="Add a slide">
+        <source>Add a slide</source>
+        <target>~Engadir unha diapositiva</target>
+      </trans-unit>
+      <trans-unit id="nfRETaO" resname="First slide">
+        <source>First slide</source>
+        <target>~Primeira diapositiva</target>
+      </trans-unit>
+      <trans-unit id="J7AD2WY" resname="Previous slide">
+        <source>Previous slide</source>
+        <target>~Diapositiva anterior</target>
+      </trans-unit>
+      <trans-unit id="RNdnixZ" resname="Slide number">
+        <source>Slide number</source>
+        <target>~Número de diapositiva</target>
+      </trans-unit>
+      <trans-unit id="HhLfmcn" resname="Next slide">
+        <source>Next slide</source>
+        <target>~Seguinte diapositiva</target>
+      </trans-unit>
+      <trans-unit id="ha1bzRD" resname="Last slide">
+        <source>Last slide</source>
+        <target>~Última diapositiva</target>
+      </trans-unit>
+      <trans-unit id="hwvrJ42" resname="Delete slide">
+        <source>Delete slide</source>
+        <target>~Eliminar diapositiva</target>
+      </trans-unit>
+      <trans-unit id="._aMYKW" resname="Copy slide">
+        <source>Copy slide</source>
+        <target>~Copiar diapositiva</target>
+      </trans-unit>
+      <trans-unit id="ome7TNM" resname="Cut slide">
+        <source>Cut slide</source>
+        <target>~Cortar diapositiva</target>
+      </trans-unit>
+      <trans-unit id="XsyCqfE" resname="Paste slide">
+        <source>Paste slide</source>
+        <target>~Pegar diapositiva</target>
+      </trans-unit>
+      <trans-unit id="iITl9r1" resname="Questionnaire">
+        <source>Questionnaire</source>
+        <target>~Cuestionario</target>
+      </trans-unit>
+      <trans-unit id="4PvSFE1" resname="Additional content">
+        <source>Additional content</source>
+        <target>~Contido adicional</target>
+      </trans-unit>
+      <trans-unit id="ngTWGb2" resname="Invisible area">
+        <source>Invisible area</source>
+        <target>~Área invisible</target>
+      </trans-unit>
+      <trans-unit id="bz2ryXq" resname="Pushpin">
+        <source>Pushpin</source>
+        <target>~Chincheta</target>
+      </trans-unit>
+      <trans-unit id="_MltP1k" resname="Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s">
+        <source>Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s</source>
+        <target>~Proporciona unha palabra e a súa definición. Podes alternar entre: 'A palabra comeza' ou 'A palabra contén', facendo clic en %s</target>
+      </trans-unit>
+      <trans-unit id="HNvXfDK" resname="You must provide the time to view the solution">
+        <source>You must provide the time to view the solution</source>
+        <target>~Debes proporcionar o tempo para ver a solución</target>
       </trans-unit>
     </body>
   </file>
