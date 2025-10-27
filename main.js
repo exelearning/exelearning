@@ -900,7 +900,7 @@ ipcMain.handle('app:save', async (e, { downloadUrl, projectKey, suggestedName })
       targetPath = picked;
       setSavedPath(key, targetPath);
     } else if (isLegacyElp(targetPath)) {
-      // remembered path is .elp → forzar "Saves as...” to .elpx
+      // remembered path is .elp → forzar "Save as...” to .elpx
       const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button');
       if (!picked) return false;
       targetPath = picked;
