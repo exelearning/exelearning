@@ -6,12 +6,15 @@ use App\Constants;
 use App\Entity\net\exelearning\Dto\OdeCurrentUsersDto;
 use App\Entity\net\exelearning\Dto\OdeFilesDto;
 use App\Entity\net\exelearning\Dto\OdeLastUpdatedDto;
+use App\Entity\net\exelearning\Dto\OdeNavStructureSyncDto;
+use App\Entity\net\exelearning\Dto\OdeNavStructureSyncListDto;
 use App\Entity\net\exelearning\Dto\OdePropertiesSyncDto;
 use App\Entity\net\exelearning\Dto\UserPreferencesDto;
 use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdeFiles;
 use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
+use App\Entity\net\exelearning\Entity\OdePropertiesSync;
 use App\Exception\net\exelearning\Exception\Logical\AutosaveRecentSaveException;
 use App\Exception\net\exelearning\Exception\Logical\UserAlreadyOpenSessionException;
 use App\Exception\net\exelearning\Exception\Logical\UserInsufficientSpaceException;
@@ -25,6 +28,7 @@ use App\Service\net\exelearning\Service\Api\OdeServiceInterface;
 use App\Settings;
 use App\Util\net\exelearning\Util\FileUtil;
 use App\Util\net\exelearning\Util\SettingsUtil;
+use App\Util\net\exelearning\Util\Util;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -611,15 +615,46 @@ class OdeApiController extends DefaultApiController
 
         $responseData = [];
 
+        // Look for number of odeNavStructureSync
+        $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+        $odeNavStructureSync = $odeNavStructureSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
+        $numOdeNavStructureSync = count((array) $odeNavStructureSync);
+
+        $hasChangedPageName = false;
+        $titlePage = Constants::ODE_PAGE_NAME;
+        if ($this->translator->trans($titlePage) != $odeNavStructureSync[0]->getPageName()
+            // TO DELETE WHEN New Page is translated correctly in first node
+            && $titlePage != $odeNavStructureSync[0]->getPageName()
+        ) {
+            $hasChangedPageName = true;
+        }
+
         $currentOdeUserRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentOdeUsers = $currentOdeUserRepo->getCurrentUsers($odeId, $odeversionId, $odeSessionId);
         $totalCurrentOdeUsers = count((array) $currentOdeUsers);
+
+        $odePropertiesSyncRepo = $this->entityManager->getRepository(OdePropertiesSync::class);
+        $odePropertiesSync = $odePropertiesSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
+        $hasChangesOdeProperties = false;
+
+        if (!empty($odePropertiesSync) && !$hasChangedPageName) {
+            foreach ($odePropertiesSync as $odePropertySync) {
+                $property = $odePropertySync->getValue();
+                $key = $odePropertySync->getKey();
+                if (('pp_title' == $key || 'pp_author' == $key || 'pp_description' == $key || 'pp_extraHeadContent' == $key || 'footer' == $key)
+                    && '' != $property) {
+                    $hasChangesOdeProperties = true;
+                    break;
+                }
+            }
+        }
 
         $odeComponentsSyncRepo = $this->entityManager->getRepository(OdeComponentsSync::class);
         $odeComponentsSync = $odeComponentsSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
 
         // Check if ode components are empty and number of current users
-        if (1 == $totalCurrentOdeUsers && !empty($odeComponentsSync)) {
+        if (1 == $totalCurrentOdeUsers && (!empty($odeComponentsSync) || 1 < $numOdeNavStructureSync)
+            || true === $hasChangesOdeProperties || true === $hasChangedPageName) {
             $responseData['askSave'] = true;
         } elseif (empty($odeComponentsSync)) {
             $responseData['leaveEmptySession'] = true;
@@ -886,6 +921,75 @@ class OdeApiController extends DefaultApiController
         }
 
         return $this->json($responseData, $this->status);
+    }
+
+    #[Route('/ode/local/elp/import-root', methods: ['POST'], name: 'api_odes_ode_local_elp_import_root')]
+    public function importElpToRootAction(Request $request): JsonResponse
+    {
+        $responseData = [];
+        $odeSessionId = $request->request->get('odeSessionId');
+        $uploadedFile = $request->files->get('file');
+
+        if (empty($odeSessionId) || empty($uploadedFile)) {
+            $responseData['responseMessage'] = 'error: invalid data';
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, $this->status, [], true);
+        }
+
+        $tempFilePath = null;
+
+        try {
+            $tmpDir = $this->fileHelper->getOdeSessionTmpDir($odeSessionId);
+            if (false === $tmpDir) {
+                throw new \RuntimeException('Unable to access temporary directory');
+            }
+
+            $extension = $uploadedFile->guessExtension() ?: $uploadedFile->getClientOriginalExtension() ?: 'zip';
+            $tempFileName = 'import-root-'.Util::generateId().'.'.$extension;
+            $uploadedFile->move($tmpDir, $tempFileName);
+            $tempFilePath = $tmpDir.DIRECTORY_SEPARATOR.$tempFileName;
+
+            $odeNavStructureRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+            $existingRootNodes = $odeNavStructureRepo->findBy(
+                [
+                    'odeSessionId' => $odeSessionId,
+                    'odeNavStructureSync' => null,
+                ]
+            );
+
+            $maxRootOrder = 0;
+            foreach ($existingRootNodes as $rootNode) {
+                $maxRootOrder = max($maxRootOrder, (int) $rootNode->getOdeNavStructureSyncOrder());
+            }
+
+            $this->odeService->importElpPages($tempFilePath, $odeSessionId, null, $maxRootOrder);
+
+            $responseData['responseMessage'] = 'OK';
+            $responseData['structure'] = $this->buildNavStructureListDto($odeSessionId);
+
+            $this->publish($odeSessionId, 'structure-changed');
+        } catch (\Throwable $throwable) {
+            $this->logger->error(
+                'Error importing ELP into root: '.$throwable->getMessage(),
+                [
+                    'file' => $throwable->getFile(),
+                    'line' => $throwable->getLine(),
+                    'odeSessionId' => $odeSessionId,
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+            $responseData['responseMessage'] = 'error: import failed';
+        } finally {
+            if (!empty($tempFilePath) && file_exists($tempFilePath)) {
+                FileUtil::removeFile($tempFilePath);
+            }
+        }
+
+        $jsonData = $this->getJsonSerialized($responseData);
+
+        return new JsonResponse($jsonData, $this->status, [], true);
     }
 
     #[Route('/ode/local/xml/properties/open', methods: ['POST'], name: 'api_odes_ode_local_xml_properties_open')]
@@ -1390,5 +1494,38 @@ class OdeApiController extends DefaultApiController
         $jsonData = $this->getJsonSerialized($responseData);
 
         return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
+    /**
+     * Builds a navigation structure DTO list for the requested session.
+     */
+    private function buildNavStructureListDto(string $odeSessionId): OdeNavStructureSyncListDto
+    {
+        $repo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+        $navStructure = $repo->getNavStructure($odeSessionId);
+
+        $responseData = new OdeNavStructureSyncListDto();
+        $responseData->setOdeSessionId($odeSessionId);
+
+        $loadOdePagStructureSyncs = false;
+        $loadOdeComponentsSync = false;
+        $loadOdeNavStructureSyncProperties = true;
+        $loadOdePagStructureSyncProperties = false;
+        $loadOdeComponentsSyncProperties = false;
+
+        foreach ($navStructure as $navStructureElem) {
+            $structure = new OdeNavStructureSyncDto();
+            $structure->loadFromEntity(
+                $navStructureElem,
+                $loadOdePagStructureSyncs,
+                $loadOdeComponentsSync,
+                $loadOdeNavStructureSyncProperties,
+                $loadOdePagStructureSyncProperties,
+                $loadOdeComponentsSyncProperties
+            );
+            $responseData->addStructure($structure);
+        }
+
+        return $responseData;
     }
 }

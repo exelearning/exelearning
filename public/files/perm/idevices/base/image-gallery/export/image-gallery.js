@@ -44,7 +44,7 @@ var $imagegallery = {
     renderBehaviour(data) {
         const $node = $('#' + data.ideviceId),
             isInExe = eXe.app.isInExe();
-        if (!isInExe && $node.length == 1){
+        if (!isInExe && $node.length == 1) {
             let gallery = $imagegallery.getStringGallery(data);
             $node.html(gallery)
         }
@@ -78,8 +78,8 @@ var $imagegallery = {
         if (isInExe || $node.length == 0) return file;
 
         const pathMedia = $('html').is('#exe-index')
-            ? 'content/resources/' + $node.attr('id-resource') + '/'
-            : '../content/resources/' + $node.attr('id-resource') + '/';
+            ? 'content/resources/' + data.ideviceId + '/'
+            : '../content/resources/' + data.ideviceId + '/';
 
         const parts = file.split(/[/\\]/),
             name = parts.pop(),
@@ -117,7 +117,7 @@ var $imagegallery = {
         htmlContent += `
                 </div>
             </div>`;
-            return htmlContent
+        return htmlContent
     },
 
     /**
