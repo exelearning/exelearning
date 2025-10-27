@@ -12021,7 +12021,7 @@
         <source>System</source>
         <target>~Sistemo</target>
       </trans-unit>
-      <trans-unit id="obgj9Qf" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
+      <trans-unit id="y7yTA4h" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
         <source>Someone else is editing this page. Please wait until they finish before adding new iDevices.</source>
         <target>~Iu redaktas ĉi tiun paĝon. Bonvolu atendi ĝis ili finos redakti antaŭ ol krei novajn iDevices.</target>
       </trans-unit>
@@ -12101,9 +12101,9 @@
         <source>Point</source>
         <target>~Punkto</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>~Vi devas revizii %s&amp;percnt;  de la enhavo de la aktiveco antaŭ ol kompletigi la demandaron.</target>
+      <trans-unit id="lgtXQPh" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.</source>
+        <target><![CDATA[~Vi devas revizii %s&percnt;  de la enhavo de la aktiveco antaŭ ol kompletigi la demandaron.]]></target>
       </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
@@ -12320,6 +12320,22 @@
       <trans-unit id="HNvXfDK" resname="You must provide the time to view the solution">
         <source>You must provide the time to view the solution</source>
         <target>~Vi devas provizi la tempon por vidi la solvon</target>
+      </trans-unit>
+      <trans-unit id="shDAvQ3" resname="Import (.elpx…)">
+        <source>Import (.elpx…)</source>
+        <target>~Importi (.elpx…)</target>
+      </trans-unit>
+      <trans-unit id="TFDXxIf" resname="Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.">
+        <source>Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.</source>
+        <target>~Importu .elpx, .elp aŭ redakteblajn .zip-dosierojn. La importita enhavo aldiĝos post la lasta paĝo de la nuna projekto.</target>
+      </trans-unit>
+      <trans-unit id="IOajJx_" resname="Unexpected error importing file.">
+        <source>Unexpected error importing file.</source>
+        <target>~Neatendita eraro dum importado de la dosiero.</target>
+      </trans-unit>
+      <trans-unit id="SIDjSV." resname="iDevice">
+        <source>iDevice</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>
