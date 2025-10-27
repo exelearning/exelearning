@@ -2263,11 +2263,9 @@ class OdeService implements OdeServiceInterface
             $elpContentFileContent = FileUtil::getFileContent($contentFilePath);
 
             $tempSessionId = Util::generateId();
-            if ($isNewOdeXml) {
-                $odeResponse = OdeXmlUtil::readOdeXml($tempSessionId, $elpContentFileContent);
-            } else {
-                $odeResponse = OdeXmlUtil::readOldExeXml($tempSessionId, $elpContentFileContent, $this->translator);
-            }
+            $odeResponse = $isNewOdeXml
+                ? OdeXmlUtil::readOdeXml($tempSessionId, $elpContentFileContent)
+                : OdeXmlUtil::readOldExeXml($tempSessionId, $elpContentFileContent, $this->translator);
 
             $importedNavStructures = $odeResponse['odeNavStructureSyncs'] ?? [];
 
@@ -2287,8 +2285,33 @@ class OdeService implements OdeServiceInterface
             }
 
             $distBaseDir = rtrim($importDir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
-            $this->copyOdeComponentsFilesToSession($currentSessionId, $distBaseDir);
-            $this->copyFileManagerFilesToSession($currentSessionId, $distBaseDir);
+            $contentResourcesDir = $distBaseDir.FileUtil::getPathFromDirStructureArray(
+                Constants::PERMANENT_SAVE_ODE_DIR_STRUCTURE,
+                Constants::PERMANENT_SAVE_CONTENT_RESOURCES_DIRNAME
+            );
+            if ($isNewOdeXml) {
+                $componentDirs = is_dir($contentResourcesDir) ? glob($contentResourcesDir.'*', GLOB_ONLYDIR) : [];
+                if (!empty($componentDirs)) {
+                    $this->copyOdeComponentsFilesToSession($currentSessionId, $distBaseDir);
+                    $this->copyFileManagerFilesToSession($currentSessionId, $distBaseDir);
+                } else {
+                    $this->copyOldResourcesFilesToSession(
+                        $currentSessionId,
+                        $distBaseDir,
+                        $odeResponse['srcRoutes'] ?? [],
+                        $odeResponse['odeComponentsMapping'] ?? [],
+                        $tempSessionId
+                    );
+                }
+            } else {
+                $this->copyOldResourcesFilesToSession(
+                    $currentSessionId,
+                    $distBaseDir,
+                    $odeResponse['srcRoutes'] ?? [],
+                    $odeResponse['odeComponentsMapping'] ?? [],
+                    $tempSessionId
+                );
+            }
 
             $this->entityManager->flush();
         } catch (PhpZipExtensionException $exception) {
@@ -2393,13 +2416,31 @@ class OdeService implements OdeServiceInterface
      * @param string $distDirPath
      * @param array  $odeComponentsMapping
      */
-    private function copyOldResourcesFilesToSession($odeSessionId, $distDirPath, $srcRoutes, $odeComponentsMapping)
-    {
+    private function copyOldResourcesFilesToSession(
+        $odeSessionId,
+        $distDirPath,
+        $srcRoutes,
+        $odeComponentsMapping,
+        $sourceSessionId = null,
+    ) {
         $contentResourcesDir = $distDirPath;
 
         // Create odeComponents directory
         foreach ($odeComponentsMapping as $odeComponentMapping) {
             $this->fileHelper->getOdeComponentsSyncDir($odeSessionId, $odeComponentMapping);
+        }
+
+        $targetSessionUrl = UrlUtil::getOdeSessionUrl($odeSessionId);
+        $targetSessionPath = false !== $targetSessionUrl
+            ? substr($targetSessionUrl, strlen(Constants::FILES_DIR_NAME.Constants::SLASH))
+            : null;
+
+        $sourceSessionPath = null;
+        if (!empty($sourceSessionId) && $sourceSessionId !== $odeSessionId) {
+            $sourceSessionUrl = UrlUtil::getOdeSessionUrl($sourceSessionId);
+            if (false !== $sourceSessionUrl) {
+                $sourceSessionPath = substr($sourceSessionUrl, strlen(Constants::FILES_DIR_NAME.Constants::SLASH));
+            }
         }
 
         // Copy odeComponents files
@@ -2414,6 +2455,14 @@ class OdeService implements OdeServiceInterface
                 if (!empty($srcRouteConstantPos[1])) {
                     // Get the second value of array to obtain the route
                     $routeWithoutConstant = $srcRouteConstantPos[1];
+
+                    if (!empty($sourceSessionPath) && !empty($targetSessionPath)) {
+                        $routeWithoutConstant = str_replace(
+                            $sourceSessionPath,
+                            $targetSessionPath,
+                            $routeWithoutConstant
+                        );
+                    }
 
                     $sourcePath = $contentResourcesDir.$resource;
                     $destinationPath = $this->fileHelper->getFilesDir().$routeWithoutConstant;
