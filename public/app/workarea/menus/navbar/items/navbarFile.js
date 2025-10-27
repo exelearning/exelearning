@@ -923,8 +923,8 @@ export default class NavbarFile {
         inputUpload.classList.add('local-ode-file-upload-input');
         inputUpload.setAttribute('type', 'file');
         inputUpload.setAttribute('name', 'local-ode-file-upload');
-        // Allow both .elp and .zip for offline picker fallback
-        inputUpload.setAttribute('accept', '.elp,.zip');
+        // Allow both .elpx and .zip for offline picker fallback
+        inputUpload.setAttribute('accept', '.elpx,.zip');
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
             let uploadOdeFile = document.querySelector(
@@ -982,7 +982,7 @@ export default class NavbarFile {
                     // Derive filename in a cross-platform way (Windows/Mac/Linux)
                     const filename =
                         (filePath && filePath.split(/[\\\/]/).pop()) ||
-                        'project.elp';
+                        'project.elpx';
                     const file = new File([blob], filename, {
                         type: 'application/octet-stream',
                         lastModified: Date.now(),
@@ -1158,7 +1158,7 @@ export default class NavbarFile {
             if (response && response.responseMessage === 'OK') {
                 const url = response['urlZipFile'];
                 const suggested =
-                    response['exportProjectName'] || 'document.elp';
+                    response['exportProjectName'] || 'document.elpx';
                 const key = window.__currentProjectId || 'default';
                 const safeName = this.normalizeSuggestedName(
                     suggested,
@@ -2117,7 +2117,7 @@ export default class NavbarFile {
                     const suggested =
                         typeof $name === 'string' && $name
                             ? $name
-                            : 'document.elp';
+                            : 'document.elpx';
                     // Try to infer a typeKey from the extension for better naming
                     let typeKey = eXeLearning.extension;
                     try {
@@ -2186,7 +2186,7 @@ export default class NavbarFile {
             let base = (name || '').trim();
             if (
                 !base ||
-                /^document\.elp$/i.test(base) ||
+                /^document\.elpx$/i.test(base) ||
                 /^export(\..+)?$/i.test(base)
             ) {
                 // Build from project title if available
