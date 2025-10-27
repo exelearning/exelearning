@@ -17,6 +17,7 @@
 - "Invalid data" error in the "Open" dialog
 - Internal links in eXe with the new UI
 - Problems with special characters and symbols in page titles and exported HTML files
+- Multiple toast notifications appear after editing the project title
 - Missing confirmation before closing a project
 - "Save As" default extension: elp → elpx
 - Export of a block or an iDevice in the offline version left a blank window open
