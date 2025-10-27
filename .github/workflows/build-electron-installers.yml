@@ -111,7 +111,7 @@ jobs:
       # If the trigger was a release and electron-builder already published, this
       # artifact is an extra safe copy; if it was a push/PR-merge, this is the only copy.
       - name: Upload installers artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: installers-${{ matrix.os }}
           path: |
@@ -368,7 +368,7 @@ jobs:
 
 
       - name: Upload screenshots and logs (per OS)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: screenshots-and-logs-${{ matrix.os }}
           path: |
@@ -390,7 +390,7 @@ jobs:
           merge-multiple: true   # leave all files in the workspace
 
       - name: Re-upload merged artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: screenshots-and-logs
           path: .
