@@ -93,6 +93,9 @@ export default class NavbarFile {
         this.importXmlPropertiesButton = this.menu.navbar.querySelector(
             '#navbar-button-import-xml-properties'
         );
+        this.importElpButton = this.menu.navbar.querySelector(
+            '#navbar-button-import-elp'
+        );
         this.leftPanelsTogglerButton = this.menu.navbar.querySelector(
             '#exe-panels-toggler'
         );
@@ -135,6 +138,7 @@ export default class NavbarFile {
         this.setExportXmlPropertiesEvent();
         this.setExportXmlPropertiesAsEvent();
         this.setImportXmlPropertiesEvent();
+        this.setImportElpEvent();
         this.setLeftPanelsTogglerEvents();
     }
 
@@ -576,6 +580,97 @@ export default class NavbarFile {
         this.importXmlPropertiesButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.importXmlPropertiesEvent();
+        });
+    }
+
+    /**
+     * Import an .elpx file and append it to the root node.
+     */
+    setImportElpEvent() {
+        if (!this.importElpButton) return;
+
+        this.importElpButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            eXeLearning.app.modals.confirm.show({
+                title: _('Import (.elpx...)'),
+                body: _(
+                    'Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.'
+                ),
+                confirmButtonText: _('Continue'),
+                cancelButtonText: _('Cancel'),
+                focusFirstInputText: true,
+                confirmExec: () => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.elpx,.elp,.zip';
+                    input.classList.add('visually-hidden');
+                    document.body.appendChild(input);
+
+                    input.addEventListener('change', () => {
+                        if (!input.files || !input.files.length) {
+                            input.remove();
+                            return;
+                        }
+
+                        const file = input.files[0];
+                        const formData = new FormData();
+                        formData.append(
+                            'odeSessionId',
+                            eXeLearning.app.project.odeSession
+                        );
+                        formData.append('file', file);
+
+                        const refreshStructure = (targetId = false) => {
+                            const structure =
+                                eXeLearning?.app?.project?.structure;
+                            if (
+                                structure &&
+                                typeof structure.resetDataAndStructureData ===
+                                    'function'
+                            ) {
+                                structure.resetDataAndStructureData(targetId);
+                            } else {
+                                eXeLearning.app.project.openLoad();
+                            }
+                        };
+
+                        eXeLearning.app.api
+                            .postImportElpToRoot(formData)
+                            .then((response) => {
+                                if (response.responseMessage === 'OK') {
+                                    const structure =
+                                        eXeLearning?.app?.project?.structure;
+                                    const selectedNodeId =
+                                        structure &&
+                                        typeof structure.getSelectNodeNavId ===
+                                            'function'
+                                            ? structure.getSelectNodeNavId()
+                                            : null;
+                                    refreshStructure(selectedNodeId || false);
+                                } else {
+                                    const message =
+                                        response.responseMessage ||
+                                        _('Unexpected error importing file.');
+                                    eXeLearning.app.modals.alert.show({
+                                        title: _('Error'),
+                                        body: message,
+                                    });
+                                }
+                            })
+                            .catch(() => {
+                                eXeLearning.app.modals.alert.show({
+                                    title: _('Error'),
+                                    body: _('Unexpected error importing file.'),
+                                });
+                            })
+                            .finally(() => {
+                                input.remove();
+                            });
+                    });
+
+                    input.click();
+                },
+            });
         });
     }
 

@@ -183,6 +183,16 @@ export default class ApiCallManager {
      * @param {*} data
      * @returns
      */
+    async postImportElpToRoot(data) {
+        let url = this.endpoints.api_odes_ode_local_elp_import_root.path;
+        return await this.func.fileSendPost(url, data);
+    }
+
+    /**
+     *
+     * @param {*} data
+     * @returns
+     */
     async postLocalOdeComponents(data) {
         let url = this.endpoints.api_odes_ode_local_idevices_open.path;
         return await this.func.post(url, data);
@@ -196,6 +206,18 @@ export default class ApiCallManager {
     async postMultipleLocalOdeFiles(data) {
         let url = this.endpoints.api_odes_ode_multiple_local_elp_open.path;
         return await this.func.post(url, data);
+    }
+
+    /**
+     *
+     * @param {String} navId
+     * @param {FormData} data
+     * @returns
+     */
+    async postImportElpAsChild(navId, data) {
+        let url = this.endpoints.api_nav_structures_import_elp_as_children.path;
+        url = url.replace('{odeNavStructureSyncId}', navId);
+        return await this.func.fileSendPost(url, data);
     }
 
     /**
