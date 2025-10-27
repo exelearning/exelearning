@@ -600,6 +600,10 @@ export default class NavbarFile {
         this.publishGithubButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             eXeLearning.app.modals.publishtogithub.showFromMenu();
+        });
+    }
+
+    /**            
      * Import an .elpx file and append it to the root node.
      */
     setImportElpEvent() {
