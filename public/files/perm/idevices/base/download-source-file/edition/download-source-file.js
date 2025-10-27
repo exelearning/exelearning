@@ -165,13 +165,13 @@ var $exeDevice = {
     var str1 = c_("General information about this educational resource");
     var str2 = c_("Title");
     var str3 = c_("Description");
-    var str4 = c_("Author");
+    var str4 = c_("Authorship");
     var str5 = c_("License");
     var str6 = c_("This content was created with eXeLearning, your free and open source editor to create educational resources.");
     var str7 = c_("Download .elp file");
 
     var defaultContent = '\
-			<table class="exe-table">\
+			<table class="exe-table exe-package-info">\
 				<caption>' + str1 + ' </caption>\
 				<tbody>\
 					<tr>\
@@ -214,7 +214,7 @@ var $exeDevice = {
 					</p>\
 					<p>\
 						<label for="dpiButtonBGcolor">' + _("Background Color") + ': </label> \
-            <input type="color" id="dpiButtonBGcolor" class="exe-color-picker" value="#5a7f0c"/> \
+            <input type="color" id="dpiButtonBGcolor" class="exe-color-picker" value="#107275"/> \
 						<label for="dpiButtonTextColor" class="dpi-label-col">'+ _("Text Color") + ': </label> \
             <input type="color" id="dpiButtonTextColor" class="exe-color-picker" value="#ffffff" /> \
 					</p>\

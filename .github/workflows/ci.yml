@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload HTML report
         if: always() && env.HAS_SCREENSHOTS == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: e2e-report
           path: ${{ env.REPORT_NAME }}

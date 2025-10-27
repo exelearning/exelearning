@@ -628,7 +628,7 @@ var $eXeClasifica = {
                     $eXeClasifica.sendScore(false, instance);
                     $eXeClasifica.saveEvaluation(instance);
                 } else {
-                    eXe.app.alert(mOptions.msgs.msgEndGamerScore);
+                    alert(mOptions.msgs.msgEndGamerScore);
                 }
             });
 

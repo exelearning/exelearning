@@ -571,12 +571,12 @@
 }
 
 .MTHP-GameContainer .exeQuextIcons-Score {
-    background-image: url(exequextscore.png);
+    background-image: url(exequextscore.svg);
     background-size: 100% 100%;
 }
 
 .MTHP-GameContainer .exeQuextIcons-Time {
-    background-image: url(exequexttime.png);
+    background-image: url(exequexttime.svg);
     background-size: 100% 100%;
 }
 
