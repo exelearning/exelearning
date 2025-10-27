@@ -1,6 +1,7 @@
 <?php
 
 namespace App\EventSubscriber;
+
 use App\Settings;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
