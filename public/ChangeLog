@@ -6,6 +6,10 @@
 
 - New "Import (.elpx…)" functionality in the "File" menu to import .elpx, .elp, and editable .zip files
 
+### Fixed
+
+- Fixed font-weight issue in the "Zen" style
+
 ### Upgraded
 
 - actions/download-artifact: 5 → 6
