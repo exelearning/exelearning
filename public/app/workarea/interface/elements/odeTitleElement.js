@@ -44,12 +44,29 @@ export default class OdeTitleMenu {
 
     setChangeTitle() {
         const title = this.odeTitleMenuHeadElement;
+        let currentFinishEditing = null;
+        let currentOnKeydown = null;
+        let isEditing = false;
+        let isSaving = false;
+
         this.titleButton.addEventListener('click', (e) => {
             e.stopPropagation();
             title.click();
         });
+
         title.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
+
+            if (isEditing) return;
+            isEditing = true;
+
+            if (currentFinishEditing) {
+                title.removeEventListener('blur', currentFinishEditing);
+            }
+            if (currentOnKeydown) {
+                title.removeEventListener('keydown', currentOnKeydown);
+            }
+
             title.setAttribute('contenteditable', 'true');
             this.attachPasteAsPlain(title);
             this.titleContainer.classList.add('title-editing');
@@ -64,33 +81,51 @@ export default class OdeTitleMenu {
             const selection = window.getSelection();
             selection.removeAllRanges();
             selection.addRange(range);
+
             let finished = false;
-            const finishEditing = () => {
-                if (finished) return;
+
+            currentFinishEditing = () => {
+                if (finished || isSaving) return;
                 finished = true;
+                isSaving = true;
+
+                title.removeEventListener('blur', currentFinishEditing);
+                title.removeEventListener('keydown', currentOnKeydown);
+
                 title.removeAttribute('contenteditable');
                 title.scrollTop = 0;
                 this.titleContainer.classList.remove('title-editing');
                 this.titleContainer.classList.add('title-not-editing');
-                this.saveTitle(title.textContent).then((response) => {
-                    this.checkTitleLineCount();
-                    title.removeEventListener('blur', finishEditing);
-                    title.removeEventListener('keydown', onKeydown);
-                    if (response.responseMessage === 'OK') {
-                        let toastData = {
-                            title: _('Project properties'),
-                            body: _('Project properties saved.'),
-                            icon: 'downloading',
-                        };
-                        let toast =
-                            window.eXeLearning.app.toasts.createToast(
-                                toastData
-                            );
-                        setTimeout(() => {
-                            toast.remove();
-                        }, 1000);
-                    }
-                });
+
+                this.saveTitle(title.textContent)
+                    .then((response) => {
+                        this.checkTitleLineCount();
+                        if (response.responseMessage === 'OK') {
+                            let toastData = {
+                                title: _('Project properties'),
+                                body: _('Project properties saved.'),
+                                icon: 'downloading',
+                            };
+                            let toast =
+                                window.eXeLearning.app.toasts.createToast(
+                                    toastData
+                                );
+                            setTimeout(() => {
+                                toast.remove();
+                            }, 1000);
+                        }
+
+                        isEditing = false;
+                        isSaving = false;
+                        currentFinishEditing = null;
+                        currentOnKeydown = null;
+                    })
+                    .catch((error) => {
+                        isEditing = false;
+                        isSaving = false;
+                        console.error('Error saving title:', error);
+                    });
+
                 if (title._onPastePlain) {
                     title.removeEventListener('paste', title._onPastePlain);
                     title.removeEventListener('drop', title._onDropPlain);
@@ -98,33 +133,49 @@ export default class OdeTitleMenu {
                     delete title._onDropPlain;
                 }
             };
-            const onKeydown = (e) => {
+
+            currentOnKeydown = (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    finishEditing();
+                    currentFinishEditing();
                 }
             };
-            title.addEventListener('blur', finishEditing);
-            title.addEventListener('keydown', onKeydown);
+
+            title.addEventListener('blur', currentFinishEditing);
+            title.addEventListener('keydown', currentOnKeydown);
         });
         eXeLearning.app.common.initTooltips(this.titleContainer);
     }
 
     async saveTitle(title) {
-        const properties = await this.getProjectProperties();
-        const output = Object.keys(properties).reduce((acc, key) => {
-            acc[key] =
-                typeof properties[key] === 'object' &&
-                'value' in properties[key]
-                    ? properties[key].value
-                    : properties[key];
-            return acc;
-        }, {});
-        output.pp_title = title;
-        return eXeLearning.app.project.properties.apiSaveProperties(
-            output,
-            false
-        );
+        let params = {
+            odeSessionId: eXeLearning.app.project.odeSession,
+            pp_title: title,
+        };
+        try {
+            const response =
+                await eXeLearning.app.api.putSaveOdeProperties(params);
+
+            if (response.responseMessage === 'OK') {
+                await eXeLearning.app.project.properties.apiLoadProperties();
+                eXeLearning.app.project.properties.updateTitlePropertiesMenuTop();
+
+                this.updatePropertiesInput(title);
+
+                eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
+                    false,
+                    'root',
+                    null,
+                    null,
+                    'EDIT'
+                );
+            }
+
+            return response;
+        } catch (error) {
+            console.error('Error in saveTitle:', error);
+            throw error;
+        }
     }
 
     checkTitleLineCount() {
@@ -231,5 +282,24 @@ export default class OdeTitleMenu {
         range.collapse(true);
         sel.removeAllRanges();
         sel.addRange(range);
+    }
+
+    updatePropertiesInput(title) {
+        const propertiesForm = document.querySelector(
+            '#node-content #properties-node-content-form'
+        );
+        if (!propertiesForm || !propertiesForm.offsetParent) {
+            return;
+        }
+
+        const titleInput = propertiesForm.querySelector(
+            'input[data-testid="prop-pp_title"]'
+        );
+
+        if (titleInput) {
+            titleInput.value = title;
+            titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+            titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
     }
 }

@@ -1307,7 +1307,7 @@ var $exeDevice = {
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
-                    alert(
+                    eXe.app.alert(
                         _(
                             'Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)',
                         ),
@@ -1323,7 +1323,7 @@ var $exeDevice = {
                         file.type.match('text/xml')
                     )
                 ) {
-                    alert(
+                    eXe.app.alert(
                         _(
                             'Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) ',
                         ),

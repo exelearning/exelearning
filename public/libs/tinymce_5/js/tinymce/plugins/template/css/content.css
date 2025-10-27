@@ -7,6 +7,7 @@
 .figcaption{padding-top:.2em}
 .figcaption.header{padding-top:0;padding-bottom:.2em}
 /* TinyMCE templates */
+.exe-clear{overflow:auto}
 .exe-layout-2-cols,.exe-layout-3-cols{width:100%}
 .exe-layout-2-cols .exe-col{float:left;width:49%}
 .exe-layout-2-cols .exe-col-1{padding-right:1%}

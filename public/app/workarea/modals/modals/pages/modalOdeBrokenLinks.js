@@ -28,8 +28,8 @@ export default class ModalOdeBrokenLinks extends Modal {
             _('Times'),
             _('Page name'),
             _('Block name'),
-            _('Type'),
-            _('Block position'),
+            _('iDevice'),
+            _('Position'),
         ];
         for (let thCount = 0; thCount < thTitles.length; thCount++) {
             let th = document.createElement('th');
@@ -142,8 +142,8 @@ export default class ModalOdeBrokenLinks extends Modal {
                     _('Times'),
                     _('Page name'),
                     _('Block name'),
-                    _('Type'),
-                    _('Block position'),
+                    _('iDevice'),
+                    _('Position'),
                 ];
                 var csv =
                     eXeLearning.app.api.app.menus.navbar.utilities.json2Csv(

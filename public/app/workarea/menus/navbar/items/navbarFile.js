@@ -99,6 +99,9 @@ export default class NavbarFile {
         this.importXmlPropertiesButton = this.menu.navbar.querySelector(
             '#navbar-button-import-xml-properties'
         );
+        this.importElpButton = this.menu.navbar.querySelector(
+            '#navbar-button-import-elp'
+        );
         this.leftPanelsTogglerButton = this.menu.navbar.querySelector(
             '#exe-panels-toggler'
         );
@@ -141,6 +144,7 @@ export default class NavbarFile {
         this.setExportXmlPropertiesEvent();
         this.setExportXmlPropertiesAsEvent();
         this.setImportXmlPropertiesEvent();
+        this.setImportElpEvent();
         this.setLeftPanelsTogglerEvents();
         this.setPublishGithubEvent();
         this.setPublishNetlifyEvent();
@@ -596,6 +600,93 @@ export default class NavbarFile {
         this.publishGithubButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             eXeLearning.app.modals.publishtogithub.showFromMenu();
+     * Import an .elpx file and append it to the root node.
+     */
+    setImportElpEvent() {
+        if (!this.importElpButton) return;
+
+        this.importElpButton.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            eXeLearning.app.modals.confirm.show({
+                title: _('Import (.elpx...)'),
+                body: _(
+                    'Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.'
+                ),
+                confirmButtonText: _('Continue'),
+                cancelButtonText: _('Cancel'),
+                focusFirstInputText: true,
+                confirmExec: () => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.elpx,.elp,.zip';
+                    input.classList.add('visually-hidden');
+                    document.body.appendChild(input);
+
+                    input.addEventListener('change', () => {
+                        if (!input.files || !input.files.length) {
+                            input.remove();
+                            return;
+                        }
+
+                        const file = input.files[0];
+                        const formData = new FormData();
+                        formData.append(
+                            'odeSessionId',
+                            eXeLearning.app.project.odeSession
+                        );
+                        formData.append('file', file);
+
+                        const refreshStructure = (targetId = false) => {
+                            const structure =
+                                eXeLearning?.app?.project?.structure;
+                            if (
+                                structure &&
+                                typeof structure.resetDataAndStructureData ===
+                                    'function'
+                            ) {
+                                structure.resetDataAndStructureData(targetId);
+                            } else {
+                                eXeLearning.app.project.openLoad();
+                            }
+                        };
+
+                        eXeLearning.app.api
+                            .postImportElpToRoot(formData)
+                            .then((response) => {
+                                if (response.responseMessage === 'OK') {
+                                    const structure =
+                                        eXeLearning?.app?.project?.structure;
+                                    const selectedNodeId =
+                                        structure &&
+                                        typeof structure.getSelectNodeNavId ===
+                                            'function'
+                                            ? structure.getSelectNodeNavId()
+                                            : null;
+                                    refreshStructure(selectedNodeId || false);
+                                } else {
+                                    const message =
+                                        response.responseMessage ||
+                                        _('Unexpected error importing file.');
+                                    eXeLearning.app.modals.alert.show({
+                                        title: _('Error'),
+                                        body: message,
+                                    });
+                                }
+                            })
+                            .catch(() => {
+                                eXeLearning.app.modals.alert.show({
+                                    title: _('Error'),
+                                    body: _('Unexpected error importing file.'),
+                                });
+                            })
+                            .finally(() => {
+                                input.remove();
+                            });
+                    });
+
+                    input.click();
+                },
+            });
         });
     }
 
@@ -954,8 +1045,8 @@ export default class NavbarFile {
         inputUpload.classList.add('local-ode-file-upload-input');
         inputUpload.setAttribute('type', 'file');
         inputUpload.setAttribute('name', 'local-ode-file-upload');
-        // Allow both .elp and .zip for offline picker fallback
-        inputUpload.setAttribute('accept', '.elp,.zip');
+        // Allow both .elpx and .zip for offline picker fallback
+        inputUpload.setAttribute('accept', '.elpx,.zip');
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
             let uploadOdeFile = document.querySelector(
@@ -1013,7 +1104,7 @@ export default class NavbarFile {
                     // Derive filename in a cross-platform way (Windows/Mac/Linux)
                     const filename =
                         (filePath && filePath.split(/[\\\/]/).pop()) ||
-                        'project.elp';
+                        'project.elpx';
                     const file = new File([blob], filename, {
                         type: 'application/octet-stream',
                         lastModified: Date.now(),
@@ -1189,7 +1280,7 @@ export default class NavbarFile {
             if (response && response.responseMessage === 'OK') {
                 const url = response['urlZipFile'];
                 const suggested =
-                    response['exportProjectName'] || 'document.elp';
+                    response['exportProjectName'] || 'document.elpx';
                 const key = window.__currentProjectId || 'default';
                 const safeName = this.normalizeSuggestedName(
                     suggested,
@@ -1341,7 +1432,6 @@ export default class NavbarFile {
     }
 
     /**
-<<<<<<< HEAD
      * Export Website to folder (unzipped) — offline Electron only
      */
     async exportHTML5FolderAsEvent() {
@@ -1419,8 +1509,6 @@ export default class NavbarFile {
     }
 
     /**
-=======
->>>>>>> c0ba7aea408904076081df962baf800d79424a91
      * Export the ode as HTML5 and download it
      *
      */
@@ -2148,7 +2236,7 @@ export default class NavbarFile {
                     const suggested =
                         typeof $name === 'string' && $name
                             ? $name
-                            : 'document.elp';
+                            : 'document.elpx';
                     // Try to infer a typeKey from the extension for better naming
                     let typeKey = eXeLearning.extension;
                     try {
@@ -2217,7 +2305,7 @@ export default class NavbarFile {
             let base = (name || '').trim();
             if (
                 !base ||
-                /^document\.elp$/i.test(base) ||
+                /^document\.elpx$/i.test(base) ||
                 /^export(\..+)?$/i.test(base)
             ) {
                 // Build from project title if available
