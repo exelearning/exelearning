@@ -97,29 +97,34 @@ export default class OdeTitleMenu {
                 this.titleContainer.classList.remove('title-editing');
                 this.titleContainer.classList.add('title-not-editing');
 
-                this.saveTitle(title.textContent).then((response) => {
-                    this.checkTitleLineCount();
-                    if (response.responseMessage === 'OK') {
-                        let toastData = {
-                            title: _('Project properties'),
-                            body: _('Project properties saved.'),
-                            icon: 'downloading',
-                        };
-                        let toast = window.eXeLearning.app.toasts.createToast(toastData);
-                        setTimeout(() => {
-                            toast.remove();
-                        }, 1000);
-                    }
+                this.saveTitle(title.textContent)
+                    .then((response) => {
+                        this.checkTitleLineCount();
+                        if (response.responseMessage === 'OK') {
+                            let toastData = {
+                                title: _('Project properties'),
+                                body: _('Project properties saved.'),
+                                icon: 'downloading',
+                            };
+                            let toast =
+                                window.eXeLearning.app.toasts.createToast(
+                                    toastData
+                                );
+                            setTimeout(() => {
+                                toast.remove();
+                            }, 1000);
+                        }
 
-                    isEditing = false;
-                    isSaving = false;
-                    currentFinishEditing = null;
-                    currentOnKeydown = null;
-                }).catch((error) => {
-                    isEditing = false;
-                    isSaving = false;
-                    console.error('Error saving title:', error);
-                });
+                        isEditing = false;
+                        isSaving = false;
+                        currentFinishEditing = null;
+                        currentOnKeydown = null;
+                    })
+                    .catch((error) => {
+                        isEditing = false;
+                        isSaving = false;
+                        console.error('Error saving title:', error);
+                    });
 
                 if (title._onPastePlain) {
                     title.removeEventListener('paste', title._onPastePlain);
@@ -145,10 +150,11 @@ export default class OdeTitleMenu {
     async saveTitle(title) {
         let params = {
             odeSessionId: eXeLearning.app.project.odeSession,
-            pp_title: title
+            pp_title: title,
         };
         try {
-            const response = await eXeLearning.app.api.putSaveOdeProperties(params);
+            const response =
+                await eXeLearning.app.api.putSaveOdeProperties(params);
 
             if (response.responseMessage === 'OK') {
                 await eXeLearning.app.project.properties.apiLoadProperties();
@@ -278,14 +284,17 @@ export default class OdeTitleMenu {
         sel.addRange(range);
     }
 
-
     updatePropertiesInput(title) {
-        const propertiesForm = document.querySelector('#node-content #properties-node-content-form');
+        const propertiesForm = document.querySelector(
+            '#node-content #properties-node-content-form'
+        );
         if (!propertiesForm || !propertiesForm.offsetParent) {
             return;
         }
 
-        const titleInput = propertiesForm.querySelector('input[data-testid="prop-pp_title"]');
+        const titleInput = propertiesForm.querySelector(
+            'input[data-testid="prop-pp_title"]'
+        );
 
         if (titleInput) {
             titleInput.value = title;
