@@ -603,7 +603,7 @@ export default class NavbarFile {
         });
     }
 
-    /**            
+    /**
      * Import an .elpx file and append it to the root node.
      */
     setImportElpEvent() {
