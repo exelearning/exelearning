@@ -4,17 +4,24 @@
 
 ### Added
 
-- Full translation: Catalan (ca)
+- Local Windows installer signing
 - New Windows installation icons
 - New iDevice icons in all styles
-- iDevices: Reviewed icons and positions in the iDevices panel
+- Reviewed iDevice icons and positions in the iDevices panel
+- Map iDevice translations
+- New full translation: Catalan (ca)
+- Expanded browser locale detection for all supported languages
 
 ### Fixed
 
+- Fixed Windows auto-update process
 - "Invalid data" error in the "Open" dialog
 - Internal links in eXe with the new UI
 - Problems with special characters and symbols in page titles and exported HTML files
+- Multiple toast notifications appear after editing the project title
 - Missing confirmation before closing a project
+- "Save As" default extension: elp → elpx
+- Export of a block or an iDevice in the offline version left a blank window open
 - Text iDevice with feedback: `fieldset` open by default
 - Issues with style information
 - Missing font file in the "Zen" style
