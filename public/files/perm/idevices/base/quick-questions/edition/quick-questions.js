@@ -1070,6 +1070,18 @@ var $exeDevice = {
                                 <input type="number" class="form-control" name="quextEPercentajeQuestions" id="quextEPercentajeQuestions" value="100" min="1" max="100" />
                                 <span id="quextENumeroPercentaje">1/1</span>
                             </div>
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <label for="quextEGlobalTimes">${_('Time per question')}:</label>
+                                <select id="quextEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
+                                    <option value="0" selected>15s</option>
+                                    <option value="1">30s</option>
+                                    <option value="2">1m</option>
+                                    <option value="3">3m</option>
+                                    <option value="4">5m</option>
+                                    <option value="5">10m</option>
+                                </select>
+                                <button id="quextGlobalTimeButton" class="btn btn-primary" type="button">${_("Accept")}</button> 
+                            </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">                                
                                 <div class="toggle-item">
                                     <span class="toggle-control"><input type="checkbox" id="quextEEvaluation" class="toggle-input"/>
@@ -1528,6 +1540,8 @@ var $exeDevice = {
             typeof game.evaluationID !== 'undefined' ? game.evaluationID : '';
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.globalTime =
+            typeof game.globalTime !== 'undefined' ? game.globalTime : 0;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#quextEShowMinimize').prop('checked', game.showMinimize);
@@ -1566,6 +1580,7 @@ var $exeDevice = {
         $('#quextEEvaluation').prop('checked', game.evaluation);
         $('#quextEEvaluationID').val(game.evaluationID);
         $('#quextEEvaluationID').prop('disabled', !game.evaluation);
+        $('#quextEGlobalTimes').val(game.globalTime);
 
         $exeDevice.updateGameMode(game.gameMode, game.feedBack, game.useLives);
         $exeDevice.showSelectOrder(game.customMessages);
@@ -2125,6 +2140,7 @@ var $exeDevice = {
             evaluationID = $('#quextEEvaluationID').val(),
             id = $exeDevice.getIdeviceID(),
             questionsGame = $exeDevice.questionsGame,
+            globalTime = parseInt($('#quextEGlobalTimes').val(), 10),
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
@@ -2225,6 +2241,7 @@ var $exeDevice = {
             percentajeQuestions: percentajeQuestions,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            globalTime: globalTime,
             id: id,
         };
         return data;
@@ -2339,6 +2356,15 @@ var $exeDevice = {
         $('#quextEPaste').on('click', (e) => {
             e.preventDefault();
             $exeDevice.pasteQuestion();
+        });
+
+        $('#quextGlobalTimeButton').on('click', function (e) {
+            e.preventDefault();
+            const timeSelected = parseInt($('#quextEGlobalTimes').val());
+            for (let i = 0; i < $exeDevice.questionsGame.length; i++) {
+                $exeDevice.questionsGame[i].time = timeSelected;
+            }
+            $(`.QXTE-Times[value="${timeSelected}"]`).prop('checked', true);
         });
 
         $('#quextEPlayVideo').on('click', (e) => {

@@ -2408,10 +2408,7 @@ class ExportXmlUtil
         }
 
         $ideviceContainer->addAttribute('id', $odeComponentsSync->getOdeIdeviceId());
-        // Avoid invalid HTML in the Text iDevice
-        if ('text' !== $ideviceTypeName) {
-            $ideviceContainer->addAttribute('id-resource', $idevicesMapping[$odeComponentsSync->getOdeIdeviceId()]);
-        }
+
         $ideviceContainer->addAttribute('class', $class);
 
         if ($exportDynamicPage && $ideviceTypeData) {

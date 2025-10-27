@@ -248,7 +248,7 @@ export default class MenuStructureBehaviour {
         inputUpload.classList.add('local-ode-file-upload-input', 'd-none');
         inputUpload.setAttribute('type', 'file');
         inputUpload.setAttribute('name', 'local-ode-file-upload');
-        inputUpload.setAttribute('accept', '.block,.idevice');
+        inputUpload.setAttribute('accept', '.elpx,.block,.idevice,.elp,.zip');
         inputUpload.id = 'local-ode-file-upload';
         let label = document.createElement('label');
         label.setAttribute('for', inputUpload.id);
@@ -259,13 +259,92 @@ export default class MenuStructureBehaviour {
             let uploadOdeFile = document.querySelector(
                 '.local-ode-file-upload-input'
             );
-            let odeFile = uploadOdeFile.files[0];
+            let file = uploadOdeFile.files[0];
             let newUploadInput = this.createIdevicesUploadInput();
             inputUpload.remove();
             this.menuNav.append(newUploadInput);
 
+            if (!file) return;
+
+            const fileName = file.name.toLowerCase();
+
+            const isProjectFile =
+                fileName.endsWith('.elpx') ||
+                fileName.endsWith('.elp') ||
+                fileName.endsWith('.zip');
+
+            if (isProjectFile) {
+                const refreshStructure = (targetId = false) => {
+                    if (
+                        this.structureEngine &&
+                        typeof this.structureEngine
+                            .resetDataAndStructureData === 'function'
+                    ) {
+                        this.structureEngine.resetDataAndStructureData(
+                            targetId
+                        );
+                    } else {
+                        eXeLearning.app.project.openLoad();
+                    }
+                };
+
+                const selectedNav =
+                    this.nodeSelected &&
+                    this.nodeSelected.getAttribute('nav-id');
+                const targetIsRoot = !selectedNav || selectedNav === 'root';
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append(
+                    'odeSessionId',
+                    eXeLearning.app.project.odeSession
+                );
+
+                if (targetIsRoot) {
+                    eXeLearning.app.api
+                        .postImportElpToRoot(formData)
+                        .then((response) => {
+                            if (response.responseMessage === 'OK') {
+                                refreshStructure(false);
+                            } else if (response.responseMessage) {
+                                eXeLearning.app.modals.alert.show({
+                                    title: _('Error'),
+                                    body: response.responseMessage,
+                                });
+                            }
+                        })
+                        .catch(() => {
+                            eXeLearning.app.modals.alert.show({
+                                title: _('Error'),
+                                body: _('Unexpected error importing file.'),
+                            });
+                        });
+                } else {
+                    eXeLearning.app.api
+                        .postImportElpAsChild(selectedNav, formData)
+                        .then((response) => {
+                            if (response.responseMessage === 'OK') {
+                                refreshStructure(selectedNav);
+                            } else if (response.responseMessage) {
+                                eXeLearning.app.modals.alert.show({
+                                    title: _('Error'),
+                                    body: response.responseMessage,
+                                });
+                            }
+                        })
+                        .catch(() => {
+                            eXeLearning.app.modals.alert.show({
+                                title: _('Error'),
+                                body: _('Unexpected error importing file.'),
+                            });
+                        });
+                }
+
+                return;
+            }
+
             eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
-                odeFile,
+                file,
                 true
             );
         });

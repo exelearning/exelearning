@@ -125,7 +125,7 @@ $exeFX = {
         }
       }
       // onclick
-      t.click(function (e) {
+      t.off('click').click(function (e) {
         var aID = this.id.split("-")[0];
         aID = aID.replace("_", "-").replace("_", "-");
         var currentAttrValue = $(this).attr('href');
@@ -195,6 +195,10 @@ $exeFX = {
     },
     init: function (x, i) {
       var e = $(x);
+      if (e.find('.fx-accordion-section').length > 0) {
+        $exeFX.accordion.enable(e);
+        return;
+      }
       var a = $("h2", e);
       if (a.length > 0) $exeFX.accordion.rft(e, i);
       else $exeFX.noFX(e);
@@ -291,6 +295,12 @@ $exeFX = {
     },
     init: function (x, i) {
       var e = $(x);
+      if (e.find('.fx-timeline-major').length > 0) {
+        e.off("click", ".fx-timeline-minor h3");
+        e.off("click", ".fx-timeline-marker");
+        $(".fx-timeline-expand", e).off("click");
+        return;
+      }
       var h2 = $("H2", e);
       var h3 = $("H3", e);
       if (h2.length > 0 && h3.length > 0) $exeFX.timeline.rft(e, i);
@@ -376,7 +386,7 @@ $exeFX = {
       ul += '</ul>';
       e.prepend(ul);
       // onclick
-      $(".fx-tabs a", e).click(
+      $(".fx-tabs a", e).off('click').click(
         function () {
           var c = this.className;
           c = c.split(" ");
@@ -394,6 +404,24 @@ $exeFX = {
     },
     init: function (x, i) {
       var e = $(x);
+      if (e.find('.fx-tabs').length > 0) {
+        $(".fx-tabs a", e).off('click').click(
+          function () {
+            var c = this.className;
+            c = c.split(" ");
+            for (var i = 0; i < c.length; i++) {
+              if (c[i].indexOf("exeFXTabLink") == 0) c = c[i];
+            }
+            c = c.replace("exeFXTabLink", "");
+            c = c.split("_");
+            if (c.length == 2) {
+              $exeFX.tabs.show(c[0], c[1]);
+            }
+            return false;
+          }
+        );
+        return;
+      }
       var a = $("h2", e);
       if (a.length > 0) $exeFX.tabs.rft(e, i);
       else $exeFX.noFX(e);
@@ -443,6 +471,28 @@ $exeFX = {
     },
     init: function (x, i) {
       var e = $(x);
+      if (e.find('.fx-pagination').length > 0) {
+        $(".fx-pagination a", e).off('click').click(
+          function () {
+            var a = $(this);
+            if (a.hasClass("fx-disabled-link")) {
+              return false;
+            }
+            var c = a.attr("class");
+            c = c.split(" ");
+            for (var i = 0; i < c.length; i++) {
+              if (c[i].indexOf("exeFXPageLink") == 0) c = c[i];
+            }
+            c = c.replace("exeFXPageLink", "");
+            c = c.split("_");
+            if (c.length == 3) {
+              $exeFX.paginated.show(c[0], c[1], c[2]);
+            }
+            return false;
+          }
+        );
+        return;
+      }
       var a = $("h2", e);
       if (a.length > 0) $exeFX.paginated.rft(e, i);
       else $exeFX.noFX(e);
@@ -506,7 +556,7 @@ $exeFX = {
       ul += '</ul>';
       e.prepend(ul);
       // onclick
-      $(".fx-pagination a", e).click(
+      $(".fx-pagination a", e).off('click').click(
         function () {
           var a = $(this);
           if (a.hasClass("fx-disabled-link")) {
@@ -578,6 +628,28 @@ $exeFX = {
     },
     init: function (x, i) {
       var e = $(x);
+      if (e.find('.fx-carousel-pagination').length > 0) {
+        $(".fx-carousel-pagination a", e).off('click').click(
+          function () {
+            var a = $(this);
+            if (a.hasClass("fx-disabled-link")) {
+              return false;
+            }
+            var c = a.attr("class");
+            c = c.split(" ");
+            for (var i = 0; i < c.length; i++) {
+              if (c[i].indexOf("exeFXSlideLink") == 0) c = c[i];
+            }
+            c = c.replace("exeFXSlideLink", "");
+            c = c.split("_");
+            if (c.length == 3) {
+              $exeFX.carousel.show(c[0], c[1], c[2]);
+            }
+            return false;
+          }
+        );
+        return;
+      }
       var a = $("h2", e);
       if (a.length > 0) $exeFX.carousel.rft(e, i);
       else $exeFX.noFX(e);
@@ -639,7 +711,7 @@ $exeFX = {
       ul += '</ul>';
       e.append(ul);
       // onclick
-      $(".fx-carousel-pagination a", e).click(
+      $(".fx-carousel-pagination a", e).off('click').click(
         function () {
           var a = $(this);
           if (a.hasClass("fx-disabled-link")) {

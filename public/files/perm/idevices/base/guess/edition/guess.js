@@ -288,7 +288,19 @@ var $exeDevice = {
                                 </span>
                                 <label class="toggle-label" for="adivinaETranslate">${_('Activate translator')}.</label>
                             </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb3">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <label for="adivinaEGlobalTimes">${_('Time per question')}:</label>
+                                <select id="adivinaEGlobalTimes" class="form-select form-select-sm" style="max-width:10ch">
+                                    <option value="0" selected>15s</option>
+                                    <option value="1">30s</option>
+                                    <option value="2">1m</option>
+                                    <option value="3">3m</option>
+                                    <option value="4">5m</option>
+                                    <option value="5">10m</option>
+                                </select>
+                                <button id="adivinaGlobalTimeButton" class="btn btn-primary" type="button">${_("Accept")}</button> 
+                            </div>
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                 <div class="toggle-item m-0" data-target="adivinaEEvaluation">
                                     <span class="toggle-control">
                                         <input type="checkbox" id="adivinaEEvaluation" class="toggle-input" aria-label="${_('Progress report')}">
@@ -1389,6 +1401,7 @@ var $exeDevice = {
             activateTranslate = $('#adivinaETranslate').is(':checked'),
             evaluation = $('#adivinaEEvaluation').is(':checked'),
             evaluationID = $('#adivinaEEvaluationID').val(),
+            globalTime = parseInt($('#adivinaEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1487,6 +1500,7 @@ var $exeDevice = {
             activateTranslate: activateTranslate,
             evaluation: evaluation,
             evaluationID: evaluationID,
+            globalTime: globalTime,
             id: id,
         };
     },
@@ -1574,11 +1588,8 @@ var $exeDevice = {
     addEvents: function () {
         $('#adivinaEPaste').hide();
 
-        // Delegación genérica para toggles estilo switch
         $('#gameQEIdeviceForm').on('click.guess.toggle', '.toggle-item', function (e) {
-            // Evita que un clic directo en el input provoque doble cambio
             if ($(e.target).is('input.toggle-input, label[for]')) return;
-            // No alternar si el clic proviene del campo identificador de evaluación
             if (
                 $(e.target).is('#adivinaEEvaluationID') ||
                 $(e.target).closest('#adivinaEEvaluationHelpLnk').length
@@ -1591,7 +1602,6 @@ var $exeDevice = {
             }
         });
 
-        // Evitar burbujeo de clic dentro del campo de texto que provoca toggle en el contenedor
         $('#gameQEIdeviceForm').on('click', '#adivinaEEvaluationID', function (e) {
             e.stopPropagation();
         });
@@ -1780,6 +1790,18 @@ var $exeDevice = {
                 value = Math.max(0, Math.min(value, 100));
                 this.value = value;
             });
+
+        $('#adivinaGlobalTimeButton').on('click', function (e) {
+            e.preventDefault();
+            const selectedTime = parseInt($('#adivinaEGlobalTimes').val(), 10);
+
+            for (let i = 0; i < $exeDevice.wordsGame.length; i++) {
+                $exeDevice.wordsGame[i].time = selectedTime;
+            }
+
+            $("input.ADVNE-Times[name='qxttime'][value='" + selectedTime + "']").prop('checked', true);
+
+        });
 
         if (
             window.File &&
@@ -2297,6 +2319,7 @@ var $exeDevice = {
             evaluationID: '',
             timeQuestion: $exeDevice.timeQuestion,
             percentageShow: $exeDevice.percentageShow,
+            globalTime: 0,
             id: false,
         };
 
@@ -2334,6 +2357,10 @@ var $exeDevice = {
                 : defaultValues.evaluationID;
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.globalTime =
+            typeof game.globalTime !== 'undefined'
+                ? game.globalTime
+                : defaultValues.globalTime;
         $exeDevice.timeQuestion =
             typeof game.timeQuestion !== 'undefined'
                 ? game.timeQuestion
@@ -2358,6 +2385,7 @@ var $exeDevice = {
         $('#adivinaECaseSensitive').prop('checked', game.caseSensitive);
         $('#adivinaEHasFeedBack').prop('checked', game.feedBack);
         $('#adivinaEPercentajeFB').val(game.percentajeFB);
+        $('#adivinaEGlobalTimes').val(game.globalTime);
         $(
             `input.ADVNE-TypeGame[name='qxtgamemode'][value='${game.gameMode}']`,
         ).prop('checked', true);
