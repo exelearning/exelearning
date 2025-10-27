@@ -12021,7 +12021,7 @@
         <source>System</source>
         <target>Sistema</target>
       </trans-unit>
-      <trans-unit id="obgj9Qf" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
+      <trans-unit id="y7yTA4h" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
         <source>Someone else is editing this page. Please wait until they finish before adding new iDevices.</source>
         <target>Alguien está editando esta página. Por favor, espera a que termine antes de añadir iDevices.</target>
       </trans-unit>
@@ -12103,7 +12103,7 @@
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>~Debes revisar el %s&amp;percnt;  de los contenidos de la actividad antes de completar el cuestionario.</target>
+        <target><![CDATA[~Debes revisar el %s&percnt;  de los contenidos de la actividad antes de completar el cuestionario.]]></target>
       </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
@@ -12320,6 +12320,22 @@
       <trans-unit id="HNvXfDK" resname="You must provide the time to view the solution">
         <source>You must provide the time to view the solution</source>
         <target>~Debes proporcionar el tiempo para ver la solución</target>
+      </trans-unit>
+      <trans-unit id="shDAvQ3" resname="Import (.elpx…)">
+        <source>Import (.elpx…)</source>
+        <target>Importar (.elpx…)</target>
+      </trans-unit>
+      <trans-unit id="TFDXxIf" resname="Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.">
+        <source>Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.</source>
+        <target>Importa archivos .elpx, .elp o .zip editables. El contenido importado se añadirá después de la última página del proyecto.</target>
+      </trans-unit>
+      <trans-unit id="IOajJx_" resname="Unexpected error importing file.">
+        <source>Unexpected error importing file.</source>
+        <target>Error inesperado al importar el archivo.</target>
+      </trans-unit>
+      <trans-unit id="SIDjSV." resname="iDevice">
+        <source>iDevice</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>

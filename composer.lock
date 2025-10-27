@@ -6319,16 +6319,16 @@
         },
         {
             "name": "symfony/security-bundle",
-            "version": "v7.3.3",
+            "version": "v7.3.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/security-bundle.git",
-                "reference": "fbecca9a10af8d886e116f74e860e19b7583689c"
+                "reference": "f750d9abccbeaa433c56f6a4eb2073166476a75a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/security-bundle/zipball/fbecca9a10af8d886e116f74e860e19b7583689c",
-                "reference": "fbecca9a10af8d886e116f74e860e19b7583689c",
+                "url": "https://api.github.com/repos/symfony/security-bundle/zipball/f750d9abccbeaa433c56f6a4eb2073166476a75a",
+                "reference": "f750d9abccbeaa433c56f6a4eb2073166476a75a",
                 "shasum": ""
             },
             "require": {
@@ -6405,7 +6405,7 @@
             "description": "Provides a tight integration of the Security component into the Symfony full-stack framework",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/security-bundle/tree/v7.3.3"
+                "source": "https://github.com/symfony/security-bundle/tree/v7.3.4"
             },
             "funding": [
                 {
@@ -6425,20 +6425,20 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-08-06T08:34:58+00:00"
+            "time": "2025-09-22T15:31:00+00:00"
         },
         {
             "name": "symfony/security-core",
-            "version": "v7.3.3",
+            "version": "v7.3.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/security-core.git",
-                "reference": "4465a3b9cefbaebaeeeb98c2becfdb4b59d22488"
+                "reference": "68b9d3ca57615afde6152a1e1441fa035bea43f8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/security-core/zipball/4465a3b9cefbaebaeeeb98c2becfdb4b59d22488",
-                "reference": "4465a3b9cefbaebaeeeb98c2becfdb4b59d22488",
+                "url": "https://api.github.com/repos/symfony/security-core/zipball/68b9d3ca57615afde6152a1e1441fa035bea43f8",
+                "reference": "68b9d3ca57615afde6152a1e1441fa035bea43f8",
                 "shasum": ""
             },
             "require": {
@@ -6496,7 +6496,7 @@
             "description": "Symfony Security Component - Core Library",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/security-core/tree/v7.3.3"
+                "source": "https://github.com/symfony/security-core/tree/v7.3.4"
             },
             "funding": [
                 {
@@ -6516,7 +6516,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-08-25T06:35:40+00:00"
+            "time": "2025-09-24T14:32:13+00:00"
         },
         {
             "name": "symfony/security-csrf",
@@ -6590,16 +6590,16 @@
         },
         {
             "name": "symfony/security-http",
-            "version": "v7.3.3",
+            "version": "v7.3.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/security-http.git",
-                "reference": "1bf0dc10f27d4776c47f18f98236c619793a9260"
+                "reference": "1cf54d0648ebab23bf9b8972617b79f1995e13a9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/security-http/zipball/1bf0dc10f27d4776c47f18f98236c619793a9260",
-                "reference": "1bf0dc10f27d4776c47f18f98236c619793a9260",
+                "url": "https://api.github.com/repos/symfony/security-http/zipball/1cf54d0648ebab23bf9b8972617b79f1995e13a9",
+                "reference": "1cf54d0648ebab23bf9b8972617b79f1995e13a9",
                 "shasum": ""
             },
             "require": {
@@ -6658,7 +6658,7 @@
             "description": "Symfony Security Component - HTTP Integration",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/security-http/tree/v7.3.3"
+                "source": "https://github.com/symfony/security-http/tree/v7.3.4"
             },
             "funding": [
                 {
@@ -6678,7 +6678,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2025-08-25T06:35:40+00:00"
+            "time": "2025-09-09T17:06:44+00:00"
         },
         {
             "name": "symfony/serializer",
