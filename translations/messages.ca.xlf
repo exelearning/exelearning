@@ -862,7 +862,7 @@
         <target>~S'ha produït un error en recuperar les preguntes. Si us plau, intenta-ho de nou.#Genera 10 paraules seguides de les seves definicions, separades per #. No incloguis el caràcter # ni a la paraula ni a la definició.#Genera 30 paraules i les seves definicions separades per #.#Crea 10 preguntes de resposta múltiple amb 2 a 4 opcions. Comença amb la solució correcta (0, 1, 2 o 3), seguida de la pregunta i cada opció, totes separades per #.#Genera 10 preguntes amb opcions de resposta múltiple. Proporciona la solució com a lletres (per exemple, A, AB), seguida de la pregunta i les opcions, totes separades per #.#Proporciona 5 paraules de solució seguides de 3 a 9 pistes que les descriuen. Separa cada pista amb #.#Proporciona 4 elements per a cada un d'aquests grups: carnívors, 0, i herbívors, 1. Separa el grup i l'element amb #.#.#Genera 10 preguntes de veritat o fals, cadascuna amb la solució (0 = fals, 1 = cert), seguida d'una suggerència i retroalimentació, totes separades per #. La retroalimentació no ha de indicar explícitament si la resposta és correcta o incorrecta.#Genera 10 preguntes. La 'Solució' pot ser 0/1 per a Veritat/Fals, 0-3 per a opció única, o A-D (o combinacions) per a resposta múltiple. Després, proporciona la pregunta i les opcions de resposta (de 2 a 4), totes separades per #.#Proporciona només una llista ordenada de passos o elements, separats per #.</target>
       </trans-unit>
       <trans-unit id="X70Hq6M" resname="Sorry, wrong file format">
-        <source>Sorry, format de fitxer incorrecte</source>
+        <source>Sorry, wrong file format</source>
         <target>Disculpeu, format de fitxer dolent</target>
       </trans-unit>
       <trans-unit id="tWpnRhI" resname="Generate 10 words followed by their definitions, separated by #. Do not include the # character in either the word or the definition.">
@@ -2594,7 +2594,7 @@
         <target>Distribució normal estàndard</target>
       </trans-unit>
       <trans-unit id="m1Ztwtv" resname="Student\'s t-distribution">
-        <source>Student's t-distribution</source>
+        <source>Student\'s t-distribution</source>
         <target>Distribució t de l'estudiant</target>
       </trans-unit>
       <trans-unit id="wVMC9z_" resname="Chi-squared distribution">
@@ -2602,7 +2602,7 @@
         <target>Distribució khi quadrat</target>
       </trans-unit>
       <trans-unit id="5cXp7Wy" resname="Fisher\'s F-distribution">
-        <source>Fisher's F-distribution</source>
+        <source>Fisher\'s F-distribution</source>
         <target>Distribució F de Fisher</target>
       </trans-unit>
       <trans-unit id="MRreuZs" resname="Correlation coefficients">
@@ -2622,7 +2622,7 @@
         <target>Pearson</target>
       </trans-unit>
       <trans-unit id="uEvZPs_" resname="Pearson\'s t-test">
-        <source>Pearson's t-test</source>
+        <source>Pearson\'s t-test</source>
         <target>Prova t de Pearson</target>
       </trans-unit>
       <trans-unit id="yGn1Vxe" resname="Spearman">
@@ -2630,7 +2630,7 @@
         <target>Spearman</target>
       </trans-unit>
       <trans-unit id="OnstoaE" resname="Kendall\'s Tau">
-        <source>Kendall's Tau</source>
+        <source>Kendall\'s Tau</source>
         <target>Kendall's Tau</target>
       </trans-unit>
       <trans-unit id="ofsPM_X" resname="Phi coefficient">
@@ -2778,7 +2778,7 @@
         <target>Coeficient de contingència</target>
       </trans-unit>
       <trans-unit id="uXYBtiH" resname="Cramer\'s V">
-        <source>Cramer's V</source>
+        <source>Cramer\'s V</source>
         <target>Cramer's V</target>
       </trans-unit>
       <trans-unit id="mpVp63_" resname="Inequalities">
@@ -2822,7 +2822,7 @@
         <target>Dinàmica</target>
       </trans-unit>
       <trans-unit id="0e4VnHD" resname="Newton\'s second law">
-        <source>Newton's second law</source>
+        <source>Newton\'s second law</source>
         <target>Segona llei de Newton</target>
       </trans-unit>
       <trans-unit id="nOSecV3" resname="Linear momentum">
@@ -2898,7 +2898,7 @@
         <target>Freqüència</target>
       </trans-unit>
       <trans-unit id="S_bsq80" resname="Hooke\'s law">
-        <source>Hooke's law</source>
+        <source>Hooke\'s law</source>
         <target>Llei de Hooke</target>
       </trans-unit>
       <trans-unit id="bPEXqWV" resname="SHM Period">
@@ -2942,7 +2942,7 @@
         <target>Flux magnètic</target>
       </trans-unit>
       <trans-unit id="nXmzmVw" resname="Faraday\'s law">
-        <source>Faraday's law</source>
+        <source>Faraday\'s law</source>
         <target>Llei de Faraday</target>
       </trans-unit>
       <trans-unit id="6zh8ZQi" resname="Optics">
@@ -2982,7 +2982,7 @@
         <target>Equació de continuïtat</target>
       </trans-unit>
       <trans-unit id="YXkma8N" resname="Bernoulli\'s equation">
-        <source>Bernoulli's equation</source>
+        <source>Bernoulli\'s equation</source>
         <target>Equació de Bernoulli</target>
       </trans-unit>
       <trans-unit id="rhuOmDb" resname="P + \\tfrac12 \\rho v^2 + \\rho g h = \\text{constant}">
@@ -3486,7 +3486,7 @@
         <target>Un cop tinguis el codi, tanca aquesta finestra i fes servir el botó</target>
       </trans-unit>
       <trans-unit id="WzOdU6k" resname="button on the top bar to add your new creation.">
-        <source>Button on the top bar to add your new creation.</source>
+        <source>button on the top bar to add your new creation.</source>
         <target>Botó a la barra superior per afegir la vostra creació nova.</target>
       </trans-unit>
       <trans-unit id="H1Pdq23" resname="Add formula set">
@@ -3730,7 +3730,7 @@
         <target>Ex: Identitats trigonomètriques</target>
       </trans-unit>
       <trans-unit id="GVu.XTz" resname="No .json files found in the \'docs\' folder.">
-        <source>No .json files found in the 'docs' folder.</source>
+        <source>No .json files found in the \'docs\' folder.</source>
         <target>No s'ha trobat cap fitxer .json a la carpeta \'docs\'.</target>
       </trans-unit>
       <trans-unit id="3U32W5O" resname="No .json files found in the 'docs' folder.">
@@ -4638,7 +4638,7 @@
         <target>Mostra</target>
       </trans-unit>
       <trans-unit id="zLfwrs3" resname="Select the page you want to move the block to. This will be at the end of it.">
-        <source>Selecciona la pàgina a la qual voleu moure el bloc. Això serà al final.</source>
+        <source>Select the page you want to move the block to. This will be at the end of it.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="k0oEgy_" resname="Select icon">
@@ -5739,7 +5739,7 @@
       </trans-unit>
       <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
         <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target>Necessites almenys %s&amp;percnt; de respostes correctes per obtenir la informació. Si us plau, torna-ho a provar.<![CDATA[__You need at least %s&percnt; of correct answers to get the information. Please try again.]]></target>
+        <target><![CDATA[Necessites almenys %s&percnt; de respostes correctes per obtenir la informació. Si us plau, torna-ho a provar.__You need at least %s&percnt; of correct answers to get the information. Please try again.]]></target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5859,7 +5859,7 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
         <source>&amp;percnt; right to see the feedback</source>
-        <target>&amp;percnt; dret a veure la retroalimentació<![CDATA[__&percnt; right to see the feedback]]></target>
+        <target><![CDATA[&percnt; dret a veure la retroalimentació__&percnt; right to see the feedback]]></target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5979,7 +5979,7 @@
       </trans-unit>
       <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
         <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target>Lletres incorrectes permeses (&amp;percnt;)<![CDATA[__Incorrect letters allowed (&percnt;)]]></target>
+        <target><![CDATA[Lletres incorrectes permeses (&percnt;)__Incorrect letters allowed (&percnt;)]]></target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -7654,7 +7654,7 @@
         <target>Zoom inicial</target>
       </trans-unit>
       <trans-unit id="nzCIWGK" resname="Magnifier Size">
-        <source>Mida de la lupa</source>
+        <source>Magnifier Size</source>
         <target></target>
       </trans-unit>
       <trans-unit id="K9sgpC1" resname="Math operations">
@@ -9378,7 +9378,7 @@
         <target>Vols reiniciar el joc?</target>
       </trans-unit>
       <trans-unit id="An6Lvw7" resname="roll the dice.">
-        <source>Roll the dice.</source>
+        <source>roll the dice.</source>
         <target>Tira els daus.</target>
       </trans-unit>
       <trans-unit id="HbB1Ax_" resname="The game has finished. The winner is %1. Do you want to play again?">
@@ -9390,7 +9390,7 @@
         <target>Genial! Has guanyat el joc.</target>
       </trans-unit>
       <trans-unit id="FdFp.J6" resname="you play. Roll the dice.">
-        <source>You play. Roll the dice.</source>
+        <source>you play. Roll the dice.</source>
         <target>Tu jugues. Tira els daus.</target>
       </trans-unit>
       <trans-unit id="_r.ovZg" resname="Your score will be automatically saved after each throw.">
@@ -9406,11 +9406,11 @@
         <target>Jugadors</target>
       </trans-unit>
       <trans-unit id="yfLVZ81" resname="you have failed.">
-        <source>You have failed.</source>
+        <source>you have failed.</source>
         <target>Has fallat.</target>
       </trans-unit>
       <trans-unit id="pI5r8qI" resname="you get the cheese of">
-        <source>You get the cheese of</source>
+        <source>you get the cheese of</source>
         <target>Aconsegueix el formatget de</target>
       </trans-unit>
       <trans-unit id="Jt5rLGq" resname="One more point.">
@@ -11334,7 +11334,7 @@
         <target>Visible a l'exportació</target>
       </trans-unit>
       <trans-unit id="fE2HH6r" resname="Visibility type">
-        <source>Tipus de visibilitat</source>
+        <source>Visibility type</source>
         <target></target>
       </trans-unit>
       <trans-unit id="RWxaLMk" resname="Visible to all">
@@ -12021,7 +12021,7 @@
         <source>System</source>
         <target>Sistema</target>
       </trans-unit>
-      <trans-unit id="obgj9Qf" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
+      <trans-unit id="y7yTA4h" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
         <source>Someone else is editing this page. Please wait until they finish before adding new iDevices.</source>
         <target>~Algú està editant aquesta pàgina. Si us plau, espera que acabi abans d’afegir nous iDevices.</target>
       </trans-unit>
@@ -12101,9 +12101,9 @@
         <source>Point</source>
         <target>~Punt</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review &amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>~Has de revisar el %s&amp;percnt;  dels continguts de l'activitat abans de completar el qüestionari.</target>
+      <trans-unit id="hKVj8ZK" resname="You must review &amp;percnt; of the contents of the activity before completing the questionnaire.">
+        <source>You must review &amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+        <target><![CDATA[~Has de revisar el %s&percnt;  dels continguts de l'activitat abans de completar el qüestionari.]]></target>
       </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
@@ -12320,6 +12320,22 @@
       <trans-unit id="HNvXfDK" resname="You must provide the time to view the solution">
         <source>You must provide the time to view the solution</source>
         <target>~Has de proporcionar el temps per veure la solució</target>
+      </trans-unit>
+      <trans-unit id="shDAvQ3" resname="Import (.elpx…)">
+        <source>Import (.elpx…)</source>
+        <target>~Importa (.elpx…)</target>
+      </trans-unit>
+      <trans-unit id="TFDXxIf" resname="Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.">
+        <source>Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.</source>
+        <target>~Importa fitxers .elpx, .elp o .zip editables. El contingut importat s’afegirà després de l’última pàgina del projecte actual.</target>
+      </trans-unit>
+      <trans-unit id="IOajJx_" resname="Unexpected error importing file.">
+        <source>Unexpected error importing file.</source>
+        <target>~Error inesperat en importar el fitxer.</target>
+      </trans-unit>
+      <trans-unit id="SIDjSV." resname="iDevice">
+        <source>iDevice</source>
+        <target></target>
       </trans-unit>
     </body>
   </file>
