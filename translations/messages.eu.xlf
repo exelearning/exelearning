@@ -12021,8 +12021,8 @@
         <source>System</source>
         <target>Sistema</target>
       </trans-unit>
-      <trans-unit id="obgj9Qf" resname="Someone is editing this page. Please wait until they finish editing before you can create new iDevices.">
-        <source>Someone is editing this page. Please wait until they finish editing before you can create new iDevices.</source>
+      <trans-unit id="obgj9Qf" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
+        <source>Someone else is editing this page. Please wait until they finish before adding new iDevices.</source>
         <target>~Norbaitek orrialde hau editatzen ari da. Mesedez, itxaron amaitu arte iDevice berriak sortzeko.</target>
       </trans-unit>
       <trans-unit id="fTgJugq" resname="Accordion">
@@ -12088,6 +12088,238 @@
       <trans-unit id="9g8u1YG" resname="3 images">
         <source>3 images</source>
         <target>3 irudi</target>
+      </trans-unit>
+      <trans-unit id="7JewVxf" resname="Mark all the options in the correct order and click on the 'Reply' button.">
+        <source>Mark all the options in the correct order and click on the 'Reply' button.</source>
+        <target>~Markatu aukera guztiak ordena zuzenean eta egin klik 'Erantzun' botoian.</target>
+      </trans-unit>
+      <trans-unit id="1Uv.8KU" resname="Write the correct word o phrase and click on the 'Reply' button.">
+        <source>Write the correct word o phrase and click on the 'Reply' button.</source>
+        <target>~Idatzi hitz edo esaldi zuzena eta egin klik 'Erantzun' botoian.</target>
+      </trans-unit>
+      <trans-unit id="NT8emLb" resname="Point">
+        <source>Point</source>
+        <target>~Puntua</target>
+      </trans-unit>
+      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+        <target>~Jardueraren edukien %s&amp;percnt;  berrikusi behar duzu galdetegia osatu aurretik.</target>
+      </trans-unit>
+      <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
+        <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
+        <target>~Ez duzu proba hau gainditu. Bere edukiak berrikusi eta berriro saiatu beharko zenuke. Jarduera hau errepikatu nahi duzu?</target>
+      </trans-unit>
+      <trans-unit id="wITS3E8" resname="Subtitles">
+        <source>Subtitles</source>
+        <target>~Azpitituluak</target>
+      </trans-unit>
+      <trans-unit id="p1GMehK" resname="The question marked as next in case of success does not exist.">
+        <source>The question marked as next in case of success does not exist.</source>
+        <target>~Arrakastaren kasuan hurrengo gisa markatutako galdera ez da existitzen.</target>
+      </trans-unit>
+      <trans-unit id="LeOpK1j" resname="The question marked as next in case of error does not exist.">
+        <source>The question marked as next in case of error does not exist.</source>
+        <target>~Akatsaren kasuan hurrengo gisa markatutako galdera ez da existitzen.</target>
+      </trans-unit>
+      <trans-unit id="ba_wdXQ" resname="You must indicate a title for this point.">
+        <source>You must indicate a title for this point.</source>
+        <target>~Puntu honentzat titulu bat adierazi behar duzu.</target>
+      </trans-unit>
+      <trans-unit id="xK6t01n" resname="You must mark a point on the map.">
+        <source>You must mark a point on the map.</source>
+        <target>~Mapan puntu bat markatu behar duzu.</target>
+      </trans-unit>
+      <trans-unit id="lpAEkR5" resname="You must draw an area on the map.">
+        <source>You must draw an area on the map.</source>
+        <target>~Mapan eremu bat marraztu behar duzu.</target>
+      </trans-unit>
+      <trans-unit id="n8rcPWg" resname="Select an audio file.">
+        <source>Select an audio file.</source>
+        <target>~Hautatu audio fitxategi bat.</target>
+      </trans-unit>
+      <trans-unit id="RldIKEd" resname="Error in the submap.">
+        <source>Error in the submap.</source>
+        <target>~Errorea azpimapan.</target>
+      </trans-unit>
+      <trans-unit id="uUeUHlo" resname="You must indicate one point at least.">
+        <source>You must indicate one point at least.</source>
+        <target>~Gutxienez puntu bat adierazi behar duzu.</target>
+      </trans-unit>
+      <trans-unit id="M4qH7Ay" resname="You must close all the edited maps before saving the activity.">
+        <source>You must close all the edited maps before saving the activity.</source>
+        <target>~Editatutako mapa guztiak itxi behar dituzu jarduera gorde aurretik.</target>
+      </trans-unit>
+      <trans-unit id="KGtJNRC" resname="You must close the edited presentation before saving the activity.">
+        <source>You must close the edited presentation before saving the activity.</source>
+        <target>~Editatutako aurkezpena itxi behar duzu jarduera gorde aurretik.</target>
+      </trans-unit>
+      <trans-unit id="trEwQnv" resname="There must be at least one slide in the presentation.">
+        <source>There must be at least one slide in the presentation.</source>
+        <target>~Gutxienez diapositiba bat egon behar da aurkezpenean.</target>
+      </trans-unit>
+      <trans-unit id="T_wgZpR" resname="Indicate, using commas, the correct order in which points must be clicked">
+        <source>Indicate, using commas, the correct order in which points must be clicked</source>
+        <target>~Adierazi, komak erabiliz, puntuetan klik egin behar den ordena zuzena</target>
+      </trans-unit>
+      <trans-unit id="K.oLNZO" resname="Assessment">
+        <source>Assessment</source>
+        <target>~Ebaluazioa</target>
+      </trans-unit>
+      <trans-unit id="kN1WEsB" resname="Click on the active areas or image icons.">
+        <source>Click on the active areas or image icons.</source>
+        <target>~Egin klik eremu aktiboetan edo irudi ikonoetan.</target>
+      </trans-unit>
+      <trans-unit id="3S7zvT5" resname="Visited points">
+        <source>Visited points</source>
+        <target>~Bisitatutako puntuak</target>
+      </trans-unit>
+      <trans-unit id="Z_erAJ9" resname="Identify Spot">
+        <source>Identify Spot</source>
+        <target>~Identifikatu puntua</target>
+      </trans-unit>
+      <trans-unit id="0tv0gq." resname="Quiz">
+        <source>Quiz</source>
+        <target>~Proba</target>
+      </trans-unit>
+      <trans-unit id="WbcXn4C" resname="Percentage of visited contents necessary to be able to carry out the activity questionnaire">
+        <source>Percentage of visited contents necessary to be able to carry out the activity questionnaire</source>
+        <target>~Jardueraren galdetegia burutu ahal izateko beharrezkoa den bisitatutako edukien ehunekoa</target>
+      </trans-unit>
+      <trans-unit id="qrLfvL6" resname="Percentage of questionnaire questions">
+        <source>Percentage of questionnaire questions</source>
+        <target>~Galdetegiko galderen ehunekoa</target>
+      </trans-unit>
+      <trans-unit id="ViRXl6m" resname="Percentage of questions">
+        <source>Percentage of questions</source>
+        <target>~Galderen ehunekoa</target>
+      </trans-unit>
+      <trans-unit id="3SaNCTl" resname="Close map">
+        <source>Close map</source>
+        <target>~Itxi mapa</target>
+      </trans-unit>
+      <trans-unit id="MF5bsM." resname="URL:">
+        <source>URL:</source>
+        <target>~URL:</target>
+      </trans-unit>
+      <trans-unit id="r.t2gAo" resname="Add point">
+        <source>Add point</source>
+        <target>~Gehitu puntua</target>
+      </trans-unit>
+      <trans-unit id="BLRU8pT" resname="First point">
+        <source>First point</source>
+        <target>~Lehen puntua</target>
+      </trans-unit>
+      <trans-unit id="aM3uWcL" resname="Previous point">
+        <source>Previous point</source>
+        <target>~Aurreko puntua</target>
+      </trans-unit>
+      <trans-unit id="psVYtzn" resname="Point number">
+        <source>Point number</source>
+        <target>~Puntu zenbakia</target>
+      </trans-unit>
+      <trans-unit id="Y5a4Un_" resname="Next Point">
+        <source>Next Point</source>
+        <target>~Hurrengo puntua</target>
+      </trans-unit>
+      <trans-unit id="F9.lXSp" resname="Last point">
+        <source>Last point</source>
+        <target>~Azken puntua</target>
+      </trans-unit>
+      <trans-unit id=".kAqpe4" resname="Delete point">
+        <source>Delete point</source>
+        <target>~Ezabatu puntua</target>
+      </trans-unit>
+      <trans-unit id="j1nAaAs" resname="Copy point">
+        <source>Copy point</source>
+        <target>~Kopiatu puntua</target>
+      </trans-unit>
+      <trans-unit id="y5_XTAH" resname="Cut point">
+        <source>Cut point</source>
+        <target>~Ebaki puntua</target>
+      </trans-unit>
+      <trans-unit id="ubCFUNH" resname="Paste point">
+        <source>Paste point</source>
+        <target>~Itsatsi puntua</target>
+      </trans-unit>
+      <trans-unit id="ii4yOfr" resname="Number of points">
+        <source>Number of points</source>
+        <target>~Puntuen kopurua</target>
+      </trans-unit>
+      <trans-unit id="0uw0IQw" resname="Simple">
+        <source>Simple</source>
+        <target>~Sinplea</target>
+      </trans-unit>
+      <trans-unit id="3.EXYl6" resname="Edit map points">
+        <source>Edit map points</source>
+        <target>~Editatu maparen puntuak</target>
+      </trans-unit>
+      <trans-unit id="MnWGio8" resname="Edit presentation points">
+        <source>Edit presentation points</source>
+        <target>~Editatu aurkezpenaren puntuak</target>
+      </trans-unit>
+      <trans-unit id="gi2kFJd" resname="Add a slide">
+        <source>Add a slide</source>
+        <target>~Gehitu diapositiba bat</target>
+      </trans-unit>
+      <trans-unit id="nfRETaO" resname="First slide">
+        <source>First slide</source>
+        <target>~Lehen diapositiba</target>
+      </trans-unit>
+      <trans-unit id="J7AD2WY" resname="Previous slide">
+        <source>Previous slide</source>
+        <target>~Aurreko diapositiba</target>
+      </trans-unit>
+      <trans-unit id="RNdnixZ" resname="Slide number">
+        <source>Slide number</source>
+        <target>~Diapositiba zenbakia</target>
+      </trans-unit>
+      <trans-unit id="HhLfmcn" resname="Next slide">
+        <source>Next slide</source>
+        <target>~Hurrengo diapositiba</target>
+      </trans-unit>
+      <trans-unit id="ha1bzRD" resname="Last slide">
+        <source>Last slide</source>
+        <target>~Azken diapositiba</target>
+      </trans-unit>
+      <trans-unit id="hwvrJ42" resname="Delete slide">
+        <source>Delete slide</source>
+        <target>~Ezabatu diapositiba</target>
+      </trans-unit>
+      <trans-unit id="._aMYKW" resname="Copy slide">
+        <source>Copy slide</source>
+        <target>~Kopiatu diapositiba</target>
+      </trans-unit>
+      <trans-unit id="ome7TNM" resname="Cut slide">
+        <source>Cut slide</source>
+        <target>~Ebaki diapositiba</target>
+      </trans-unit>
+      <trans-unit id="XsyCqfE" resname="Paste slide">
+        <source>Paste slide</source>
+        <target>~Itsatsi diapositiba</target>
+      </trans-unit>
+      <trans-unit id="iITl9r1" resname="Questionnaire">
+        <source>Questionnaire</source>
+        <target>~Galdetegia</target>
+      </trans-unit>
+      <trans-unit id="4PvSFE1" resname="Additional content">
+        <source>Additional content</source>
+        <target>~Eduki gehigarria</target>
+      </trans-unit>
+      <trans-unit id="ngTWGb2" resname="Invisible area">
+        <source>Invisible area</source>
+        <target>~Eremu ikusezina</target>
+      </trans-unit>
+      <trans-unit id="bz2ryXq" resname="Pushpin">
+        <source>Pushpin</source>
+        <target>~Orratza</target>
+      </trans-unit>
+      <trans-unit id="_MltP1k" resname="Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s">
+        <source>Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s</source>
+        <target>~Eman hitz bat eta bere definizioa. Hauek txandakatu ditzakezu: 'Hitza hasten da' edo 'Hitzak du', %s(e)n klik eginez</target>
+      </trans-unit>
+      <trans-unit id="HNvXfDK" resname="You must provide the time to view the solution">
+        <source>You must provide the time to view the solution</source>
+        <target>~Irtenbidea ikusteko denbora eman behar duzu</target>
       </trans-unit>
     </body>
   </file>
