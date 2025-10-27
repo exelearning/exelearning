@@ -20,7 +20,7 @@
   src: local("Inter Bold"), url(fonts/Inter-Bold.woff2) format("woff2"), url(fonts/Inter-Bold.woff) format("woff");
 }
 
-body.exe-export, body.exe-web-site {
+body.exe-export, .exe-content{
     font-family: "Inter";
     font-weight: 400;
 }
@@ -89,11 +89,6 @@ body.exe-export {
 
 body.exe-web-site{
     padding: 0;
-}
-
-body.exe-export, body.exe-web-site{
-    font-family: "Inter";
-    font-weight: 400;
 }
 
 .exe-content a{
