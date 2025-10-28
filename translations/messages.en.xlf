@@ -12021,7 +12021,7 @@
         <source>System</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="obgj9Qf" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
+      <trans-unit id="y7yTA4h" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
         <source>Someone else is editing this page. Please wait until they finish before adding new iDevices.</source>
         <target></target>
       </trans-unit>
@@ -12101,7 +12101,7 @@
         <source>Point</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
+      <trans-unit id="lgtXQPh" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.</source>
         <target></target>
       </trans-unit>
@@ -12319,6 +12319,22 @@
       </trans-unit>
       <trans-unit id="HNvXfDK" resname="You must provide the time to view the solution">
         <source>You must provide the time to view the solution</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="shDAvQ3" resname="Import (.elpx…)">
+        <source>Import (.elpx…)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="TFDXxIf" resname="Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.">
+        <source>Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="IOajJx_" resname="Unexpected error importing file.">
+        <source>Unexpected error importing file.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="SIDjSV." resname="iDevice">
+        <source>iDevice</source>
         <target></target>
       </trans-unit>
     </body>
