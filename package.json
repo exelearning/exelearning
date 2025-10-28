@@ -151,6 +151,7 @@
             "signAndEditExecutable": true,
             "verifyUpdateCodeSignature": false,
             "signtoolOptions": {
+                "certificateSha1": "6ba8201386a6f9946e8b928b6f760a0aa2dd50a7",
                 "rfc3161TimeStampServer": "http://time.certum.pl",
                 "timeStampServer": "http://time.certum.pl",
                 "signingHashAlgorithms": [
