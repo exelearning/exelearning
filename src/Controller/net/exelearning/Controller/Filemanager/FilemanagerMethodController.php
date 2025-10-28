@@ -659,7 +659,7 @@ class FilemanagerMethodController extends DefaultApiController
 
         // Relative path - Use forward slash consistently
         $relativePath = $pathIni.'/'.$path;
-        
+
         // Normalize path separators to forward slashes
         $relativePath = str_replace('\\', '/', $relativePath);
         $relativePath = preg_replace('/\/+/', '/', $relativePath);
