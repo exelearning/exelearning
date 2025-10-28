@@ -8,9 +8,9 @@
 
 ### Fixed
 
-- Font-weight issue in the "Zen" style: missing bold
 - 404 errors when accessing File Manager archives in the Windows desktop version
 - Hidden buttons in the File Manager .txt file editor
+- Font-weight issue in the "Zen" style: missing bold
 
 ### Upgraded
 
