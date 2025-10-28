@@ -1926,6 +1926,7 @@ class OdeXmlUtil
                             $srcVideo = $xpath->evaluate('//video/source/@src', $doc);
                             $srcAudio = $xpath->evaluate('//audio/source/@src', $doc);
                             $srcPicture = $xpath->evaluate('//picture/source/@srcset', $doc);
+                            $srcPictureImg = $xpath->evaluate('//picture/img/@src', $doc);
 
                             if ('scrambled-list' == $nodeIdeviceTextType) {
                                 $scrambleIdeviceElements = self::searchScrambleIdeviceElementsOldElp($xpath, $doc);
@@ -1999,6 +2000,10 @@ class OdeXmlUtil
                                 array_push($srcRoutes, $hrefString);
                             }
 
+                            foreach ($srcPictureImg as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
                             // In case rubric change class exe-rubric to exe-rubrics
                             if ('rubric' == $nodeIdeviceTextType) {
                                 $odeComponentsSyncHtmlView = str_replace('exe-rubric', 'exe-rubrics', $odeComponentsSyncHtmlView);
