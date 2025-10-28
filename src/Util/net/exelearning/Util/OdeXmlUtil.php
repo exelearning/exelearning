@@ -1923,6 +1923,8 @@ class OdeXmlUtil
                             $xpath = new \DOMXPath($doc);
                             $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
                             $href = $xpath->evaluate('//a/@href', $doc);
+                            $srcVideo = $xpath->evaluate('//video/source/@src', $doc);
+                            $srcAudio = $xpath->evaluate('//audio/source/@src', $doc);
                             if ('scrambled-list' == $nodeIdeviceTextType) {
                                 $scrambleIdeviceElements = self::searchScrambleIdeviceElementsOldElp($xpath, $doc);
 
@@ -1971,6 +1973,16 @@ class OdeXmlUtil
                             }
 
                             foreach ($src as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
+
+                            foreach ($srcVideo as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
+
+                            foreach ($srcAudio as $srcValue) {
                                 $srcString = (string) $srcValue->value;
                                 array_push($srcRoutes, $srcString);
                             }
