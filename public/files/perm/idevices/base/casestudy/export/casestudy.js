@@ -69,7 +69,7 @@ var $casestudy = {
             data.textInfoParticipantsInput === "" ? "" : data.textInfoParticipantsTextInput,
             data.textInfoParticipantsInput
         );
-        const history = $casestudy.replaceDirPath(data.history, data.ideviceId);
+        const history = data.history;
         return `
         <div class="caseStudyContent">            
             <div class="CSP-Info mb-3">
@@ -85,50 +85,11 @@ var $casestudy = {
     `;
     },
 
-    replaceDirPath(htmlString, ideviceId) {
-        const node = document.getElementById(ideviceId);
-        if (!node || eXe.app.isInExe() || !htmlString) return htmlString;
-
-        const idRes = ideviceId;
-        if (!idRes) return htmlString;
-
-        const basePath = document.documentElement.id === 'exe-index'
-            ? `content/resources/${idRes}/`
-            : `../content/resources/${idRes}/`;
-
-        const custom = document.documentElement.id === 'exe-index'
-            ? 'custom/'
-            : '../custom/';
-
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(htmlString, 'text/html');
-        doc.querySelectorAll('img[src], video[src], audio[src], a[href], source[src]')
-            .forEach(el => {
-                const attr = el.hasAttribute('src') ? 'src' : 'href';
-                let val = el.getAttribute(attr).trim();
-                try {
-                    const u = new URL(val, window.location.origin);
-                    if (/^\/?files\//.test(u.pathname)) {
-                        const filename = u.pathname.split('/').pop() || '';
-                        if (u.pathname.indexOf('file_manager') === -1) {
-                            el.setAttribute(attr, basePath + filename);
-                        } else {
-                            el.setAttribute(attr, custom + filename);
-                        }
-                    }
-                } catch {
-                    // 
-                }
-            });
-
-        return doc.body.innerHTML;
-    },
-
     generateActivities: function (data) {
         return data.activities
             .map((activity, index) => {
-                const activity1 = $casestudy.replaceDirPath(activity.activity, data.ideviceId);
-                const feedback = $casestudy.replaceDirPath(activity.feedback, data.ideviceId);
+                const activity1 = activity.activity;
+                const feedback = activity.feedback;
                 const button = activity.buttonCaption || data.msgs.msgFeedback;
                 const bgClass = index % 2 ? 'CSP-ActivityDivBlack' : '';
                 const hasFeedback = feedback.trim().length > 0;

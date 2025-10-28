@@ -652,13 +652,17 @@ class FilemanagerMethodController extends DefaultApiController
 
         // Directory path
         $path = $this->storage->getSessionPath().$path;
-        // Cut path to a relative path
-        $relativePathSearchTerm = $pathCutString.DIRECTORY_SEPARATOR;
+        // Cut path to a relative path - Use forward slash consistently
+        $relativePathSearchTerm = $pathCutString.'/';
         $reltivePathPosition = strpos($path, $relativePathSearchTerm);
         $path = substr($path, $reltivePathPosition);
 
-        // Relative path
-        $relativePath = $pathIni.DIRECTORY_SEPARATOR.$path;
+        // Relative path - Use forward slash consistently
+        $relativePath = $pathIni.'/'.$path;
+        
+        // Normalize path separators to forward slashes
+        $relativePath = str_replace('\\', '/', $relativePath);
+        $relativePath = preg_replace('/\/+/', '/', $relativePath);
 
         $data = [
             'path' => $relativePath,
