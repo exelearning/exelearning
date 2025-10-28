@@ -210,18 +210,37 @@ var $trueorfalse = {
             .forEach(el => {
                 const attr = el.hasAttribute('src') ? 'src' : 'href';
                 let val = el.getAttribute(attr).trim();
+
+                val = val.replace(/\\/g, '/').replace(/\/+/g, '/');
+                
+                let pathname = val;
+                
                 try {
-                    const u = new URL(val, window.location.origin);
-                    if (/^\/?files\//.test(u.pathname)) {
-                        const filename = u.pathname.split('/').pop() || '';
-                        if (u.pathname.indexOf('file_manager') === -1) {
-                            el.setAttribute(attr, basePath + filename);
+                    const baseURL = window.location.origin === 'null' || window.location.protocol === 'file:' 
+                        ? window.location.href 
+                        : window.location.origin;
+                    const u = new URL(val, baseURL);
+                    pathname = u.pathname;
+                } catch {
+                    pathname = val;
+                }
+
+                pathname = pathname.replace(/\\/g, '/').replace(/\/+/g, '/');
+
+                if (/^\/?files\//.test(pathname)) {
+                    if (pathname.indexOf('file_manager') === -1) {
+                        const filename = pathname.split('/').pop() || '';
+                        el.setAttribute(attr, basePath + filename);
+                    } else {
+                        const fileManagerIndex = pathname.indexOf('file_manager/');
+                        if (fileManagerIndex !== -1) {
+                            const relativePath = pathname.substring(fileManagerIndex + 'file_manager/'.length);
+                            el.setAttribute(attr, custom + relativePath);
                         } else {
+                            const filename = pathname.split('/').pop() || '';
                             el.setAttribute(attr, custom + filename);
                         }
                     }
-                } catch {
-                    // 
                 }
             });
 
