@@ -1927,6 +1927,54 @@ class OdeXmlUtil
                             $srcAudio = $xpath->evaluate('//audio/source/@src', $doc);
                             $srcPicture = $xpath->evaluate('//picture/source/@srcset', $doc);
                             $srcPictureImg = $xpath->evaluate('//picture/img/@src', $doc);
+                            $srcIframe = $xpath->evaluate('//iframe/@src', $doc);
+                            $srcTrack = $xpath->evaluate('//track/@src', $doc);
+                            $srcEmbed = $xpath->evaluate('//embed/@src', $doc);
+                            
+                            foreach ($src as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
+
+                            foreach ($srcVideo as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
+
+                            foreach ($srcAudio as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
+
+                            foreach ($srcPicture as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
+
+                            foreach ($href as $hrefValue) {
+                                $hrefString = (string) $hrefValue->value;
+                                array_push($srcRoutes, $hrefString);
+                            }
+
+                            foreach ($srcPictureImg as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
+
+                            foreach ($srcIframe as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
+                            
+                            foreach ($srcTrack as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
+
+                            foreach ($srcEmbed as $srcValue) {
+                                $srcString = (string) $srcValue->value;
+                                array_push($srcRoutes, $srcString);
+                            }
 
                             if ('scrambled-list' == $nodeIdeviceTextType) {
                                 $scrambleIdeviceElements = self::searchScrambleIdeviceElementsOldElp($xpath, $doc);
@@ -1975,35 +2023,6 @@ class OdeXmlUtil
                                 $odeComponentsSyncHtmlView = '<div class="exe-text-activity">'.$odeComponentsSyncHtmlView.'</div>';
                             }
 
-                            foreach ($src as $srcValue) {
-                                $srcString = (string) $srcValue->value;
-                                array_push($srcRoutes, $srcString);
-                            }
-
-                            foreach ($srcVideo as $srcValue) {
-                                $srcString = (string) $srcValue->value;
-                                array_push($srcRoutes, $srcString);
-                            }
-
-                            foreach ($srcAudio as $srcValue) {
-                                $srcString = (string) $srcValue->value;
-                                array_push($srcRoutes, $srcString);
-                            }
-
-                            foreach ($srcPicture as $srcValue) {
-                                $srcString = (string) $srcValue->value;
-                                array_push($srcRoutes, $srcString);
-                            }
-
-                            foreach ($href as $hrefValue) {
-                                $hrefString = (string) $hrefValue->value;
-                                array_push($srcRoutes, $hrefString);
-                            }
-
-                            foreach ($srcPictureImg as $srcValue) {
-                                $srcString = (string) $srcValue->value;
-                                array_push($srcRoutes, $srcString);
-                            }
                             // In case rubric change class exe-rubric to exe-rubrics
                             if ('rubric' == $nodeIdeviceTextType) {
                                 $odeComponentsSyncHtmlView = str_replace('exe-rubric', 'exe-rubrics', $odeComponentsSyncHtmlView);
