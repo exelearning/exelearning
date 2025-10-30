@@ -1430,10 +1430,12 @@ class OdeService implements OdeServiceInterface
 
         // First check content.xml
         $xmlFileName = Constants::PERMANENT_SAVE_CONTENT_FILENAME;
+        $epubExportDir = $odeSessionDistDirPath.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB.DIRECTORY_SEPARATOR;
         $xmlFilePathName = $odeSessionDistDirPath.$xmlFileName;
         $isOdeXml = file_exists($xmlFilePathName);
+        $isOdeXmlEpub = file_exists($epubExportDir.$xmlFileName);
 
-        if ($isOdeXml) {
+        if ($isOdeXml || $isOdeXmlEpub) {
             $odeResponse['elpName'] = $zipFileName;
             $odeResponse['elpPath'] = $destinationFilePathName;
             $odeResponse['responseMessage'] = 'OK';
