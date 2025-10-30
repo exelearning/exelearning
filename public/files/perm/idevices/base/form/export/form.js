@@ -340,14 +340,37 @@ var $form = {
         doc.querySelectorAll('img[src], video[src], audio[src], a[href]')
             .forEach(el => {
                 const attr = el.hasAttribute('src') ? 'src' : 'href';
-                const val = el.getAttribute(attr).trim();
+                let val = el.getAttribute(attr).trim();
 
-                if (/^\/?files\//.test(val)) {
-                    const filename = val.split('/').pop() || '';
-                    if (val.indexOf('file_manager') === -1) {
+                val = val.replace(/\\/g, '/').replace(/\/+/g, '/');
+                
+                let pathname = val;
+                
+                try {
+                    const baseURL = window.location.origin === 'null' || window.location.protocol === 'file:' 
+                        ? window.location.href 
+                        : window.location.origin;
+                    const u = new URL(val, baseURL);
+                    pathname = u.pathname;
+                } catch {
+                    pathname = val;
+                }
+
+                pathname = pathname.replace(/\\/g, '/').replace(/\/+/g, '/');
+
+                if (/^\/?files\//.test(pathname)) {
+                    if (pathname.indexOf('file_manager') === -1) {
+                        const filename = pathname.split('/').pop() || '';
                         el.setAttribute(attr, dir + filename);
                     } else {
-                        el.setAttribute(attr, custom + filename);
+                        const fileManagerIndex = pathname.indexOf('file_manager/');
+                        if (fileManagerIndex !== -1) {
+                            const relativePath = pathname.substring(fileManagerIndex + 'file_manager/'.length);
+                            el.setAttribute(attr, custom + relativePath);
+                        } else {
+                            const filename = pathname.split('/').pop() || '';
+                            el.setAttribute(attr, custom + filename);
+                        }
                     }
                 }
             });
