@@ -614,37 +614,6 @@ button.toggler:focus {
     border-color: #bbb
 }
 
-/* Icons */
-
-.exeQuextIcons-Number{
-    background-image: url(img/exequextnumber.svg) !important;
-}
-.exeQuextIcons-Hit{
-    background-image: url(img/exequexthits.svg) !important;
-}
-.exeQuextIcons-Error{
-    background-image: url(img/exequextrerrors.svg) !important;
-}
-.exeQuextIcons-Score{
-    background-image: url(img/exequextscore.svg) !important;
-}
-.exeQuextIcons-TXGame{
-    background-image: url(img/exequexthits.svg) !important;
-}
-.exeQuextIcons-Areas{
-    background-image: url(img/exequexthits.svg) !important;
-}
-.exeQuextIcons-MZGame, .exeQuextIcons-Minimize{
-    background-image: url(img/exequextmin.svg) !important;
-}
-.exeQuextIcons-FSGame, .exeQuextIcons-FullScreen{
-    background-image: url(img/exequextfull.svg) !important;
-}
-.exeQuextIcons34-Time{
-    background-image: url(img/exequexttime.svg) !important;
-}
-
-
 /* Page counter */
 .page-counter {
     text-align: right;
