@@ -9,6 +9,9 @@
     *   Copyright: Nils Adermann, Jordi Boggiano
     *   License: MIT
 <composer_packages>
+*   Files: /public/style/workarea/images/icons/[Several icons].svg
+    *   Copyright: Cole Bemis, [Feather Icons](https://github.com/feathericons/feather)
+    *   License: MIT
 
 ## Client-side libraries
 
@@ -56,7 +59,7 @@
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
-*   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/fonts/\*
+*   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/fonts/* (Open Sans Font)
     *   Copyright: The Open Sans Project Authors. Designed by Steve Matteson
     *   License: SIL Open Font License version 1.1
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/images/\*
@@ -68,6 +71,27 @@
 *   Files: /public/files/perm/idevices/base/magnifier/export/mojomagnify.js
     *   Copyright: Jacob Seidelin and other contributors
     *   License: MIT
+*   Files: /public/files/perm/themes/flux/fonts/* (Fredoka Font)
+    *   Copyright: Milena Brandao
+    *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/themes/flux/icons/*
+    *   Copyright: Google (https://fonts.google.com/icons)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/themes/neo/fonts/* (Nunito Font)
+    *   Copyright: Vernon Adams, with Reserved Font Name "Nunito".
+    *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/themes/nova/fonts/* (Open Sans Font)
+    *   Copyright: The Open Sans Project Authors. Designed by Steve Matteson
+    *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/themes/nova/icons/*
+    *   Copyright: Google (https://fonts.google.com/icons)
+    *   License: Apache License 2.0
+*   Files: /public/files/perm/themes/zen/fonts/* (Inter Font)
+    *   Copyright: Inter Font, by Rasmus Andersson and The Inter Project Authors
+    *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/themes/zen/icons/*
+    *   Copyright: Google (https://fonts.google.com/icons)
+    *   License: Apache License 2.0
 *   Files: /public/files/workarea/icons/\*
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0

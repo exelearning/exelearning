@@ -470,6 +470,9 @@
 *   Package: willdurand/negotiation
     *   Copyright: William Durand
     *   License: MIT
+*   Files: /public/style/workarea/images/icons/[Several icons].svg
+    *   Copyright: Cole Bemis, [Feather Icons](https://github.com/feathericons/feather)
+    *   License: MIT
 
 ## Client-side libraries
 
@@ -601,6 +604,3 @@
 *   Files: /public/style/workarea/fonts/\Inter*
     *   Copyright: The Inter Project Authors. Designed by Rasmus Andersson
     *   License: SIL Open Font License version 1.1
-*   Files: /public/style/workarea/images/icons/[Several icons].svg
-    *   Copyright: Cole Bemis, [Feather Icons](https://github.com/feathericons/feather)
-    *   License: MIT

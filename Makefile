@@ -540,6 +540,66 @@ endif
 	@echo "Package created successfully with version $(VERSION)"
 	@echo "Installer files available in the dist/ directory"
 
+
+## --------- WINDOWS LOCAL SIGN ---------
+
+.SILENT: check-release-env eb-inject-config eb-cleanup-config \
+         package-windows-local-sign
+.PHONY:  check-release-env eb-inject-config eb-cleanup-config \
+         package-windows-local-sign
+
+# Accept multiple aliases for certificate thumbprint
+CERT_SHA1      ?= $(or $(CERT_THUMBPRINT),$(CERTIFICATE_SHA1),$(WIN_CERTIFICATE_SHA1))
+
+# Fail fast if required env/inputs are missing
+check-release-env:
+	@: $(if $(VERSION),,$(error VERSION is not set. Usage: make package-windows-local-sign VERSION=vX.Y.Z CERT_THUMBPRINT=...))
+	@: $(if $(or $(GH_TOKEN),$(GITHUB_TOKEN),$(GITHUB_RELEASE_TOKEN)),,$(error GH_TOKEN or GITHUB_TOKEN is required to publish to GitHub))
+	@: $(if $(CERT_SHA1),,$(error Set CERT_THUMBPRINT (or CERTIFICATE_SHA1/WIN_CERTIFICATE_SHA1) with your certificate SHA1 thumbprint))
+
+# Inject ephemeral config into package.json:
+# - win.certificateSha1
+eb-inject-config:
+	node -e "const fs=require('fs');const pth='package.json';\
+	 const s=fs.readFileSync(pth,'utf8'); const pj=JSON.parse(s); \
+	 pj.build=pj.build||{}; \
+	 pj.build.win=pj.build.win||{}; \
+	 pj.build.win.certificateSha1 = process.env.CERT_SHA1 || pj.build.win.certificateSha1; \
+	 fs.writeFileSync(pth, JSON.stringify(pj,null,2)); \
+	 fs.writeFileSync('.eb-injected.sentinel','1'); \
+	 console.log('Injected: win.certificateSha1');"
+
+# Remove only what we injected (win.certificateSha1).
+eb-cleanup-config:
+	@if [ -f .eb-injected.sentinel ]; then \
+	  node -e "const fs=require('fs');const pth='package.json';\
+	    const pj=JSON.parse(fs.readFileSync(pth,'utf8')); \
+	    if(pj.build && pj.build.win){ delete pj.build.win.certificateSha1; } \
+	    fs.writeFileSync(pth, JSON.stringify(pj,null,2)); \
+	    console.log('Cleaned: win.certificateSha1');"; \
+	  rm -f .eb-injected.sentinel; \
+	fi
+
+# Windows packaging with local certificate store thumbprint
+# Usage:
+#   make package-windows-local-sign VERSION=v3.0.0 CERT_THUMBPRINT=<SHA1> [PUBLISH=always]
+package-windows-local-sign: fail-on-windows check-release-env eb-inject-config
+	@echo "→ Tag/version: $(VERSION)"
+	@echo "→ Cert SHA1: $(CERT_SHA1)"
+	@echo "Cleaning previous build artifacts..."; rm -rf vendor node_modules dist || true
+	@[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
+
+	# Build & publish (re-use your existing 'package' flow)
+	# We pass VERSION as tag (with v-prefix as you venías usando).
+	@DEBUG=electron-builder \
+	 GH_TOKEN="$${GH_TOKEN:-$${GITHUB_TOKEN:-$${GITHUB_RELEASE_TOKEN}}}" \
+	 $(MAKE) package VERSION="$(VERSION)" PUBLISH=$(if $(PUBLISH),$(PUBLISH),always)
+
+	@$(MAKE) eb-cleanup-config
+	@echo "✔ Windows package (signed) built & published for $(VERSION)"
+## --------- END WINDOWS LOCAL SIGN ---------
+
+
 # Copy the vendor/ directory from the container to the local host
 # Use this when you want to inspect or debug vendor code locally
 pull-vendor: check-docker check-env upd
