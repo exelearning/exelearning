@@ -1921,8 +1921,26 @@ class OdeXmlUtil
                             $doc = new \DOMDocument();
                             @$doc->loadHTML($html);
                             $xpath = new \DOMXPath($doc);
-                            $src = $xpath->evaluate('//img/@src', $doc); // "/images/image.jpg"
-                            $href = $xpath->evaluate('//a/@href', $doc);
+                            $xpathQueries = [
+                                '//img/@src',
+                                '//a/@href',
+                                '//video/source/@src',
+                                '//audio/source/@src',
+                                '//picture/source/@srcset',
+                                '//picture/img/@src',
+                                '//iframe/@src',
+                                '//track/@src',
+                                '//embed/@src',
+                            ];
+
+                            foreach ($xpathQueries as $query) {
+                                $nodes = $xpath->evaluate($query, $doc);
+                                foreach ($nodes as $node) {
+                                    $srcString = (string) $node->value;
+                                    array_push($srcRoutes, $srcString);
+                                }
+                            }
+
                             if ('scrambled-list' == $nodeIdeviceTextType) {
                                 $scrambleIdeviceElements = self::searchScrambleIdeviceElementsOldElp($xpath, $doc);
 
@@ -1968,16 +1986,6 @@ class OdeXmlUtil
 
                                 // Add a div class wrapper
                                 $odeComponentsSyncHtmlView = '<div class="exe-text-activity">'.$odeComponentsSyncHtmlView.'</div>';
-                            }
-
-                            foreach ($src as $srcValue) {
-                                $srcString = (string) $srcValue->value;
-                                array_push($srcRoutes, $srcString);
-                            }
-
-                            foreach ($href as $hrefValue) {
-                                $hrefString = (string) $hrefValue->value;
-                                array_push($srcRoutes, $hrefString);
                             }
 
                             // In case rubric change class exe-rubric to exe-rubrics

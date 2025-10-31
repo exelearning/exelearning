@@ -49,7 +49,6 @@ var $text = {
         }
 
         let contentHtml = data[this.mainContentId];
-        if (!isInExe && pathMedia) contentHtml = this.replaceResourceDirectoryPaths(pathMedia, contentHtml);
 
         const temp = document.createElement('div');
         temp.innerHTML = contentHtml;
@@ -63,7 +62,6 @@ var $text = {
         }
 
         let feedBackHtml = data[this.feedbackContentId] || "";
-        if (!isInExe && pathMedia) feedBackHtml = this.replaceResourceDirectoryPaths(pathMedia, feedBackHtml);
         const fbDiv = temp.querySelector('.feedback.js-feedback');
         if (fbDiv) {
             feedBackHtml = fbDiv.innerHTML;

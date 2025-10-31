@@ -2,17 +2,34 @@
 @font-face {
   font-family: "Inter";
   font-style: normal;
-  src: local("Inter"), local("Inter"), url(fonts/Inter-Regular.woff2) format("woff2"), url(fonts/Inter-Regular.woff) format("woff");
+  font-weight: 400;
+  src: local("Inter"), url(fonts/Inter-Regular.woff2) format("woff2"), url(fonts/Inter-Regular.woff) format("woff");
 }
+
 @font-face {
   font-family: "Inter";
   font-style: italic;
-  src: local("Inter Italic"), local("Inter Italic"), url(fonts/Inter-Italic.woff2) format("woff2"), url(fonts/Inter-Italic.woff) format("woff");
+  font-weight: 400;
+  src: local("Inter Italic"), url(fonts/Inter-Italic.woff2) format("woff2"), url(fonts/Inter-Italic.woff) format("woff");
 }
+
 @font-face {
   font-family: "Inter";
-  font-style: bold;
-  src: local("Inter Bold"), local("Inter Bold"), url(fonts/Inter-Bold.woff2) format("woff2"), url(fonts/Inter-Bold.woff) format("woff");
+  font-style: normal;
+  font-weight: 700;
+  src: local("Inter Bold"), url(fonts/Inter-Bold.woff2) format("woff2"), url(fonts/Inter-Bold.woff) format("woff");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 700;
+  src: local("Inter Bold Italic"), url(fonts/Inter-BoldItalic.woff2) format("woff2"), url(fonts/Inter-BoldItalic.woff) format("woff");
+}
+
+body.exe-export, .exe-content{
+    font-family: "Inter";
+    font-weight: 400;
 }
 
 .page-title{
@@ -79,10 +96,6 @@ body.exe-export {
 
 body.exe-web-site{
     padding: 0;
-}
-
-body.exe-export, body.exe-web-site{
-    font-family: "Inter";
 }
 
 .exe-content a{
