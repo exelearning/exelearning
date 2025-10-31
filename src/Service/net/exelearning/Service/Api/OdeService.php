@@ -1458,17 +1458,29 @@ class OdeService implements OdeServiceInterface
 
         // Check content.elp
         $elpFileName = false;
+        $elpFilePathName = null;
 
         $zipFilesList = scandir($odeSessionDistDirPath);
         foreach ($zipFilesList as $file) {
             if (Constants::FILE_EXTENSION_ELP == pathinfo($file, PATHINFO_EXTENSION)) {
                 $elpFileName = $file;
+                $elpFilePathName = $odeSessionDistDirPath.$elpFileName;
                 break;
             }
         }
 
+        if (false === $elpFileName) {
+            $zipFilesList = scandir($epubExportDir);
+            foreach ($zipFilesList as $file) {
+                if (Constants::FILE_EXTENSION_ELP == pathinfo($file, PATHINFO_EXTENSION)) {
+                    $elpFileName = $file;
+                    $elpFilePathName = $epubExportDir.$elpFileName;
+                    break;
+                }
+            }
+        }
+
         if ($elpFileName) {
-            $elpFilePathName = $odeSessionDistDirPath.$elpFileName;
             $isZipEditable = file_exists($elpFilePathName);
 
             if ($isZipEditable) {
