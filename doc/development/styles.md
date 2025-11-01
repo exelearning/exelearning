@@ -52,7 +52,7 @@ iDevice icons by…</description>
 ## CSS Files
 
 - Placed in the root folder of the style.
-- You may include one or multiple files (most styles use a single `content.css`).
+- You may include one or multiple files (most styles use a single `style.css`).
 - If multiple files exist, they are loaded **in alphabetical order**.
 
 ---
@@ -60,7 +60,7 @@ iDevice icons by…</description>
 ## JavaScript (JS) Files
 
 - Placed in the root folder of the style.
-- You may include multiple JS files; they are also loaded **alphabetically**.
+- You may include multiple JS files (most styles use a single `style.js`); they are also loaded **alphabetically**.
 - JavaScript **does not run inside eXeLearning**, it only runs after exporting the content.
 
 ---
