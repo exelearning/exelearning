@@ -651,7 +651,7 @@ table {
 }
 #packageLicense.cc {
     padding: 0 20px 0 90px;
-    background: url(default_licenses.gif) no-repeat 0 0;
+    background: url(img/licenses.gif) no-repeat 0 0;
 }
 #packageLicense.cc-by-sa {
     background-position: 0 -100px;
