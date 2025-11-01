@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<idevice>
+	<name>mermaid-diagram</name>
+	<title>Mermaid Diagram</title>
+	<css-class>mermaid-diagram</css-class>
+	<category>Information and presentation</category>
+    <icon>
+        <name>mermaid-diagram-icon</name>
+        <url>mermaid-diagram-icon.svg</url>
+        <type>img</type>
+    </icon>
+	<version>1.0</version>
+	<api-version>3.0</api-version>
+	<component-type>json</component-type>
+	<location>location</location>
+	<location-type>location type</location-type>
+	<edition-js>
+		<filename>mermaid-diagram.js</filename>
+	</edition-js>
+	<edition-css>
+		<filename>mermaid-diagram.css</filename>
+	</edition-css>
+	<export-js>
+		<filename>mermaid-diagram.js</filename>
+	</export-js>
+	<export-css>
+		<filename>mermaid-diagram.css</filename>
+	</export-css>
+	<export-template-filename>mermaid-diagram.html</export-template-filename>
+	<author>Luis Ramón Lopez</author>
+	<author-url>https://github.com/lrlopez</author-url>
+	<license>license</license>
+	<license-url>license url</license-url>
+	<description>Mermaid diagram iDevice</description>
+	<downloadable>1</downloadable>
+	<default-visibility>1</default-visibility>
+</idevice>

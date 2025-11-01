@@ -1,0 +1,23 @@
+/* Mermaid iDevice (export CSS) */
+
+.mermaidIdeviceContent .data-values-row {
+  display: flex;
+  margin: 5px;
+  padding: 5px;
+  background-color: rgb(229, 229, 229);
+}
+
+.mermaidIdeviceContent .data-values-row .td {
+  padding: 2px;
+}
+
+.mermaidIdeviceContent .data-values-row .td.data-key {
+  font-weight: bold;
+  width: 10%;
+  min-width: 60px;
+  margin-left: 10px;
+}
+
+.mermaidIdeviceContent .data-values-row .td.data-value {
+  width: 100%;
+}
