@@ -99,13 +99,26 @@ export default class NavbarFile {
             menu.classList.add('theme-menu', 'exe-submenu', 'hidden');
             const ul = document.createElement('ul');
             const liDownload = document.createElement('li');
-            liDownload.classList.add('disabled');
+            if (theme.downloadable == '1')
+                liDownload.classList.add('theme-action-download');
+            else liDownload.classList.add('disabled');
             const iconDownload = document.createElement('span');
-            iconDownload.classList.add('small-icon', 'download-icon-disabled');
+            if (theme.downloadable == '1')
+                iconDownload.classList.add('small-icon', 'download-icon-green');
+            else
+                iconDownload.classList.add(
+                    'small-icon',
+                    'download-icon-disabled'
+                );
             liDownload.appendChild(iconDownload);
             liDownload.appendChild(
                 document.createTextNode(` ${_('Download')}`)
             );
+            // Click event
+            liDownload.addEventListener('click', (e) => {
+                this.downloadThemeZip(theme);
+            });
+
             const liInfo = document.createElement('li');
             liInfo.classList.add('theme-action-info');
             const iconInfo = document.createElement('span');
@@ -120,8 +133,8 @@ export default class NavbarFile {
                 leftBody.append(this.makeElementInfoTheme(theme, 'base'));
             });
 
-            ul.appendChild(liDownload);
             ul.appendChild(liInfo);
+            ul.appendChild(liDownload);
 
             menu.appendChild(ul);
             header.appendChild(title);
