@@ -1,6 +1,6 @@
-# 📘 Creating a Style for **eXeLearning**
+# Creating a Style for **eXeLearning**
 
-## ✅ Minimum Required Elements of a Style
+## Minimum Required Elements of a Style
 
 A style must include at least the following elements:
 
@@ -14,7 +14,7 @@ A style must include at least the following elements:
 
 ---
 
-## 📁 The `config.xml` File
+## The `config.xml` File
 
 Example structure:
 
@@ -30,12 +30,12 @@ Example structure:
   <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
   <description>Example style for eXe.
 
-iDevice icon by Francisco Javier Pulido Cuadrado.</description>
+iDevice icons by…</description>
   <downloadable>1</downloadable>
 </theme>
 ```
 
-### 📌 File Fields
+### File Fields
 
 - **`name`**: Internal name (ID) and folder name of the style (no spaces or special characters).
 - **`title`**: Name displayed in the style selector in eXeLearning.
@@ -49,7 +49,7 @@ iDevice icon by Francisco Javier Pulido Cuadrado.</description>
 
 ---
 
-## 🎨 CSS Files
+## CSS Files
 
 - Placed in the root folder of the style.
 - You may include one or multiple files (most styles use a single `content.css`).
@@ -57,7 +57,7 @@ iDevice icon by Francisco Javier Pulido Cuadrado.</description>
 
 ---
 
-## ⚙️ JavaScript (JS) Files
+## JavaScript (JS) Files
 
 - Placed in the root folder of the style.
 - You may include multiple JS files; they are also loaded **alphabetically**.
@@ -65,7 +65,7 @@ iDevice icon by Francisco Javier Pulido Cuadrado.</description>
 
 ---
 
-## 🖼️ Screenshot (`preview.png`)
+## Screenshot (`preview.png`)
 
 - Required name: `preview.png`.  
 - Location: root folder.  
@@ -73,14 +73,14 @@ iDevice icon by Francisco Javier Pulido Cuadrado.</description>
 
 ---
 
-## 🗂️ `icons/` Folder
+## `icons/` Folder
 
 - Contains images for iDevice icons.  
 - Supported formats: `.gif`, `.png`, `.jpg`, `.svg`.  
 
 ---
 
-## 📦 Optional Files and Folders
+## Optional Files and Folders
 
 You can add other useful folders such as:
 
@@ -98,7 +98,7 @@ Example usage in CSS:
 
 ---
 
-## ⚠️ CSS and Exported Content
+## CSS and Exported Content
 
 All exported content is wrapped in a `<div class="exe-content">`.  
 Using this class ensures your CSS does **not interfere with the eXeLearning interface**.
@@ -115,7 +115,7 @@ h2 { color: red !important; }
 
 ---
 
-## 🧾 CSS Classes by Export Type
+## CSS Classes by Export Type
 
 Each export type adds a CSS class to the `<body>` element:
 
@@ -135,7 +135,7 @@ Example:
 
 ---
 
-## 💻 JavaScript in Styles
+## JavaScript in Styles
 
 You can use jQuery (already included in exported content).  
 Common functionality found in built-in eXe styles:
@@ -150,7 +150,7 @@ Common functionality found in built-in eXe styles:
 
 ---
 
-## ✅ Final Recommendations
+## Final Recommendations
 
 - Export in different formats: **SCORM, Web, Single HTML Page** to test compatibility.
 - Adjust your CSS and JS so the style works consistently across all export types.
@@ -160,7 +160,7 @@ Common functionality found in built-in eXe styles:
 
 ---
 
-### ✨ How to Create a New Style Easily
+### How to Create a New Style Easily
 
 - Download any of the styles included in eXeLearning. Choose the one that most closely resembles what you want to achieve.  
 - Unzip the `.zip` folder.  
