@@ -12337,6 +12337,634 @@
         <source>iDevice</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="byLNU96" resname="Import (.elpx...)">
+        <source>Import (.elpx...)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="t0jmRcI" resname="The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts">
+        <source>The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="D7clkVP" resname="With fixed headers, the number of cards must be bigger than the number of columns">
+        <source>With fixed headers, the number of cards must be bigger than the number of columns</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fdwIkjV" resname="Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)">
+        <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ekwfxIh" resname="Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) ">
+        <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="L41w01C" resname="The question text and the formula should have the same variables">
+        <source>The question text and the formula should have the same variables</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3IL1weY" resname="Select the correct options and click on the 'Reply' button.">
+        <source>Select the correct options and click on the 'Reply' button.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+        <target><![CDATA[__You must review %s&percnt; of the contents of the activity before completing the questionnaire.]]></target>
+      </trans-unit>
+      <trans-unit id="GySH111" resname="Show when the mouse is over the icon or active area">
+        <source>Show when the mouse is over the icon or active area</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="n_.r9xf" resname="Editar cuestionario">
+        <source>Editar cuestionario</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j5mwtQP" resname="The word cannot contain more than fourteen characters or white spaces">
+        <source>The word cannot contain more than fourteen characters or white spaces</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="KAgEWOK" resname="You must select at least one type of data to complet">
+        <source>You must select at least one type of data to complet</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="aGuMwTn" resname="You must select at least one group of elements">
+        <source>You must select at least one group of elements</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_N0MKqb" resname="Please select a text file (.txt), or an XML(Moodle) file (.xml) ">
+        <source>Please select a text file (.txt), or an XML(Moodle) file (.xml) </source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="JTuD2Zp" resname="Your changes won\'t be saved until you click on &quot;Save&quot;.">
+        <source>Your changes won\'t be saved until you click on "Save".</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="JsWigaF" resname="Click on &quot;Exit&quot; to finish.">
+        <source>Click on "Exit" to finish.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="EnsLnax" resname="Please check the &quot;Start&quot; time">
+        <source>Please check the "Start" time</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="lo0mftN" resname="Please check the &quot;End&quot; time">
+        <source>Please check the "End" time</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4qf1EYr" resname="Indicate the character, object or solution to discover">
+        <source>Indicate the character, object or solution to discover</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Ovrtva0" resname="You must indicate the number of points for each item to be assesed">
+        <source>You must indicate the number of points for each item to be assesed</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Jm0CpVT" resname="Please write the challenge description.">
+        <source>Please write the challenge description.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="H1p97J6" resname="Please write the title, description and solution of all the trials.">
+        <source>Please write the title, description and solution of all the trials.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="PvsVjQU" resname="You must provide a definition, an image, and/or an audio for the word">
+        <source>You must provide a definition, an image, and/or an audio for the word</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Pf0uSOu" resname="The score can't be saved because this page is not part of a SCORM package">
+        <source>The score can't be saved because this page is not part of a SCORM package</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nMiyKXf" resname="You must specify a number of rows and columns between three and five">
+        <source>You must specify a number of rows and columns between three and five</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jtqwRb5" resname="You must complete the text and add an image or video">
+        <source>You must complete the text and add an image or video</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cjVsZ.0" resname="You can only import data from text or XML files for “connect with arrows” matching games.">
+        <source>You can only import data from text or XML files for “connect with arrows” matching games.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xnR2kT7" resname="Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.">
+        <source>Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kGuPuRG" resname="You must select an image and text for this card">
+        <source>You must select an image and text for this card</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1dR3LOT" resname="You must indicate a text or sound for this card">
+        <source>You must indicate a text or sound for this card</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fdvs82R" resname="You must link an image or sound to this card">
+        <source>You must link an image or sound to this card</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="UPkE2ow" resname="Type the right URL of a Youtube video">
+        <source>Type the right URL of a Youtube video</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ncD83dy" resname="The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts">
+        <source>The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9_TZOpH" resname="opera">
+        <source>opera</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="AIsJtCT" resname="firefox">
+        <source>firefox</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9q5exJ3" resname="win">
+        <source>win</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6mtIDms" resname="android">
+        <source>android</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="KAY_bU7" resname="mac os x">
+        <source>mac os x</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vWSuY4T" resname="linux">
+        <source>linux</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="raddJ8A" resname="sunos">
+        <source>sunos</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="EuDnhPB" resname="freebsd">
+        <source>freebsd</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1d66.S6" resname="cros">
+        <source>cros</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="h_oV9Jy" resname="Format HTML Code">
+        <source>Format HTML Code</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4EKJ1ju" resname="advanced editor">
+        <source>advanced editor</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f99wpMS" resname="Standard YouTube License">
+        <source>Standard YouTube License</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="BTP4n6x" resname="Title Link">
+        <source>Title Link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4pH5XOA" resname="Autoplay">
+        <source>Autoplay</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ESl1WZi" resname="Muted autoplay (recommended)">
+        <source>Muted autoplay (recommended)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cZ0oVQz" resname="Choose a file or paste a link (URL)">
+        <source>Choose a file or paste a link (URL)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="poYLy27" resname="Choose a file">
+        <source>Choose a file</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="igvddsQ" resname="Please check the &quot;License&quot; field">
+        <source>Please check the "License" field</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="a6wZFrc" resname="Please select the media file to edit it">
+        <source>Please select the media file to edit it</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="q.0JpQQ" resname="Insert/Edit media">
+        <source>Insert/Edit media</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="UaH5pD4" resname="Insert\/Edit Embedded Media">
+        <source>Insert\/Edit Embedded Media</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ZLoYAYD" resname="Pause">
+        <source>Pause</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="QvKt848" resname="Error: Media Recorder">
+        <source>Error: Media Recorder</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="SEGLQ0b" resname="Audio input:">
+        <source>Audio input:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xNrynQ4" resname="TabIndex">
+        <source>TabIndex</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hucwGqq" resname="AccessKey">
+        <source>AccessKey</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="NXe.m.c" resname="Value">
+        <source>Value</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gaxVlAk" resname="Class added to the &quot;CSS class&quot; field.">
+        <source>Class added to the "CSS class" field.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="TNNvqP6" resname="That content was created using the old formula editor.">
+        <source>That content was created using the old formula editor.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xrhbX_X" resname="Make it compatible with the new editor?">
+        <source>Make it compatible with the new editor?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="WN9R520" resname="Done! Please select the LaTeX code that you want to edit.">
+        <source>Done! Please select the LaTeX code that you want to edit.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tIT9Dxr" resname="Sorry, but the formula is not compatible with this editor.">
+        <source>Sorry, but the formula is not compatible with this editor.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tw4o5eK" resname="If you want to edit a previous code, please select it before opening the editor.">
+        <source>If you want to edit a previous code, please select it before opening the editor.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bgFLuuR" resname="Insert/Edit math">
+        <source>Insert/Edit math</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="y0GDp.V" resname="Crop and save">
+        <source>Crop and save</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="URIKx03" resname="Save without cropping">
+        <source>Save without cropping</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_x5b4NW" resname="Open an existing mind map from your disk">
+        <source>Open an existing mind map from your disk</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="43ac_1r" resname="Open this map in a new window">
+        <source>Open this map in a new window</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_Ci09gg" resname="Hide or show the navigator">
+        <source>Hide or show the navigator</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="QKGR9zj" resname="Open map">
+        <source>Open map</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="QLeueB2" resname="Select a json file.">
+        <source>Select a json file.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xlqZ47q" resname="Save map">
+        <source>Save map</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="F56xAzI" resname="Save the mind map as a json file.">
+        <source>Save the mind map as a json file.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="JEWASrw" resname="Text style">
+        <source>Text style</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="b2fyIuk" resname="Line color">
+        <source>Line color</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mwZll9R" resname="It works with mindmaps">
+        <source>It works with mindmaps</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="l1E1Z67" resname="You can edit the mind map...">
+        <source>You can edit the mind map...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="GVHcNJ0" resname="Please create a mind map.">
+        <source>Please create a mind map.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ycOZXSj" resname="Please provide a title.">
+        <source>Please provide a title.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="NqzcwcS" resname="Failed to save properties">
+        <source>Failed to save properties</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bHbHhew" resname="Please write the abbreviation and its meaning.">
+        <source>Please write the abbreviation and its meaning.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ALh34kd" resname="The ACRONYM tag is not supported in HTML5.\n\nUse the ABBR tag instead?">
+        <source>The ACRONYM tag is not supported in HTML5.\n\nUse the ABBR tag instead?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qqHT8tz" resname="Node">
+        <source>Node</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="nwwNBDk" resname="Popup">
+        <source>Popup</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xu2Xqx3" resname="Link to the elp file (it will be exported)">
+        <source>Link to the elp file (it will be exported)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="H65O8eQ" resname="Please enable JavaScript to play this game.">
+        <source>Please enable JavaScript to play this game.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="d6JrxQ5" resname="Alphabet to Select From">
+        <source>Alphabet to Select From</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Z9OfOtp" resname="These games require JavaScript.">
+        <source>These games require JavaScript.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="88.Te5l" resname="This is the message that the users with no JavaScript will see:">
+        <source>This is the message that the users with no JavaScript will see:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="8kQHtBn" resname="You can change it at any time.">
+        <source>You can change it at any time.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pg8t9tx" resname="Write the list of letters and/or numbers to choose from.">
+        <source>Write the list of letters and/or numbers to choose from.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="kYHzMOL" resname="You may include capital letters or they can be automatically included.">
+        <source>You may include capital letters or they can be automatically included.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="80nggiY" resname="Choose if you want the game to be case sensitive.">
+        <source>Choose if you want the game to be case sensitive.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="w3urI7T" resname="Add at least one word to guess (question or definition + word).">
+        <source>Add at least one word to guess (question or definition + word).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="BHbGCgY" resname="You may delete the game from the editor itself.">
+        <source>You may delete the game from the editor itself.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="s5Q81qh" resname="Don't forget to check the Accessibility tab.">
+        <source>Don't forget to check the Accessibility tab.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id=".wwVlaA" resname="Automatically include capital letters">
+        <source>Automatically include capital letters</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="CcwJ2Hi" resname="Word to guess">
+        <source>Word to guess</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="tsBm1kF" resname="Hint or definition">
+        <source>Hint or definition</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="txFFw.l" resname="Accessibility">
+        <source>Accessibility</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ggtQp4Q" resname="Provide a warning to users who have JavaScript disabled (Accessibility).">
+        <source>Provide a warning to users who have JavaScript disabled (Accessibility).</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="59FYaq0" resname="Please write the Alphabet to Select From">
+        <source>Please write the Alphabet to Select From</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="OPaeP39" resname="A word to guess is missing">
+        <source>A word to guess is missing</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9m_71xP" resname="A hint or definition is missing">
+        <source>A hint or definition is missing</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9dRcQq8" resname="Please add at least one word to guess">
+        <source>Please add at least one word to guess</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="NHFdqHp" resname="Please select a Page">
+        <source>Please select a Page</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="eAXz0eN" resname="The Link is required">
+        <source>The Link is required</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="SHPoGt." resname="The Link title is required">
+        <source>The Link title is required</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_sWAHNX" resname="Please write the Definition">
+        <source>Please write the Definition</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="72663QW" resname="Plain text. You can add a title.">
+        <source>Plain text. You can add a title.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0jM1S.1" resname="Write the term and its definition. You may use HTML and edit it in the editor.">
+        <source>Write the term and its definition. You may use HTML and edit it in the editor.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v5ZRdyM" resname="Show the content of the first Free Text iDevice in the specified page.">
+        <source>Show the content of the first Free Text iDevice in the specified page.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="k_kZsMw" resname="Term">
+        <source>Term</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="M5fgzop" resname="---">
+        <source>---</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="dz7M8qJ" resname="No selection and not in link">
+        <source>No selection and not in link</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="c49xFvy" resname="The tooltip data could not be retreived. Please create a new one choosing any of the available types.">
+        <source>The tooltip data could not be retreived. Please create a new one choosing any of the available types.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="X6QzAK9" resname="Link URL">
+        <source>Link URL</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="7lGkRnu" resname="Definition:">
+        <source>Definition:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="X5gzruA" resname="Make a timeline?">
+        <source>Make a timeline?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4_HMslq" resname="Change the text of the tabs adding a title to each Heading 2 with the &quot;Insert/Edit Attributes&quot; option:">
+        <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uuyq_8U" resname="Please write the Content">
+        <source>Please write the Content</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="k9fD7sJ" resname="Drop image here or $browse...$">
+        <source>Drop image here or $browse...$</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="TLhu5aI" resname="Max width">
+        <source>Max width</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="LrP1fL3" resname="Max height">
+        <source>Max height</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="yy8vDP3" resname="Quality">
+        <source>Quality</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="EYbFWLc" resname="You just added that image. Save the iDevice or select the image again to update it.">
+        <source>You just added that image. Save the iDevice or select the image again to update it.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="c1GMB53" resname="$Save the current image$ before overwriting it.">
+        <source>$Save the current image$ before overwriting it.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="315H6gn" resname="Error uploading image">
+        <source>Error uploading image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="EIlrJpG" resname="Clear Image">
+        <source>Clear Image</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="JZshxFL" resname="Baseline">
+        <source>Baseline</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="cPdWcFY" resname="Text top">
+        <source>Text top</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_TXgB4k" resname="Text Bottom">
+        <source>Text Bottom</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="iMCV2Wn" resname="Solid">
+        <source>Solid</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ByD0fXH" resname="Dotted">
+        <source>Dotted</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="IJGwKvl" resname="Dashed">
+        <source>Dashed</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ca_CvA8" resname="Double">
+        <source>Double</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="2cP9lEv" resname="Groove">
+        <source>Groove</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="eynG1GG" resname="Ridge">
+        <source>Ridge</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="u1wDw7i" resname="Inset">
+        <source>Inset</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ZpXyB5W" resname="Outset">
+        <source>Outset</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="bMJFh5R" resname="Hidden">
+        <source>Hidden</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vl3t9vS" resname="Image list">
+        <source>Image list</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="69voHP4" resname="Image title">
+        <source>Image title</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="Atp3bhQ" resname="Image is decorative">
+        <source>Image is decorative</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="IQ79uoq" resname="Show caption">
+        <source>Show caption</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mD8meNC" resname="Custom File Picker">
+        <source>Custom File Picker</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="IK9jqUK" resname="Feed URL">
+        <source>Feed URL</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="_aKE8Ft" resname="Maximum feeds">
+        <source>Maximum feeds</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="0PfIhmR" resname="RSS Feed">
+        <source>RSS Feed</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fsH5WS0" resname="Markup language">
+        <source>Markup language</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="eCYYXE5" resname="Markup (HTML, etc.)">
+        <source>Markup (HTML, etc.)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="f1tQ8qo" resname="C type">
+        <source>C type</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6_HJYbq" resname="Line numbers">
+        <source>Line numbers</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="TZosZdP" resname="Line highlight">
+        <source>Line highlight</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
