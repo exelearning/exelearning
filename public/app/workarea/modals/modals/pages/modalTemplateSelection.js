@@ -106,6 +106,11 @@ export default class modalTemplateSelection extends Modal {
             // Hide the modal
             this.modal.hide();
 
+            // Clear the original file path to prevent it from being used
+            try {
+                delete window.__originalElpPath;
+            } catch (_e) {}
+
             // Fetch the template file
             const response = await fetch(template.path);
             if (!response.ok) {
@@ -113,7 +118,10 @@ export default class modalTemplateSelection extends Modal {
             }
 
             const blob = await response.blob();
-            const file = new File([blob], template.filename, {
+
+            // Use a generic filename to avoid confusion
+            const genericFilename = 'New Project.elpx';
+            const file = new File([blob], genericFilename, {
                 type: 'application/octet-stream',
             });
 
@@ -122,6 +130,26 @@ export default class modalTemplateSelection extends Modal {
                 await eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                     file
                 );
+
+                // CRITICAL: Clear the saved path AFTER upload completes
+                // The upload sets the path to the temp file, which we need to remove
+                // This ensures when user manually saves, they get prompted for location
+                if (
+                    window.electronAPI &&
+                    typeof window.electronAPI.clearSavedPath === 'function'
+                ) {
+                    try {
+                        // Wait a tiny bit to ensure the path was set first
+                        await new Promise((resolve) =>
+                            setTimeout(resolve, 100)
+                        );
+                        const projectId =
+                            window.__currentProjectId || 'default';
+                        await window.electronAPI.clearSavedPath(projectId);
+                    } catch (_e) {
+                        console.error('Failed to clear saved path:', _e);
+                    }
+                }
             } else {
                 console.error('Open user ODE files modal not available');
             }
