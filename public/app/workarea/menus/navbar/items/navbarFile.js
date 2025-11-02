@@ -3,6 +3,9 @@ export default class NavbarFile {
         this.menu = menu;
         this.button = this.menu.navbar.querySelector('#dropdownFile');
         this.newButton = this.menu.navbar.querySelector('#navbar-button-new');
+        this.newFromTemplateButton = this.menu.navbar.querySelector(
+            '#navbar-button-new-from-template'
+        );
         this.saveButton = this.menu.navbar.querySelector('#navbar-button-save');
         this.saveButtonAs = this.menu.navbar.querySelector(
             '#navbar-button-save-as'
@@ -106,6 +109,7 @@ export default class NavbarFile {
      */
     setEvents() {
         this.setNewProjectEvent();
+        this.setNewFromTemplateEvent();
         this.setSaveProjectEvent();
         this.setSaveAsProjectEvent();
         this.setSaveAsProjectOfflineEvent();
@@ -154,6 +158,17 @@ export default class NavbarFile {
     setNewProjectEvent() {
         this.newButton.addEventListener('click', () => {
             this.newProjectEvent();
+        });
+    }
+
+    /**
+     * New project from template
+     * File -> New from Template...
+     *
+     */
+    setNewFromTemplateEvent() {
+        this.newFromTemplateButton.addEventListener('click', () => {
+            this.newFromTemplateEvent();
         });
     }
 
@@ -700,6 +715,14 @@ export default class NavbarFile {
     newProjectEvent() {
         let odeSessionId = eXeLearning.app.project.odeSession;
         this.newSession(odeSessionId);
+    }
+
+    /**
+     * Opens the template selection modal
+     * File -> New from Template
+     */
+    newFromTemplateEvent() {
+        eXeLearning.app.modals.templateselection.show();
     }
 
     /**
