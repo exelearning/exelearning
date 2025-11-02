@@ -4,11 +4,13 @@ on:
   push:
     branches:
       - main
+      - tikismaker
     tags:
       - '*'
   pull_request:
     branches:
       - main
+      - tikismaker
 
 permissions:
   contents: read
