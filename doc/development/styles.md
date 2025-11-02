@@ -52,7 +52,7 @@ iDevice icons by…</description>
 ## CSS Files
 
 - Placed in the root folder of the style.
-- You may include one or multiple files (most styles use a single `style.css`).
+- You may include one or multiple files (`style.css` is required).
 - If multiple files exist, they are loaded **in alphabetical order**.
 
 ---
@@ -168,3 +168,19 @@ Common functionality found in built-in eXe styles:
 - Follow the steps described in the **"Final Recommendations"** section to complete the creation of your style.
 
 ---
+
+## Deployment Information
+
+The styles included by default in eXeLearning are located in:
+
+```
+/public/files/perm/themes/base/
+```
+
+If you are managing an online instance of eXeLearning, place the folder containing your new styles there and restart the service.
+
+User-installed styles (both in the online version, if allowed by the administrator, and in the desktop version) are stored, for each user, in:
+
+```
+/public/files/perm/themes/users/
+```
