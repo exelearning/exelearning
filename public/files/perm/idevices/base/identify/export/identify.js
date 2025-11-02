@@ -42,7 +42,12 @@ var $eXeIdentifica = {
     mScorm: null,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Identify', 'identify', 'identifica-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Identify',
+            'identify',
+            'identifica-IDevice'
+        );
     },
 
     enable: function () {
@@ -58,7 +63,7 @@ var $eXeIdentifica = {
                 mOption = $eXeIdentifica.loadDataGame(
                     dl,
                     imagesLink,
-                    audioLink,
+                    audioLink
                 ),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -85,7 +90,7 @@ var $eXeIdentifica = {
             }
             $('#idfMessageMaximize-' + i).text(msg);
             $('#idfDivFeedBack-' + i).prepend(
-                $('.identifica-feedback-game', this),
+                $('.identifica-feedback-game', this)
             );
 
             $eXeIdentifica.addEvents(i);
@@ -102,11 +107,11 @@ var $eXeIdentifica = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $eXeIdentifica,
-                node,
+                node
             );
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.identifica-IDevice',
+            '.identifica-IDevice'
         );
     },
 
@@ -327,11 +332,11 @@ var $eXeIdentifica = {
         for (let i = 0; i < mOptions.questionsGame.length; i++) {
             mOptions.questionsGame[i].url =
                 $exeDevices.iDevice.gamification.media.extractURLGD(
-                    mOptions.questionsGame[i].url,
+                    mOptions.questionsGame[i].url
                 );
             mOptions.questionsGame[i].audio =
                 $exeDevices.iDevice.gamification.media.extractURLGD(
-                    mOptions.questionsGame[i].audio,
+                    mOptions.questionsGame[i].audio
                 );
         }
 
@@ -375,13 +380,13 @@ var $eXeIdentifica = {
         mOptions.questionsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.questionsGame,
-                mOptions.percentajeQuestions,
+                mOptions.percentajeQuestions
             );
         for (let i = 0; i < mOptions.questionsGame.length; i++) {
             mOptions.scoreTotal += 1;
         }
         const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.questionsGame,
+            mOptions.questionsGame
         );
         mOptions.questionsGame = mOptions.questionsRamdon
             ? al
@@ -420,11 +425,14 @@ var $eXeIdentifica = {
             $messageClue = $(`#idfMessageClue-${instance}`),
             $startGameButton = $(`#idfStartGame-${instance}`);
 
-        $(window).on('unload.eXeIdentifica beforeunload.eXeIdentifica', function () {
-            $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeIdentifica.mScorm,
-            );
-        });
+        $(window).on(
+            'unload.eXeIdentifica beforeunload.eXeIdentifica',
+            function () {
+                $exeDevices.iDevice.gamification.scorm.endScorm(
+                    $eXeIdentifica.mScorm
+                );
+            }
+        );
 
         $linkMaximize.on('click touchstart', function (e) {
             e.preventDefault();
@@ -433,7 +441,7 @@ var $eXeIdentifica = {
             setTimeout(() => {
                 $eXeIdentifica.showBackCard(
                     mOptions.questionsGame[mOptions.activeQuestion],
-                    instance,
+                    instance
                 );
             }, 200);
         });
@@ -472,7 +480,7 @@ var $eXeIdentifica = {
         $linkFullScreen.on('click touchstart', function (e) {
             e.preventDefault();
             const element = document.getElementById(
-                `idfGameContainer-${instance}`,
+                `idfGameContainer-${instance}`
             );
             $exeDevices.iDevice.gamification.helpers.toggleFullscreen(element);
         });
@@ -484,7 +492,7 @@ var $eXeIdentifica = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $(`#idfMesajeAccesCodeE-${instance}`).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $eXeIdentifica.showCubiertaOptions(0, instance);
         }
@@ -507,7 +515,9 @@ var $eXeIdentifica = {
 
         $linkAudio.on('click', function (e) {
             e.preventDefault();
-            const audio = (mOptions.questionsGame[mOptions.activeQuestion].audio || '').trim();
+            const audio = (
+                mOptions.questionsGame[mOptions.activeQuestion].audio || ''
+            ).trim();
             if (!audio || audio.length <= 4) return;
             $exeDevices.iDevice.gamification.media.stopSound(mOptions);
             $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
@@ -518,7 +528,7 @@ var $eXeIdentifica = {
             if (!$(this).hasClass('IDFP-ActivoClue')) return;
             const num = parseInt($(this).data('number'), 10),
                 $pulsados = $gameContainerClue.find(
-                    `.IDFP-LinkClue[data-number='${num}']`,
+                    `.IDFP-LinkClue[data-number='${num}']`
                 ),
                 message =
                     mOptions.questionsGame[mOptions.activeQuestion].clues[num];
@@ -533,20 +543,20 @@ var $eXeIdentifica = {
                 .fadeOut(400)
                 .fadeIn(300);
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `idfGameContainer-${instance}`,
+                `idfGameContainer-${instance}`
             );
         });
 
         $submit.on('click', function (e) {
             e.preventDefault();
             const solution =
-                mOptions.questionsGame[mOptions.activeQuestion].solution,
+                    mOptions.questionsGame[mOptions.activeQuestion].solution,
                 answer = $answer.val().trim();
             if (answer.length === 0) {
                 $eXeIdentifica.showMessage(
                     0,
                     mOptions.msgs.msgAnswer,
-                    instance,
+                    instance
                 );
                 return;
             }
@@ -558,14 +568,14 @@ var $eXeIdentifica = {
         $answer.on('keydown', function (event) {
             if (event.which === 13 || event.keyCode === 13) {
                 const solution =
-                    mOptions.questionsGame[mOptions.activeQuestion]
-                        .solution,
+                        mOptions.questionsGame[mOptions.activeQuestion]
+                            .solution,
                     answer = $answer.val().trim();
                 if (answer.length === 0) {
                     $eXeIdentifica.showMessage(
                         0,
                         mOptions.msgs.msgAnswer,
-                        instance,
+                        instance
                     );
                     return true;
                 }
@@ -585,7 +595,7 @@ var $eXeIdentifica = {
             e.preventDefault();
             if (!mOptions.gameStarted) return;
             $messageClue.html(
-                mOptions.questionsGame[mOptions.activeQuestion].question,
+                mOptions.questionsGame[mOptions.activeQuestion].question
             );
         });
 
@@ -599,7 +609,7 @@ var $eXeIdentifica = {
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -630,12 +640,12 @@ var $eXeIdentifica = {
                 mOptions.questionsGame[mOptions.activeQuestion].numberClues,
             clue =
                 mOptions.questionsGame[mOptions.activeQuestion].clues[
-                mOptions.activeClue
+                    mOptions.activeClue
                 ],
             message = mOptions.msgs.msgUseClue;
 
         $pulsados = $('#idfGameContainer-' + instance).find(
-            ".IDFP-LinkClue[data-number='" + mOptions.activeClue + "']",
+            ".IDFP-LinkClue[data-number='" + mOptions.activeClue + "']"
         );
         $pulsados.each(function () {
             $(this)
@@ -643,7 +653,7 @@ var $eXeIdentifica = {
                 .eq(0)
                 .attr(
                     'src',
-                    $eXeIdentifica.idevicePath + 'identificaPistaOpen.svg',
+                    $eXeIdentifica.idevicePath + 'identificaPistaOpen.svg'
                 );
             $(this).attr('title', clue);
             $(this).addClass('IDFP-ActivoClue');
@@ -660,11 +670,11 @@ var $eXeIdentifica = {
         mOptions.pointsClue =
             mOptions.pointsQuestion -
             ((mOptions.activeClue + 1) * mOptions.pointsQuestion) /
-            (mOptions.questionsGame[mOptions.activeQuestion].numberClues *
-                2);
+                (mOptions.questionsGame[mOptions.activeQuestion].numberClues *
+                    2);
         message = mOptions.msgs.msgUseClue.replace(
             '%s',
-            mOptions.pointsClue.toFixed(2),
+            mOptions.pointsClue.toFixed(2)
         );
 
         $('#idfPoints-' + instance).text(mOptions.pointsClue.toFixed(2));
@@ -674,23 +684,23 @@ var $eXeIdentifica = {
             $('#idfUseClue-' + instance).hide();
             message = mOptions.msgs.msgUseAllClues.replace(
                 '%s',
-                mOptions.pointsClue.toFixed(2),
+                mOptions.pointsClue.toFixed(2)
             );
             $('#idfUseClue-' + instance).html(mOptions.msgs.msgShowClue);
         }
 
         $eXeIdentifica.showMessage(0, message, instance);
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#idfGameContainer-' + instance,
+            '#idfGameContainer-' + instance
         );
     },
 
     checkWord: function (word, answord) {
         let sWord = $.trim(word)
-            .replace(/\s+/g, ' ')
-            .replace(/\.$/, '')
-            .replace(/,$/, '')
-            .replace(/;$/, ''),
+                .replace(/\s+/g, ' ')
+                .replace(/\.$/, '')
+                .replace(/,$/, '')
+                .replace(/;$/, ''),
             sAnsWord = $.trim(answord)
                 .replace(/\s+/g, ' ')
                 .replace(/\.$/, '')
@@ -759,7 +769,7 @@ var $eXeIdentifica = {
             timeShowSolution = 5000;
             $(`#idfShowClue-${instance}`).show();
             $(`#idfPShowClue-${instance}`).text(
-                `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+                `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
             );
             mOptions.obtainedClue = true;
         }
@@ -780,13 +790,11 @@ var $eXeIdentifica = {
         $(`#idfSubmit-${instance}`).prop('disabled', true).hide().blur();
         $(`#idfBtnMoveOn-${instance}`).prop('disabled', true).hide();
 
-        if (
-            mOptions.isScorm === 1
-        ) {
+        if (mOptions.isScorm === 1) {
             const score = mOptions.score.toFixed(2);
             $eXeIdentifica.sendScore(true, instance);
             $(`#idfRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`,
+                `${mOptions.msgs.msgYouScore}: ${score}`
             );
         }
 
@@ -819,12 +827,12 @@ var $eXeIdentifica = {
 
         if (x > 0 || y > 0) {
             const containerElement = document.getElementById(
-                `idfImageContainerBack-${instance}`,
+                `idfImageContainerBack-${instance}`
             );
             const containerPos = containerElement.getBoundingClientRect();
             const imgElement = document.getElementById(
-                `idfBackImage-${instance}`,
-            ),
+                    `idfBackImage-${instance}`
+                ),
                 imgPos = imgElement.getBoundingClientRect(),
                 marginTop = imgPos.top - containerPos.top,
                 marginLeft = imgPos.left - containerPos.left;
@@ -881,15 +889,15 @@ var $eXeIdentifica = {
         if (mOptions.itinerary.showClue) {
             if (mOptions.obtainedClue) {
                 $idfPShowClue.text(
-                    msgs.msgInformation + ': ' + mOptions.itinerary.clueGame,
+                    msgs.msgInformation + ': ' + mOptions.itinerary.clueGame
                 );
                 $idfShowClue.show();
             } else {
                 $idfPShowClue.text(
                     msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.itinerary.percentageClue,
-                    ),
+                        mOptions.itinerary.percentageClue
+                    )
                 );
                 $idfShowClue.show();
             }
@@ -971,7 +979,7 @@ var $eXeIdentifica = {
             const score = mOptions.score.toFixed(2);
             $eXeIdentifica.sendScore(true, instance);
             $('#idfRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+                mOptions.msgs.msgYouScore + ': ' + score
             );
             $eXeIdentifica.initialScore = score;
         }
@@ -994,9 +1002,9 @@ var $eXeIdentifica = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
-                    instance,
+                    instance
                 );
             }
         }
@@ -1030,7 +1038,7 @@ var $eXeIdentifica = {
                 $(this).addClass('IDFP-ActivoClue');
                 $(this).attr(
                     'title',
-                    mOptions.questionsGame[mOptions.activeQuestion].clues[mn],
+                    mOptions.questionsGame[mOptions.activeQuestion].clues[mn]
                 );
             }
         });
@@ -1093,7 +1101,7 @@ var $eXeIdentifica = {
             const score = mOptions.score.toFixed(2);
             $eXeIdentifica.sendScore(true, instance);
             $(`#idfRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`,
+                `${mOptions.msgs.msgYouScore}: ${score}`
             );
         }
 
@@ -1115,7 +1123,7 @@ var $eXeIdentifica = {
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `idfGameContainer-${instance}`,
+                `idfGameContainer-${instance}`
             );
         }
 
@@ -1132,7 +1140,7 @@ var $eXeIdentifica = {
         const mOptions = $eXeIdentifica.options[instance],
             mActiveQuestion = $eXeIdentifica.updateNumberQuestion(
                 mOptions.activeQuestion,
-                instance,
+                instance
             );
 
         if (mActiveQuestion === null) {
@@ -1208,7 +1216,7 @@ var $eXeIdentifica = {
         const mOptions = $eXeIdentifica.options[instance],
             messageCorrect = $eXeIdentifica.getRetroFeedMessages(
                 true,
-                instance,
+                instance
             );
 
         let message = '';
@@ -1305,7 +1313,7 @@ var $eXeIdentifica = {
         mOptions.scorerp = mOptions.score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeIdentifica.isInExe,
+            $eXeIdentifica.isInExe
         );
     },
 

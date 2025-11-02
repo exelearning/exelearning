@@ -42,7 +42,12 @@ var $eXeSopa = {
     mScorm: null,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Word search', 'word-search', 'sopa-IDevice');        
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Word search',
+            'word-search',
+            'sopa-IDevice'
+        );
     },
 
     enable: function () {
@@ -62,7 +67,7 @@ var $eXeSopa = {
                         dl,
                         imagesLink,
                         audioLink,
-                        version,
+                        version
                     ),
                     msg = mOption.msgs.msgPlayStart;
 
@@ -108,7 +113,7 @@ var $eXeSopa = {
                 definition,
                 i,
                 image,
-                audio,
+                audio
             );
         }
 
@@ -116,9 +121,7 @@ var $eXeSopa = {
 
         $('#sopaMainContainer').show();
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.sopa-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.sopa-IDevice');
     },
 
     recreatePuzzle: function () {
@@ -202,7 +205,7 @@ var $eXeSopa = {
         mOptions.wordsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.wordsGame,
-                mOptions.percentajeQuestions,
+                mOptions.percentajeQuestions
             );
         mOptions.numberQuestions = mOptions.wordsGame.length;
         $eXeSopa.optionsPuzzle = {};
@@ -329,7 +332,7 @@ var $eXeSopa = {
                 setTimeout(function () {
                     const max = Math.max(
                         $('#sopaMFDetails').innerHeight() + 50,
-                        $('#sopaGameContainer').innerHeight() + 50,
+                        $('#sopaGameContainer').innerHeight() + 50
                     );
                     $('#sopaCubierta').height(max);
                 }, 0);
@@ -340,14 +343,14 @@ var $eXeSopa = {
         $('#sopaCubierta').fadeIn(function () {
             const max = Math.max(
                 $('#sopaCubierta').innerHeight(),
-                $('#sopaGameContainer').innerHeight(),
+                $('#sopaGameContainer').innerHeight()
             );
             $('#sopaGameContainer').height(max);
             $('#sopaMainContainer').height(
                 max +
-                $('.SSP-GameScoreBoard').eq(0).innerHeight() +
-                $('.SSP-ShowClue').eq(0).innerHeight() +
-                30,
+                    $('.SSP-GameScoreBoard').eq(0).innerHeight() +
+                    $('.SSP-ShowClue').eq(0).innerHeight() +
+                    30
             );
         });
     },
@@ -403,7 +406,10 @@ var $eXeSopa = {
         mOptions.counterClock = setInterval(function () {
             let $node = $('#sopaMainContainer');
             let $content = $('#node-content');
-            if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+            if (
+                !$node.length ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
                 clearInterval(mOptions.counterClock);
                 return;
             }
@@ -422,18 +428,18 @@ var $eXeSopa = {
 
     uptateTime: function (time) {
         $('#sopaPTime').text(
-            $exeDevices.iDevice.gamification.helpers.getTimeToString(time),
+            $exeDevices.iDevice.gamification.helpers.getTimeToString(time)
         );
     },
 
     showMessage: function (type, message) {
         let colors = [
-            '#555555',
-            $eXeSopa.borderColors.red,
-            $eXeSopa.borderColors.green,
-            $eXeSopa.borderColors.blue,
-            $eXeSopa.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeSopa.borderColors.red,
+                $eXeSopa.borderColors.green,
+                $eXeSopa.borderColors.blue,
+                $eXeSopa.borderColors.yellow,
+            ],
             color = colors[type];
         $('#sopaMessage').text(message);
         $('#sopaMessage').css({
@@ -525,7 +531,7 @@ var $eXeSopa = {
         mOptions.scorerp = (10 * $eXeSopa.hits) / mOptions.wordsGame.length;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeSopa.isInExe,
+            $eXeSopa.isInExe
         );
     },
 
@@ -587,12 +593,12 @@ var $eXeSopa = {
         $('#sopaLinkFullScreen').on('click touchstart', (e) => {
             e.preventDefault();
             $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
-                document.getElementById('sopaGameContainer'),
+                document.getElementById('sopaGameContainer')
             );
         });
 
         $('#sopaFeedBackClose').on('click', () =>
-            $eXeSopa.showCubiertaOptions(false),
+            $eXeSopa.showCubiertaOptions(false)
         );
 
         $('#sopaLinkAudio').on('click', (e) => {
@@ -600,13 +606,13 @@ var $eXeSopa = {
             $exeDevices.iDevice.gamification.media.stopSound(mOptions);
             $exeDevices.iDevice.gamification.media.playSound(
                 mOptions.wordsGame[mOptions.activeQuestion].audio,
-                mOptions,
+                mOptions
             );
         });
 
         if (mOptions.itinerary.showCodeAccess) {
             $('#sopaMesajeAccesCodeE').text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $eXeSopa.showCubiertaOptions(0);
         }
@@ -627,7 +633,10 @@ var $eXeSopa = {
         $('#sopaPNumber').text(mOptions.numberQuestions);
 
         $(window).on('unload.eXeSopa beforeunload.eXeSopa', () => {
-            if ($eXeSopa.mScorm) $exeDevices.iDevice.gamification.scorm.endScorm($eXeSopa.mScorm);
+            if ($eXeSopa.mScorm)
+                $exeDevices.iDevice.gamification.scorm.endScorm(
+                    $eXeSopa.mScorm
+                );
         });
 
         $('#sopaInstructions').text(mOptions.instructions);
@@ -650,7 +659,7 @@ var $eXeSopa = {
             e.preventDefault();
             $exeDevices.iDevice.gamification.media.playSound(
                 mOptions.wordsGame[$(this).data('mnumber')].audio,
-                mOptions,
+                mOptions
             );
         });
 
@@ -672,7 +681,7 @@ var $eXeSopa = {
         });
 
         $(
-            '#sopaPTimeTitle, .exeQuextIcons-Time, #sopaPTime, #sopaStartGame, #sopaDivImgHome, #sopaPShowClue',
+            '#sopaPTimeTitle, .exeQuextIcons-Time, #sopaPTime, #sopaStartGame, #sopaDivImgHome, #sopaPShowClue'
         ).hide();
 
         if (mOptions.showResolve) $('#sopaResolve').show();
@@ -683,7 +692,7 @@ var $eXeSopa = {
             mOptions.gameStarted = false;
             $('#sopaResolve, #sopaMessage, #sopaMultimedia').hide();
             $(
-                '#sopaDivImgHome, #sopaPTimeTitle, .exeQuextIcons-Time, #sopaPTime, #sopaStartGame',
+                '#sopaDivImgHome, #sopaPTimeTitle, .exeQuextIcons-Time, #sopaPTime, #sopaStartGame'
             ).show();
         }
 
@@ -693,13 +702,13 @@ var $eXeSopa = {
             if (largeImageSrc && largeImageSrc.length > 3) {
                 $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
                     largeImageSrc,
-                    $('#sopaGameContainer'),
+                    $('#sopaGameContainer')
                 );
             }
         });
 
         $('#sopaPShowClue').text(
-            `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+            `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
         );
 
         if (mOptions.isScorm > 0) {
@@ -709,7 +718,7 @@ var $eXeSopa = {
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -739,7 +748,6 @@ var $eXeSopa = {
                 .fadeOut(300)
                 .fadeIn(200);
             $('#sopaCodeAccessE').val('');
-
         }
     },
 
@@ -754,14 +762,12 @@ var $eXeSopa = {
         mOptions.activeCounter = false;
 
         const score = (($eXeSopa.hits * 10) / mOptions.numberQuestions).toFixed(
-            2,
+            2
         );
-        if (
-            mOptions.isScorm === 1
-        ) {
+        if (mOptions.isScorm === 1) {
             $eXeSopa.sendScore(true);
             $('#sopaRepeatActivity').text(
-                `${mOptions.msgs.msgYouScore}: ${score}`,
+                `${mOptions.msgs.msgYouScore}: ${score}`
             );
             $eXeSopa.initialScore = score;
         }
@@ -772,7 +778,7 @@ var $eXeSopa = {
             const text = $('#sopaPShowClue').text(),
                 pc = mOptions.msgs.msgTryAgain.replace(
                     '%s',
-                    mOptions.itinerary.percentageClue,
+                    mOptions.itinerary.percentageClue
                 );
             mclue = mOptions.obtainedClue ? text : pc;
             $('#sopaPShowClue').text(mclue).show();
@@ -802,8 +808,8 @@ var $eXeSopa = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
-                    ),
+                        mOptions.percentajeFB
+                    )
                 );
             }
         }
@@ -896,7 +902,7 @@ var $eXeSopa = {
         if (mOptions.wordsGame[number].audio.length > 4) {
             $exeDevices.iDevice.gamification.media.playSound(
                 mOptions.wordsGame[number].audio,
-                mOptions,
+                mOptions
             );
         }
 
@@ -916,12 +922,12 @@ var $eXeSopa = {
         if (mOptions.isScorm == 1) {
             $eXeSopa.sendScore(true);
             $('#sopaRepeatActivity').text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+                mOptions.msgs.msgYouScore + ': ' + score
             );
             $eXeSopa.initialScore = score;
 
             $('#sopaRepeatActivity').text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+                mOptions.msgs.msgYouScore + ': ' + score
             );
         }
         $eXeSopa.saveEvaluation();
@@ -971,7 +977,7 @@ var $eXeSopa = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,
@@ -998,7 +1004,6 @@ var $eXeSopa = {
             y: yImagen,
         };
     },
-
 };
 $(function () {
     $eXeSopa.init();
@@ -1012,7 +1017,7 @@ $(function () {
  * For all details and documentation:
  *     http://github.com/bunkat/wordfind
  */
-(function () {
+((function () {
     'use strict';
     ('undefined' != typeof exports && null !== exports
         ? exports
@@ -1020,15 +1025,15 @@ $(function () {
     ).wordfind = (function () {
         let t = 'abcdefghijklmnoprstuvwy';
         var n = [
-            'horizontal',
-            'horizontalBack',
-            'vertical',
-            'verticalUp',
-            'diagonal',
-            'diagonalUp',
-            'diagonalBack',
-            'diagonalUpBack',
-        ],
+                'horizontal',
+                'horizontalBack',
+                'vertical',
+                'verticalUp',
+                'diagonal',
+                'diagonalUp',
+                'diagonalBack',
+                'diagonalUpBack',
+            ],
             r = {
                 horizontal: function (t, n, r) {
                     return {
@@ -1170,44 +1175,44 @@ $(function () {
                 var o = l(t, n, e);
                 if (0 === o.length) return !1;
                 var a = o[Math.floor(Math.random() * o.length)];
-                return f(t, e, a.x, a.y, r[a.orientation]), !0;
+                return (f(t, e, a.x, a.y, r[a.orientation]), !0);
             },
             l = function (t, n, a) {
                 for (
                     var i = [],
-                    l = n.height,
-                    f = n.width,
-                    d = a.length,
-                    c = 0,
-                    h = 0,
-                    v = n.orientations.length;
+                        l = n.height,
+                        f = n.width,
+                        d = a.length,
+                        c = 0,
+                        h = 0,
+                        v = n.orientations.length;
                     h < v;
                     h++
                 )
                     for (
                         var g = n.orientations[h],
-                        p = e[g],
-                        $ = r[g],
-                        P = o[g],
-                        S = 0,
-                        x = 0;
+                            p = e[g],
+                            $ = r[g],
+                            P = o[g],
+                            S = 0,
+                            x = 0;
                         x < l;
 
                     )
                         if (p(S, x, l, f, d)) {
                             var w = u(a, t, S, x, $);
-                            (w >= c || (!n.preferOverlap && w > -1)) &&
+                            ((w >= c || (!n.preferOverlap && w > -1)) &&
                                 ((c = w),
-                                    i.push({
-                                        x: S,
-                                        y: x,
-                                        orientation: g,
-                                        overlap: w,
-                                    })),
-                                ++S >= f && ((S = 0), x++);
+                                i.push({
+                                    x: S,
+                                    y: x,
+                                    orientation: g,
+                                    overlap: w,
+                                })),
+                                ++S >= f && ((S = 0), x++));
                         } else {
                             var z = P(S, x, d);
-                            (S = z.x), (x = z.y);
+                            ((S = z.x), (x = z.y));
                         }
                 return n.preferOverlap ? s(i, c) : i;
             },
@@ -1238,42 +1243,42 @@ $(function () {
                 if (!r.length) throw Error('Zero words provided');
                 for (
                     var o,
-                    i,
-                    l = 0,
-                    u = 0,
-                    s = e || {},
-                    f = (o = r.slice(0).sort())[0].length,
-                    d = {
-                        height: s.height || f,
-                        width: s.width || f,
-                        orientations: s.orientations || n,
-                        fillBlanks: void 0 === s.fillBlanks || s.fillBlanks,
-                        allowExtraBlanks:
-                            void 0 === s.allowExtraBlanks ||
-                            s.allowExtraBlanks,
-                        maxAttempts: s.maxAttempts || 3,
-                        maxGridGrowth:
-                            void 0 !== s.maxGridGrowth
-                                ? s.maxGridGrowth
-                                : 10,
-                        preferOverlap:
-                            void 0 === s.preferOverlap || s.preferOverlap,
-                    };
+                        i,
+                        l = 0,
+                        u = 0,
+                        s = e || {},
+                        f = (o = r.slice(0).sort())[0].length,
+                        d = {
+                            height: s.height || f,
+                            width: s.width || f,
+                            orientations: s.orientations || n,
+                            fillBlanks: void 0 === s.fillBlanks || s.fillBlanks,
+                            allowExtraBlanks:
+                                void 0 === s.allowExtraBlanks ||
+                                s.allowExtraBlanks,
+                            maxAttempts: s.maxAttempts || 3,
+                            maxGridGrowth:
+                                void 0 !== s.maxGridGrowth
+                                    ? s.maxGridGrowth
+                                    : 10,
+                            preferOverlap:
+                                void 0 === s.preferOverlap || s.preferOverlap,
+                        };
                     !i;
 
                 ) {
-                    for (; !i && l++ < d.maxAttempts;) i = a(o, d);
+                    for (; !i && l++ < d.maxAttempts; ) i = a(o, d);
                     if (!i) {
                         if (++u > d.maxGridGrowth)
                             throw Error(
-                                `No valid ${d.width}x${d.height} grid found and not allowed to grow more`,
+                                `No valid ${d.width}x${d.height} grid found and not allowed to grow more`
                             );
-                        console.log(
-                            `No valid ${d.width}x${d.height} grid found after ${l - 1} attempts, trying with bigger grid`,
+                        (console.log(
+                            `No valid ${d.width}x${d.height} grid found after ${l - 1} attempts, trying with bigger grid`
                         ),
                             d.height++,
                             d.width++,
-                            (l = 0);
+                            (l = 0));
                     }
                 }
                 if (d.fillBlanks) {
@@ -1283,20 +1288,20 @@ $(function () {
                     'function' == typeof d.fillBlanks
                         ? (h = d.fillBlanks)
                         : 'string' == typeof d.fillBlanks
-                            ? ((c = d.fillBlanks.toLowerCase().split('')),
-                                (h = () => c.pop() || (v++ && '')))
-                            : (h = () => t[Math.floor(Math.random() * t.length)]);
+                          ? ((c = d.fillBlanks.toLowerCase().split('')),
+                            (h = () => c.pop() || (v++ && '')))
+                          : (h = () => t[Math.floor(Math.random() * t.length)]);
                     var g = this.fillBlanks({
                         puzzle: i,
                         extraLetterGenerator: h,
                     });
                     if (c && c.length)
                         throw Error(
-                            `Some extra letters provided were not used: ${c}`,
+                            `Some extra letters provided were not used: ${c}`
                         );
                     if (c && v && !d.allowExtraBlanks)
                         throw Error(
-                            `${v} extra letters were missing to fill the grid`,
+                            `${v} extra letters were missing to fill the grid`
                         );
                     var p = 100 * (1 - g / (d.width * d.height));
                 }
@@ -1314,7 +1319,7 @@ $(function () {
                         o.splice(e, 1);
                         try {
                             return this.newPuzzleLax(o, n);
-                        } catch (a) { }
+                        } catch (a) {}
                     }
                     throw r;
                 }
@@ -1328,15 +1333,15 @@ $(function () {
             solve: function (t, r) {
                 for (
                     var e = {
-                        height: t.length,
-                        width: t[0].length,
-                        orientations: n,
-                        preferOverlap: !0,
-                    },
-                    o = [],
-                    a = [],
-                    i = 0,
-                    u = r.length;
+                            height: t.length,
+                            width: t[0].length,
+                            orientations: n,
+                            preferOverlap: !0,
+                        },
+                        o = [],
+                        a = [],
+                        i = 0,
+                        u = r.length;
                     i < u;
                     i++
                 ) {
@@ -1357,7 +1362,7 @@ $(function () {
                         n += ('' === o[a] ? ' ' : o[a]) + ' ';
                     n += '\n';
                 }
-                return console.log(n), n;
+                return (console.log(n), n);
             },
         };
     })();
@@ -1365,22 +1370,22 @@ $(function () {
     (function (t, n, r) {
         'use strict';
         var e = function (t, r) {
-            for (var e = '', o = 0, a = r.length; o < a; o++) {
-                var i = r[o];
-                e += '<div>';
-                for (var l = 0, u = i.length; l < u; l++)
-                    (e +=
-                        '<button class="SPP-PuzzleSquare" x="' +
-                        l +
-                        '" y="' +
-                        o +
-                        '">'),
-                        (e += i[l] || '&nbsp;'),
-                        (e += '</button>');
-                e += '</div>';
-            }
-            n(t).html(e);
-        },
+                for (var e = '', o = 0, a = r.length; o < a; o++) {
+                    var i = r[o];
+                    e += '<div>';
+                    for (var l = 0, u = i.length; l < u; l++)
+                        ((e +=
+                            '<button class="SPP-PuzzleSquare" x="' +
+                            l +
+                            '" y="' +
+                            o +
+                            '">'),
+                            (e += i[l] || '&nbsp;'),
+                            (e += '</button>'));
+                    e += '</div>';
+                }
+                n(t).html(e);
+            },
             o = function (t, n, e, o) {
                 for (var a in r.orientations) {
                     var i = (0, r.orientations[a])(t, n, 1);
@@ -1397,23 +1402,23 @@ $(function () {
                     c = [],
                     h = '',
                     v = function (t) {
-                        t.preventDefault(),
+                        (t.preventDefault(),
                             n(this).addClass('selected'),
                             (f = this),
                             c.push(this),
-                            (h = n(this).text());
+                            (h = n(this).text()));
                     },
                     g = function (n) {
                         n.preventDefault();
                         var r =
-                            n.originalEvent.touches[0] ||
-                            n.originalEvent.changedTouches[0],
+                                n.originalEvent.touches[0] ||
+                                n.originalEvent.changedTouches[0],
                             e = r.clientX,
                             o = r.clientY;
                         $(t.elementFromPoint(e, o));
                     },
                     p = function (t) {
-                        t.preventDefault(), $(this);
+                        (t.preventDefault(), $(this));
                     },
                     $ = function (t) {
                         if (f) {
@@ -1425,27 +1430,27 @@ $(function () {
                                         r = a + 1;
                                         break;
                                     }
-                                for (; r < c.length;)
-                                    n(c[c.length - 1]).removeClass('selected'),
+                                for (; r < c.length; )
+                                    (n(c[c.length - 1]).removeClass('selected'),
                                         c.splice(r, 1),
-                                        (h = h.substr(0, h.length - 1));
+                                        (h = h.substr(0, h.length - 1)));
                                 var l = o(
                                     n(f).attr('x') - 0,
                                     n(f).attr('y') - 0,
                                     n(t).attr('x') - 0,
-                                    n(t).attr('y') - 0,
+                                    n(t).attr('y') - 0
                                 );
                                 l &&
                                     ((c = [f]),
-                                        (h = n(f).text()),
-                                        e !== f &&
+                                    (h = n(f).text()),
+                                    e !== f &&
                                         (n(e).removeClass('selected'), (e = f)),
-                                        (d = l));
+                                    (d = l));
                                 var u = o(
                                     n(e).attr('x') - 0,
                                     n(e).attr('y') - 0,
                                     n(t).attr('x') - 0,
-                                    n(t).attr('y') - 0,
+                                    n(t).attr('y') - 0
                                 );
                                 u && ((d && d !== u) || ((d = u), P(t)));
                             }
@@ -1454,9 +1459,9 @@ $(function () {
                     P = function (t) {
                         for (var r = 0, e = l.length; r < e; r++)
                             if (0 === l[r].indexOf(h + n(t).text())) {
-                                n(t).addClass('selected'),
+                                (n(t).addClass('selected'),
                                     c.push(t),
-                                    (h += n(t).text());
+                                    (h += n(t).text()));
                                 break;
                             }
                     },
@@ -1475,26 +1480,26 @@ $(function () {
                                     $eXeSopa &&
                                     typeof $eXeSopa.updateScore == 'function'
                                 ) {
-                                    n('.selected').addClass('found'),
+                                    (n('.selected').addClass('found'),
                                         $eXeSopa.updateScore(
                                             s.length - l.length,
                                             r,
-                                            e,
+                                            e
                                         ),
-                                        l.splice(o, 1);
+                                        l.splice(o, 1));
                                 }
                             }
                             0 === l.length &&
                                 ($eXeSopa.gameOver(0),
-                                    n('.SPP-PuzzleSquare').addClass('complete'));
+                                n('.SPP-PuzzleSquare').addClass('complete'));
                         }
-                        n('.selected').removeClass('selected'),
+                        (n('.selected').removeClass('selected'),
                             (f = null),
                             (c = []),
                             (h = ''),
-                            (d = null);
+                            (d = null));
                     };
-                n('input.SSP-Word').removeClass('SPP-WordFound'),
+                (n('input.SSP-Word').removeClass('SPP-WordFound'),
                     (l = n('input.SSP-Word')
                         .toArray()
                         .map((t) => t.value.toLowerCase())
@@ -1510,14 +1515,14 @@ $(function () {
                     }),
                     window.navigator.msPointerEnabled
                         ? (n('.SPP-PuzzleSquare').on('MSPointerDown', v),
-                            n('.SPP-PuzzleSquare').on('MSPointerOver', $),
-                            n('.SPP-PuzzleSquare').on('MSPointerUp', S))
+                          n('.SPP-PuzzleSquare').on('MSPointerOver', $),
+                          n('.SPP-PuzzleSquare').on('MSPointerUp', S))
                         : (n('.SPP-PuzzleSquare').mousedown(v),
-                            n('.SPP-PuzzleSquare').mouseenter(p),
-                            n('.SPP-PuzzleSquare').mouseup(S),
-                            n('.SPP-PuzzleSquare').on('touchstart', v),
-                            n('.SPP-PuzzleSquare').on('touchmove', g),
-                            n('.SPP-PuzzleSquare').on('touchend', S)),
+                          n('.SPP-PuzzleSquare').mouseenter(p),
+                          n('.SPP-PuzzleSquare').mouseup(S),
+                          n('.SPP-PuzzleSquare').on('touchstart', v),
+                          n('.SPP-PuzzleSquare').on('touchmove', g),
+                          n('.SPP-PuzzleSquare').on('touchend', S)),
                     (this.solve = function () {
                         for (
                             var t = r.solve(u, l).found, e = 0, o = t.length;
@@ -1534,47 +1539,47 @@ $(function () {
                                 for (var h = 0, v = a.length; h < v; h++) {
                                     var g = d(s, f, h);
                                     n(
-                                        '[x="' + g.x + '"][y="' + g.y + '"]',
+                                        '[x="' + g.x + '"][y="' + g.y + '"]'
                                     ).addClass('solved');
                                 }
                                 c.addClass('SPP-WordFound');
                             }
                         }
-                    });
+                    }));
             };
-        (a.emptySquaresCount = function () {
+        ((a.emptySquaresCount = function () {
             var t = n('.SPP-PuzzleSquare').toArray();
             return t.length - t.filter((t) => t.textContent.trim()).length;
         }),
             (a.insertWordBefore = function (t, r) {
                 n(
                     '<li><input class="SSP-Word" value="' +
-                    (r || '') +
-                    '"></li>',
+                        (r || '') +
+                        '"></li>'
                 ).insertBefore(t);
             }),
             (a.append = function (t, r, e, o, a, i) {
                 n(
                     '<li class="Sopa-Li"><span>' +
-                    (o + 1) +
-                    '.-  </span>' +
-                    (a
-                        ? '<a href="#" data-mnumber="' +
-                        o +
-                        '" class="SPP-LinkImage" title="">      <div class="SopaIcons SopaIcon-Image SPP-Activo"></div>      </a>'
-                        : '') +
-                    ' ' +
-                    (i
-                        ? '<a href="#" data-mnumber="' +
-                        o +
-                        '" class="SPP-LinkSound" title=""><div class="SopaIcons SopaIcon-Audio SPP-Activo"></div></a>'
-                        : '') +
-                    '<span>' +
-                    (e || '') +
-                    '</span><input class="SSP-Word SPP-WordsHide" value="' +
-                    (r || '') +
-                    '"></li>',
+                        (o + 1) +
+                        '.-  </span>' +
+                        (a
+                            ? '<a href="#" data-mnumber="' +
+                              o +
+                              '" class="SPP-LinkImage" title="">      <div class="SopaIcons SopaIcon-Image SPP-Activo"></div>      </a>'
+                            : '') +
+                        ' ' +
+                        (i
+                            ? '<a href="#" data-mnumber="' +
+                              o +
+                              '" class="SPP-LinkSound" title=""><div class="SopaIcons SopaIcon-Audio SPP-Activo"></div></a>'
+                            : '') +
+                        '<span>' +
+                        (e || '') +
+                        '</span><input class="SSP-Word SPP-WordsHide" value="' +
+                        (r || '') +
+                        '"></li>'
                 ).appendTo(t);
             }),
-            (window.WordFindGame = a);
-    })(document, jQuery, wordfind);
+            (window.WordFindGame = a));
+    })(document, jQuery, wordfind));

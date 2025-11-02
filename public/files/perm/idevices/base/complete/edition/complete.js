@@ -47,23 +47,41 @@ var $exeDevice = {
             msgFullScreen: c_('Full Screen'),
             msgExitFullScreen: c_('Exit Full Screen'),
             msgNumQuestions: c_('Number of questions'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgAnswer: c_('Answer'),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgSolution: c_('Solution'),
             msgTry: c_('Try again!'),
@@ -75,7 +93,7 @@ var $exeDevice = {
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Complete'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
@@ -92,18 +110,20 @@ var $exeDevice = {
         msgs.msgEShowMinimize = _('Show minimized.');
         msgs.msgERebootActivity = _('Repeat activity');
         msgs.msgCustomMessage = _('Error message');
-        msgs.msgNumFaildedAttemps = _('Errors (number of attempts) to display the message');
+        msgs.msgNumFaildedAttemps = _(
+            'Errors (number of attempts) to display the message'
+        );
         msgs.msgEnterCustomMessage = _('Please write the error message.');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
     },
 
@@ -276,7 +296,7 @@ var $exeDevice = {
             json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
 
             const dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 instructions = $('.completa-instructions', wrapper),
                 textAfter = $('.completa-extra-content', wrapper),
                 textFeedBack = $('.completa-feedback-game', wrapper),
@@ -293,7 +313,7 @@ var $exeDevice = {
                 $('#cmptEFeedBackEditor').val(textFeedBack.html());
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
         }
     },
@@ -309,7 +329,9 @@ var $exeDevice = {
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
 
         $('#cmptEShowMinimize').prop('checked', game.showMinimize);
         $('#cmptEShowSolution').prop('checked', game.showSolution);
@@ -325,7 +347,7 @@ var $exeDevice = {
         $('#cmptEWordsLimit').prop('checked', game.wordsLimit);
         $(`input.CMPT-Type[name='cmpttype'][value='${game.type}']`).prop(
             'checked',
-            true,
+            true
         );
         $('#cmptEEvaluation').prop('checked', game.evaluation);
         $('#cmptEEvaluationID').val(game.evaluationID);
@@ -335,7 +357,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
 
         if (game.feedBack) {
@@ -356,7 +378,7 @@ var $exeDevice = {
             $('#cmptEWordsErrorsDiv').css('display', 'flex').show();
         }
 
-        $('#cmptEPercentajeErrorsDiv').css('display','flex');
+        $('#cmptEPercentajeErrorsDiv').css('display', 'flex');
         $('#cmptECaseSensitiveDiv').hide();
 
         if (!game.estrictCheck) {
@@ -376,7 +398,7 @@ var $exeDevice = {
             game.id = $exeDevice.getIdeviceID();
             $exeDevice.updateFieldGame(game);
             const instructions =
-                game.instructionsExe || game.instructions || '',
+                    game.instructionsExe || game.instructions || '',
                 tAfter = game.textAfter || '',
                 textFeedBack = game.textFeedBack || '',
                 textText = game.textText || '';
@@ -444,8 +466,8 @@ var $exeDevice = {
             divContent = `<div class="completa-instructions">${dataGame.instructions}</div>`;
         }
 
-    let html = '<div class="completa-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = '<div class="completa-IDevice">';
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `<div class="completa-feedback-game">${textFeedBack}</div>`;
         html += divContent;
         html += `<div class="completa-DataGame js-hidden">${json}</div>`;
@@ -485,7 +507,8 @@ var $exeDevice = {
             estrictCheck = $('#cmptEEstrictCheck').is(':checked'),
             wordsSize = $('#cmptEWordsSize').is(':checked'),
             time = parseInt($('#cmptETime').val(), 10),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#cmptEHasFeedBack').is(':checked'),
             percentajeFB = parseInt($('#cmptEPercentajeFB').val(), 10),
             percentajeError = parseInt($('#cmptEPercentajeError').val(), 10),
@@ -591,7 +614,7 @@ var $exeDevice = {
         $('#cmptEEstrictCheck').on('change', function () {
             const state = $(this).is(':checked');
             $('#cmptECaseSensitiveDiv').show();
-            $('#cmptEPercentajeErrorsDiv').css('display','flex');
+            $('#cmptEPercentajeErrorsDiv').css('display', 'flex');
             if (state) {
                 $('#cmptECaseSensitiveDiv').hide();
                 $('#cmptEPercentajeErrorsDiv').show();
@@ -634,7 +657,7 @@ var $exeDevice = {
                 this.value = val;
             });
 
-    $('#cmptEEvaluation').on('change', function () {
+        $('#cmptEEvaluation').on('change', function () {
             const marcado = $(this).is(':checked');
             $('#cmptEEvaluationID').prop('disabled', !marcado);
         });

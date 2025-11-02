@@ -14,7 +14,7 @@ var $exeDevice = {
     classIdevice: 'beforeafter',
     active: 0,
     activeCard: 0,
-    activeID: "",
+    activeID: '',
     cardsGame: [],
     typeEdit: -1,
     idPaste: '',
@@ -38,7 +38,8 @@ var $exeDevice = {
     },
 
     initCards: function () {
-        if (!$exeDevice.cardsGame.length) $exeDevice.cardsGame.push($exeDevice.getDefaultCard());
+        if (!$exeDevice.cardsGame.length)
+            $exeDevice.cardsGame.push($exeDevice.getDefaultCard());
 
         $('#bfafETextDiv, #bfafETextDivBack').hide();
         this.active = 0;
@@ -49,7 +50,9 @@ var $exeDevice = {
             msgSubmit: c_('Submit'),
             msgClue: c_('Cool! The clue is:'),
             msgCodeAccess: c_('Access code'),
-            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgInformationLooking: c_(
+                'Cool! The information you were looking for'
+            ),
             msgMinimize: c_('Minimize'),
             msgMaximize: c_('Maximize'),
             msgFullScreen: c_('Full Screen'),
@@ -61,38 +64,56 @@ var $exeDevice = {
             msgNext: c_('Next'),
             msgPrevious: c_('Previous'),
             msgImage: c_('Image'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgQuestion: c_('Question'),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
             msgYouScore: c_('Your score'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Before/After'),
             msgPlayStart: c_('Click here to play'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _('The selected file does not contain a valid game');
-        msgs.msgNoSuportBrowser = _('Your browser is not compatible with this tool.');
+        msgs.msgESelectFile = _(
+            'The selected file does not contain a valid game'
+        );
+        msgs.msgNoSuportBrowser = _(
+            'Your browser is not compatible with this tool.'
+        );
         msgs.msgCompleteData = _('Provide an image');
         msgs.msgCompleteDataBack = _('Provide an image');
         msgs.msgDescription = _('Provide a description');
         msgs.msgEOneCard = _('Please create at least one card');
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
-        msgs.msgAltImageWarning = _('At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.');
-        msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
+        msgs.msgAltImageWarning = _(
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
+        );
+        msgs.msgIDLenght = _(
+            'The report identifier must have at least 5 characters'
+        );
     },
 
     createForm: function () {
@@ -100,8 +121,8 @@ var $exeDevice = {
             html = `
             <div id="beforeAfterQIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_("Create before-and-after comparisons with side-by-side images of similar or proportional size.")} 
-                    <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/beforeafter-.html" hreflang="es" target="_blank">${_("Usage Instructions")}</a>
+                    ${_('Create before-and-after comparisons with side-by-side images of similar or proportional size.')} 
+                    <a style="display:none;" href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/beforeafter-.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
@@ -232,35 +253,35 @@ var $exeDevice = {
                                 </div>
                             </div>                        
                             <div class="BFAFE-ENavigationButtons gap-2">
-                                <a href="#" id="bfafEAddC" class="BFAFE-ENavigationButton" title="${_("Add question")}">
-                                    <img src="${path}quextIEAdd.png" alt="${_("Add question")}" class="BFAFE-EButtonImage" />
+                                <a href="#" id="bfafEAddC" class="BFAFE-ENavigationButton" title="${_('Add question')}">
+                                    <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="BFAFE-EButtonImage" />
                                 </a>
                                
-                                <a href="#" id="bfafEFirstC" class="BFAFE-ENavigationButton" title="${_("First question")}">
-                                    <img src="${path}quextIEFirst.png" alt="${_("First question")}" class="BFAFE-EButtonImage" />
+                                <a href="#" id="bfafEFirstC" class="BFAFE-ENavigationButton" title="${_('First question')}">
+                                    <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="BFAFE-EButtonImage" />
                                 </a>
-                                <a href="#" id="bfafEPreviousC" class="BFAFE-ENavigationButton" title="${_("Previous question")}">
-                                    <img src="${path}quextIEPrev.png" alt="${_("Previous question")}" class="BFAFE-EButtonImage" />
+                                <a href="#" id="bfafEPreviousC" class="BFAFE-ENavigationButton" title="${_('Previous question')}">
+                                    <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="BFAFE-EButtonImage" />
                                 </a>
-                                <label class="sr-av" for="bfafENumberCard">${_("Question number:")}:</label>
+                                <label class="sr-av" for="bfafENumberCard">${_('Question number:')}:</label>
                                 <input type="text" class="BFAFE-NumberCard form-control" id="bfafENumberCard" value="1"/>
-                                <a href="#" id="bfafENextC" class="BFAFE-ENavigationButton" title="${_("Next question")}">
-                                    <img src="${path}quextIENext.png" alt="${_("Next question")}" class="BFAFE-EButtonImage" />
+                                <a href="#" id="bfafENextC" class="BFAFE-ENavigationButton" title="${_('Next question')}">
+                                    <img src="${path}quextIENext.png" alt="${_('Next question')}" class="BFAFE-EButtonImage" />
                                 </a>
-                                <a href="#" id="bfafELastC" class="BFAFE-ENavigationButton" title="${_("Last question")}">
-                                    <img src="${path}quextIELast.png" alt="${_("Last question")}" class="BFAFE-EButtonImage" />
+                                <a href="#" id="bfafELastC" class="BFAFE-ENavigationButton" title="${_('Last question')}">
+                                    <img src="${path}quextIELast.png" alt="${_('Last question')}" class="BFAFE-EButtonImage" />
                                 </a>
-                                <a href="#" id="bfafEDeleteC" class="BFAFE-ENavigationButton" title="${_("Delete question")}">
-                                    <img src="${path}quextIEDelete.png" alt="${_("Delete question")}" class="BFAFE-EButtonImage" />
+                                <a href="#" id="bfafEDeleteC" class="BFAFE-ENavigationButton" title="${_('Delete question')}">
+                                    <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="BFAFE-EButtonImage" />
                                 </a>
-                                <a href="#" id="bfafECopyC" class="BFAFE-ENavigationButton" title="${_("Copy question")}">
-                                    <img src="${path}quextIECopy.png" alt="${_("Copy question")}" class="BFAFE-EButtonImage" />
+                                <a href="#" id="bfafECopyC" class="BFAFE-ENavigationButton" title="${_('Copy question')}">
+                                    <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="BFAFE-EButtonImage" />
                                 </a>
-                                <a href="#" id="bfafECutC" class="BFAFE-ENavigationButton" title="${_("Cut question")}">
-                                    <img src="${path}quextIECut.png" alt="${_("Cut question")}" class="BFAFE-EButtonImage" />
+                                <a href="#" id="bfafECutC" class="BFAFE-ENavigationButton" title="${_('Cut question')}">
+                                    <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="BFAFE-EButtonImage" />
                                 </a>
-                                <a href="#" id="bfafEPasteC" class="BFAFE-ENavigationButton" title="${_("Paste question")}">
-                                    <img src="${path}quextIEPaste.png" alt="${_("Paste question")}" class="BFAFE-EButtonImage" />
+                                <a href="#" id="bfafEPasteC" class="BFAFE-ENavigationButton" title="${_('Paste question')}">
+                                    <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="BFAFE-EButtonImage" />
                                 </a>
                             </div>
                             <div class="BFAFE-ENumCardDiv" id="bfafENumCardsDiv">
@@ -269,7 +290,7 @@ var $exeDevice = {
                             </div>
                         </div>
                     </fieldset>
-                    ${$exeDevice.getTextFieldset("after")}
+                    ${$exeDevice.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
                 ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(true, true, true)}
@@ -277,35 +298,48 @@ var $exeDevice = {
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init("beforeAfterQIdeviceForm");
+        $exeDevicesEdition.iDevice.tabs.init('beforeAfterQIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
-
     getTextFieldset: function (position) {
-        if (typeof (position) != "string" || (position != "after" && position != "before")) return "";
+        if (
+            typeof position != 'string' ||
+            (position != 'after' && position != 'before')
+        )
+            return '';
         let tit = _('Content after'),
-            id = "After";
-        if (position == "before") {
+            id = 'After';
+        if (position == 'before') {
             tit = _('Content before');
-            id = "Before";
+            id = 'Before';
         }
-        return "<fieldset class='exe-fieldset exe-feedback-fieldset exe-fieldset-closed'>\
-                    <legend><a href='#'>" + tit + " (" + _('Optional').toLowerCase() + ")</a></legend>\
+        return (
+            "<fieldset class='exe-fieldset exe-feedback-fieldset exe-fieldset-closed'>\
+                    <legend><a href='#'>" +
+            tit +
+            ' (' +
+            _('Optional').toLowerCase() +
+            ")</a></legend>\
                     <div>\
                         <p>\
-                            <label for='eXeIdeviceText" + id + "' class='sr-av'>" + tit + ":</label>\
-                            <textarea id='eXeIdeviceText" + id + "' class='exe-html-editor'\></textarea>\
+                            <label for='eXeIdeviceText" +
+            id +
+            "' class='sr-av'>" +
+            tit +
+            ":</label>\
+                            <textarea id='eXeIdeviceText" +
+            id +
+            "' class='exe-html-editor'\></textarea>\
                         </p>\
                     <div>\
-				</fieldset>";
+				</fieldset>"
+        );
     },
 
-
-
     clearCard: function () {
-        $(`#bfafEImage`).val('')
+        $(`#bfafEImage`).val('');
         $(`#bfafEURLImageBack`).val('');
 
         $('#bfafEAuthor').val('');
@@ -314,7 +348,6 @@ var $exeDevice = {
         $('#bfafEAlt').val('');
         $('#bfafEAltBack').val('');
 
-
         $('#bfafEText').val('');
         $('#bfafETextBack').val('');
         $('#bfafEDescription').val('');
@@ -322,13 +355,12 @@ var $exeDevice = {
         $exeDevice.showImage(1);
     },
 
-
     addCard: function () {
         if (!$exeDevice.validateCard()) return;
         let cards = $exeDevice.cardsGame;
         $exeDevice.clearCard();
         cards.push($exeDevice.getDefaultCard());
-        $exeDevice.active = cards.length - 1
+        $exeDevice.active = cards.length - 1;
         $('#bfafEPasteC').hide();
         $('#bfafENumCards').text(cards.length);
         $('#bfafENumberCard').val(cards.length);
@@ -355,14 +387,15 @@ var $exeDevice = {
         $exeDevice.typeEdit = -1;
         $('#bfafEPasteC').hide();
         $('#bfafENumCards').text(cards.length);
-
     },
 
     copyCard: function () {
         if (!$exeDevice.validateCard()) return;
 
         $exeDevice.typeEdit = 0;
-        $exeDevice.clipBoard = JSON.parse(JSON.stringify($exeDevice.cardsGame[$exeDevice.active]));
+        $exeDevice.clipBoard = JSON.parse(
+            JSON.stringify($exeDevice.cardsGame[$exeDevice.active])
+        );
 
         $('#bfafEPasteC').show();
     },
@@ -375,7 +408,6 @@ var $exeDevice = {
         $('#bfafEPasteC').show();
     },
 
-
     pasteCard: function () {
         let cards = $exeDevice.cardsGame,
             active = $exeDevice.active;
@@ -386,10 +418,13 @@ var $exeDevice = {
         } else if ($exeDevice.typeEdit == 1) {
             $('#bfafEPasteC').hide();
             $exeDevice.typeEdit = -1;
-            $exeDevices.iDevice.gamification.helpers.arrayMove(cards, $exeDevice.numberCutCuestion, active);
+            $exeDevices.iDevice.gamification.helpers.arrayMove(
+                cards,
+                $exeDevice.numberCutCuestion,
+                active
+            );
             $('#bfafENumCards').text(cards.length);
             $('#bfafENumberCard').val(active + 1);
-
         }
 
         $exeDevice.active = active;
@@ -402,7 +437,6 @@ var $exeDevice = {
             $exeDevice.active++;
             $exeDevice.showCard($exeDevice.active);
         }
-
     },
 
     lastCard: function () {
@@ -411,7 +445,6 @@ var $exeDevice = {
             $exeDevice.active = $exeDevice.cardsGame.length - 1;
             $exeDevice.showCard($exeDevice.active);
         }
-
     },
 
     previousCard: function () {
@@ -420,7 +453,6 @@ var $exeDevice = {
             $exeDevice.active--;
         }
         $exeDevice.showCard($exeDevice.active);
-
     },
 
     firstCard: function () {
@@ -429,7 +461,6 @@ var $exeDevice = {
             $exeDevice.active = 0;
             $exeDevice.showCard($exeDevice.active);
         }
-
     },
 
     showCard: function (i) {
@@ -438,7 +469,7 @@ var $exeDevice = {
 
         $('#bfafEURLImage').val(p.url);
         $('#bfafEURLImageBack').val(p.urlBk);
-        
+
         $('#bfafENumberCard').val(num + 1);
 
         $('#bfafEAuthor').val(p.author);
@@ -447,19 +478,18 @@ var $exeDevice = {
         $('#bfafEAlt').val(p.alt);
         $('#bfafEAltBack').val(p.altBk);
 
-
         $('#bfafEText').val(p.eText);
         $('#bfafETextBack').val(p.eTextBk);
 
         $('#bfafEDescription').val(p.description);
         $('#bfafEPosition').val(p.position);
-    $('#bfafEVertical').prop('checked', p.vertical);
-    $('#bfafEVertical').closest('.toggle-item').attr('aria-checked', !!p.vertical);
+        $('#bfafEVertical').prop('checked', p.vertical);
+        $('#bfafEVertical')
+            .closest('.toggle-item')
+            .attr('aria-checked', !!p.vertical);
 
         $exeDevice.showImage(0);
         $exeDevice.showImage(1);
-
-
     },
 
     validateCard: function () {
@@ -476,9 +506,7 @@ var $exeDevice = {
             description: $('#bfafEDescription').val(),
             position: $('#bfafEPosition').val(),
             vertical: $('#bfafEVertical').is(':checked'),
-
         };
-
 
         let message = '';
         p.position = p.position ?? 50;
@@ -490,7 +518,7 @@ var $exeDevice = {
             message = msgs.msgCompleteDataBack;
         }
         if (!p.description) {
-            message = msgs.msgDescription
+            message = msgs.msgDescription;
         }
 
         if (!message) {
@@ -508,7 +536,6 @@ var $exeDevice = {
         $exeDevice.addEvents();
         $exeDevice.addEventCard();
     },
-
 
     addEventCard: function () {
         $('#bfafEAuthorAlt, #bfafEAuthorAltBack').hide();
@@ -537,15 +564,18 @@ var $exeDevice = {
         });
 
         $('#bfafEText, #bfafETextBack').on('keyup', function () {
-            const textDiv = $(this).is('#bfafEText') ? '#bfafETextDiv' : '#bfafETextDivBack';
-            $(textDiv).html($(this).val()).toggle($(this).val().trim().length > 0);
+            const textDiv = $(this).is('#bfafEText')
+                ? '#bfafETextDiv'
+                : '#bfafETextDivBack';
+            $(textDiv)
+                .html($(this).val())
+                .toggle($(this).val().trim().length > 0);
         });
     },
 
-
     getDefaultCard: function () {
         return {
-            id: "",
+            id: '',
             position: 50,
             vertical: false,
             url: '',
@@ -563,9 +593,10 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
-            const wrapper = $("<div></div>").html(originalHTML),
+            const wrapper = $('<div></div>').html(originalHTML),
                 json = $('.beforeafter-DataGame', wrapper).text(),
-                dataGame = $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                dataGame =
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 cards = dataGame.cardsGame,
                 $imagesLink = $('.beforeafter-LinkImages', wrapper),
                 $imagesLinkBack = $('.beforeafter-LinkImagesBack', wrapper);
@@ -574,7 +605,10 @@ var $exeDevice = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < cards.length) {
                     const flipcard = cards[iq];
-                    flipcard.url = $(this).attr('href').length < 4 ? "" : $(this).attr('href');
+                    flipcard.url =
+                        $(this).attr('href').length < 4
+                            ? ''
+                            : $(this).attr('href');
                 }
             });
 
@@ -582,29 +616,33 @@ var $exeDevice = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < cards.length) {
                     const flipcard = cards[iq];
-                    flipcard.urlBk = $(this).attr('href').length < 4 ? "" : $(this).attr('href');
+                    flipcard.urlBk =
+                        $(this).attr('href').length < 4
+                            ? ''
+                            : $(this).attr('href');
                 }
             });
 
             $exeDevice.updateFieldGame(dataGame);
 
-            let instructions = $(".beforeafter-instructions", wrapper);
+            let instructions = $('.beforeafter-instructions', wrapper);
             if (instructions.length === 1) {
                 instructions = instructions.html() || '';
-                $("#eXeGameInstructions").val(instructions);
+                $('#eXeGameInstructions').val(instructions);
             }
 
-            let textAfter = $(".beforeafter-extra-content", wrapper);
+            let textAfter = $('.beforeafter-extra-content', wrapper);
             if (textAfter.length === 1) {
                 textAfter = textAfter.html() || '';
-                $("#eXeIdeviceTextAfter").val(textAfter);
+                $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                dataGame.msgs
+            );
             $exeDevice.showCard(0);
         }
     },
-
 
     save: function () {
         if (!$exeDevice.validateCard()) return false;
@@ -615,8 +653,8 @@ var $exeDevice = {
 
         const i18n = { ...this.ci18n };
 
-        Object.keys(this.ci18n).forEach(i => {
-            const fVal = $("#ci18n_" + i).val();
+        Object.keys(this.ci18n).forEach((i) => {
+            const fVal = $('#ci18n_' + i).val();
             if (fVal) i18n[i] = fVal;
         });
 
@@ -624,42 +662,54 @@ var $exeDevice = {
         const json = JSON.stringify(dataGame);
         const cards = dataGame.cardsGame;
 
-
-
-        let divContent = dataGame.instructions ? `<div class="beforeafter-instructions gameQP-instructions">${dataGame.instructions}</div>` : "";
+        let divContent = dataGame.instructions
+            ? `<div class="beforeafter-instructions gameQP-instructions">${dataGame.instructions}</div>`
+            : '';
         const linksMedias = $exeDevice.createlinksIMedias(cards);
-    let html = `<div class="beforeafter-IDevice">${divContent}<div class="beforeafter-DataGame js-hidden">${json}</div>${linksMedias}`;
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        let html = `<div class="beforeafter-IDevice">${divContent}<div class="beforeafter-DataGame js-hidden">${json}</div>${linksMedias}`;
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
-        if (textAfter) html += `<div class="beforeafter-extra-content">${textAfter}</div>`;
+        if (textAfter)
+            html += `<div class="beforeafter-extra-content">${textAfter}</div>`;
         html += `<div class="beforeafter-bns js-hidden">${$exeDevice.msgs.msgNoSuportBrowser}</div></div>`;
         return html;
     },
 
     validateAlt: function () {
-        if (!$exeDevice.checkAltImage || $('#beforeafter-EAlt').val() !== "") return true;
+        if (!$exeDevice.checkAltImage || $('#beforeafter-EAlt').val() !== '')
+            return true;
 
-        eXe.app.confirm($exeDevice.msgs.msgTitleAltImageWarning, $exeDevice.msgs.msgAltImageWarning, () => {
-            $exeDevice.checkAltImage = false;
-            document.getElementsByClassName("button-save-idevice")[0].click();
-        });
+        eXe.app.confirm(
+            $exeDevice.msgs.msgTitleAltImageWarning,
+            $exeDevice.msgs.msgAltImageWarning,
+            () => {
+                $exeDevice.checkAltImage = false;
+                document
+                    .getElementsByClassName('button-save-idevice')[0]
+                    .click();
+            }
+        );
         return false;
     },
 
     createlinksIMedias: function (cardsGame) {
-        return cardsGame.map((p, i) => {
-            const properties = [
-                { prop: 'url', className: 'beforeafter-LinkImages' },
-                { prop: 'urlBk', className: 'beforeafter-LinkImagesBack' },
-            ];
-            return properties.map(({ prop, className }) => {
-                const val = p[prop];
-                if (val && val.indexOf('http') !== 0) {
-                    return `<a href="${val}" class="js-hidden ${className}">${i}</a>`;
-                }
-                return '';
-            }).join('');
-        }).join('');
+        return cardsGame
+            .map((p, i) => {
+                const properties = [
+                    { prop: 'url', className: 'beforeafter-LinkImages' },
+                    { prop: 'urlBk', className: 'beforeafter-LinkImagesBack' },
+                ];
+                return properties
+                    .map(({ prop, className }) => {
+                        const val = p[prop];
+                        if (val && val.indexOf('http') !== 0) {
+                            return `<a href="${val}" class="js-hidden ${className}">${i}</a>`;
+                        }
+                        return '';
+                    })
+                    .join('');
+            })
+            .join('');
     },
 
     showMessage: function (msg) {
@@ -667,7 +717,10 @@ var $exeDevice = {
     },
 
     getIdeviceID: function () {
-        const ideviceid = $('#beforeAfterQIdeviceForm').closest(`div.idevice_node.${$exeDevice.classIdevice}`).attr('id') || '';
+        const ideviceid =
+            $('#beforeAfterQIdeviceForm')
+                .closest(`div.idevice_node.${$exeDevice.classIdevice}`)
+                .attr('id') || '';
         return ideviceid;
     },
 
@@ -678,7 +731,8 @@ var $exeDevice = {
             author = $('#bfafEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
             id = $exeDevice.getIdeviceID(),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             evaluation = $('#bfafEEvaluation').is(':checked'),
             evaluationID = $('#bfafEEvaluationID').val();
@@ -717,22 +771,30 @@ var $exeDevice = {
         $image.attr('alt', alt);
         $nimage.show();
 
-        $image.prop('src', url)
+        $image
+            .prop('src', url)
             .on('load', function () {
-                if (this.complete && typeof this.naturalWidth !== "undefined" && this.naturalWidth !== 0) {
-                    const mData = $exeDevice.placeImageWindows(this, this.naturalWidth, this.naturalHeight);
+                if (
+                    this.complete &&
+                    typeof this.naturalWidth !== 'undefined' &&
+                    this.naturalWidth !== 0
+                ) {
+                    const mData = $exeDevice.placeImageWindows(
+                        this,
+                        this.naturalWidth,
+                        this.naturalHeight
+                    );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
                     $nimage.hide();
                     return true;
                 }
                 return false;
-            }).on('error', function () {
+            })
+            .on('error', function () {
                 return false;
             });
     },
-
-
 
     drawImage: function (image, mData) {
         $(image).css({
@@ -740,18 +802,15 @@ var $exeDevice = {
             left: `${mData.x}px`,
             top: `${mData.y}px`,
             width: `${mData.w}px`,
-            height: `${mData.h}px`
+            height: `${mData.h}px`,
         });
-
     },
 
     addEvents: function () {
         $('#bfafEPasteC').hide();
 
-
         $('#bfafEAddC').on('click', (e) => {
             $exeDevice.addCard(true);
-
         });
 
         $('#bfafEDeleteC').on('click', (e) => {
@@ -773,16 +832,19 @@ var $exeDevice = {
             $exeDevice.pasteCard();
         });
 
-        $('#bfafEFirstC, #bfafEPreviousC, #bfafENextC, #bfafELastC').on('click', (e) => {
-            e.preventDefault();
-            const actions = {
-                bfafEFirstC: 'firstCard',
-                bfafEPreviousC: 'previousCard',
-                bfafENextC: 'nextCard',
-                bfafELastC: 'lastCard',
-            };
-            $exeDevice[actions[e.currentTarget.id]]();
-        });
+        $('#bfafEFirstC, #bfafEPreviousC, #bfafENextC, #bfafELastC').on(
+            'click',
+            (e) => {
+                e.preventDefault();
+                const actions = {
+                    bfafEFirstC: 'firstCard',
+                    bfafEPreviousC: 'previousCard',
+                    bfafENextC: 'nextCard',
+                    bfafELastC: 'lastCard',
+                };
+                $exeDevice[actions[e.currentTarget.id]]();
+            }
+        );
 
         $('#bfafEReverseFaces').on('click', (e) => {
             e.preventDefault();
@@ -800,47 +862,51 @@ var $exeDevice = {
             return false;
         });
 
-        $('#beforeAfterQIdeviceForm').on('change', '.toggle-input', function () {
-            const $input = $(this);
-            const checked = $input.is(':checked');
-            const $item = $input.closest('.toggle-item');
-            $item.attr('aria-checked', checked);
-            const target = $item.data('target');
-            if (target) {
-                const $targetEl = $('#' + target);
-                if ($targetEl.length) {
-                    $targetEl.toggle(checked);
+        $('#beforeAfterQIdeviceForm').on(
+            'change',
+            '.toggle-input',
+            function () {
+                const $input = $(this);
+                const checked = $input.is(':checked');
+                const $item = $input.closest('.toggle-item');
+                $item.attr('aria-checked', checked);
+                const target = $item.data('target');
+                if (target) {
+                    const $targetEl = $('#' + target);
+                    if ($targetEl.length) {
+                        $targetEl.toggle(checked);
+                    }
+                }
+                if (this.id === 'bfafEEvaluation') {
+                    $('#bfafEEvaluationID').prop('disabled', !checked);
+                } else if (this.id === 'bfafEVertical') {
+                    if ($exeDevice.cardsGame[$exeDevice.active]) {
+                        $exeDevice.cardsGame[$exeDevice.active].vertical =
+                            checked;
+                    }
                 }
             }
-            if (this.id === 'bfafEEvaluation') {
-                $('#bfafEEvaluationID').prop('disabled', !checked);
-            } else if (this.id === 'bfafEVertical') {
-                if ($exeDevice.cardsGame[$exeDevice.active]) {
-                    $exeDevice.cardsGame[$exeDevice.active].vertical = checked;
-                }
-            }
-        });
+        );
 
         (function initToggleStates() {
             const evalChecked = $('#bfafEEvaluation').is(':checked');
-            $('#bfafEEvaluation').closest('.toggle-item').attr('aria-checked', evalChecked);
+            $('#bfafEEvaluation')
+                .closest('.toggle-item')
+                .attr('aria-checked', evalChecked);
             $('#bfafEEvaluationIDWrapper').toggle(evalChecked);
             const vertChecked = $('#bfafEVertical').is(':checked');
-            $('#bfafEVertical').closest('.toggle-item').attr('aria-checked', vertChecked);
+            $('#bfafEVertical')
+                .closest('.toggle-item')
+                .attr('aria-checked', vertChecked);
         })();
-
-
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         //eXe 3.0 Dismissible messages
-        $(".exe-block-dismissible .exe-block-close").click(function () {
+        $('.exe-block-dismissible .exe-block-close').click(function () {
             $(this).parent().fadeOut();
             return false;
         });
-
     },
-
-
 
     reverseFaces: function () {
         if (!$exeDevice.validateCard()) return;
@@ -860,7 +926,7 @@ var $exeDevice = {
         if (!$exeDevice.validateCard()) return;
 
         const p = $exeDevice.cardsGame[$exeDevice.active],
-            properties = ['url', 'author', 'alt', 'eText',];
+            properties = ['url', 'author', 'alt', 'eText'];
         properties.forEach((prop) => {
             const temp = p[prop];
             p[prop] = p[`${prop}Bk`];
@@ -871,42 +937,51 @@ var $exeDevice = {
 
     loadImage: function (type) {
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = type === 0 ? $('#bfafEURLImage').val() : $('#bfafEURLImageBack').val(),
+            url =
+                type === 0
+                    ? $('#bfafEURLImage').val()
+                    : $('#bfafEURLImageBack').val(),
             ext = url.split('.').pop().toLowerCase();
 
         if (url.length < 3) {
             return false;
         }
-        if ((url.startsWith('files')) && !validExt.includes(ext)) {
-            $exeDevice.showMessage(`${_("Supported formats")}: jpg, jpeg, gif, png, svg, webp`);
+        if (url.startsWith('files') && !validExt.includes(ext)) {
+            $exeDevice.showMessage(
+                `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
+            );
             return false;
         }
         $exeDevice.showImage(type);
     },
 
-
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
         $exeDevice.id = $exeDevice.getIdeviceID();
         $('#bfafEAuthory').val(game.author);
-        game.evaluation = typeof game.evaluation !== 'undefined' ? game.evaluation : false;
-        game.evaluationID = typeof game.evaluationID !== 'undefined' ? game.evaluationID : '';
-        game.weighted = typeof game.weighted !== 'undefined' ? game.weighted : 100;
-        game.position = typeof game.position !== 'undefined' ? parseInt(game.position) : 50;
+        game.evaluation =
+            typeof game.evaluation !== 'undefined' ? game.evaluation : false;
+        game.evaluationID =
+            typeof game.evaluationID !== 'undefined' ? game.evaluationID : '';
+        game.weighted =
+            typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.position =
+            typeof game.position !== 'undefined' ? parseInt(game.position) : 50;
         $exeDevice.cardsGame = game.cardsGame;
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
         $('#bfafEEvaluation').prop('checked', game.evaluation);
         $('#bfafEEvaluationID').val(game.evaluationID);
         $('#bfafEEvaluationID').prop('disabled', !game.evaluation);
         $('#bfafEPosition').val(game.position);
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
     },
-
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const $parent = $(image).parent(),
@@ -931,8 +1006,7 @@ var $exeDevice = {
         return { w: wImage, h: hImage, x: xImagen, y: yImagen };
     },
 
-
     removeTags: function (str) {
-        return $("<div>").html(str).text();
+        return $('<div>').html(str).text();
     },
-}
+};
