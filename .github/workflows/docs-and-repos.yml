@@ -414,3 +414,15 @@ jobs:
           # version: ${{ github.event.release.tag_name }}          
           token: ${{ secrets.WINGET_TOKEN }}
           fork-user: exelearning
+
+  publish-homebrew-cask:
+    if: github.event_name == 'release' && github.event.action == 'released'
+    runs-on: macos-latest
+    steps:
+      - name: Bump Homebrew cask PR
+        uses: macauley/action-homebrew-bump-cask@v1
+        with:
+          token: ${{ secrets.WINGET_TOKEN }}
+          tap: homebrew/cask
+          # TODO: Remove @beta on 3.0.0 release!
+          cask: exelearning@beta

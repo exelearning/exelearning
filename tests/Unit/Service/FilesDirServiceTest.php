@@ -115,7 +115,7 @@ final class FilesDirServiceTest extends TestCase
     }
 
     /**
-     * Upgrading should replace base theme files content (e.g., content.css).
+     * Upgrading should replace base theme files content (e.g., style.css).
      * This guards against cases where a stale base dir prevents mirror from
      * copying unless override is enabled.
      */
@@ -124,12 +124,12 @@ final class FilesDirServiceTest extends TestCase
         $fileHelper = $this->buildFileHelper();
 
         // Source: new content
-        $srcCss = $this->symfonyFilesDir.'perm/themes/base/base/content.css';
+        $srcCss = $this->symfonyFilesDir.'perm/themes/base/base/style.css';
         $this->filesystem->mkdir(\dirname($srcCss));
         file_put_contents($srcCss, "/* eXeLearning v3.0.0-beta default style (to review) */\n");
 
         // Destination: old content should be replaced
-        $dstCss = $this->filesDir.'perm/themes/base/base/content.css';
+        $dstCss = $this->filesDir.'perm/themes/base/base/style.css';
         $this->filesystem->mkdir(\dirname($dstCss));
         file_put_contents($dstCss, "/* Default style (to review) */\n");
 
