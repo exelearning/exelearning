@@ -2794,13 +2794,11 @@ $(function () {
                             (s = t.index()),
                             (a = t.height()),
                             (g = e(this).parent()),
-                            t
-                                .parent()
-                                .triggerHandler('sortstart', {
-                                    item: t,
-                                    placeholder: v,
-                                    startparent: g,
-                                }));
+                            t.parent().triggerHandler('sortstart', {
+                                item: t,
+                                placeholder: v,
+                                startparent: g,
+                            }));
                     }),
                         p.on('dragend.h5s', function () {
                             t &&
@@ -2809,26 +2807,22 @@ $(function () {
                                 t.show(),
                                 r.detach(),
                                 (c = e(this).parent()),
-                                t
-                                    .parent()
-                                    .triggerHandler('sortstop', {
-                                        item: t,
-                                        startparent: g,
-                                    }),
+                                t.parent().triggerHandler('sortstop', {
+                                    item: t,
+                                    startparent: g,
+                                }),
                                 (s !== t.index() || g.get(0) !== c.get(0)) &&
-                                    t
-                                        .parent()
-                                        .triggerHandler('sortupdate', {
-                                            item: t,
-                                            index: c
-                                                .children(c.data('items'))
-                                                .index(t),
-                                            oldindex: p.index(t),
-                                            elementIndex: t.index(),
-                                            oldElementIndex: s,
-                                            startparent: g,
-                                            endparent: c,
-                                        }),
+                                    t.parent().triggerHandler('sortupdate', {
+                                        item: t,
+                                        index: c
+                                            .children(c.data('items'))
+                                            .index(t),
+                                        oldindex: p.index(t),
+                                        elementIndex: t.index(),
+                                        oldElementIndex: s,
+                                        startparent: g,
+                                        endparent: c,
+                                    }),
                                 (t = null),
                                 (a = null));
                         }),
