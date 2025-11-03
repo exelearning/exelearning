@@ -60,7 +60,6 @@ class Constants
 
     // Themes
     public const THEME_DEFAULT = 'base';
-    public const THEME_DEFAULT_CSS_FILE = 'content.css';
     public const THEME_GENERATED_CSS_FILE = 'generated.css';
     public const THEME_CONFIG_FILENAME = 'config.xml';
     public const THEME_ICONS_DIR = 'icons';

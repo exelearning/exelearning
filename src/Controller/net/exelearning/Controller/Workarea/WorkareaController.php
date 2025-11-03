@@ -158,8 +158,6 @@ class WorkareaController extends DefaultWorkareaController
         $themeTypeUser = Constants::THEME_TYPE_USER;
         // Default theme
         $defaultTheme = Constants::THEME_DEFAULT;
-        // Themes css file
-        $themeDefaultCssFile = Constants::THEME_DEFAULT_CSS_FILE;
 
         // Allow user styles
         $userStyles = $this->getParameter('app.online_themes_install');
@@ -265,7 +263,6 @@ class WorkareaController extends DefaultWorkareaController
                     'locale' => $localeUserPreferences,
                     'themeTypeBase' => $themeTypeBase,
                     'themeTypeUser' => $themeTypeUser,
-                    'themeDefaultCssFile' => $themeDefaultCssFile,
                     'ideviceTypeBase' => $ideviceTypeBase,
                     'ideviceTypeUser' => $ideviceTypeUser,
                     'ideviceVisibilityPreferencePre' => $ideviceVisibilityPreferencePre,

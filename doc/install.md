@@ -40,21 +40,17 @@ choco install exelearning
 
 ## macOS
 
-#### Option 1 — Homebrew (in progress)
+#### Option 1 — Homebrew
 
-```bash title="brew (coming soon)"
+```bash title="brew"
 brew install --cask exelearning
 ```
-
-> Until it’s available on Homebrew Cask, use the `.dmg` from Releases.
 
 #### Option 2 — Installer from Releases
 
 1. Download the `.dmg` from **Releases** and open it.
 2. Drag **eXeLearning** into **Applications**.
 3. Open eXeLearning from **Applications** or **Spotlight**.
-
-> **Gatekeeper:** If macOS blocks the app, right-click it in **Applications** and choose **Open** to approve it.
 
 ---
 
