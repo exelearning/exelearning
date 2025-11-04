@@ -1,3 +1,5 @@
+const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
+
 export default class NavbarFile {
     constructor(menu) {
         this.menu = menu;
@@ -2278,23 +2280,29 @@ export default class NavbarFile {
      */
     normalizeSuggestedName(name, typeKey) {
         try {
-            let base = (name || '').trim();
-            if (
-                !base ||
-                /^document\.elpx$/i.test(base) ||
-                /^export(\..+)?$/i.test(base)
-            ) {
+            const trimmed = (name || '').trim();
+            const baseNoExt = trimmed.replace(/\.[^.]+$/, '');
+            const lowerNoExt = baseNoExt.toLowerCase();
+            const looksGeneric =
+                !lowerNoExt ||
+                /^document(\b|[\s._-].*)?$/.test(lowerNoExt) ||
+                /^export(\b|[-_.].*)?$/.test(lowerNoExt);
+
+            let base = trimmed;
+            if (looksGeneric) {
                 // Build from project title if available
                 try {
                     const titleProp =
                         eXeLearning.app.project.properties?.properties?.pp_title
                             ?.value;
-                    if (titleProp && titleProp.trim()) base = titleProp.trim();
+                    if (titleProp && titleProp.trim()) {
+                        base = titleProp.trim();
+                    }
                 } catch (_e) {}
-                if (!base) base = 'project';
+                if (!base || !base.trim()) base = 'project';
                 base = this.appendSuffixForType(base, typeKey);
             }
-            const hasDot = /\.[^.]+$/.test(base);
+
             const lower = (typeKey || '').toLowerCase();
             let ext = '';
             if (lower.endsWith('epub3')) ext = '.epub';
@@ -2302,7 +2310,17 @@ export default class NavbarFile {
                 ext = '.' + eXeLearning.extension;
             else if (lower.includes('xml')) ext = '.xml';
             else ext = '.zip';
-            if (!hasDot) base += ext;
+            const match = /\.([^.]+)$/.exec(base);
+            const matchFragment = match ? match[0] : null;
+            const lowerCurrentExt = match ? `.${match[1].toLowerCase()}` : null;
+            if (
+                !lowerCurrentExt ||
+                !KNOWN_EXPORT_EXTENSIONS.has(lowerCurrentExt)
+            ) {
+                base += ext;
+            } else if (lowerCurrentExt !== ext) {
+                base = base.slice(0, -matchFragment.length) + ext;
+            }
             return base;
         } catch (_e) {
             return name || 'export.zip';
