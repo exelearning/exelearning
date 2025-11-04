@@ -36,7 +36,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
 
         this.setMessagesInfo();
@@ -60,19 +60,35 @@ var $exeDevice = {
             msgExitFullScreen: c_('Exit Full Screen'),
             msgNumQuestions: c_('Number of questions'),
             msgNoImage: c_('No picture question'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgPoints: c_('points'),
             msgAudio: c_('Audio'),
@@ -88,39 +104,44 @@ var $exeDevice = {
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgManyWord: c_('Try with fewer words'),
             msgTypeGame: c_('Word search'),
-        }
+        };
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideDefinition = _('Please provide the definition of the word or phrase');
+        msgs.msgEProvideDefinition = _(
+            'Please provide the definition of the word or phrase'
+        );
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image',
+            'You must upload or indicate the valid URL of an image'
         );
         msgs.msgEProvideWord = _('Please provide one word or phrase');
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgECompleteQuestion = _('You have to complete the question');
         msgs.msgECompleteAllOptions = _(
-            'You have to complete all the selected options',
+            'You have to complete all the selected options'
         );
         msgs.msgESelectSolution = _('Choose the right answer');
         msgs.msgWriteText = _('You have to type a text in the editor');
         msgs.msgTypeChoose = _(
-            'Please check all the answers in the right order',
+            'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
+        );
+        msgs.msgMaximeSize = _(
+            'The word cannot contain more than fourteen characters or white spaces'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning'); // eXe 3.0
         msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         ); //eXe 3.0
     },
 
@@ -138,7 +159,7 @@ var $exeDevice = {
                 const parts = line.split('#');
                 p.word = parts[0];
                 p.definition = parts[1];
-                if (p.word && p.definition) {
+                if (p.word && p.definition && p.word.length <= 14 && !p.word.includes(' ')) {
                     words.push(p);
                 }
             }
@@ -175,7 +196,7 @@ var $exeDevice = {
                     .find('DEFINITION')
                     .text()
                     .replace(/<[^>]*>/g, '');
-            if (concept && definition) {
+            if (concept && definition && concept.length <= 14 && !concept.includes(' ')) {
                 let wd = {
                     word: concept,
                     definition: definition,
@@ -208,10 +229,10 @@ var $exeDevice = {
                 return true;
             }
             const questionText = $question
-                .find('questiontext')
-                .first()
-                .text()
-                .trim(),
+                    .find('questiontext')
+                    .first()
+                    .text()
+                    .trim(),
                 $answers = $question.find('answer');
             let word = '',
                 maxFraction = -1;
@@ -226,11 +247,14 @@ var $exeDevice = {
                 }
             });
             if (word && questionText) {
-                let wd = {
-                    word: $exeDevice.removeTags(word),
-                    definition: $exeDevice.removeTags(questionText),
-                };
-                words.push(wd);
+                const cleanWord = $exeDevice.removeTags(word);
+                if (cleanWord.length <= 14 && !cleanWord.includes(' ')) {
+                    let wd = {
+                        word: cleanWord,
+                        definition: $exeDevice.removeTags(questionText),
+                    };
+                    words.push(wd);
+                }
             }
         });
         $exeDevice.addWords(words);
@@ -239,7 +263,7 @@ var $exeDevice = {
     addWords: function (words) {
         if (!words || words.length == 0) {
             eXe.app.alert(
-                _('Sorry, there are no questions for this type of activity.'),
+                _('Sorry, there are no questions for this type of activity.')
             );
             return;
         }
@@ -407,7 +431,7 @@ var $exeDevice = {
                                 <span class="SPE-sopaETitleAudio">${_('Word')}</span>
                                 <div class="SPE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3">
                                     <label class="sr-av" for="sopaESolutionWord">${_('Word/Phrase')}:</label>
-                                    <input type="text" id="sopaESolutionWord" class="form-control w-100"/>
+                                    <input type="text" id="sopaESolutionWord" maxlength="14" class="form-control w-100"/>
                                 </div>
                                 <span class="SPE-sopaETitleAudio">${_('Definition')}</span>
                                 <div class="SPE-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3">
@@ -487,7 +511,7 @@ var $exeDevice = {
             ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
+            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(9)}
         </div>
         `;
         this.ideviceBody.innerHTML = html;
@@ -495,7 +519,6 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
-
 
     enableForm: function () {
         $exeDevice.initQuestions();
@@ -506,14 +529,14 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#sopaEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#sopaEPercentajeQuestions').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
         let num = Math.round((percentaje * $exeDevice.wordsGame.length) / 100);
         num = num == 0 ? 1 : num;
         $('#sopaENumeroPercentaje').text(
-            num + '/' + $exeDevice.wordsGame.length,
+            num + '/' + $exeDevice.wordsGame.length
         );
     },
 
@@ -563,7 +586,7 @@ var $exeDevice = {
             $('#sopaEURLImage').val(),
             $('#sopaEXImage').val(),
             $('#sopaEYImage').val(),
-            $('#sopaEAlt').val(),
+            $('#sopaEAlt').val()
         );
     },
 
@@ -594,9 +617,9 @@ var $exeDevice = {
                     $exeDevices.iDevice.gamification.helpers.decrypt(json);
 
             const dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(
-                    dataJson,
-                ),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(
+                        dataJson
+                    ),
                 $imagesLink = $('.sopa-LinkImages', wrapper),
                 $audiosLink = $('.sopa-LinkAudios', wrapper);
 
@@ -640,7 +663,7 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.showQuestion(0);
         }
@@ -721,10 +744,10 @@ var $exeDevice = {
             function () {
                 $exeDevice.checkAltImage = false;
                 let saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
         return false;
     },
@@ -773,13 +796,15 @@ var $exeDevice = {
                 alt: $('#sopaEAlt').val(),
                 url: $('#sopaEURLImage').val().trim(),
                 audio: $('#sopaEURLAudio').val(),
-                percentageShow: 100
+                percentageShow: 100,
             };
 
         $exeDevice.stopSound();
 
         if (p.word.length == 0) {
             message = $exeDevice.msgs.msgEProvideWord;
+        } else if (p.word.length > 14 || p.word.includes(' ')) {
+            message = $exeDevice.msgs.msgMaximeSize;
         } else if (p.definition.length == 0) {
             message = $exeDevice.msgs.msgEProvideDefinition;
         }
@@ -813,11 +838,12 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#sopaEShowMinimize').is(':checked'),
             showResolve = $('#sopaEShowResolve').is(':checked'),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#sopaEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#sopaEPercentajeFB').val())),
             percentajeQuestions = parseInt(
-                clear($('#sopaEPercentajeQuestions').val()),
+                clear($('#sopaEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#sopaETime').val())),
             diagonals = $('#sopaEDiagonals').is(':checked'),
@@ -855,7 +881,7 @@ var $exeDevice = {
                 mquestion.url.length < 4
             ) {
                 $exeDevice.showMessage(
-                    `${$exeDevice.msgs.msgEProvideDefinition} ${mquestion.word}`,
+                    `${$exeDevice.msgs.msgEProvideDefinition} ${mquestion.word}`
                 );
                 return false;
             }
@@ -909,7 +935,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
@@ -1024,7 +1050,6 @@ var $exeDevice = {
             }
         });
 
-     
         if (
             window.File &&
             window.FileReader &&
@@ -1041,8 +1066,8 @@ var $exeDevice = {
                 if (!file) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt) or a Moodle XML file (.xml)',
-                        ),
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
+                        )
                     );
                     return;
                 }
@@ -1056,8 +1081,8 @@ var $exeDevice = {
                 ) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt), or an XML(Moodle) file (.xml) ',
-                        ),
+                            'Please select a text file (.txt), or an XML(Moodle) file (.xml) '
+                        )
                     );
                     return;
                 }
@@ -1081,11 +1106,11 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase();
 
             if (
-                (selectedFile.indexOf('files') == 0) &&
+                selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
                 $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
             }
@@ -1104,11 +1129,11 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase();
 
             if (
-                (selectedFile.indexOf('files') == 0) &&
+                selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
                 $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
             }
@@ -1136,7 +1161,7 @@ var $exeDevice = {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length == 0) {
                 $exeDevice.showMessage(
-                    _('Supported formats') + ': mp3, ogg, wav',
+                    _('Supported formats') + ': mp3, ogg, wav'
                 );
             } else {
                 if (selectedFile.length > 4) {
@@ -1197,11 +1222,10 @@ var $exeDevice = {
 
         $('#sopaEShowMore').on('click', function (e) {
             e.preventDefault();
-            const $target = $('#sopaEAuthorAlt')
-            const show = $target.hasClass('d-none')
-            $target.toggleClass('d-none', !show)
-                .toggleClass('d-flex', show)
-        })
+            const $target = $('#sopaEAuthorAlt');
+            const show = $target.hasClass('d-none');
+            $target.toggleClass('d-none', !show).toggleClass('d-flex', show);
+        });
         $('#sopaETime').on('keyup', function () {
             let v = this.value;
             v = v.replace(/\D/g, '');
@@ -1226,7 +1250,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
-            $exeDevice.insertWords,
+            $exeDevice.insertWords
         );
 
         //eXe 3.0 Dismissible messages
@@ -1282,7 +1306,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.wordsGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.wordsGame[$exeDevice.active])
             );
             $('#sopaEPaste').show();
         }
@@ -1302,7 +1326,7 @@ var $exeDevice = {
             $exeDevice.wordsGame.splice(
                 $exeDevice.active,
                 0,
-                $exeDevice.clipBoard,
+                $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
         } else if ($exeDevice.typeEdit == 1) {
@@ -1311,7 +1335,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.wordsGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showQuestion($exeDevice.active);
             $('#sopaENumQuestions').text($exeDevice.wordsGame.length);
@@ -1355,7 +1379,9 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
 
         game.percentajeFB =
             typeof game.percentajeFB != 'undefined' ? game.percentajeFB : 100;
@@ -1390,7 +1416,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
 
         $exeDevice.wordsGame = game.wordsGame;
@@ -1516,7 +1542,7 @@ var $exeDevice = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,

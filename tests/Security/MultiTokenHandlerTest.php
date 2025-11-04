@@ -47,6 +47,7 @@ class MultiTokenHandlerTest extends TestCase
             $this->oidcHandler,
             $this->entityManager,
             true, // authCreateUsers = true
+            'domain.local',
             $this->logger
         );
     }
@@ -59,54 +60,104 @@ public function testHandleCasTicket(): void
     $casTicket = 'ST-1234-abcdefg';
     $identifier = 'user123';
     $email = 'user@example.com';
-    
+
     // Create a UserBadge with attributes
     $userBadge = new UserBadge(
         $identifier,
         null,
         ['email' => $email]
     );
-    
+
     // Configure the CAS handler mock
     $this->casHandler->expects($this->once())
         ->method('getUserBadgeFrom')
         ->with($casTicket)
         ->willReturn($userBadge);
-    
+
     // Relaxed logging expectations - don't check specific messages
     $this->logger->expects($this->atLeastOnce())
         ->method('debug');
-    
+
     // Configure user repository to not find a user
     $this->userRepository->method('findOneBy')
         ->willReturnCallback(function($criteria) use ($identifier, $email) {
             // Always return null for all findOneBy calls in this test
             return null;
         });
-        
+
     // Expect persist and flush calls for user creation
     $this->entityManager->expects($this->once())
         ->method('persist')
         ->with($this->callback(function ($user) use ($identifier, $email) {
-            return $user instanceof User 
+            return $user instanceof User
                 && $user->getEmail() === $email
                 && $user->getExternalIdentifier() === $identifier;
         }));
-        
+
     $this->entityManager->expects($this->once())
         ->method('flush');
-        
+
     // Execute the method under test
     $result = $this->tokenHandler->getUserBadgeFrom($casTicket);
     $this->assertInstanceOf(UserBadge::class, $result);
     $this->assertEquals($identifier, $result->getUserIdentifier());
-    
+
     // Invoke the UserBadge callback to load/create the user
     $userLoader = $result->getUserLoader();
     $user = $userLoader($identifier);
     $this->assertInstanceOf(User::class, $user);
     $this->assertEquals($email, $user->getEmail());
     $this->assertEquals($identifier, $user->getExternalIdentifier());
+}
+
+/**
+ * Test that the configured temporary domain is used when generating emails.
+ */
+public function testCreateNewUserUsesConfiguredTemporaryDomain(): void
+{
+    $casTicket = 'ST-1234-abcdefg';
+    $identifier = 'user123';
+    $temporaryDomain = 'custom.local';
+
+    $userBadge = new UserBadge(
+        $identifier,
+        null,
+        []
+    );
+
+    $this->casHandler->expects($this->once())
+        ->method('getUserBadgeFrom')
+        ->with($casTicket)
+        ->willReturn($userBadge);
+
+    $this->userRepository->method('findOneBy')
+        ->willReturn(null);
+
+    $this->entityManager->expects($this->once())
+        ->method('persist')
+        ->with($this->callback(function ($user) use ($identifier, $temporaryDomain) {
+            return $user instanceof User
+                && $user->getEmail() === sprintf('%s@%s', $identifier, $temporaryDomain)
+                && $user->getExternalIdentifier() === $identifier;
+        }));
+
+    $this->entityManager->expects($this->once())
+        ->method('flush');
+
+    $tokenHandler = new MultiTokenHandler(
+        $this->casHandler,
+        $this->oidcHandler,
+        $this->entityManager,
+        true,
+        '@'.$temporaryDomain,
+        $this->logger
+    );
+
+    $result = $tokenHandler->getUserBadgeFrom($casTicket);
+    $userLoader = $result->getUserLoader();
+    $user = $userLoader($identifier);
+
+    $this->assertEquals(sprintf('%s@%s', $identifier, $temporaryDomain), $user->getEmail());
 }
 /**
  * Test handling an OIDC token with an existing user.
@@ -261,6 +312,7 @@ public function testHandleOidcToken(): void
             $this->oidcHandler,
             $this->entityManager,
             false, // authCreateUsers = false
+            'domain.local',
             $this->logger
         );
 

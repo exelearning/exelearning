@@ -144,7 +144,7 @@ export default class NavbarFile {
             const preview = document.createElement('img');
             preview.classList.add('theme-card-preview');
             preview.setAttribute('alt', _('Preview'));
-            preview.src = `${theme.path}preview.png`;
+            preview.src = `${theme.path}screenshot.png`;
             const description = document.createElement('p');
             description.classList.add('theme-description');
             description.innerHTML = theme.description;
