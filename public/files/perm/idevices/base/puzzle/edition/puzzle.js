@@ -38,7 +38,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
 
         this.setMessagesInfo();
@@ -63,22 +63,40 @@ var $exeDevice = {
             msgNumQuestions: c_('Number of questions'),
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgAudio: c_('Audio'),
             msgTimeOver: c_('Time is up'),
@@ -99,35 +117,35 @@ var $exeDevice = {
             msgsRepeat: c_('Repeat'),
             msgsTerminate: c_('Finish'),
             msgTypeGame: c_('Puzzle'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image',
+            'You must upload or indicate the valid URL of an image'
         );
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgTypeChoose = _(
-            'Please check all the answers in the right order',
+            'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
-            'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
         msgs.msgRowsNumber = _(
-            'You must specify a number of rows and columns between three and five',
+            'You must specify a number of rows and columns between three and five'
         );
         msgs.msgSelectPuzzleImage = _('You must select the puzzle image');
         msgs.msgSelectImage = _('Select an image');
@@ -346,7 +364,8 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         // Inicializar switches accesibles
         $('.toggle-input').each(function () {
-            const $i = $(this), $item = $i.closest('.toggle-item');
+            const $i = $(this),
+                $item = $i.closest('.toggle-item');
             $item.attr('aria-checked', $i.is(':checked'));
             $i.on('change.puzzleToggle', function () {
                 $item.attr('aria-checked', $i.is(':checked'));
@@ -363,7 +382,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#puzzleEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#puzzleEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -383,7 +402,7 @@ var $exeDevice = {
 
         $("input.PZLP-Type[name='pzltype'][value='" + puzzle.type + "']").prop(
             'checked',
-            true,
+            true
         );
         $('#puzzleEShowImage').prop('checked', puzzle.showImage);
         $('#puzzleEShowNumber').prop('checked', puzzle.showNumber);
@@ -503,7 +522,7 @@ var $exeDevice = {
             json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
 
             const dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $audiosDef = $('.puzzle-LinkAudiosDef', wrapper),
                 $imagesDef = $('.puzzle-LinkImagesDef', wrapper),
                 $audiosClue = $('.puzzle-LinkAudiosClue', wrapper);
@@ -569,7 +588,7 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.showPuzzle(0, true);
         }
@@ -592,7 +611,6 @@ var $exeDevice = {
     },
 
     save: function () {
-
         if (!$exeDevice.validatePuzzle()) return false;
 
         const dataGame = $exeDevice.validateData();
@@ -608,7 +626,6 @@ var $exeDevice = {
         dataGame.msgs = i18n;
         let json = JSON.stringify(dataGame),
             divContent = '';
-
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
@@ -711,10 +728,10 @@ var $exeDevice = {
             function () {
                 $exeDevice.checkAltImage = false;
                 let saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
         return false;
     },
@@ -735,12 +752,13 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#puzzleEShowMinimize').is(':checked'),
             randomPuzzles = $('#puzzleERandomPuzzles').is(':checked'),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#puzzleEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#puzzleEPercentajeFB').val()), 10),
             percentajeQuestions = parseInt(
                 clear($('#puzzleEPercentajeQuestions').val()),
-                10,
+                10
             ),
             author = $('#puzzleEAuthor').val(),
             puzzlesGame = $exeDevice.puzzlesGame,
@@ -803,7 +821,7 @@ var $exeDevice = {
                 const mData = $exeDevice.placeImageWindows(
                     this,
                     this.naturalWidth,
-                    this.naturalHeight,
+                    this.naturalHeight
                 );
                 $exeDevice.drawImage(this, mData);
                 $image.show();
@@ -1031,9 +1049,13 @@ var $exeDevice = {
         $('#puzzleEShowMoreDefinition').on('click', function (e) {
             e.preventDefault();
             if ($('#puzzleEDefinitionAltAuthor').hasClass('d-none')) {
-                $('#puzzleEDefinitionAltAuthor').removeClass('d-none').addClass('d-blok')
+                $('#puzzleEDefinitionAltAuthor')
+                    .removeClass('d-none')
+                    .addClass('d-blok');
             } else {
-                $('#puzzleEDefinitionAltAuthor').removeClass('d-block').addClass('d-none')
+                $('#puzzleEDefinitionAltAuthor')
+                    .removeClass('d-block')
+                    .addClass('d-none');
             }
         });
 
@@ -1060,12 +1082,9 @@ var $exeDevice = {
             url = $('#puzzleEURLImage-' + id).val(),
             ext = url.split('.').pop().toLowerCase();
 
-        if (
-            (url.indexOf('files') == 0) &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg webp'
             );
             return false;
         }
@@ -1078,12 +1097,9 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.trim().length < 4) return false;
-        if (
-            (url.indexOf('files') == 0) &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
         }
@@ -1093,10 +1109,7 @@ var $exeDevice = {
     loadAudio: function (url) {
         const validExt = ['mp3', 'ogg', 'waw'],
             ext = url.split('.').pop().toLowerCase();
-        if (
-            (url.indexOf('files') == 0) &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, waw');
             return false;
         } else {
@@ -1122,7 +1135,7 @@ var $exeDevice = {
         $('#puzzleEAuthorDefinition').val('');
         $('#puzzleEImageDefinition').attr(
             'src',
-            $exeDevice.iDevicePath + 'quextIEImagen.png',
+            $exeDevice.iDevicePath + 'quextIEImagen.png'
         );
         $('#puzzleEURLAudioDefinition').val('');
         $('#puzzleECluePuzzle').val('');
@@ -1163,7 +1176,7 @@ var $exeDevice = {
         if ($exeDevice.validatePuzzle()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.puzzlesGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.puzzlesGame[$exeDevice.active])
             );
             $exeDevice.puzzlesGame[$exeDevice.active];
             $('#puzzleEPaste').show();
@@ -1195,7 +1208,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.puzzlesGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showPuzzle($exeDevice.active);
             $('#puzzleENumPuzzles').text($exeDevice.puzzlesGame.length);
@@ -1240,7 +1253,9 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
 
         game.evaluation =
             typeof game.evaluation !== 'undefined' ? game.evaluation : false;
@@ -1262,7 +1277,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
         $exeDevice.puzzlesGame = game.puzzlesGame;
         $exeDevice.updateGameMode(game.feedBack);

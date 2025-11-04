@@ -27,7 +27,7 @@ var $eXeListaCotejo = {
         }
         if (
             !$exeDevices.iDevice.gamification.helpers.supportedBrowser(
-                'Checklist',
+                'Checklist'
             )
         )
             return;
@@ -84,7 +84,7 @@ var $eXeListaCotejo = {
             $('#ctjMainContainer-' + i).show();
         });
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.listacotejo-IDevice',
+            '.listacotejo-IDevice'
         );
     },
 
@@ -132,7 +132,8 @@ var $eXeListaCotejo = {
             };
             let arr = [];
             $('#ctjItems-' + instance)
-                .find('.CTJP-Item').each(function () {
+                .find('.CTJP-Item')
+                .each(function () {
                     let obj = {};
                     const $checkbox = $(this).find("input[type='checkbox']"),
                         $inputText = $(this).find("input[type='text']"),
@@ -206,7 +207,7 @@ var $eXeListaCotejo = {
 
     getDataStorage: function (id) {
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataCotejo-' + id),
+            localStorage.getItem('dataCotejo-' + id)
         );
     },
 
@@ -223,7 +224,7 @@ var $eXeListaCotejo = {
                 `${$eXeListaCotejo.idevicePath}cotejoicon.png`,
             isMobile =
                 /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-                    navigator.userAgent,
+                    navigator.userAgent
                 ),
             dl = mOptions.hasLogo ? 'block' : 'none',
             dc = mOptions.hasCommunity ? 'block' : 'none',
@@ -288,7 +289,7 @@ var $eXeListaCotejo = {
                 function () {
                     $eXeListaCotejo.saveCotejo(instance);
                     $eXeListaCotejo.counter(instance);
-                },
+                }
             );
 
         $('#ctjItems-' + instance)
@@ -316,7 +317,7 @@ var $eXeListaCotejo = {
         $eXeListaCotejo.counter(instance);
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#ctjGameContainer-' + instance,
+            '#ctjGameContainer-' + instance
         );
 
         $('#ctjReboot-' + instance).on('click', function (e) {
@@ -329,7 +330,7 @@ var $eXeListaCotejo = {
                 $('#ctjUserDate-' + instance).val('');
                 $('#ctjItems-' + instance).empty();
                 $('#ctjItems-' + instance).append(
-                    $eXeListaCotejo.createItems(instance),
+                    $eXeListaCotejo.createItems(instance)
                 );
                 $eXeListaCotejo.counter(instance);
             }
@@ -343,29 +344,36 @@ var $eXeListaCotejo = {
             total_items = 0,
             points = 0;
 
-        $('#ctjItems-' + instance).find('.CTJP-Item').each(function (i) {
-            if ($(this).find('input[type="checkbox"], select').length > 0) {
-                total_items++;
-            }
-            if ($(this).find('input[type="checkbox"]:checked').length > 0) {
-                completados++;
-                points += $eXeListaCotejo.convertToNumber(
-                    mOptions.levels[i].points,
-                );
-            }
-            if ($(this).find('select option[value="1"]:selected').length > 0) {
-                completados++;
-                points += $eXeListaCotejo.convertToNumber(
-                    mOptions.levels[i].points,
-                );
-            }
-            if ($(this).find('select option[value="2"]:selected').length > 0) {
-                en_proceso++;
-                points +=
-                    $eXeListaCotejo.convertToNumber(mOptions.levels[i].points) /
-                    2;
-            }
-        });
+        $('#ctjItems-' + instance)
+            .find('.CTJP-Item')
+            .each(function (i) {
+                if ($(this).find('input[type="checkbox"], select').length > 0) {
+                    total_items++;
+                }
+                if ($(this).find('input[type="checkbox"]:checked').length > 0) {
+                    completados++;
+                    points += $eXeListaCotejo.convertToNumber(
+                        mOptions.levels[i].points
+                    );
+                }
+                if (
+                    $(this).find('select option[value="1"]:selected').length > 0
+                ) {
+                    completados++;
+                    points += $eXeListaCotejo.convertToNumber(
+                        mOptions.levels[i].points
+                    );
+                }
+                if (
+                    $(this).find('select option[value="2"]:selected').length > 0
+                ) {
+                    en_proceso++;
+                    points +=
+                        $eXeListaCotejo.convertToNumber(
+                            mOptions.levels[i].points
+                        ) / 2;
+                }
+            });
 
         mOptions.points = points;
 
@@ -419,7 +427,9 @@ var $eXeListaCotejo = {
             divElement = document.getElementById('ctjList-' + instance);
 
         if (!divElement) {
-            console.error('No se encontró el elemento con el ID proporcionado.');
+            console.error(
+                'No se encontró el elemento con el ID proporcionado.'
+            );
             return;
         }
 
@@ -438,7 +448,10 @@ var $eXeListaCotejo = {
                     try {
                         const link = document.createElement('a');
                         link.href = imgData;
-                        link.download = (mOptions.msgs && mOptions.msgs.msgList ? mOptions.msgs.msgList : 'lista') + '.png';
+                        link.download =
+                            (mOptions.msgs && mOptions.msgs.msgList
+                                ? mOptions.msgs.msgList
+                                : 'lista') + '.png';
                         link.click();
                     } catch (e) {
                         console.error('Error al descargar la imagen:', e);
@@ -452,22 +465,40 @@ var $eXeListaCotejo = {
                         const imgProps = pdf.getImageProperties(imgData);
                         const pdfWidth = pdf.internal.pageSize.getWidth();
                         const pdfHeight = pdf.internal.pageSize.getHeight();
-                        const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                        const imgHeight =
+                            (imgProps.height * pdfWidth) / imgProps.width;
 
                         let heightLeft = imgHeight;
                         let position = 0;
 
-                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                        pdf.addImage(
+                            imgData,
+                            'PNG',
+                            0,
+                            position,
+                            pdfWidth,
+                            imgHeight
+                        );
                         heightLeft -= pdfHeight;
 
                         while (heightLeft > 0) {
                             position -= pdfHeight;
                             pdf.addPage();
-                            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                            pdf.addImage(
+                                imgData,
+                                'PNG',
+                                0,
+                                position,
+                                pdfWidth,
+                                imgHeight
+                            );
                             heightLeft -= pdfHeight;
                         }
 
-                        const fileName = (mOptions.msgs && mOptions.msgs.msgList ? mOptions.msgs.msgList : 'lista') + '.pdf';
+                        const fileName =
+                            (mOptions.msgs && mOptions.msgs.msgList
+                                ? mOptions.msgs.msgList
+                                : 'lista') + '.pdf';
                         pdf.save(fileName);
                         return true;
                     } catch (e) {
@@ -485,7 +516,7 @@ var $eXeListaCotejo = {
                         },
                         function onError() {
                             fallbackPng();
-                        },
+                        }
                     );
                 }
             })
@@ -505,11 +536,15 @@ var $eXeListaCotejo = {
         for (let i = 0; i < mOptions.levels.length; i++) {
             const level = mOptions.levels[i];
             const marginLeft = 1.5 * parseInt(level.nivel) + 0.5,
-                msgp = level.points.trim() == '1'
-                    ? mOptions.msgs.msgPoint
-                    : mOptions.msgs.msgPoints,
+                msgp =
+                    level.points.trim() == '1'
+                        ? mOptions.msgs.msgPoint
+                        : mOptions.msgs.msgPoints,
                 msg = '(' + level.points + ' ' + msgp + ')',
-                points = mOptions.useScore && level.points.trim().length > 0 ? msg : '';
+                points =
+                    mOptions.useScore && level.points.trim().length > 0
+                        ? msg
+                        : '';
 
             if (level.type === '0') {
                 const cid = `ctjToggle-${instance}-${i}`;
@@ -561,7 +596,7 @@ var $eXeListaCotejo = {
                 onReady && onReady();
                 return;
             }
-        } catch (_) { }
+        } catch (_) {}
 
         const scriptId = 'jspdf-umd-loader';
         const existing = document.getElementById(scriptId);
@@ -584,13 +619,14 @@ var $eXeListaCotejo = {
         s.id = scriptId;
         s.src = 'https://cdn.jsdelivr.net/npm/jspdf/dist/jspdf.umd.min.js';
         s.async = true;
-        s.onload = function () { onReady && onReady(); };
-        s.onerror = function () { onError && onError(); };
+        s.onload = function () {
+            onReady && onReady();
+        };
+        s.onerror = function () {
+            onError && onError();
+        };
         document.head.appendChild(s);
-    }
-
-
-
+    },
 };
 $(function () {
     $eXeListaCotejo.init();

@@ -25,7 +25,12 @@ var $eXeDragDrop = {
     jqueryui: 1,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Drag and drop', 'dragdrop', 'dragdrop-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Drag and drop',
+            'dragdrop',
+            'dragdrop-IDevice'
+        );
         this.isInExe = eXe.app.isInExe();
     },
 
@@ -63,7 +68,6 @@ var $eXeDragDrop = {
                 $('#dadPGameMinimize-' + i).hide();
             }
 
-
             $eXeDragDrop.addEvents(i);
             if (mOption.type == 2 && mOption.time > 0) {
                 $('#dadPImgTime-' + i).show();
@@ -74,9 +78,7 @@ var $eXeDragDrop = {
             }
         });
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.dragdrop-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.dragdrop-IDevice');
     },
 
     loadDataGame: function (data, sthis) {
@@ -134,7 +136,7 @@ var $eXeDragDrop = {
         mOptions.cardsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.cardsGame,
-                mOptions.percentajeCards,
+                mOptions.percentajeCards
             );
         for (let i = 0; i < mOptions.cardsGame.length; i++) {
             mOptions.cardsGame[i].id = i;
@@ -155,7 +157,7 @@ var $eXeDragDrop = {
         const mOptions = $eXeDragDrop.options[instance],
             mTime =
                 $exeDevices.iDevice.gamification.helpers.getTimeToString(
-                    tiempo,
+                    tiempo
                 );
         if (mOptions.time < 0) return;
         $(`#dadPPTime-${instance}`).text(mTime);
@@ -173,7 +175,7 @@ var $eXeDragDrop = {
                     ...mOptions.cardsGame,
                 ]),
             shuffledMedia = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                [...mOptions.cardsGame],
+                [...mOptions.cardsGame]
             );
 
         $(`#dadPDragTargetsContainer-${instance}`).empty();
@@ -337,7 +339,10 @@ var $eXeDragDrop = {
             mOptions.counterClock = setInterval(function () {
                 let $node = $('#dadPMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -406,9 +411,17 @@ var $eXeDragDrop = {
             containment: 'document',
             helper: function () {
                 // Use outerWidth/outerHeight to avoid zero-dimension helpers
-                const w = $(this).outerWidth() || this.getBoundingClientRect().width || 40;
-                const h = $(this).outerHeight() || this.getBoundingClientRect().height || 32;
-                const $clone = $(this).clone().appendTo('.DADP-GameContainer-' + instance);
+                const w =
+                    $(this).outerWidth() ||
+                    this.getBoundingClientRect().width ||
+                    40;
+                const h =
+                    $(this).outerHeight() ||
+                    this.getBoundingClientRect().height ||
+                    32;
+                const $clone = $(this)
+                    .clone()
+                    .appendTo('.DADP-GameContainer-' + instance);
                 $clone.css({
                     position: 'absolute',
                     width: w,
@@ -422,8 +435,14 @@ var $eXeDragDrop = {
             start: function (event, ui) {
                 $(this).addClass('DADP-Dragging');
                 if (ui.helper) {
-                    const w = $(this).outerWidth() || this.getBoundingClientRect().width || 40;
-                    const h = $(this).outerHeight() || this.getBoundingClientRect().height || 32;
+                    const w =
+                        $(this).outerWidth() ||
+                        this.getBoundingClientRect().width ||
+                        40;
+                    const h =
+                        $(this).outerHeight() ||
+                        this.getBoundingClientRect().height ||
+                        32;
                     ui.helper.css({
                         width: w,
                         height: h,
@@ -433,7 +452,10 @@ var $eXeDragDrop = {
                 if ($audio.length === 1) {
                     const audioData = $audio.data('audio');
                     if (audioData && audioData.length > 3) {
-                        $exeDevices.iDevice.gamification.media.playSound(audioData, mOptions);
+                        $exeDevices.iDevice.gamification.media.playSound(
+                            audioData,
+                            mOptions
+                        );
                     }
                 }
             },
@@ -468,7 +490,10 @@ var $eXeDragDrop = {
             event.stopPropagation();
             const data = $(this).data('audio');
             if (data && data.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(data, mOptions);
+                $exeDevices.iDevice.gamification.media.playSound(
+                    data,
+                    mOptions
+                );
             }
         });
         $dadPGameContainer
@@ -602,21 +627,21 @@ var $eXeDragDrop = {
         const $existingItem = $container.find('.DADP-DS'),
             existingCardId = $existingItem.data('id'),
             $parentSourceContainer = $(
-                `#dadPDragSourcesContainer-${instance} .DADP-DragSourceContainer[data-id='${id}']`,
+                `#dadPDragSourcesContainer-${instance} .DADP-DragSourceContainer[data-id='${id}']`
             );
 
         $parentSourceContainer.hide();
 
         if ($existingItem.length > 0 && mOptions.type > 0) {
             const media = $(
-                `#dadPDragSourcesContainer-${instance} .DADP-MediaSourceDiv[data-id='${existingCardId}']`,
+                `#dadPDragSourcesContainer-${instance} .DADP-MediaSourceDiv[data-id='${existingCardId}']`
             );
             const text = $(
-                `#dadPDragSourcesContainer-${instance} .DADP-TextSourceDiv[data-id='${existingCardId}']`,
+                `#dadPDragSourcesContainer-${instance} .DADP-TextSourceDiv[data-id='${existingCardId}']`
             );
             const $originalContainer = isImageMode ? media : text;
             $parentOriginalSourceContainer = $(
-                `#dadPDragSourcesContainer-${instance} .DADP-DragSourceContainer[data-id='${existingCardId}']`,
+                `#dadPDragSourcesContainer-${instance} .DADP-DragSourceContainer[data-id='${existingCardId}']`
             );
 
             if ($originalContainer.length === 1) {
@@ -656,7 +681,7 @@ var $eXeDragDrop = {
             latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#dadPGameContainer-' + instance,
+                '#dadPGameContainer-' + instance
             );
         }
 
@@ -674,7 +699,7 @@ var $eXeDragDrop = {
                     if (data && data.length > 3) {
                         $exeDevices.iDevice.gamification.media.playSound(
                             data,
-                            mOptions,
+                            mOptions
                         );
                     }
                 }
@@ -692,7 +717,7 @@ var $eXeDragDrop = {
             formattedScore = Number(score).toFixed(2);
 
         $(`#dadPRepeatActivity-${instance}`).text(
-            `${mOptions.msgs.msgYouScore}: ${formattedScore}`,
+            `${mOptions.msgs.msgYouScore}: ${formattedScore}`
         );
 
         return formattedScore;
@@ -714,7 +739,7 @@ var $eXeDragDrop = {
             } else {
                 clueMessage = msgs.msgTryAgain.replace(
                     '%s',
-                    mOptions.itinerary.percentageClue,
+                    mOptions.itinerary.percentageClue
                 );
             }
             $eXeDragDrop.showMessage(3, clueMessage, instance, true);
@@ -728,7 +753,7 @@ var $eXeDragDrop = {
         $(`#dadPPHits-${instance}`).text(mOptions.hits);
         $(`#dadPPErrors-${instance}`).text(mOptions.errors);
         $(`#dadPPNumber-${instance}`).text(
-            mOptions.realNumberCards - mOptions.hits - mOptions.errors,
+            mOptions.realNumberCards - mOptions.hits - mOptions.errors
         );
     },
 
@@ -859,7 +884,7 @@ var $eXeDragDrop = {
             e.preventDefault();
             $dadPGameContainer.show();
             if (!mOptions.gameStarted && !mOptions.gameOver) {
-                $eXeDragDrop.startGame(instance)
+                $eXeDragDrop.startGame(instance);
             }
             $('#dadPGameMinimize-' + instance).hide();
         });
@@ -877,7 +902,7 @@ var $eXeDragDrop = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $('#dadPMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $('#dadPCodeAccessDiv-' + instance).show();
             $('#dadPShowClue-' + instance).hide();
@@ -899,13 +924,16 @@ var $eXeDragDrop = {
 
         $('#dadPPNumber-' + instance).text(mOptions.realNumberCards);
 
-        $(window).on('unload.eXeDragDrop beforeunload.eXeDragDrop', function () {
-            if ($eXeDragDrop.mScorm) {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeDragDrop.mScorm,
-                );
+        $(window).on(
+            'unload.eXeDragDrop beforeunload.eXeDragDrop',
+            function () {
+                if ($eXeDragDrop.mScorm) {
+                    $exeDevices.iDevice.gamification.scorm.endScorm(
+                        $eXeDragDrop.mScorm
+                    );
+                }
             }
-        });
+        );
 
         $('#dadPMainContainer-' + instance)
             .closest('.idevice_node')
@@ -924,7 +952,7 @@ var $eXeDragDrop = {
         $('#dadPPErrors-' + instance).text(mOptions.errors);
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $('#dadPAuthorGame-' + instance).html(
-                mOptions.msgs.msgAuthor + ': ' + mOptions.author,
+                mOptions.msgs.msgAuthor + ': ' + mOptions.author
             );
             $('#dadPAuthorGame-' + instance).show();
         }
@@ -941,14 +969,14 @@ var $eXeDragDrop = {
         $('#dadPLinkFullScreen-' + instance).on('click', function (e) {
             e.preventDefault();
             const element = document.getElementById(
-                'dadPGameContainer-' + instance,
+                'dadPGameContainer-' + instance
             );
             $exeDevices.iDevice.gamification.helpers.toggleFullscreen(element);
         });
 
         $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
             mOptions,
-            this.isInExe,
+            this.isInExe
         );
 
         $('#dadPResetButton-' + instance).on('click', function (e) {
@@ -967,7 +995,7 @@ var $eXeDragDrop = {
             if (audio && audio.length > 3)
                 $exeDevices.iDevice.gamification.media.playSound(
                     audio,
-                    mOptions,
+                    mOptions
                 );
         });
 
@@ -979,7 +1007,7 @@ var $eXeDragDrop = {
             if (largeImageSrc && largeImageSrc.length > 3) {
                 $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
                     largeImageSrc,
-                    $dadPGameContainer,
+                    $dadPGameContainer
                 );
             }
         });
@@ -1027,7 +1055,7 @@ var $eXeDragDrop = {
 
     isMobile: function () {
         return /Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
-            navigator.userAgent,
+            navigator.userAgent
         );
     },
 
@@ -1037,7 +1065,9 @@ var $eXeDragDrop = {
             codeAccess = mOptions.itinerary.codeAccess.toLowerCase();
 
         if (codeAccess === codeInput) {
-            $(`#dadPCodeAccessDiv-${instance}, #dadPCubierta-${instance}`).hide();
+            $(
+                `#dadPCodeAccessDiv-${instance}, #dadPCubierta-${instance}`
+            ).hide();
             $(`#dadPLinkMaximize-${instance}`).trigger('click');
         } else {
             $(`#dadPMesajeAccesCodeE-${instance}`)
@@ -1066,18 +1096,18 @@ var $eXeDragDrop = {
         $(`#dadPPHits-${instance}`).text(mOptions.hits);
         $(`#dadPPErrors-${instance}`).text(mOptions.errors);
         $(`#dadPPNumber-${instance}`).text(
-            mOptions.realNumberCards - mOptions.hits - mOptions.errors,
+            mOptions.realNumberCards - mOptions.hits - mOptions.errors
         );
     },
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $eXeDragDrop.borderColors.red,
-            $eXeDragDrop.borderColors.green,
-            $eXeDragDrop.borderColors.blue,
-            $eXeDragDrop.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeDragDrop.borderColors.red,
+                $eXeDragDrop.borderColors.green,
+                $eXeDragDrop.borderColors.blue,
+                $eXeDragDrop.borderColors.yellow,
+            ],
             color = colors[type],
             $dadPMessage = $(`#dadPMessage-${instance}`);
         $dadPMessage
@@ -1091,7 +1121,7 @@ var $eXeDragDrop = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeDragDrop.isInExe,
+            $eXeDragDrop.isInExe
         );
     },
 

@@ -46,7 +46,9 @@ var $exeDevice = {
             msgClue: c_('Cool! The clue is:'),
             msgNewGame: c_('Click here for a new game'),
             msgCodeAccess: c_('Access code'),
-            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgInformationLooking: c_(
+                'Cool! The information you were looking for'
+            ),
             msgPlayStart: c_('Click here to play'),
             msgErrors: c_('Errors'),
             msgHits: c_('Hits'),
@@ -61,24 +63,40 @@ var $exeDevice = {
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
             msgAllQuestions: c_('Questions completed!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgQuestion: c_('Question'),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
             msgYouScore: c_('Your score'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgOption: c_('Option'),
-            msgUseFulInformation: c_('and information that will be very useful'),
+            msgUseFulInformation: c_(
+                'and information that will be very useful'
+            ),
             msgLoading: c_('Loading. Please wait...'),
             msgPoints: c_('points'),
             msgAudio: c_('Audio'),
@@ -88,26 +106,38 @@ var $exeDevice = {
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgCardClick: c_('Click on a card. Attempts: %s'),
             msgGameOver: c_('You finished the game. Your score is %s.'),
-            msgattempts0: c_('No more attempts left. Please answer the question.'),
+            msgattempts0: c_(
+                'No more attempts left. Please answer the question.'
+            ),
             msgEndTime: c_('Time Over. 0 points'),
             msgTypeGame: c_('Hidden image'),
-        }
+        };
     },
-
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _('The selected file does not contain a valid game');
-        msgs.msgEURLValid = _('You must upload or indicate the valid URL of an image');
+        msgs.msgESelectFile = _(
+            'The selected file does not contain a valid game'
+        );
+        msgs.msgEURLValid = _(
+            'You must upload or indicate the valid URL of an image'
+        );
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgECompleteQuestion = _('You have to complete the question');
-        msgs.msgECompleteAllOptions = _('You have to complete all the selected options');
-        msgs.msgNoSuportBrowser = _('Your browser is not compatible with this tool.');
+        msgs.msgECompleteAllOptions = _(
+            'You have to complete all the selected options'
+        );
+        msgs.msgNoSuportBrowser = _(
+            'Your browser is not compatible with this tool.'
+        );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
-        msgs.msgAltImageWarning = _('Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.');
-        msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
+        msgs.msgAltImageWarning = _(
+            'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
+        );
+        msgs.msgIDLenght = _(
+            'The report identifier must have at least 5 characters'
+        );
     },
-
 
     playSound: function (selectedFile) {
         const selectFile =
@@ -165,7 +195,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.questionsGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.questionsGame[$exeDevice.active])
             );
             $('#hiEPaste').show();
         }
@@ -185,7 +215,7 @@ var $exeDevice = {
             $exeDevice.questionsGame.splice(
                 $exeDevice.active,
                 0,
-                $exeDevice.clipBoard,
+                $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
         } else if ($exeDevice.typeEdit === 1) {
@@ -194,7 +224,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.questionsGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showQuestion($exeDevice.active);
             $('#hiENumQuestions').text($exeDevice.questionsGame.length);
@@ -238,7 +268,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentage = parseInt(
-            $exeDevice.removeTags($('#hiEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#hiEPercentajeQuestions').val())
         );
         if (isNaN(percentage)) return;
 
@@ -274,13 +304,12 @@ var $exeDevice = {
         $('#hiEYImage').val(p.y);
         $('#hiEAuthor').val(p.author);
         $('#hiEAlt').val(p.alt);
-        $('#hiETimeQuestion').val(p.time)
+        $('#hiETimeQuestion').val(p.time);
         $('#hiERows').val(p.rows);
         $('#hiEColumns').val(p.columns);
         $('#hiEAttempts').val(p.attempts);
 
         $exeDevice.showImage(p.url, p.alt);
-
 
         $('.HIE-AnwersOptions').each(function (j) {
             const option = j < p.numOptions ? p.options[j] : '';
@@ -289,8 +318,7 @@ var $exeDevice = {
 
         $exeDevice.stopSound();
         p.audio = p.audio && p.audio !== 'undefined' ? p.audio : '';
-        if (p.audio.trim().length > 4)
-            $exeDevice.playSound(p.audio.trim());
+        if (p.audio.trim().length > 4) $exeDevice.playSound(p.audio.trim());
 
         $('#hiEURLAudio').val(p.audio);
         $('#hiENumberQuestion').val(i + 1);
@@ -301,15 +329,13 @@ var $exeDevice = {
         $('#hiEMessageKO').val(p.msgError);
         $('#hiEMessageOK').val(p.msgHit);
         $(
-            `input.HIE-Number[name='qxtnumber'][value='${p.numberOptions}']`,
+            `input.HIE-Number[name='qxtnumber'][value='${p.numberOptions}']`
         ).prop('checked', true);
-        $(
-            `input.HIE-Solution[name='hisoluiton'][value='${p.solution}']`,
-        ).prop('checked', true);
-
+        $(`input.HIE-Solution[name='hisoluiton'][value='${p.solution}']`).prop(
+            'checked',
+            true
+        );
     },
-
-
 
     showImage: function (url, alt) {
         const $image = $('#hiEImage');
@@ -318,15 +344,12 @@ var $exeDevice = {
         $image.attr('alt', alt);
         $nimage.show();
         url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
-        $image
-            .prop('src', url)
-            .on('load', function () {
-                $image.show();
-                $nimage.hide();
-                return true;
-            })
+        $image.prop('src', url).on('load', function () {
+            $image.show();
+            $nimage.hide();
+            return true;
+        });
     },
-
 
     clearQuestion: function () {
         $exeDevice.showOptions(4);
@@ -346,7 +369,6 @@ var $exeDevice = {
         $('#hiEMessageOK').val('');
         $('#hiEMessageKO').val('');
     },
-
 
     showOptions: function (number) {
         $('.HIE-OptionDiv').each(function (i) {
@@ -580,12 +602,9 @@ var $exeDevice = {
         $exeDevice.enableForm();
     },
 
-
     initQuestions: function () {
         $('#hiEInputImage').css('display', 'flex');
-        $(
-            '#hiEMediaNormal, #hiEMediaImage'
-        ).prop('disabled', false);
+        $('#hiEMediaNormal, #hiEMediaImage').prop('disabled', false);
 
         if ($exeDevice.questionsGame.length === 0) {
             const question = $exeDevice.getDefaultQuestion();
@@ -638,7 +657,7 @@ var $exeDevice = {
             }
 
             const dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $imagesLink = $('.hiddenimage-LinkImages', wrapper),
                 $audiosLink = $('.hiddenimage-LinkAudios', wrapper);
 
@@ -646,9 +665,7 @@ var $exeDevice = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < dataGame.questionsGame.length) {
                     dataGame.questionsGame[iq].url = $(this).attr('href');
-                    if (
-                        dataGame.questionsGame[iq].url.length < 4
-                    ) {
+                    if (dataGame.questionsGame[iq].url.length < 4) {
                         dataGame.questionsGame[iq].url = '';
                     }
                 }
@@ -681,15 +698,16 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
         }
     },
 
-
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.answersRamdon = game.answersRamdon || false;
         game.percentajeFB =
             typeof game.percentajeFB !== 'undefined' ? game.percentajeFB : 100;
@@ -721,14 +739,14 @@ var $exeDevice = {
         $('#hiETimeShowSolution').prop('disabled', !game.showSolution);
         $('#hiECustomScore').prop('checked', game.customScore);
         $(
-            `input.HIE-TypeGame[name='qxtgamemode'][value='${game.gameMode}']`,
+            `input.HIE-TypeGame[name='qxtgamemode'][value='${game.gameMode}']`
         ).prop('checked', true);
         $('#hiECustomMessages').prop('checked', game.customMessages);
         $('#hiEPercentajeQuestions').val(game.percentajeQuestions);
         $('#hiEEvaluation').prop('checked', game.evaluation);
         $('#hiEEvaluationID').val(game.evaluationID);
         $('#hiEEvaluationID').prop('disabled', !game.evaluation);
-        $('#hiERevealTime').val(game.revealTime)
+        $('#hiERevealTime').val(game.revealTime);
 
         $exeDevice.showSelectOrder(game.customMessages);
 
@@ -747,7 +765,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
 
         if (game.feedBack || game.gameMode === 2) {
@@ -807,7 +825,6 @@ var $exeDevice = {
         const json = JSON.stringify(dataGame);
         let divContent = '';
 
-
         const instructions = tinyMCE.get('eXeGameInstructions').getContent();
 
         if (instructions !== '') {
@@ -848,10 +865,10 @@ var $exeDevice = {
             function () {
                 $exeDevice.checkAltImage = false;
                 const saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
         return false;
     },
@@ -873,10 +890,10 @@ var $exeDevice = {
         p.solution = parseInt($('input[name=hisoluiton]:checked').val());
         p.msgHit = $('#hiEMessageOK').val();
         p.msgError = $('#hiEMessageKO').val();
-        p.time = parseInt($('#hiETimeQuestion').val())
-        p.rows = parseInt($('#hiERows').val())
-        p.columns = parseInt($('#hiEColumns').val())
-        p.attempts = parseInt($('#hiEAttempts').val())
+        p.time = parseInt($('#hiETimeQuestion').val());
+        p.rows = parseInt($('#hiERows').val());
+        p.columns = parseInt($('#hiEColumns').val());
+        p.attempts = parseInt($('#hiEAttempts').val());
 
         $('.HIE-AnwersOptions').each(function (i) {
             const option = $(this).val().trim();
@@ -894,7 +911,6 @@ var $exeDevice = {
             message = msgs.msgEURLValid;
         }
 
-        
         if (message.length === 0) {
             $exeDevice.questionsGame[$exeDevice.active] = p;
             message = true;
@@ -935,7 +951,6 @@ var $exeDevice = {
         return html;
     },
 
-
     getIdeviceID: function () {
         const ideviceid =
             $('#hiQEIdeviceForm')
@@ -949,21 +964,20 @@ var $exeDevice = {
         const clear = $exeDevice.removeTags,
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
-                tinyMCE.get('eXeGameInstructions').getContent(),
+                tinyMCE.get('eXeGameInstructions').getContent()
             ),
             textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
             showMinimize = $('#hiEShowMinimize').is(':checked'),
             optionsRamdon = $('#hiEQuestionsRamdon').is(':checked'),
             answersRamdon = $('#hiEAnswersRamdon').is(':checked'),
             showSolution = $('#hiEShowSolution').is(':checked'),
-            timeShowSolution = parseInt(
-                clear($('#hiETimeShowSolution').val()),
-            ),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            timeShowSolution = parseInt(clear($('#hiETimeShowSolution').val())),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#hiECustomScore').is(':checked'),
             customMessages = $('#hiECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
-                clear($('#hiEPercentajeQuestions').val()),
+                clear($('#hiEPercentajeQuestions').val())
             ),
             evaluation = $('#hiEEvaluation').is(':checked'),
             evaluationID = $('#hiEEvaluationID').val(),
@@ -973,7 +987,6 @@ var $exeDevice = {
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (!itinerary) return false;
-
 
         if (showSolution && timeShowSolution.toString().length === 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
@@ -1057,7 +1070,7 @@ var $exeDevice = {
             const marcado = $(this).is(':checked');
             $('#hiECodeAccess, #hiEMessageCodeAccess').prop(
                 'disabled',
-                !marcado,
+                !marcado
             );
         });
         $('.HIE-Panel').on('click', 'input.HIE-Number', (e) => {
@@ -1137,22 +1150,19 @@ var $exeDevice = {
                 this.value = this.value.replace(/\D/g, '').substring(0, 2);
             })
             .on('focusout', function () {
-                let value = this.value.trim() === '' ? 4 : parseInt(this.value, 10);
+                let value =
+                    this.value.trim() === '' ? 4 : parseInt(this.value, 10);
                 value = Math.max(1, Math.min(value, 20));
                 this.value = value;
             });
-
-
 
         $('#hiEURLImage').on('change', function () {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.startsWith('files') && !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1166,11 +1176,9 @@ var $exeDevice = {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $('#hiEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.startsWith('files') && !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1197,7 +1205,7 @@ var $exeDevice = {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: mp3, ogg, wav`,
+                    `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
                 $exeDevice.stopSound();
@@ -1261,14 +1269,12 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
-
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').on('click', function () {
             $(this).parent().fadeOut();
             return false;
         });
     },
-
 
     clickImage: function (img, epx, epy) {
         const $cursor = $('#hiECursor'),

@@ -37,7 +37,12 @@ var $eXeOrdena = {
     jqueryui: 1,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Sort', 'sort', 'ordena-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Sort',
+            'sort',
+            'ordena-IDevice'
+        );
     },
 
     enable: function () {
@@ -75,7 +80,7 @@ var $eXeOrdena = {
             }
 
             $('#ordenaDivFeedBack-' + i).prepend(
-                $('.ordena-feedback-game', this),
+                $('.ordena-feedback-game', this)
             );
 
             $eXeOrdena.addEvents(i);
@@ -83,31 +88,29 @@ var $eXeOrdena = {
             $('#ordenaDivFeedBack-' + i).hide();
 
             if (mOption.type == 0) $('#ordenaPhrasesContainer-' + i).hide();
-            if (!mOption.itinerary.showCodeAccess && (
-                mOption.startAutomatically ||
-                (mOption.type == 0 && mOption.time == 0))
+            if (
+                !mOption.itinerary.showCodeAccess &&
+                (mOption.startAutomatically ||
+                    (mOption.type == 0 && mOption.time == 0))
             ) {
                 $('#ordenaStartGame-' + i).click();
             }
-
 
             $('#ordenaMainContainer-' + i).show();
 
             $eXeOrdena.showPhrase(0, i);
         });
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.ordena-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.ordena-IDevice');
     },
 
     loadDataGame: function (data, sthis) {
         const json = $exeDevices.iDevice.gamification.helpers.decrypt(
-            data.text(),
+            data.text()
         );
 
         const mOptions =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             $audiosDef = $('.ordena-LinkAudiosDef', sthis),
             $audiosError = $('.ordena-LinkAudiosError', sthis),
             $audiosHit = $('.ordena-LinkAudiosHit', sthis),
@@ -210,11 +213,11 @@ var $eXeOrdena = {
         mOptions.phrasesGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.phrasesGame,
-                mOptions.percentajeQuestions,
+                mOptions.percentajeQuestions
             );
         mOptions.phrasesGame =
             $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                mOptions.phrasesGame,
+                mOptions.phrasesGame
             );
         mOptions.numberQuestions = mOptions.phrasesGame.length;
         mOptions.gameColumns =
@@ -224,7 +227,9 @@ var $eXeOrdena = {
         mOptions.maxWidth =
             typeof mOptions.maxWidth == 'undefined' ? false : mOptions.maxWidth;
         mOptions.cardHeight =
-            typeof mOptions.cardHeight == 'undefined' ? 100 : mOptions.cardHeight;
+            typeof mOptions.cardHeight == 'undefined'
+                ? 100
+                : mOptions.cardHeight;
         mOptions.startAutomatically =
             typeof mOptions.startAutomatically == 'undefined'
                 ? false
@@ -257,8 +262,8 @@ var $eXeOrdena = {
             });
         }
         const arraybas = Array.from({ length: columns }, function (_, i) {
-            return i;
-        }),
+                return i;
+            }),
             array = arraybas.concat(arraynum);
         return array;
     },
@@ -315,8 +320,7 @@ var $eXeOrdena = {
                     parseInt(child.data('order'), 10) < mOptions.gameColumns
                 );
             });
-            $header.css({ 'border': '2px solid #555555' })
-
+            $header.css({ border: '2px solid #555555' });
         }
         $activeCard.css('cursor', 'pointer');
         if (num > 0) {
@@ -328,7 +332,7 @@ var $eXeOrdena = {
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
                     mOptions.phrase.audioDefinition,
-                    mOptions,
+                    mOptions
                 );
             }
         }
@@ -362,7 +366,7 @@ var $eXeOrdena = {
             accept: '.ODNP-NewCard',
             over: function (event, ui) {
                 const ord = parseInt(
-                    $(this).find('.ODNP-CardDraw').data('order'),
+                    $(this).find('.ODNP-CardDraw').data('order')
                 );
                 if (
                     mOptions.orderedColumns ||
@@ -384,39 +388,42 @@ var $eXeOrdena = {
             },
         });
 
-        $ordenaMultimedia.off(
-            'click',
-            '.ODNP-FullLinkImage',
-        );
+        $ordenaMultimedia.off('click', '.ODNP-FullLinkImage');
         $ordenaMultimedia.on('click', '.ODNP-FullLinkImage', function (e) {
             e.stopPropagation();
             const $image = $(this)
-                .closest('.ODNP-CardContainer')
-                .find('.ODNP-Image'),
+                    .closest('.ODNP-CardContainer')
+                    .find('.ODNP-Image'),
                 largeImageSrc = $image.attr('src');
             if (largeImageSrc && largeImageSrc.length > 3) {
                 $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
                     largeImageSrc,
-                    $('#ordenaGameContainer-' + instance),
+                    $('#ordenaGameContainer-' + instance)
                 );
             }
         });
 
-
         $ordenaMultimedia.off('mousedown touchstart', '.ODNP-Card1');
-        $ordenaMultimedia.on('mousedown touchstart', '.ODNP-Card1', function (event) {
-            event.preventDefault();
-            if (mOptions.gameStarted) {
-                $eXeOrdena.checkAudio(this, instance);
+        $ordenaMultimedia.on(
+            'mousedown touchstart',
+            '.ODNP-Card1',
+            function (event) {
+                event.preventDefault();
+                if (mOptions.gameStarted) {
+                    $eXeOrdena.checkAudio(this, instance);
+                }
             }
-        });
+        );
 
         $ordenaMultimedia.off('click', '.ODNP-LinkAudio');
         $ordenaMultimedia.on('click', '.ODNP-LinkAudio', function (e) {
             e.preventDefault();
             const audio = $(this).data('audio');
             if (audio && audio.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+                $exeDevices.iDevice.gamification.media.playSound(
+                    audio,
+                    mOptions
+                );
             }
         });
     },
@@ -426,9 +433,9 @@ var $eXeOrdena = {
 
         if (mOptions.orderedColumns) {
             const order = $eXeOrdena.getFixedOrder(
-                mOptions.gameColumns,
-                mOptions.phrase.cards.length,
-            ),
+                    mOptions.gameColumns,
+                    mOptions.phrase.cards.length
+                ),
                 pcards = [];
             for (let i = 0; i < mOptions.phrase.cards.length; i++) {
                 pcards.push(mOptions.phrase.cards[order[i]]);
@@ -437,7 +444,7 @@ var $eXeOrdena = {
         } else {
             mOptions.phrase.cards =
                 $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.phrase.cards,
+                    mOptions.phrase.cards
                 );
         }
     },
@@ -466,7 +473,7 @@ var $eXeOrdena = {
             valids = [],
             validsPos = $eXeOrdena.getPostionsColumns(
                 mOptions.gameColumns,
-                mOptions.phrase.cards.length,
+                mOptions.phrase.cards.length
             );
 
         let correct = true;
@@ -605,7 +612,7 @@ var $eXeOrdena = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeOrdena.isInExe,
+            $eXeOrdena.isInExe
         );
     },
 
@@ -615,8 +622,6 @@ var $eXeOrdena = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
         mOptions.previousScore = $eXeOrdena.previousScore;
         mOptions.userName = $eXeOrdena.userName;
-
-
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
@@ -643,7 +648,7 @@ var $eXeOrdena = {
                 cardsGame[i].color,
                 cardsGame[i].backcolor,
                 cardsGame[i].order,
-                instance,
+                instance
             );
             cards += card;
         }
@@ -651,11 +656,14 @@ var $eXeOrdena = {
         $('#ordenaMultimedia-' + instance).append(cards);
         if (mOptions.imgCard.length > 4) {
             $('#ordenaMultimedia-' + instance)
-                .find('.ODNP-CardContainer').each(function () {
-                    $(this).find('.ODNP-CardFront').css({
-                        'background-image': 'url(' + mOptions.imgCard + ')',
-                        'background-size': 'cover'
-                    });
+                .find('.ODNP-CardContainer')
+                .each(function () {
+                    $(this)
+                        .find('.ODNP-CardFront')
+                        .css({
+                            'background-image': 'url(' + mOptions.imgCard + ')',
+                            'background-size': 'cover',
+                        });
                 });
         }
     },
@@ -665,7 +673,8 @@ var $eXeOrdena = {
         if (!mOptions) return;
         mOptions.phrase = mOptions.phrasesGame[num] || { phrase: '' };
         // normalize whitespace and avoid empty words
-        mOptions.correctOrder = $eXeOrdena.clear(mOptions.phrase.phrase || '')
+        mOptions.correctOrder = $eXeOrdena
+            .clear(mOptions.phrase.phrase || '')
             .split(' ')
             .filter(function (w) {
                 return w && w.length > 0;
@@ -689,7 +698,7 @@ var $eXeOrdena = {
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `ordenaPhrasesContainer-${instance}`,
+                `ordenaPhrasesContainer-${instance}`
             );
 
         // pass num to allow initializePhraseDragAndDrop to react to "num>0" cases
@@ -707,7 +716,7 @@ var $eXeOrdena = {
                 i,
                 words[i].text,
                 words[i].order,
-                instance,
+                instance
             );
             cards += card;
         }
@@ -726,7 +735,7 @@ var $eXeOrdena = {
         color,
         backcolor,
         order,
-        instance,
+        instance
     ) {
         const mOptions = $eXeOrdena.options[instance],
             malt = alt || '',
@@ -871,7 +880,7 @@ var $eXeOrdena = {
                     $eXeOrdena.startGame(instance);
                     $(`#ordenaStartGame-${instance}`).hide();
                 }
-            },
+            }
         );
 
         $(`#ordenaLinkMinimize-${instance}`).on(
@@ -882,11 +891,11 @@ var $eXeOrdena = {
                 $(`#ordenaGameMinimize-${instance}`)
                     .css('visibility', 'visible')
                     .show();
-            },
+            }
         );
 
         $(
-            `#ordenaCubierta-${instance}, #ordenaGameOver-${instance}, #ordenaCodeAccessDiv-${instance}, #ordenaPScore-${instance}, #ordenaPScoreIcon-${instance}, #ordenaPNumber-${instance}, #ordenaPNumberIcon-${instance}`,
+            `#ordenaCubierta-${instance}, #ordenaGameOver-${instance}, #ordenaCodeAccessDiv-${instance}, #ordenaPScore-${instance}, #ordenaPScoreIcon-${instance}, #ordenaPNumber-${instance}, #ordenaPNumberIcon-${instance}`
         ).hide();
 
         $(`#ordenaLinkFullScreen-${instance}`).on(
@@ -894,13 +903,13 @@ var $eXeOrdena = {
             function (e) {
                 e.preventDefault();
                 const element = document.getElementById(
-                    `ordenaGameContainer-${instance}`,
+                    `ordenaGameContainer-${instance}`
                 );
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
                     element,
-                    instance,
+                    instance
                 );
-            },
+            }
         );
 
         $(`#ordenaFeedBackClose-${instance}`).on('click', function () {
@@ -910,7 +919,7 @@ var $eXeOrdena = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $(`#ordenaMesajeAccesCodeE-${instance}`).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $(`#ordenaCodeAccessDiv-${instance}`).show();
             $(`#ordenaStartLevels-${instance}`).hide();
@@ -922,7 +931,7 @@ var $eXeOrdena = {
             function (e) {
                 e.preventDefault();
                 $eXeOrdena.enterCodeAccess(instance);
-            },
+            }
         );
 
         $(`#ordenaCodeAccessE-${instance}`).on('keydown', function (event) {
@@ -963,7 +972,7 @@ var $eXeOrdena = {
             e.preventDefault();
             mOptions.phrasesGame =
                 $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.phrasesGame,
+                    mOptions.phrasesGame
                 );
             $eXeOrdena.showPhrase(0, instance);
             $eXeOrdena.startGame(instance);
@@ -983,7 +992,7 @@ var $eXeOrdena = {
         });
 
         $(`#ordenaPErrors-${instance}`).text(
-            mOptions.numberQuestions - mOptions.hits,
+            mOptions.numberQuestions - mOptions.hits
         );
 
         if (mOptions.time === 0) {
@@ -1000,7 +1009,7 @@ var $eXeOrdena = {
         }
 
         $(
-            `#ordenaNextPhrase-${instance}, #ordenaGameButtons-${instance}`,
+            `#ordenaNextPhrase-${instance}, #ordenaGameButtons-${instance}`
         ).hide();
 
         $(`#ordenaValidatePhrase-${instance}`).on('click', function (e) {
@@ -1014,9 +1023,10 @@ var $eXeOrdena = {
                         ? $eXeOrdena.checkPhraseColumns(instance)
                         : $eXeOrdena.checkPhrase(instance);
             }
-            const valids = mOptions.type > 0 && mOptions.orderedColumns
-                ? response.valids.length - mOptions.gameColumns
-                : response.valids.length;
+            const valids =
+                mOptions.type > 0 && mOptions.orderedColumns
+                    ? response.valids.length - mOptions.gameColumns
+                    : response.valids.length;
             let msg = `${$eXeOrdena.updateScore(response.correct, instance)} ${mOptions.msgs.msgPositions}: ${valids}. `;
             let color = $eXeOrdena.borderColors.red;
             if (response.correct) {
@@ -1030,7 +1040,7 @@ var $eXeOrdena = {
                 ) {
                     $exeDevices.iDevice.gamification.media.playSound(
                         mOptions.phrase.audioHit,
-                        mOptions,
+                        mOptions
                     );
                 }
                 $eXeOrdena.nextPhrase(instance);
@@ -1044,7 +1054,7 @@ var $eXeOrdena = {
                 ) {
                     $exeDevices.iDevice.gamification.media.playSound(
                         mOptions.phrase.audioError,
-                        mOptions,
+                        mOptions
                     );
                 }
             }
@@ -1059,13 +1069,14 @@ var $eXeOrdena = {
             }
         });
 
-        $('#ordenaMainContainer-' + instance).closest('article').on('click', '.box-toggle-on', function (e) {
-            $eXeOrdena.refreshGame(instance)
-
-        });
+        $('#ordenaMainContainer-' + instance)
+            .closest('article')
+            .on('click', '.box-toggle-on', function (e) {
+                $eXeOrdena.refreshGame(instance);
+            });
 
         $('#descubreEURLImgCard').on('change', () =>
-            $exeDevice.loadImageCard(),
+            $exeDevice.loadImageCard()
         );
 
         $('#descubreEPlayCard').on('click', (e) => {
@@ -1073,11 +1084,10 @@ var $eXeOrdena = {
             $exeDevice.loadImageCard();
         });
 
-
         setTimeout(function () {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
 
@@ -1129,7 +1139,7 @@ var $eXeOrdena = {
             latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#ordenaMultimedia-' + instance,
+                '#ordenaMultimedia-' + instance
             );
     },
 
@@ -1137,14 +1147,16 @@ var $eXeOrdena = {
         if (!$.ui || !$.ui.draggable || !$.ui.droppable) return;
 
         const mOptions = $eXeOrdena.options[instance];
-        const $ordenaPhrasesContainer = $('#ordenaPhrasesContainer-' + instance);
+        const $ordenaPhrasesContainer = $(
+            '#ordenaPhrasesContainer-' + instance
+        );
         // multimedia container is used below when num>0
         const $ordenaMultimedia = $('#ordenaMultimedia-' + instance);
         // ensure local variable for cards (avoid implicit global)
         let $cards = null;
         const $sources = $ordenaPhrasesContainer.find('.ODNP-Word');
         const $targets = $('#ordenaPhrasesContainer-' + instance).find(
-            '.ODNP-WordTarget',
+            '.ODNP-WordTarget'
         );
 
         $sources.css('cursor', 'pointer');
@@ -1168,7 +1180,7 @@ var $eXeOrdena = {
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
                     mOptions.phrase.audioDefinition,
-                    mOptions,
+                    mOptions
                 );
             }
         }
@@ -1183,15 +1195,15 @@ var $eXeOrdena = {
                 $(this).addClass('ODPN-WordDragging');
                 if (ui.helper) {
                     ui.helper.css({
-                        width: ($(this).width() + 12) + 'px',
-                        height: ($(this).height() + 4) + 'px',
+                        width: $(this).width() + 12 + 'px',
+                        height: $(this).height() + 4 + 'px',
                         'z-index': 1000,
                         'background-color': 'white',
-                        'display': 'flex',
+                        display: 'flex',
                         'align-items': 'center',
                         'justify-content': 'center',
-                        'box-shadow': '0 2px 4px 0 rgba(0, 0, 0, 0.20), 0 3px 6px 0 rgba(0, 0, 0, 0.19)'
-
+                        'box-shadow':
+                            '0 2px 4px 0 rgba(0, 0, 0, 0.20), 0 3px 6px 0 rgba(0, 0, 0, 0.19)',
                     });
                 }
             },
@@ -1236,28 +1248,33 @@ var $eXeOrdena = {
         $(`#ordenaHistsGame-${instance}`).text('');
     },
 
-
     checkPhraseText: function (instance) {
         const mOptions = $eXeOrdena.options[instance],
             valids = [];
         let correct = true;
 
-        const wordsInTargetContainer = $(`#ordenaPhrasesContainer-${instance}`).find('.ODNP-Word').map(function () {
-            return $(this).text();
-        }).get();
+        const wordsInTargetContainer = $(`#ordenaPhrasesContainer-${instance}`)
+            .find('.ODNP-Word')
+            .map(function () {
+                return $(this).text();
+            })
+            .get();
         for (let i = 0; i < mOptions.correctOrder.length; i++) {
             if (mOptions.correctOrder[i] !== wordsInTargetContainer[i]) {
                 correct = false;
             } else {
                 if (mOptions.showSolution) {
-                    $(`#ordenaPhrasesContainer-${instance}`).find('.ODNP-Word').eq(i).addClass('ODNP-WordCorrect');
+                    $(`#ordenaPhrasesContainer-${instance}`)
+                        .find('.ODNP-Word')
+                        .eq(i)
+                        .addClass('ODNP-WordCorrect');
                 }
                 valids.push(i);
             }
         }
         return {
             correct: correct,
-            valids: valids
+            valids: valids,
         };
     },
 
@@ -1271,7 +1288,7 @@ var $eXeOrdena = {
 
     createCardPhrase: function (j, text, order, instance) {
         const mOptions = $eXeOrdena.options[instance];
-        const wordBorder = mOptions.wordBorder ? 'ODNP-WordBorder' : ''
+        const wordBorder = mOptions.wordBorder ? 'ODNP-WordBorder' : '';
         return `<div class="ODNP-Word ODNP-WordTarget ${wordBorder}" data-number="${j}" data-order="${order}">${text}</div>`;
     },
 
@@ -1298,13 +1315,13 @@ var $eXeOrdena = {
     activeCorrects: function (instance, valids) {
         const mOptions = $eXeOrdena.options[instance],
             $cardDraws = $(`#ordenaMultimedia-${instance}`).find(
-                '.ODNP-NewCard',
+                '.ODNP-NewCard'
             );
 
         $cardDraws.each(function () {
             const order = parseInt(
                 $(this).find('.ODNP-CardDraw').data('order'),
-                10,
+                10
             );
             $(this).removeClass('ODNP-CardOK ODNP-CardKO');
             if (
@@ -1333,7 +1350,7 @@ var $eXeOrdena = {
 
     updateCovers: function (instance) {
         const $cardContainers = $(`#ordenaMultimedia-${instance}`).find(
-            '.ODNP-CardDraw',
+            '.ODNP-CardDraw'
         );
         $cardContainers.each(function () {
             const $card = $(this).find('.ODNP-Card1').eq(0);
@@ -1505,7 +1522,7 @@ var $eXeOrdena = {
         if (mOptions.itinerary.codeAccess === enteredCode) {
             $('#ordenaStartGame-' + instance).click();
             $(
-                `#ordenaCodeAccessDiv-${instance}, #ordenaCubierta-${instance}`,
+                `#ordenaCodeAccessDiv-${instance}, #ordenaCubierta-${instance}`
             ).hide();
             $(`#ordenaStartLevels-${instance}`).show();
         } else {
@@ -1622,8 +1639,8 @@ var $eXeOrdena = {
 
         hCard =
             mOptions.maxWidth &&
-                mOptions.gameColumns > 0 &&
-                mOptions.cardHeight > 0
+            mOptions.gameColumns > 0 &&
+            mOptions.cardHeight > 0
                 ? mOptions.cardHeight + 'px'
                 : 'auto';
         if (
@@ -1684,7 +1701,7 @@ var $eXeOrdena = {
 
     initCards: function (instance) {
         const $cards = $('#ordenaMultimedia-' + instance).find(
-            '.ODNP-CardDraw',
+            '.ODNP-CardDraw'
         );
         $cards.each(function () {
             $eXeOrdena.showCard($(this));
@@ -1693,7 +1710,7 @@ var $eXeOrdena = {
             latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#ordenaMultimedia-' + instance,
+                '#ordenaMultimedia-' + instance
             );
 
         $eXeOrdena.setSize(instance);
@@ -1724,7 +1741,7 @@ var $eXeOrdena = {
         $('#ordenaShowClue-' + instance).hide();
         $('#ordenaPHits-' + instance).text(mOptions.hits);
         $('#ordenaPErrors-' + instance).text(
-            mOptions.numberQuestions - mOptions.hits,
+            mOptions.numberQuestions - mOptions.hits
         );
         $('#ordenaCubierta-' + instance).hide();
         $('#ordenaGameOver-' + instance).hide();
@@ -1740,7 +1757,10 @@ var $eXeOrdena = {
             mOptions.counterClock = setInterval(function () {
                 let $node = $('#ordenaMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -1769,7 +1789,7 @@ var $eXeOrdena = {
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
                     mOptions.phrase.audioDefinition,
-                    mOptions,
+                    mOptions
                 );
             }
         }
@@ -1781,7 +1801,7 @@ var $eXeOrdena = {
         const mOptions = $eXeOrdena.options[instance];
         if (mOptions.time == 0) return;
         $('#ordenaPTime-' + instance).text(
-            $exeDevices.iDevice.gamification.helpers.getTimeToString(tiempo),
+            $exeDevices.iDevice.gamification.helpers.getTimeToString(tiempo)
         );
     },
 
@@ -1817,7 +1837,7 @@ var $eXeOrdena = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1831,7 +1851,7 @@ var $eXeOrdena = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1846,7 +1866,7 @@ var $eXeOrdena = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1861,7 +1881,7 @@ var $eXeOrdena = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1878,12 +1898,12 @@ var $eXeOrdena = {
         $eXeOrdena.showMessage(messageColor, message, instance, true);
 
         $ordenaOverNumCards.html(
-            msgs.msgActivities + ': ' + mOptions.phrasesGame.length,
+            msgs.msgActivities + ': ' + mOptions.phrasesGame.length
         );
 
         if (mOptions.type == 0)
             $ordenaOverNumCards.html(
-                msgs.msgPhrases + ': ' + mOptions.phrasesGame.length,
+                msgs.msgPhrases + ': ' + mOptions.phrasesGame.length
             );
 
         $ordenaOverHits.html(msgs.msgHits + ': ' + mOptions.hits);
@@ -1898,7 +1918,6 @@ var $eXeOrdena = {
 
     gameOver: function (type, instance) {
         const mOptions = $eXeOrdena.options[instance];
-
 
         if (!mOptions.gameStarted) return;
 
@@ -1922,10 +1941,9 @@ var $eXeOrdena = {
             ).toFixed(2);
             $eXeOrdena.sendScore(true, instance);
             $('#ordenaRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+                mOptions.msgs.msgYouScore + ': ' + score
             );
             $eXeOrdena.initialScore = score;
-
         }
         $eXeOrdena.showFeedBack(instance);
     },
@@ -1945,10 +1963,10 @@ var $eXeOrdena = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
                     instance,
-                    false,
+                    false
                 );
             }
         }
@@ -2018,7 +2036,7 @@ var $eXeOrdena = {
                 : mOptions.score.toFixed(2);
 
         $('#ordenaPErrors-' + instance).text(
-            mOptions.numberQuestions - mOptions.hits,
+            mOptions.numberQuestions - mOptions.hits
         );
         $('#ordenaPScore-' + instance).text(sscore);
         $('#ordenaPHits-' + instance).text(mOptions.hits);
@@ -2064,12 +2082,12 @@ var $eXeOrdena = {
 
     showMessage: function (type, message, instance, end) {
         const colors = [
-            '#555555',
-            $eXeOrdena.borderColors.red,
-            $eXeOrdena.borderColors.green,
-            $eXeOrdena.borderColors.blue,
-            $eXeOrdena.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeOrdena.borderColors.red,
+                $eXeOrdena.borderColors.green,
+                $eXeOrdena.borderColors.blue,
+                $eXeOrdena.borderColors.yellow,
+            ],
             color = colors[type],
             $ordenaMessage = $('#ordenaMessage-' + instance);
 
