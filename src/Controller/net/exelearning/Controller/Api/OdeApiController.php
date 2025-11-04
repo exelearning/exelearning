@@ -830,7 +830,7 @@ class OdeApiController extends DefaultApiController
 
             // Check if it's a zip by filename of archive
             $ext = pathinfo($elpFileName, PATHINFO_EXTENSION);
-            $zipArchive = str_contains($ext, Constants::FILE_EXTENSION_ZIP);
+            $zipArchive = str_contains($ext, Constants::FILE_EXTENSION_ZIP) || str_contains($ext, Constants::FILE_EXTENSION_EPUB);
 
             // Check if is a zip and have an elp inside or have a content.xml
             if ($zipArchive) {
