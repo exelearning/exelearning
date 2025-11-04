@@ -28,12 +28,14 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
     private bool $authCreateUsers;
     private ?PasswordHasherFactoryInterface $passwordHasherFactory;
     private ?LoggerInterface $logger;
+    private string $temporaryEmailDomain;
 
     public function __construct(
         AccessTokenHandlerInterface $casHandler,
         AccessTokenHandlerInterface $oidcUserInfoHandler,
         EntityManagerInterface $em,
         bool $authCreateUsers,
+        string $temporaryEmailDomain = 'domain.local',
         ?LoggerInterface $logger = null,
         ?JwtTokenHandler $jwtHandler = null,
         ?PasswordHasherFactoryInterface $passwordHasherFactory = null,
@@ -45,6 +47,8 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
         $this->logger = $logger;
         $this->jwtHandler = $jwtHandler;
         $this->passwordHasherFactory = $passwordHasherFactory;
+        $normalizedDomain = ltrim($temporaryEmailDomain, '@');
+        $this->temporaryEmailDomain = $normalizedDomain ?: 'domain.local';
     }
 
     /**
@@ -242,8 +246,8 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
             $updated = true;
         }
 
-        // Update the email if it was set to a temporary domain (domain.local) and a valid email is available
-        if ($email && str_ends_with($user->getEmail() ?? '', '@domain.local')) {
+        // Update the email if it was set to a temporary domain (domain.local by default)
+        if ($email && $this->isTemporaryEmail($user->getEmail())) {
             $user->setEmail($email);
             $this->logger->info("Updated temporary email for user '{$identifier}' to: {$email}");
             $updated = true;
@@ -274,7 +278,7 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
         if (!$email) {
             $email = filter_var($externalIdentifier, FILTER_VALIDATE_EMAIL)
                 ? $externalIdentifier // Use the identifier if it's a valid email
-                : "{$externalIdentifier}@domain.local"; // Otherwise, append domain
+                : sprintf('%s@%s', $externalIdentifier, $this->temporaryEmailDomain); // Otherwise, append domain
         }
 
         $user->setEmail($email);
@@ -313,5 +317,17 @@ class MultiTokenHandler implements AccessTokenHandlerInterface
     private function isJwtToken(string $token): bool
     {
         return 2 === substr_count($token, '.');
+    }
+
+    /**
+     * Determine whether an email matches the temporary domain.
+     */
+    private function isTemporaryEmail(?string $email): bool
+    {
+        if (null === $email) {
+            return false;
+        }
+
+        return str_ends_with($email, '@'.$this->temporaryEmailDomain);
     }
 }
