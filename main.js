@@ -75,23 +75,36 @@ let customEnv;
 let env;
 
 // ──────────────  Save/Export helpers  ──────────────
+const KNOWN_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
+
 // Returns a known extension (including the leading dot) inferred from a suggested name.
 function inferKnownExt(suggestedName) {
   try {
-    const ext = (path.extname(suggestedName || '') || '').toLowerCase().replace(/^\./, '');
+    const ext = path.extname(suggestedName || '') || '';
     if (!ext) return null;
-    if (ext === 'elpx' || ext === 'zip' || ext === 'epub' || ext === 'xml') return `.${ext}`;
-    return null;
+    const lower = ext.toLowerCase();
+    return KNOWN_EXTENSIONS.has(lower) ? lower : null;
   } catch (_e) {
     return null;
   }
 }
 
-// Ensures the filePath has an extension; if missing, appends one inferred from suggestedName.
+function extractKnownExt(filePath) {
+  try {
+    const ext = path.extname(filePath || '') || '';
+    if (!ext) return null;
+    const lower = ext.toLowerCase();
+    return KNOWN_EXTENSIONS.has(lower) ? lower : null;
+  } catch (_e) {
+    return null;
+  }
+}
+
+// Ensures the filePath has an extension; if missing or unknown, appends one inferred from suggestedName.
 function ensureExt(filePath, suggestedName) {
   if (!filePath) return filePath;
-  const hasExt = !!path.extname(filePath);
-  if (hasExt) return filePath;
+  const known = extractKnownExt(filePath);
+  if (known) return filePath;
   const inferred = inferKnownExt(suggestedName);
   return inferred ? (filePath + inferred) : filePath;
 }
