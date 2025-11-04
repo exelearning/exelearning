@@ -6,6 +6,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    auth_temp_email_domain_default: 'domain.local'
     base_path: '%env(string:BASE_PATH)%'
 
     app.online_mode: '%env(bool:APP_ONLINE_MODE)%'
@@ -15,6 +16,7 @@ parameters:
     app.expires: !php/const App\Constants::DEMO_EXPIRATION_DATE
 
     auth_create_users: '%env(bool:AUTH_CREATE_USERS)%'
+    auth_temp_email_domain: '%env(default:auth_temp_email_domain_default:AUTH_TEMP_EMAIL_DOMAIN)%'
 
     cas_url: '%env(CAS_URL)%'
     cas_validate_path: '%env(CAS_VALIDATE_PATH)%'
@@ -159,6 +161,7 @@ services:
             $oidcUserInfoHandler: '@security.access_token_handler.oidc_userinfo'
             $jwtHandler: '@App\Security\JwtTokenHandler'
             $authCreateUsers: '%auth_create_users%'
+            $temporaryEmailDomain: '%auth_temp_email_domain%'
             $passwordHasherFactory: '@security.password_hasher_factory'
         tags: ['monolog.logger']
 

@@ -6,11 +6,11 @@ A style must include at least the following elements:
 
 | Element        | Description |
 |----------------|-------------|
-| `config.xml`   | Main configuration file. |
-| CSS files      | Visual styling of the content. |
-| JS files       | JavaScript functionality for the style (optional). |
-| `preview.png`  | Preview image (screenshot). |
-| `icons/`       | Folder containing iDevice icons. |
+| `config.xml`      | Main configuration file. |
+| CSS files         | Visual styling of the content. |
+| JS files          | JavaScript functionality for the style (optional). |
+| `screenshot.png`  | Preview image (screenshot). |
+| `icons/`          | Folder containing iDevice icons. |
 
 ---
 
@@ -65,9 +65,9 @@ iDevice icons by…</description>
 
 ---
 
-## Screenshot (`preview.png`)
+## Screenshot (`screenshot.png`)
 
-- Required name: `preview.png`.  
+- Required name: `screenshot.png`.  
 - Location: root folder.  
 - Recommended size: **1200×550 px**.
 
