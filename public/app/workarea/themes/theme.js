@@ -7,7 +7,6 @@ export default class Theme {
         this.valid = data.valid;
     }
 
-    cssDefaultFileName = 'content.css';
     templatePageContainerClass = 'page-content-template-container';
     templatePageClass = 'page-content-template';
 

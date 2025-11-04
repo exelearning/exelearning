@@ -128,4 +128,46 @@ class MenuOfflineFileOpsTest extends BaseE2ETestCase
         $this->clickMenuItem($client, '#navbar-button-save-as-offline');
         $this->waitForMockCall($client, 'saveAs');
     }
+
+    public function testSaveAsOfflineAppendsElpxExtensionForDottedTitle(): void
+    {
+        $client = $this->initOfflineClientWithMock();
+        $client->executeScript(<<<'JS'
+            (function(){
+                try {
+                    const project = window.eXeLearning?.app?.project;
+                    if (!project) { return; }
+                    project.properties = project.properties || {};
+                    project.properties.properties = project.properties.properties || {};
+                    const props = project.properties.properties;
+                    props.pp_title = props.pp_title || {};
+                    props.pp_title.value = 'Offline.Title.v2';
+                } catch (e) {}
+            })();
+        JS);
+
+        $this->openOfflineFileMenu($client);
+        $this->clickMenuItem($client, '#navbar-button-save-as-offline');
+        $this->waitForMockCall($client, 'saveAs');
+
+        $logs = $client->executeScript(<<<'JS'
+            return (function(){
+                try { return (window.__MockArgsLog && window.__MockArgsLog.saveAs) || []; }
+                catch (e) { return []; }
+            })();
+        JS);
+
+        $this->assertIsArray($logs, 'Expected saveAs mock log to be an array.');
+        $this->assertNotEmpty($logs, 'Expected saveAs mock log to contain at least one entry.');
+        $payload = $logs[count($logs) - 1] ?? null;
+        $this->assertIsArray($payload, 'Expected last saveAs call payload to be an array.');
+        $this->assertGreaterThanOrEqual(3, count($payload), 'Expected saveAs payload to contain URL, key and name.');
+        $safeName = $payload[2] ?? null;
+        $this->assertIsString($safeName, 'Expected saveAs third argument to be a string.');
+        $this->assertStringContainsString('Offline.Title.v2', $safeName, 'Expected suggested name to include project title.');
+        $this->assertTrue(
+            str_ends_with(strtolower($safeName), '.elpx'),
+            sprintf('Expected suggested name to end with .elpx, got "%s".', $safeName)
+        );
+    }
 }
