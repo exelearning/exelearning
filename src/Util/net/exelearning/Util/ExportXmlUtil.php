@@ -2014,6 +2014,12 @@ class ExportXmlUtil
             $pageTitleTag = 'h2';
         }
 
+        // Page subtitle tag (one level below page title)
+        $pageSubtitleTag = 'h2';
+        if ('h2' == $pageTitleTag) {
+            $pageSubtitleTag = 'h3';
+        }
+
         if ('false' == $hidePageTitle || 'false' === $hidePageTitle || false === $hidePageTitle) {
             if ('' != $titlePage) {
                 $headerEmpty = false;
@@ -2024,7 +2030,7 @@ class ExportXmlUtil
             // Page subtitle
             if ('' != $subtitle) {
                 $headerEmpty = false;
-                $pageSubtitle = $pageHeader->addChild('h3', $subtitle);
+                $pageSubtitle = $pageHeader->addChild($pageSubtitleTag, $subtitle);
                 $pageSubtitle->addAttribute('class', 'page-subtitle');
             }
         }
