@@ -41,7 +41,7 @@ var $exeDevice = {
     ci18n: {},
 
     getId: function () {
-        return Math.round(new Date().getTime() + (Math.random() * 100));
+        return Math.round(new Date().getTime() + Math.random() * 100);
     },
     init: function (element, previousData, path) {
         this.ideviceBody = element;
@@ -51,7 +51,6 @@ var $exeDevice = {
         this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
-
     },
 
     enableForm: function () {
@@ -64,103 +63,147 @@ var $exeDevice = {
 
     refreshTranslations: function () {
         this.ci18n = {
-            "msgStartGame": c_("Click here to start"),
-            "msgSubmit": c_("Submit"),
-            "msgEnterCode": c_("Enter the access code"),
-            "msgErrorCode": c_("The access code is not correct"),
-            "msgGameOver": c_("Game Over!"),
-            "msgClue": c_("Cool! The clue is:"),
-            "msgNewGame": c_("Click here for a new game"),
-            "msgCodeAccess": c_("Access code"),
-            "msgPlayStart": c_("Click here to play"),
-            "msgMinimize": c_("Minimize"),
-            "msgMaximize": c_("Maximize"),
-            "msgTime": c_("Time per question"),
-            "msgFullScreen": c_("Full Screen"),
-            "msgExitFullScreen": c_("Exit Full Screen"),
-            "msgNoImage": c_("No picture question"),
-            "msgSuccesses": c_("Right! | Excellent! | Great! | Very good! | Perfect!"),
-            "msgFailures": c_("It was not that! | Incorrect! | Not correct! | Sorry! | Error!"),
-            "msgNotNetwork": c_("You can only play this game with internet connection."),
-            "msgQuestion": c_("Question"),
-            "msgAnswer": c_("Check"),
-            "msgInformation": c_("Information"),
-            "msgAuthor": c_("Authorship"),
-            "msgActityComply": c_("You have already done this activity."),
-            "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
-            "msgYouLastScore": c_("The last score saved is"),
-            "msgOption": c_("Option"),
-            "msgImage": c_("Image"),
-            "msgOrders": c_("Please order the answers"),
-            "msgIndicateWord": c_("Provide a word or phrase"),
-            "msgGameStarted": c_("The game has already started."),
-            "msgPlayersName": c_("You must indicate a name for all the selected players."),
-            "msgReboot": c_("Do you want to restart the game?"),
-            "msgRoolDice": c_("roll the dice."),
-            "msgsWinner": c_("The game has finished. The winner is %1. Do you want to play again?"),
-            "msgWinGame": c_("Cool! You won the game."),
-            "msgsYouPlay": c_("you play. Roll the dice."),
-            "msgSaveDiceAuto": c_("Your score will be automatically saved after each throw."),
-            "msgSaveAuto": c_("Your score will be automatically saved after each question."),
-            "msgOnlyFirstGame": c_("You can only play once."),
-            "msgGamers": c_("Players"),
-            "msgReply": c_("Answer"),
-            "msgErrorQuestion": c_("you have failed."),
-            "msgsYouPlay": c_("you play. Roll the dice."),
-            "msgGetQueso": c_("you get the cheese of"),
-            "msgRightAnswre": c_("One more point."),
-            "msgAudio": c_("Audio"),
-            "msgCorrect": c_("Correct"),
-            "msgIncorrect": c_("Incorrect"),
-            "msgUncompletedActivity": c_("Incomplete activity"),
-            "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
-            "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
-            "msgNext": c_('Next'),
-            "msgTypeGame": c_('TriviExt'),
-            "msgRestart": c_('Restart'),
-            'msgYouScore': c_('Your score'),
-        }
+            msgStartGame: c_('Click here to start'),
+            msgSubmit: c_('Submit'),
+            msgEnterCode: c_('Enter the access code'),
+            msgErrorCode: c_('The access code is not correct'),
+            msgGameOver: c_('Game Over!'),
+            msgClue: c_('Cool! The clue is:'),
+            msgNewGame: c_('Click here for a new game'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayStart: c_('Click here to play'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgTime: c_('Time per question'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNoImage: c_('No picture question'),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgNotNetwork: c_(
+                'You can only play this game with internet connection.'
+            ),
+            msgQuestion: c_('Question'),
+            msgAnswer: c_('Check'),
+            msgInformation: c_('Information'),
+            msgAuthor: c_('Authorship'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
+            msgYouLastScore: c_('The last score saved is'),
+            msgOption: c_('Option'),
+            msgImage: c_('Image'),
+            msgOrders: c_('Please order the answers'),
+            msgIndicateWord: c_('Provide a word or phrase'),
+            msgGameStarted: c_('The game has already started.'),
+            msgPlayersName: c_(
+                'You must indicate a name for all the selected players.'
+            ),
+            msgReboot: c_('Do you want to restart the game?'),
+            msgRoolDice: c_('roll the dice.'),
+            msgsWinner: c_(
+                'The game has finished. The winner is %1. Do you want to play again?'
+            ),
+            msgWinGame: c_('Cool! You won the game.'),
+            msgsYouPlay: c_('you play. Roll the dice.'),
+            msgSaveDiceAuto: c_(
+                'Your score will be automatically saved after each throw.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgOnlyFirstGame: c_('You can only play once.'),
+            msgGamers: c_('Players'),
+            msgReply: c_('Answer'),
+            msgErrorQuestion: c_('you have failed.'),
+            msgsYouPlay: c_('you play. Roll the dice.'),
+            msgGetQueso: c_('you get the cheese of'),
+            msgRightAnswre: c_('One more point.'),
+            msgAudio: c_('Audio'),
+            msgCorrect: c_('Correct'),
+            msgIncorrect: c_('Incorrect'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgNext: c_('Next'),
+            msgTypeGame: c_('TriviExt'),
+            msgRestart: c_('Restart'),
+            msgYouScore: c_('Your score'),
+        };
     },
-
 
     setMessagesInfo: function () {
         var msgs = this.msgs;
-        msgs.msgEProvideDefinition = _("Please provide the word definition or the valid URL of an image");
-        msgs.msgESelectFile = _("The selected file does not contain a valid game");
-        msgs.msgEURLValid = _("You must upload or indicate the valid URL of an image");
-        msgs.msgEProvideWord = _("Please provide one word or phrase");
-        msgs.msgEOneQuestion = _("Please provide at least one question");
-        msgs.msgEUnavailableVideo = _("This video is not currently available")
-        msgs.msgECompleteQuestion = _("You have to complete the question");
-        msgs.msgECompleteAllOptions = _("You have to complete all the selected options");
-        msgs.msgESelectSolution = _("Choose the right answer");
-        msgs.msgECompleteURLYoutube = _("Please type or paste a valid URL.");
-        msgs.msgEStartEndVideo = _("You have to indicate the start and the end of the video that you want to show");
-        msgs.msgEStartEndIncorrect = _("The video end value must be higher than the start one");
-        msgs.msgWriteText = _("You have to type a text in the editor");
-        msgs.msgStartWith = _("Starts with %1");
-        msgs.msgContaint = _("Contains letter %1");
-        msgs.msgVideoNotAvailable = _("This video is not currently available");
-        msgs.msgSilentPoint = _("The silence time is wrong. Check the video duration.");
-        msgs.msgTypeChoose = _("Please check all the answers in the right order");
-        msgs.msgTimeFormat = _("Please check the time format: hh:mm:ss");
-        msgs.msgProvideSolution = _("Please write the solution");
-        msgs.msgNameThemes = _('You must indicate a name for all the selected topics.');
-        msgs.msgCmpleteAllQuestions = _('You must complete all the questions of all the selected topics correctly.');
-        msgs.msgGameIntrunctions = _("Roll the dice and answer the question until you get all the cheeses.");
-        msgs.tooManyQuestions = _("Too many questions! The game can have a maximum of about 800 and 1200 questions. This number can vary a lot depending on the type of questions and the length of the questions, the answers, the URLs and the enriched text.");
-        msgs.msgNoSuportBrowser = _("Your browser is not compatible with this tool.");
-        msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
-        msgs.msgTitleAltImageWarning = _("Accessibility warning");
-        msgs.msgAltImageWarning = _("At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.");//eXe 3.0
-
+        msgs.msgEProvideDefinition = _(
+            'Please provide the word definition or the valid URL of an image'
+        );
+        msgs.msgESelectFile = _(
+            'The selected file does not contain a valid game'
+        );
+        msgs.msgEURLValid = _(
+            'You must upload or indicate the valid URL of an image'
+        );
+        msgs.msgEProvideWord = _('Please provide one word or phrase');
+        msgs.msgEOneQuestion = _('Please provide at least one question');
+        msgs.msgEUnavailableVideo = _('This video is not currently available');
+        msgs.msgECompleteQuestion = _('You have to complete the question');
+        msgs.msgECompleteAllOptions = _(
+            'You have to complete all the selected options'
+        );
+        msgs.msgESelectSolution = _('Choose the right answer');
+        msgs.msgECompleteURLYoutube = _('Please type or paste a valid URL.');
+        msgs.msgEStartEndVideo = _(
+            'You have to indicate the start and the end of the video that you want to show'
+        );
+        msgs.msgEStartEndIncorrect = _(
+            'The video end value must be higher than the start one'
+        );
+        msgs.msgWriteText = _('You have to type a text in the editor');
+        msgs.msgStartWith = _('Starts with %1');
+        msgs.msgContaint = _('Contains letter %1');
+        msgs.msgVideoNotAvailable = _('This video is not currently available');
+        msgs.msgSilentPoint = _(
+            'The silence time is wrong. Check the video duration.'
+        );
+        msgs.msgTypeChoose = _(
+            'Please check all the answers in the right order'
+        );
+        msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
+        msgs.msgProvideSolution = _('Please write the solution');
+        msgs.msgNameThemes = _(
+            'You must indicate a name for all the selected topics.'
+        );
+        msgs.msgCmpleteAllQuestions = _(
+            'You must complete all the questions of all the selected topics correctly.'
+        );
+        msgs.msgGameIntrunctions = _(
+            'Roll the dice and answer the question until you get all the cheeses.'
+        );
+        msgs.tooManyQuestions = _(
+            'Too many questions! The game can have a maximum of about 800 and 1200 questions. This number can vary a lot depending on the type of questions and the length of the questions, the answers, the URLs and the enriched text.'
+        );
+        msgs.msgNoSuportBrowser = _(
+            'Your browser is not compatible with this tool.'
+        );
+        msgs.msgIDLenght = _(
+            'The report identifier must have at least 5 characters'
+        );
+        msgs.msgTitleAltImageWarning = _('Accessibility warning');
+        msgs.msgAltImageWarning = _(
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
+        ); //eXe 3.0
     },
 
     loadYoutubeApi: function () {
-        if (typeof YT == "undefined") {
+        if (typeof YT == 'undefined') {
             onYouTubeIframeAPIReady = $exeDevice.youTubeReady;
             let tag = document.createElement('script');
-            tag.src = "https://www.youtube.com/iframe_api";
+            tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
             let firstScriptTag = document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
@@ -169,46 +212,52 @@ var $exeDevice = {
         }
     },
     youTubeReady: function () {
-        $("#trivialMediaVideo").prop("disabled", false);
+        $('#trivialMediaVideo').prop('disabled', false);
         $exeDevice.player = new YT.Player('trivialEVideo', {
             width: '100%',
             height: '100%',
             videoId: '',
             playerVars: {
-                'color': 'white',
-                'autoplay': 1,
-                'controls': 1
+                color: 'white',
+                autoplay: 1,
+                controls: 1,
             },
             events: {
-                'onReady': $exeDevice.onPlayerReady,
-                'onError': $exeDevice.onPlayerError
-            }
+                onReady: $exeDevice.onPlayerReady,
+                onError: $exeDevice.onPlayerError,
+            },
         });
     },
 
     loadPlayerYoutube: function () {
-        $("#trivialMediaVideo").prop("disabled", false);
+        $('#trivialMediaVideo').prop('disabled', false);
         $exeDevice.player = new YT.Player('trivialEVideo', {
             width: '100%',
             height: '100%',
             videoId: '',
             playerVars: {
-                'color': 'white',
-                'autoplay': 1,
-                'controls': 1
+                color: 'white',
+                autoplay: 1,
+                controls: 1,
             },
             events: {
-                'onReady': $exeDevice.clickPlay,
-                'onError': $exeDevice.onPlayerError
-            }
+                onReady: $exeDevice.clickPlay,
+                onError: $exeDevice.onPlayerError,
+            },
         });
     },
 
     clickPlay: function () {
         const ulrvideo = $('#trivialEURLYoutube');
         if (ulrvideo.length == 0 || ulrvideo.val().trim().length === 0) return;
-        if ($exeDevices.iDevice.gamification.media.getIDYoutube($('#trivialEURLYoutube').val().trim()) ||
-            $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca($('#trivialEURLYoutube').val().trim())) {
+        if (
+            $exeDevices.iDevice.gamification.media.getIDYoutube(
+                $('#trivialEURLYoutube').val().trim()
+            ) ||
+            $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                $('#trivialEURLYoutube').val().trim()
+            )
+        ) {
             $exeDevice.showVideoQuestion();
         }
     },
@@ -219,7 +268,10 @@ var $exeDevice = {
 
     updateSoundVideo: function () {
         if ($exeDevice.activeSilent) {
-            if ($exeDevice.player && typeof $exeDevice.player.getCurrentTime === "function") {
+            if (
+                $exeDevice.player &&
+                typeof $exeDevice.player.getCurrentTime === 'function'
+            ) {
                 const time = Math.round($exeDevice.player.getCurrentTime());
                 if (time == $exeDevice.silentVideo) {
                     $exeDevice.player.mute();
@@ -232,8 +284,11 @@ var $exeDevice = {
 
     updateTimerDisplay: function () {
         if ($exeDevice.player) {
-            if (typeof $exeDevice.player.getCurrentTime === "function") {
-                const time = $exeDevices.iDevice.gamification.helpers.secondsToHour($exeDevice.player.getCurrentTime());
+            if (typeof $exeDevice.player.getCurrentTime === 'function') {
+                const time =
+                    $exeDevices.iDevice.gamification.helpers.secondsToHour(
+                        $exeDevice.player.getCurrentTime()
+                    );
                 $('#trivialEVideoTime').text(time);
                 $exeDevice.updateSoundVideo();
             }
@@ -241,7 +296,9 @@ var $exeDevice = {
     },
 
     updateProgressBar: function () {
-        $('#progress-bar').val((player.getCurrentTime() / player.getDuration()) * 100);
+        $('#progress-bar').val(
+            (player.getCurrentTime() / player.getDuration()) * 100
+        );
     },
 
     onPlayerError: function (event) {
@@ -249,7 +306,11 @@ var $exeDevice = {
     },
 
     updateSoundVideoLocal: function () {
-        if ($exeDevice.activeSilent && $exeDevice.localPlayer && $exeDevice.localPlayer.currentTime) {
+        if (
+            $exeDevice.activeSilent &&
+            $exeDevice.localPlayer &&
+            $exeDevice.localPlayer.currentTime
+        ) {
             const time = Math.round($exeDevice.localPlayer.currentTime);
             if (time == $exeDevice.silentVideo) {
                 $exeDevice.localPlayer.muted = true;
@@ -262,14 +323,18 @@ var $exeDevice = {
     updateTimerDisplayLocal: function () {
         if ($exeDevice.localPlayer && $exeDevice.localPlayer.currentTime) {
             const currentTime = $exeDevice.localPlayer.currentTime,
-                time = $exeDevices.iDevice.gamification.helpers.secondsToHour(Math.floor(currentTime));
+                time = $exeDevices.iDevice.gamification.helpers.secondsToHour(
+                    Math.floor(currentTime)
+                );
             $('#trivialEVideoTime').text(time);
             $exeDevice.updateSoundVideoLocal();
-            if (Math.ceil(currentTime) == $exeDevice.pointEnd || Math.ceil(currentTime) == $exeDevice.durationVideo) {
+            if (
+                Math.ceil(currentTime) == $exeDevice.pointEnd ||
+                Math.ceil(currentTime) == $exeDevice.durationVideo
+            ) {
                 $exeDevice.localPlayer.pause();
                 $exeDevice.pointEnd = 100000;
             }
-
         }
     },
 
@@ -278,22 +343,22 @@ var $exeDevice = {
         if (type > 0) {
             if ($exeDevice.localPlayer) {
                 $exeDevice.pointEnd = end;
-                $exeDevice.localPlayer.src = id
-                $exeDevice.localPlayer.currentTime = parseFloat(mstart)
+                $exeDevice.localPlayer.src = id;
+                $exeDevice.localPlayer.currentTime = parseFloat(mstart);
                 $exeDevice.localPlayer.play();
             }
             clearInterval($exeDevice.timeUpdateInterval);
             $exeDevice.timeUpdateInterval = setInterval(function () {
                 $exeDevice.updateTimerDisplayLocal();
             }, 1000);
-            return
+            return;
         }
         if ($exeDevice.player) {
-            if (typeof $exeDevice.player.loadVideoById === "function") {
+            if (typeof $exeDevice.player.loadVideoById === 'function') {
                 $exeDevice.player.loadVideoById({
-                    'videoId': id,
-                    'startSeconds': mstart,
-                    'endSeconds': end
+                    videoId: id,
+                    startSeconds: mstart,
+                    endSeconds: end,
                 });
             }
             clearInterval($exeDevice.timeUpdateInterval);
@@ -306,7 +371,7 @@ var $exeDevice = {
     playVideo: function () {
         if ($exeDevice.player) {
             clearInterval($exeDevice.timeUpdateInterval);
-            if (typeof $exeDevice.player.playVideo === "function") {
+            if (typeof $exeDevice.player.playVideo === 'function') {
                 $exeDevice.player.playVideo();
             }
             $exeDevice.timeUpdateInterval = setInterval(function () {
@@ -318,7 +383,7 @@ var $exeDevice = {
     stopVideo: function () {
         if ($exeDevice.player) {
             clearInterval($exeDevice.timeUpdateInterval);
-            if (typeof $exeDevice.player.pauseVideo === "function") {
+            if (typeof $exeDevice.player.pauseVideo === 'function') {
                 $exeDevice.player.pauseVideo();
             }
         }
@@ -334,11 +399,11 @@ var $exeDevice = {
         }
         if ($exeDevice.player) {
             if (mute) {
-                if (typeof $exeDevice.player.mute === "function") {
+                if (typeof $exeDevice.player.mute === 'function') {
                     $exeDevice.player.mute();
                 }
             } else {
-                if (typeof $exeDevice.player.unMute === "function") {
+                if (typeof $exeDevice.player.unMute === 'function') {
                     $exeDevice.player.unMute();
                 }
             }
@@ -352,12 +417,19 @@ var $exeDevice = {
     addQuestion: function () {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.clearQuestion();
-            $exeDevice.temas[$exeDevice.activeTema].push($exeDevice.getCuestionDefault());
-            $exeDevice.activesQuestions[$exeDevice.activeTema] = $exeDevice.temas[$exeDevice.activeTema].length - 1;
-            $('#trivialNumberQuestion').val($exeDevice.temas[$exeDevice.activeTema].length);
+            $exeDevice.temas[$exeDevice.activeTema].push(
+                $exeDevice.getCuestionDefault()
+            );
+            $exeDevice.activesQuestions[$exeDevice.activeTema] =
+                $exeDevice.temas[$exeDevice.activeTema].length - 1;
+            $('#trivialNumberQuestion').val(
+                $exeDevice.temas[$exeDevice.activeTema].length
+            );
             $exeDevice.typeEdit = -1;
             $exeDevice.hideFlex($('#trivialEPaste'));
-            $('#trivialENumQuestions').val($exeDevice.temas[$exeDevice.activeTema].length);
+            $('#trivialENumQuestions').val(
+                $exeDevice.temas[$exeDevice.activeTema].length
+            );
         }
     },
 
@@ -366,15 +438,28 @@ var $exeDevice = {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
-            $exeDevice.temas[$exeDevice.activeTema].splice($exeDevice.activesQuestions[$exeDevice.activeTema], 1);
-            if ($exeDevice.activesQuestions[$exeDevice.activeTema] >= $exeDevice.temas[$exeDevice.activeTema].length - 1) {
-                $exeDevice.activesQuestions[$exeDevice.activeTema] = $exeDevice.temas[$exeDevice.activeTema].length - 1;
+            $exeDevice.temas[$exeDevice.activeTema].splice(
+                $exeDevice.activesQuestions[$exeDevice.activeTema],
+                1
+            );
+            if (
+                $exeDevice.activesQuestions[$exeDevice.activeTema] >=
+                $exeDevice.temas[$exeDevice.activeTema].length - 1
+            ) {
+                $exeDevice.activesQuestions[$exeDevice.activeTema] =
+                    $exeDevice.temas[$exeDevice.activeTema].length - 1;
             }
-            $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+            $exeDevice.showQuestion(
+                $exeDevice.activesQuestions[$exeDevice.activeTema]
+            );
             $exeDevice.typeEdit = -1;
             $exeDevice.hideFlex($('#trivialEPaste'));
-            $('#trivialENumQuestions').text($exeDevice.temas[$exeDevice.activeTema].length);
-            $('#trivialNumberQuestion').text($exeDevice.activesQuestions[$exeDevice.activeTema] + 1);
+            $('#trivialENumQuestions').text(
+                $exeDevice.temas[$exeDevice.activeTema].length
+            );
+            $('#trivialNumberQuestion').text(
+                $exeDevice.activesQuestions[$exeDevice.activeTema] + 1
+            );
         }
     },
 
@@ -382,14 +467,17 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.typeEdit = 0;
             var active = $exeDevice.activesQuestions[$exeDevice.activeTema];
-            $exeDevice.clipBoard = JSON.parse(JSON.stringify($exeDevice.temas[$exeDevice.activeTema][active]));
+            $exeDevice.clipBoard = JSON.parse(
+                JSON.stringify($exeDevice.temas[$exeDevice.activeTema][active])
+            );
             $exeDevice.showFlex($('#trivialEPaste'));
         }
     },
 
     cutQuestion: function () {
         if ($exeDevice.validateQuestion()) {
-            $exeDevice.numberCutCuestion = $exeDevice.activesQuestions[$exeDevice.activeTema];
+            $exeDevice.numberCutCuestion =
+                $exeDevice.activesQuestions[$exeDevice.activeTema];
             $exeDevice.typeEdit = 1;
             $exeDevice.showFlex($('#trivialEPaste'));
         }
@@ -398,31 +486,56 @@ var $exeDevice = {
     pasteQuestion: function () {
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.activesQuestions[$exeDevice.activeTema]++;
-            $exeDevice.temas[$exeDevice.activeTema].splice($exeDevice.activesQuestions[$exeDevice.activeTema], 0, $exeDevice.clipBoard);
-            $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+            $exeDevice.temas[$exeDevice.activeTema].splice(
+                $exeDevice.activesQuestions[$exeDevice.activeTema],
+                0,
+                $exeDevice.clipBoard
+            );
+            $exeDevice.showQuestion(
+                $exeDevice.activesQuestions[$exeDevice.activeTema]
+            );
         } else if ($exeDevice.typeEdit == 1) {
             $exeDevice.hideFlex($('#trivialEPaste'));
             $exeDevice.typeEdit = -1;
-            $exeDevices.iDevice.gamification.helpers.arrayMove($exeDevice.temas[$exeDevice.activeTema], $exeDevice.numberCutCuestion, $exeDevice.activesQuestions[$exeDevice.activeTema]);
-            $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
-            $('#trivialENumQuestions').text($exeDevice.temas[$exeDevice.activeTema].length);
+            $exeDevices.iDevice.gamification.helpers.arrayMove(
+                $exeDevice.temas[$exeDevice.activeTema],
+                $exeDevice.numberCutCuestion,
+                $exeDevice.activesQuestions[$exeDevice.activeTema]
+            );
+            $exeDevice.showQuestion(
+                $exeDevice.activesQuestions[$exeDevice.activeTema]
+            );
+            $('#trivialENumQuestions').text(
+                $exeDevice.temas[$exeDevice.activeTema].length
+            );
         }
     },
 
     nextQuestion: function () {
         if ($exeDevice.validateQuestion()) {
-            if ($exeDevice.activesQuestions[$exeDevice.activeTema] < $exeDevice.temas[$exeDevice.activeTema].length - 1) {
+            if (
+                $exeDevice.activesQuestions[$exeDevice.activeTema] <
+                $exeDevice.temas[$exeDevice.activeTema].length - 1
+            ) {
                 $exeDevice.activesQuestions[$exeDevice.activeTema]++;
-                $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+                $exeDevice.showQuestion(
+                    $exeDevice.activesQuestions[$exeDevice.activeTema]
+                );
             }
         }
     },
 
     lastQuestion: function () {
         if ($exeDevice.validateQuestion()) {
-            if ($exeDevice.activesQuestions[$exeDevice.activeTema] < $exeDevice.temas[$exeDevice.activeTema].length - 1) {
-                $exeDevice.activesQuestions[$exeDevice.activeTema] = $exeDevice.temas[$exeDevice.activeTema].length - 1;
-                $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+            if (
+                $exeDevice.activesQuestions[$exeDevice.activeTema] <
+                $exeDevice.temas[$exeDevice.activeTema].length - 1
+            ) {
+                $exeDevice.activesQuestions[$exeDevice.activeTema] =
+                    $exeDevice.temas[$exeDevice.activeTema].length - 1;
+                $exeDevice.showQuestion(
+                    $exeDevice.activesQuestions[$exeDevice.activeTema]
+                );
             }
         }
     },
@@ -431,7 +544,9 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion() != false) {
             if ($exeDevice.activesQuestions[$exeDevice.activeTema] > 0) {
                 $exeDevice.activesQuestions[$exeDevice.activeTema]--;
-                $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+                $exeDevice.showQuestion(
+                    $exeDevice.activesQuestions[$exeDevice.activeTema]
+                );
             }
         }
     },
@@ -440,7 +555,9 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion() != false) {
             if ($exeDevice.activesQuestions[$exeDevice.activeTema] > 0) {
                 $exeDevice.activesQuestions[$exeDevice.activeTema] = 0;
-                $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+                $exeDevice.showQuestion(
+                    $exeDevice.activesQuestions[$exeDevice.activeTema]
+                );
             }
         }
     },
@@ -468,7 +585,7 @@ var $exeDevice = {
                     }
                 } else if (cuestion.typeSelect == 3) {
                     if (cuestion.solutionQuestion.length == 0) {
-                        cuestion.solutionQuestion = 'open'
+                        cuestion.solutionQuestion = 'open';
                     }
                 }
             }
@@ -478,7 +595,10 @@ var $exeDevice = {
 
     showQuestion: function (i) {
         let num = i < 0 ? 0 : i;
-        num = num >= $exeDevice.temas[$exeDevice.activeTema].length ? $exeDevice.temas[$exeDevice.activeTema].length - 1 : num;
+        num =
+            num >= $exeDevice.temas[$exeDevice.activeTema].length
+                ? $exeDevice.temas[$exeDevice.activeTema].length - 1
+                : num;
         const p = $exeDevice.temas[$exeDevice.activeTema][num];
         let numOptions = 0;
 
@@ -506,7 +626,9 @@ var $exeDevice = {
         $exeDevice.showOptions(p.numberOptions);
 
         $('#trivialEQuestion').val(p.quextion);
-        $('#trivialENumQuestions').text($exeDevice.temas[$exeDevice.activeTema].length);
+        $('#trivialENumQuestions').text(
+            $exeDevice.temas[$exeDevice.activeTema].length
+        );
         if (p.type == 1) {
             $('#trivialEURLImage').val(p.url);
             $('#trivialEXImage').val(p.x);
@@ -518,15 +640,32 @@ var $exeDevice = {
             $('#trivialECheckSoundVideo').prop('checked', p.soundVideo == 1);
             $('#trivialECheckImageVideo').prop('checked', p.imageVideo == 1);
             $('#trivialEURLYoutube').val(p.url);
-            $('#trivialEInitVideo').val($exeDevices.iDevice.gamification.helpers.secondsToHour(p.iVideo));
-            $('#trivialEEndVideo').val($exeDevices.iDevice.gamification.helpers.secondsToHour(p.fVideo));
-            $('#trivialESilenceVideo').val($exeDevices.iDevice.gamification.helpers.secondsToHour(p.silentVideo));
+            $('#trivialEInitVideo').val(
+                $exeDevices.iDevice.gamification.helpers.secondsToHour(p.iVideo)
+            );
+            $('#trivialEEndVideo').val(
+                $exeDevices.iDevice.gamification.helpers.secondsToHour(p.fVideo)
+            );
+            $('#trivialESilenceVideo').val(
+                $exeDevices.iDevice.gamification.helpers.secondsToHour(
+                    p.silentVideo
+                )
+            );
             $('#trivialETimeSilence').val(p.tSilentVideo);
             $exeDevice.silentVideo = p.silentVideo;
             $exeDevice.tSilentVideo = p.tSilentVideo;
-            $exeDevice.activeSilent = (p.soundVideo == 1) && (p.tSilentVideo > 0) && (p.silentVideo >= p.iVideo) && (p.iVideo < p.fVideo);
+            $exeDevice.activeSilent =
+                p.soundVideo == 1 &&
+                p.tSilentVideo > 0 &&
+                p.silentVideo >= p.iVideo &&
+                p.iVideo < p.fVideo;
             $exeDevice.endSilent = p.silentVideo + p.tSilentVideo;
-            if ($exeDevices.iDevice.gamification.media.getIDYoutube(p.url) || $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(p.url)) {
+            if (
+                $exeDevices.iDevice.gamification.media.getIDYoutube(p.url) ||
+                $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                    p.url
+                )
+            ) {
                 $exeDevice.showVideoQuestion();
             }
         } else if (p.type == 3) {
@@ -538,7 +677,7 @@ var $exeDevice = {
             $(this).val(option);
         });
 
-        p.audio = p.audio && p.audio != "undefined" ? p.audio : "";
+        p.audio = p.audio && p.audio != 'undefined' ? p.audio : '';
         $exeDevice.stopSound();
         if (p.type != 2 && p.audio.trim().length > 4) {
             $exeDevice.playSound(p.audio.trim());
@@ -546,18 +685,34 @@ var $exeDevice = {
 
         $('#trivialEURLAudio').val(p.audio);
         $('#trivialNumberQuestion').val(i + 1);
-        $("input.TRVLE-Number[name='tvlnumber'][value='" + p.numberOptions + "']").prop("checked", true)
-        $("input.TRVLE-Type[name='tvlmediatype'][value='" + p.type + "']").prop("checked", true);
+        $(
+            "input.TRVLE-Number[name='tvlnumber'][value='" +
+                p.numberOptions +
+                "']"
+        ).prop('checked', true);
+        $("input.TRVLE-Type[name='tvlmediatype'][value='" + p.type + "']").prop(
+            'checked',
+            true
+        );
         $exeDevice.checkQuestions(p.solution);
-        $("input.TRVLE-Times[name='tvltime'][value='" + p.time + "']").prop("checked", true);
-        $("input.TRVLE-TypeSelect[name='tvltypeselect'][value='" + p.typeSelect + "']").prop("checked", true);
+        $("input.TRVLE-Times[name='tvltime'][value='" + p.time + "']").prop(
+            'checked',
+            true
+        );
+        $(
+            "input.TRVLE-TypeSelect[name='tvltypeselect'][value='" +
+                p.typeSelect +
+                "']"
+        ).prop('checked', true);
     },
 
     checkQuestions: function (solution) {
-        $("input.TRVLE-ESolution[name='tvlsolution']").prop("checked", false);
+        $("input.TRVLE-ESolution[name='tvlsolution']").prop('checked', false);
         for (var i = 0; i < solution.length; i++) {
             var sol = solution[i];
-            $("input.TRVLE-ESolution[name='tvlsolution'][value='" + sol + "']").prop("checked", true);
+            $(
+                "input.TRVLE-ESolution[name='tvlsolution'][value='" + sol + "']"
+            ).prop('checked', true);
         }
         $('#trivialESolutionSelect').text(solution);
     },
@@ -566,16 +721,30 @@ var $exeDevice = {
         const soundVideo = $('#trivialECheckSoundVideo').is(':checked') ? 1 : 0,
             imageVideo = $('#trivialECheckImageVideo').is(':checked') ? 1 : 0,
             url = $('#trivialEURLYoutube').val().trim();
-        id = $exeDevices.iDevice.gamification.media.getIDYoutube(url),
-            idLocal = $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(url);
+        ((id = $exeDevices.iDevice.gamification.media.getIDYoutube(url)),
+            (idLocal =
+                $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                    url
+                )));
 
-        let iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#trivialEInitVideo').val()),
-            fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#trivialEEndVideo').val()),
+        let iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
+                $('#trivialEInitVideo').val()
+            ),
+            fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
+                $('#trivialEEndVideo').val()
+            ),
             type = id ? 0 : 1;
 
-        $exeDevice.silentVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#trivialESilenceVideo').val().trim());
+        $exeDevice.silentVideo =
+            $exeDevices.iDevice.gamification.helpers.hourToSeconds(
+                $('#trivialESilenceVideo').val().trim()
+            );
         $exeDevice.tSilentVideo = parseInt($('#trivialETimeSilence').val());
-        $exeDevice.activeSilent = (soundVideo == 1) && ($exeDevice.tSilentVideo > 0) && ($exeDevice.silentVideo >= iVideo) && (iVideo < fVideo);
+        $exeDevice.activeSilent =
+            soundVideo == 1 &&
+            $exeDevice.tSilentVideo > 0 &&
+            $exeDevice.silentVideo >= iVideo &&
+            iVideo < fVideo;
         $exeDevice.endSilent = $exeDevice.silentVideo + $exeDevice.tSilentVideo;
         if (fVideo <= iVideo) fVideo = 36000;
 
@@ -601,9 +770,9 @@ var $exeDevice = {
                 }
             }
             if (soundVideo == 0) {
-                $exeDevices.iDevice.gamification.media.muteVideo(true)
+                $exeDevices.iDevice.gamification.media.muteVideo(true);
             } else {
-                $exeDevices.iDevice.gamification.media.muteVideo(false)
+                $exeDevices.iDevice.gamification.media.muteVideo(false);
             }
         } else {
             $exeDevice.showMessage($exeDevice.msgs.msgVideoNotAvailable);
@@ -613,10 +782,10 @@ var $exeDevice = {
 
     drawImage: function (image, mData) {
         $(image).css({
-            'left': mData.x + 'px',
-            'top': mData.y + 'px',
-            'width': mData.w + 'px',
-            'height': mData.h + 'px'
+            left: mData.x + 'px',
+            top: mData.y + 'px',
+            width: mData.w + 'px',
+            height: mData.h + 'px',
         });
     },
 
@@ -628,22 +797,32 @@ var $exeDevice = {
         $image.attr('alt', alt);
         $exeDevice.showFlex($('#trivialENoImage'));
         url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
-        $image.attr('src', url)
+        $image
+            .attr('src', url)
             .on('load', function () {
-                if (!this.complete || typeof this.naturalWidth == "undefined" || this.naturalWidth == 0) {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth == 'undefined' ||
+                    this.naturalWidth == 0
+                ) {
                     if (type == 1) {
                         $exeDevice.showMessage(msgs.msgEURLValid);
                     }
                     return false;
                 } else {
-                    var mData = $exeDevice.placeImageWindows(this, this.naturalWidth, this.naturalHeight);
+                    var mData = $exeDevice.placeImageWindows(
+                        this,
+                        this.naturalWidth,
+                        this.naturalHeight
+                    );
                     $exeDevice.drawImage(this, mData);
                     $exeDevice.showFlex($image);
                     $exeDevice.hideFlex($('#trivialENoImage'));
                     $exeDevice.paintMouse(this, $cursor, x, y);
                     return true;
                 }
-            }).on('error', function () {
+            })
+            .on('error', function () {
                 if (type == 1) {
                     $exeDevice.showMessage(msgs.msgEURLValid);
                 }
@@ -656,12 +835,12 @@ var $exeDevice = {
         if (x > 0 || y > 0) {
             var wI = $(image).width() > 0 ? $(image).width() : 1,
                 hI = $(image).height() > 0 ? $(image).height() : 1,
-                lI = $(image).position().left + (wI * x),
-                tI = $(image).position().top + (hI * y);
+                lI = $(image).position().left + wI * x,
+                tI = $(image).position().top + hI * y;
             $(cursor).css({
                 left: lI + 'px',
                 top: tI + 'px',
-                'z-index': 30
+                'z-index': 30,
             });
             $exeDevice.showFlex($(cursor));
         }
@@ -709,7 +888,9 @@ var $exeDevice = {
         $('#trivialNumberTema').val(tema + 1);
         $('#trivialNameTema').val($exeDevice.nombresTemas[tema]);
         $('#trivialLoadGame').val('');
-        $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+        $exeDevice.showQuestion(
+            $exeDevice.activesQuestions[$exeDevice.activeTema]
+        );
     },
 
     changeTypeQuestion: function (type) {
@@ -746,7 +927,13 @@ var $exeDevice = {
                 $exeDevice.showFlex($('#trivialEAuthorAlt'));
                 $exeDevice.showFlex($('#trivialECursor'));
                 $exeDevice.showFlex($('#trivialInputOptionsImage'));
-                $exeDevice.showImage($('#trivialEURLImage').val(), $('#trivialEXImage').val(), $('#trivialEYImage').val(), $('#trivialEAlt').val(), 0)
+                $exeDevice.showImage(
+                    $('#trivialEURLImage').val(),
+                    $('#trivialEXImage').val(),
+                    $('#trivialEYImage').val(),
+                    $('#trivialEAlt').val(),
+                    0
+                );
                 break;
             case 2:
                 $exeDevice.showFlex($('#trivialEImageVideo'));
@@ -785,11 +972,13 @@ var $exeDevice = {
     },
 
     showSolution: function (solution) {
-        $("input.TRVLE-ESolution[name='tvlsolution']").prop("checked", false);
+        $("input.TRVLE-ESolution[name='tvlsolution']").prop('checked', false);
         for (var i = 0; i < solution.length; i++) {
             var sol = solution[i];
             $('.TRVLE-ESolution')[solution].checked = true;
-            $("input.TRVLE-ESolution[name='tvlsolution'][value='" + sol + "']").prop("checked", true)
+            $(
+                "input.TRVLE-ESolution[name='tvlsolution'][value='" + sol + "']"
+            ).prop('checked', true);
         }
         $('#trivialESolutionSelect').text(solution);
     },
@@ -798,17 +987,17 @@ var $exeDevice = {
             html = `
             <div id="gameQEIdeviceForm">
                 <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                    ${_("Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.")} 
-                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/triviext.html" hreflang="es" target="_blank">${_("Usage Instructions")}</a>
+                    ${_('Create an educational board game with different question types (test, order, definition) of different categories. From 1 to 4 players or teams.')} 
+                    <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/triviext.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
                     ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset($exeDevice.msgs.msgGameIntrunctions)}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_("Options")}</a></legend>
+                        <legend><a href="#">${_('Options')}</a></legend>
                         <div>
                             <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-                                <span class="mb-0">${_("Number of topics")}: </span>
+                                <span class="mb-0">${_('Number of topics')}: </span>
                                 <div class="form-check form-check-inline mb-0">
                                     <input class="TRVLE-NumeroTemas form-check-input" checked id="trivialNG2" type="radio" name="tvlnt" value="2" />
                                     <label for="trivialNG2" class="form-check-label mb-0">2</label>
@@ -835,7 +1024,7 @@ var $exeDevice = {
                                     <input type="checkbox" id="trivialEShowMinimize" class="toggle-input" />
                                     <span class="toggle-visual"></span>
                                 </span>
-                                <label class="toggle-label mb-0" for="trivialEShowMinimize">${_("Show minimized.")}</label>
+                                <label class="toggle-label mb-0" for="trivialEShowMinimize">${_('Show minimized.')}</label>
                             </div>
                             <div class="d-flex align-items-center flex-nowrap mb-3 gap-2 flex-wrap">
                                 <div class="toggle-item mb-0">
@@ -843,9 +1032,9 @@ var $exeDevice = {
                                         <input type="checkbox" id="trivialEShowSolution" class="toggle-input" checked />
                                         <span class="toggle-visual"></span>
                                     </span>
-                                    <label class="toggle-label mb-0" for="trivialEShowSolution">${_("Show solutions")}.</label>
+                                    <label class="toggle-label mb-0" for="trivialEShowSolution">${_('Show solutions')}.</label>
                                 </div>
-                                <label for="trivialETimeShowSolution" class="mb-0">${_("Show solution time (seconds)")}</label>
+                                <label for="trivialETimeShowSolution" class="mb-0">${_('Show solution time (seconds)')}</label>
                                 <input type="number" name="trivialETimeShowSolution" id="trivialETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:6ch" />
                             </div>
                             <div class="toggle-item mb-3">
@@ -853,7 +1042,7 @@ var $exeDevice = {
                                     <input type="checkbox" id="trivialModeBoard" class="toggle-input" />
                                     <span class="toggle-visual"></span>
                                 </span>
-                                <label class="toggle-label mb-0" for="trivialModeBoard">${_("Digital whiteboard mode")}</label>
+                                <label class="toggle-label mb-0" for="trivialModeBoard">${_('Digital whiteboard mode')}</label>
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-3">
                                 <label for="trivialEGlobalTimes">${_('Time per question')}:</label>
@@ -865,7 +1054,7 @@ var $exeDevice = {
                                     <option value="4">5m</option>
                                     <option value="5">10m</option>
                                 </select>
-                                <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_("Accept")}</button> 
+                                <button id="trivialGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="Games-Reportdiv d-flex align-items-center flex-nowrap gap-2 mb-3 flex-wrap">
                                 <div class="toggle-item mb-0">
@@ -873,78 +1062,78 @@ var $exeDevice = {
                                         <input type="checkbox" id="trivialEEvaluation" class="toggle-input" />
                                         <span class="toggle-visual"></span>
                                     </span>
-                                    <label class="toggle-label mb-0" for="trivialEEvaluation">${_("Progress report")}.</label>
+                                    <label class="toggle-label mb-0" for="trivialEEvaluation">${_('Progress report')}.</label>
                                 </div>
                                 <div class="d-flex align-items-center flex-nowrap gap-2" id="trivialEEvaluationIDWrapper">
-                                    <label for="trivialEEvaluationID" class="mb-0">${_("Identifier")}:</label>
+                                    <label for="trivialEEvaluationID" class="mb-0">${_('Identifier')}:</label>
                                     <input type="text" id="trivialEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}" class="form-control" />
                                 </div>
                                 <strong class="GameModeLabel">
-                                    <a href="#trivialEEvaluationHelp" id="trivialEEvaluationHelpLnk" class="GameModeHelpLink" title="${_("Help")}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_("Help")}" />
+                                    <a href="#trivialEEvaluationHelp" id="trivialEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
                                     </a>
                                 </strong>
                             </div>
                             <p id="trivialEEvaluationHelp" class="TRVLE-TypeGameHelp exe-block-info">
-                                ${_("You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.")}
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
                             </p>
                         </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_("Questions")}</a></legend>
+                        <legend><a href="#">${_('Questions')}</a></legend>
                         <div class="TRVLE-EPanel" id="trivialEPanel">
                             <div class="TRVLE-EOptionsMedia">
                                 <div class="TRVLE-EOptionsGame">                                    
                                     <div class="TRVLE-ENameTema d-flex align-items-center flex-nowrap gap-2 mb-3">
-                                        <span>${_("Topic")}:</span>
-                                        <label class="sr-av" for="trivialNumberTema">${_("Topic number")}</label>
+                                        <span>${_('Topic')}:</span>
+                                        <label class="sr-av" for="trivialNumberTema">${_('Topic number')}</label>
                                          <input type="number" class="form-control me-0" name="trivialNumberTema" id="trivialNumberTema" value="1" min="1" max="2" step="1" style="width:6ch" /> 
-                                        <label class="sr-av" for="trivialNameTema">${_("Topic number")}</label>
+                                        <label class="sr-av" for="trivialNameTema">${_('Topic number')}</label>
                                         <input type="text" id="trivialNameTema" class="form-control w-100" />
                                     </div>
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                        <span>${_("Load")}:</span><input type="file" name="trivialLoadGame" id="trivialLoadGame" accept=".json" />
+                                        <span>${_('Load')}:</span><input type="file" name="trivialLoadGame" id="trivialLoadGame" accept=".json" />
                                     </div>                                    
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                        <span>${_("Type")}:</span>
+                                        <span>${_('Type')}:</span>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-TypeSelect form-check-input" checked id="trivialTypeChoose" type="radio" name="tvltypeselect" value="0"/>
-                                            <label for="trivialTypeChoose" class="form-check-label">${_("Select")}</label>
+                                            <label for="trivialTypeChoose" class="form-check-label">${_('Select')}</label>
                                         </div>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-TypeSelect form-check-input" id="trivialTypeOrders" type="radio" name="tvltypeselect" value="1"/>
-                                            <label for="trivialTypeOrders" class="form-check-label">${_("Order")}</label>
+                                            <label for="trivialTypeOrders" class="form-check-label">${_('Order')}</label>
                                         </div>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-TypeSelect form-check-input" id="trivialTypeWord" type="radio" name="tvltypeselect" value="2"/>
-                                            <label for="trivialTypeWord" class="form-check-label">${_("Word")}</label>
+                                            <label for="trivialTypeWord" class="form-check-label">${_('Word')}</label>
                                         </div>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-TypeSelect form-check-input" id="trivialTypeOpen" type="radio" name="tvltypeselect" value="3"/>
-                                            <label for="trivialTypeOpen" class="form-check-label">${_("Free response")}</label>
+                                            <label for="trivialTypeOpen" class="form-check-label">${_('Free response')}</label>
                                         </div>
                                     </div>                                    
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                        <span>${_("Multimedia Type")}:</span>
+                                        <span>${_('Multimedia Type')}:</span>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-Type form-check-input" checked id="trivialMediaNormal" type="radio" name="tvlmediatype" value="0" disabled />
-                                            <label for="trivialMediaNormal" class="form-check-label">${_("None")}</label>
+                                            <label for="trivialMediaNormal" class="form-check-label">${_('None')}</label>
                                         </div>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-Type form-check-input" id="trivialMediaImage" type="radio" name="tvlmediatype" value="1" disabled />
-                                            <label for="trivialMediaImage" class="form-check-label">${_("Image")}</label>
+                                            <label for="trivialMediaImage" class="form-check-label">${_('Image')}</label>
                                         </div>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-Type form-check-input" id="trivialMediaVideo" type="radio" name="tvlmediatype" value="2" disabled />
-                                            <label for="trivialMediaVideo" class="form-check-label">${_("Video")}</label>
+                                            <label for="trivialMediaVideo" class="form-check-label">${_('Video')}</label>
                                         </div>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-Type form-check-input" id="trivialMediaText" type="radio" name="tvlmediatype" value="3" disabled />
-                                            <label for="trivialMediaText" class="form-check-label">${_("Text")}</label>
+                                            <label for="trivialMediaText" class="form-check-label">${_('Text')}</label>
                                         </div>
                                     </div>
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-3" id="trivialEInputNumbers">
-                                        <span id="trivialOptionsNumberSpan">${_("Options Number")}:</span>    
+                                        <span id="trivialOptionsNumberSpan">${_('Options Number')}:</span>    
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-Number form-check-input" id="numQ2" type="radio" name="tvlnumber" value="2" />
                                             <label for="numQ2" class="form-check-label">2</label>
@@ -959,11 +1148,11 @@ var $exeDevice = {
                                         </div>
                                     </div>                                    
                                     <div class="d-none align-items-center flex-wrap gap-2 mb-3" id="trivialPercentage">
-                                        <span id="trivialPercentageSpan">${_("Percentage of letters to show (%)")}:</span>
+                                        <span id="trivialPercentageSpan">${_('Percentage of letters to show (%)')}:</span>
                                         <input type="number" name="trivialPercentageShow" id="trivialPercentageShow" value="35" min="0" max="100" step="5" />
                                     </div>                                    
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                        <span>${_("Time per question")}:</span>
+                                        <span>${_('Time per question')}:</span>
                                         <div class="form-check form-check-inline mb-0">
                                             <input class="TRVLE-Times form-check-input" checked id="q15s" type="radio" name="tvltime" value="0" />
                                             <label for="q15s" class="form-check-label">15s</label>
@@ -991,11 +1180,11 @@ var $exeDevice = {
                                     </div>
                                     
                                     <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputImage">
-                                        <span class="text-nowrap" id="trivialETitleImage">${_("URL")}</span>
-                                        <label class="sr-av" for="trivialEURLImage">${_("Image URL")}</label>
+                                        <span class="text-nowrap" id="trivialETitleImage">${_('URL')}</span>
+                                        <label class="sr-av" for="trivialEURLImage">${_('Image URL')}</label>
                                         <input type="text" class="exe-file-picker TRVLE-EURLImage form-control me-0 w-100" id="trivialEURLImage"/>
-                                        <a href="#" id="trivialEPlayImage" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_("Play")}">
-                                            <img src="${path}quextIEPlay.png" alt="${_("Play")}" class="TRVLE-EButtonImage " />
+                                        <a href="#" id="trivialEPlayImage" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_('Play')}">
+                                            <img src="${path}quextIEPlay.png" alt="${_('Play')}" class="TRVLE-EButtonImage " />
                                         </a>
                                     </div>
                                     <div class="d-none"  id="trivialInputOptionsImage">
@@ -1007,25 +1196,25 @@ var $exeDevice = {
                                         </div>
                                     </div>                                    
                                     <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputVideo">
-                                        <span class="text-nowrap" id="trivialETitleVideo">${_("URL")}</span>    
-                                        <label class="sr-av" for="trivialEURLYoutube">${_("URL")}</label>
+                                        <span class="text-nowrap" id="trivialETitleVideo">${_('URL')}</span>    
+                                        <label class="sr-av" for="trivialEURLYoutube">${_('URL')}</label>
                                         <input id="trivialEURLYoutube" type="text" class="form-control me-0 w-100" />
-                                        <a href="#" id="trivialEPlayVideo" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_("Play video")}">
-                                            <img src="${path}quextIEPlay.png" alt="${_("Play")}" class="TRVLE-EButtonImage" />
+                                        <a href="#" id="trivialEPlayVideo" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_('Play video')}">
+                                            <img src="${path}quextIEPlay.png" alt="${_('Play')}" class="TRVLE-EButtonImage" />
                                         </a>
                                     </div>
                                     <div class="TRVLE-EInputOptionsVideo" id="trivialEInputOptionsVideo">
                                         <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                                            <label for="trivialEInitVideo">${_("Start")}:</label>
+                                            <label for="trivialEInitVideo">${_('Start')}:</label>
                                             <input id="trivialEInitVideo" type="text" value="00:00:00" maxlength="8" class="form-control w-auto" style="min-width:10ch; max-width:10ch;" />
-                                            <label for="trivialEEndVideo">${_("End")}:</label>
+                                            <label for="trivialEEndVideo">${_('End')}:</label>
                                             <input id="trivialEEndVideo" type="text" value="00:00:00" maxlength="8" class="form-control w-auto" style="min-width:10ch; max-width:10ch";" />
                                             <button class="btn btn-primary" id="trivialEVideoTime" type="button">00:00:00</button>
                                         </div>
                                         <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                                            <label for="trivialESilenceVideo">${_("Silence")}:</label>
+                                            <label for="trivialESilenceVideo">${_('Silence')}:</label>
                                             <input id="trivialESilenceVideo" type="text" value="00:00:00" maxlength="8" class="form-control" style="min-width:10ch; max-width:10ch"/>
-                                            <label for="trivialETimeSilence">${_("Time (s)")}:</label>
+                                            <label for="trivialETimeSilence">${_('Time (s)')}:</label>
                                             <input type="number" name="trivialETimeSilence" id="trivialETimeSilence" value="0" min="0" max="120" class="form-control" />
                                         </div>
                                         <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
@@ -1034,83 +1223,83 @@ var $exeDevice = {
                                                     <input id="trivialECheckSoundVideo" class="toggle-input" type="checkbox" checked="checked" />
                                                     <span class="toggle-visual"></span>
                                                 </span>
-                                                <label class="toggle-label mb-0" for="trivialECheckSoundVideo">${_("Audio")}</label>
+                                                <label class="toggle-label mb-0" for="trivialECheckSoundVideo">${_('Audio')}</label>
                                             </div>
                                             <div class="toggle-item mb-0">
                                                 <span class="toggle-control">
                                                     <input id="trivialECheckImageVideo" class="toggle-input" type="checkbox" checked="checked" />
                                                     <span class="toggle-visual"></span>
                                                 </span>
-                                                <label class="toggle-label mb-0" for="trivialECheckImageVideo">${_("Image")}</label>
+                                                <label class="toggle-label mb-0" for="trivialECheckImageVideo">${_('Image')}</label>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="d-none align-items-center flex-nowrap gap-2 mb-3" id="trivialEAuthorAlt">
                                         <div class="TRVLE-EInputAuthor w-50" id="trivialInputAuthor">
-                                            <label for="trivialEAuthor">${_("Authorship")}</label>
+                                            <label for="trivialEAuthor">${_('Authorship')}</label>
                                             <input id="trivialEAuthor" type="text" class="form-control w-100" />
                                         </div>
                                         <div class="TRVLE-EInputAlt w-50" id="trivialInputAlt">
-                                            <label for="trivialEAlt">${_("Alternative text")}</label>
+                                            <label for="trivialEAlt">${_('Alternative text')}</label>
                                             <input id="trivialEAlt" type="text" class="form-control w-100" />
                                         </div>
                                     </div>                                    
                                     <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputAudio">
-                                        <span id="trivialETitleAudio">${_("Audio")}:</span>
-                                        <label class="sr-av" for="trivialEURLAudio">${_("URL")}</label>
+                                        <span id="trivialETitleAudio">${_('Audio')}:</span>
+                                        <label class="sr-av" for="trivialEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker TRVLE-EURLAudio form-control w-100 me-0" id="trivialEURLAudio"/>
-                                        <a href="#" id="trivialEPlayAudio" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_("Audio")}">
-                                            <img src="${path}quextIEPlay.png" alt="${_("Play")}" class="TRVLE-EButtonImage " />
+                                        <a href="#" id="trivialEPlayAudio" class="TRVLE-ENavigationButton TRVLE-EPlayVideo" title="${_('Audio')}">
+                                            <img src="${path}quextIEPlay.png" alt="${_('Play')}" class="TRVLE-EButtonImage " />
                                         </a>
                                     </div>
                                 </div>
                                 <div class="TRVLE-EMultiMediaOption">
                                     <div class="TRVLE-EMultimedia" id="trivialEMultimedia">
                                         <textarea id="trivialEText"></textarea>
-                                        <img class="TRVLE-EMedia" src="${path}quextIEImage.png" id="trivialEImage" alt="${_("Image")}" />
-                                        <img class="TRVLE-EMedia" src="${path}quextIEImage.png" id="trivialENoImage" alt="${_("No image")}" />
+                                        <img class="TRVLE-EMedia" src="${path}quextIEImage.png" id="trivialEImage" alt="${_('Image')}" />
+                                        <img class="TRVLE-EMedia" src="${path}quextIEImage.png" id="trivialENoImage" alt="${_('No image')}" />
                                         <div class="TRVLE-EMedia" id="trivialEVideo"></div>
                                         <video class="TRVLE-EMedia" id="trivialEVideoLocal" preload="auto" controls></video>
                                         <img class="TRVLE-EMedia" src="${path}quextIENoImageVideo.png" id="trivialENoImageVideo" alt="" />
                                         <img class="TRVLE-EMedia" src="${path}quextIENoVideo.png" id="trivialENoVideo" alt="" />
                                         <img class="TRVLE-ECursor" src="${path}quextIECursor.gif" id="trivialECursor" alt="" />
-                                        <img class="TRVLE-EMedia" src="${path}quextIECoverTrivial.png" id="trivialECover" alt="${_("No image")}" />
+                                        <img class="TRVLE-EMedia" src="${path}quextIECoverTrivial.png" id="trivialECover" alt="${_('No image')}" />
                                     </div>
                                 </div>
                             </div>
                             <div class="TRVLE-EContents">
                                 <div id="trivialESolitionOptions" class="TRVLE-SolitionOptionsDiv">
-                                    <span>${_("Question")}:</span>
+                                    <span>${_('Question')}:</span>
                                     <span>
-                                        <span>${_("Solution")}: </span>
+                                        <span>${_('Solution')}: </span>
                                         <span id="trivialESolutionSelect"></span>
                                     </span>
                                 </div>
                                 <div class="TRVLE-EQuestionDiv" id="trivialEQuestionDiv">
-                                    <label for="trivialEQuestion" class="sr-av">${_("Question")}:</label>
+                                    <label for="trivialEQuestion" class="sr-av">${_('Question')}:</label>
                                     <input type="text" class="TRVLE-EQuestion form-control" id="trivialEQuestion">
                                 </div>
                                 <div class="TRVLE-EAnswers" id="trivialEAnswers">
                                     <div class="TRVLE-EOptionDiv">
-                                        <label for="trivialESolution0" class="sr-av">${_("Solution")} A:</label>
+                                        <label for="trivialESolution0" class="sr-av">${_('Solution')} A:</label>
                                         <input type="checkbox" class="TRVLE-ESolution me-1" name="tvlsolution" id="trivialESolution0" value="A" />
                                         <label for="trivialEOption0" >A</label>
                                         <input type="text" class="TRVLE-EOption0 TRVLE-EAnwersOptions form-control" id="trivialEOption0">
                                     </div>
                                     <div class="TRVLE-EOptionDiv">
-                                        <label for="trivialESolution1" class="sr-av">${_("Solution")} B:</label>
+                                        <label for="trivialESolution1" class="sr-av">${_('Solution')} B:</label>
                                         <input type="checkbox" class="TRVLE-ESolution me-1" name="tvlsolution" id="trivialESolution1" value="B" />
                                         <label for="trivialEOption1" >B</label>
                                         <input type="text" class="TRVLE-EOption1 TRVLE-EAnwersOptions form-control" id="trivialEOption1">
                                     </div>
                                     <div class="TRVLE-EOptionDiv">
-                                        <label for="trivialESolution2" class="sr-av">${_("Solution")} C:</label>
+                                        <label for="trivialESolution2" class="sr-av">${_('Solution')} C:</label>
                                         <input type="checkbox" class="TRVLE-ESolution me-1" name="tvlsolution" id="trivialESolution2" value="C" />
                                         <label for="trivialEOption2" >C</label>
                                         <input type="text" class="TRVLE-EOption2 TRVLE-EAnwersOptions form-control" id="trivialEOption2">
                                     </div>
                                     <div class="TRVLE-EOptionDiv">
-                                        <label for="trivialESolution3" class="sr-av">${_("Solution")} D:</label>
+                                        <label for="trivialESolution3" class="sr-av">${_('Solution')} D:</label>
                                         <input type="checkbox" class="TRVLE-ESolution me-1" name="tvlsolution" id="trivialESolution3" value="D" />
                                         <label for="trivialEOption3" >D</label>
                                         <input type="text" class="TRVLE-EOption3 TRVLE-EAnwersOptions form-control" id="trivialEOption3">
@@ -1118,61 +1307,61 @@ var $exeDevice = {
                                 </div>
                                 <div class="TRVLE-EWordDiv TRVLE-DP" id="trivialEWordDiv">
                                     <div class="TRVLE-ESolutionWord">
-                                        <label for="trivialESolutionWord">${_("Word/Phrase")}: </label>
+                                        <label for="trivialESolutionWord">${_('Word/Phrase')}: </label>
                                         <input type="text" id="trivialESolutionWord" class="form-control"/>
                                     </div>
                                     <div class="TRVLE-ESolutionWord">
-                                        <label for="trivialEDefinitionWord">${_("Definition")}: </label>
+                                        <label for="trivialEDefinitionWord">${_('Definition')}: </label>
                                         <input type="text" id="trivialEDefinitionWord" class="form-control"/>
                                     </div>
                                 </div>
                             </div>
                             <div class="TRVLE-ENavigationButtons gap-2">
-                                <a href="#" id="trivialEAdd" class="TRVLE-ENavigationButton" title="${_("Add question")}">
-                                    <img src="${path}quextIEAdd.png" alt="${_("Add question")}" class="TRVLE-EButtonImage b-add" />
+                                <a href="#" id="trivialEAdd" class="TRVLE-ENavigationButton" title="${_('Add question')}">
+                                    <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="TRVLE-EButtonImage b-add" />
                                 </a>
-                                <a href="#" id="trivialEFirst" class="TRVLE-ENavigationButton" title="${_("First question")}">
-                                    <img src="${path}quextIEFirst.png" alt="${_("First question")}" class="TRVLE-EButtonImage b-first" />
+                                <a href="#" id="trivialEFirst" class="TRVLE-ENavigationButton" title="${_('First question')}">
+                                    <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="TRVLE-EButtonImage b-first" />
                                 </a>
-                                <a href="#" id="trivialEPrevious" class="TRVLE-ENavigationButton" title="${_("Previous question")}">
-                                    <img src="${path}quextIEPrev.png" alt="${_("Previous question")}" class="TRVLE-EButtonImage b-prev" />
+                                <a href="#" id="trivialEPrevious" class="TRVLE-ENavigationButton" title="${_('Previous question')}">
+                                    <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="TRVLE-EButtonImage b-prev" />
                                 </a>
-                                <label class="sr-av" for="trivialNumberQuestion">${_("Question number:")}:</label>
+                                <label class="sr-av" for="trivialNumberQuestion">${_('Question number:')}:</label>
                                 <input type="text" class="TRVLE-NumberQuestion form-control" id="trivialNumberQuestion" value="1" style="width:6ch"/>
-                                <a href="#" id="trivialENext" class="TRVLE-ENavigationButton" title="${_("Next question")}">
-                                    <img src="${path}quextIENext.png" alt="${_("Next question")}" class="TRVLE-EButtonImage b-next" />
+                                <a href="#" id="trivialENext" class="TRVLE-ENavigationButton" title="${_('Next question')}">
+                                    <img src="${path}quextIENext.png" alt="${_('Next question')}" class="TRVLE-EButtonImage b-next" />
                                 </a>
-                                <a href="#" id="trivialELast" class="TRVLE-ENavigationButton" title="${_("Last question")}">
-                                    <img src="${path}quextIELast.png" alt="${_("Last question")}" class="TRVLE-EButtonImage b-last" />
+                                <a href="#" id="trivialELast" class="TRVLE-ENavigationButton" title="${_('Last question')}">
+                                    <img src="${path}quextIELast.png" alt="${_('Last question')}" class="TRVLE-EButtonImage b-last" />
                                 </a>
-                                <a href="#" id="trivialEDelete" class="TRVLE-ENavigationButton" title="${_("Delete question")}">
-                                    <img src="${path}quextIEDelete.png" alt="${_("Delete question")}" class="TRVLE-EButtonImage b-delete" />
+                                <a href="#" id="trivialEDelete" class="TRVLE-ENavigationButton" title="${_('Delete question')}">
+                                    <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="TRVLE-EButtonImage b-delete" />
                                 </a>
-                                <a href="#" id="trivialECopy" class="TRVLE-ENavigationButton" title="${_("Copy question")}">
-                                    <img src="${path}quextIECopy.png" alt="${_("Copy question")}" class="TRVLE-EButtonImage b-copy" />
+                                <a href="#" id="trivialECopy" class="TRVLE-ENavigationButton" title="${_('Copy question')}">
+                                    <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="TRVLE-EButtonImage b-copy" />
                                 </a>
-                                <a href="#" id="trivialECut" class="TRVLE-ENavigationButton" title="${_("Cut question")}">
-                                    <img src="${path}quextIECut.png" alt="${_("Cut question")}" class="TRVLE-EButtonImage b-cut" />
+                                <a href="#" id="trivialECut" class="TRVLE-ENavigationButton" title="${_('Cut question')}">
+                                    <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="TRVLE-EButtonImage b-cut" />
                                 </a>
-                                <a href="#" id="trivialEPaste" class="TRVLE-ENavigationButton" title="${_("Paste question")}">
-                                    <img src="${path}quextIEPaste.png" alt="${_("Paste question")}" class="TRVLE-EButtonImage b-paste" />
+                                <a href="#" id="trivialEPaste" class="TRVLE-ENavigationButton" title="${_('Paste question')}">
+                                    <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="TRVLE-EButtonImage b-paste" />
                                 </a>
                             </div>
                             <div class="TRVLE-ENumQuestionDiv" id="trivialENumQuestionDiv">
                                 <div class="TRVLE-ENumQ">
-                                    <span class="sr-av">${_("Number of questions:")}</span>
+                                    <span class="sr-av">${_('Number of questions:')}</span>
                                 </div>
                                 <span class="TRVLE-ENumQuestions" id="trivialENumQuestions">0</span>
                             </div>
                         </div>
                     </fieldset>
-                        ${$exeDevicesEdition.iDevice.common.getTextFieldset("after")}
+                        ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                     ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
                     ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
                     ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                     <p class="exe-block-warning exe-block-dismissible" style="position:relative">
-                        ${_("This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.")}
+                        ${_('This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.')}
                         <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>x</a>
                     </p>
                 </div>
@@ -1181,30 +1370,32 @@ var $exeDevice = {
 
         this.ideviceBody.innerHTML = html;
 
-        $exeDevicesEdition.iDevice.tabs.init("gameQEIdeviceForm");
+        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         tinymce.init({
             selector: '#trivialEText',
             height: 220,
-            language: "all",
+            language: 'all',
             width: 400,
-            plugins: [
-                'code paste textcolor'
-            ],
+            plugins: ['code paste textcolor'],
             paste_as_text: true,
-            entity_encoding: "raw",
-            toolbar: 'undo redo | removeformat | fontselect | formatselect | fontsizeselect |  bold italic underline |  alignleft aligncenter alignright alignjustify | forecolor backcolor ',
-            fontsize_formats: "8pt 10pt 12pt 14pt 18pt 24pt 36pt",
+            entity_encoding: 'raw',
+            toolbar:
+                'undo redo | removeformat | fontselect | formatselect | fontsizeselect |  bold italic underline |  alignleft aligncenter alignright alignjustify | forecolor backcolor ',
+            fontsize_formats: '8pt 10pt 12pt 14pt 18pt 24pt 36pt',
             menubar: false,
             statusbar: false,
             setup: function (ed) {
                 ed.on('init', function (e) {
                     $exeDevice.enableForm();
                 });
-            }
+            },
         });
 
-        $('#eXeGamePercentajeClue option[value=100]').attr('selected', 'selected');
+        $('#eXeGamePercentajeClue option[value=100]').attr(
+            'selected',
+            'selected'
+        );
         $('#labelPercentajeClue').hide();
         $('#eXeGamePercentajeClue').hide();
         $('#eXeGameSCORMButtonSave').hide();
@@ -1213,21 +1404,21 @@ var $exeDevice = {
 
     validTime: function (time) {
         const reg = /^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$/;
-        return (time.length == 8 && reg.test(time))
+        return time.length == 8 && reg.test(time);
     },
 
     initQuestions: function () {
         $('#trivialEInputVideo').css('display', 'flex');
         $('#trivialEInputImage').css('display', 'flex');
-        $("#trivialMediaNormal").prop("disabled", false);
-        $("#trivialMediaImage").prop("disabled", false);
-        $("#trivialMediaText").prop("disabled", false);
+        $('#trivialMediaNormal').prop('disabled', false);
+        $('#trivialMediaImage').prop('disabled', false);
+        $('#trivialMediaText').prop('disabled', false);
 
         let temas = [];
         for (let i = 0; i < 6; i++) {
             let tema = [];
             const question = this.getCuestionDefault();
-            tema.push(question)
+            tema.push(question);
             temas.push(tema);
         }
 
@@ -1236,7 +1427,7 @@ var $exeDevice = {
         $exeDevice.activesQuestions = [0, 0, 0, 0, 0, 0];
         $exeDevice.numeroTemas = 2;
         $exeDevice.showTema(0);
-        $exeDevice.changeTypeQuestion(0)
+        $exeDevice.changeTypeQuestion(0);
         $exeDevice.showOptions(4);
         $exeDevice.showSolution('');
         $exeDevice.showTypeQuestion(0);
@@ -1266,7 +1457,7 @@ var $exeDevice = {
             tSilentVideo: 0,
             solutionQuestion: '',
             percentageShow: 35,
-            audio: ''
+            audio: '',
         };
     },
 
@@ -1287,13 +1478,15 @@ var $exeDevice = {
             p: q.type,
             q: q.quextion,
             r: window.btoa(encodeURIComponent(q.solutionQuestion)),
-            s: window.btoa(encodeURIComponent(q.quextion.length.toString() + q.solution)),
+            s: window.btoa(
+                encodeURIComponent(q.quextion.length.toString() + q.solution)
+            ),
             t: q.eText,
             u: q.url,
             x: q.x,
             y: q.y,
             z: q.fVideo,
-            ad: q.audio
+            ad: q.audio,
         };
     },
 
@@ -1317,44 +1510,62 @@ var $exeDevice = {
             options: q.o.slice(0, 4),
             type: q.p,
             quextion: q.q,
-            solutionQuestion: $exeDevice.fixIfNeeded(unescape(window.atob(q.r))),
+            solutionQuestion: $exeDevice.fixIfNeeded(
+                unescape(window.atob(q.r))
+            ),
             solution: $exeDevice.fixIfNeeded(solution),
             eText: q.t,
             url: q.u,
             x: q.x,
             y: q.y,
             fVideo: q.z,
-            audio: q.ad
+            audio: q.ad,
         };
     },
 
     fixIfNeeded: function (str) {
         const misencodedSequences = [
-            'Ã¡', 'Ã©', 'Ã­', 'Ã³', 'Ãº', 'Ã±',
-            'Ã', 'Ã‰', 'Ã', 'Ã“', 'Ãš', 'Ã‘',
-            'Ã¼', 'Ãœ', 'Ã§', 'Ã‡', 'Â¿', 'Â¡',
-            'Âº', 'Âª', 'Â', 'Ã'
+            'Ã¡',
+            'Ã©',
+            'Ã­',
+            'Ã³',
+            'Ãº',
+            'Ã±',
+            'Ã',
+            'Ã‰',
+            'Ã',
+            'Ã“',
+            'Ãš',
+            'Ã‘',
+            'Ã¼',
+            'Ãœ',
+            'Ã§',
+            'Ã‡',
+            'Â¿',
+            'Â¡',
+            'Âº',
+            'Âª',
+            'Â',
+            'Ã',
         ];
-        const found = misencodedSequences.some(seq => str.includes(seq));
+        const found = misencodedSequences.some((seq) => str.includes(seq));
         if (found) {
             try {
                 return decodeURIComponent(escape(str));
             } catch (e) {
-
                 return str;
             }
         }
         return str;
     },
 
-
     isJsonString: function (str) {
         try {
             var o = JSON.parse(str, null, 2);
-            if (o && typeof o === "object") {
+            if (o && typeof o === 'object') {
                 return o;
             }
-        } catch (e) { }
+        } catch (e) {}
         return false;
     },
 
@@ -1364,18 +1575,25 @@ var $exeDevice = {
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             $exeDevice.activesQuestions = [0, 0, 0, 0, 0, 0];
 
-            const wrapper = $("<div></div>");
+            const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
             let json = $('.trivial-DataGame', wrapper).text(),
-                dataGame = $exeDevices.iDevice.gamification.helpers.isJsonString(json);
+                dataGame =
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json);
 
             dataGame = $exeDevice.Decrypt(dataGame);
-            dataGame.modeBoard = typeof dataGame.modeBoard == "undefined" ? false : dataGame.modeBoard;
+            dataGame.modeBoard =
+                typeof dataGame.modeBoard == 'undefined'
+                    ? false
+                    : dataGame.modeBoard;
 
             for (let i = 0; i < dataGame.numeroTemas; i++) {
                 let tema = dataGame.temas[i];
                 for (let j = 0; j < tema.length; j++) {
-                    tema[j].audio = typeof tema[j].audio == "undefined" ? "" : tema[j].audio;
+                    tema[j].audio =
+                        typeof tema[j].audio == 'undefined'
+                            ? ''
+                            : tema[j].audio;
                 }
 
                 for (let j = 0; j < tema.length; j++) {
@@ -1385,14 +1603,14 @@ var $exeDevice = {
                 }
 
                 const iq = parseInt($(this).text());
-                $imagesLink = $('.trivial-LinkImages-' + i, wrapper),
-                    $audiosLink = $('.trivial-LinkAudios-' + i, wrapper);
+                (($imagesLink = $('.trivial-LinkImages-' + i, wrapper)),
+                    ($audiosLink = $('.trivial-LinkAudios-' + i, wrapper)));
                 $imagesLink.each(function () {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < tema.length) {
                         tema[iq].url = $(this).attr('href');
                         if (tema[iq].url.length < 4 && tema[iq].type == 1) {
-                            tema[iq].url = "";
+                            tema[iq].url = '';
                         }
                     }
                 });
@@ -1402,7 +1620,7 @@ var $exeDevice = {
                     if (!isNaN(iq) && iq < tema.length) {
                         tema[iq].audio = $(this).attr('href');
                         if (tema[iq].audio.length < 4) {
-                            tema[iq].audio = "";
+                            tema[iq].audio = '';
                         }
                     }
                 });
@@ -1412,23 +1630,24 @@ var $exeDevice = {
             dataGame.temas = $exeDevice.temas;
             $exeDevice.numeroTemas = dataGame.numeroTemas;
 
-            let instructions = $(".trivial-instructions", wrapper);
+            let instructions = $('.trivial-instructions', wrapper);
             if (instructions.length == 1) {
-                instructions = instructions.html() || ''
-                $("#eXeGameInstructions").val(instructions)
+                instructions = instructions.html() || '';
+                $('#eXeGameInstructions').val(instructions);
             }
 
-            let textAfter = $(".trivial-extra-content", wrapper);
+            let textAfter = $('.trivial-extra-content', wrapper);
             if (textAfter.length == 1) {
-                textAfter = textAfter.html() || ''
-                $("#eXeIdeviceTextAfter").val(textAfter)
+                textAfter = textAfter.html() || '';
+                $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
             // i18n
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                dataGame.msgs
+            );
             $exeDevice.changeNumberTemas(dataGame.numeroTemas);
             $exeDevice.updateFieldGame(dataGame);
-
         }
     },
 
@@ -1437,32 +1656,58 @@ var $exeDevice = {
         $exeDevice.activesQuestions = [0, 0, 0, 0, 0, 0];
         $exeDevice.temas = game.temas;
         $exeDevice.nombresTemas = game.nombresTemas;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
-        game.evaluation = typeof game.evaluation != "undefined" ? game.evaluation : false;
-        game.evaluationID = typeof game.evaluationID != "undefined" ? game.evaluationID : '';
-        $exeDevice.trivialID = typeof game.trivialID == "undefined" ? $exeDevice.trivialID : game.trivialID;
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
+        game.evaluation =
+            typeof game.evaluation != 'undefined' ? game.evaluation : false;
+        game.evaluationID =
+            typeof game.evaluationID != 'undefined' ? game.evaluationID : '';
+        $exeDevice.trivialID =
+            typeof game.trivialID == 'undefined'
+                ? $exeDevice.trivialID
+                : game.trivialID;
         game.answersRamdon = game.answersRamdon || false;
-        $exeDevice.id = typeof game.id !== 'undefined' ? game.id : $exeDevice.getIdeviceID();
-        game.globalTime = typeof game.globalTime != 'undefined' ? game.globalTime : 0;
-        game.weighted = typeof game.weighted != "undefined" ? game.weighted : 100;
-        $('#eXeGamePercentajeClue option[value=100]').attr('selected', 'selected');
+        $exeDevice.id =
+            typeof game.id !== 'undefined'
+                ? game.id
+                : $exeDevice.getIdeviceID();
+        game.globalTime =
+            typeof game.globalTime != 'undefined' ? game.globalTime : 0;
+        game.weighted =
+            typeof game.weighted != 'undefined' ? game.weighted : 100;
+        $('#eXeGamePercentajeClue option[value=100]').attr(
+            'selected',
+            'selected'
+        );
         $('#eXeGamePercentajeClue').val(100);
-        $("input.TRVLE-NumeroTemas[name='tvlnt'][value='" + game.numeroTemas + "']").prop("checked", true)
+        $(
+            "input.TRVLE-NumeroTemas[name='tvlnt'][value='" +
+                game.numeroTemas +
+                "']"
+        ).prop('checked', true);
         $('#trivialEShowMinimize').prop('checked', game.showMinimize);
         $('#trivialEShowSolution').prop('checked', game.showSolution);
         $('#trivialETimeShowSolution').prop('disabled', !game.showSolution);
         $('#trivialETimeShowSolution').val(game.timeShowSolution);
-        $('#trivialModeBoard').prop("checked", game.modeBoard);
+        $('#trivialModeBoard').prop('checked', game.modeBoard);
         $('#trivialNumberTema').val(1);
         $('#trivialLoadGame').val('');
         $('#trivialNameTema').val(game.nombresTemas[0]);
         $('#trivialEEvaluation').prop('checked', game.evaluation);
         $('#trivialEEvaluationID').val(game.evaluationID);
-        $("#trivialEEvaluationID").prop('disabled', (!game.evaluation));
+        $('#trivialEEvaluationID').prop('disabled', !game.evaluation);
         $('#trivialEGlobalTimes').val(game.globalTime);
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(game.isScorm, game.textButtonScorm, game.repeatActivity, game.weighted);
-        $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+            game.isScorm,
+            game.textButtonScorm,
+            game.repeatActivity,
+            game.weighted
+        );
+        $exeDevice.showQuestion(
+            $exeDevice.activesQuestions[$exeDevice.activeTema]
+        );
     },
 
     save: function () {
@@ -1475,29 +1720,41 @@ var $exeDevice = {
         let fields = this.ci18n,
             i18n = fields;
         for (let i in fields) {
-            let fVal = $("#ci18n_" + i).val();
-            if (fVal != "") i18n[i] = fVal;
+            let fVal = $('#ci18n_' + i).val();
+            if (fVal != '') i18n[i] = fVal;
         }
 
         dataGame.msgs = i18n;
 
         let instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            divIntrunstion = instructions != "" ? '<div class="trivial-instructions">' + instructions + '</div>' : '',
+            divIntrunstion =
+                instructions != ''
+                    ? '<div class="trivial-instructions">' +
+                      instructions +
+                      '</div>'
+                    : '',
             linksImages = $exeDevice.createlinksImage(dataGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame);
 
         let html = '<div class="trivial-IDevice">';
         html += divIntrunstion;
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
-        html += '<div class="trivial-DataGame js-hidden">' + $exeDevice.Encrypt(dataGame) + '</div>';
+        html +=
+            '<div class="trivial-DataGame js-hidden">' +
+            $exeDevice.Encrypt(dataGame) +
+            '</div>';
         html += linksImages;
         html += linksAudios;
 
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
-        if (textAfter != "") {
-            html += '<div class="trivial-extra-content">' + textAfter + '</div>';
+        if (textAfter != '') {
+            html +=
+                '<div class="trivial-extra-content">' + textAfter + '</div>';
         }
-        html += '<div class="trivial-bns js-hidden">' + $exeDevice.msgs.msgNoSuportBrowser + '</div>';
+        html +=
+            '<div class="trivial-bns js-hidden">' +
+            $exeDevice.msgs.msgNoSuportBrowser +
+            '</div>';
         html += '</div>';
         if (html.length > 650000) {
             $exeDevice.showMessage($exeDevice.msgs.tooManyQuestions);
@@ -1508,14 +1765,20 @@ var $exeDevice = {
 
     validateAlt: function () {
         let altImage = $('#trivialEAlt').val();
-        if (!$exeDevice.checkAltImage || altImage !== "") return true;
-        if (altImage !== "") return true;
+        if (!$exeDevice.checkAltImage || altImage !== '') return true;
+        if (altImage !== '') return true;
 
-        eXe.app.confirm($exeDevice.msgs.msgTitleAltImageWarning, $exeDevice.msgs.msgAltImageWarning, function () {
-            $exeDevice.checkAltImage = false;
-            let saveButton = document.getElementsByClassName("button-save-idevice")[0];
-            saveButton.click();
-        })
+        eXe.app.confirm(
+            $exeDevice.msgs.msgTitleAltImageWarning,
+            $exeDevice.msgs.msgAltImageWarning,
+            function () {
+                $exeDevice.checkAltImage = false;
+                let saveButton = document.getElementsByClassName(
+                    'button-save-idevice'
+                )[0];
+                saveButton.click();
+            }
+        );
         return false;
     },
 
@@ -1531,45 +1794,45 @@ var $exeDevice = {
                 const mquestion = $exeDevice.getCuestionEncriptada(tema[i]);
                 ntema.push(mquestion);
             }
-            temas.push(ntema)
+            temas.push(ntema);
         }
 
         const data = {
-            'asignatura': '',
-            "author": '',
-            'authorVideo': '',
-            'typeGame': 'Trivial',
-            'endVideo': game.endVideo,
-            'idVideo': game.idVideo,
-            'startVideo': game.idVideo,
-            'instructionsExe': game.instructionsExe,
-            'instructions': game.instructions,
-            'showMinimize': game.showMinimize,
-            'optionsRamdon': game.optionsRamdon,
-            'answersRamdon': game.answersRamdon,
-            'showSolution': game.showSolution,
-            'timeShowSolution': game.timeShowSolution,
-            'useLives': game.useLives,
-            'numberLives': game.numberLives,
-            'itinerary': game.itinerary,
-            'numeroTemas': game.numeroTemas,
-            'nombresTemas': game.nombresTemas,
-            'temas': temas,
-            'isScorm': game.isScorm,
-            'textButtonScorm': game.textButtonScorm,
-            'repeatActivity': game.repeatActivity,
-            'weighted': game.weighted || 100,
-            'title': '',
-            'customScore': game.customScore,
-            'textAfter': game.textAfter,
-            'msgs': game.msgs,
-            'trivialID': game.trivialID,
-            "version": game.version,
-            "modeBoard": game.modeBoard,
-            "evaluation": game.evaluation,
-            "evaluationID": game.evaluationID,
-            "id": game.id
-        }
+            asignatura: '',
+            author: '',
+            authorVideo: '',
+            typeGame: 'Trivial',
+            endVideo: game.endVideo,
+            idVideo: game.idVideo,
+            startVideo: game.idVideo,
+            instructionsExe: game.instructionsExe,
+            instructions: game.instructions,
+            showMinimize: game.showMinimize,
+            optionsRamdon: game.optionsRamdon,
+            answersRamdon: game.answersRamdon,
+            showSolution: game.showSolution,
+            timeShowSolution: game.timeShowSolution,
+            useLives: game.useLives,
+            numberLives: game.numberLives,
+            itinerary: game.itinerary,
+            numeroTemas: game.numeroTemas,
+            nombresTemas: game.nombresTemas,
+            temas: temas,
+            isScorm: game.isScorm,
+            textButtonScorm: game.textButtonScorm,
+            repeatActivity: game.repeatActivity,
+            weighted: game.weighted || 100,
+            title: '',
+            customScore: game.customScore,
+            textAfter: game.textAfter,
+            msgs: game.msgs,
+            trivialID: game.trivialID,
+            version: game.version,
+            modeBoard: game.modeBoard,
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+            id: game.id,
+        };
         return JSON.stringify(data);
     },
 
@@ -1585,45 +1848,45 @@ var $exeDevice = {
                 const mquestion = $exeDevice.getCuestionDesEncriptada(tema[i]);
                 ntema.push(mquestion);
             }
-            temas.push(ntema)
+            temas.push(ntema);
         }
 
         var data = {
-            'asignatura': '',
-            "author": '',
-            'authorVideo': '',
-            'typeGame': 'Trivial',
-            'endVideo': game.endVideo,
-            'idVideo': game.idVideo,
-            'startVideo': game.idVideo,
-            'instructionsExe': game.instructionsExe,
-            'instructions': game.instructions,
-            'showMinimize': game.showMinimize,
-            'optionsRamdon': game.optionsRamdon,
-            'answersRamdon': game.answersRamdon,
-            'showSolution': game.showSolution,
-            'timeShowSolution': game.timeShowSolution,
-            'useLives': game.useLives,
-            'numberLives': game.numberLives,
-            'itinerary': game.itinerary,
-            'numeroTemas': game.numeroTemas,
-            'nombresTemas': game.nombresTemas,
-            'temas': temas,
-            'isScorm': game.isScorm,
-            'textButtonScorm': game.textButtonScorm,
-            'repeatActivity': game.repeatActivity,
-            'weighted': game.weighted || 100,
-            'title': '',
-            'customScore': game.customScore,
-            'textAfter': game.textAfter,
-            'msgs': game.msgs,
-            'trivialID': game.trivialID,
-            'version': game.version,
-            "modeBoard": game.modeBoard,
-            "evaluation": game.evaluation,
-            "evaluationID": game.evaluationID,
-            "id": game.id
-        }
+            asignatura: '',
+            author: '',
+            authorVideo: '',
+            typeGame: 'Trivial',
+            endVideo: game.endVideo,
+            idVideo: game.idVideo,
+            startVideo: game.idVideo,
+            instructionsExe: game.instructionsExe,
+            instructions: game.instructions,
+            showMinimize: game.showMinimize,
+            optionsRamdon: game.optionsRamdon,
+            answersRamdon: game.answersRamdon,
+            showSolution: game.showSolution,
+            timeShowSolution: game.timeShowSolution,
+            useLives: game.useLives,
+            numberLives: game.numberLives,
+            itinerary: game.itinerary,
+            numeroTemas: game.numeroTemas,
+            nombresTemas: game.nombresTemas,
+            temas: temas,
+            isScorm: game.isScorm,
+            textButtonScorm: game.textButtonScorm,
+            repeatActivity: game.repeatActivity,
+            weighted: game.weighted || 100,
+            title: '',
+            customScore: game.customScore,
+            textAfter: game.textAfter,
+            msgs: game.msgs,
+            trivialID: game.trivialID,
+            version: game.version,
+            modeBoard: game.modeBoard,
+            evaluation: game.evaluation,
+            evaluationID: game.evaluationID,
+            id: game.id,
+        };
         return data;
     },
 
@@ -1635,7 +1898,9 @@ var $exeDevice = {
     },
 
     borrarCuestion: function () {
-        const numberOptions = parseInt($('input[name=tvlnumber]:checked').val()),
+        const numberOptions = parseInt(
+                $('input[name=tvlnumber]:checked').val()
+            ),
             typeSelect = parseInt($('input[name=tvltypeselect]:checked').val()),
             quextion = $('#trivialEQuestion').val().trim();
         let options = [],
@@ -1652,7 +1917,7 @@ var $exeDevice = {
         if (quextion.length > 0) {
             return false;
         } else if (typeSelect < 2 && !optionEmpy) {
-            return false
+            return false;
         }
 
         return true;
@@ -1665,34 +1930,49 @@ var $exeDevice = {
             nombreTema = $('#trivialNameTema').val();
 
         if (nombreTema.length == 0) {
-            message = _("You must provide a name for this topic.");
+            message = _('You must provide a name for this topic.');
         }
         p.type = parseInt($('input[name=tvlmediatype]:checked').val());
         p.time = parseInt($('input[name=tvltime]:checked').val());
         p.numberOptions = parseInt($('input[name=tvlnumber]:checked').val());
-        p.typeSelect = parseInt($('input[name=tvltypeselect]:checked').val())
+        p.typeSelect = parseInt($('input[name=tvltypeselect]:checked').val());
         p.x = parseFloat($('#trivialEXImage').val());
-        p.y = parseFloat($('#trivialEYImage').val());;
+        p.y = parseFloat($('#trivialEYImage').val());
         p.author = $('#trivialEAuthor').val();
         p.alt = $('#trivialEAlt').val();
         p.customScore = 1;
         p.url = $('#trivialEURLImage').val().trim();
 
         if (p.type == 2) {
-            p.url = $exeDevices.iDevice.gamification.media.getIDYoutube($('#trivialEURLYoutube').val().trim()) ? $('#trivialEURLYoutube').val() : '';
+            p.url = $exeDevices.iDevice.gamification.media.getIDYoutube(
+                $('#trivialEURLYoutube').val().trim()
+            )
+                ? $('#trivialEURLYoutube').val()
+                : '';
             if (p.url == '') {
-                p.url = $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca($('#trivialEURLYoutube').val().trim()) ? $('#trivialEURLYoutube').val() : '';
+                p.url =
+                    $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                        $('#trivialEURLYoutube').val().trim()
+                    )
+                        ? $('#trivialEURLYoutube').val()
+                        : '';
             }
         }
 
         p.audio = $('#trivialEURLAudio').val();
         $exeDevice.stopSound();
-        $exeDevice.stopVideo()
+        $exeDevice.stopVideo();
         p.soundVideo = $('#trivialECheckSoundVideo').is(':checked') ? 1 : 0;
         p.imageVideo = $('#trivialECheckImageVideo').is(':checked') ? 1 : 0;
-        p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#trivialEInitVideo').val().trim());
-        p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#trivialEEndVideo').val().trim());
-        p.silentVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#trivialESilenceVideo').val().trim());
+        p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
+            $('#trivialEInitVideo').val().trim()
+        );
+        p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
+            $('#trivialEEndVideo').val().trim()
+        );
+        p.silentVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
+            $('#trivialESilenceVideo').val().trim()
+        );
         p.tSilentVideo = parseInt($('#trivialETimeSilence').val());
         p.eText = tinyMCE.get('trivialEText').getContent();
         p.quextion = $('#trivialEQuestion').val().trim();
@@ -1710,10 +1990,10 @@ var $exeDevice = {
             p.options.push(option);
         });
 
-        p.solutionQuestion = "";
+        p.solutionQuestion = '';
         if (p.typeSelect >= 2) {
             p.quextion = $('#trivialEDefinitionWord').val().trim();
-            p.solution = "";
+            p.solution = '';
             p.solutionQuestion = $('#trivialESolutionWord').val();
         }
         if (p.typeSelect == 3) {
@@ -1724,22 +2004,37 @@ var $exeDevice = {
         } else if (p.quextion.length == 0) {
             message = msgs.msgECompleteQuestion;
         } else if (p.typeSelect < 2 && optionEmpy) {
-            message = msgs.msgECompleteAllOptions
+            message = msgs.msgECompleteAllOptions;
         } else if (p.type == 1 && p.url.length < 5) {
             message = msgs.msgEURLValid;
         } else if (p.type == 2 && p.url.length == 0) {
             message = msgs.msgECompleteURLYoutube;
-        } else if (p.type == 2 && (p.iVideo.length == 0 || p.fVideo.length == 0)) {
+        } else if (
+            p.type == 2 &&
+            (p.iVideo.length == 0 || p.fVideo.length == 0)
+        ) {
             message = msgs.msgEStartEndVideo;
         } else if (p.type == 2 && p.iVideo >= p.fVideo) {
             message = msgs.msgEStartEndIncorrect;
         } else if (p.type == 3 && p.eText.length == 0) {
             message = msgs.msgWriteText;
-        } else if (p.type == 2 && !$exeDevice.validTime($('#trivialEInitVideo').val()) || !$exeDevice.validTime($('#trivialEEndVideo').val())) {
-            message = $exeDevice.msgs.msgTimeFormat
-        } else if (p.type == 2 && p.tSilentVideo > 0 && !$exeDevice.validTime($('#trivialESilenceVideo').val())) {
+        } else if (
+            (p.type == 2 &&
+                !$exeDevice.validTime($('#trivialEInitVideo').val())) ||
+            !$exeDevice.validTime($('#trivialEEndVideo').val())
+        ) {
+            message = $exeDevice.msgs.msgTimeFormat;
+        } else if (
+            p.type == 2 &&
+            p.tSilentVideo > 0 &&
+            !$exeDevice.validTime($('#trivialESilenceVideo').val())
+        ) {
             message = msgs.msgTimeFormat;
-        } else if (p.type == 2 && p.tSilentVideo > 0 && (p.silentVideo < p.iVideo || p.silentVideo >= p.fVideo)) {
+        } else if (
+            p.type == 2 &&
+            p.tSilentVideo > 0 &&
+            (p.silentVideo < p.iVideo || p.silentVideo >= p.fVideo)
+        ) {
             message = msgs.msgSilentPoint;
         } else if (p.typeSelect == 2 && p.solutionQuestion.trim().length == 0) {
             message = $exeDevice.msgs.msgProvideSolution;
@@ -1760,7 +2055,10 @@ var $exeDevice = {
     },
 
     stopSound: function () {
-        if ($exeDevice.playerAudio && typeof $exeDevice.playerAudio.pause == "function") {
+        if (
+            $exeDevice.playerAudio &&
+            typeof $exeDevice.playerAudio.pause == 'function'
+        ) {
             $exeDevice.playerAudio.pause();
         }
     },
@@ -1772,7 +2070,14 @@ var $exeDevice = {
             for (var i = 0; i < selectsGame.length; i++) {
                 const quextion = selectsGame[i];
                 if (quextion.type == 1 && quextion.url.indexOf('http') != 0) {
-                    const linkImage = '<a href="' + quextion.url + '" class="js-hidden trivial-LinkImages-' + j + '">' + i + '</a>';
+                    const linkImage =
+                        '<a href="' +
+                        quextion.url +
+                        '" class="js-hidden trivial-LinkImages-' +
+                        j +
+                        '">' +
+                        i +
+                        '</a>';
                     html += linkImage;
                 }
             }
@@ -1785,8 +2090,19 @@ var $exeDevice = {
             const selectsGame = $exeDevice.temas[j];
             for (let i = 0; i < selectsGame.length; i++) {
                 const quextion = selectsGame[i];
-                if (typeof quextion.audio != 'undefined' && quextion.audio.length > 4 && quextion.audio.indexOf('http') != 0) {
-                    const linkAudio = '<a href="' + quextion.audio + '" class="js-hidden trivial-LinkAudios-' + j + '">' + i + '</a>';
+                if (
+                    typeof quextion.audio != 'undefined' &&
+                    quextion.audio.length > 4 &&
+                    quextion.audio.indexOf('http') != 0
+                ) {
+                    const linkAudio =
+                        '<a href="' +
+                        quextion.audio +
+                        '" class="js-hidden trivial-LinkAudios-' +
+                        j +
+                        '">' +
+                        i +
+                        '</a>';
                     html += linkAudio;
                 }
             }
@@ -1801,7 +2117,7 @@ var $exeDevice = {
 
         const blob = JSON.stringify(dataGame),
             newBlob = new Blob([blob], {
-                type: "text/plain"
+                type: 'text/plain',
             });
         if (window.navigator && window.navigator.msSaveOrOpenBlob) {
             window.navigator.msSaveOrOpenBlob(newBlob);
@@ -1811,14 +2127,13 @@ var $exeDevice = {
 
         let link = document.createElement('a');
         link.href = data;
-        link.download = _("Activity") + "-TriviEx.json";
+        link.download = _('Activity') + '-TriviEx.json';
         document.getElementById('gameQEIdeviceForm').appendChild(link);
         link.click();
         setTimeout(function () {
             document.getElementById('gameQEIdeviceForm').removeChild(link);
             window.URL.revokeObjectURL(data);
         }, 100);
-
     },
     importQuExt: function (data) {
         for (let i = 0; i < data.questionsGame.length; i++) {
@@ -1861,10 +2176,11 @@ var $exeDevice = {
                 numOpt++;
             }
             if (p.type == 3) {
-                p.eText = p.eText
+                p.eText = p.eText;
             }
 
-            p.audio = typeof cuestion.audio == "undefined" ? "" : cuestion.audio;
+            p.audio =
+                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
             p.options = cuestion.options;
             p.solution = solution.charAt(cuestion.solution);
             p.silentVideo = cuestion.silentVideo;
@@ -1908,9 +2224,10 @@ var $exeDevice = {
                 numOpt++;
             }
             if (p.type == 3) {
-                p.eText = p.eText
+                p.eText = p.eText;
             }
-            p.audio = typeof cuestion.audio == "undefined" ? "" : cuestion.audio;
+            p.audio =
+                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
             p.options = cuestion.options;
             p.solution = cuestion.solution;
             p.silentVideo = cuestion.silentVideo;
@@ -1922,12 +2239,13 @@ var $exeDevice = {
     },
 
     importGame: function (content) {
-        const game = $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (!game || typeof game.typeGame == "undefined") {
+        const game =
+            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
+        if (!game || typeof game.typeGame == 'undefined') {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
         } else if (game.typeGame == 'Trivial') {
             game.trivialID = $exeDevice.getId();
-            game.id = $exeDevice.getIdeviceID()
+            game.id = $exeDevice.getIdeviceID();
             let temas = [];
             for (let i = 0; i < 6; i++) {
                 let tema = [];
@@ -1992,7 +2310,8 @@ var $exeDevice = {
                 cuestion = data.wordsGame[i];
             p.typeSelect = 2;
             p.type = cuestion.url.length > 10 ? 1 : 0;
-            p.time = cuestion.time || $exeDevice.getIndexTime(data.timeQuestion);
+            p.time =
+                cuestion.time || $exeDevice.getIndexTime(data.timeQuestion);
             p.numberOptions = 4;
             p.url = cuestion.url;
             p.x = cuestion.x;
@@ -2010,7 +2329,8 @@ var $exeDevice = {
             p.options.push('');
             p.options.push('');
             p.options.push('');
-            p.audio = typeof cuestion.audio == "undefined" ? "" : cuestion.audio;
+            p.audio =
+                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
             p.solution = '';
             p.silentVideo = 0;
             p.tSilentVideo = 0;
@@ -2018,17 +2338,16 @@ var $exeDevice = {
             p.percentageShow = cuestion.percentageShow || data.percentageShow;
             $exeDevice.temas[$exeDevice.activeTema].push(p);
         }
-
     },
     getIndexTime: function (time) {
         const timeIndexMap = {
-            '15': 0,
-            '30': 1,
-            '60': 2,
-            '180': 3,
-            '300': 4,
-            '600': 5,
-            '900': 6
+            15: 0,
+            30: 1,
+            60: 2,
+            180: 3,
+            300: 4,
+            600: 5,
+            900: 6,
         };
         return timeIndexMap.hasOwnProperty(time) ? timeIndexMap[time] : time;
     },
@@ -2037,11 +2356,17 @@ var $exeDevice = {
         for (let i = 0; i < data.wordsGame.length; i++) {
             const p = $exeDevice.getCuestionDefault(),
                 cuestion = data.wordsGame[i],
-                start = cuestion.type = 1 ? $exeDevice.msgs.msgContaint.replace('%1', cuestion.letter) : $exeDevice.msgs.msgStartWith.replace('%1', cuestion.letter);
+                start = (cuestion.type = 1
+                    ? $exeDevice.msgs.msgContaint.replace('%1', cuestion.letter)
+                    : $exeDevice.msgs.msgStartWith.replace(
+                          '%1',
+                          cuestion.letter
+                      ));
 
             p.typeSelect = 2;
             p.type = cuestion.url.length > 10 ? 1 : 0;
-            p.time = cuestion.time || $exeDevice.getIndexTime(data.timeQuestion);
+            p.time =
+                cuestion.time || $exeDevice.getIndexTime(data.timeQuestion);
             p.numberOptions = 4;
             p.url = cuestion.url;
             p.x = cuestion.x;
@@ -2059,7 +2384,8 @@ var $exeDevice = {
             p.options.push('');
             p.options.push('');
             p.options.push('');
-            p.audio = typeof cuestion.audio == "undefined" ? "" : cuestion.audio;
+            p.audio =
+                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
             p.solution = '';
             p.silentVideo = 0;
             p.tSilentVideo = 0;
@@ -2072,7 +2398,10 @@ var $exeDevice = {
     },
 
     getIdeviceID: function () {
-        const ideviceid = $('#gameQEIdeviceForm').closest(`div.idevice_node.${$exeDevice.classIdevice}`).attr('id') || '';
+        const ideviceid =
+            $('#gameQEIdeviceForm')
+                .closest(`div.idevice_node.${$exeDevice.classIdevice}`)
+                .attr('id') || '';
         return ideviceid;
     },
 
@@ -2088,7 +2417,9 @@ var $exeDevice = {
             answersRamdon = true,
             showSolution = $('#trivialEShowSolution').is(':checked'),
             modeBoard = $('#trivialModeBoard').is(':checked'),
-            timeShowSolution = parseInt(clear($('#trivialETimeShowSolution').val())),
+            timeShowSolution = parseInt(
+                clear($('#trivialETimeShowSolution').val())
+            ),
             useLives = false,
             numberLives = 3,
             numeroTemas = $exeDevice.numeroTemas,
@@ -2096,13 +2427,14 @@ var $exeDevice = {
             idVideo = '',
             endVideo = 0,
             startVideo = 0,
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = false,
             temas = [],
             evaluation = $('#trivialEEvaluation').is(':checked'),
             evaluationID = $('#trivialEEvaluationID').val(),
             globalTime = parseInt($('#trivialEGlobalTimes').val(), 10),
-            id = $exeDevice.getIdeviceID()
+            id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
 
@@ -2122,21 +2454,40 @@ var $exeDevice = {
             }
             const tema = $exeDevice.temas[z];
             for (let i = 0; i < tema.length; i++) {
-                const mquestion = tema[i]
-                mquestion.customScore = typeof (mquestion.customScore) == "undefined" ? 1 : mquestion.customScore;
+                const mquestion = tema[i];
+                mquestion.customScore =
+                    typeof mquestion.customScore == 'undefined'
+                        ? 1
+                        : mquestion.customScore;
                 if (mquestion.quextion.length == 0) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgCmpleteAllQuestions);
+                    $exeDevice.showMessage(
+                        $exeDevice.msgs.msgCmpleteAllQuestions
+                    );
                     return false;
-                } else if ((mquestion.type == 1) && (mquestion.url.length < 10)) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgCmpleteAllQuestions);
+                } else if (mquestion.type == 1 && mquestion.url.length < 10) {
+                    $exeDevice.showMessage(
+                        $exeDevice.msgs.msgCmpleteAllQuestions
+                    );
                     return false;
-                } else if ((mquestion.type == 2) && !($exeDevices.iDevice.gamification.media.getIDYoutube(mquestion.url)) && !($exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(mquestion.url))) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgCmpleteAllQuestions);
+                } else if (
+                    mquestion.type == 2 &&
+                    !$exeDevices.iDevice.gamification.media.getIDYoutube(
+                        mquestion.url
+                    ) &&
+                    !$exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                        mquestion.url
+                    )
+                ) {
+                    $exeDevice.showMessage(
+                        $exeDevice.msgs.msgCmpleteAllQuestions
+                    );
                     return false;
                 }
                 if (mquestion.typeSelect >= 2) {
                     if (mquestion.solutionQuestion.length == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgCmpleteAllQuestions);
+                        $exeDevice.showMessage(
+                            $exeDevice.msgs.msgCmpleteAllQuestions
+                        );
                         return false;
                     }
                 } else {
@@ -2147,20 +2498,22 @@ var $exeDevice = {
                         }
                     }
                     if (!completAnswer) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgCmpleteAllQuestions);
+                        $exeDevice.showMessage(
+                            $exeDevice.msgs.msgCmpleteAllQuestions
+                        );
                         return false;
                     }
                 }
             }
             for (let i = 0; i < tema.length; i++) {
-                const qt = tema[i]
+                const qt = tema[i];
                 if (qt.type == 1 && qt.url.length < 4) {
-                    qt.x = 0
+                    qt.x = 0;
                     qt.y = 0;
                     qt.author = '';
                     qt.alt = '';
                 } else if (qt.type == 2 && qt.url.length < 4) {
-                    qt.iVideo = 0
+                    qt.iVideo = 0;
                     qt.fVideo = 0;
                     qt.author = '';
                     qt.alt = '';
@@ -2174,45 +2527,45 @@ var $exeDevice = {
         const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
-            'asignatura': '',
-            "author": '',
-            'authorVideo': '',
-            'typeGame': 'Trivial',
-            'endVideo': endVideo,
-            'idVideo': idVideo,
-            'startVideo': startVideo,
-            'instructionsExe': instructionsExe,
-            'instructions': instructions,
-            'showMinimize': showMinimize,
-            'optionsRamdon': optionsRamdon,
-            'answersRamdon': answersRamdon,
-            'showSolution': showSolution,
-            'timeShowSolution': timeShowSolution,
-            'useLives': useLives,
-            'numberLives': numberLives,
-            'itinerary': itinerary,
-            'numeroTemas': numeroTemas,
-            'nombresTemas': nombresTemas,
-            'temas': temas,
-            'isScorm': scorm.isScorm,
-            'textButtonScorm': scorm.textButtonScorm,
-            'repeatActivity': scorm.repeatActivity,
-            'weighted': scorm.weighted ?? 100,
-            'title': '',
-            'customScore': customScore,
-            'textAfter': textAfter,
-            'trivialID': $exeDevice.trivialID,
-            'version': 3,
-            'modeBoard': modeBoard,
-            'evaluation': evaluation,
-            'evaluationID': evaluationID,
-            'globalTime': globalTime,
-            'id': id
-        }
+            asignatura: '',
+            author: '',
+            authorVideo: '',
+            typeGame: 'Trivial',
+            endVideo: endVideo,
+            idVideo: idVideo,
+            startVideo: startVideo,
+            instructionsExe: instructionsExe,
+            instructions: instructions,
+            showMinimize: showMinimize,
+            optionsRamdon: optionsRamdon,
+            answersRamdon: answersRamdon,
+            showSolution: showSolution,
+            timeShowSolution: timeShowSolution,
+            useLives: useLives,
+            numberLives: numberLives,
+            itinerary: itinerary,
+            numeroTemas: numeroTemas,
+            nombresTemas: nombresTemas,
+            temas: temas,
+            isScorm: scorm.isScorm,
+            textButtonScorm: scorm.textButtonScorm,
+            repeatActivity: scorm.repeatActivity,
+            weighted: scorm.weighted ?? 100,
+            title: '',
+            customScore: customScore,
+            textAfter: textAfter,
+            trivialID: $exeDevice.trivialID,
+            version: 3,
+            modeBoard: modeBoard,
+            evaluation: evaluation,
+            evaluationID: evaluationID,
+            globalTime: globalTime,
+            id: id,
+        };
     },
 
     removeTags: function (str) {
-        let wrapper = $("<div></div>");
+        let wrapper = $('<div></div>');
         wrapper.html(str);
         return wrapper.text();
     },
@@ -2231,11 +2584,11 @@ var $exeDevice = {
             $('label[for=trivialEDefinitionWord]').text(_('Definition'));
             $exeDevice.showFlex($('label[for=trivialESolutionWord]'));
             $exeDevice.hideFlex($('#trivialESolitionOptions'));
-            $('label[for=trivialEDefinitionWord]').css({ 'width': '11em' })
+            $('label[for=trivialEDefinitionWord]').css({ width: '11em' });
             if (type == 3) {
                 $('label[for=trivialEDefinitionWord]').text(_('Question'));
                 $exeDevice.hideFlex($('label[for=trivialESolutionWord]'));
-                $('label[for=trivialEDefinitionWord]').css({ 'width': 'auto' })
+                $('label[for=trivialEDefinitionWord]').css({ width: 'auto' });
                 $exeDevice.hideFlex($('#trivialESolutionWord'));
             }
         } else {
@@ -2254,21 +2607,27 @@ var $exeDevice = {
     addEvents: function () {
         $exeDevice.hideFlex($('#trivialEPaste'));
 
-        $('#trivialEInitVideo,#trivialEEndVideo,#trivialESilenceVideo').on('focusout', function () {
-            if (!$exeDevice.validTime(this.value)) {
+        $('#trivialEInitVideo,#trivialEEndVideo,#trivialESilenceVideo').on(
+            'focusout',
+            function () {
+                if (!$exeDevice.validTime(this.value)) {
+                    $(this).css({
+                        'background-color': 'red',
+                        color: 'white',
+                    });
+                }
+            }
+        );
+
+        $('#trivialEInitVideo,#trivialEEndVideo,#trivialESilenceVideo').on(
+            'click',
+            function () {
                 $(this).css({
-                    'background-color': 'red',
-                    'color': 'white'
+                    'background-color': 'white',
+                    color: '#2c6d2c',
                 });
             }
-        });
-
-        $('#trivialEInitVideo,#trivialEEndVideo,#trivialESilenceVideo').on('click', function () {
-            $(this).css({
-                'background-color': 'white',
-                'color': '#2c6d2c'
-            });
-        });
+        );
 
         $('#trivialShowCodeAccess').on('change', function () {
             const marcado = $(this).is(':checked');
@@ -2281,11 +2640,15 @@ var $exeDevice = {
             $exeDevice.changeTypeQuestion(type);
         });
 
-        $('#gameQEIdeviceForm').on('click', 'input.TRVLE-NumeroTemas', function (e) {
-            const numt = parseInt($(this).val());
-            $exeDevice.numeroTemas = numt;
-            $exeDevice.changeNumberTemas(numt);
-        });
+        $('#gameQEIdeviceForm').on(
+            'click',
+            'input.TRVLE-NumeroTemas',
+            function (e) {
+                const numt = parseInt($(this).val());
+                $exeDevice.numeroTemas = numt;
+                $exeDevice.changeNumberTemas(numt);
+            }
+        );
 
         $('.TRVLE-EPanel').on('click', 'input.TRVLE-TypeSelect', function (e) {
             const type = parseInt($(this).val());
@@ -2299,47 +2662,47 @@ var $exeDevice = {
 
         $('#trivialEAdd').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.addQuestion()
+            $exeDevice.addQuestion();
         });
 
         $('#trivialEFirst').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.firstQuestion()
+            $exeDevice.firstQuestion();
         });
 
         $('#trivialEPrevious').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.previousQuestion()
+            $exeDevice.previousQuestion();
         });
 
         $('#trivialENext').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.nextQuestion()
+            $exeDevice.nextQuestion();
         });
 
         $('#trivialELast').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.lastQuestion()
+            $exeDevice.lastQuestion();
         });
 
         $('#trivialEDelete').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.removeQuestion()
+            $exeDevice.removeQuestion();
         });
 
         $('#trivialECopy').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.copyQuestion()
+            $exeDevice.copyQuestion();
         });
 
         $('#trivialECut').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.cutQuestion()
+            $exeDevice.cutQuestion();
         });
 
         $('#trivialEPaste').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.pasteQuestion()
+            $exeDevice.pasteQuestion();
         });
 
         $('#trivialEPlayVideo').on('click', function (e) {
@@ -2408,7 +2771,12 @@ var $exeDevice = {
             }
         });
 
-        if (window.File && window.FileReader && window.FileList && window.Blob) {
+        if (
+            window.File &&
+            window.FileReader &&
+            window.FileList &&
+            window.Blob
+        ) {
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame').on('change', function (e) {
                 const file = e.target.files[0];
@@ -2426,11 +2794,19 @@ var $exeDevice = {
             $('#trivialLoadGame').on('change', function (e) {
                 const file = e.target.files[0];
                 if (!file) {
-                    eXe.app.alert(_("Select a file") + " (txt, json)");
+                    eXe.app.alert(_('Select a file') + ' (txt, json)');
                     return;
                 }
-                if (!file.type || !(file.type.match('text/plain') || file.type.match('application/json') || file.type.match('application/xml') || file.type.match('text/xml'))) {
-                    eXe.app.alert(_("Select a file") + " (txt, json)");
+                if (
+                    !file.type ||
+                    !(
+                        file.type.match('text/plain') ||
+                        file.type.match('application/json') ||
+                        file.type.match('application/xml') ||
+                        file.type.match('text/xml')
+                    )
+                ) {
+                    eXe.app.alert(_('Select a file') + ' (txt, json)');
                     return;
                 }
                 const reader = new FileReader();
@@ -2441,7 +2817,7 @@ var $exeDevice = {
             });
             $('#eXeGameExportGame').on('click', function () {
                 $exeDevice.exportGame();
-            })
+            });
         } else {
             $('#eXeGameExportImport').hide();
         }
@@ -2490,7 +2866,7 @@ var $exeDevice = {
             $timeV.val($('#trivialEVideoTime').text());
             $timeV.css({
                 'background-color': 'white',
-                'color': '#2c6d2c'
+                color: '#2c6d2c',
             });
         });
 
@@ -2513,7 +2889,9 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(_("Supported formats") + ": jpg, jpeg, gif, png, svg, webp");
+                $exeDevice.showMessage(
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
+                );
                 return false;
             }
             const url = selectedFile,
@@ -2529,7 +2907,9 @@ var $exeDevice = {
                 selectedFile = $('#trivialEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(_("Supported formats") + ": jpg, jpeg, gif, png, svg, webp");
+                $exeDevice.showMessage(
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
+                );
                 return false;
             }
             const url = selectedFile,
@@ -2571,13 +2951,24 @@ var $exeDevice = {
                 const num = parseInt($(this).val());
                 if (!isNaN(num) && num > 0) {
                     if ($exeDevice.validateQuestion()) {
-                        $exeDevice.activesQuestions[$exeDevice.activeTema] = num < $exeDevice.temas[$exeDevice.activeTema].length ? num - 1 : $exeDevice.temas[$exeDevice.activeTema].length - 1;
-                        $exeDevice.showQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+                        $exeDevice.activesQuestions[$exeDevice.activeTema] =
+                            num < $exeDevice.temas[$exeDevice.activeTema].length
+                                ? num - 1
+                                : $exeDevice.temas[$exeDevice.activeTema]
+                                      .length - 1;
+                        $exeDevice.showQuestion(
+                            $exeDevice.activesQuestions[$exeDevice.activeTema]
+                        );
                     } else {
-                        $(this).val($exeDevice.activesQuestions[$exeDevice.activeTema] + 1)
+                        $(this).val(
+                            $exeDevice.activesQuestions[$exeDevice.activeTema] +
+                                1
+                        );
                     }
                 } else {
-                    $(this).val($exeDevice.activesQuestions[$exeDevice.activeTema] + 1)
+                    $(this).val(
+                        $exeDevice.activesQuestions[$exeDevice.activeTema] + 1
+                    );
                 }
             }
         });
@@ -2586,8 +2977,8 @@ var $exeDevice = {
             const marcado = $(this).is(':checked');
             $('#trivialEEvaluationID').prop('disabled', !marcado);
         });
-        $("#trivialEEvaluationHelpLnk").click(function () {
-            $exeDevice.toggleFlex($("#trivialEEvaluationHelp"));
+        $('#trivialEEvaluationHelpLnk').click(function () {
+            $exeDevice.toggleFlex($('#trivialEEvaluationHelp'));
             return false;
         });
 
@@ -2598,12 +2989,16 @@ var $exeDevice = {
             for (let i = 0; i < $exeDevice.temas[activeTema].length; i++) {
                 $exeDevice.temas[activeTema][i].time = selectedTime;
             }
-            $('input.TRVLE-Times[name="tvltime"][value="' + selectedTime + '"]').prop('checked', true);
+            $(
+                'input.TRVLE-Times[name="tvltime"][value="' +
+                    selectedTime +
+                    '"]'
+            ).prop('checked', true);
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
-        $(".exe-block-dismissible .exe-block-close").click(function () {
+        $('.exe-block-dismissible .exe-block-close').click(function () {
             $(this).parent().fadeOut();
             return false;
         });
@@ -2626,10 +3021,9 @@ var $exeDevice = {
     importMoodle(xmlString) {
         const xmlDoc = $.parseXML(xmlString),
             $xml = $(xmlDoc);
-        if ($xml.find("GLOSSARY").length > 0) {
+        if ($xml.find('GLOSSARY').length > 0) {
             return $exeDevice.importGlosary(xmlString);
-        }
-        else if ($xml.find("quiz").length > 0) {
+        } else if ($xml.find('quiz').length > 0) {
             return $exeDevice.importCuestionaryXML(xmlString);
         } else {
             return false;
@@ -2637,35 +3031,42 @@ var $exeDevice = {
     },
     importCuestionaryXML: function (xmlText) {
         const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, "text/xml");
-        if ($(xmlDoc).find("parsererror").length > 0) {
+            xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+        if ($(xmlDoc).find('parsererror').length > 0) {
             return false;
         }
 
-        const quiz = $(xmlDoc).find("quiz").first();
+        const quiz = $(xmlDoc).find('quiz').first();
         if (quiz.length === 0) {
             return false;
         }
 
-        let questions = quiz.find("question"),
+        let questions = quiz.find('question'),
             questionsJson = [];
         for (var i = 0; i < questions.length; i++) {
             let question = questions[i],
                 type = $(question).attr('type');
-            if (type !== 'multichoice' && type !== 'truefalse' && type !== 'numerical' && type !== 'shortanswer') {
+            if (
+                type !== 'multichoice' &&
+                type !== 'truefalse' &&
+                type !== 'numerical' &&
+                type !== 'shortanswer'
+            ) {
                 continue;
             }
             let typeSelect = $(question).attr('type') === 'shortanswer' ? 2 : 0,
-                questionText = $(question).find("questiontext").first().text(),
-                answers = $(question).find("answer"),
+                questionText = $(question).find('questiontext').first().text(),
+                answers = $(question).find('answer'),
                 options = [],
                 solution = '',
                 solutionQuestion = '';
             if (typeSelect == 0) {
                 for (let j = 0; j < answers.length; j++) {
                     let answer = answers[j],
-                        answerHtml = $exeDevice.removeTags($(answer).find('text').eq(0).text().trim()),
-                        answerTextParts = answerHtml.split("\n"),
+                        answerHtml = $exeDevice.removeTags(
+                            $(answer).find('text').eq(0).text().trim()
+                        ),
+                        answerTextParts = answerHtml.split('\n'),
                         answerText = answerTextParts[0].trim();
                     options.push(answerText);
                     if ($(answer).attr('fraction') > 0) {
@@ -2677,9 +3078,11 @@ var $exeDevice = {
                 for (let j = 0; j < answers.length; j++) {
                     var answer = answers[j],
                         answerHtml = $(answer).find('text').eq(0).text().trim(),
-                        answerTextParts = answerHtml.split("\n")
-                    answerText = answerTextParts[0].trim(),
-                        currentFraction = parseInt($(answer).attr('fraction'));
+                        answerTextParts = answerHtml.split('\n');
+                    ((answerText = answerTextParts[0].trim()),
+                        (currentFraction = parseInt(
+                            $(answer).attr('fraction')
+                        )));
                     if (currentFraction > maxFraction) {
                         maxFraction = currentFraction;
                         solutionQuestion = answerText;
@@ -2691,7 +3094,7 @@ var $exeDevice = {
                 question: $exeDevice.removeTags(questionText.trim()),
                 options: options,
                 solution: solution,
-                solutionQuestion: solutionQuestion
+                solutionQuestion: solutionQuestion,
             });
         }
 
@@ -2702,19 +3105,31 @@ var $exeDevice = {
             p.typeSelect = question.typeSelect;
             if (p.typeSelect == 0) {
                 p.quextion = question.question;
-                p.options[0] = question.options.length > 0 ? question.options[0] : '';
-                p.options[1] = question.options.length > 1 ? question.options[1] : '';
-                p.options[2] = question.options.length > 2 ? question.options[2] : '';
-                p.options[3] = question.options.length > 3 ? question.options[3] : '';
+                p.options[0] =
+                    question.options.length > 0 ? question.options[0] : '';
+                p.options[1] =
+                    question.options.length > 1 ? question.options[1] : '';
+                p.options[2] =
+                    question.options.length > 2 ? question.options[2] : '';
+                p.options[3] =
+                    question.options.length > 3 ? question.options[3] : '';
                 p.solution = question.solution;
                 p.numberOptions = question.options.length;
                 if (p.numberOptions == 2) {
-                    p.options[0] = p.options[0] === 'true' ? _('True') : p.options[0];
-                    p.options[0] = p.options[0] === 'false' ? _('False') : p.options[0];
-                    p.options[1] = p.options[1] === 'true' ? _('True') : p.options[1];
-                    p.options[1] = p.options[1] === 'false' ? _('False') : p.options[1];
+                    p.options[0] =
+                        p.options[0] === 'true' ? _('True') : p.options[0];
+                    p.options[0] =
+                        p.options[0] === 'false' ? _('False') : p.options[0];
+                    p.options[1] =
+                        p.options[1] === 'true' ? _('True') : p.options[1];
+                    p.options[1] =
+                        p.options[1] === 'false' ? _('False') : p.options[1];
                 }
-                if (question.question && question.options && question.options.length > 1) {
+                if (
+                    question.question &&
+                    question.options &&
+                    question.options.length > 1
+                ) {
                     $exeDevice.selectsGame.push(p);
                     valids++;
                 }
@@ -2722,35 +3137,43 @@ var $exeDevice = {
                 p.quextion = question.question;
                 p.solutionQuestion = question.solutionQuestion;
                 p.percentageShow = 35;
-                if (question.question && question.question.length > 0 && question.solutionQuestion && question.solutionQuestion.length > 0) {
+                if (
+                    question.question &&
+                    question.question.length > 0 &&
+                    question.solutionQuestion &&
+                    question.solutionQuestion.length > 0
+                ) {
                     $exeDevice.selectsGame.push(p);
                     valids++;
                 }
             }
-        };
+        }
         return valids > 0 ? $exeDevice.selectsGame : false;
     },
 
     importGlosary: function (xmlText) {
         const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, "text/xml"),
+            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
             $xml = $(xmlDoc);
-        if ($xml.find("parsererror").length > 0) {
+        if ($xml.find('parsererror').length > 0) {
             return false;
         }
-        const $entries = $xml.find("ENTRIES").first();
+        const $entries = $xml.find('ENTRIES').first();
         if ($entries.length === 0) {
             return false;
         }
         let questionsJson = [];
-        $entries.find("ENTRY").each(function () {
+        $entries.find('ENTRY').each(function () {
             var $this = $(this),
-                concept = $this.find("CONCEPT").text(),
-                definition = $this.find("DEFINITION").text().replace(/<[^>]*>/g, '');  // Elimina HTML
+                concept = $this.find('CONCEPT').text(),
+                definition = $this
+                    .find('DEFINITION')
+                    .text()
+                    .replace(/<[^>]*>/g, ''); // Elimina HTML
             if (concept && definition) {
                 questionsJson.push({
                     solution: concept,
-                    question: definition
+                    question: definition,
                 });
             }
         });
@@ -2770,7 +3193,8 @@ var $exeDevice = {
     },
 
     gameAdd: function (content, filetype) {
-        const game = $exeDevices.iDevice.gamification.helpers.isJsonString(content);
+        const game =
+            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
         if (content && content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
@@ -2779,17 +3203,21 @@ var $exeDevice = {
             var questions = false;
             if (filetype.match('text/plain')) {
                 questions = $exeDevice.importText(content);
-            } else if (filetype.match('application/xml') || filetype.match('text/xml')) {
+            } else if (
+                filetype.match('application/xml') ||
+                filetype.match('text/xml')
+            ) {
                 questions = $exeDevice.importMoodle(content);
             }
             if (questions && questions.length > 0) {
                 $exeDevice.temas[$exeDevice.activeTema] = questions;
-                $exeDevice.selectsGame = $exeDevice.temas[$exeDevice.activeTema]
+                $exeDevice.selectsGame =
+                    $exeDevice.temas[$exeDevice.activeTema];
             } else {
                 $exeDevice.showMessage(_('Sorry, wrong file format'));
-                return
+                return;
             }
-        } else if (!game || typeof game.typeGame == "undefined") {
+        } else if (!game || typeof game.typeGame == 'undefined') {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
             $('#trivialLoadGame').val('');
             return;
@@ -2808,30 +3236,39 @@ var $exeDevice = {
         }
 
         if ($exeDevice.borrarCuestion()) {
-            $exeDevice.removeQuestion($exeDevice.activesQuestions[$exeDevice.activeTema]);
+            $exeDevice.removeQuestion(
+                $exeDevice.activesQuestions[$exeDevice.activeTema]
+            );
         }
 
         $exeDevice.typeEdit = -1;
         $('#trivialEPaste').hide();
-        $('#trivialENumQuestions').text($exeDevice.temas[$exeDevice.activeTema].length);
-        $('#trivialNumberQuestion').val($exeDevice.activesQuestions[$exeDevice.activeTema] + 1);
+        $('#trivialENumQuestions').text(
+            $exeDevice.temas[$exeDevice.activeTema].length
+        );
+        $('#trivialNumberQuestion').val(
+            $exeDevice.activesQuestions[$exeDevice.activeTema] + 1
+        );
     },
 
     importText: function (content) {
         let lines = content.split('\n'),
-            lineFormat = /^([0-3]|[ABCD]{0,4})#([^#]+)#([^#]+)#([^#]*)(#([^#]*))?(#([^#]*))?$/i,
+            lineFormat =
+                /^([0-3]|[ABCD]{0,4})#([^#]+)#([^#]+)#([^#]*)(#([^#]*))?(#([^#]*))?$/i,
             lineFormat1 = /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/,
             valids = 0,
-            questions = JSON.parse(JSON.stringify($exeDevice.temas[$exeDevice.activeTema]));
+            questions = JSON.parse(
+                JSON.stringify($exeDevice.temas[$exeDevice.activeTema])
+            );
 
         lines.forEach(function (line) {
             const p = $exeDevice.getCuestionDefault();
             if (lineFormat.test(line)) {
-                let linarray = line.trim().split("#"),
+                let linarray = line.trim().split('#'),
                     solution = linarray[0];
                 if (!isNaN(solution)) {
                     let index = parseInt(solution),
-                        letters = 'ABCD'
+                        letters = 'ABCD';
                     if (index >= 0 && index < letters.length) {
                         solution = letters.charAt(index);
                     }
@@ -2846,7 +3283,7 @@ var $exeDevice = {
                 questions.push(p);
                 valids++;
             } else if (lineFormat1.test(line)) {
-                var linarray1 = line.trim().split("#");
+                var linarray1 = line.trim().split('#');
                 p.typeSelect = 2;
                 p.solutionQuestion = linarray1[0];
                 p.quextion = linarray1[1];
@@ -2861,29 +3298,47 @@ var $exeDevice = {
     },
 
     setInputFilter: function (textbox, inputFilter) {
-        ["input", "keydown", "keyup", "mousedown", "mouseup", "select", "contextmenu", "drop"].forEach(function (event) {
+        [
+            'input',
+            'keydown',
+            'keyup',
+            'mousedown',
+            'mouseup',
+            'select',
+            'contextmenu',
+            'drop',
+        ].forEach(function (event) {
             textbox.addEventListener(event, function () {
                 if (inputFilter(this.value)) {
                     this.oldValue = this.value;
                     this.oldSelectionStart = this.selectionStart;
                     this.oldSelectionEnd = this.selectionEnd;
-                } else if (this.hasOwnProperty("oldValue")) {
+                } else if (this.hasOwnProperty('oldValue')) {
                     this.value = this.oldValue;
-                    this.setSelectionRange(this.oldSelectionStart, this.oldSelectionEnd);
+                    this.setSelectionRange(
+                        this.oldSelectionStart,
+                        this.oldSelectionEnd
+                    );
                 } else {
-                    this.value = "";
+                    this.value = '';
                 }
             });
         });
     },
 
     validateScoreQuestion: function (text) {
-        const isValid = text.length > 0 && text !== '.' && text !== ',' && /^-?\d*[.,]?\d*$/.test(text);
+        const isValid =
+            text.length > 0 &&
+            text !== '.' &&
+            text !== ',' &&
+            /^-?\d*[.,]?\d*$/.test(text);
         return isValid;
     },
 
     validateHhMm: function (text) {
-        const isValid = text.length > 0 && /^([0-1]?[0-9]|2[0-4]):([0-5][0-9])(:[0-5][0-9])?$/.test(text);
+        const isValid =
+            text.length > 0 &&
+            /^([0-1]?[0-9]|2[0-4]):([0-5][0-9])(:[0-5][0-9])?$/.test(text);
         return isValid;
     },
 
@@ -2894,7 +3349,7 @@ var $exeDevice = {
                 solutions += value;
             }
         } else {
-            solutions = solutions.split(value).join('')
+            solutions = solutions.split(value).join('');
         }
         $('#trivialESolutionSelect').text(solutions);
     },
@@ -2916,13 +3371,15 @@ var $exeDevice = {
         $cursor.css({
             left: posX + lI,
             top: posY + tI,
-            'z-index': 30
+            'z-index': 30,
         });
         $cursor.show();
     },
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
-        const wDiv = $(image).parent().width() > 0 ? $(image).parent().width() : 1,
-            hDiv = $(image).parent().height() > 0 ? $(image).parent().height() : 1,
+        const wDiv =
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+            hDiv =
+                $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,
             varH = naturalHeight / hDiv;
         let wImage = wDiv,
@@ -2943,16 +3400,16 @@ var $exeDevice = {
             w: wImage,
             h: hImage,
             x: xImagen,
-            y: yImagen
-        }
+            y: yImagen,
+        };
     },
 
     drawImage: function (image, mData) {
         $(image).css({
-            'left': mData.x + 'px',
-            'top': mData.y + 'px',
-            'width': mData.w + 'px',
-            'height': mData.h + 'px'
+            left: mData.x + 'px',
+            top: mData.y + 'px',
+            width: mData.w + 'px',
+            height: mData.h + 'px',
         });
     },
 
@@ -2989,4 +3446,4 @@ var $exeDevice = {
             }
         }
     },
-}
+};

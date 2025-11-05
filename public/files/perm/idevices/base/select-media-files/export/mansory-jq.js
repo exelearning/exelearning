@@ -7,7 +7,7 @@
  * by David DeSandro
  */
 /* eslint-disable */
-!(function (t, e) {
+(!(function (t, e) {
     'function' == typeof define && define.amd
         ? define('jquery-bridget/jquery-bridget', ['jquery'], function (i) {
               return e(t, i);
@@ -28,7 +28,7 @@
                         return void s(
                             i +
                                 ' not initialized. Cannot call methods, i.e. ' +
-                                r,
+                                r
                         );
                     var d = u[e];
                     if (!d || '_' == e.charAt(0))
@@ -47,7 +47,7 @@
                     : ((o = new r(n, e)), a.data(n, i, o));
             });
         }
-        (a = a || e || t.jQuery),
+        ((a = a || e || t.jQuery),
             a &&
                 (r.prototype.option ||
                     (r.prototype.option = function (t) {
@@ -59,9 +59,9 @@
                         var e = o.call(arguments, 1);
                         return h(this, t, e);
                     }
-                    return u(this, t), this;
+                    return (u(this, t), this);
                 }),
-                n(a));
+                n(a)));
     }
     function n(t) {
         !t || (t && t.bridget) || (t.bridget = i);
@@ -74,7 +74,7 @@
                 : function (t) {
                       r.error(t);
                   };
-    return n(e || t.jQuery), i;
+    return (n(e || t.jQuery), i);
 }),
     (function (t, e) {
         'function' == typeof define && define.amd
@@ -90,7 +90,7 @@
                 if (t && e) {
                     var i = (this._events = this._events || {}),
                         n = (i[t] = i[t] || []);
-                    return -1 == n.indexOf(e) && n.push(e), this;
+                    return (-1 == n.indexOf(e) && n.push(e), this);
                 }
             }),
             (e.once = function (t, e) {
@@ -98,20 +98,20 @@
                     this.on(t, e);
                     var i = (this._onceEvents = this._onceEvents || {}),
                         n = (i[t] = i[t] || {});
-                    return (n[e] = !0), this;
+                    return ((n[e] = !0), this);
                 }
             }),
             (e.off = function (t, e) {
                 var i = this._events && this._events[t];
                 if (i && i.length) {
                     var n = i.indexOf(e);
-                    return -1 != n && i.splice(n, 1), this;
+                    return (-1 != n && i.splice(n, 1), this);
                 }
             }),
             (e.emitEvent = function (t, e) {
                 var i = this._events && this._events[t];
                 if (i && i.length) {
-                    (i = i.slice(0)), (e = e || []);
+                    ((i = i.slice(0)), (e = e || []));
                     for (
                         var n = this._onceEvents && this._onceEvents[t], o = 0;
                         o < i.length;
@@ -119,13 +119,13 @@
                     ) {
                         var r = i[o],
                             s = n && n[r];
-                        s && (this.off(t, r), delete n[r]), r.apply(this, e);
+                        (s && (this.off(t, r), delete n[r]), r.apply(this, e));
                     }
                     return this;
                 }
             }),
             (e.allOff = function () {
-                delete this._events, delete this._onceEvents;
+                (delete this._events, delete this._onceEvents);
             }),
             t
         );
@@ -170,7 +170,7 @@
                     a(
                         'Style returned ' +
                             e +
-                            '. Are you running this code in a hidden iframe on Firefox? See https://bit.ly/getsizebug1',
+                            '. Are you running this code in a hidden iframe on Firefox? See https://bit.ly/getsizebug1'
                     ),
                 e
             );
@@ -179,17 +179,17 @@
             if (!d) {
                 d = !0;
                 var e = document.createElement('div');
-                (e.style.width = '200px'),
+                ((e.style.width = '200px'),
                     (e.style.padding = '1px 2px 3px 4px'),
                     (e.style.borderStyle = 'solid'),
                     (e.style.borderWidth = '1px 2px 3px 4px'),
-                    (e.style.boxSizing = 'border-box');
+                    (e.style.boxSizing = 'border-box'));
                 var i = document.body || document.documentElement;
                 i.appendChild(e);
                 var o = n(e);
-                (s = 200 == Math.round(t(o.width))),
+                ((s = 200 == Math.round(t(o.width))),
                     (r.isBoxSizeOuter = s),
-                    i.removeChild(e);
+                    i.removeChild(e));
             }
         }
         function r(e) {
@@ -201,7 +201,7 @@
                 var r = n(e);
                 if ('none' == r.display) return i();
                 var a = {};
-                (a.width = e.offsetWidth), (a.height = e.offsetHeight);
+                ((a.width = e.offsetWidth), (a.height = e.offsetHeight));
                 for (
                     var d = (a.isBorderBox = 'border-box' == r.boxSizing),
                         l = 0;
@@ -292,22 +292,22 @@
                   ['desandro-matches-selector/matches-selector'],
                   function (i) {
                       return e(t, i);
-                  },
+                  }
               )
             : 'object' == typeof module && module.exports
               ? (module.exports = e(t, require('desandro-matches-selector')))
               : (t.fizzyUIUtils = e(t, t.matchesSelector));
     })(window, function (t, e) {
         var i = {};
-        (i.extend = function (t, e) {
+        ((i.extend = function (t, e) {
             for (var i in e) t[i] = e[i];
             return t;
         }),
             (i.modulo = function (t, e) {
                 return ((t % e) + e) % e;
-            });
+            }));
         var n = Array.prototype.slice;
-        (i.makeArray = function (t) {
+        ((i.makeArray = function (t) {
             if (Array.isArray(t)) return t;
             if (null === t || void 0 === t) return [];
             var e = 'object' == typeof t && 'number' == typeof t.length;
@@ -357,7 +357,7 @@
                     var e = arguments,
                         r = this;
                     this[o] = setTimeout(function () {
-                        n.apply(r, e), delete r[o];
+                        (n.apply(r, e), delete r[o]);
                     }, i);
                 };
             }),
@@ -373,7 +373,7 @@
                         return e + '-' + i;
                     })
                     .toLowerCase();
-            });
+            }));
         var o = t.console;
         return (
             (i.htmlInit = function (e, n) {
@@ -399,7 +399,7 @@
                                         ' on ' +
                                         t.className +
                                         ': ' +
-                                        a,
+                                        a
                                 )
                             );
                         }
@@ -416,7 +416,7 @@
             ? define(
                   'outlayer/item',
                   ['ev-emitter/ev-emitter', 'get-size/get-size'],
-                  e,
+                  e
               )
             : 'object' == typeof module && module.exports
               ? (module.exports = e(require('ev-emitter'), require('get-size')))
@@ -426,7 +426,7 @@
         'use strict';
         function i(t) {
             for (var e in t) return !1;
-            return (e = null), !0;
+            return ((e = null), !0);
         }
         function n(t, e) {
             t &&
@@ -461,10 +461,10 @@
                 transitionDelay: s + 'Delay',
             },
             d = (n.prototype = Object.create(t.prototype));
-        (d.constructor = n),
+        ((d.constructor = n),
             (d._create = function () {
-                (this._transn = { ingProperties: {}, clean: {}, onEnd: {} }),
-                    this.css({ position: 'absolute' });
+                ((this._transn = { ingProperties: {}, clean: {}, onEnd: {} }),
+                    this.css({ position: 'absolute' }));
             }),
             (d.handleEvent = function (t) {
                 var e = 'on' + t.type;
@@ -489,14 +489,14 @@
                     r = parseFloat(n),
                     s = parseFloat(o),
                     a = this.layout.size;
-                -1 != n.indexOf('%') && (r = (r / 100) * a.width),
+                (-1 != n.indexOf('%') && (r = (r / 100) * a.width),
                     -1 != o.indexOf('%') && (s = (s / 100) * a.height),
                     (r = isNaN(r) ? 0 : r),
                     (s = isNaN(s) ? 0 : s),
                     (r -= e ? a.paddingLeft : a.paddingRight),
                     (s -= i ? a.paddingTop : a.paddingBottom),
                     (this.position.x = r),
-                    (this.position.y = s);
+                    (this.position.y = s));
             }),
             (d.layoutPosition = function () {
                 var t = this.layout.size,
@@ -507,15 +507,15 @@
                     r = i ? 'left' : 'right',
                     s = i ? 'right' : 'left',
                     a = this.position.x + t[o];
-                (e[r] = this.getXValue(a)), (e[s] = '');
+                ((e[r] = this.getXValue(a)), (e[s] = ''));
                 var h = n ? 'paddingTop' : 'paddingBottom',
                     u = n ? 'top' : 'bottom',
                     d = n ? 'bottom' : 'top',
                     l = this.position.y + t[h];
-                (e[u] = this.getYValue(l)),
+                ((e[u] = this.getYValue(l)),
                     (e[d] = ''),
                     this.css(e),
-                    this.emitEvent('layout', [this]);
+                    this.emitEvent('layout', [this]));
             }),
             (d.getXValue = function (t) {
                 var e = this.layout._getOption('horizontal');
@@ -539,12 +539,12 @@
                 var r = t - i,
                     s = e - n,
                     a = {};
-                (a.transform = this.getTranslate(r, s)),
+                ((a.transform = this.getTranslate(r, s)),
                     this.transition({
                         to: a,
                         onTransitionEnd: { transform: this.layoutPosition },
                         isCleaning: !0,
-                    });
+                    }));
             }),
             (d.getTranslate = function (t, e) {
                 var i = this.layout._getOption('originLeft'),
@@ -556,15 +556,15 @@
                 );
             }),
             (d.goTo = function (t, e) {
-                this.setPosition(t, e), this.layoutPosition();
+                (this.setPosition(t, e), this.layoutPosition());
             }),
             (d.moveTo = d._transitionTo),
             (d.setPosition = function (t, e) {
-                (this.position.x = parseFloat(t)),
-                    (this.position.y = parseFloat(e));
+                ((this.position.x = parseFloat(t)),
+                    (this.position.y = parseFloat(e)));
             }),
             (d._nonTransition = function (t) {
-                this.css(t.to), t.isCleaning && this._removeStyles(t.to);
+                (this.css(t.to), t.isCleaning && this._removeStyles(t.to));
                 for (var e in t.onTransitionEnd)
                     t.onTransitionEnd[e].call(this);
             }),
@@ -575,28 +575,28 @@
                 for (var i in t.onTransitionEnd)
                     e.onEnd[i] = t.onTransitionEnd[i];
                 for (i in t.to)
-                    (e.ingProperties[i] = !0),
-                        t.isCleaning && (e.clean[i] = !0);
+                    ((e.ingProperties[i] = !0),
+                        t.isCleaning && (e.clean[i] = !0));
                 if (t.from) {
                     this.css(t.from);
                     var n = this.element.offsetHeight;
                     n = null;
                 }
-                this.enableTransition(t.to),
+                (this.enableTransition(t.to),
                     this.css(t.to),
-                    (this.isTransitioning = !0);
-            });
+                    (this.isTransitioning = !0));
+            }));
         var l = 'opacity,' + o(a);
-        (d.enableTransition = function () {
+        ((d.enableTransition = function () {
             if (!this.isTransitioning) {
                 var t = this.layout.options.transitionDuration;
-                (t = 'number' == typeof t ? t + 'ms' : t),
+                ((t = 'number' == typeof t ? t + 'ms' : t),
                     this.css({
                         transitionProperty: l,
                         transitionDuration: t,
                         transitionDelay: this.staggerDelay || 0,
                     }),
-                    this.element.addEventListener(h, this, !1);
+                    this.element.addEventListener(h, this, !1));
             }
         }),
             (d.onwebkitTransitionEnd = function (t) {
@@ -604,9 +604,9 @@
             }),
             (d.onotransitionend = function (t) {
                 this.ontransitionend(t);
-            });
+            }));
         var c = { '-webkit-transform': 'transform' };
-        (d.ontransitionend = function (t) {
+        ((d.ontransitionend = function (t) {
             if (t.target === this.element) {
                 var e = this._transn,
                     n = c[t.propertyName] || t.propertyName;
@@ -619,21 +619,21 @@
                     n in e.onEnd)
                 ) {
                     var o = e.onEnd[n];
-                    o.call(this), delete e.onEnd[n];
+                    (o.call(this), delete e.onEnd[n]);
                 }
                 this.emitEvent('transitionEnd', [this]);
             }
         }),
             (d.disableTransition = function () {
-                this.removeTransitionStyles(),
+                (this.removeTransitionStyles(),
                     this.element.removeEventListener(h, this, !1),
-                    (this.isTransitioning = !1);
+                    (this.isTransitioning = !1));
             }),
             (d._removeStyles = function (t) {
                 var e = {};
                 for (var i in t) e[i] = '';
                 this.css(e);
-            });
+            }));
         var f = {
             transitionProperty: '',
             transitionDuration: '',
@@ -644,12 +644,12 @@
                 this.css(f);
             }),
             (d.stagger = function (t) {
-                (t = isNaN(t) ? 0 : t), (this.staggerDelay = t + 'ms');
+                ((t = isNaN(t) ? 0 : t), (this.staggerDelay = t + 'ms'));
             }),
             (d.removeElem = function () {
-                this.element.parentNode.removeChild(this.element),
+                (this.element.parentNode.removeChild(this.element),
                     this.css({ display: '' }),
-                    this.emitEvent('remove', [this]);
+                    this.emitEvent('remove', [this]));
             }),
             (d.remove = function () {
                 return s && parseFloat(this.layout.options.transitionDuration)
@@ -660,17 +660,17 @@
                     : void this.removeElem();
             }),
             (d.reveal = function () {
-                delete this.isHidden, this.css({ display: '' });
+                (delete this.isHidden, this.css({ display: '' }));
                 var t = this.layout.options,
                     e = {},
                     i = this.getHideRevealTransitionEndProperty('visibleStyle');
-                (e[i] = this.onRevealTransitionEnd),
+                ((e[i] = this.onRevealTransitionEnd),
                     this.transition({
                         from: t.hiddenStyle,
                         to: t.visibleStyle,
                         isCleaning: !0,
                         onTransitionEnd: e,
-                    });
+                    }));
             }),
             (d.onRevealTransitionEnd = function () {
                 this.isHidden || this.emitEvent('reveal');
@@ -681,17 +681,17 @@
                 for (var i in e) return i;
             }),
             (d.hide = function () {
-                (this.isHidden = !0), this.css({ display: '' });
+                ((this.isHidden = !0), this.css({ display: '' }));
                 var t = this.layout.options,
                     e = {},
                     i = this.getHideRevealTransitionEndProperty('hiddenStyle');
-                (e[i] = this.onHideTransitionEnd),
+                ((e[i] = this.onHideTransitionEnd),
                     this.transition({
                         from: t.visibleStyle,
                         to: t.hiddenStyle,
                         isCleaning: !0,
                         onTransitionEnd: e,
-                    });
+                    }));
             }),
             (d.onHideTransitionEnd = function () {
                 this.isHidden &&
@@ -724,7 +724,7 @@
                   ],
                   function (i, n, o, r) {
                       return e(t, i, n, o, r);
-                  },
+                  }
               )
             : 'object' == typeof module && module.exports
               ? (module.exports = e(
@@ -732,14 +732,14 @@
                     require('ev-emitter'),
                     require('get-size'),
                     require('fizzy-ui-utils'),
-                    require('./item'),
+                    require('./item')
                 ))
               : (t.Outlayer = e(
                     t,
                     t.EvEmitter,
                     t.getSize,
                     t.fizzyUIUtils,
-                    t.Outlayer.Item,
+                    t.Outlayer.Item
                 ));
     })(window, function (t, e, i, n, o) {
         'use strict';
@@ -752,15 +752,15 @@
                         'Bad element for ' +
                             this.constructor.namespace +
                             ': ' +
-                            (i || t),
+                            (i || t)
                     )
                 );
-            (this.element = i),
+            ((this.element = i),
                 u && (this.$element = u(this.element)),
                 (this.options = n.extend({}, this.constructor.defaults)),
-                this.option(e);
+                this.option(e));
             var o = ++l;
-            (this.element.outlayerGUID = o), (c[o] = this), this._create();
+            ((this.element.outlayerGUID = o), (c[o] = this), this._create());
             var r = this._getOption('initLayout');
             r && this.layout();
         }
@@ -789,7 +789,7 @@
             d = function () {},
             l = 0,
             c = {};
-        (r.namespace = 'outlayer'),
+        ((r.namespace = 'outlayer'),
             (r.Item = o),
             (r.defaults = {
                 containerStyle: { position: 'relative' },
@@ -801,9 +801,9 @@
                 transitionDuration: '0.4s',
                 hiddenStyle: { opacity: 0, transform: 'scale(0.001)' },
                 visibleStyle: { opacity: 1, transform: 'scale(1)' },
-            });
+            }));
         var f = r.prototype;
-        n.extend(f, e.prototype),
+        (n.extend(f, e.prototype),
             (f.option = function (t) {
                 n.extend(this.options, t);
             }),
@@ -823,10 +823,10 @@
                 resizeContainer: 'isResizingContainer',
             }),
             (f._create = function () {
-                this.reloadItems(),
+                (this.reloadItems(),
                     (this.stamps = []),
                     this.stamp(this.options.stamp),
-                    n.extend(this.element.style, this.options.containerStyle);
+                    n.extend(this.element.style, this.options.containerStyle));
                 var t = this._getOption('resize');
                 t && this.bindResize();
             }),
@@ -857,10 +857,10 @@
                 });
             }),
             (f.layout = function () {
-                this._resetLayout(), this._manageStamps();
+                (this._resetLayout(), this._manageStamps());
                 var t = this._getOption('layoutInstant'),
                     e = void 0 !== t ? t : !this._isLayoutInited;
-                this.layoutItems(this.items, e), (this._isLayoutInited = !0);
+                (this.layoutItems(this.items, e), (this._isLayoutInited = !0));
             }),
             (f._init = f.layout),
             (f._resetLayout = function () {
@@ -880,9 +880,9 @@
                     : (this[t] = 0);
             }),
             (f.layoutItems = function (t, e) {
-                (t = this._getItemsForLayout(t)),
+                ((t = this._getItemsForLayout(t)),
                     this._layoutItems(t, e),
-                    this._postLayout();
+                    this._postLayout());
             }),
             (f._getItemsForLayout = function (t) {
                 return t.filter(function (t) {
@@ -892,23 +892,23 @@
             (f._layoutItems = function (t, e) {
                 if ((this._emitCompleteOnItems('layout', t), t && t.length)) {
                     var i = [];
-                    t.forEach(function (t) {
+                    (t.forEach(function (t) {
                         var n = this._getItemLayoutPosition(t);
-                        (n.item = t),
+                        ((n.item = t),
                             (n.isInstant = e || t.isLayoutInstant),
-                            i.push(n);
+                            i.push(n));
                     }, this),
-                        this._processLayoutQueue(i);
+                        this._processLayoutQueue(i));
                 }
             }),
             (f._getItemLayoutPosition = function () {
                 return { x: 0, y: 0 };
             }),
             (f._processLayoutQueue = function (t) {
-                this.updateStagger(),
+                (this.updateStagger(),
                     t.forEach(function (t, e) {
                         this._positionItem(t.item, t.x, t.y, t.isInstant, e);
-                    }, this);
+                    }, this));
             }),
             (f.updateStagger = function () {
                 var t = this.options.stagger;
@@ -937,7 +937,7 @@
             (f._setContainerMeasure = function (t, e) {
                 if (void 0 !== t) {
                     var i = this.size;
-                    i.isBorderBox &&
+                    (i.isBorderBox &&
                         (t += e
                             ? i.paddingLeft +
                               i.paddingRight +
@@ -948,7 +948,8 @@
                               i.borderTopWidth +
                               i.borderBottomWidth),
                         (t = Math.max(t, 0)),
-                        (this.element.style[e ? 'width' : 'height'] = t + 'px');
+                        (this.element.style[e ? 'width' : 'height'] =
+                            t + 'px'));
                 }
             }),
             (f._emitCompleteOnItems = function (t, e) {
@@ -956,7 +957,7 @@
                     o.dispatchEvent(t + 'Complete', null, [e]);
                 }
                 function n() {
-                    s++, s == r && i();
+                    (s++, s == r && i());
                 }
                 var o = this,
                     r = e.length;
@@ -973,7 +974,7 @@
                         ((this.$element = this.$element || u(this.element)), e)
                     ) {
                         var o = u.Event(e);
-                        (o.type = t), this.$element.trigger(o, i);
+                        ((o.type = t), this.$element.trigger(o, i));
                     } else this.$element.trigger(t, i);
             }),
             (f.ignore = function (t) {
@@ -985,17 +986,17 @@
                 e && delete e.isIgnored;
             }),
             (f.stamp = function (t) {
-                (t = this._find(t)),
+                ((t = this._find(t)),
                     t &&
                         ((this.stamps = this.stamps.concat(t)),
-                        t.forEach(this.ignore, this));
+                        t.forEach(this.ignore, this)));
             }),
             (f.unstamp = function (t) {
-                (t = this._find(t)),
+                ((t = this._find(t)),
                     t &&
                         t.forEach(function (t) {
-                            n.removeFrom(this.stamps, t), this.unignore(t);
-                        }, this);
+                            (n.removeFrom(this.stamps, t), this.unignore(t));
+                        }, this));
             }),
             (f._find = function (t) {
                 return t
@@ -1035,11 +1036,11 @@
             }),
             (f.handleEvent = n.handleEvent),
             (f.bindResize = function () {
-                t.addEventListener('resize', this), (this.isResizeBound = !0);
+                (t.addEventListener('resize', this), (this.isResizeBound = !0));
             }),
             (f.unbindResize = function () {
-                t.removeEventListener('resize', this),
-                    (this.isResizeBound = !1);
+                (t.removeEventListener('resize', this),
+                    (this.isResizeBound = !1));
             }),
             (f.onresize = function () {
                 this.resize();
@@ -1055,7 +1056,7 @@
             }),
             (f.addItems = function (t) {
                 var e = this._itemize(t);
-                return e.length && (this.items = this.items.concat(e)), e;
+                return (e.length && (this.items = this.items.concat(e)), e);
             }),
             (f.appended = function (t) {
                 var e = this.addItems(t);
@@ -1065,19 +1066,19 @@
                 var e = this._itemize(t);
                 if (e.length) {
                     var i = this.items.slice(0);
-                    (this.items = e.concat(i)),
+                    ((this.items = e.concat(i)),
                         this._resetLayout(),
                         this._manageStamps(),
                         this.layoutItems(e, !0),
                         this.reveal(e),
-                        this.layoutItems(i);
+                        this.layoutItems(i));
                 }
             }),
             (f.reveal = function (t) {
                 if ((this._emitCompleteOnItems('reveal', t), t && t.length)) {
                     var e = this.updateStagger();
                     t.forEach(function (t, i) {
-                        t.stagger(i * e), t.reveal();
+                        (t.stagger(i * e), t.reveal());
                     });
                 }
             }),
@@ -1085,7 +1086,7 @@
                 if ((this._emitCompleteOnItems('hide', t), t && t.length)) {
                     var e = this.updateStagger();
                     t.forEach(function (t, i) {
-                        t.stagger(i * e), t.hide();
+                        (t.stagger(i * e), t.hide());
                     });
                 }
             }),
@@ -1116,26 +1117,27 @@
             }),
             (f.remove = function (t) {
                 var e = this.getItems(t);
-                this._emitCompleteOnItems('remove', e),
+                (this._emitCompleteOnItems('remove', e),
                     e &&
                         e.length &&
                         e.forEach(function (t) {
-                            t.remove(), n.removeFrom(this.items, t);
-                        }, this);
+                            (t.remove(), n.removeFrom(this.items, t));
+                        }, this));
             }),
             (f.destroy = function () {
                 var t = this.element.style;
-                (t.height = ''),
+                ((t.height = ''),
                     (t.position = ''),
                     (t.width = ''),
                     this.items.forEach(function (t) {
                         t.destroy();
                     }),
-                    this.unbindResize();
+                    this.unbindResize());
                 var e = this.element.outlayerGUID;
-                delete c[e],
+                (delete c[e],
                     delete this.element.outlayerGUID,
-                    u && u.removeData(this.element, this.constructor.namespace);
+                    u &&
+                        u.removeData(this.element, this.constructor.namespace));
             }),
             (r.data = function (t) {
                 t = n.getQueryElement(t);
@@ -1155,9 +1157,9 @@
                     u && u.bridget && u.bridget(t, i),
                     i
                 );
-            });
+            }));
         var m = { ms: 1, s: 1e3 };
-        return (r.Item = o), r;
+        return ((r.Item = o), r);
     }),
     (function (t, e) {
         'function' == typeof define && define.amd
@@ -1171,13 +1173,13 @@
         var n = i.prototype;
         return (
             (n._resetLayout = function () {
-                this.getSize(),
+                (this.getSize(),
                     this._getMeasurement('columnWidth', 'outerWidth'),
                     this._getMeasurement('gutter', 'outerWidth'),
                     this.measureColumns(),
-                    (this.colYs = []);
+                    (this.colYs = []));
                 for (var t = 0; t < this.cols; t++) this.colYs.push(0);
-                (this.maxY = 0), (this.horizontalColIndex = 0);
+                ((this.maxY = 0), (this.horizontalColIndex = 0));
             }),
             (n.measureColumns = function () {
                 if ((this.getContainerWidth(), !this.columnWidth)) {
@@ -1191,7 +1193,7 @@
                     r = o / n,
                     s = n - (o % n),
                     a = s && 1 > s ? 'round' : 'floor';
-                (r = Math[a](r)), (this.cols = Math.max(r, 1));
+                ((r = Math[a](r)), (this.cols = Math.max(r, 1)));
             }),
             (n.getContainerWidth = function () {
                 var t = this._getOption('fitWidth'),
@@ -1257,8 +1259,8 @@
                     a = Math.floor(r / this.columnWidth);
                 a = Math.max(0, a);
                 var h = Math.floor(s / this.columnWidth);
-                (h -= s % this.columnWidth ? 0 : 1),
-                    (h = Math.min(this.cols - 1, h));
+                ((h -= s % this.columnWidth ? 0 : 1),
+                    (h = Math.min(this.cols - 1, h)));
                 for (
                     var u = this._getOption('originTop'),
                         d = (u ? n.top : n.bottom) + i.outerHeight,
@@ -1284,8 +1286,8 @@
             }),
             (n.needsResizeLayout = function () {
                 var t = this.containerWidth;
-                return this.getContainerWidth(), t != this.containerWidth;
+                return (this.getContainerWidth(), t != this.containerWidth);
             }),
             i
         );
-    });
+    }));

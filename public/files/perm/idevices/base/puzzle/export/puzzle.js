@@ -35,7 +35,12 @@ var $eXePuzzle = {
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Puzzle', 'puzzle', 'puzzle-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Puzzle',
+            'puzzle',
+            'puzzle-IDevice'
+        );
     },
 
     enable: function () {
@@ -44,41 +49,67 @@ var $eXePuzzle = {
 
     stopAllSounds: function (instance) {
         const mOptions = $eXePuzzle.options[instance];
-        if (mOptions && $exeDevices && $exeDevices.iDevice && $exeDevices.iDevice.gamification && $exeDevices.iDevice.gamification.media) {
+        if (
+            mOptions &&
+            $exeDevices &&
+            $exeDevices.iDevice &&
+            $exeDevices.iDevice.gamification &&
+            $exeDevices.iDevice.gamification.media
+        ) {
             try {
                 $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            } catch (e) { /* noop */ }
+            } catch (e) {
+                /* noop */
+            }
         }
         const $container = $('#pzlMainContainer-' + instance);
         $container.find('audio, video').each(function () {
             try {
                 if (typeof this.pause === 'function') this.pause();
                 if (!isNaN(this.currentTime)) this.currentTime = 0;
-            } catch (e) { /* noop */ }
+            } catch (e) {
+                /* noop */
+            }
         });
     },
 
     bindFullscreenEvents: function (instance) {
         const mOptions = $eXePuzzle.options[instance];
         if (!mOptions) return;
-        const container = document.getElementById('pzlGameContainer-' + instance);
+        const container = document.getElementById(
+            'pzlGameContainer-' + instance
+        );
         if (!container) return;
 
         if (mOptions._fsBound) return;
 
         const handler = function () {
-            const el = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            const el =
+                document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement ||
+                document.msFullscreenElement;
             const isFS = el === container;
             if (isFS) {
                 container.classList.add('PZLP-IsFull');
             } else {
                 container.classList.remove('PZLP-IsFull');
             }
-            try { setTimeout(function () { $eXePuzzle.resizePuzzlePieces(instance); }, 50); } catch (e) { }
+            try {
+                setTimeout(function () {
+                    $eXePuzzle.resizePuzzlePieces(instance);
+                }, 50);
+            } catch (e) {}
         };
 
-        ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']
-            .forEach(function (evt) { document.addEventListener(evt, handler); });
+        [
+            'fullscreenchange',
+            'webkitfullscreenchange',
+            'mozfullscreenchange',
+            'MSFullscreenChange',
+        ].forEach(function (evt) {
+            document.addEventListener(evt, handler);
+        });
 
         mOptions._fsBound = true;
         mOptions._fsHandler = handler;
@@ -126,12 +157,10 @@ var $eXePuzzle = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $eXePuzzle,
-                node,
+                node
             );
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.puzzle-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.puzzle-IDevice');
     },
 
     getPhraseDefault: function () {
@@ -146,11 +175,11 @@ var $eXePuzzle = {
 
     loadDataGame: function (data, sthis) {
         let json = $exeDevices.iDevice.gamification.helpers.decrypt(
-            data.text(),
+            data.text()
         );
 
         const mOptions =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             $audiosDef = $('.puzzle-LinkAudiosDef', sthis),
             $imagesDef = $('.puzzle-LinkImagesDef', sthis),
             $audiosClue = $('.puzzle-LinkAudiosClue', sthis);
@@ -217,13 +246,13 @@ var $eXePuzzle = {
         mOptions.puzzlesGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.puzzlesGame,
-                mOptions.percentajeQuestions,
+                mOptions.percentajeQuestions
             );
 
         if (mOptions.randomPuzzles)
             mOptions.puzzlesGame =
                 $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.puzzlesGame,
+                    mOptions.puzzlesGame
                 );
 
         mOptions.numberQuestions = mOptions.puzzlesGame.length;
@@ -245,7 +274,7 @@ var $eXePuzzle = {
         $eXePuzzle.showMessage(
             3,
             mOptions.puzzlesGame[num].definition,
-            instance,
+            instance
         );
 
         [
@@ -264,7 +293,7 @@ var $eXePuzzle = {
         $('#pzlAuthor-' + instance).html(mOptions.puzzle.author);
         $('#pzlImage-' + instance).attr(
             'alt',
-            mOptions.puzzle.atl || mOptions.msgs.msgNoImage,
+            mOptions.puzzle.atl || mOptions.msgs.msgNoImage
         );
 
         ['PZLP-Tile', 'PZLP-TileChang', 'PZLP-Completed'].forEach((cls) => {
@@ -277,10 +306,18 @@ var $eXePuzzle = {
         $('#pzlAudioDef-' + instance).hide();
         $('#pzlAudioClue-' + instance).hide();
 
-        const container = document.getElementById('pzlGameContainer-' + instance);
-        if (container && (container === document.fullscreenElement || container.classList.contains('PZLP-IsFull'))) {
+        const container = document.getElementById(
+            'pzlGameContainer-' + instance
+        );
+        if (
+            container &&
+            (container === document.fullscreenElement ||
+                container.classList.contains('PZLP-IsFull'))
+        ) {
             $eXePuzzle.bindFullscreenEvents(instance);
-            setTimeout(function () { $eXePuzzle.resizePuzzlePieces(instance); }, 50);
+            setTimeout(function () {
+                $eXePuzzle.resizePuzzlePieces(instance);
+            }, 50);
         }
     },
 
@@ -438,7 +475,7 @@ var $eXePuzzle = {
         const mData = $eXePuzzle.placeImageWindows(
             image.naturalWidth,
             image.naturalHeight,
-            instance,
+            instance
         );
         q.data = mData;
 
@@ -451,7 +488,7 @@ var $eXePuzzle = {
             if (!mOptions.audiofirst)
                 $exeDevices.iDevice.gamification.media.playSound(
                     q.audioDefinition,
-                    mOptions,
+                    mOptions
                 );
             $('#pzlAudioDef-' + instance).css('display', 'block');
         }
@@ -529,7 +566,10 @@ var $eXePuzzle = {
             mOptions.counterClock = setInterval(function () {
                 let $node = $('#pzlMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -568,7 +608,7 @@ var $eXePuzzle = {
         for (let entry of entries) {
             if (entry.target.id === 'pzlGameContainer-' + instance) {
                 const isvisible = $('#pzlGameContainer-' + instance).is(
-                    ':visible',
+                    ':visible'
                 );
                 if (
                     typeof mOptions == 'undefined' ||
@@ -694,19 +734,24 @@ var $eXePuzzle = {
             pieceClass = q.type == 0 ? 'PZLP-Tile' : 'PZLP-TileChange',
             url = q.url;
 
-        let tileSizeX = (q && !isNaN(q.tileSizeX) && q.tileSizeX > 0)
-            ? Math.round(q.tileSizeX)
-            : (q.data && q.data.w ? Math.round(q.data.w / cols) : Math.round(($pzlImagePuzzle.width() || 0) / cols));
-        let tileSizeY = (q && !isNaN(q.tileSizeY) && q.tileSizeY > 0)
-            ? Math.round(q.tileSizeY)
-            : (q.data && q.data.h ? Math.round(q.data.h / rows) : Math.round(($pzlImagePuzzle.height() || 0) / rows));
+        let tileSizeX =
+            q && !isNaN(q.tileSizeX) && q.tileSizeX > 0
+                ? Math.round(q.tileSizeX)
+                : q.data && q.data.w
+                  ? Math.round(q.data.w / cols)
+                  : Math.round(($pzlImagePuzzle.width() || 0) / cols);
+        let tileSizeY =
+            q && !isNaN(q.tileSizeY) && q.tileSizeY > 0
+                ? Math.round(q.tileSizeY)
+                : q.data && q.data.h
+                  ? Math.round(q.data.h / rows)
+                  : Math.round(($pzlImagePuzzle.height() || 0) / rows);
 
         if (!tileSizeX || tileSizeX <= 0) tileSizeX = 1;
         if (!tileSizeY || tileSizeY <= 0) tileSizeY = 1;
 
         let width = tileSizeX * cols;
         let height = tileSizeY * rows;
-
 
         $pzlImagePuzzle.css({ width: width + 'px', height: height + 'px' });
 
@@ -745,7 +790,10 @@ var $eXePuzzle = {
         const counterClock = setInterval(() => {
             let $node = $('#pzlMainContainer-' + instance);
             let $content = $('#node-content');
-            if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+            if (
+                !$node.length ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
                 clearInterval(counterClock);
                 return;
             }
@@ -863,10 +911,14 @@ var $eXePuzzle = {
             isSolved = $eXePuzzle.checkCorrectPlaces(instance);
 
         mOptions.loading = false;
-        if (mOptions.attemps == 0 && q.audioDefinition.length > 4 && mOptions.audiofirst)
+        if (
+            mOptions.attemps == 0 &&
+            q.audioDefinition.length > 4 &&
+            mOptions.audiofirst
+        )
             $exeDevices.iDevice.gamification.media.playSound(
                 q.audioDefinition,
-                mOptions,
+                mOptions
             );
 
         mOptions.attemps++;
@@ -875,25 +927,22 @@ var $eXePuzzle = {
         if (isSolved) {
             mOptions.gameActived = true;
             if (q.audioClue && q.audioClue.length > 4) {
-
                 $eXePuzzle.stopAllSounds(instance);
                 $('#pzlAudioClue-' + instance).css('display', 'block');
                 $exeDevices.iDevice.gamification.media.playSound(
                     q.audioClue,
-                    mOptions,
+                    mOptions
                 );
             }
             $eXePuzzle.showSholution(instance);
-            if (
-                mOptions.isScorm == 1
-            ) {
+            if (mOptions.isScorm == 1) {
                 const score = (
                     (mOptions.hits * 10) /
                     mOptions.puzzlesGame.length
                 ).toFixed(2);
                 $eXePuzzle.sendScore(true, instance);
                 $('#pzlRepeatActivity-' + instance).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`,
+                    `${mOptions.msgs.msgYouScore}: ${score}`
                 );
                 $eXePuzzle.initialScore = score;
             }
@@ -923,7 +972,7 @@ var $eXePuzzle = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXePuzzle.isInExe,
+            $eXePuzzle.isInExe
         );
     },
 
@@ -962,7 +1011,7 @@ var $eXePuzzle = {
         $('#pzlMultimedia-' + instance).off('click', '.PZLP-Tile');
         $('#pzlImagePuzzle-' + instance).off('click', '.PZLP-TileChange');
         $('#pzlShowImage-' + instance).off(
-            'mouseenter click touchstart mouseleave touchend',
+            'mouseenter click touchstart mouseleave touchend'
         );
         $('#pzlShowNumber-' + instance).off('click touchstart');
         $('#pzlImagePuzzle-' + instance).off('click', '.PZLP-NextPuzzle');
@@ -975,10 +1024,15 @@ var $eXePuzzle = {
             mOptions.resizeObserver.unobserve(container);
         }
 
-
         if (mOptions._fsBound && mOptions._fsHandler) {
-            ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']
-                .forEach(function (evt) { document.removeEventListener(evt, mOptions._fsHandler); });
+            [
+                'fullscreenchange',
+                'webkitfullscreenchange',
+                'mozfullscreenchange',
+                'MSFullscreenChange',
+            ].forEach(function (evt) {
+                document.removeEventListener(evt, mOptions._fsHandler);
+            });
             mOptions._fsBound = false;
             mOptions._fsHandler = null;
         }
@@ -1023,14 +1077,14 @@ var $eXePuzzle = {
             function (e) {
                 e.preventDefault();
                 const element = document.getElementById(
-                    'pzlGameContainer-' + instance,
+                    'pzlGameContainer-' + instance
                 );
                 $eXePuzzle.bindFullscreenEvents(instance);
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
                     element,
-                    instance,
+                    instance
                 );
-            },
+            }
         );
 
         $('#pzlFeedBackClose-' + instance).on('click', function () {
@@ -1040,7 +1094,7 @@ var $eXePuzzle = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $('#pzlMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $('#pzlCodeAccessDiv-' + instance).show();
             $('#pzlCubierta-' + instance).show();
@@ -1051,7 +1105,7 @@ var $eXePuzzle = {
             function (e) {
                 e.preventDefault();
                 $eXePuzzle.enterCodeAccess(instance);
-            },
+            }
         );
 
         $('#pzlCodeAccessE-' + instance).on('keydown', function (event) {
@@ -1067,7 +1121,7 @@ var $eXePuzzle = {
         $(window).on('unload.eXePuzzle beforeunload.eXePuzzle', function () {
             if (typeof $eXePuzzle.mScorm != 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXePuzzle.mScorm,
+                    $eXePuzzle.mScorm
                 );
             }
         });
@@ -1106,7 +1160,7 @@ var $eXePuzzle = {
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $('#pzlAuthorGame-' + instance).html(
-                mOptions.msgs.msgAuthor + ': ' + mOptions.author,
+                mOptions.msgs.msgAuthor + ': ' + mOptions.author
             );
             $('#pzlAuthorGame-' + instance).show();
         }
@@ -1118,7 +1172,7 @@ var $eXePuzzle = {
         setTimeout(function () {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                $eXePuzzle.isInExe,
+                $eXePuzzle.isInExe
             );
         }, 500);
 
@@ -1129,7 +1183,7 @@ var $eXePuzzle = {
             if (sound && sound.length > 4) {
                 $exeDevices.iDevice.gamification.media.playSound(
                     sound,
-                    mOptions,
+                    mOptions
                 );
             }
         });
@@ -1140,7 +1194,7 @@ var $eXePuzzle = {
             if (sound && sound.length > 4) {
                 $exeDevices.iDevice.gamification.media.playSound(
                     sound,
-                    mOptions,
+                    mOptions
                 );
             }
         });
@@ -1174,7 +1228,7 @@ var $eXePuzzle = {
                         q.emptyY = tileY;
                         mOptions.gameActived = false;
                         $eXePuzzle.checkIfSolved(instance);
-                    },
+                    }
                 );
             }
         });
@@ -1218,7 +1272,7 @@ var $eXePuzzle = {
                             left: $tile.css('left'),
                             top: $tile.css('top'),
                         },
-                        300,
+                        300
                     );
                     $tile.animate(
                         {
@@ -1232,10 +1286,10 @@ var $eXePuzzle = {
                             mOptions.selectedTile = null;
                             mOptions.gameActived = false;
                             $eXePuzzle.checkIfSolved(instance);
-                        },
+                        }
                     );
                 }
-            },
+            }
         );
 
         $('#pzlShowImage-' + instance).on(
@@ -1246,7 +1300,7 @@ var $eXePuzzle = {
                     'z-index': '10',
                     display: 'block',
                 });
-            },
+            }
         );
 
         $('#pzlShowImage-' + instance).on('mouseleave touchend', function (e) {
@@ -1257,7 +1311,7 @@ var $eXePuzzle = {
         $('#pzlShowNumber-' + instance).on('click touchstart', function (e) {
             e.preventDefault();
             const $numbers = $('#pzlImagePuzzle-' + instance).find(
-                '.PZLP-NumberShow',
+                '.PZLP-NumberShow'
             );
             $numbers.each(function () {
                 let $number = $(this);
@@ -1278,7 +1332,7 @@ var $eXePuzzle = {
             function (e) {
                 e.preventDefault();
                 $eXePuzzle.nextPuzzle(instance);
-            },
+            }
         );
 
         $('#pzlImagePuzzle-' + instance).on(
@@ -1290,27 +1344,30 @@ var $eXePuzzle = {
                 $eXePuzzle.updateScoreRepeat(instance);
                 $eXePuzzle.showPuzzle(mOptions.active, instance);
                 $eXePuzzle.bindFullscreenEvents(instance);
-                setTimeout(function () { $eXePuzzle.resizePuzzlePieces(instance); }, 50);
-            },
+                setTimeout(function () {
+                    $eXePuzzle.resizePuzzlePieces(instance);
+                }, 50);
+            }
         );
 
         let resizeObserver = new ResizeObserver(
             $eXePuzzle.debounce(function (entries) {
                 $eXePuzzle.onContainerResize(instance, entries);
-            }, 100),
+            }, 100)
         );
 
         const container = document.getElementById(
-            'pzlGameContainer-' + instance,
+            'pzlGameContainer-' + instance
         );
         if (container) {
             resizeObserver.observe(container);
         }
 
-        $('#pzlMainContainer-' + instance).closest('article').on('click', '.box-toggle-on', function (e) {
-            $eXePuzzle.resizePuzzlePieces(instance);
-        });
-
+        $('#pzlMainContainer-' + instance)
+            .closest('article')
+            .on('click', '.box-toggle-on', function (e) {
+                $eXePuzzle.resizePuzzlePieces(instance);
+            });
     },
 
     placeImageWindows: function (naturalWidth, naturalHeight, instance) {
@@ -1322,17 +1379,23 @@ var $eXePuzzle = {
             $parent = $('#node-content-container');
         }
 
-        const container = document.getElementById('pzlGameContainer-' + instance);
-        const isFS = !!(container && (container.classList.contains('PZLP-IsFull') ||
-            document.fullscreenElement === container ||
-            document.webkitFullscreenElement === container ||
-            document.mozFullScreenElement === container ||
-            document.msFullscreenElement === container));
-
+        const container = document.getElementById(
+            'pzlGameContainer-' + instance
+        );
+        const isFS = !!(
+            container &&
+            (container.classList.contains('PZLP-IsFull') ||
+                document.fullscreenElement === container ||
+                document.webkitFullscreenElement === container ||
+                document.mozFullScreenElement === container ||
+                document.msFullscreenElement === container)
+        );
 
         let baseWidth = isFS
-            ? ($('#pzlMultimedia-' + instance).width() || $parent.width() || 900)
-            : ($parent.width() > 900 ? 900 : $parent.width());
+            ? $('#pzlMultimedia-' + instance).width() || $parent.width() || 900
+            : $parent.width() > 900
+              ? 900
+              : $parent.width();
         if (!baseWidth || baseWidth <= 0) baseWidth = 900;
 
         const wDiv = baseWidth,
@@ -1362,9 +1425,9 @@ var $eXePuzzle = {
 
     placeImageWindows1: function (naturalWidth, naturalHeight, instance) {
         const wDiv =
-            $('#pzlImageDiv-' + instance).width() > 200
-                ? $('#pzlImageDiv-' + instance).width()
-                : 900,
+                $('#pzlImageDiv-' + instance).width() > 200
+                    ? $('#pzlImageDiv-' + instance).width()
+                    : 900,
             hDiv =
                 $('#pzlImageDiv-' + instance).height() > 112
                     ? $('#pzlImageDiv-' + instance).height()
@@ -1413,8 +1476,7 @@ var $eXePuzzle = {
             $eXePuzzle.showPuzzle(mOptions.active, instance);
             setTimeout(function () {
                 $eXePuzzle.resizePuzzlePieces(instance);
-            }, 300)
-
+            }, 300);
         } else {
             $eXePuzzle.gameOver(1, instance);
         }
@@ -1514,7 +1576,7 @@ var $eXePuzzle = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1533,7 +1595,7 @@ var $eXePuzzle = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1552,7 +1614,7 @@ var $eXePuzzle = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1571,7 +1633,7 @@ var $eXePuzzle = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1583,14 +1645,14 @@ var $eXePuzzle = {
         $eXePuzzle.showMessage(messageColor, message, instance, true);
 
         $pzlOverNumCards.html(
-            msgs.msgActivities + ': ' + mOptions.puzzlesGame.length,
+            msgs.msgActivities + ': ' + mOptions.puzzlesGame.length
         );
         $pzlOverHits.html(msgs.msgHits + ': ' + mOptions.hits);
         $pzlOverErrors.html(msgs.msgErrors + ': ' + mOptions.errors);
         $pzlOverScore.html(
             msgs.msgScore +
-            ': ' +
-            ((mOptions.hits / mOptions.numberQuestions) * 10).toFixed(2),
+                ': ' +
+                ((mOptions.hits / mOptions.numberQuestions) * 10).toFixed(2)
         );
         $pzlGameOver.show();
         $pzlCubierta.show();
@@ -1618,16 +1680,14 @@ var $eXePuzzle = {
         $eXePuzzle.showScoreGame(type, instance);
         $eXePuzzle.saveEvaluation(instance);
 
-        if (
-            mOptions.isScorm === 1
-        ) {
+        if (mOptions.isScorm === 1) {
             const score = (
                 (mOptions.hits * 10) /
                 mOptions.puzzlesGame.length
             ).toFixed(2);
             $eXePuzzle.sendScore(true, instance);
             $(`#pzlRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`,
+                `${mOptions.msgs.msgYouScore}: ${score}`
             );
             $eXePuzzle.initialScore = score;
         }
@@ -1653,10 +1713,10 @@ var $eXePuzzle = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
                     instance,
-                    false,
+                    false
                 );
             }
         }
@@ -1688,7 +1748,7 @@ var $eXePuzzle = {
                 : mOptions.score.toFixed(2);
 
         $('#pzlPNumber-' + instance).text(
-            mOptions.puzzlesGame.length - mOptions.hits - mOptions.errors,
+            mOptions.puzzlesGame.length - mOptions.hits - mOptions.errors
         );
         $('#pzlPErrors-' + instance).text(mOptions.errors);
         $('#pzlPScore-' + instance).text(sscore);
@@ -1700,16 +1760,14 @@ var $eXePuzzle = {
         ) {
             mOptions.obtainedClue = true;
         }
-        if (
-            mOptions.isScorm === 1
-        ) {
+        if (mOptions.isScorm === 1) {
             const score = (
                 (mOptions.hits * 10) /
                 mOptions.puzzlesGame.length
             ).toFixed(2);
             $eXePuzzle.sendScore(true, instance);
             $(`#pzlRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`,
+                `${mOptions.msgs.msgYouScore}: ${score}`
             );
         }
         $eXePuzzle.saveEvaluation(instance);
@@ -1726,7 +1784,7 @@ var $eXePuzzle = {
                 : mOptions.score.toFixed(2);
 
         $('#pzlPNumber-' + instance).text(
-            mOptions.puzzlesGame.length - mOptions.hits - mOptions.errors,
+            mOptions.puzzlesGame.length - mOptions.hits - mOptions.errors
         );
         $('#pzlPErrors-' + instance).text(mOptions.errors);
         $('#pzlPScore-' + instance).text(sscore);

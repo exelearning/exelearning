@@ -25,41 +25,48 @@ var $trueorfalse = {
     initialScore: '',
     mScorm: null,
 
-    init: function () { },
+    init: function () {},
 
     renderView: function (data, accesibility, template, ideviceId) {
-        if (!data || typeof data !== 'object' || Object.keys(data).length === 0) return false;
+        if (!data || typeof data !== 'object' || Object.keys(data).length === 0)
+            return false;
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
         const medias = $trueorfalse.extractMediaElements(data.questionsGame);
         const htmlContent = $trueorfalse.createInterfaceTrueOrFalse(ldata);
-        const content = htmlContent + medias
+        const content = htmlContent + medias;
 
         const html = template.replace('{content}', content);
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.exe-trueorfalse-container',
+            '.exe-trueorfalse-container'
         );
 
         return html;
     },
 
-
     extractMediaElements: function (items) {
-        if (!Array.isArray(items)) return ''
+        if (!Array.isArray(items)) return '';
 
-        const tmp = document.createElement('div')
-        const set = new Set()
+        const tmp = document.createElement('div');
+        const set = new Set();
 
-        for (const { question = '', feedback = '', suggestion = '', baseText = '' } of items) {
-            tmp.innerHTML = `${question} ${feedback} ${suggestion} ${baseText}`
-            tmp.querySelectorAll('img, audio, video').forEach(el => set.add(el.outerHTML))
-            tmp.innerHTML = ''
+        for (const {
+            question = '',
+            feedback = '',
+            suggestion = '',
+            baseText = '',
+        } of items) {
+            tmp.innerHTML = `${question} ${feedback} ${suggestion} ${baseText}`;
+            tmp.querySelectorAll('img, audio, video').forEach((el) =>
+                set.add(el.outerHTML)
+            );
+            tmp.innerHTML = '';
         }
-        return `<div class="questionsMedia" style="display:none">${[...set].join('')}</div>`
+        return `<div class="questionsMedia" style="display:none">${[...set].join('')}</div>`;
     },
 
-
     renderBehaviour(data, accesibility, ideviceId) {
-        if (!data || typeof data !== 'object' || Object.keys(data).length === 0) return false;
+        if (!data || typeof data !== 'object' || Object.keys(data).length === 0)
+            return false;
         const ldata = $trueorfalse.updateConfig(data, ideviceId);
 
         const questionsHtml = $trueorfalse.generateTrueFalseQuizHtml(ldata);
@@ -67,44 +74,51 @@ var $trueorfalse = {
         $('#tofPMultimedia-' + ldata.id).empty();
         $('#tofPMultimedia-' + ldata.id).append(questionsHtml);
 
-        if (!($('html').is('#exe-index'))) {
+        if (!$('html').is('#exe-index')) {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
-        if (document.body.classList.contains('exe-scorm') && ldata.isScorm > 0) {
-            if (typeof window.scorm !== "undefined" && window.scorm.init()) {
+        if (
+            document.body.classList.contains('exe-scorm') &&
+            ldata.isScorm > 0
+        ) {
+            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
                 this.initScormData(ldata);
             } else {
                 this.loadSCORM_API_wrapper(ldata);
             }
         } else if (ldata.isScorm > 0) {
-            $exeDevices.iDevice.gamification.scorm.registerActivity(ldata)
+            $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
         }
 
         $trueorfalse.addEvents(ldata);
 
-        const dataString = JSON.stringify(ldata)
-        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
-
+        const dataString = JSON.stringify(ldata);
+        const hasLatex =
+            $exeDevices.iDevice.gamification.math.hasLatex(dataString);
 
         if (!hasLatex) return;
-        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+        const mathjaxLoaded = typeof window.MathJax !== 'undefined';
 
         if (!mathjaxLoaded) {
             $exeDevices.iDevice.gamification.math.loadMathJax();
         } else {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#tofPMainContainer-' + ldata.id,
+                '#tofPMainContainer-' + ldata.id
             );
         }
-
-
     },
 
     initScormData: function (ldata) {
         $trueorfalse.mScorm = window.scorm;
-        $trueorfalse.userName = $exeDevices.iDevice.gamification.scorm.getUserName($trueorfalse.mScorm);
-        $trueorfalse.previousScore = $exeDevices.iDevice.gamification.scorm.getPreviousScore($trueorfalse.mScorm);
+        $trueorfalse.userName =
+            $exeDevices.iDevice.gamification.scorm.getUserName(
+                $trueorfalse.mScorm
+            );
+        $trueorfalse.previousScore =
+            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
+                $trueorfalse.mScorm
+            );
 
         if (typeof $trueorfalse.mScorm.SetScoreMax === 'function') {
             $trueorfalse.mScorm.SetScoreMax(100);
@@ -118,7 +132,7 @@ var $trueorfalse = {
             $trueorfalse.mScorm.SetScoreMin(0);
         }
         $trueorfalse.initialScore = $trueorfalse.previousScore;
-        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata)
+        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
     },
 
     updateConfig: function (odata, ideviceId) {
@@ -131,11 +145,12 @@ var $trueorfalse = {
         data.id = ideviceId ?? data.ideviceId;
         data.main = 'tofPMainContainer-' + data.id;
         data.idevice = 'idevice_node';
-        data.title = "Verdadero o falso";
+        data.title = 'Verdadero o falso';
 
         const $idevice = $('#' + data.id);
         if ($idevice.length) {
-            data.title = $idevice.closest('article')
+            data.title = $idevice
+                .closest('article')
                 .find('header .box-title')
                 .text();
         }
@@ -145,13 +160,14 @@ var $trueorfalse = {
         const $idevices = $('.idevice_node');
         data.ideviceNumber = $idevices.index($('#' + data.id)) + 1;
 
-
         data.isTest = typeof data.isTest === 'undefined' ? false : data.isTest;
 
         data.hits = 0;
         data.errors = 0;
         data.scorerp = 0;
-        data.numberQuestions = data.questionsGame ? data.questionsGame.length : 0;
+        data.numberQuestions = data.questionsGame
+            ? data.questionsGame.length
+            : 0;
 
         data.gameStarted = false;
         data.gameOver = false;
@@ -168,20 +184,27 @@ var $trueorfalse = {
             data.eXeGameInstructions = data.eXeFormInstructions ?? '';
             data.eXeIdeviceTextAfter = '';
             data.msgs = $trueorfalse.msgsdefault;
-            data.questionsGame = data.questionsData.map(q => ({
+            data.questionsGame = data.questionsData.map((q) => ({
                 question: q.baseText || '',
                 answer: q.answer || '',
                 feedback: q.feedback || '',
                 suggestion: q.hint || '',
-                solution: q.answer === 'True' ? 1 : 0
+                solution: q.answer === 'True' ? 1 : 0,
             }));
             data.gameStarted = true;
-            data.showSlider = false
+            data.showSlider = false;
         }
         if (data.percentageQuestions < 100) {
-            data.questionsGame = $exeDevices.iDevice.gamification.helpers.getQuestions(data.questionsGame, data.percentageQuestions)
+            data.questionsGame =
+                $exeDevices.iDevice.gamification.helpers.getQuestions(
+                    data.questionsGame,
+                    data.percentageQuestions
+                );
         } else if (data.questionsRandom) {
-            data.questionsGame = $exeDevices.iDevice.gamification.helpers.shuffleAds(data.questionsGame)
+            data.questionsGame =
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(
+                    data.questionsGame
+                );
         }
         data.numberQuestions = data.questionsGame.length;
         data.current = 0;
@@ -196,59 +219,66 @@ var $trueorfalse = {
         const idRes = ideviceId;
         if (!idRes) return htmlString;
 
-        const basePath = document.documentElement.id === 'exe-index'
-            ? `content/resources/${idRes}/`
-            : `../content/resources/${idRes}/`;
+        const basePath =
+            document.documentElement.id === 'exe-index'
+                ? `content/resources/${idRes}/`
+                : `../content/resources/${idRes}/`;
 
-        const custom = document.documentElement.id === 'exe-index'
-            ? 'custom/'
-            : '../custom/';
+        const custom =
+            document.documentElement.id === 'exe-index'
+                ? 'custom/'
+                : '../custom/';
 
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlString, 'text/html');
-        doc.querySelectorAll('img[src], video[src], audio[src], a[href], source[src]')
-            .forEach(el => {
-                const attr = el.hasAttribute('src') ? 'src' : 'href';
-                let val = el.getAttribute(attr).trim();
+        doc.querySelectorAll(
+            'img[src], video[src], audio[src], a[href], source[src]'
+        ).forEach((el) => {
+            const attr = el.hasAttribute('src') ? 'src' : 'href';
+            let val = el.getAttribute(attr).trim();
 
-                val = val.replace(/\\/g, '/').replace(/\/+/g, '/');
-                
-                let pathname = val;
-                
-                try {
-                    const baseURL = window.location.origin === 'null' || window.location.protocol === 'file:' 
-                        ? window.location.href 
+            val = val.replace(/\\/g, '/').replace(/\/+/g, '/');
+
+            let pathname = val;
+
+            try {
+                const baseURL =
+                    window.location.origin === 'null' ||
+                    window.location.protocol === 'file:'
+                        ? window.location.href
                         : window.location.origin;
-                    const u = new URL(val, baseURL);
-                    pathname = u.pathname;
-                } catch {
-                    pathname = val;
-                }
+                const u = new URL(val, baseURL);
+                pathname = u.pathname;
+            } catch {
+                pathname = val;
+            }
 
-                pathname = pathname.replace(/\\/g, '/').replace(/\/+/g, '/');
+            pathname = pathname.replace(/\\/g, '/').replace(/\/+/g, '/');
 
-                if (/^\/?files\//.test(pathname)) {
-                    if (pathname.indexOf('file_manager') === -1) {
-                        const filename = pathname.split('/').pop() || '';
-                        el.setAttribute(attr, basePath + filename);
+            if (/^\/?files\//.test(pathname)) {
+                if (pathname.indexOf('file_manager') === -1) {
+                    const filename = pathname.split('/').pop() || '';
+                    el.setAttribute(attr, basePath + filename);
+                } else {
+                    const fileManagerIndex = pathname.indexOf('file_manager/');
+                    if (fileManagerIndex !== -1) {
+                        const relativePath = pathname.substring(
+                            fileManagerIndex + 'file_manager/'.length
+                        );
+                        el.setAttribute(attr, custom + relativePath);
                     } else {
-                        const fileManagerIndex = pathname.indexOf('file_manager/');
-                        if (fileManagerIndex !== -1) {
-                            const relativePath = pathname.substring(fileManagerIndex + 'file_manager/'.length);
-                            el.setAttribute(attr, custom + relativePath);
-                        } else {
-                            const filename = pathname.split('/').pop() || '';
-                            el.setAttribute(attr, custom + filename);
-                        }
+                        const filename = pathname.split('/').pop() || '';
+                        el.setAttribute(attr, custom + filename);
                     }
                 }
-            });
+            }
+        });
 
         return doc.body.innerHTML;
     },
 
     loadSCORM_API_wrapper: function (data) {
-        let parsedData = (typeof data === 'string') ? JSON.parse(data) : data;
+        let parsedData = typeof data === 'string' ? JSON.parse(data) : data;
         if (typeof pipwerks === 'undefined') {
             const escapedData = $trueorfalse.escapeForCallback(parsedData);
             eXe.app.loadScript(
@@ -267,7 +297,7 @@ var $trueorfalse = {
     },
 
     loadSCOFunctions: function (data) {
-        let parsedData = (typeof data === 'string') ? JSON.parse(data) : data;
+        let parsedData = typeof data === 'string' ? JSON.parse(data) : data;
         if (typeof scorm === 'undefined') {
             const escapedData = $trueorfalse.escapeForCallback(parsedData);
             eXe.app.loadScript(
@@ -280,13 +310,13 @@ var $trueorfalse = {
     },
 
     initSCORM: function (ldata) {
-        let parsedData = (typeof ldata === 'string') ? JSON.parse(ldata) : ldata;
+        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
         $trueorfalse.mScorm = scorm;
-        if ($trueorfalse.mScorm.init()); {
+        if ($trueorfalse.mScorm.init());
+        {
             $trueorfalse.initScormData(parsedData);
         }
     },
-
 
     escapeForCallback: function (obj) {
         let json = JSON.stringify(obj);
@@ -300,7 +330,7 @@ var $trueorfalse = {
         mOptions.scorerp = score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            mOptions.isInExe,
+            mOptions.isInExe
         );
     },
 
@@ -369,8 +399,8 @@ var $trueorfalse = {
 
     generateTrueFalseQuizHtml: function (data) {
         const html = data.showSlider
-            ? $trueorfalse.generateSlideshow(data) :
-            $trueorfalse.generatePage(data);
+            ? $trueorfalse.generateSlideshow(data)
+            : $trueorfalse.generatePage(data);
         return html;
     },
 
@@ -405,7 +435,7 @@ var $trueorfalse = {
                     ${$trueorfalse.replaceDirPath(question.feedback, instance)}
                 </div>            
             </div>
-        `,
+        `
             )
             .join('');
 
@@ -424,7 +454,7 @@ var $trueorfalse = {
         const msgs = mOptions.msgs;
 
         if (typeof itemsPerSlide !== 'number' || itemsPerSlide < 1) {
-            return $trueorfalse.generatePage(data)
+            return $trueorfalse.generatePage(data);
         }
 
         const grouped = [];
@@ -432,10 +462,12 @@ var $trueorfalse = {
             grouped.push(questionsGame.slice(i, i + itemsPerSlide));
         }
 
-        const slidesHtml = grouped.map((group, slideIdx) => {
-            const questionsHtml = group.map((question, idx) => {
-                const index = slideIdx * itemsPerSlide + idx;
-                return `
+        const slidesHtml = grouped
+            .map((group, slideIdx) => {
+                const questionsHtml = group
+                    .map((question, idx) => {
+                        const index = slideIdx * itemsPerSlide + idx;
+                        return `
           <div class="TOFP-QuestionDiv" data-number="${index}">
             <div class="TOFP-Question">${$trueorfalse.replaceDirPath(question.question, instance)}</div>
             <a href="#" class="TOFP-ShowSuggestion ${!question.suggestion.trim() ? 'TOFP-EHidden' : ''}">
@@ -452,10 +484,12 @@ var $trueorfalse = {
               ${$trueorfalse.replaceDirPath(question.feedback, instance)}
             </div>
           </div>`;
-            }).join('');
+                    })
+                    .join('');
 
-            return `<div class="TOFP-SlideshowSlide" data-slide="${slideIdx}">${questionsHtml}</div>`;
-        }).join('');
+                return `<div class="TOFP-SlideshowSlide" data-slide="${slideIdx}">${questionsHtml}</div>`;
+            })
+            .join('');
         return `
       <div class="TOFP-SlideshowContainer" id="tofpSlideShow-${instance}">
         <div class="TOFP-SlideshowControls">
@@ -474,7 +508,6 @@ var $trueorfalse = {
     `;
     },
 
-
     removeEvents: function (data) {
         const instance = data.id;
         $(window).off('unload.eXeTOF beforeunload.eXeTOF');
@@ -486,7 +519,7 @@ var $trueorfalse = {
         $(`#tofPGameContainer-${instance}`).off('click', '.TOFP-Answer');
         $(`#tofPGameContainer-${instance}`).off(
             'click',
-            '.TOFP-ShowSuggestion',
+            '.TOFP-ShowSuggestion'
         );
     },
     addEventsSlideShow: function (data) {
@@ -494,94 +527,128 @@ var $trueorfalse = {
         const instance = data.id;
         mOptions.current = 0;
         if (mOptions.showSlider) {
-            const $slideshow = $('#tofPMultimedia-' + instance).find('.TOFP-SlideshowContainer');
+            const $slideshow = $('#tofPMultimedia-' + instance).find(
+                '.TOFP-SlideshowContainer'
+            );
             const $wrapper = $slideshow.find('.TOFP-SlideshowWrapper');
             const $slides = $wrapper.children();
             const total = $slides.length;
-            $slideshow.find('.TOFP-SlideNumber').text(`${mOptions.current + 1}/${total}`)
+            $slideshow
+                .find('.TOFP-SlideNumber')
+                .text(`${mOptions.current + 1}/${total}`);
             if (total > 1) {
-                $slideshow.find('.TOFP-SlideshowControl').removeClass('TOFP-EHidden');
+                $slideshow
+                    .find('.TOFP-SlideshowControl')
+                    .removeClass('TOFP-EHidden');
                 $wrapper.css({ position: 'relative' });
                 let heights = $slides.map((i, el) => $(el).outerHeight()).get();
                 let maxHeight = Math.max(...heights);
-                const controlsHeight = $slideshow.find('.TOFP-SlideshowControl').outerHeight(true) + 30;
+                const controlsHeight =
+                    $slideshow
+                        .find('.TOFP-SlideshowControl')
+                        .outerHeight(true) + 30;
                 $wrapper.css('height', maxHeight);
                 $slideshow.css('height', maxHeight + controlsHeight);
 
-                $slides.css({ position: 'absolute', top: 0, left: 0, width: '100%' })
+                $slides
+                    .css({
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                    })
                     .hide()
                     .eq(0)
                     .show();
 
                 function goToNext() {
                     const next = (mOptions.current + 1) % total;
-                    $slides.eq(mOptions.current)
+                    $slides
+                        .eq(mOptions.current)
                         .animate({ left: '100%' }, 300, function () {
                             $(this).hide().css({ left: 0 });
                         });
-                    $slides.eq(next)
+                    $slides
+                        .eq(next)
                         .css({ left: '-100%' })
                         .show()
                         .animate({ left: 0 }, 300, function () {
                             const h = $slides.eq(next).outerHeight();
                             $wrapper.animate({ height: h }, 300);
-                            $slideshow.animate({ height: h + controlsHeight }, 300);
+                            $slideshow.animate(
+                                { height: h + controlsHeight },
+                                300
+                            );
                         });
                     mOptions.current = next;
-                    $slideshow.find('.TOFP-SlideNumber').text(`${mOptions.current + 1}/${total}`)
+                    $slideshow
+                        .find('.TOFP-SlideNumber')
+                        .text(`${mOptions.current + 1}/${total}`);
                 }
 
                 function goToPrev() {
                     const prev = (mOptions.current - 1 + total) % total;
-                    $slides.eq(mOptions.current)
+                    $slides
+                        .eq(mOptions.current)
                         .animate({ left: '-100%' }, 300, function () {
                             $(this).hide().css({ left: 0 });
                         });
 
-                    $slides.eq(prev)
+                    $slides
+                        .eq(prev)
                         .css({ left: '100%' })
                         .show()
                         .animate({ left: 0 }, 300, function () {
-                            const h = $slides.eq(prev).outerHeight() + controlsHeight + 20;
+                            const h =
+                                $slides.eq(prev).outerHeight() +
+                                controlsHeight +
+                                20;
                             $wrapper.animate({ height: h }, 300);
                             $slideshow.animate({ height: h }, 300);
                         });
                     mOptions.current = prev;
-                    $slideshow.find('.TOFP-SlideNumber').text(`${mOptions.current + 1}/${total}`)
+                    $slideshow
+                        .find('.TOFP-SlideNumber')
+                        .text(`${mOptions.current + 1}/${total}`);
                 }
                 $slideshow.find('.TOFP-SlideshowNext').off('click');
-                $slideshow.find('.TOFP-SlideshowNext').on('click', function (e) {
-                    e.preventDefault();
-                    goToNext();
-                });
-                $slideshow.find('.TOFP-SlideshowPrev').off('click')
-                $slideshow.find('.TOFP-SlideshowPrev').on('click', function (e) {
-                    e.preventDefault();
-                    goToPrev();
-                });
+                $slideshow
+                    .find('.TOFP-SlideshowNext')
+                    .on('click', function (e) {
+                        e.preventDefault();
+                        goToNext();
+                    });
+                $slideshow.find('.TOFP-SlideshowPrev').off('click');
+                $slideshow
+                    .find('.TOFP-SlideshowPrev')
+                    .on('click', function (e) {
+                        e.preventDefault();
+                        goToPrev();
+                    });
             }
         }
-
-
     },
     resizeSlideShow: function (data) {
         const mOptions = data;
         const instance = data.id;
         if (mOptions.showSlider) {
-            const $slideshow = $('#tofpSlideShow-' + instance)
+            const $slideshow = $('#tofpSlideShow-' + instance);
             const $wrapper = $slideshow.find('.TOFP-SlideshowWrapper');
-            const controlsHeight = $slideshow.find('.TOFP-SlideshowControls').outerHeight(true) + 30;
-            const maxHeight = $slideshow.find('.TOFP-SlideshowSlide').eq(mOptions.current).outerHeight();
+            const controlsHeight =
+                $slideshow.find('.TOFP-SlideshowControls').outerHeight(true) +
+                30;
+            const maxHeight = $slideshow
+                .find('.TOFP-SlideshowSlide')
+                .eq(mOptions.current)
+                .outerHeight();
             $wrapper.css('height', maxHeight);
             $slideshow.css('height', maxHeight + controlsHeight);
         }
-
     },
     addEvents: function (data) {
         $(document).on('questionsReady', function (e, questions) {
             //var container = $('#questionsContainer');
             //container.empty();
-
             //$.each(questions, function(index, question) {
             //$('<p/>').text(question).appendTo(container);
             //});
@@ -596,7 +663,7 @@ var $trueorfalse = {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $trueorfalse.sendScore(true, mOptions);
                 $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $trueorfalse.mScorm,
+                    $trueorfalse.mScorm
                 );
             }
         });
@@ -627,7 +694,7 @@ var $trueorfalse = {
                 }
                 const $parentDiv = $(this).closest('.TOFP-QuestionDiv');
                 if (mOptions.showSlider) {
-                    $trueorfalse.resizeSlideShow(mOptions)
+                    $trueorfalse.resizeSlideShow(mOptions);
                 }
 
                 const number = parseInt($parentDiv.data('number'));
@@ -650,15 +717,15 @@ var $trueorfalse = {
                     $trueorfalse.updateScoreData(mOptions);
                     $trueorfalse.sendScore(true, mOptions);
                     $trueorfalse.initialScore = score;
-
                 }
-            });
+            }
+        );
 
         $('#tofPCheckTest-' + instance).on('click', function (e) {
             e.preventDefault();
             $trueorfalse.gameOver(mOptions);
             if (mOptions.showSlider) {
-                $trueorfalse.resizeSlideShow(mOptions)
+                $trueorfalse.resizeSlideShow(mOptions);
             }
         });
 
@@ -673,14 +740,15 @@ var $trueorfalse = {
             ) {
                 mOptions.questionsGame =
                     $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                        mOptions.questionsGame,
+                        mOptions.questionsGame
                     );
             }
-            const questionsHtml = $trueorfalse.generateTrueFalseQuizHtml(mOptions);
+            const questionsHtml =
+                $trueorfalse.generateTrueFalseQuizHtml(mOptions);
             $('#tofPMultimedia-' + mOptions.id).empty();
             $('#tofPMultimedia-' + mOptions.id).append(questionsHtml);
             if (mOptions.showSlider) {
-                $trueorfalse.addEventsSlideShow(mOptions)
+                $trueorfalse.addEventsSlideShow(mOptions);
             }
             $trueorfalse.startGame(mOptions);
         });
@@ -713,15 +781,14 @@ var $trueorfalse = {
                         alt: altText,
                     });
                     if (mOptions.showSlider) {
-                        $trueorfalse.resizeSlideShow(mOptions)
+                        $trueorfalse.resizeSlideShow(mOptions);
                     }
                 });
-            },
+            }
         );
         if (mOptions.showSlider) {
-            $trueorfalse.addEventsSlideShow(mOptions)
+            $trueorfalse.addEventsSlideShow(mOptions);
         }
-
 
         if (mOptions.isTest && mOptions.time > 0) {
             $trueorfalse.updateTime(mOptions.time * 60, instance);
@@ -735,7 +802,7 @@ var $trueorfalse = {
             mOptions.idevicePath = idevicePath;
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                mOptions.isInExe,
+                mOptions.isInExe
             );
         }
     },
@@ -758,7 +825,7 @@ var $trueorfalse = {
             .each(function (index) {
                 const $questionDiv = $(this);
                 const $selectedInput = $questionDiv.find(
-                    '.TOFP-Answer:checked',
+                    '.TOFP-Answer:checked'
                 );
                 const $selectedFeedBack = $questionDiv.find('.TOFP-Feedback');
 
@@ -834,7 +901,7 @@ var $trueorfalse = {
             .each(function (index) {
                 const $questionDiv = $(this);
                 const $selectedInput = $questionDiv.find(
-                    '.TOFP-Answer:checked',
+                    '.TOFP-Answer:checked'
                 );
                 const solution = questions[index].solution;
                 if ($selectedInput.length) {
@@ -885,7 +952,10 @@ var $trueorfalse = {
             data.clock = setInterval(() => {
                 let $node = $('#tofPMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(data.clock);
                     return;
                 }
@@ -899,7 +969,7 @@ var $trueorfalse = {
             }, 1000);
         }
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMainContainer-' + instance,
+            '#tofPMainContainer-' + instance
         );
         mOptions.gameStarted = true;
     },
@@ -912,18 +982,18 @@ var $trueorfalse = {
 
     updateTime: function (tiempo, instance) {
         $(`#tofPPTime-${instance}`).text(
-            $exeDevices.iDevice.gamification.helpers.getTimeToString(tiempo),
+            $exeDevices.iDevice.gamification.helpers.getTimeToString(tiempo)
         );
     },
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $trueorfalse.borderColors.red,
-            $trueorfalse.borderColors.green,
-            $trueorfalse.borderColors.blue,
-            $trueorfalse.borderColors.yellow,
-        ],
+                '#555555',
+                $trueorfalse.borderColors.red,
+                $trueorfalse.borderColors.green,
+                $trueorfalse.borderColors.blue,
+                $trueorfalse.borderColors.yellow,
+            ],
             color = colors[type];
 
         $(`#tofPMessage-${instance}`).html(message).css({
@@ -931,7 +1001,7 @@ var $trueorfalse = {
             'font-size': '1.1em',
         });
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#tofPMessage' + instance,
+            '#tofPMessage' + instance
         );
     },
 
@@ -955,5 +1025,4 @@ var $trueorfalse = {
         msgNext: 'Siguiente',
         msgPrevious: 'Anterior',
     },
-
 };

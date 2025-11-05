@@ -7,15 +7,15 @@
  *
  */
 var $eXeRelaciona = {
-    idevicePath: "",
+    idevicePath: '',
     borderColors: $exeDevices.iDevice.gamification.colors.borderColors,
     colors: $exeDevices.iDevice.gamification.colors.backColor,
     options: [],
     hasSCORMbutton: false,
     isInExe: false,
-    userName: "",
-    previousScore: "",
-    initialScore: "",
+    userName: '',
+    previousScore: '',
+    initialScore: '',
     version: 3,
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
@@ -23,7 +23,12 @@ var $eXeRelaciona = {
     jqueryui: 1,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Relate', 'relate', 'relaciona-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Relate',
+            'relate',
+            'relaciona-IDevice'
+        );
     },
 
     enable: function () {
@@ -34,7 +39,7 @@ var $eXeRelaciona = {
         $eXeRelaciona.options = [];
 
         $eXeRelaciona.activities.each(function (i) {
-            const dl = $(".relaciona-DataGame", this);
+            const dl = $('.relaciona-DataGame', this);
             const mOption = $eXeRelaciona.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
@@ -47,50 +52,52 @@ var $eXeRelaciona = {
             const rlc = $eXeRelaciona.createInterfaceCards(i);
 
             dl.before(rlc).remove();
-            $("#rlcGameMinimize-" + i).hide();
-            $("#rlcGameContainer-" + i).hide();
-            $("#rlcCubierta-" + i).hide();
+            $('#rlcGameMinimize-' + i).hide();
+            $('#rlcGameContainer-' + i).hide();
+            $('#rlcCubierta-' + i).hide();
             if (mOption.showMinimize) {
-                $("#rlcGameMinimize-" + i)
-                    .css({ cursor: "pointer", })
+                $('#rlcGameMinimize-' + i)
+                    .css({ cursor: 'pointer' })
                     .show();
             } else {
-                $("#rlcGameContainer-" + i).show();
+                $('#rlcGameContainer-' + i).show();
             }
 
             $eXeRelaciona.createCards(i);
 
             $eXeRelaciona.addEvents(i);
             if (mOption.type == 2 && mOption.time > 0) {
-                $("#rlcImgTime-" + i).show();
-                $("#rlcPTime-" + i).show();
-                $("#rlcStartGame-" + i).show();
-                $("#rlcMessage-" + i).hide();
+                $('#rlcImgTime-' + i).show();
+                $('#rlcPTime-' + i).show();
+                $('#rlcStartGame-' + i).show();
+                $('#rlcMessage-' + i).hide();
                 $eXeRelaciona.updateTime(mOption.time * 60, i);
             }
-
         });
 
         let node = document.querySelector('.page-content');
         if (this.isInExe) {
             node = document.getElementById('node-content');
         }
-        if (node) $exeDevices.iDevice.gamification.observers.observeResize($eXeRelaciona, node);
+        if (node)
+            $exeDevices.iDevice.gamification.observers.observeResize(
+                $eXeRelaciona,
+                node
+            );
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.relaciona-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.relaciona-IDevice');
     },
 
     loadDataGame: function (data, sthis) {
         const json = data.text(),
-            mOptions = $exeDevices.iDevice.gamification.helpers.isJsonString(json),
-            $imagesLink = $(".relaciona-LinkImages", sthis),
-            $audiosLink = $(".relaciona-LinkAudios", sthis),
-            $imagesLinkBack = $(".relaciona-LinkImagesBack", sthis),
-            $audiosLinkBack = $(".relaciona-LinkAudiosBack", sthis);
+            mOptions =
+                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+            $imagesLink = $('.relaciona-LinkImages', sthis),
+            $audiosLink = $('.relaciona-LinkAudios', sthis),
+            $imagesLinkBack = $('.relaciona-LinkImagesBack', sthis),
+            $audiosLinkBack = $('.relaciona-LinkAudiosBack', sthis);
 
-        mOptions.playerAudio = "";
+        mOptions.playerAudio = '';
         mOptions.gameStarted = false;
         mOptions.typeDrag = 0;
 
@@ -98,9 +105,9 @@ var $eXeRelaciona = {
             const iq = parseInt($(this).text());
             if (!isNaN(iq) && iq < mOptions.cardsGame.length) {
                 const flipcard = mOptions.cardsGame[iq];
-                flipcard.url = $(this).attr("href");
+                flipcard.url = $(this).attr('href');
                 if (flipcard.url.length < 4) {
-                    flipcard.url = "";
+                    flipcard.url = '';
                 }
             }
         });
@@ -109,9 +116,9 @@ var $eXeRelaciona = {
             const iqa = parseInt($(this).text());
             if (!isNaN(iqa) && iqa < mOptions.cardsGame.length) {
                 const flipcard = mOptions.cardsGame[iqa];
-                flipcard.audio = $(this).attr("href");
+                flipcard.audio = $(this).attr('href');
                 if (flipcard.audio.length < 4) {
-                    flipcard.audio = "";
+                    flipcard.audio = '';
                 }
             }
         });
@@ -120,9 +127,9 @@ var $eXeRelaciona = {
             const iq = parseInt($(this).text());
             if (!isNaN(iq) && iq < mOptions.cardsGame.length) {
                 const flipcard = mOptions.cardsGame[iq];
-                flipcard.urlBk = $(this).attr("href");
+                flipcard.urlBk = $(this).attr('href');
                 if (flipcard.urlBk.length < 4) {
-                    flipcard.urlBk = "";
+                    flipcard.urlBk = '';
                 }
             }
         });
@@ -131,9 +138,9 @@ var $eXeRelaciona = {
             const iqa = parseInt($(this).text());
             if (!isNaN(iqa) && iqa < mOptions.cardsGame.length) {
                 const flipcard = mOptions.cardsGame[iqa];
-                flipcard.audioBk = $(this).attr("href");
+                flipcard.audioBk = $(this).attr('href');
                 if (flipcard.audioBk.length < 4) {
-                    flipcard.audioBk = "";
+                    flipcard.audioBk = '';
                 }
             }
         });
@@ -141,24 +148,38 @@ var $eXeRelaciona = {
         mOptions.linesMap = new Map();
         mOptions.lines = [];
         mOptions.permitirErrores = mOptions.type > 0;
-        mOptions.time = typeof mOptions.time === "undefined" ? 0 : mOptions.time;
-        mOptions.evaluation = typeof mOptions.evaluation === "undefined" ? false : mOptions.evaluation;
-        mOptions.evaluationID = typeof mOptions.evaluationID === "undefined" ? "" : mOptions.evaluationID;
+        mOptions.time =
+            typeof mOptions.time === 'undefined' ? 0 : mOptions.time;
+        mOptions.evaluation =
+            typeof mOptions.evaluation === 'undefined'
+                ? false
+                : mOptions.evaluation;
+        mOptions.evaluationID =
+            typeof mOptions.evaluationID === 'undefined'
+                ? ''
+                : mOptions.evaluationID;
         mOptions.hits = 0;
         mOptions.errors = 0;
         mOptions.score = 0;
         mOptions.active = 0;
         mOptions.obtainedClue = false;
 
-        mOptions.cardsGame = $exeDevices.iDevice.gamification.helpers.getQuestions(mOptions.cardsGame, mOptions.percentajeCards);
+        mOptions.cardsGame =
+            $exeDevices.iDevice.gamification.helpers.getQuestions(
+                mOptions.cardsGame,
+                mOptions.percentajeCards
+            );
         for (let i = 0; i < mOptions.cardsGame.length; i++) {
             mOptions.cardsGame[i].id = i;
-            mOptions.cardsGame[i].eText = $eXeRelaciona.decodeURIComponentSafe(mOptions.cardsGame[i].eText);
-            mOptions.cardsGame[i].eTextBk = $eXeRelaciona.decodeURIComponentSafe(mOptions.cardsGame[i].eTextBk);
+            mOptions.cardsGame[i].eText = $eXeRelaciona.decodeURIComponentSafe(
+                mOptions.cardsGame[i].eText
+            );
+            mOptions.cardsGame[i].eTextBk =
+                $eXeRelaciona.decodeURIComponentSafe(
+                    mOptions.cardsGame[i].eTextBk
+                );
             const id = $eXeRelaciona.getID();
             mOptions.cardsGame[i].lineindex = id;
-
-
         }
 
         mOptions.numberCards = mOptions.cardsGame.length;
@@ -167,101 +188,119 @@ var $eXeRelaciona = {
         return mOptions;
     },
 
-
     decodeURIComponentSafe: function (s) {
         if (!s) return s;
-        return decodeURIComponent(s).replace("&percnt;", "%");
+        return decodeURIComponent(s).replace('&percnt;', '%');
     },
 
     updateTime: function (tiempo, instance) {
         const mOptions = $eXeRelaciona.options[instance],
-            mTime = $exeDevices.iDevice.gamification.helpers.getTimeToString(tiempo);
+            mTime =
+                $exeDevices.iDevice.gamification.helpers.getTimeToString(
+                    tiempo
+                );
         if (mOptions.time < 0) return;
         $(`#rlcPTime-${instance}`).text(mTime);
     },
 
     clearHtml: function (htmlString) {
-        const tempDiv = $("<div>").html(htmlString);
+        const tempDiv = $('<div>').html(htmlString);
         return tempDiv.text();
     },
 
     createCards: function (instance) {
         const mOptions = $eXeRelaciona.options[instance],
-            shuffledWords = $exeDevices.iDevice.gamification.helpers.shuffleAds([...mOptions.cardsGame]),
-            shuffledDefinitions = $exeDevices.iDevice.gamification.helpers.shuffleAds([...mOptions.cardsGame]);
+            shuffledWords = $exeDevices.iDevice.gamification.helpers.shuffleAds(
+                [...mOptions.cardsGame]
+            ),
+            shuffledDefinitions =
+                $exeDevices.iDevice.gamification.helpers.shuffleAds([
+                    ...mOptions.cardsGame,
+                ]);
 
-        $("#rlcContainerWords-" + instance).empty();
-        $("#rlcContainerDefinitions-" + instance).empty();
+        $('#rlcContainerWords-' + instance).empty();
+        $('#rlcContainerDefinitions-' + instance).empty();
 
         shuffledWords.forEach((card, index) => {
-            let imgV = card.url.length > 3 ? "block" : "none";
-            let txtV = card.eText.length > 0 ? "flex" : "none";
-            let imgW = card.eText.length == 0 ? "100%" : "30%";
+            let imgV = card.url.length > 3 ? 'block' : 'none';
+            let txtV = card.eText.length > 0 ? 'flex' : 'none';
+            let imgW = card.eText.length == 0 ? '100%' : '30%';
 
-            imgW = card.url.length < 3 ? "0%" : imgW;
+            imgW = card.url.length < 3 ? '0%' : imgW;
 
-            let txtW = card.url.length < 3 ? "100%" : "70%";
-            txtW = card.eText.length == 0 ? "0%" : txtW;
-            let color = card.color.length > 2 ? card.color : "inherit";
-            let bkcolor = card.backcolor.length > 2 ? card.backcolor : "trasparent";
-            let audio = card.audio.length > 3 ? "block" : "none";
-            let author = card.author.length > 3 ? "block" : "none";
-            let audioCls = card.url.length < 3 && card.eText.length == 0 ? "RLCP-LinkAudioBig" : "RLCP-LinkAudio";
+            let txtW = card.url.length < 3 ? '100%' : '70%';
+            txtW = card.eText.length == 0 ? '0%' : txtW;
+            let color = card.color.length > 2 ? card.color : 'inherit';
+            let bkcolor =
+                card.backcolor.length > 2 ? card.backcolor : 'trasparent';
+            let audio = card.audio.length > 3 ? 'block' : 'none';
+            let author = card.author.length > 3 ? 'block' : 'none';
+            let audioCls =
+                card.url.length < 3 && card.eText.length == 0
+                    ? 'RLCP-LinkAudioBig'
+                    : 'RLCP-LinkAudio';
 
-            const fullimage = card.url.length > 3
-                ? `<a href="#" class="RLCP-FullLinkImage" data-url="${card.url}"" title="${mOptions.msgs.msgFullScreen}">
+            const fullimage =
+                card.url.length > 3
+                    ? `<a href="#" class="RLCP-FullLinkImage" data-url="${card.url}"" title="${mOptions.msgs.msgFullScreen}">
                     <strong><span class="sr-av">${mOptions.msgs.msgFullScreen}:</span></strong>
                     <div  class="exeQuextIcons exeQuextIcons-FullImage RLCP-Activo"></div>
                 </a>`
-                : '';
+                    : '';
 
-            const wordDiv = $(`<div class="RLCP-Word RLCP-NoSelect" data-id="${card.id}" data-lineindex="${card.lineindex}">
+            const wordDiv =
+                $(`<div class="RLCP-Word RLCP-NoSelect" data-id="${card.id}" data-lineindex="${card.lineindex}">
                             <div class="RLCP-ContainerData">
                               <div class="RLCP-EText" style="display:${txtV}; width:${txtW}; color:${color}; background-color:${bkcolor};"><div class="RLCP-ETextDinamyc">${card.eText}</div></div>    
                               <div class="RLCP-ImageContain" style="display:${imgV}; width:${imgW};">
                                   <img src="${card.url}" class="RLCP-Image" data-url="${card.url}" data-x="${card.x}" data-y="${card.y}" alt="${card.alt}" />
-                                  <div class="RLCP-Author RLCP-AuthorWord" data-author="${card.author}"  style="display: ${author};" alt="${card.author}" title="${mOptions.msgs.msgAuthor + ": " + $eXeRelaciona.clearHtml(card.author)}"><img src="${$eXeRelaciona.idevicePath}exequextcopyright.png"  /></div>
+                                  <div class="RLCP-Author RLCP-AuthorWord" data-author="${card.author}"  style="display: ${author};" alt="${card.author}" title="${mOptions.msgs.msgAuthor + ': ' + $eXeRelaciona.clearHtml(card.author)}"><img src="${$eXeRelaciona.idevicePath}exequextcopyright.png"  /></div>
                                   ${fullimage}
                                 </div>
                             </div>
                             <div style="display:${audio}" data-audio="${card.audio}" class="RLCP-TAudio ${audioCls}"  title="Audio"><img src="${$eXeRelaciona.idevicePath}exequextplayaudio.svg" class="RLCP-Audio"  alt="Audio"></div>
                         </div>`);
-            $("#rlcContainerWords-" + instance).append(wordDiv);
+            $('#rlcContainerWords-' + instance).append(wordDiv);
         });
 
         shuffledDefinitions.forEach((card, index) => {
-            let imgV = card.urlBk.length > 3 ? "block" : "none";
-            let txtV = card.eTextBk.length > 0 ? "flex" : "none";
-            let imgW = card.eTextBk.length == 0 ? "100%" : "30%";
-            imgW = card.urlBk.length < 3 ? "0%" : imgW;
-            let txtW = card.urlBk.length < 3 ? "100%" : "70%";
-            txtW = card.eTextBk.length == 0 ? "0%" : txtW;
-            let color = card.colorBk.length > 2 ? card.colorBk : "inherit";
-            let bkcolor = card.backcolorBk.length > 2 ? card.backcolorBk : "trasparent";
-            let audio = card.audioBk.length > 3 ? "block" : "none";
-            let author = card.authorBk.length > 0 ? "block" : "none";
-            let audioCls = card.urlBk.length < 3 && card.eTextBk.length == 0 ? "RLCP-LinkAudioBig" : "RLCP-LinkAudio";
-            const fullimage = card.urlBk.length > 3
-                ? `<a href="#" class="RLCP-FullLinkImage" data-url="${card.urlBk}"" title="${mOptions.msgs.msgFullScreen}">
+            let imgV = card.urlBk.length > 3 ? 'block' : 'none';
+            let txtV = card.eTextBk.length > 0 ? 'flex' : 'none';
+            let imgW = card.eTextBk.length == 0 ? '100%' : '30%';
+            imgW = card.urlBk.length < 3 ? '0%' : imgW;
+            let txtW = card.urlBk.length < 3 ? '100%' : '70%';
+            txtW = card.eTextBk.length == 0 ? '0%' : txtW;
+            let color = card.colorBk.length > 2 ? card.colorBk : 'inherit';
+            let bkcolor =
+                card.backcolorBk.length > 2 ? card.backcolorBk : 'trasparent';
+            let audio = card.audioBk.length > 3 ? 'block' : 'none';
+            let author = card.authorBk.length > 0 ? 'block' : 'none';
+            let audioCls =
+                card.urlBk.length < 3 && card.eTextBk.length == 0
+                    ? 'RLCP-LinkAudioBig'
+                    : 'RLCP-LinkAudio';
+            const fullimage =
+                card.urlBk.length > 3
+                    ? `<a href="#" class="RLCP-FullLinkImage" data-url="${card.urlBk}"" title="${mOptions.msgs.msgFullScreen}">
                 <strong><span class="sr-av">${mOptions.msgs.msgFullScreen}:</span></strong>
                 <div  class="exeQuextIcons exeQuextIcons-FullImage RLCP-Activo"></div>
             </a>`
-                : '';
-            const definitionDiv = $(`<div class="RLCP-Definition RLCP-NoSelect" data-id="${card.id}"  data-lineindex="0" >
+                    : '';
+            const definitionDiv =
+                $(`<div class="RLCP-Definition RLCP-NoSelect" data-id="${card.id}"  data-lineindex="0" >
                                 <div class="RLCP-ContainerData">
                                   <div class="RLCP-ImageContain" style="display:${imgV}; width:${imgW};">
                                     <img src="${card.urlBk}" class="RLCP-Image" data-url="${card.urlBk}" data-x="${card.x}" data-y="${card.y}" alt="${card.altBk}" />
-                                    <div class="RLCP-Author RLCP-AuthorDef" style="display: ${author};" data-author="${card.authorBk}" alt="${card.authorBk}" title="${mOptions.msgs.msgAuthor + ": " + $eXeRelaciona.clearHtml(card.authorBk)}"><img src="${$eXeRelaciona.idevicePath}exequextcopyright.png"  /></div>
+                                    <div class="RLCP-Author RLCP-AuthorDef" style="display: ${author};" data-author="${card.authorBk}" alt="${card.authorBk}" title="${mOptions.msgs.msgAuthor + ': ' + $eXeRelaciona.clearHtml(card.authorBk)}"><img src="${$eXeRelaciona.idevicePath}exequextcopyright.png"  /></div>
                                     ${fullimage}
                                     </div>
                                   <div class="RLCP-EText" style="display:${txtV}; width:${txtW}; color:${color}; background-color:${bkcolor};"><div class="RLCP-ETextDinamyc">${card.eTextBk}</div></div>
                                 </div>
                               <div data-audio="${card.audioBk}" style="display:${audio}" class="RLCP-TAudio ${audioCls}" title="Audio"><img src="${$eXeRelaciona.idevicePath}exequextplayaudio.svg" class="FLCDSP-RLCP"  alt="Audio"></div>
                             </div>`);
-            $("#rlcContainerDefinitions-" + instance).append(definitionDiv);
+            $('#rlcContainerDefinitions-' + instance).append(definitionDiv);
         });
     },
-
 
     getID: function () {
         const randomNumber1 = Math.floor(1000 + Math.random() * 9000),
@@ -275,14 +314,14 @@ var $eXeRelaciona = {
 
         if (mOptions.gameStarted) return;
 
-        $("#rlcContainerGame-" + instance).show();
+        $('#rlcContainerGame-' + instance).show();
         $(`#rlcImgTime-${instance}`).hide();
         $(`#rlcPTime-${instance}`).hide();
         $(`#rlcButtons-${instance}`).hide();
         $(`#rlcResetButton-${instance}`).hide();
 
         if (mOptions.type > 0) {
-            $(`#rlcButtons-${instance}`).css("display", "flex");
+            $(`#rlcButtons-${instance}`).css('display', 'flex');
             $(`#rlcCheckButton-${instance}`).show();
         }
         mOptions.gameStarted = true;
@@ -296,26 +335,32 @@ var $eXeRelaciona = {
         mOptions.gameStarted = false;
         mOptions.obtainedClue = false;
 
-        $("#rlcPShowClue-" + instance).text("");
-        $("#rlcShowClue-" + instance).hide();
-        $("#rlcPHits-" + instance).text(mOptions.hits);
-        $("#rlcPErrors-" + instance).text(mOptions.errors);
-        $("#rlcCubierta-" + instance).hide();
-        $("#rlcStartGame-" + instance).hide();
-        $("#rlcMessage-" + instance).hide();
+        $('#rlcPShowClue-' + instance).text('');
+        $('#rlcShowClue-' + instance).hide();
+        $('#rlcPHits-' + instance).text(mOptions.hits);
+        $('#rlcPErrors-' + instance).text(mOptions.errors);
+        $('#rlcCubierta-' + instance).hide();
+        $('#rlcStartGame-' + instance).hide();
+        $('#rlcMessage-' + instance).hide();
 
-        if (typeof mOptions != "undefined" && mOptions.type == 2 && mOptions.time > 0) {
+        if (
+            typeof mOptions != 'undefined' &&
+            mOptions.type == 2 &&
+            mOptions.time > 0
+        ) {
             $(`#rlcPTime-${instance}`).show();
             $(`#rlcImgTime-${instance}`).show();
             let $node = $('#rlcMainContainer-' + instance);
             let $content = $('#node-content');
             mOptions.counterClock = setInterval(function () {
-                ;
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
-                if (typeof mOptions != "undefined" && mOptions.gameStarted) {
+                if (typeof mOptions != 'undefined' && mOptions.gameStarted) {
                     mOptions.counter--;
                     $eXeRelaciona.updateTime(mOptions.counter, instance);
                     if (mOptions.counter <= 0) {
@@ -328,8 +373,6 @@ var $eXeRelaciona = {
         }
 
         mOptions.gameStarted = true;
-
-
     },
     redibujarLineas: function (instance, isMoving) {
         const mOptions = $eXeRelaciona.options[instance];
@@ -343,7 +386,12 @@ var $eXeRelaciona = {
         if (!mOptions || !mOptions.canvas || !mOptions.contexto) return;
         if (mOptions._rafPending) return;
         mOptions._rafPending = true;
-        const raf = (typeof requestAnimationFrame !== 'undefined') ? requestAnimationFrame : function (cb) { return setTimeout(cb, 16); };
+        const raf =
+            typeof requestAnimationFrame !== 'undefined'
+                ? requestAnimationFrame
+                : function (cb) {
+                      return setTimeout(cb, 16);
+                  };
         raf(() => {
             mOptions._rafPending = false;
             $eXeRelaciona._drawLines(instance);
@@ -356,11 +404,15 @@ var $eXeRelaciona = {
         const ctx = mOptions.contexto;
         const canvasRect = mOptions.canvas.getBoundingClientRect();
         const dpr = mOptions._dpr || Math.max(window.devicePixelRatio || 1, 1);
-        const cssW = (mOptions._cssW) ? mOptions._cssW : (mOptions.canvas.width / dpr);
-        const cssH = (mOptions._cssH) ? mOptions._cssH : (mOptions.canvas.height / dpr);
+        const cssW = mOptions._cssW
+            ? mOptions._cssW
+            : mOptions.canvas.width / dpr;
+        const cssH = mOptions._cssH
+            ? mOptions._cssH
+            : mOptions.canvas.height / dpr;
         ctx.clearRect(0, 0, cssW, cssH);
 
-        ctx.lineWidth = ($eXeRelaciona.isMobile() ? 3 : 5);
+        ctx.lineWidth = $eXeRelaciona.isMobile() ? 3 : 5;
 
         mOptions.linesMap.forEach((line) => {
             const startRect = line.start[0].getBoundingClientRect();
@@ -373,15 +425,28 @@ var $eXeRelaciona = {
         });
 
         if (mOptions._moving && mOptions.currentWordDiv) {
-            const startRect = mOptions.currentWordDiv[0].getBoundingClientRect();
+            const startRect =
+                mOptions.currentWordDiv[0].getBoundingClientRect();
             const x1 = startRect.right - canvasRect.left;
             const y1 = startRect.top + startRect.height / 2 - canvasRect.top;
-            const x2 = (typeof mOptions._tempX === 'number') ? (mOptions._tempX - canvasRect.left) : x1;
-            const y2 = (typeof mOptions._tempY === 'number') ? (mOptions._tempY - canvasRect.top) : y1;
-            $eXeRelaciona.dibujaLineaCurva(ctx, x1, y1, x2, y2, $eXeRelaciona.borderColors.blue);
+            const x2 =
+                typeof mOptions._tempX === 'number'
+                    ? mOptions._tempX - canvasRect.left
+                    : x1;
+            const y2 =
+                typeof mOptions._tempY === 'number'
+                    ? mOptions._tempY - canvasRect.top
+                    : y1;
+            $eXeRelaciona.dibujaLineaCurva(
+                ctx,
+                x1,
+                y1,
+                x2,
+                y2,
+                $eXeRelaciona.borderColors.blue
+            );
         }
     },
-
 
     createInterfaceCards: function (instance) {
         const path = $eXeRelaciona.idevicePath,
@@ -480,10 +545,10 @@ var $eXeRelaciona = {
 
     shuffleElements: function (parentElement) {
         const children = parentElement.children().get(),
-            shuffledChildren = $exeDevices.iDevice.gamification.helpers.shuffleAds(children);
+            shuffledChildren =
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(children);
         parentElement.empty().append(shuffledChildren);
     },
-
 
     gameOver: function (instance) {
         $eXeRelaciona.checkState(instance);
@@ -494,7 +559,9 @@ var $eXeRelaciona = {
             score = (mOptions.hits * 10) / mOptions.realNumberCards,
             formattedScore = Number(score).toFixed(2);
 
-        $(`#rlcRepeatActivity-${instance}`).text(`${mOptions.msgs.msgYouScore}: ${formattedScore}`);
+        $(`#rlcRepeatActivity-${instance}`).text(
+            `${mOptions.msgs.msgYouScore}: ${formattedScore}`
+        );
 
         return formattedScore;
     },
@@ -503,9 +570,9 @@ var $eXeRelaciona = {
         const mOptions = $eXeRelaciona.options[instance],
             msgs = mOptions.msgs,
             score = ((mOptions.hits * 10) / mOptions.numberCards).toFixed(2);
-        let message = msgs.msgEndGameM.replace("%s", score),
+        let message = msgs.msgEndGameM.replace('%s', score),
             messageColor = 0,
-            clueMessage = "";
+            clueMessage = '';
 
         $eXeRelaciona.showMessage(messageColor, message, instance, true);
 
@@ -513,16 +580,24 @@ var $eXeRelaciona = {
             if (score * 100 > mOptions.itinerary.percentageClue) {
                 clueMessage = mOptions.itinerary.clueGame;
             } else {
-                clueMessage = msgs.msgTryAgain.replace("%s", mOptions.itinerary.percentageClue);
+                clueMessage = msgs.msgTryAgain.replace(
+                    '%s',
+                    mOptions.itinerary.percentageClue
+                );
             }
             $eXeRelaciona.showMessage(3, clueMessage, instance, true);
         }
 
-        const sscore = ((mOptions.hits * 10) / mOptions.cardsGame.length).toFixed(2);
+        const sscore = (
+            (mOptions.hits * 10) /
+            mOptions.cardsGame.length
+        ).toFixed(2);
         $(`#rlcPScore-${instance}`).text(sscore);
         $(`#rlcPHits-${instance}`).text(mOptions.hits);
         $(`#rlcPErrors-${instance}`).text(mOptions.errors);
-        $(`#rlcPNumber-${instance}`).text(mOptions.realNumberCards - mOptions.hits - mOptions.errors);
+        $(`#rlcPNumber-${instance}`).text(
+            mOptions.realNumberCards - mOptions.hits - mOptions.errors
+        );
     },
 
     showClue: function (instance) {
@@ -548,22 +623,23 @@ var $eXeRelaciona = {
         mOptions.score = 0;
         mOptions.active = 0;
         mOptions.obtainedClue = false;
-        $("#rlcButtons-" + instance).hide();
+        $('#rlcButtons-' + instance).hide();
         $eXeRelaciona.rebootCards(instance);
         $eXeRelaciona.showScoreGame(instance);
         mOptions.gameStarted = true;
         mOptions.gameOver = false;
 
-        $("#rlcMessage-" + instance).hide();
+        $('#rlcMessage-' + instance).hide();
     },
 
     rebootCards: function (instance) {
         const mOptions = $eXeRelaciona.options[instance];
 
         const $container = $(`#rlcGameContainer-${instance}`);
-        $container.find(".RLCP-Word, .RLCP-Definition")
-            .removeClass("RLCP-Connected")
-            .removeData("lineindex");
+        $container
+            .find('.RLCP-Word, .RLCP-Definition')
+            .removeClass('RLCP-Connected')
+            .removeData('lineindex');
 
         mOptions.linesMap.clear();
         mOptions.currentWordDiv = null;
@@ -587,7 +663,7 @@ var $eXeRelaciona = {
     checkState: function (instance) {
         const mOptions = $eXeRelaciona.options[instance];
 
-        if (typeof mOptions === "undefined") return;
+        if (typeof mOptions === 'undefined') return;
 
         clearInterval(mOptions.counterClock);
         mOptions.gameOver = true;
@@ -595,7 +671,7 @@ var $eXeRelaciona = {
         $eXeRelaciona.checkStateArrows(instance);
 
         $(`#rlcCheckButton-${instance}`).hide();
-        $(`#rlcButtons-${instance}`).css("display", "flex");
+        $(`#rlcButtons-${instance}`).css('display', 'flex');
         $(`#rlcResetButton-${instance}`).show();
 
         $exeDevices.iDevice.gamification.media.stopSound(mOptions);
@@ -604,7 +680,8 @@ var $eXeRelaciona = {
 
         if (mOptions.isScorm === 1) {
             $eXeRelaciona.sendScore(true, instance);
-            $eXeRelaciona.initialScore = $eXeRelaciona.showScoreFooter(instance);
+            $eXeRelaciona.initialScore =
+                $eXeRelaciona.showScoreFooter(instance);
         }
     },
 
@@ -623,38 +700,45 @@ var $eXeRelaciona = {
             }
         });
         $eXeRelaciona.redibujarLineas(instance, false);
-
     },
 
     removeEvents: function (instance) {
-        $(`#rlcLinkMaximize-${instance}`).off("click touchstart");
-        $(`#rlcLinkMinimize-${instance}`).off("click touchstart");
-        $(`#rlcCodeAccessButton-${instance}`).off("click touchstart");
-        $(`#rlcCodeAccessE-${instance}`).off("keydown");
-        $(`#rlcSendScore-${instance}`).off("click");
+        $(`#rlcLinkMaximize-${instance}`).off('click touchstart');
+        $(`#rlcLinkMinimize-${instance}`).off('click touchstart');
+        $(`#rlcCodeAccessButton-${instance}`).off('click touchstart');
+        $(`#rlcCodeAccessE-${instance}`).off('keydown');
+        $(`#rlcSendScore-${instance}`).off('click');
         $('#rlcMainContainer-' + instance)
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
 
         $(window).off('unload.eXeRelaciona beforeunload.eXeRelaciona');
 
-        $(document).off("mousemove.eXeRlc" + instance);
-        $(document).off("mouseup.eXeRlc" + instance);
+        $(document).off('mousemove.eXeRlc' + instance);
+        $(document).off('mouseup.eXeRlc' + instance);
 
-        $(`#rlcClueButton-${instance}`).off("click");
-        $(`#rlcStartGame-${instance}`).off("click");
-        $(`#rlcLinkFullScreen-${instance}`).off("click touchstart");
-        $(`#rlcResetButton-${instance}`).off("click");
-        $(`#rlcCheckButton-${instance}`).off("click");
-        $(`#rlcGameContainer-${instance}`).off("mouseenter touchstart", ".RLCP-Author");
-        $(`#rlcGameContainer-${instance}`).off("mouseleave touchend touchcancel", ".RLCP-Author");
-        $(`#rlcGameContainer-${instance}`).off("click touchstart", ".RLCP-TAudio");
-
+        $(`#rlcClueButton-${instance}`).off('click');
+        $(`#rlcStartGame-${instance}`).off('click');
+        $(`#rlcLinkFullScreen-${instance}`).off('click touchstart');
+        $(`#rlcResetButton-${instance}`).off('click');
+        $(`#rlcCheckButton-${instance}`).off('click');
+        $(`#rlcGameContainer-${instance}`).off(
+            'mouseenter touchstart',
+            '.RLCP-Author'
+        );
+        $(`#rlcGameContainer-${instance}`).off(
+            'mouseleave touchend touchcancel',
+            '.RLCP-Author'
+        );
+        $(`#rlcGameContainer-${instance}`).off(
+            'click touchstart',
+            '.RLCP-TAudio'
+        );
     },
 
     addEvents: function (instance) {
         const mOptions = $eXeRelaciona.options[instance];
-        const $rlcGameContainer = $("#rlcGameContainer-" + instance);
+        const $rlcGameContainer = $('#rlcGameContainer-' + instance);
 
         $eXeRelaciona.removeEvents(instance);
 
@@ -666,30 +750,32 @@ var $eXeRelaciona = {
                 $eXeRelaciona.saveEvaluation(instance);
             });
 
-        $("#rlcLinkMaximize-" + instance).on("click touchstart", function (e) {
+        $('#rlcLinkMaximize-' + instance).on('click touchstart', function (e) {
             e.preventDefault();
             $rlcGameContainer.show();
-            $("#rlcGameMinimize-" + instance).hide();
+            $('#rlcGameMinimize-' + instance).hide();
         });
 
-        $("#rlcLinkMinimize-" + instance).on("click touchstart", function (e) {
+        $('#rlcLinkMinimize-' + instance).on('click touchstart', function (e) {
             e.preventDefault();
             $rlcGameContainer.hide();
-            $("#rlcGameMinimize-" + instance)
-                .css("visibility", "visible")
+            $('#rlcGameMinimize-' + instance)
+                .css('visibility', 'visible')
                 .show();
         });
 
-        $("#rlcCubierta-" + instance).hide();
-        $("#rlcCodeAccessDiv-" + instance).hide();
+        $('#rlcCubierta-' + instance).hide();
+        $('#rlcCodeAccessDiv-' + instance).hide();
 
+        $('#rlcCodeAccessButton-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                $eXeRelaciona.enterCodeAccess(instance);
+            }
+        );
 
-        $("#rlcCodeAccessButton-" + instance).on("click touchstart", function (e) {
-            e.preventDefault();
-            $eXeRelaciona.enterCodeAccess(instance);
-        });
-
-        $("#rlcCodeAccessE-" + instance).on("keydown", function (event) {
+        $('#rlcCodeAccessE-' + instance).on('keydown', function (event) {
             if (event.which == 13 || event.keyCode == 13) {
                 $eXeRelaciona.enterCodeAccess(instance);
                 return false;
@@ -697,73 +783,102 @@ var $eXeRelaciona = {
             return true;
         });
 
-        $("#rlcPNumber-" + instance).text(mOptions.realNumberCards);
+        $('#rlcPNumber-' + instance).text(mOptions.realNumberCards);
 
-        $(window).on("unload.eXeRelaciona beforeunload.eXeRelaciona", function () {
-            if ($eXeRelaciona.mScorm) {
-                $exeDevices.iDevice.gamification.scorm.endScorm($eXeRelaciona.mScorm);
+        $(window).on(
+            'unload.eXeRelaciona beforeunload.eXeRelaciona',
+            function () {
+                if ($eXeRelaciona.mScorm) {
+                    $exeDevices.iDevice.gamification.scorm.endScorm(
+                        $eXeRelaciona.mScorm
+                    );
+                }
             }
-        });
+        );
 
-        $("#rlcSendScore-" + instance).click(function (e) {
+        $('#rlcSendScore-' + instance).click(function (e) {
             e.preventDefault();
             $eXeRelaciona.sendScore(false, instance);
             $eXeRelaciona.saveEvaluation(instance, true);
         });
 
-        $("#rlcClueButton-" + instance).on("click", function (e) {
+        $('#rlcClueButton-' + instance).on('click', function (e) {
             e.preventDefault();
-            $("#rlcShowClue-" + instance).hide();
-            $("#rlcCubierta-" + instance).fadeOut();
+            $('#rlcShowClue-' + instance).hide();
+            $('#rlcCubierta-' + instance).fadeOut();
         });
 
-        $("#rlcPErrors-" + instance).text(mOptions.errors);
+        $('#rlcPErrors-' + instance).text(mOptions.errors);
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
-            $("#rlcAuthorGame-" + instance).html(mOptions.msgs.msgAuthor + ": " + mOptions.author);
-            $("#rlcAuthorGame-" + instance).show();
+            $('#rlcAuthorGame-' + instance).html(
+                mOptions.msgs.msgAuthor + ': ' + mOptions.author
+            );
+            $('#rlcAuthorGame-' + instance).show();
         }
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
 
-        $("#rlcStartGame-" + instance).on("click", function (e) {
+        $('#rlcStartGame-' + instance).on('click', function (e) {
             e.preventDefault();
             $eXeRelaciona.startGame(instance);
         });
 
-        $("#rlcLinkFullScreen-" + instance).on("click touchstart", function (e) {
-            e.preventDefault();
-            const element = document.getElementById("rlcGameContainer-" + instance);
-            $exeDevices.iDevice.gamification.helpers.toggleFullscreen(element);
-        });
+        $('#rlcLinkFullScreen-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                const element = document.getElementById(
+                    'rlcGameContainer-' + instance
+                );
+                $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
+                    element
+                );
+            }
+        );
 
-        $exeDevices.iDevice.gamification.report.updateEvaluationIcon(mOptions, this.isInExe);
+        $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
+            mOptions,
+            this.isInExe
+        );
 
-        $("#rlcResetButton-" + instance).on("click", function (e) {
+        $('#rlcResetButton-' + instance).on('click', function (e) {
             e.preventDefault();
             $eXeRelaciona.reboot(instance);
         });
 
-        $("#rlcCheckButton-" + instance).on("click", function (e) {
+        $('#rlcCheckButton-' + instance).on('click', function (e) {
             e.preventDefault();
             $eXeRelaciona.checkState(instance);
         });
 
         $eXeRelaciona.ajustarCanvas(instance);
 
-        $rlcGameContainer.on("mouseenter touchstart", ".RLCP-Author", function () {
-            $eXeRelaciona.showAutorImage($(this), instance);
-        });
+        $rlcGameContainer.on(
+            'mouseenter touchstart',
+            '.RLCP-Author',
+            function () {
+                $eXeRelaciona.showAutorImage($(this), instance);
+            }
+        );
 
-        $rlcGameContainer.on("mouseleave touchend touchcancel", ".RLCP-Author", function () {
-            $eXeRelaciona.hideAutorImage($(this), instance);
-        });
+        $rlcGameContainer.on(
+            'mouseleave touchend touchcancel',
+            '.RLCP-Author',
+            function () {
+                $eXeRelaciona.hideAutorImage($(this), instance);
+            }
+        );
 
-        $rlcGameContainer.on("click touchstart", ".RLCP-TAudio", function () {
+        $rlcGameContainer.on('click touchstart', '.RLCP-TAudio', function () {
             if (!mOptions.gameStarted || mOptions.gameOver) return;
-            const audio = $(this).data("audio");
-            if (audio && audio.length > 3) $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            const audio = $(this).data('audio');
+            if (audio && audio.length > 3)
+                $exeDevices.iDevice.gamification.media.playSound(
+                    audio,
+                    mOptions
+                );
         });
 
         $eXeRelaciona.setupEventHandlers(instance);
@@ -774,31 +889,30 @@ var $eXeRelaciona = {
             e.stopPropagation();
             const largeImageSrc = $(this).data('url');
             if (largeImageSrc && largeImageSrc.length > 3) {
-                $exeDevices.iDevice.gamification.helpers.showFullscreenImage(largeImageSrc, $rlcGameContainer);
+                $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
+                    largeImageSrc,
+                    $rlcGameContainer
+                );
             }
         });
         $eXeRelaciona.refreshGame(instance);
         $(`#rlcContainerGame-${instance}`).hide();
         if (mOptions.itinerary.showCodeAccess) {
-
-            $("#rlcMesajeAccesCodeE-" + instance).text(mOptions.itinerary.messageCodeAccess);
-            $("#rlcCodeAccessDiv-" + instance).show();
-            $("#rlcShowClue-" + instance).hide();
-            $("#rlcCubierta-" + instance).show();
+            $('#rlcMesajeAccesCodeE-' + instance).text(
+                mOptions.itinerary.messageCodeAccess
+            );
+            $('#rlcCodeAccessDiv-' + instance).show();
+            $('#rlcShowClue-' + instance).hide();
+            $('#rlcCubierta-' + instance).show();
         }
         mOptions.gameOver = false;
         if (mOptions.type < 2 && !mOptions.itinerary.showCodeAccess) {
             $eXeRelaciona.startGame(instance);
         }
-
-
-
     },
 
     setFontSize: function (instance) {
-        const $words = $('#rlcGameContainer-' + instance).find(
-            '.RLCP-Word',
-        );
+        const $words = $('#rlcGameContainer-' + instance).find('.RLCP-Word');
         $words.each(function () {
             const $card = $(this),
                 $text = $card.find('.RLCP-EText');
@@ -806,7 +920,7 @@ var $eXeRelaciona = {
         });
 
         const $definition = $('#rlcGameContainer-' + instance).find(
-            '.RLCP-Definition',
+            '.RLCP-Definition'
         );
         $definition.each(function () {
             const $card = $(this),
@@ -815,27 +929,28 @@ var $eXeRelaciona = {
         });
     },
 
-
-
     refreshGame: function (instance) {
         const mOptions = $eXeRelaciona.options[instance];
         if (!mOptions) return;
         if (mOptions.refreshGame) return;
         mOptions.refreshGame = true;
-        let element = document.getElementById("rlcGameContainer-" + instance);
+        let element = document.getElementById('rlcGameContainer-' + instance);
         element = element || document.documentElement;
-        mOptions.fullscreen = !(!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement);
-        $eXeRelaciona.setFontSize(instance)
+        mOptions.fullscreen = !(
+            !document.fullscreenElement &&
+            !document.mozFullScreenElement &&
+            !document.webkitFullscreenElement &&
+            !document.msFullscreenElement
+        );
+        $eXeRelaciona.setFontSize(instance);
         $eXeRelaciona.ajustarCanvas(instance);
         mOptions.refreshGame = false;
-
     },
 
     removeEventHandlers: function (instance) {
         const $gameContainer = $(`#rlcGameContainer-${instance}`);
-        $gameContainer.off("mousedown", ".RLCP-Word");
+        $gameContainer.off('mousedown', '.RLCP-Word');
     },
-
 
     setupEventHandlers: function (instance) {
         this.removeEventHandlers(instance);
@@ -845,51 +960,66 @@ var $eXeRelaciona = {
             $gameContainer = $(`#rlcContainerGame-${instance}`);
         let isDragging = false;
 
-        $gameContainer.on("mousedown", ".RLCP-Word", function (e) {
+        $gameContainer.on('mousedown', '.RLCP-Word', function (e) {
             e.preventDefault();
-            if (typeof mOptions == "undefined" || !mOptions.gameStarted || mOptions.gameOver) return;
+            if (
+                typeof mOptions == 'undefined' ||
+                !mOptions.gameStarted ||
+                mOptions.gameOver
+            )
+                return;
 
-            const targetWord = $(e.target).closest(".RLCP-Word"),
+            const targetWord = $(e.target).closest('.RLCP-Word'),
                 sound = $(this).find('.RLCP-TAudio').data('audio');
 
-            if (targetWord.hasClass("RLCP-Connected")) {
+            if (targetWord.hasClass('RLCP-Connected')) {
                 $eXeRelaciona.removeConnection(targetWord, instance);
             }
 
-            $gameContainer.find(".RLCP-Word").removeClass("RLCP-Selected");
-            targetWord.addClass("RLCP-Selected");
+            $gameContainer.find('.RLCP-Word').removeClass('RLCP-Selected');
+            targetWord.addClass('RLCP-Selected');
             mOptions.currentWordDiv = targetWord;
             mOptions.canvas = $(`#rlcCanvas-${instance}`)[0];
-            mOptions.contexto = mOptions.canvas.getContext("2d");
+            mOptions.contexto = mOptions.canvas.getContext('2d');
             mOptions.canvasRect = mOptions.canvas.getBoundingClientRect();
 
-            mOptions.tempEnd = $("<div>")
+            mOptions.tempEnd = $('<div>')
                 .css({
-                    'position': "absolute",
-                    'top': e.clientY - mOptions.canvasRect.top,
-                    'left': e.clientX - mOptions.canvasRect.left,
-                    'width': 0,
-                    'height': 0,
-                    'padding': 0,
-                    'margin': 0,
-                    "border-radius": "50%",
-                    "background-color": "red",
-                    "z-index": 9,
+                    position: 'absolute',
+                    top: e.clientY - mOptions.canvasRect.top,
+                    left: e.clientX - mOptions.canvasRect.left,
+                    width: 0,
+                    height: 0,
+                    padding: 0,
+                    margin: 0,
+                    'border-radius': '50%',
+                    'background-color': 'red',
+                    'z-index': 9,
                 })
                 .appendTo(`#rlcContainerGame-${instance}`);
 
-            mOptions.lineindex = mOptions.currentWordDiv.data("lineindex");
+            mOptions.lineindex = mOptions.currentWordDiv.data('lineindex');
             mOptions.startX = e.clientX - mOptions.canvasRect.left;
             mOptions.startY = e.clientY - mOptions.canvasRect.top;
             isDragging = false;
 
             if (sound && sound.length > 4) {
-                $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
+                $exeDevices.iDevice.gamification.media.playSound(
+                    sound,
+                    mOptions
+                );
             }
         });
 
-        $(document).on("mousemove.eXeRlc" + instance, (e) => {
-            if (typeof mOptions == "undefined" || !mOptions.gameStarted || mOptions.gameOver || !mOptions.currentWordDiv || !mOptions.tempEnd) return;
+        $(document).on('mousemove.eXeRlc' + instance, (e) => {
+            if (
+                typeof mOptions == 'undefined' ||
+                !mOptions.gameStarted ||
+                mOptions.gameOver ||
+                !mOptions.currentWordDiv ||
+                !mOptions.tempEnd
+            )
+                return;
 
             const dx = Math.abs(e.clientX - mOptions.startX),
                 dy = Math.abs(e.clientY - mOptions.startY);
@@ -917,15 +1047,30 @@ var $eXeRelaciona = {
             }
         });
 
-        $(document).on("mouseup.eXeRlc" + instance, (e) => {
+        $(document).on('mouseup.eXeRlc' + instance, (e) => {
             e.preventDefault();
-            if (typeof mOptions == "undefined" || !mOptions.gameStarted || mOptions.gameOver || !mOptions.currentWordDiv) return;
+            if (
+                typeof mOptions == 'undefined' ||
+                !mOptions.gameStarted ||
+                mOptions.gameOver ||
+                !mOptions.currentWordDiv
+            )
+                return;
 
-            const definitionDiv = $(e.target).closest(".RLCP-Definition"),
+            const definitionDiv = $(e.target).closest('.RLCP-Definition'),
                 sound = definitionDiv.find('.RLCP-TAudio').data('audio');
 
-            if (definitionDiv.length > 0 && !definitionDiv.hasClass("RLCP-Connected")) {
-                if (!(mOptions.type === 0 && mOptions.currentWordDiv.data("id") !== definitionDiv.data("id"))) {
+            if (
+                definitionDiv.length > 0 &&
+                !definitionDiv.hasClass('RLCP-Connected')
+            ) {
+                if (
+                    !(
+                        mOptions.type === 0 &&
+                        mOptions.currentWordDiv.data('id') !==
+                            definitionDiv.data('id')
+                    )
+                ) {
                     if (isDragging || mOptions.currentWordDiv) {
                         $eXeRelaciona.addOrUpdateLine(
                             mOptions.lineindex,
@@ -939,7 +1084,10 @@ var $eXeRelaciona = {
                     }
                 }
                 if (sound && sound.length > 4) {
-                    $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
+                    $exeDevices.iDevice.gamification.media.playSound(
+                        sound,
+                        mOptions
+                    );
                 }
             }
             mOptions._moving = false;
@@ -956,31 +1104,49 @@ var $eXeRelaciona = {
 
     showAutorImage: function ($this, instance) {
         const mOptions = $eXeRelaciona.options[instance],
-            author = $this.data("author"),
+            author = $this.data('author'),
             $rlcAuthorGameSelector = `#rlcAuthorGame-${instance}`;
         if (author && author.length > 0) {
-            $($rlcAuthorGameSelector).html(`${mOptions.msgs.msgAuthor}: ${author}`).show();
+            $($rlcAuthorGameSelector)
+                .html(`${mOptions.msgs.msgAuthor}: ${author}`)
+                .show();
         }
     },
 
     hideAutorImage: function ($this, instance) {
         const mOptions = $eXeRelaciona.options[instance],
-            author = $this.data("author"),
+            author = $this.data('author'),
             $rlcAuthorGameSelector = `#rlcAuthorGame-${instance}`;
         if (mOptions.author && mOptions.author.length > 0) {
-            $($rlcAuthorGameSelector).html(`${mOptions.msgs.msgAuthor}: ${author}`).show();
+            $($rlcAuthorGameSelector)
+                .html(`${mOptions.msgs.msgAuthor}: ${author}`)
+                .show();
         } else {
             $($rlcAuthorGameSelector).hide();
         }
     },
 
     removeEventHandlersMovil: function (instance) {
-        const containerGame = document.querySelector(`#rlcGameContainer-${instance}`);
+        const containerGame = document.querySelector(
+            `#rlcGameContainer-${instance}`
+        );
 
         if (containerGame) {
-            containerGame.removeEventListener("touchstart", this.touchStartHandler, { passive: false });
-            containerGame.removeEventListener("touchmove", this.touchMoveHandler, { passive: false });
-            containerGame.removeEventListener("touchend", this.touchEndHandler, { passive: false });
+            containerGame.removeEventListener(
+                'touchstart',
+                this.touchStartHandler,
+                { passive: false }
+            );
+            containerGame.removeEventListener(
+                'touchmove',
+                this.touchMoveHandler,
+                { passive: false }
+            );
+            containerGame.removeEventListener(
+                'touchend',
+                this.touchEndHandler,
+                { passive: false }
+            );
         }
     },
 
@@ -995,49 +1161,61 @@ var $eXeRelaciona = {
 
         this.touchStartHandler = function (e) {
             e.preventDefault();
-            if (!mOptions.gameStarted || mOptions.gameOver || !e.touches || e.touches.length === 0) {
+            if (
+                !mOptions.gameStarted ||
+                mOptions.gameOver ||
+                !e.touches ||
+                e.touches.length === 0
+            ) {
                 return;
             }
             const touch = e.touches[0],
                 target = touch.target,
-                touchedWord = $(target).closest(".RLCP-Word");
+                touchedWord = $(target).closest('.RLCP-Word');
 
             if (touchedWord.length === 0) return;
 
             mOptions.targetWord = touchedWord;
 
-            if (mOptions.targetWord.hasClass("RLCP-Connected")) {
+            if (mOptions.targetWord.hasClass('RLCP-Connected')) {
                 $eXeRelaciona.removeConnection(mOptions.targetWord, instance);
             }
 
-            $gameContainer.find(".RLCP-Word").removeClass("RLCP-Selected");
-            mOptions.targetWord.addClass("RLCP-Selected");
+            $gameContainer.find('.RLCP-Word').removeClass('RLCP-Selected');
+            mOptions.targetWord.addClass('RLCP-Selected');
             mOptions.currentWordDiv = mOptions.targetWord;
             mOptions.canvas = document.getElementById(`rlcCanvas-${instance}`);
-            mOptions.contexto = mOptions.canvas.getContext("2d");
+            mOptions.contexto = mOptions.canvas.getContext('2d');
             mOptions.canvasRect = mOptions.canvas.getBoundingClientRect();
-            mOptions.tempEnd = $("<div>")
+            mOptions.tempEnd = $('<div>')
                 .css({
-                    position: "absolute",
+                    position: 'absolute',
                     top: touch.clientY - mOptions.canvasRect.top,
                     left: touch.clientX - mOptions.canvasRect.left,
                     width: 10,
                     height: 10,
                     padding: 0,
                     margin: 0,
-                    "border-radius": "50%",
-                    "background-color": "red",
-                    "z-index": 9,
+                    'border-radius': '50%',
+                    'background-color': 'red',
+                    'z-index': 9,
                 })
                 .appendTo(`#rlcContainerGame-${instance}`);
-            mOptions.lineindex = mOptions.currentWordDiv.data("lineindex");
+            mOptions.lineindex = mOptions.currentWordDiv.data('lineindex');
             mOptions.startX = touch.clientX;
             mOptions.startY = touch.clientY;
             isDragging = false;
         };
 
         this.touchMoveHandler = function (e) {
-            if (!mOptions.gameStarted || mOptions.gameOver || !mOptions.currentWordDiv || !mOptions.tempEnd || !e.touches || e.touches.length === 0) {
+            if (
+                !mOptions.gameStarted ||
+                mOptions.gameOver ||
+                !mOptions.currentWordDiv ||
+                !mOptions.tempEnd ||
+                !e.touches ||
+                e.touches.length === 0
+            ) {
                 return;
             }
             const touch = e.touches[0],
@@ -1065,14 +1243,31 @@ var $eXeRelaciona = {
 
         this.touchEndHandler = function (e) {
             e.preventDefault();
-            if (!mOptions.gameStarted || mOptions.gameOver || !e.changedTouches || e.changedTouches.length === 0 || !mOptions.currentWordDiv) {
+            if (
+                !mOptions.gameStarted ||
+                mOptions.gameOver ||
+                !e.changedTouches ||
+                e.changedTouches.length === 0 ||
+                !mOptions.currentWordDiv
+            ) {
                 return;
             }
             const touch = e.changedTouches[0],
-                definitionDiv = $(document.elementFromPoint(touch.clientX, touch.clientY)).closest(".RLCP-Definition");
+                definitionDiv = $(
+                    document.elementFromPoint(touch.clientX, touch.clientY)
+                ).closest('.RLCP-Definition');
 
-            if (definitionDiv.length > 0 && !definitionDiv.hasClass("RLCP-Connected")) {
-                if (!(mOptions.type === 0 && mOptions.currentWordDiv.data("id") !== definitionDiv.data("id"))) {
+            if (
+                definitionDiv.length > 0 &&
+                !definitionDiv.hasClass('RLCP-Connected')
+            ) {
+                if (
+                    !(
+                        mOptions.type === 0 &&
+                        mOptions.currentWordDiv.data('id') !==
+                            definitionDiv.data('id')
+                    )
+                ) {
                     if (isDragging || mOptions.currentWordDiv) {
                         $eXeRelaciona.addOrUpdateLine(
                             mOptions.lineindex,
@@ -1097,11 +1292,21 @@ var $eXeRelaciona = {
             mOptions._tempY = undefined;
         };
 
-        const containerGame = document.querySelector(`#rlcGameContainer-${instance}`);
+        const containerGame = document.querySelector(
+            `#rlcGameContainer-${instance}`
+        );
         if (containerGame) {
-            containerGame.addEventListener("touchstart", this.touchStartHandler, { passive: false });
-            containerGame.addEventListener("touchmove", this.touchMoveHandler, { passive: false });
-            containerGame.addEventListener("touchend", this.touchEndHandler, { passive: false });
+            containerGame.addEventListener(
+                'touchstart',
+                this.touchStartHandler,
+                { passive: false }
+            );
+            containerGame.addEventListener('touchmove', this.touchMoveHandler, {
+                passive: false,
+            });
+            containerGame.addEventListener('touchend', this.touchEndHandler, {
+                passive: false,
+            });
         }
     },
 
@@ -1128,7 +1333,14 @@ var $eXeRelaciona = {
             x2 = endRect.left - mOptions.canvasRect.left,
             y2 = endRect.top + endRect.height / 2 - mOptions.canvasRect.top;
 
-        $eXeRelaciona.dibujaLineaCurva(mOptions.contexto, x1, y1, x2, y2, $eXeRelaciona.borderColors.blue);
+        $eXeRelaciona.dibujaLineaCurva(
+            mOptions.contexto,
+            x1,
+            y1,
+            x2,
+            y2,
+            $eXeRelaciona.borderColors.blue
+        );
     },
 
     addOrUpdateLine: function (lineindex, $word, $definition, color, instance) {
@@ -1137,12 +1349,12 @@ var $eXeRelaciona = {
             correct = false;
 
         if ($word && $definition) {
-            correct = $word.data("id") === $definition.data("id");
+            correct = $word.data('id') === $definition.data('id');
         }
 
-        $word.removeClass("RLCP-Selected");
-        $definition.data("lineindex", lineindex).addClass("RLCP-Connected");
-        $word.addClass("RLCP-Connected");
+        $word.removeClass('RLCP-Selected');
+        $definition.data('lineindex', lineindex).addClass('RLCP-Connected');
+        $word.addClass('RLCP-Connected');
 
         if (mOptions.linesMap.has(lineindex)) {
             line = mOptions.linesMap.get(lineindex);
@@ -1171,17 +1383,23 @@ var $eXeRelaciona = {
             widthc = $container.innerWidth(),
             heightc = $container.innerHeight();
 
-
         let fontSize = maxFontSize;
 
         $text.css('font-size', fontSize + 'px');
 
-        while (($text.outerWidth() > widthc || $text.outerHeight() > heightc) && fontSize > minFontSize) {
+        while (
+            ($text.outerWidth() > widthc || $text.outerHeight() > heightc) &&
+            fontSize > minFontSize
+        ) {
             fontSize--;
             $text.css('font-size', fontSize + 'px');
         }
 
-        while (($text.outerWidth() < widthc && $text.outerHeight() < heightc) && fontSize < maxFontSize) {
+        while (
+            $text.outerWidth() < widthc &&
+            $text.outerHeight() < heightc &&
+            fontSize < maxFontSize
+        ) {
             fontSize++;
             $text.css('font-size', fontSize + 'px');
 
@@ -1198,7 +1416,6 @@ var $eXeRelaciona = {
         return mOptions.cardsGame[mOptions.active].cards.length;
     },
 
-
     ajustarCanvas: function (instance) {
         const mOptions = $eXeRelaciona.options[instance],
             $contenedor = $(`#rlcContainerGame-${instance}`),
@@ -1211,14 +1428,14 @@ var $eXeRelaciona = {
         mOptions._cssW = cssW;
         mOptions._cssH = cssH;
 
-        $canvas.attr("width", Math.round(cssW * dpr));
-        $canvas.attr("height", Math.round(cssH * dpr));
+        $canvas.attr('width', Math.round(cssW * dpr));
+        $canvas.attr('height', Math.round(cssH * dpr));
         $canvas.css({ width: cssW + 'px', height: cssH + 'px' });
 
         mOptions.canvas = $canvas[0];
 
         if (mOptions.canvas) {
-            mOptions.contexto = mOptions.canvas.getContext("2d");
+            mOptions.contexto = mOptions.canvas.getContext('2d');
             mOptions.contexto.setTransform(dpr, 0, 0, dpr, 0, 0);
             mOptions.canvasRect = mOptions.canvas.getBoundingClientRect();
             $eXeRelaciona.requestRedraw(instance);
@@ -1274,21 +1491,25 @@ var $eXeRelaciona = {
     },
 
     removeConnection: function (element, instance) {
-        const lineId = element.data("lineindex");
+        const lineId = element.data('lineindex');
 
         if (lineId !== undefined) {
             $eXeRelaciona.removeLine(lineId, instance);
             $(`#rlcContainerWords-${instance} .RLCP-Word`).each(function () {
-                if ($(this).data("lineindex") === lineId) {
-                    $(this).removeClass("RLCP-Connected");
+                if ($(this).data('lineindex') === lineId) {
+                    $(this).removeClass('RLCP-Connected');
                 }
             });
 
-            $(`#rlcContainerDefinitions-${instance} .RLCP-Definition`).each(function () {
-                if ($(this).data("lineindex") === lineId) {
-                    $(this).removeClass("RLCP-Connected").data("lineindex", 0);
+            $(`#rlcContainerDefinitions-${instance} .RLCP-Definition`).each(
+                function () {
+                    if ($(this).data('lineindex') === lineId) {
+                        $(this)
+                            .removeClass('RLCP-Connected')
+                            .data('lineindex', 0);
+                    }
                 }
-            });
+            );
         }
         $eXeRelaciona.redibujarLineas(instance, false);
     },
@@ -1299,9 +1520,12 @@ var $eXeRelaciona = {
 
         $(`#rlcCheckButton-${instance}`).hide();
         $(`#rlcResetButton-${instance}`).hide();
-        $(`#rlcButtons-${instance}`).css("display", "flex");
+        $(`#rlcButtons-${instance}`).css('display', 'flex');
 
-        if ($constainerGame.find(".RLCP-Word.RLCP-Connected").length === $constainerGame.find(".RLCP-Word").length) {
+        if (
+            $constainerGame.find('.RLCP-Word.RLCP-Connected').length ===
+            $constainerGame.find('.RLCP-Word').length
+        ) {
             if (mOptions.permitirErrores) {
                 $(`#rlcCheckButton-${instance}`).show();
             } else {
@@ -1311,7 +1535,9 @@ var $eXeRelaciona = {
     },
 
     isMobile: function () {
-        return /Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
+        return /Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
+            navigator.userAgent
+        );
     },
 
     enterCodeAccess: function (instance) {
@@ -1322,16 +1548,15 @@ var $eXeRelaciona = {
         if (codeAccess === codeInput) {
             $(`#rlcCodeAccessDiv-${instance}, #rlcCubierta-${instance}`).hide();
             $(`#rlcContainerGame-${instance}`).show();
-            $eXeRelaciona.refreshGame(instance)
+            $eXeRelaciona.refreshGame(instance);
             $eXeRelaciona.startGame(instance);
-
         } else {
             $(`#rlcMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
                 .fadeIn(200)
                 .fadeOut(300)
                 .fadeIn(200);
-            $(`#rlcCodeAccessE-${instance}`).val("");
+            $(`#rlcCodeAccessE-${instance}`).val('');
         }
     },
 
@@ -1351,43 +1576,48 @@ var $eXeRelaciona = {
         $(`#rlcPScore-${instance}`).text(sscore);
         $(`#rlcPHits-${instance}`).text(mOptions.hits);
         $(`#rlcPErrors-${instance}`).text(mOptions.errors);
-        $(`#rlcPNumber-${instance}`).text(mOptions.realNumberCards - mOptions.hits - mOptions.errors);
+        $(`#rlcPNumber-${instance}`).text(
+            mOptions.realNumberCards - mOptions.hits - mOptions.errors
+        );
     },
 
     showMessage: function (type, message, instance) {
         const colors = [
-            "#555555",
-            $eXeRelaciona.borderColors.red,
-            $eXeRelaciona.borderColors.green,
-            $eXeRelaciona.borderColors.blue,
-            $eXeRelaciona.borderColors.yellow
-        ],
+                '#555555',
+                $eXeRelaciona.borderColors.red,
+                $eXeRelaciona.borderColors.green,
+                $eXeRelaciona.borderColors.blue,
+                $eXeRelaciona.borderColors.yellow,
+            ],
             color = colors[type],
             $rlcMessage = $(`#rlcMessage-${instance}`);
         $rlcMessage
             .html(message)
-            .css({ color: color, "font-style": "bold" })
+            .css({ color: color, 'font-style': 'bold' })
             .show();
     },
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeRelaciona.options[instance];
-        mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards,
-            $exeDevices.iDevice.gamification.report.saveEvaluation(mOptions, $eXeRelaciona.isInExe)
+        ((mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards),
+            $exeDevices.iDevice.gamification.report.saveEvaluation(
+                mOptions,
+                $eXeRelaciona.isInExe
+            ));
     },
 
     sendScore: function (auto, instance) {
         const mOptions = $eXeRelaciona.options[instance];
 
-        mOptions.scorerp = score = (mOptions.hits * 10) / mOptions.realNumberCards,
-            mOptions.previousScore = $eXeRelaciona.previousScore;
+        ((mOptions.scorerp = score =
+            (mOptions.hits * 10) / mOptions.realNumberCards),
+            (mOptions.previousScore = $eXeRelaciona.previousScore));
         mOptions.userName = $eXeRelaciona.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);
 
         $eXeRelaciona.previousScore = mOptions.previousScore;
     },
-
 };
 $(function () {
     $eXeRelaciona.init();
