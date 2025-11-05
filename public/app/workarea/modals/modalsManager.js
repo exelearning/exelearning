@@ -17,6 +17,7 @@ import ModalProperties from './modals/pages/modalProperties.js';
 import ModalOpenUserOdeFiles from './modals/pages/modalOpenUserOdeFiles.js';
 import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
+import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
 
 export default class ModalsManagement {
     constructor(app) {
@@ -40,6 +41,7 @@ export default class ModalsManagement {
         this.openuserodefiles = null;
         this.templateselection = null;
         this.sessionlogout = null;
+        this.uploadprogress = null;
     }
 
     /**
@@ -65,6 +67,7 @@ export default class ModalsManagement {
         this.openuserodefiles = new ModalOpenUserOdeFiles(this);
         this.templateselection = new ModalTemplateSelection(this);
         this.sessionlogout = new ModalSessionLogout(this);
+        this.uploadprogress = new ModalUploadProgress(document.body);
     }
 
     /**

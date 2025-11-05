@@ -46,7 +46,12 @@ var $exeDevice = {
     // Create the form to insert HTML in the TEXTAREA
     createForm: function () {
         const str1 = _('Save score');
-        const instructions = _('Insert a GeoGebra activity from www.geogebra.org. It requires an Internet connection.').replace(' www.geogebra.org', ' <a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">www.geogebra.org</a>');
+        const instructions = _(
+            'Insert a GeoGebra activity from www.geogebra.org. It requires an Internet connection.'
+        ).replace(
+            ' www.geogebra.org',
+            ' <a href="https://www.geogebra.org/" target="_blank" rel="noopener noreferrer">www.geogebra.org</a>'
+        );
         const html = `
         <div id="eXeAutoGeogebraForm">
             <p class="exe-block-info exe-block-dismissible" style="position:relative">
@@ -149,38 +154,73 @@ var $exeDevice = {
             </div>
     `;
         this.ideviceBody.innerHTML = html;
-        $('#geogebraActivityURLexample').focus(function () { this.select(); });
+        $('#geogebraActivityURLexample').focus(function () {
+            this.select();
+        });
         $('#geogebraActivityPlayButton').on('click', (e) => {
             e.preventDefault();
-            const urlBase = this.activityURLbase, url = $('#geogebraActivityURL').val(), murl = url.replace('https://ggbm.at/', urlBase), id = $exeDevice.getId(murl);
-            if (!url || !id) { $exeDevice.errorMessage(true); return; }
+            const urlBase = this.activityURLbase,
+                url = $('#geogebraActivityURL').val(),
+                murl = url.replace('https://ggbm.at/', urlBase),
+                id = $exeDevice.getId(murl);
+            if (!url || !id) {
+                $exeDevice.errorMessage(true);
+                return;
+            }
             $exeDevice.loadData(id, murl);
         });
-        $('#geogebraActivityWidth, #geogebraActivityHeight').on('keyup', function () { this.value = this.value.replace(/\D/g, '').substring(0, 4); });
-        $('#geogebraActivityLang').on('keyup', function () { this.value = this.value.replace(/[^A-Za-z]/g, '').substring(0, 2); });
-        $('#geogebraActivityScale').on('keyup', function () { let v = this.value.replace(/\D/g, ''); this.value = Math.min(Math.max(v, 1), 100); });
-        $('#geogebraActivityWeight').on('keyup', function () { let v = this.value.replace(/\D/g, ''); this.value = Math.min(Math.max(v, 1), 100); });
+        $('#geogebraActivityWidth, #geogebraActivityHeight').on(
+            'keyup',
+            function () {
+                this.value = this.value.replace(/\D/g, '').substring(0, 4);
+            }
+        );
+        $('#geogebraActivityLang').on('keyup', function () {
+            this.value = this.value.replace(/[^A-Za-z]/g, '').substring(0, 2);
+        });
+        $('#geogebraActivityScale').on('keyup', function () {
+            let v = this.value.replace(/\D/g, '');
+            this.value = Math.min(Math.max(v, 1), 100);
+        });
+        $('#geogebraActivityWeight').on('keyup', function () {
+            let v = this.value.replace(/\D/g, '');
+            this.value = Math.min(Math.max(v, 1), 100);
+        });
         $('#geogebraActivitySCORM').change(function () {
-            const $opts = $('#geogebraActivitySCORMoptions, #geogebraActivitySCORMinstructions');
+            const $opts = $(
+                '#geogebraActivitySCORMoptions, #geogebraActivitySCORMinstructions'
+            );
             if (this.checked) {
                 $opts.removeClass('d-none').addClass('d-flex');
-                $('#geogebraActivityWeightDiv').removeClass('d-none').addClass('d-flex');
-            }
-            else {
+                $('#geogebraActivityWeightDiv')
+                    .removeClass('d-none')
+                    .addClass('d-flex');
+            } else {
                 $opts.addClass('d-none').removeClass('d-flex');
-                $('#geogebraActivityWeightDiv').addClass('d-none').removeClass('d-flex');
+                $('#geogebraActivityWeightDiv')
+                    .addClass('d-none')
+                    .removeClass('d-flex');
             }
         });
-        $('#geogebraActivityEvaluation').change(function () { $('#geogebraActivityEvaluationID').prop('disabled', !this.checked); });
+        $('#geogebraActivityEvaluation').change(function () {
+            $('#geogebraActivityEvaluationID').prop('disabled', !this.checked);
+        });
         $('#geogebraActivityEvaluationHelpLnk').click(function () {
             if ($('#geogebraActivityEvaluationHelp').hasClass('d-none')) {
-                $('#geogebraActivityEvaluationHelp').removeClass('d-none').addClass('d-flex')
+                $('#geogebraActivityEvaluationHelp')
+                    .removeClass('d-none')
+                    .addClass('d-flex');
             } else {
-                $('#geogebraActivityEvaluationHelp').removeClass('d-flex').addClass('d-none')
+                $('#geogebraActivityEvaluationHelp')
+                    .removeClass('d-flex')
+                    .addClass('d-none');
             }
             return false;
         });
-        $('.exe-block-dismissible .exe-block-close').click(function () { $(this).parent().fadeOut(); return false; });
+        $('.exe-block-dismissible .exe-block-close').click(function () {
+            $(this).parent().fadeOut();
+            return false;
+        });
         this.loadPreviousValues();
     },
 
@@ -266,7 +306,9 @@ var $exeDevice = {
                                 : 'https://ggbm.at/' + id;
                     }
                     $('#geogebraActivityAuthorURL').text(author);
-                    $('#geogebraActivityTitle').html('<a href="' + murl + '">' + title + '</a>');
+                    $('#geogebraActivityTitle').html(
+                        '<a href="' + murl + '">' + title + '</a>'
+                    );
                 } else {
                     $exeDevice.errorMessage(false);
                 }
@@ -381,8 +423,12 @@ var $exeDevice = {
                     btn = btn.slice(0, -1);
                     $('#geogebraActivitySCORMbuttonText').val(btn);
                 }
-                $('#geogebraActivitySCORMoptions').removeClass('d-none').addClass('d-flex');
-                $('#geogebraActivitySCORMinstructions').removeClass('d-none').addClass('d-flex');
+                $('#geogebraActivitySCORMoptions')
+                    .removeClass('d-none')
+                    .addClass('d-flex');
+                $('#geogebraActivitySCORMinstructions')
+                    .removeClass('d-none')
+                    .addClass('d-flex');
             }
 
             let parts = css.split(' ');
@@ -398,19 +444,19 @@ var $exeDevice = {
                     $('#geogebraActivityWidth').val(part);
                 } else if (part.indexOf('language-') > -1) {
                     $('#geogebraActivityLang').val(
-                        part.replace('language-', ''),
+                        part.replace('language-', '')
                     );
                 } else if (part.indexOf('auto-geogebra-border-') > -1) {
                     $('#geogebraActivityBorderColor').val(
-                        part.replace('auto-geogebra-border-', ''),
+                        part.replace('auto-geogebra-border-', '')
                     );
                 } else if (part.indexOf('auto-geogebra-scale-') > -1) {
                     $('#geogebraActivityScale').val(
-                        part.replace('auto-geogebra-scale-', ''),
+                        part.replace('auto-geogebra-scale-', '')
                     );
                 } else if (part.indexOf('auto-geogebra-weight-') > -1) {
                     $('#geogebraActivityWeight').val(
-                        part.replace('auto-geogebra-weight-', ''),
+                        part.replace('auto-geogebra-weight-', '')
                     );
                 } else if (part.indexOf('auto-geogebra-evaluation-id-') > -1) {
                     let evid = part.replace('auto-geogebra-evaluation-id-', '');
@@ -419,13 +465,13 @@ var $exeDevice = {
                         $('#geogebraActivityEvaluationID').val(evid);
                         $('#geogebraActivityEvaluationID').prop(
                             'disabled',
-                            false,
+                            false
                         );
                     }
                 } else if (part.indexOf('auto-geogebra-ideviceid-') > -1) {
                     $exeDevice.ideviceID = part.replace(
                         'auto-geogebra-ideviceid-',
-                        '',
+                        ''
                     );
                 }
                 let opts = this.trueFalseOptions;
@@ -441,9 +487,13 @@ var $exeDevice = {
             }
 
             if ($('#geogebraActivitySCORM').is(':checked')) {
-                $('#geogebraActivityWeightDiv').removeClass('d-none').addClass('d-flex');
+                $('#geogebraActivityWeightDiv')
+                    .removeClass('d-none')
+                    .addClass('d-flex');
             } else {
-                $('#geogebraActivityWeightDiv').removeClass('d-flex').addClass('d-none');
+                $('#geogebraActivityWeightDiv')
+                    .removeClass('d-flex')
+                    .addClass('d-none');
             }
 
             // Instructions
@@ -492,7 +542,7 @@ var $exeDevice = {
         }
         if (evaluation && evaluationID.length < 5) {
             eXe.app.alert(
-                _('The report identifier must have at least 5 characters'),
+                _('The report identifier must have at least 5 characters')
             );
             return false;
         }
@@ -600,8 +650,8 @@ var $exeDevice = {
             '<div class="auto-geogebra-messages-scorm">' +
             escape(
                 c_(
-                    "The score can't be saved because this page is not part of a SCORM package",
-                ),
+                    "The score can't be saved because this page is not part of a SCORM package"
+                )
             ) +
             ',' +
             escape(c_('Your score')) +

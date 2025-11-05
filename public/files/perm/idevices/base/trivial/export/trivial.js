@@ -7,9 +7,9 @@
  * Version 2.0
  */
 var $eXeTrivial = {
-    idevicePath: "",
+    idevicePath: '',
     borderColors: {
-        black: "#1c1b1b",
+        black: '#1c1b1b',
         blue: '#5877c6',
         green: '#00a300',
         red: '#b3092f',
@@ -17,18 +17,25 @@ var $eXeTrivial = {
         yellow: '#f3d55a',
         grey: '#777777',
         incorrect: '#d9d9d9',
-        correct: '#00ff00'
+        correct: '#00ff00',
     },
     colors: {
-        black: "#1c1b1b",
+        black: '#1c1b1b',
         blue: '#dfe3f1',
         green: '#caede8',
         red: '#fbd2d6',
         white: '#f9f9f9',
         yellow: '#fcf4d3',
-        correct: '#dcffdc'
+        correct: '#dcffdc',
     },
-    colorQuesos: ['#f05565', "#94e578", '#9ebcec', '#f1f370', '#e2b9ee', '#fbbd5d'],
+    colorQuesos: [
+        '#f05565',
+        '#94e578',
+        '#9ebcec',
+        '#f1f370',
+        '#e2b9ee',
+        '#fbbd5d',
+    ],
     colorsDado: ['#f44336', '#04458f', '#00af80', '#ffce00'],
     image: '',
     widthImage: 0,
@@ -38,7 +45,7 @@ var $eXeTrivial = {
     video: {
         player: '',
         duration: 0,
-        id: ''
+        id: '',
     },
     player: '',
     userName: '',
@@ -55,7 +62,12 @@ var $eXeTrivial = {
     version: 3,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'TriviExt', 'trivial', 'trivial-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'TriviExt',
+            'trivial',
+            'trivial-IDevice'
+        );
     },
 
     enable: function () {
@@ -65,21 +77,24 @@ var $eXeTrivial = {
     saveDataStorage: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
 
-        if (typeof mOptions.trivialID == "undefined") return;
+        if (typeof mOptions.trivialID == 'undefined') return;
 
         const data = {
-            'trivialID': mOptions.trivialID,
-            'gameStarted': mOptions.gameStarted,
-            'gameOver': mOptions.gameOver,
-            'gamers': mOptions.gamers,
-            'activePlayer': mOptions.activePlayer,
-            'activesQuestions': mOptions.activesQuestions,
-            'scoreGame': mOptions.scoreGame,
-            'obtainedClue': mOptions.obtainedClue,
-            'direccion': mOptions.direccion,
-            'contadorJuego': mOptions.contadorJuego,
-        }
-        localStorage.setItem('dataTrivial-' + mOptions.trivialID, JSON.stringify(data));
+            trivialID: mOptions.trivialID,
+            gameStarted: mOptions.gameStarted,
+            gameOver: mOptions.gameOver,
+            gamers: mOptions.gamers,
+            activePlayer: mOptions.activePlayer,
+            activesQuestions: mOptions.activesQuestions,
+            scoreGame: mOptions.scoreGame,
+            obtainedClue: mOptions.obtainedClue,
+            direccion: mOptions.direccion,
+            contadorJuego: mOptions.contadorJuego,
+        };
+        localStorage.setItem(
+            'dataTrivial-' + mOptions.trivialID,
+            JSON.stringify(data)
+        );
     },
 
     reloadGame: function (dataTrivial, instance) {
@@ -109,7 +124,7 @@ var $eXeTrivial = {
     loadGame: function () {
         $eXeTrivial.options = [];
         $eXeTrivial.activities.each(function (i) {
-            const dl = $(".trivial-DataGame", this);
+            const dl = $('.trivial-DataGame', this);
             let mOption = $eXeTrivial.loadDataGame(dl),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -122,7 +137,10 @@ var $eXeTrivial = {
             for (let j = 0; j < mOption.numeroTemas; j++) {
                 mOption.activesQuestions.push(-1);
                 let cuestions = mOption.temas[j];
-                cuestions = $exeDevices.iDevice.gamification.helpers.shuffleAds(cuestions);
+                cuestions =
+                    $exeDevices.iDevice.gamification.helpers.shuffleAds(
+                        cuestions
+                    );
                 mOption.temas[j] = cuestions;
             }
             $eXeTrivial.options.push(mOption);
@@ -131,13 +149,17 @@ var $eXeTrivial = {
             dl.before(trivial).remove();
 
             $('#trivialGameMinimize-' + i).hide();
-            $('#trivialGameContainer-' + i).find('.trivial-Message').hide();
+            $('#trivialGameContainer-' + i)
+                .find('.trivial-Message')
+                .hide();
             $('#trivialGameContainer-' + i).hide();
             $('#trivialMessageModal-' + i).hide();
             if (mOption.showMinimize) {
-                $('#trivialGameMinimize-' + i).css({
-                    'cursor': 'pointer'
-                }).show();
+                $('#trivialGameMinimize-' + i)
+                    .css({
+                        cursor: 'pointer',
+                    })
+                    .show();
             } else {
                 $('#trivialGameContainer-' + i).show();
             }
@@ -150,15 +172,16 @@ var $eXeTrivial = {
         if (this.isInExe) {
             node = document.getElementById('node-content');
         }
-        if (node) $exeDevices.iDevice.gamification.observers.observeResize($eXeTrivial, node);
+        if (node)
+            $exeDevices.iDevice.gamification.observers.observeResize(
+                $eXeTrivial,
+                node
+            );
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.trivial-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.trivial-IDevice');
 
         if ($eXeTrivial.hasVideo) $eXeTrivial.loadApiPlayer();
     },
-
 
     loadMedias: function (game, sgame) {
         for (let j = 0; j < game.numeroTemas; j++) {
@@ -167,7 +190,8 @@ var $eXeTrivial = {
                 tema = game.temas[j];
 
             for (let i = 0; i < tema.length; i++) {
-                tema[i].audio = typeof tema[i].audio == 'undefined' ? '' : tema[i].audio
+                tema[i].audio =
+                    typeof tema[i].audio == 'undefined' ? '' : tema[i].audio;
             }
 
             $imagesLink.each(function () {
@@ -175,7 +199,7 @@ var $eXeTrivial = {
                 if (!isNaN(iq) && iq < tema.length) {
                     tema[iq].url = $(this).prop('href');
                     if (tema[iq].url.length < 4 && tema[iq].type == 1) {
-                        tema[iq].url = "";
+                        tema[iq].url = '';
                     }
                 }
             });
@@ -184,11 +208,10 @@ var $eXeTrivial = {
                 if (!isNaN(iq) && iq < tema.length) {
                     tema[iq].audio = $(this).prop('href');
                     if (tema[iq].audio.length < 4) {
-                        tema[iq].audio = "";
+                        tema[iq].audio = '';
                     }
                 }
             });
-
         }
         return game;
     },
@@ -200,15 +223,35 @@ var $eXeTrivial = {
             for (let j = 1; j < numasi + 1; j++) {
                 let sitiosActivos = [];
                 if (mOptions.numeroTemas == 2) {
-                    sitiosActivos = $eXeTrivial.getNextPositions2(j, i, instance);
+                    sitiosActivos = $eXeTrivial.getNextPositions2(
+                        j,
+                        i,
+                        instance
+                    );
                 } else if (mOptions.numeroTemas == 3) {
-                    sitiosActivos = $eXeTrivial.getNextPositions3(j, i, instance);
+                    sitiosActivos = $eXeTrivial.getNextPositions3(
+                        j,
+                        i,
+                        instance
+                    );
                 } else if (mOptions.numeroTemas == 4) {
-                    sitiosActivos = $eXeTrivial.getNextPositions4(j, i, instance);
+                    sitiosActivos = $eXeTrivial.getNextPositions4(
+                        j,
+                        i,
+                        instance
+                    );
                 } else if (mOptions.numeroTemas == 5) {
-                    sitiosActivos = $eXeTrivial.getNextPositions5(j, i, instance);
+                    sitiosActivos = $eXeTrivial.getNextPositions5(
+                        j,
+                        i,
+                        instance
+                    );
                 } else if (mOptions.numeroTemas == 6) {
-                    sitiosActivos = $eXeTrivial.getNextPositions6(j, i, instance);
+                    sitiosActivos = $eXeTrivial.getNextPositions6(
+                        j,
+                        i,
+                        instance
+                    );
                 }
             }
         }
@@ -500,16 +543,19 @@ var $eXeTrivial = {
         mOptions.scorerp = 10;
         let points = mOptions.gamers[0].score;
         if (mOptions.gamers[0].quesos.length < mOptions.numeroTemas) {
-            score = ((points * 10) / ((mOptions.numeroTemas * 10) + mOptions.numeroTemas))
-            score = score > 10 ? 10.00 : score;
+            score =
+                (points * 10) /
+                (mOptions.numeroTemas * 10 + mOptions.numeroTemas);
+            score = score > 10 ? 10.0 : score;
         }
         mOptions.scorerp = score;
         if (mOptions.numeroJugadores === 1) {
-            $exeDevices.iDevice.gamification.report.saveEvaluation(mOptions, $eXeTrivial.isInExe);
+            $exeDevices.iDevice.gamification.report.saveEvaluation(
+                mOptions,
+                $eXeTrivial.isInExe
+            );
         }
-
     },
-
 
     sendScore: function (auto, instance) {
         let mOptions = $eXeTrivial.options[instance],
@@ -517,7 +563,9 @@ var $eXeTrivial = {
             points = mOptions.gamers[0].score;
 
         if (mOptions.gamers[0].quesos.length < mOptions.numeroTemas) {
-            score = ((points * 10) / ((mOptions.numeroTemas * 10) + mOptions.numeroTemas))
+            score =
+                (points * 10) /
+                (mOptions.numeroTemas * 10 + mOptions.numeroTemas);
             score = score > 10 ? 10 : score;
         }
 
@@ -552,31 +600,40 @@ var $eXeTrivial = {
         const mOptions = $eXeTrivial.options[instance];
         let gamers = [],
             validNames = true;
-        $('#trivialNameGamers-' + instance).find('input').each(function (i) {
-            if (i < mOptions.numeroJugadores) {
-                let gamer = {};
-                gamer.name = $(this).val().trim();
-                gamer.score = 0;
-                gamer.casilla = mOptions.pT.length - 1;
-                gamer.number = i;
-                gamer.quesos = [];
-                gamer.cheeses = [];
-                gamers.push(gamer);
-                if (gamer.name.length == 0) {
-                    $('#trivialNameGamers-' + instance).find('input').eq(i).focus();
-                    validNames = false;
-                    return false;
+        $('#trivialNameGamers-' + instance)
+            .find('input')
+            .each(function (i) {
+                if (i < mOptions.numeroJugadores) {
+                    let gamer = {};
+                    gamer.name = $(this).val().trim();
+                    gamer.score = 0;
+                    gamer.casilla = mOptions.pT.length - 1;
+                    gamer.number = i;
+                    gamer.quesos = [];
+                    gamer.cheeses = [];
+                    gamers.push(gamer);
+                    if (gamer.name.length == 0) {
+                        $('#trivialNameGamers-' + instance)
+                            .find('input')
+                            .eq(i)
+                            .focus();
+                        validNames = false;
+                        return false;
+                    }
                 }
-            }
-        });
+            });
         if (validNames) {
             mOptions.gamers = gamers;
-            $('#trivialJugadores-' + instance).find('.trivial-Jugador').show();
-            $('#trivialJugadores-' + instance).find('.trivial-Jugador').each(function (i) {
-                if (i >= mOptions.numeroJugadores) {
-                    $(this).hide();
-                }
-            })
+            $('#trivialJugadores-' + instance)
+                .find('.trivial-Jugador')
+                .show();
+            $('#trivialJugadores-' + instance)
+                .find('.trivial-Jugador')
+                .each(function (i) {
+                    if (i >= mOptions.numeroJugadores) {
+                        $(this).hide();
+                    }
+                });
         }
         return validNames;
     },
@@ -584,35 +641,48 @@ var $eXeTrivial = {
     initCheeses: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
         for (let j = 0; j < 4; j++) {
-            $('#trivialJugadores-' + instance + ' > .trivialj' + j).find(".trivial-Queso").hide();
-            $('#trivialJugadores-' + instance + ' > .trivialj' + j).find(".trivial-Queso").each(function (i) {
-                if (i < mOptions.numeroTemas) {
-                    $(this).css({
-                        'background-color': "#ffffff"
-                    }).show();
-                }
-            });
+            $('#trivialJugadores-' + instance + ' > .trivialj' + j)
+                .find('.trivial-Queso')
+                .hide();
+            $('#trivialJugadores-' + instance + ' > .trivialj' + j)
+                .find('.trivial-Queso')
+                .each(function (i) {
+                    if (i < mOptions.numeroTemas) {
+                        $(this)
+                            .css({
+                                'background-color': '#ffffff',
+                            })
+                            .show();
+                    }
+                });
         }
     },
 
     updateCheeses: function (instance) {
         let mOptions = $eXeTrivial.options[instance];
         for (let j = 0; j < mOptions.gamers.length; j++) {
-            $('#trivialJugadores-' + instance + ' > .trivialj' + j).find(".trivial-Queso").hide();
-            $('#trivialJugadores-' + instance + ' > .trivialj' + j).find(".trivial-Queso").each(function (i) {
-                if (i < mOptions.numeroTemas) {
-                    $(this).css({
-                        'background-color': "#ffffff"
-                    }).show();
-                }
-                if (mOptions.gamers[j].cheeses.indexOf(i) != -1) {
-                    $(this).css({
-                        'background-color': $eXeTrivial.colorQuesos[i]
-                    }).show();
-                }
-            });
+            $('#trivialJugadores-' + instance + ' > .trivialj' + j)
+                .find('.trivial-Queso')
+                .hide();
+            $('#trivialJugadores-' + instance + ' > .trivialj' + j)
+                .find('.trivial-Queso')
+                .each(function (i) {
+                    if (i < mOptions.numeroTemas) {
+                        $(this)
+                            .css({
+                                'background-color': '#ffffff',
+                            })
+                            .show();
+                    }
+                    if (mOptions.gamers[j].cheeses.indexOf(i) != -1) {
+                        $(this)
+                            .css({
+                                'background-color': $eXeTrivial.colorQuesos[i],
+                            })
+                            .show();
+                    }
+                });
         }
-
     },
 
     rebootGame: function (instance) {
@@ -628,15 +698,20 @@ var $eXeTrivial = {
 
         $eXeTrivial.saveEvaluation(instance);
         $eXeTrivial.sendScore(true, instance);
-        $eXeTrivial.initialScore = (((mOptions.gamers[0].casilla + 1) * 10) / mOptions.numeroCasillas).toFixed(2);
+        $eXeTrivial.initialScore = (
+            ((mOptions.gamers[0].casilla + 1) * 10) /
+            mOptions.numeroCasillas
+        ).toFixed(2);
         mOptions.gameStarted = false;
         mOptions.activePlayer = 0;
-        mOptions.gameOver = false
+        mOptions.gameOver = false;
 
         for (let i = 0; i < mOptions.numeroJugadores; i++) {
             mOptions.gamers[i].casilla = mOptions.pT.length - 1;
             $eXeTrivial.placePlayerToken(i, instance);
-            $('#trivialJugadores-' + instance + ' > .trivialj' + i).find('.trivial-Puntos').text('0')
+            $('#trivialJugadores-' + instance + ' > .trivialj' + i)
+                .find('.trivial-Puntos')
+                .text('0');
         }
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 6; j++) {
@@ -654,26 +729,35 @@ var $eXeTrivial = {
 
         for (let i = 0; i < mOptions.numeroJugadores; i++) {
             $eXeTrivial.placePlayerToken(i, instance);
-            $('#trivialJugadores-' + instance + ' > .trivialj' + i).find('.trivial-Puntos').text(mOptions.gamers[i].score)
+            $('#trivialJugadores-' + instance + ' > .trivialj' + i)
+                .find('.trivial-Puntos')
+                .text(mOptions.gamers[i].score);
         }
 
-        $('#trivialJugadores-' + instance).find('.trivial-Jugador').show();
-        $('#trivialJugadores-' + instance).find('.trivial-Jugador').each(function (i) {
-            if (i >= mOptions.numeroJugadores) {
-                $(this).hide();
-            }
-        })
+        $('#trivialJugadores-' + instance)
+            .find('.trivial-Jugador')
+            .show();
+        $('#trivialJugadores-' + instance)
+            .find('.trivial-Jugador')
+            .each(function (i) {
+                if (i >= mOptions.numeroJugadores) {
+                    $(this).hide();
+                }
+            });
         $('#trivialSelectsGamers-' + instance).hide();
         $('#trivialDado-' + instance).show();
         $eXeTrivial.changePlayer(instance, true);
 
         mOptions.relojJuego = setInterval(function () {
             mOptions.contadorJuego++;
-            $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance)
+            $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance);
         }, 1000);
         setTimeout(function () {
             if (mOptions.numeroJugadores === 1) {
-                $exeDevices.iDevice.gamification.report.updateEvaluationIcon(mOptions, this.isInExe);
+                $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
+                    mOptions,
+                    this.isInExe
+                );
             }
         }, 500);
     },
@@ -682,17 +766,29 @@ var $eXeTrivial = {
         const mOptions = $eXeTrivial.options[instance];
         $eXeTrivial.loadGameBoard(instance);
         if (mOptions.gameStarted) {
-            $eXeTrivial.showGameMessage(mOptions.msgs.msgGameStarted, 4000, 4, instance);
+            $eXeTrivial.showGameMessage(
+                mOptions.msgs.msgGameStarted,
+                4000,
+                4,
+                instance
+            );
             return;
-        };
+        }
 
         if (!$eXeTrivial.loadPlayers(instance)) {
-            $eXeTrivial.showGameMessage(mOptions.msgs.msgPlayersName, 4000, 4, instance);
+            $eXeTrivial.showGameMessage(
+                mOptions.msgs.msgPlayersName,
+                4000,
+                4,
+                instance
+            );
             return;
         }
 
         $eXeTrivial.initCheeses(instance);
-        $("trivialJugadores-" + instance).find('.trivial-Puntos').text(0);
+        $('trivialJugadores-' + instance)
+            .find('.trivial-Puntos')
+            .text(0);
         $('#trivialSelectsGamers-' + instance).hide();
         $('#trivialDado-' + instance).show();
 
@@ -700,22 +796,26 @@ var $eXeTrivial = {
         mOptions.obtainedClue = false;
         mOptions.direccion = 1;
         mOptions.contadorJuego = 0;
-        mOptions.activePlayer = Math.floor(Math.random() * mOptions.numeroJugadores);
+        mOptions.activePlayer = Math.floor(
+            Math.random() * mOptions.numeroJugadores
+        );
         $eXeTrivial.changePlayer(instance, false);
 
         mOptions.relojJuego = setInterval(function () {
             mOptions.contadorJuego++;
-            $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance)
+            $eXeTrivial.updateTimeGame(mOptions.contadorJuego, instance);
         }, 1000);
 
         mOptions.gameStarted = true;
         $eXeTrivial.saveDataStorage(instance);
         setTimeout(function () {
             if (mOptions.numeroJugadores === 1) {
-                $exeDevices.iDevice.gamification.report.updateEvaluationIcon(mOptions, this.isInExe);
+                $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
+                    mOptions,
+                    this.isInExe
+                );
             }
         }, 500);
-
     },
 
     changePlayer: function (instance, continueg) {
@@ -725,28 +825,48 @@ var $eXeTrivial = {
             mOptions.activePlayer++;
         }
 
-        mOptions.activePlayer = mOptions.activePlayer >= mOptions.numeroJugadores ? 0 : mOptions.activePlayer;
-        $('#trivialFondoDado-' + instance).css('background-color', $eXeTrivial.colorsDado[mOptions.activePlayer]);
+        mOptions.activePlayer =
+            mOptions.activePlayer >= mOptions.numeroJugadores
+                ? 0
+                : mOptions.activePlayer;
+        $('#trivialFondoDado-' + instance).css(
+            'background-color',
+            $eXeTrivial.colorsDado[mOptions.activePlayer]
+        );
         $('#trivialClickDado-' + instance).show();
 
-        $eXeTrivial.showGameMessage(mOptions.gamers[mOptions.activePlayer].name + ', ' + mOptions.msgs.msgsYouPlay, 3000, mOptions.activePlayer, instance);
+        $eXeTrivial.showGameMessage(
+            mOptions.gamers[mOptions.activePlayer].name +
+                ', ' +
+                mOptions.msgs.msgsYouPlay,
+            3000,
+            mOptions.activePlayer,
+            instance
+        );
 
-        $('#trivialTablero-' + instance).find('.trivial-Ficha').hide();
-        $('#trivialTablero-' + instance).find('.trivial-CasillaDestino').hide();
-        $('#trivialTablero-' + instance).find('.trivial-Ficha').eq(mOptions.activePlayer).show();
+        $('#trivialTablero-' + instance)
+            .find('.trivial-Ficha')
+            .hide();
+        $('#trivialTablero-' + instance)
+            .find('.trivial-CasillaDestino')
+            .hide();
+        $('#trivialTablero-' + instance)
+            .find('.trivial-Ficha')
+            .eq(mOptions.activePlayer)
+            .show();
 
         $eXeTrivial.placePlayerToken(mOptions.activePlayer, instance);
     },
     movePlayerToken: function (jugador, x, y, instance) {
         const mOptions = $eXeTrivial.options[instance],
-            mjugador = "#trivialFicha" + jugador + '-' + instance,
+            mjugador = '#trivialFicha' + jugador + '-' + instance,
             $Jugador = $(mjugador);
 
         $Jugador.css({
-            'left': x + 'px',
-            'top': y + 'px',
-            'width': mOptions.wt,
-            'height': mOptions.wt
+            left: x + 'px',
+            top: y + 'px',
+            width: mOptions.wt,
+            height: mOptions.wt,
         });
     },
 
@@ -763,12 +883,14 @@ var $eXeTrivial = {
         const { x, y } = casilla;
         let wd = Math.max(16, Math.min(casilla.w, 42));
 
-        $(`#trivialTablero-${instance} .trivial-Ficha`).eq(jugador).css({
-            left: `${x}px`,
-            top: `${y}px`,
-            width: `${wd}px`,
-            height: `${wd}px`,
-        });
+        $(`#trivialTablero-${instance} .trivial-Ficha`)
+            .eq(jugador)
+            .css({
+                left: `${x}px`,
+                top: `${y}px`,
+                width: `${wd}px`,
+                height: `${wd}px`,
+            });
     },
 
     placeDie: function (kw, kh, instance) {
@@ -792,7 +914,6 @@ var $eXeTrivial = {
         });
     },
 
-
     questionAnswer: function (respuesta, instance) {
         const mOptions = $eXeTrivial.options[instance];
 
@@ -808,7 +929,7 @@ var $eXeTrivial = {
         }
 
         $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-        $eXeTrivial.saveEvaluation(instance)
+        $eXeTrivial.saveEvaluation(instance);
         $eXeTrivial.saveDataStorage(instance);
     },
 
@@ -819,7 +940,11 @@ var $eXeTrivial = {
             quesosJugador = mOptions.gamers[mOptions.activePlayer].quesos,
             quesosJuego = mOptions.quesos,
             casilla = mOptions.gamers[mOptions.activePlayer].casilla,
-            mensaje = mOptions.gamers[mOptions.activePlayer].name + ', ' + $eXeTrivial.getRetroFeedMessages(true, instance) + ' ';
+            mensaje =
+                mOptions.gamers[mOptions.activePlayer].name +
+                ', ' +
+                $eXeTrivial.getRetroFeedMessages(true, instance) +
+                ' ';
 
         if (quesosJuego.includes(casilla)) {
             if (quesosJugador.includes(casilla)) {
@@ -828,30 +953,61 @@ var $eXeTrivial = {
             } else {
                 let numqueso = mOptions.activeTema;
                 quesosJugador.push(casilla);
-                $eXeTrivial.activeCheese(mOptions.activePlayer, numqueso, true, instance);
+                $eXeTrivial.activeCheese(
+                    mOptions.activePlayer,
+                    numqueso,
+                    true,
+                    instance
+                );
                 if (quesosJugador.length == quesosJuego.length) {
                     puntos = puntos + 100;
                     ganas = true;
                     mensaje += mOptions.msgs.msgWin;
                 } else {
-                    mensaje += mOptions.msgs.msgGetQueso + ' ' + mOptions.nombresTemas[mOptions.activeTema];
+                    mensaje +=
+                        mOptions.msgs.msgGetQueso +
+                        ' ' +
+                        mOptions.nombresTemas[mOptions.activeTema];
                     puntos = puntos + 10;
                 }
-                if (!mOptions.gamers[mOptions.activePlayer].cheeses.includes(mOptions.activeTema)) {
-                    mOptions.gamers[mOptions.activePlayer].cheeses.push(mOptions.activeTema)
+                if (
+                    !mOptions.gamers[mOptions.activePlayer].cheeses.includes(
+                        mOptions.activeTema
+                    )
+                ) {
+                    mOptions.gamers[mOptions.activePlayer].cheeses.push(
+                        mOptions.activeTema
+                    );
                 }
             }
         } else {
-            mensaje += mOptions.msgs.msgRightAnswre
-            puntos++
+            mensaje += mOptions.msgs.msgRightAnswre;
+            puntos++;
         }
 
         mOptions.gamers[mOptions.activePlayer].quesos = quesosJugador;
         mOptions.gamers[mOptions.activePlayer].score = puntos;
-        $('#trivialJugadores-' + instance + ' > .trivialj' + mOptions.activePlayer).find('.trivial-Puntos').text(puntos)
-        $('#trivialTablero-' + instance).find('.trivial-CasillaDestino').hide();
-        $('#trivialTablero-' + instance).find('.trivial-Ficha').eq(mOptions.activePlayer).show();
-        $eXeTrivial.showGameMessage(mensaje, 3000, mOptions.activePlayer, instance);
+        $(
+            '#trivialJugadores-' +
+                instance +
+                ' > .trivialj' +
+                mOptions.activePlayer
+        )
+            .find('.trivial-Puntos')
+            .text(puntos);
+        $('#trivialTablero-' + instance)
+            .find('.trivial-CasillaDestino')
+            .hide();
+        $('#trivialTablero-' + instance)
+            .find('.trivial-Ficha')
+            .eq(mOptions.activePlayer)
+            .show();
+        $eXeTrivial.showGameMessage(
+            mensaje,
+            3000,
+            mOptions.activePlayer,
+            instance
+        );
 
         if (ganas) {
             $eXeTrivial.winGame(instance);
@@ -888,15 +1044,35 @@ var $eXeTrivial = {
         mOptions.kh = $('#trivialTablero-' + instance).height() / 668;
 
         if (mOptions.numeroTemas == 2) {
-            mOptions.pT = $eXeTrivial.loadPositions2(mOptions.kw, mOptions.kh, instance);
+            mOptions.pT = $eXeTrivial.loadPositions2(
+                mOptions.kw,
+                mOptions.kh,
+                instance
+            );
         } else if (mOptions.numeroTemas == 3) {
-            mOptions.pT = $eXeTrivial.loadPositions3(mOptions.kw, mOptions.kh, instance);
+            mOptions.pT = $eXeTrivial.loadPositions3(
+                mOptions.kw,
+                mOptions.kh,
+                instance
+            );
         } else if (mOptions.numeroTemas == 4) {
-            mOptions.pT = $eXeTrivial.loadPositions4(mOptions.kw, mOptions.kh, instance);
+            mOptions.pT = $eXeTrivial.loadPositions4(
+                mOptions.kw,
+                mOptions.kh,
+                instance
+            );
         } else if (mOptions.numeroTemas == 5) {
-            mOptions.pT = $eXeTrivial.loadPositions5(mOptions.kw, mOptions.kh, instance);
+            mOptions.pT = $eXeTrivial.loadPositions5(
+                mOptions.kw,
+                mOptions.kh,
+                instance
+            );
         } else if (mOptions.numeroTemas == 6) {
-            mOptions.pT = $eXeTrivial.loadPositions6(mOptions.kw, mOptions.kh, instance);
+            mOptions.pT = $eXeTrivial.loadPositions6(
+                mOptions.kw,
+                mOptions.kh,
+                instance
+            );
         }
 
         $eXeTrivial.placeDie(mOptions.kw, mOptions.kw, instance);
@@ -905,25 +1081,27 @@ var $eXeTrivial = {
             $eXeTrivial.placePlayerToken(i, instance);
         }
 
-        $('#trivialTablero-' + instance).find('.trivial-CasillaDestino').each(function (i) {
-            let position = parseInt($(this).data('position')),
-                x = mOptions.pT[position].x,
-                y = mOptions.pT[position].y,
-                wd = mOptions.pT[position].w;
-            if (wd < 16) {
-                wd = 16;
-            }
-            if (wd > 42) {
-                wd = 42;
-            }
-            $(this).css({
-                'left': x + 'px',
-                'top': y + 'px',
-                'width': wd + 'px',
-                'height': wd + 'px',
-                'z-index': 21
+        $('#trivialTablero-' + instance)
+            .find('.trivial-CasillaDestino')
+            .each(function (i) {
+                let position = parseInt($(this).data('position')),
+                    x = mOptions.pT[position].x,
+                    y = mOptions.pT[position].y,
+                    wd = mOptions.pT[position].w;
+                if (wd < 16) {
+                    wd = 16;
+                }
+                if (wd > 42) {
+                    wd = 42;
+                }
+                $(this).css({
+                    left: x + 'px',
+                    top: y + 'px',
+                    width: wd + 'px',
+                    height: wd + 'px',
+                    'z-index': 21,
+                });
             });
-        });
 
         $eXeTrivial.placeElements(instance);
     },
@@ -943,16 +1121,20 @@ var $eXeTrivial = {
         mOptions.contadorDado = setInterval(function () {
             if (mOptions.gameStarted && contador < pos.length) {
                 contador++;
-                image = $eXeTrivial.idevicePath + 'tvlpt' + pos[contador] + '.png';
+                image =
+                    $eXeTrivial.idevicePath + 'tvlpt' + pos[contador] + '.png';
                 if (contador == pos.length - 1) {
                     clearInterval(mOptions.contadorDado);
-                    $eXeTrivial.showTargetPositions(mOptions.valorDado, instance);
+                    $eXeTrivial.showTargetPositions(
+                        mOptions.valorDado,
+                        instance
+                    );
                     image = $eXeTrivial.idevicePath + 'tvlpt' + valor + '.png';
                     $eXeTrivial.tirada++;
                 }
                 $('#trivialPuntosDado-' + instance).css({
-                    'background': "url(" + image + ")",
-                    'background-size': '100% 100%'
+                    background: 'url(' + image + ')',
+                    'background-size': '100% 100%',
                 });
             }
         }, 150);
@@ -961,7 +1143,9 @@ var $eXeTrivial = {
     showTargetPositions: function (vd, instance) {
         const mOptions = $eXeTrivial.options[instance],
             jugador = mOptions.gamers[mOptions.activePlayer],
-            $Jugador = $("#trivialFicha" + mOptions.activePlayer + '-' + instance),
+            $Jugador = $(
+                '#trivialFicha' + mOptions.activePlayer + '-' + instance
+            ),
             posJugador = jugador.casilla,
             x = mOptions.pT[posJugador].x,
             y = mOptions.pT[posJugador].y,
@@ -970,31 +1154,55 @@ var $eXeTrivial = {
         let sitiosActivos = [];
 
         if (mOptions.numeroTemas == 2) {
-            sitiosActivos = $eXeTrivial.getNextPositions2(vd, posJugador, instance);
+            sitiosActivos = $eXeTrivial.getNextPositions2(
+                vd,
+                posJugador,
+                instance
+            );
         } else if (mOptions.numeroTemas == 3) {
-            sitiosActivos = $eXeTrivial.getNextPositions3(vd, posJugador, instance);
+            sitiosActivos = $eXeTrivial.getNextPositions3(
+                vd,
+                posJugador,
+                instance
+            );
         } else if (mOptions.numeroTemas == 4) {
-            sitiosActivos = $eXeTrivial.getNextPositions4(vd, posJugador, instance);
+            sitiosActivos = $eXeTrivial.getNextPositions4(
+                vd,
+                posJugador,
+                instance
+            );
         } else if (mOptions.numeroTemas == 5) {
-            sitiosActivos = $eXeTrivial.getNextPositions5(vd, posJugador, instance);
+            sitiosActivos = $eXeTrivial.getNextPositions5(
+                vd,
+                posJugador,
+                instance
+            );
         } else if (mOptions.numeroTemas == 6) {
-            sitiosActivos = $eXeTrivial.getNextPositions6(vd, posJugador, instance);
+            sitiosActivos = $eXeTrivial.getNextPositions6(
+                vd,
+                posJugador,
+                instance
+            );
         }
 
-        $Jugador.css({
-            'left': x + 'px',
-            'top': y + 'px',
-            'width': w,
-            'height': h,
-            'z-index': 21
-        }).show();
+        $Jugador
+            .css({
+                left: x + 'px',
+                top: y + 'px',
+                width: w,
+                height: h,
+                'z-index': 21,
+            })
+            .show();
 
         $eXeTrivial.showActiveButtons(sitiosActivos, instance);
     },
 
     showActiveButtons: function (sitiosActivos, instance) {
         const mOptions = $eXeTrivial.options[instance];
-        $('#trivialTablero-' + instance).find('.trivial-CasillaDestino').hide();
+        $('#trivialTablero-' + instance)
+            .find('.trivial-CasillaDestino')
+            .hide();
         for (let i = 0; i < sitiosActivos.length; i++) {
             let j = sitiosActivos[i],
                 wd = mOptions.pT[j].w,
@@ -1006,27 +1214,42 @@ var $eXeTrivial = {
             if (wd > 42) {
                 wd = 42;
             }
-            $('#trivialTablero-' + instance).find('.trivial-CasillaDestino').eq(i).css({
-                'left': x + 'px',
-                'top': y + 'px',
-                'width': wd + 'px',
-                'height': wd + 'px',
-                'z-index': 21
-            }).show();
-            $('#trivialTablero-' + instance).find('.trivial-CasillaDestino').eq(i).data('position', j);
+            $('#trivialTablero-' + instance)
+                .find('.trivial-CasillaDestino')
+                .eq(i)
+                .css({
+                    left: x + 'px',
+                    top: y + 'px',
+                    width: wd + 'px',
+                    height: wd + 'px',
+                    'z-index': 21,
+                })
+                .show();
+            $('#trivialTablero-' + instance)
+                .find('.trivial-CasillaDestino')
+                .eq(i)
+                .data('position', j);
         }
     },
 
     activeCheese: function (activePlayer, queso, value, instance) {
-        const color = value ? $eXeTrivial.colorQuesos[queso] : $eXeTrivial.colors.white;
-        $('#trivialJugadores-' + instance + ' > .trivialj' + activePlayer).find(".trivial-Queso").eq(queso).css({
-            'background-color': color
-        })
+        const color = value
+            ? $eXeTrivial.colorQuesos[queso]
+            : $eXeTrivial.colors.white;
+        $('#trivialJugadores-' + instance + ' > .trivialj' + activePlayer)
+            .find('.trivial-Queso')
+            .eq(queso)
+            .css({
+                'background-color': color,
+            });
     },
 
     activeDice: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        $('#trivialFondoDado-' + instance).css('background-color', $eXeTrivial.colorsDado[mOptions.activePlayer]);
+        $('#trivialFondoDado-' + instance).css(
+            'background-color',
+            $eXeTrivial.colorsDado[mOptions.activePlayer]
+        );
         $('#trivialClickDado-' + instance).show();
     },
 
@@ -1042,22 +1265,31 @@ var $eXeTrivial = {
         }
 
         const active = mOptions.activesQuestions[ntema];
-        mOptions.counter = $exeDevices.iDevice.gamification.helpers.getTimeSeconds(squestions[active].time);
+        mOptions.counter =
+            $exeDevices.iDevice.gamification.helpers.getTimeSeconds(
+                squestions[active].time
+            );
         if (squestions[active].type === 2) {
-            const durationVideo = squestions[active].fVideo - squestions[active].iVideo;
+            const durationVideo =
+                squestions[active].fVideo - squestions[active].iVideo;
             mOptions.counter += durationVideo;
         }
 
         $('#trivialGameContainer-' + instance).hide();
         $('#trivialGameQuestion-' + instance).show();
-        $('#trivialPNombreTema-' + instance).text(mOptions.nombresTemas[mOptions.activeTema]);
+        $('#trivialPNombreTema-' + instance).text(
+            mOptions.nombresTemas[mOptions.activeTema]
+        );
 
         $eXeTrivial.showQuestion(ntema, active, instance);
 
         mOptions.counterClock = setInterval(function () {
             let $node = $('#trivialMainContainer-' + instance);
             let $content = $('#node-content');
-            if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+            if (
+                !$node.length ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
                 clearInterval(mOptions.counterClock);
                 return;
             }
@@ -1071,11 +1303,22 @@ var $eXeTrivial = {
                         if (squestions[active].typeSelect < 2) {
                             $eXeTrivial.drawSolution(instance);
                         } else {
-                            $eXeTrivial.drawPhrase(squestions[active].solutionQuestion, squestions[active].quextion, 100, 1, false, instance, true, squestions[active].typeSelect)
+                            $eXeTrivial.drawPhrase(
+                                squestions[active].solutionQuestion,
+                                squestions[active].quextion,
+                                100,
+                                1,
+                                false,
+                                instance,
+                                true,
+                                squestions[active].typeSelect
+                            );
                         }
                     }
                     $exeDevices.iDevice.gamification.media.stopVideo(instance);
-                    const ts = mOptions.showSolution ? mOptions.timeShowSolution * 1000 : 3000;
+                    const ts = mOptions.showSolution
+                        ? mOptions.timeShowSolution * 1000
+                        : 3000;
                     clearInterval(mOptions.counterClock);
                     setTimeout(function () {
                         $eXeTrivial.questionAnswer(false, instance);
@@ -1090,7 +1333,12 @@ var $eXeTrivial = {
         const messageSelector = $(`#trivialMessage-${instance}`);
         $(`#trivialPMessage-${instance}`).text(mensaje);
 
-        messageSelector.hide().slideDown(100).delay(time).slideUp(100).css('visibility', 'visible');
+        messageSelector
+            .hide()
+            .slideDown(100)
+            .delay(time)
+            .slideUp(100)
+            .css('visibility', 'visible');
 
         const imgNames = {
             0: 'tvlfr.png',
@@ -1109,25 +1357,31 @@ var $eXeTrivial = {
     createGameTokeTesting: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
 
-        $('#trivialTablero-' + instance).find('.trivial-Testeo').remove();
+        $('#trivialTablero-' + instance)
+            .find('.trivial-Testeo')
+            .remove();
 
         for (let i = 0; i < mOptions.pT.length; i++) {
             const casilla = '<div class="trivial-Testeo">' + i + '</div>';
 
             $(casilla).appendTo('#trivialTablero-' + instance);
         }
-        $('#trivialTablero-' + instance).find('.trivial-Testeo').each(function (i) {
-            const x = mOptions.pT[i].x,
-                y = mOptions.pT[i].y,
-                w = mOptions.pT[i].w,
-                h = mOptions.pT[i].h;
-            $(this).css({
-                'left': x + 'px',
-                'top': y + 'px',
-                'width': w + 'px',
-                'height': h + 'px'
-            }).show();
-        });
+        $('#trivialTablero-' + instance)
+            .find('.trivial-Testeo')
+            .each(function (i) {
+                const x = mOptions.pT[i].x,
+                    y = mOptions.pT[i].y,
+                    w = mOptions.pT[i].w,
+                    h = mOptions.pT[i].h;
+                $(this)
+                    .css({
+                        left: x + 'px',
+                        top: y + 'px',
+                        width: w + 'px',
+                        height: h + 'px',
+                    })
+                    .show();
+            });
     },
 
     placePlayerTokensSkare: function (casilla, instance) {
@@ -1144,8 +1398,15 @@ var $eXeTrivial = {
     },
     setPositionPlayers: function (casilla, listaOcupantes, instance) {
         let mOptions = $eXeTrivial.options,
-            posiconesHorizontales = [0, 1, 2, 3, 4, 5, 6, 37, 38, 39, 40, 41, 42, 50, 51, 52, 53, 54, 19, 20, 21, 22, 23, 24, 25, 26, 51, 62, 61, 7, 8, 43, 44, 35, 36, 59, 60, 18],
-            posiconesVerticales = [9, 10, 11, 12, 13, 14, 15, 16, 17, 29, 30, 31, 32, 33, 34, 35, 45, 46, 46, 47, 48, 57, 58, 17, 49, 10, 35, 27, 28, 55, 56];
+            posiconesHorizontales = [
+                0, 1, 2, 3, 4, 5, 6, 37, 38, 39, 40, 41, 42, 50, 51, 52, 53, 54,
+                19, 20, 21, 22, 23, 24, 25, 26, 51, 62, 61, 7, 8, 43, 44, 35,
+                36, 59, 60, 18,
+            ],
+            posiconesVerticales = [
+                9, 10, 11, 12, 13, 14, 15, 16, 17, 29, 30, 31, 32, 33, 34, 35,
+                45, 46, 46, 47, 48, 57, 58, 17, 49, 10, 35, 27, 28, 55, 56,
+            ];
         if (posiconesVerticales.includes(casilla)) {
             for (let i = 0; i < listaOcupantes.length; i++) {
                 let j = listaOcupantes[i],
@@ -1217,17 +1478,17 @@ var $eXeTrivial = {
             .replace(/\\\(/g, '\\\\(')
             .replace(/\\\)/g, '\\\\)')
             .replace(/\\\]/g, '\\\\]')
-            .replace(/\\\[/g, '\\\\[')
+            .replace(/\\\[/g, '\\\\[');
     },
     loadDataGame: function (data) {
-
         let json = $eXeTrivial.escapeParens(data.text());
 
         let mOptions = $eXeTrivial.isJsonString(json);
         mOptions = $eXeTrivial.Decrypt(mOptions);
 
         let myJSON = JSON.stringify(mOptions),
-            youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+            youtubeRegex =
+                /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
             hasvideo = youtubeRegex.test(myJSON);
 
         if (hasvideo) $eXeTrivial.hasVideo = true;
@@ -1242,7 +1503,7 @@ var $eXeTrivial = {
         let gamers = [],
             gamer = {};
 
-        gamer.name = "";
+        gamer.name = '';
         gamer.score = 0;
         gamer.state = 0;
         gamer.casilla = 0;
@@ -1258,29 +1519,36 @@ var $eXeTrivial = {
         mOptions.gameActived = false;
         mOptions.activesQuestions = [];
         mOptions.scoreTotal = 0;
-        mOptions.evaluation = typeof mOptions.evaluation == "undefined" ? false : mOptions.evaluation;
-        mOptions.evaluationID = typeof mOptions.evaluationID == "undefined" ? '' : mOptions.evaluationID;
-        mOptions.id = typeof mOptions.id == "undefined" ? false : mOptions.id;
-        mOptions.modeBoard = typeof mOptions.modeBoard == "undefined" ? false : mOptions.modeBoard;
+        mOptions.evaluation =
+            typeof mOptions.evaluation == 'undefined'
+                ? false
+                : mOptions.evaluation;
+        mOptions.evaluationID =
+            typeof mOptions.evaluationID == 'undefined'
+                ? ''
+                : mOptions.evaluationID;
+        mOptions.id = typeof mOptions.id == 'undefined' ? false : mOptions.id;
+        mOptions.modeBoard =
+            typeof mOptions.modeBoard == 'undefined'
+                ? false
+                : mOptions.modeBoard;
         return mOptions;
     },
-
 
     isJsonString: function (str) {
         try {
             var o = JSON.parse(str, null, 2);
-            if (o && typeof o === "object") {
+            if (o && typeof o === 'object') {
                 return o;
             }
-        } catch (e) { }
+        } catch (e) {}
         return false;
     },
 
     loadApiPlayer: function () {
         if (!this.hasVideo) return;
 
-        $exeDevices.iDevice.gamification.media.YouTubeAPILoader
-            .load()
+        $exeDevices.iDevice.gamification.media.YouTubeAPILoader.load()
             .then(() => this.activatePlayer())
             .catch(() => this.showStartedButton());
     },
@@ -1298,8 +1566,8 @@ var $eXeTrivial = {
                         controls: 0,
                     },
                     events: {
-                        'onReady': $eXeTrivial.onPlayerReady.bind(this),
-                    }
+                        onReady: $eXeTrivial.onPlayerReady.bind(this),
+                    },
                 });
             }
         });
@@ -1315,27 +1583,32 @@ var $eXeTrivial = {
                 $(`#trivialStartGame-${ì}`).show();
                 $eXeTrivial.showMessage(1, '', i);
             }
-        })
+        });
     },
 
     onPlayerReady: function (event) {
         const iframe = event.target.getIframe();
         if (iframe && iframe.id) {
-            const [prefix, instanceStr] = iframe.id.split("-");
-            if (prefix === "trivialVideo") {
+            const [prefix, instanceStr] = iframe.id.split('-');
+            if (prefix === 'trivialVideo') {
                 const instance = parseInt(instanceStr, 10);
                 if (!isNaN(instance)) {
-                    if ($eXeTrivial.options && $eXeTrivial.options[instance] && !$eXeTrivial.options[instance].gameStarted) {
+                    if (
+                        $eXeTrivial.options &&
+                        $eXeTrivial.options[instance] &&
+                        !$eXeTrivial.options[instance].gameStarted
+                    ) {
                         $(`#trivialStartGame-${instance}`).show();
-                        $eXeTrivial.showMessage(1, '', instance)
+                        $eXeTrivial.showMessage(1, '', instance);
                     }
-
                 } else {
-                    console.warn(`Número de instancia inválido para ${iframe.id}`);
+                    console.warn(
+                        `Número de instancia inválido para ${iframe.id}`
+                    );
                 }
             }
         } else {
-            console.warn("No se pudo identificar el iframe del reproductor");
+            console.warn('No se pudo identificar el iframe del reproductor');
         }
     },
 
@@ -1348,7 +1621,7 @@ var $eXeTrivial = {
                 const mquestion = $eXeTrivial.getDecrytepQuestion(tema[i]);
                 ntema.push(mquestion);
             }
-            temas.push(ntema)
+            temas.push(ntema);
         }
         game.temas = temas;
         return game;
@@ -1373,7 +1646,9 @@ var $eXeTrivial = {
             options: q.o.slice(0, 4),
             type: q.p,
             quextion: q.q,
-            solutionQuestion: $eXeTrivial.fixIfNeeded(unescape(window.atob(q.r))),
+            solutionQuestion: $eXeTrivial.fixIfNeeded(
+                unescape(window.atob(q.r))
+            ),
             solution: solution,
             eText: q.t,
             url: q.u,
@@ -1386,34 +1661,52 @@ var $eXeTrivial = {
 
     fixIfNeeded: function (str) {
         const misencodedSequences = [
-            'Ã¡', 'Ã©', 'Ã­', 'Ã³', 'Ãº', 'Ã±',
-            'Ã', 'Ã‰', 'Ã', 'Ã“', 'Ãš', 'Ã‘',
-            'Ã¼', 'Ãœ', 'Ã§', 'Ã‡', 'Â¿', 'Â¡',
-            'Âº', 'Âª', 'Â'
+            'Ã¡',
+            'Ã©',
+            'Ã­',
+            'Ã³',
+            'Ãº',
+            'Ã±',
+            'Ã',
+            'Ã‰',
+            'Ã',
+            'Ã“',
+            'Ãš',
+            'Ã‘',
+            'Ã¼',
+            'Ãœ',
+            'Ã§',
+            'Ã‡',
+            'Â¿',
+            'Â¡',
+            'Âº',
+            'Âª',
+            'Â',
         ];
-        const found = misencodedSequences.some(seq => str.includes(seq));
+        const found = misencodedSequences.some((seq) => str.includes(seq));
         if (found) {
             try {
                 return decodeURIComponent(escape(str));
             } catch (e) {
-
                 return str;
             }
         }
         return str;
     },
 
-
     updateSoundVideoLocal: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        if (mOptions.activeSilent && mOptions.localPlayer && mOptions.localPlayer.currentTime) {
+        if (
+            mOptions.activeSilent &&
+            mOptions.localPlayer &&
+            mOptions.localPlayer.currentTime
+        ) {
             const time = Math.round(mOptions.localPlayer.currentTime);
             if (time === mOptions.question.silentVideo) {
                 mOptions.localPlayer.muted = true;
             } else if (time === mOptions.endSilent) {
                 mOptions.localPlayer.muted = false;
             }
-
         }
     },
 
@@ -1422,25 +1715,28 @@ var $eXeTrivial = {
         if (mOptions.localPlayer && mOptions.localPlayer.currentTime) {
             const currentTime = mOptions.localPlayer.currentTime;
             $eXeTrivial.updateSoundVideoLocal(instance);
-            if (Math.ceil(currentTime) === mOptions.pointEnd || Math.ceil(currentTime) === mOptions.durationVideo) {
+            if (
+                Math.ceil(currentTime) === mOptions.pointEnd ||
+                Math.ceil(currentTime) === mOptions.durationVideo
+            ) {
                 mOptions.localPlayer.pause();
                 mOptions.pointEnd = 100000;
             }
         }
     },
 
-    updateTimerDisplay: function () { },
-    updateProgressBar: function () { },
-    onPlayerError: function (event) { },
+    updateTimerDisplay: function () {},
+    updateProgressBar: function () {},
+    onPlayerError: function (event) {},
 
     startVideo: function (id, start, end, instance, type) {
         const mOptions = $eXeTrivial.options[instance];
         if (type == 1) {
             if (mOptions.localPlayer) {
                 mOptions.pointEnd = end;
-                mOptions.localPlayer.src = id
-                mOptions.localPlayer.currentTime = parseFloat(start)
-                if (typeof mOptions.localPlayer.play == "function") {
+                mOptions.localPlayer.src = id;
+                mOptions.localPlayer.currentTime = parseFloat(start);
+                if (typeof mOptions.localPlayer.play == 'function') {
                     mOptions.localPlayer.play();
                 }
             }
@@ -1448,30 +1744,39 @@ var $eXeTrivial = {
             mOptions.timeUpdateInterval = setInterval(function () {
                 $eXeTrivial.updateTimerDisplayLocal(instance);
             }, 1000);
-            return
+            return;
         }
-        if (mOptions.player && typeof mOptions.player.loadVideoById == "function") {
+        if (
+            mOptions.player &&
+            typeof mOptions.player.loadVideoById == 'function'
+        ) {
             mOptions.player.loadVideoById({
-                'videoId': id,
-                'startSeconds': start,
-                'endSeconds': end
+                videoId: id,
+                startSeconds: start,
+                endSeconds: end,
             });
         }
     },
 
     playVideo: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        if (mOptions.player && typeof mOptions.player.playVideo == "function") {
+        if (mOptions.player && typeof mOptions.player.playVideo == 'function') {
             mOptions.player.playVideo();
         }
     },
 
     stopVideo: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        if (mOptions.localPlayer && typeof mOptions.localPlayer.pause == "function") {
+        if (
+            mOptions.localPlayer &&
+            typeof mOptions.localPlayer.pause == 'function'
+        ) {
             mOptions.localPlayer.pause();
         }
-        if (mOptions.player && typeof mOptions.player.pauseVideo == "function") {
+        if (
+            mOptions.player &&
+            typeof mOptions.player.pauseVideo == 'function'
+        ) {
             mOptions.player.pauseVideo();
         }
     },
@@ -1482,10 +1787,14 @@ var $eXeTrivial = {
             if (mute) {
                 mOptions.localPlayer.muted = true;
             } else {
-                mOptions.localPlayer.muted = false;;
+                mOptions.localPlayer.muted = false;
             }
         }
-        if (mOptions.player && typeof mOptions.player.mute == "function" && typeof mOptions.player.unMute == "function") {
+        if (
+            mOptions.player &&
+            typeof mOptions.player.mute == 'function' &&
+            typeof mOptions.player.unMute == 'function'
+        ) {
             if (mute) {
                 mOptions.player.mute();
             } else {
@@ -1501,25 +1810,25 @@ var $eXeTrivial = {
         if (anchoIdevice < 750) {
             $('#trivialJugadores-' + instance).css({
                 'min-width': anchoIdevice + 'px',
-                'width': anchoIdevice + 'px',
+                width: anchoIdevice + 'px',
                 'justify-content': 'space-around',
-                'margin-left': 'auto'
+                'margin-left': 'auto',
             });
             $('#trivialGameContainer-' + instance).css({
                 'flex-direction': 'column',
-                'align-items': 'center'
+                'align-items': 'center',
             });
             $('#trivialMaterias-' + instance).hide();
         } else {
             $('#trivialGameContainer-' + instance).css({
                 'flex-direction': 'row',
-                'align-items': 'flex-start'
+                'align-items': 'flex-start',
             });
             $('#trivialJugadores-' + instance).css({
                 'min-width': '15em',
-                'width': '15em',
+                width: '15em',
                 'justify-content': 'flex-start',
-                'margin-left': '0em'
+                'margin-left': '0em',
             });
             $('#trivialMaterias-' + instance).show();
         }
@@ -1527,97 +1836,117 @@ var $eXeTrivial = {
         if (screen.width >= 750) {
             if ($('#trivialGameContainer-' + instance).width() < 750) {
                 $('#trivialMaterias-' + instance).hide();
-                $('#trivialGameContainer-' + instance).find('div.trivial-PanelLateral').addClass('trivial-PanelLateralMin')
-                $('#trivialGameContainer-' + instance).find('div.trivial-Jugador').addClass('trivial-JugadorMin')
+                $('#trivialGameContainer-' + instance)
+                    .find('div.trivial-PanelLateral')
+                    .addClass('trivial-PanelLateralMin');
+                $('#trivialGameContainer-' + instance)
+                    .find('div.trivial-Jugador')
+                    .addClass('trivial-JugadorMin');
             } else {
                 $('#trivialMaterias-' + instance).show();
-                $('#trivialGameContainer-' + instance).find('div.trivial-PanelLateral').removeClass('trivial-PanelLateralMin')
-                $('#trivialGameContainer-' + instance).find('div.trivial-Jugador').removeClass('trivial-JugadorMin')
+                $('#trivialGameContainer-' + instance)
+                    .find('div.trivial-PanelLateral')
+                    .removeClass('trivial-PanelLateralMin');
+                $('#trivialGameContainer-' + instance)
+                    .find('div.trivial-Jugador')
+                    .removeClass('trivial-JugadorMin');
             }
         }
 
-        $('.trivial-NumberGamers').find('p').css({
-            'font-size': $eXeTrivial.getSize(1, instance),
-            'line-height': $eXeTrivial.getSize(1.5, instance),
-            'height': $eXeTrivial.getSize(1.5, instance),
-        });
+        $('.trivial-NumberGamers')
+            .find('p')
+            .css({
+                'font-size': $eXeTrivial.getSize(1, instance),
+                'line-height': $eXeTrivial.getSize(1.5, instance),
+                height: $eXeTrivial.getSize(1.5, instance),
+            });
 
         $('.trivial-NumberGamers').css({
             'padding-bottom': $eXeTrivial.getSize(1.5, instance),
-            'padding': $eXeTrivial.getSize(1.5, instance),
+            padding: $eXeTrivial.getSize(1.5, instance),
         });
 
-        let fsize = parseFloat($eXeTrivial.getSize(1, instance), 10) < 0.7 ? '.7rem' : $eXeTrivial.getSize(1, instance),
-            fheight = parseFloat($eXeTrivial.getSize(1.6, instance), 10) < 1 ? '1rem' : $eXeTrivial.getSize(1.6, instance),
-            fradiuos = "0.25rem",
-            fleft = "0.4rem",
-            fpadding = "0.4rem";
+        let fsize =
+                parseFloat($eXeTrivial.getSize(1, instance), 10) < 0.7
+                    ? '.7rem'
+                    : $eXeTrivial.getSize(1, instance),
+            fheight =
+                parseFloat($eXeTrivial.getSize(1.6, instance), 10) < 1
+                    ? '1rem'
+                    : $eXeTrivial.getSize(1.6, instance),
+            fradiuos = '0.25rem',
+            fleft = '0.4rem',
+            fpadding = '0.4rem';
 
-        if (fsize == ".7rem") {
-            fradiuos = "0.125rem";
-            fleft = "0.3rem";
-            fpadding = "0.3rem";
+        if (fsize == '.7rem') {
+            fradiuos = '0.125rem';
+            fleft = '0.3rem';
+            fpadding = '0.3rem';
         }
 
-
         $('.trivial-NameGamer').css({
             'font-size': fsize,
-            'height': fheight,
+            height: fheight,
             'line-height': fheight,
-            'border-radius': fradiuos
+            'border-radius': fradiuos,
         });
 
         $('.trivial-NameGamer').css({
             'font-size': fsize,
-            'height': fheight,
+            height: fheight,
             'line-height': fheight,
-            'border-radius': fradiuos
+            'border-radius': fradiuos,
         });
 
         $('.trivial-StartGame').css({
             'font-size': fsize,
-            'padding': fpadding
+            padding: fpadding,
         });
 
         $('.trivial-FichaJugador').css({
-            'width': fheight,
-            'height': fheight,
+            width: fheight,
+            height: fheight,
         });
 
         $('.trivial-MessageImage').css({
-            'width': $eXeTrivial.getSize(3.5, instance),
-            'height': $eXeTrivial.getSize(3.5, instance),
-            'margin-left': $eXeTrivial.getSize(1, instance)
+            width: $eXeTrivial.getSize(3.5, instance),
+            height: $eXeTrivial.getSize(3.5, instance),
+            'margin-left': $eXeTrivial.getSize(1, instance),
         });
 
         $('.trivial-NumberIcon').css({
-            'width': fheight,
-            'height': fheight,
-            'margin-left': fleft
+            width: fheight,
+            height: fheight,
+            'margin-left': fleft,
         });
 
-        let sizeFont = parseFloat($eXeTrivial.getSize(1.2, instance), 10) < 0.8 ? '.8rem' : $eXeTrivial.getSize(1.1, instance);
-        $('.trivial-Message').find('p').css({
-            'font-size': sizeFont,
-            'padding': $eXeTrivial.getSize(0.3, instance),
-        });
+        let sizeFont =
+            parseFloat($eXeTrivial.getSize(1.2, instance), 10) < 0.8
+                ? '.8rem'
+                : $eXeTrivial.getSize(1.1, instance);
+        $('.trivial-Message')
+            .find('p')
+            .css({
+                'font-size': sizeFont,
+                padding: $eXeTrivial.getSize(0.3, instance),
+            });
 
         $('.trivial-MessageModalTexto').find('p').css({
             'font-size': sizeFont,
         });
 
         $('.trivial-AcceptButton').css({
-            'width': $eXeTrivial.getSize(1.7, instance),
-            'height': $eXeTrivial.getSize(1.7, instance),
+            width: $eXeTrivial.getSize(1.7, instance),
+            height: $eXeTrivial.getSize(1.7, instance),
         });
 
         $('.trivial-CancelButton').css({
-            'width': $eXeTrivial.getSize(1.7, instance),
-            'height': $eXeTrivial.getSize(1.7, instance),
+            width: $eXeTrivial.getSize(1.7, instance),
+            height: $eXeTrivial.getSize(1.7, instance),
         });
 
         $('.trivial-Tiempo').css({
-            'width': $eXeTrivial.getSize(4, instance),
+            width: $eXeTrivial.getSize(4, instance),
             'padding-top': $eXeTrivial.getSize(0.2, instance),
             'padding-bottom': $eXeTrivial.getSize(0.2, instance),
             'padding-left': $eXeTrivial.getSize(0.1, instance),
@@ -1626,37 +1955,50 @@ var $eXeTrivial = {
         });
 
         $('.trivial-PTiempo').css({
-            'height': $eXeTrivial.getSize(1.5, instance),
+            height: $eXeTrivial.getSize(1.5, instance),
             'line-height': $eXeTrivial.getSize(1.5, instance),
         });
     },
 
     getSize: function (size, instance) {
-        let facTamano = $('#trivialTabllero-' + instance).width() >= 550 ? 1 : $('#trivialTablero-' + instance).width() / 550,
+        let facTamano =
+                $('#trivialTabllero-' + instance).width() >= 550
+                    ? 1
+                    : $('#trivialTablero-' + instance).width() / 550,
             fs = parseFloat(size * facTamano, 10).toFixed(2);
         return fs + 'rem';
     },
 
     addEvents: function (instance) {
         const mOptions = $eXeTrivial.options[instance],
-            image = $eXeTrivial.idevicePath + "tvltv" + mOptions.numeroTemas + ".png";
+            image =
+                $eXeTrivial.idevicePath +
+                'tvltv' +
+                mOptions.numeroTemas +
+                '.png';
 
-        $("#trivialImageTablero-" + instance).prop("src", image);
+        $('#trivialImageTablero-' + instance).prop('src', image);
         $('#trivialMessageModal-' + instance).hide();
         $('#trivialMessageModal-' + instance).css('visibility', 'visible');
         $('#trivialMessage-' + instance).hide();
 
-        mOptions.localPlayer = document.getElementById('trivialVideoLocal-' + instance);
+        mOptions.localPlayer = document.getElementById(
+            'trivialVideoLocal-' + instance
+        );
 
         $eXeTrivial.loadGameBoard(instance);
 
-        $('#trivialMaterias-' + instance).find('.trivial-Materia').each(function (i) {
-            $(this).hide();
-            if (i < mOptions.numeroTemas) {
-                $(this).find('.trivial-MateriaNombre').text(mOptions.nombresTemas[i]);
-                $(this).show();
-            }
-        });
+        $('#trivialMaterias-' + instance)
+            .find('.trivial-Materia')
+            .each(function (i) {
+                $(this).hide();
+                if (i < mOptions.numeroTemas) {
+                    $(this)
+                        .find('.trivial-MateriaNombre')
+                        .text(mOptions.nombresTemas[i]);
+                    $(this).show();
+                }
+            });
 
         mOptions.respuesta = '';
 
@@ -1672,72 +2014,126 @@ var $eXeTrivial = {
         });
 
         $('#trivialSelectsGamers-' + instance).show();
-        $('#trivialTablero-' + instance).on('click touchstart', '.trivial-CasillaDestino ', function (e) {
-            e.preventDefault();
-            let position = parseInt($(this).data('position')),
-                tema = mOptions.pT[position].s;
-            tema = tema != 0 ? tema - 1 : Math.floor(Math.random() * mOptions.numeroTemas);
-            mOptions.gamers[mOptions.activePlayer].casilla = position;
-            $eXeTrivial.showGameQuestion(tema, instance);
-            $eXeTrivial.placePlayerToken(mOptions.activePlayer, instance);
-        });
+        $('#trivialTablero-' + instance).on(
+            'click touchstart',
+            '.trivial-CasillaDestino ',
+            function (e) {
+                e.preventDefault();
+                let position = parseInt($(this).data('position')),
+                    tema = mOptions.pT[position].s;
+                tema =
+                    tema != 0
+                        ? tema - 1
+                        : Math.floor(Math.random() * mOptions.numeroTemas);
+                mOptions.gamers[mOptions.activePlayer].casilla = position;
+                $eXeTrivial.showGameQuestion(tema, instance);
+                $eXeTrivial.placePlayerToken(mOptions.activePlayer, instance);
+            }
+        );
 
-        $('#trivialLinkReboot-' + instance).on('click touchstart', function (e) {
-            e.preventDefault();
-            if (!mOptions.gameStarted && !mOptions.gameOver) return;
+        $('#trivialLinkReboot-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                if (!mOptions.gameStarted && !mOptions.gameOver) return;
 
-            $('#trivialMessage-' + instance).hide();
-            $('#trivialMessageModal-' + instance).show();
-            $('#trivialMessageModalTexto-' + instance).css('display', 'flex');
-            $('#trivialMessageModalTexto-' + instance).show();
-            $eXeTrivial.loadGameBoard(instance);
-        });
+                $('#trivialMessage-' + instance).hide();
+                $('#trivialMessageModal-' + instance).show();
+                $('#trivialMessageModalTexto-' + instance).css(
+                    'display',
+                    'flex'
+                );
+                $('#trivialMessageModalTexto-' + instance).show();
+                $eXeTrivial.loadGameBoard(instance);
+            }
+        );
 
-        $('#trivialMessageAceptar-' + instance).on('click touchstart', function (e) {
-            e.preventDefault();
-            mOptions.kw = $('#trivialTablero-' + instance).width() / 745;
-            mOptions.kh = $('#trivialTablero-' + instance).height() / 668;
-            $eXeTrivial.rebootGame(instance);
-            $('#trivialMessageModal-' + instance).hide();
+        $('#trivialMessageAceptar-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                mOptions.kw = $('#trivialTablero-' + instance).width() / 745;
+                mOptions.kh = $('#trivialTablero-' + instance).height() / 668;
+                $eXeTrivial.rebootGame(instance);
+                $('#trivialMessageModal-' + instance).hide();
+            }
+        );
 
-        });
+        $('#trivialMessageCancelar-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                $('#trivialMessageModal-' + instance).hide();
+                $eXeTrivial.loadGameBoard(instance);
+            }
+        );
 
-        $('#trivialMessageCancelar-' + instance).on('click touchstart', function (e) {
-            e.preventDefault();
-            $('#trivialMessageModal-' + instance).hide();
-            $eXeTrivial.loadGameBoard(instance);
-        });
-
-        $('#trivialNameGamers-' + instance).find('.trivial-JugadorData').hide();
-        $('#trivialNameGamers-' + instance).find('.trivial-JugadorData').first().show();
-        $('#trivialNumberGamers-' + instance).on('click touchstart', '.trivial-NumberIcon', function (e) {
-            e.preventDefault();
-            const number = $(this).data('number');
-            $('#trivialNameGamers-' + instance).find('.trivial-JugadorData').hide();
-            $('#trivialNameGamers-' + instance).find('.trivial-JugadorData').each(function (i) {
-                if (i < number) $(this).show();
-            });
-            $('#trivialNumberGamers-' + instance).find('.trivial-NumberIcon').each(function (i) {
-                $(this).find('img').attr('src', $eXeTrivial.idevicePath + 'tvlcb' + (i + 1) + '.png');
-            });
-            $(this).find('img').attr('src', $eXeTrivial.idevicePath + 'tvlcr' + number + '.png')
-            mOptions.numeroJugadores = number;
-        });
+        $('#trivialNameGamers-' + instance)
+            .find('.trivial-JugadorData')
+            .hide();
+        $('#trivialNameGamers-' + instance)
+            .find('.trivial-JugadorData')
+            .first()
+            .show();
+        $('#trivialNumberGamers-' + instance).on(
+            'click touchstart',
+            '.trivial-NumberIcon',
+            function (e) {
+                e.preventDefault();
+                const number = $(this).data('number');
+                $('#trivialNameGamers-' + instance)
+                    .find('.trivial-JugadorData')
+                    .hide();
+                $('#trivialNameGamers-' + instance)
+                    .find('.trivial-JugadorData')
+                    .each(function (i) {
+                        if (i < number) $(this).show();
+                    });
+                $('#trivialNumberGamers-' + instance)
+                    .find('.trivial-NumberIcon')
+                    .each(function (i) {
+                        $(this)
+                            .find('img')
+                            .attr(
+                                'src',
+                                $eXeTrivial.idevicePath +
+                                    'tvlcb' +
+                                    (i + 1) +
+                                    '.png'
+                            );
+                    });
+                $(this)
+                    .find('img')
+                    .attr(
+                        'src',
+                        $eXeTrivial.idevicePath + 'tvlcr' + number + '.png'
+                    );
+                mOptions.numeroJugadores = number;
+            }
+        );
 
         $('videotrivialGamerOver-' + instance).css('display', 'flex');
-        $('#trivialLinkMaximize-' + instance).on('click touchstart', function (e) {
-            e.preventDefault();
-            $('#trivialGameContainer-' + instance).show()
-            $('#trivialGameMinimize-' + instance).hide();
-            $eXeTrivial.refreshGame(instance);
-        });
+        $('#trivialLinkMaximize-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                $('#trivialGameContainer-' + instance).show();
+                $('#trivialGameMinimize-' + instance).hide();
+                $eXeTrivial.refreshGame(instance);
+            }
+        );
 
-        $('#trivialLinkMinimize-' + instance).on('click touchstart', function (e) {
-            e.preventDefault();
-            $('#trivialGameContainer-' + instance).hide();
-            $('#trivialGameMinimize-' + instance).css('visibility', 'visible').show();
-            return true;
-        });
+        $('#trivialLinkMinimize-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                $('#trivialGameContainer-' + instance).hide();
+                $('#trivialGameMinimize-' + instance)
+                    .css('visibility', 'visible')
+                    .show();
+                return true;
+            }
+        );
 
         $('#trivialCodeAccessDiv-' + instance).hide();
         $('#trivialVideo-' + instance).hide();
@@ -1747,11 +2143,14 @@ var $eXeTrivial = {
         $('#trivialCursor-' + instance).hide();
         $('#trivialCover-' + instance).show();
         $('#trivialAnswerDiv-' + instance).hide();
-        $('#trivialCodeAccessButton-' + instance).on('click touchstart', function (e) {
-            e.preventDefault();
-            $eXeTrivial.enterCodeAccess(instance);
-        });
-        $('#trivialCodeAccessE-' + instance).on("keydown", function (event) {
+        $('#trivialCodeAccessButton-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                $eXeTrivial.enterCodeAccess(instance);
+            }
+        );
+        $('#trivialCodeAccessE-' + instance).on('keydown', function (event) {
             if (event.which === 13 || event.keyCode === 13) {
                 $eXeTrivial.enterCodeAccess(instance);
                 return false;
@@ -1764,7 +2163,7 @@ var $eXeTrivial = {
             $eXeTrivial.answerQuestion(instance);
         });
 
-        $('#trivialEdAnswer-' + instance).on("keydown", function (event) {
+        $('#trivialEdAnswer-' + instance).on('keydown', function (event) {
             if (event.which == 13 || event.keyCode == 13) {
                 $eXeTrivial.answerQuestion(instance);
                 return false;
@@ -1780,23 +2179,37 @@ var $eXeTrivial = {
             $eXeTrivial.startGame(instance);
         });
 
-        $('#trivialOptionsDiv-' + instance).find('.trivial-Options').on('click', function (e) {
-            e.preventDefault();
-            $eXeTrivial.changeQuextion(this, instance);
-        })
+        $('#trivialOptionsDiv-' + instance)
+            .find('.trivial-Options')
+            .on('click', function (e) {
+                e.preventDefault();
+                $eXeTrivial.changeQuextion(this, instance);
+            });
 
-        $('#trivialLinkFullScreen-' + instance).on('click touchstart', function (e) {
-            e.preventDefault();
-            let element = document.getElementById('trivialMainContainer-' + instance);
-            $exeDevices.iDevice.gamification.helpers.toggleFullscreen(element, instance);
-            $eXeTrivial.loadGameBoard(instance);
-        });
+        $('#trivialLinkFullScreen-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                let element = document.getElementById(
+                    'trivialMainContainer-' + instance
+                );
+                $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
+                    element,
+                    instance
+                );
+                $eXeTrivial.loadGameBoard(instance);
+            }
+        );
 
         $('#trivialInstructions-' + instance).text(mOptions.instructions);
-        $('#trivialBottonContainer-' + instance).addClass('trivial-BottonContainerDivEnd');
+        $('#trivialBottonContainer-' + instance).addClass(
+            'trivial-BottonContainerDivEnd'
+        );
         if (mOptions.itinerary.showCodeAccess) {
             $('#trivialMessageModal-' + instance).show();
-            $('#trivialMesajeAccesCodeE-' + instance).text(mOptions.itinerary.messageCodeAccess);
+            $('#trivialMesajeAccesCodeE-' + instance).text(
+                mOptions.itinerary.messageCodeAccess
+            );
             $('#trivialCodeAccessDiv-' + instance).show();
             $('#trivialSelectsGamers-' + instance).hide();
             $('#trivialMessageModalTexto-' + instance).hide();
@@ -1804,7 +2217,10 @@ var $eXeTrivial = {
         }
 
         $('#trivialInstruction-' + instance).text(mOptions.instructions);
-        $('#trivialSendScore-' + instance).attr('value', mOptions.textButtonScorm);
+        $('#trivialSendScore-' + instance).attr(
+            'value',
+            mOptions.textButtonScorm
+        );
         $('#trivialSendScore-' + instance).hide();
 
         if (mOptions.isScorm > 0) {
@@ -1814,10 +2230,13 @@ var $eXeTrivial = {
         document.title = mOptions.title;
 
         $('meta[name=author]').attr('content', mOptions.author);
-        $('#trivialButtonAnswer-' + instance).on('click touchstart', function (e) {
-            e.preventDefault();
-            $eXeTrivial.answerQuestion(instance);
-        });
+        $('#trivialButtonAnswer-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                $eXeTrivial.answerQuestion(instance);
+            }
+        );
 
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 6; j++) {
@@ -1834,8 +2253,8 @@ var $eXeTrivial = {
                 valor = num < 7 ? num : 6,
                 image = $eXeTrivial.idevicePath + 'tvlpt' + valor + '.png';
             $('#trivialPuntosDado-' + instance).css({
-                'background': "url(" + image + ")",
-                'background-size': '100% 100%'
+                background: 'url(' + image + ')',
+                'background-size': '100% 100%',
             });
             mOptions.valorDado = num;
             $eXeTrivial.showTargetPositions(mOptions.valorDado, instance);
@@ -1843,22 +2262,26 @@ var $eXeTrivial = {
 
         $('#trivialLinkAudio-' + instance).on('click', function (e) {
             e.preventDefault();
-            const mq = mOptions.temas[mOptions.activeTema][mOptions.activesQuestions[mOptions.activeTema]];
+            const mq =
+                mOptions.temas[mOptions.activeTema][
+                    mOptions.activesQuestions[mOptions.activeTema]
+                ];
             const audio = mq.audio;
             $exeDevices.iDevice.gamification.media.stopSound(mOptions);
             $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
         });
 
-
-
-        if (typeof mOptions.trivialID != "undefined") {
+        if (typeof mOptions.trivialID != 'undefined') {
             const dataTrivial = $eXeTrivial.getDataStorage(mOptions.trivialID);
             if (dataTrivial) {
                 if (dataTrivial) {
-                    if (dataTrivial.activesQuestions.length == mOptions.numeroTemas) {
+                    if (
+                        dataTrivial.activesQuestions.length ==
+                        mOptions.numeroTemas
+                    ) {
                         $eXeTrivial.reloadGame(dataTrivial, instance);
                     } else {
-                        $eXeTrivial.rebootGame(instance)
+                        $eXeTrivial.rebootGame(instance);
                     }
                 }
             }
@@ -1866,28 +2289,29 @@ var $eXeTrivial = {
 
         $('#trivialModeBoardOK-' + instance).on('click', function (e) {
             e.preventDefault();
-            $eXeTrivial.answerQuestionBoard(true, instance)
+            $eXeTrivial.answerQuestionBoard(true, instance);
         });
 
         $('#trivialModeBoardKO-' + instance).on('click', function (e) {
             e.preventDefault();
-            $eXeTrivial.answerQuestionBoard(false, instance)
+            $eXeTrivial.answerQuestionBoard(false, instance);
         });
 
         if (mOptions.hasVideo && !mOptions.gameStarted) {
             $(`#trivialStartGame-${instance}`).hide();
             $eXeTrivial.showMessage(0, 'Cargando. Por favor, espere', instance);
         }
-
     },
 
     getDataStorage: function (id) {
-        return $exeDevices.iDevice.gamification.helpers.isJsonString(localStorage.getItem('dataTrivial-' + id));
+        return $exeDevices.iDevice.gamification.helpers.isJsonString(
+            localStorage.getItem('dataTrivial-' + id)
+        );
     },
 
     changeQuextion: function (button, instance) {
         const mOptions = $eXeTrivial.options[instance];
-        let numberButton = parseInt($(button).data("number")),
+        let numberButton = parseInt($(button).data('number')),
             letters = 'ABCD',
             letter = letters[numberButton],
             type = false;
@@ -1899,24 +2323,34 @@ var $eXeTrivial = {
             mOptions.respuesta = mOptions.respuesta.replace(letter, '');
         }
 
-        let colors = [$eXeTrivial.colors.red, $eXeTrivial.colors.blue, $eXeTrivial.colors.green, $eXeTrivial.colors.yellow],
-            bordeColors = [$eXeTrivial.borderColors.red, $eXeTrivial.borderColors.blue, $eXeTrivial.borderColors.green, $eXeTrivial.borderColors.yellow],
+        let colors = [
+                $eXeTrivial.colors.red,
+                $eXeTrivial.colors.blue,
+                $eXeTrivial.colors.green,
+                $eXeTrivial.colors.yellow,
+            ],
+            bordeColors = [
+                $eXeTrivial.borderColors.red,
+                $eXeTrivial.borderColors.blue,
+                $eXeTrivial.borderColors.green,
+                $eXeTrivial.borderColors.yellow,
+            ],
             css = {
                 'border-size': 2,
                 'border-color': bordeColors[numberButton],
                 'background-color': colors[numberButton],
-                'cursor': 'default',
-                'color': $eXeTrivial.colors.black
-            }
+                cursor: 'default',
+                color: $eXeTrivial.colors.black,
+            };
 
         if (type) {
             css = {
                 'border-size': 2,
                 'border-color': $eXeTrivial.colors.black,
                 'background-color': bordeColors[numberButton],
-                'cursor': 'point',
-                'color': '#ffffff'
-            }
+                cursor: 'point',
+                color: '#ffffff',
+            };
         }
 
         $(button).css(css);
@@ -1924,17 +2358,28 @@ var $eXeTrivial = {
 
         for (let i = 0; i < mOptions.respuesta.length; i++) {
             if (mOptions.respuesta[i] === 'A') {
-                $('#trivialAnswers-' + instance).append('<div class="trivial-AnswersOptions trivial-Answer1"></div>');
+                $('#trivialAnswers-' + instance).append(
+                    '<div class="trivial-AnswersOptions trivial-Answer1"></div>'
+                );
             } else if (mOptions.respuesta[i] === 'B') {
-                $('#trivialAnswers-' + instance).append('<div class="trivial-AnswersOptions trivial-Answer2"></div>');
+                $('#trivialAnswers-' + instance).append(
+                    '<div class="trivial-AnswersOptions trivial-Answer2"></div>'
+                );
             } else if (mOptions.respuesta[i] === 'C') {
-                $('#trivialAnswers-' + instance).append('<div class="trivial-AnswersOptions trivial-Answer3"></div>');
+                $('#trivialAnswers-' + instance).append(
+                    '<div class="trivial-AnswersOptions trivial-Answer3"></div>'
+                );
             } else if (mOptions.respuesta[i] === 'D') {
-                $('#trivialAnswers-' + instance).append('<div class="trivial-AnswersOptions trivial-Answer4"></div>');
+                $('#trivialAnswers-' + instance).append(
+                    '<div class="trivial-AnswersOptions trivial-Answer4"></div>'
+                );
             }
         }
 
-        $('#trivialNameGamers-' + instance).find('input').eq(0).focus();
+        $('#trivialNameGamers-' + instance)
+            .find('input')
+            .eq(0)
+            .focus();
         $(window).on('unload.eXeTrivial beforeunload.eXeTrivial', function () {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeTrivial.saveDataStorage(instance);
@@ -1944,7 +2389,10 @@ var $eXeTrivial = {
 
     positionPointer: function (instance) {
         let mOptions = $eXeTrivial.options[instance],
-            mQuextion = mOptions.temas[mOptions.activeTema][mOptions.activesQuestions[mOptions.activeTema]],
+            mQuextion =
+                mOptions.temas[mOptions.activeTema][
+                    mOptions.activesQuestions[mOptions.activeTema]
+                ],
             x = parseFloat(mQuextion.x) || 0,
             y = parseFloat(mQuextion.y) || 0,
             $cursor = $('#trivialCursor-' + instance);
@@ -1953,17 +2401,21 @@ var $eXeTrivial = {
 
         $cursor.hide();
         if (x > 0 || y > 0) {
-            let containerElement = document.getElementById('trivialMultimedia-' + instance);
+            let containerElement = document.getElementById(
+                'trivialMultimedia-' + instance
+            );
             if (!containerElement) return;
             let containerPos = containerElement.getBoundingClientRect(),
-                imgElement = document.getElementById('trivialImagen-' + instance);
+                imgElement = document.getElementById(
+                    'trivialImagen-' + instance
+                );
             if (!imgElement) return;
 
             let imgPos = imgElement.getBoundingClientRect(),
                 marginTop = imgPos.top - containerPos.top,
                 marginLeft = imgPos.left - containerPos.left,
-                x = marginLeft + (x * imgPos.width),
-                y = marginTop + (y * imgPos.height);
+                x = marginLeft + x * imgPos.width,
+                y = marginTop + y * imgPos.height;
             $cursor.show();
             $cursor.css({ left: x, top: y, 'z-index': 30 });
         }
@@ -1971,7 +2423,10 @@ var $eXeTrivial = {
 
     showImage: function (url, instance) {
         const mOptions = $eXeTrivial.options[instance],
-            mQuextion = mOptions.temas[mOptions.activeTema][mOptions.activesQuestions[mOptions.activeTema]],
+            mQuextion =
+                mOptions.temas[mOptions.activeTema][
+                    mOptions.activesQuestions[mOptions.activeTema]
+                ],
             $cursor = $('#trivialCursor-' + instance),
             $noImage = $('#trivialCover-' + instance),
             $Image = $('#trivialImagen-' + instance),
@@ -1990,12 +2445,17 @@ var $eXeTrivial = {
             $noImage.show();
             $Author.text('');
             return false;
-        };
+        }
 
         $Image.attr('src', '');
-        $Image.attr('src', url)
+        $Image
+            .attr('src', url)
             .on('load', function () {
-                if (!this.complete || typeof this.naturalWidth == "undefined" || this.naturalWidth == 0) {
+                if (
+                    !this.complete ||
+                    typeof this.naturalWidth == 'undefined' ||
+                    this.naturalWidth == 0
+                ) {
                     $cursor.hide();
                     $Image.hide();
                     $noImage.show();
@@ -2008,7 +2468,8 @@ var $eXeTrivial = {
                     $Image.attr('alt', mQuextion.alt);
                     $eXeTrivial.positionPointer(instance);
                 }
-            }).on('error', function () {
+            })
+            .on('error', function () {
                 $cursor.hide();
                 $Image.hide();
                 $noImage.show();
@@ -2029,20 +2490,26 @@ var $eXeTrivial = {
         const mOptions = $eXeTrivial.options[instance];
         if (!mOptions) return;
 
-        const mQuextion = mOptions.temas[mOptions.activeTema][mOptions.activesQuestions[mOptions.activeTema]],
+        const mQuextion =
+                mOptions.temas[mOptions.activeTema][
+                    mOptions.activesQuestions[mOptions.activeTema]
+                ],
             imgElement = $('img#trivialImagen-' + instance)[0];
 
-        if (typeof mQuextion == "undefined" || !imgElement) return;
+        if (typeof mQuextion == 'undefined' || !imgElement) return;
 
         if (mQuextion.type === 1) {
             if (mQuextion.url && mQuextion.url.length > 3) {
-                if (!imgElement.complete && (!imgElement.src || imgElement.src === '')) {
+                if (
+                    !imgElement.complete &&
+                    (!imgElement.src || imgElement.src === '')
+                ) {
                     $eXeTrivial.showImage(mQuextion.url, instance);
                 } else {
                     $('#trivialCursor-' + instance).hide();
                     setTimeout(function () {
-                        $eXeTrivial.positionPointer(instance)
-                    }, 1000)
+                        $eXeTrivial.positionPointer(instance);
+                    }, 1000);
                 }
             }
         }
@@ -2050,14 +2517,23 @@ var $eXeTrivial = {
 
     enterCodeAccess: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        if (mOptions.itinerary.codeAccess.toLowerCase() === $('#trivialCodeAccessE-' + instance).val().toLowerCase()) {
+        if (
+            mOptions.itinerary.codeAccess.toLowerCase() ===
+            $('#trivialCodeAccessE-' + instance)
+                .val()
+                .toLowerCase()
+        ) {
             $('#trivialSelectsGamers-' + instance).show();
             $('#trivialMessageModal-' + instance).hide();
             $('#trivialCodeAccessDiv-' + instance).hide();
             $('#trivialAnswerDiv-' + instance).show();
             $eXeTrivial.loadGameBoard(instance);
         } else {
-            $('#trivialMesajeAccesCodeE-' + instance).fadeOut(300).fadeIn(200).fadeOut(300).fadeIn(200);
+            $('#trivialMesajeAccesCodeE-' + instance)
+                .fadeOut(300)
+                .fadeIn(200)
+                .fadeOut(300)
+                .fadeIn(200);
             $('#trivialCodeAccessE-' + instance).val('');
         }
     },
@@ -2065,7 +2541,10 @@ var $eXeTrivial = {
     updateSoundVideo: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
         if (mOptions.activeSilent) {
-            if (mOptions.player && typeof mOptions.player.getCurrentTime === "function") {
+            if (
+                mOptions.player &&
+                typeof mOptions.player.getCurrentTime === 'function'
+            ) {
                 const time = Math.round(mOptions.player.getCurrentTime());
                 if (time == mOptions.question.silentVideo) {
                     mOptions.player.mute();
@@ -2077,12 +2556,14 @@ var $eXeTrivial = {
     },
 
     updateTime: function (tiempo, instance) {
-        const mTime = $exeDevices.iDevice.gamification.helpers.getTimeToString(tiempo);
+        const mTime =
+            $exeDevices.iDevice.gamification.helpers.getTimeToString(tiempo);
         $('#trivialPTime-' + instance).text(mTime);
     },
 
     updateTimeGame: function (time, instance) {
-        const mTime = $exeDevices.iDevice.gamification.helpers.getTimeToString(time);
+        const mTime =
+            $exeDevices.iDevice.gamification.helpers.getTimeToString(time);
         $('#trivialTiempo-' + instance).text(mTime);
     },
 
@@ -2121,29 +2602,58 @@ var $eXeTrivial = {
         $('#trivialMessageModalTexto-' + instance).css('display', 'flex');
         $('#trivialMessageModalTexto-' + instance).show();
 
-        let winner = mOptions.msgs.msgsWinner.replace('%1', mOptions.gamers[mOptions.activePlayer].name);
+        let winner = mOptions.msgs.msgsWinner.replace(
+            '%1',
+            mOptions.gamers[mOptions.activePlayer].name
+        );
 
         $('#trivialPMessageModal-' + instance).text(winner);
         $('#trivialDado-' + instance).hide();
 
         if (mOptions.itinerary.showClue) {
-            $eXeTrivial.showGameMessage(mOptions.msgs.msgInformation + ": " + mOptions.itinerary.clueGame, 10000, 4, instance);
+            $eXeTrivial.showGameMessage(
+                mOptions.msgs.msgInformation +
+                    ': ' +
+                    mOptions.itinerary.clueGame,
+                10000,
+                4,
+                instance
+            );
         } else {
-            const mesaje_victoria = ", " + mOptions.msgs.msgWinGame;
-            $eXeTrivial.showGameMessage(mOptions.gamers[mOptions.activePlayer].name + mesaje_victoria, 10000, 4, instance);
+            const mesaje_victoria = ', ' + mOptions.msgs.msgWinGame;
+            $eXeTrivial.showGameMessage(
+                mOptions.gamers[mOptions.activePlayer].name + mesaje_victoria,
+                10000,
+                4,
+                instance
+            );
         }
 
         $('#trivialLinkAudio-' + instance).hide();
         $eXeTrivial.sendScore(true, instance);
-        $eXeTrivial.saveEvaluation(instance)
-        $eXeTrivial.initialScore = (((mOptions.gamers[0].casilla + 1) * 10) / mOptions.numeroCasillas).toFixed(2);
+        $eXeTrivial.saveEvaluation(instance);
+        $eXeTrivial.initialScore = (
+            ((mOptions.gamers[0].casilla + 1) * 10) /
+            mOptions.numeroCasillas
+        ).toFixed(2);
         $eXeTrivial.saveDataStorage(instance);
     },
 
-    drawPhrase: function (phrase, definition, nivel, type, casesensitive, instance, solution, open) {
+    drawPhrase: function (
+        phrase,
+        definition,
+        nivel,
+        type,
+        casesensitive,
+        instance,
+        solution,
+        open
+    ) {
         const mOptions = $eXeTrivial.options[instance];
 
-        $('#trivialEPhrase-' + instance).find('.trivial-Word').remove();
+        $('#trivialEPhrase-' + instance)
+            .find('.trivial-Word')
+            .remove();
         $('#trivialBtnReply-' + instance).prop('disabled', true);
         $('#trivialBtnMoveOn-' + instance).prop('disabled', true);
         $('#trivialEdAnswer-' + instance).prop('disabled', true);
@@ -2169,7 +2679,7 @@ var $eXeTrivial = {
             nPhrase = [];
         for (let z = 0; z < h.length; z++) {
             if (h[z] != '&' && letterShow.indexOf(z) == -1) {
-                nPhrase.push(' ')
+                nPhrase.push(' ');
             } else {
                 nPhrase.push(h[z]);
             }
@@ -2180,15 +2690,29 @@ var $eXeTrivial = {
         for (let i = 0; i < phrase_array.length; i++) {
             let cleanWord = phrase_array[i];
             if (cleanWord != '') {
-                $('<div class="trivial-Word"></div>').appendTo('#trivialEPhrase-' + instance);
+                $('<div class="trivial-Word"></div>').appendTo(
+                    '#trivialEPhrase-' + instance
+                );
                 for (let j = 0; j < cleanWord.length; j++) {
-                    let letter = '<div class="trivial-Letter blue">' + cleanWord[j] + '</div>';
+                    let letter =
+                        '<div class="trivial-Letter blue">' +
+                        cleanWord[j] +
+                        '</div>';
                     if (type == 1) {
-                        letter = '<div class="trivial-Letter red">' + cleanWord[j] + '</div>';
+                        letter =
+                            '<div class="trivial-Letter red">' +
+                            cleanWord[j] +
+                            '</div>';
                     } else if (type == 2) {
-                        letter = '<div class="trivial-Letter green">' + cleanWord[j] + '</div>';
+                        letter =
+                            '<div class="trivial-Letter green">' +
+                            cleanWord[j] +
+                            '</div>';
                     }
-                    $('#trivialEPhrase-' + instance).find('.trivial-Word').last().append(letter);
+                    $('#trivialEPhrase-' + instance)
+                        .find('.trivial-Word')
+                        .last()
+                        .append(letter);
                 }
             }
         }
@@ -2199,31 +2723,32 @@ var $eXeTrivial = {
         const html = $('#trivialWordDiv-' + instance).html(),
             latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
 
-        if (latex) $exeDevices.iDevice.gamification.math.updateLatex(
-            '.trivial-IDevice',
-        );
+        if (latex)
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.trivial-IDevice'
+            );
         return cPhrase;
     },
 
     clear: function (phrase) {
-        return phrase.replace(/[&\s\n\r]+/g, " ").trim();
+        return phrase.replace(/[&\s\n\r]+/g, ' ').trim();
     },
 
     getShowLetter: function (phrase, nivel) {
-        let numberLetter = parseInt(phrase.length * nivel / 100);
+        let numberLetter = parseInt((phrase.length * nivel) / 100);
         let arrayRandom = [];
         while (arrayRandom.length < numberLetter) {
             let numberRandow = parseInt(Math.random() * phrase.length);
             if (arrayRandom.indexOf(numberRandow) != -1) {
                 continue;
             } else {
-                arrayRandom.push(numberRandow)
+                arrayRandom.push(numberRandow);
             }
-        };
-        return arrayRandom.sort()
+        }
+        return arrayRandom.sort();
     },
 
-    drawText: function (texto, color) { },
+    drawText: function (texto, color) {},
 
     showQuestion: function (ntema, i, instance) {
         const mOptions = $eXeTrivial.options[instance],
@@ -2232,10 +2757,14 @@ var $eXeTrivial = {
 
         $eXeTrivial.clearQuestions(instance);
 
-        mOptions.question = mQuextion
+        mOptions.question = mQuextion;
         mOptions.respuesta = '';
 
-        let tiempo = $exeDevices.iDevice.gamification.helpers.getTimeToString($exeDevices.iDevice.gamification.helpers.getTimeSeconds(mQuextion.time)),
+        let tiempo = $exeDevices.iDevice.gamification.helpers.getTimeToString(
+                $exeDevices.iDevice.gamification.helpers.getTimeSeconds(
+                    mQuextion.time
+                )
+            ),
             author = '',
             alt = '';
 
@@ -2257,26 +2786,38 @@ var $eXeTrivial = {
         $eXeTrivial.showMessage(0, '', instance);
         $eXeTrivial.ramdonOptions(instance);
 
-        mOptions.activeSilent = (q.type == 2) && (q.soundVideo == 1) && (q.tSilentVideo > 0) && (q.silentVideo >= q.iVideo) && (q.iVideo < q.fVideo);
+        mOptions.activeSilent =
+            q.type == 2 &&
+            q.soundVideo == 1 &&
+            q.tSilentVideo > 0 &&
+            q.silentVideo >= q.iVideo &&
+            q.iVideo < q.fVideo;
         let endSonido = parseInt(q.silentVideo) + parseInt(q.tSilentVideo);
 
         mOptions.endSilent = endSonido > q.fVideo ? q.fVideo : endSonido;
 
-        let url = $exeDevices.iDevice.gamification.media.extractURLGD(mQuextion.url);
+        let url = $exeDevices.iDevice.gamification.media.extractURLGD(
+            mQuextion.url
+        );
 
         $('#trivialAuthor-' + instance).text('');
 
         if (mQuextion.type === 1) {
-            $('#trivialImagen-' + instance).attr('src', url)
+            $('#trivialImagen-' + instance)
+                .attr('src', url)
                 .on('load', function () {
-                    if (!this.complete || typeof this.naturalWidth == "undefined" || this.naturalWidth === 0) {
+                    if (
+                        !this.complete ||
+                        typeof this.naturalWidth == 'undefined' ||
+                        this.naturalWidth === 0
+                    ) {
                         alt = mOptions.msgNoImage;
                         $('#trivialAuthor-' + instance).text('');
                     } else {
                         $('#trivialImagen-' + instance).show();
                         $('#trivialCover-' + instance).hide();
                         $('#trivialCursor-' + instance).hide();
-                        $eXeTrivial.positionPointer(instance)
+                        $eXeTrivial.positionPointer(instance);
                     }
                     $eXeTrivial.showMessage(0, author, instance);
                 });
@@ -2289,15 +2830,26 @@ var $eXeTrivial = {
 
             $eXeTrivial.showMessage(0, '', instance);
         } else if (mQuextion.type === 2) {
-            let idVideo = $exeDevices.iDevice.gamification.media.getIDYoutube(mQuextion.url),
-                urllv = $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(mQuextion.url),
+            let idVideo = $exeDevices.iDevice.gamification.media.getIDYoutube(
+                    mQuextion.url
+                ),
+                urllv =
+                    $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                        mQuextion.url
+                    ),
                 type = urllv ? 1 : 0,
                 id = type == 0 ? idVideo : urllv;
-            $eXeTrivial.startVideo(id, mQuextion.iVideo, mQuextion.fVideo, instance, type);
+            $eXeTrivial.startVideo(
+                id,
+                mQuextion.iVideo,
+                mQuextion.fVideo,
+                instance,
+                type
+            );
             $eXeTrivial.showMessage(0, '', instance);
             $('#trivialVideoLocal-' + instance).hide();
             $('#trivialVideo-' + instance).hide();
-            $('#trivialCover-' + instance).hide()
+            $('#trivialCover-' + instance).hide();
             if (mQuextion.imageVideo === 0) {
                 $('#trivialCover-' + instance).show();
             } else {
@@ -2308,16 +2860,31 @@ var $eXeTrivial = {
                 }
             }
             if (mQuextion.soundVideo === 0) {
-                $exeDevices.iDevice.gamification.media.muteVideo(true, instance);
+                $exeDevices.iDevice.gamification.media.muteVideo(
+                    true,
+                    instance
+                );
             } else {
-                $exeDevices.iDevice.gamification.media.muteVideo(false, instance);
+                $exeDevices.iDevice.gamification.media.muteVideo(
+                    false,
+                    instance
+                );
             }
         }
 
         if (mQuextion.typeSelect < 2) {
             $eXeTrivial.drawQuestions(instance);
         } else {
-            $eXeTrivial.drawPhrase(mQuextion.solutionQuestion, mQuextion.quextion, mQuextion.percentageShow, 0, false, instance, false, mQuextion.typeSelect)
+            $eXeTrivial.drawPhrase(
+                mQuextion.solutionQuestion,
+                mQuextion.quextion,
+                mQuextion.percentageShow,
+                0,
+                false,
+                instance,
+                false,
+                mQuextion.typeSelect
+            );
             $('#trivialBtnReply-' + instance).prop('disabled', false);
             $('#trivialBtnMoveOn-' + instance).prop('disabled', false);
             $('#trivialEdAnswer-' + instance).prop('disabled', false);
@@ -2336,7 +2903,10 @@ var $eXeTrivial = {
 
         $exeDevices.iDevice.gamification.media.stopSound(mOptions);
         if (q.type != 2 && q.audio.trim().length > 5) {
-            $exeDevices.iDevice.gamification.media.playSound(q.audio.trim(), mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(
+                q.audio.trim(),
+                mOptions
+            );
         }
         $('#trivialEdAnswer-' + instance).focus();
     },
@@ -2353,7 +2923,7 @@ var $eXeTrivial = {
             active = mOptions.activesQuestions[mOptions.activeTema],
             quextion = mOptions.temas[mOptions.activeTema][active];
 
-        let message = "",
+        let message = '',
             solution = quextion.solution,
             answer = mOptions.respuesta.toUpperCase(),
             correct = true,
@@ -2361,11 +2931,20 @@ var $eXeTrivial = {
 
         if (mOptions.activeCounter == false) return;
         if (quextion.typeSelect === 2) {
-            solution = $.trim(quextion.solutionQuestion.toUpperCase()).replace(/\s+/g, " ");
-            answer = $.trim($('#trivialEdAnswer-' + instance).val()).toUpperCase().replace(/\s+/g, " ");
+            solution = $.trim(quextion.solutionQuestion.toUpperCase()).replace(
+                /\s+/g,
+                ' '
+            );
+            answer = $.trim($('#trivialEdAnswer-' + instance).val())
+                .toUpperCase()
+                .replace(/\s+/g, ' ');
             correct = solution == answer;
             if (answer.length == 0) {
-                $eXeTrivial.showMessage(1, mOptions.msgs.msgIndicateWord, instance);
+                $eXeTrivial.showMessage(
+                    1,
+                    mOptions.msgs.msgIndicateWord,
+                    instance
+                );
                 return;
             }
         } else if (quextion.typeSelect === 1) {
@@ -2402,7 +2981,16 @@ var $eXeTrivial = {
             if (quextion.typeSelect < 2) {
                 $eXeTrivial.drawSolution(instance);
             } else {
-                $eXeTrivial.drawPhrase(quextion.solutionQuestion, quextion.quextion, 100, type, false, instance, true, quextion.typeSelect)
+                $eXeTrivial.drawPhrase(
+                    quextion.solutionQuestion,
+                    quextion.quextion,
+                    100,
+                    type,
+                    false,
+                    instance,
+                    true,
+                    quextion.typeSelect
+                );
             }
         }
 
@@ -2410,7 +2998,9 @@ var $eXeTrivial = {
         $eXeTrivial.showMessage(type, message, instance);
 
         clearInterval(mOptions.counterClock);
-        const ts = mOptions.showSolution ? mOptions.timeShowSolution * 1000 : 3000;
+        const ts = mOptions.showSolution
+            ? mOptions.timeShowSolution * 1000
+            : 3000;
         setTimeout(function () {
             $eXeTrivial.questionAnswer(correct, instance);
         }, ts);
@@ -2421,7 +3011,7 @@ var $eXeTrivial = {
         const mOptions = $eXeTrivial.options[instance],
             active = mOptions.activesQuestions[mOptions.activeTema],
             quextion = mOptions.temas[mOptions.activeTema][active];
-        let message = "",
+        let message = '',
             type = 1;
 
         if (mOptions.activeCounter == false) return;
@@ -2439,16 +3029,26 @@ var $eXeTrivial = {
             if (quextion.typeSelect < 2) {
                 $eXeTrivial.drawSolution(instance);
             } else {
-                $eXeTrivial.drawPhrase(quextion.solutionQuestion, quextion.quextion, 100, type, false, instance, true, quextion.typeSelect)
+                $eXeTrivial.drawPhrase(
+                    quextion.solutionQuestion,
+                    quextion.quextion,
+                    100,
+                    type,
+                    false,
+                    instance,
+                    true,
+                    quextion.typeSelect
+                );
             }
         }
-
 
         $exeDevices.iDevice.gamification.media.stopVideo(instance);
         $eXeTrivial.showMessage(type, message, instance);
         clearInterval(mOptions.counterClock);
 
-        const ts = mOptions.showSolution ? mOptions.timeShowSolution * 1000 : 3000;
+        const ts = mOptions.showSolution
+            ? mOptions.timeShowSolution * 1000
+            : 3000;
         setTimeout(function () {
             $eXeTrivial.questionAnswer(value, instance);
         }, ts);
@@ -2456,12 +3056,18 @@ var $eXeTrivial = {
     },
 
     showMessage: function (type, message, instance) {
-        const colors = ['#555555', $eXeTrivial.borderColors.red, $eXeTrivial.borderColors.green, $eXeTrivial.borderColors.blue, $eXeTrivial.borderColors.yellow],
+        const colors = [
+                '#555555',
+                $eXeTrivial.borderColors.red,
+                $eXeTrivial.borderColors.green,
+                $eXeTrivial.borderColors.blue,
+                $eXeTrivial.borderColors.yellow,
+            ],
             color = colors[type],
             weight = type == 0 ? 'normal' : 'normal';
         $('#trivialPAuthor-' + instance).text(message);
         $('#trivialPAuthor-' + instance).css({
-            'color': color,
+            color: color,
             'font-weight': weight,
         });
         $('#trivialAutorLicence-' + instance).show();
@@ -2470,13 +3076,13 @@ var $eXeTrivial = {
     ramdonOptions: function (instance) {
         let mOptions = $eXeTrivial.options[instance],
             l = 0,
-            letras = "ABCD";
+            letras = 'ABCD';
 
         if (mOptions.question.typeSelect == 1) return;
 
         let soluciones = mOptions.question.solution;
         for (let j = 0; j < mOptions.question.options.length; j++) {
-            if (!(mOptions.question.options[j].trim() == "")) {
+            if (!(mOptions.question.options[j].trim() == '')) {
                 l++;
             }
         }
@@ -2489,9 +3095,12 @@ var $eXeTrivial = {
             correctAnswers.push(respuestas[sol]);
         }
 
-        respuestasNuevas = mOptions.question.options.slice(0, l)
-        respuestasNuevas = $exeDevices.iDevice.gamification.helpers.shuffleAds(respuestasNuevas);
-        let solucionesNuevas = "";
+        respuestasNuevas = mOptions.question.options.slice(0, l);
+        respuestasNuevas =
+            $exeDevices.iDevice.gamification.helpers.shuffleAds(
+                respuestasNuevas
+            );
+        let solucionesNuevas = '';
         for (let j = 0; j < respuestasNuevas.length; j++) {
             for (let z = 0; z < correctAnswers.length; z++) {
                 if (respuestasNuevas[j] == correctAnswers[z]) {
@@ -2504,7 +3113,7 @@ var $eXeTrivial = {
         mOptions.question.options = [];
         for (let i = 0; i < 4; i++) {
             if (i < respuestasNuevas.length) {
-                mOptions.question.options.push(respuestasNuevas[i])
+                mOptions.question.options.push(respuestasNuevas[i]);
             } else {
                 mOptions.question.options.push('');
             }
@@ -2514,31 +3123,41 @@ var $eXeTrivial = {
 
     drawQuestions: function (instance) {
         const mOptions = $eXeTrivial.options[instance],
-            bordeColors = [$eXeTrivial.borderColors.red, $eXeTrivial.borderColors.blue, $eXeTrivial.borderColors.green, $eXeTrivial.borderColors.yellow];
+            bordeColors = [
+                $eXeTrivial.borderColors.red,
+                $eXeTrivial.borderColors.blue,
+                $eXeTrivial.borderColors.green,
+                $eXeTrivial.borderColors.yellow,
+            ];
 
         $('#trivialQuestionDiv-' + instance).show();
         $('#trivialWordDiv-' + instance).hide();
         $('#trivialAnswerDiv-' + instance).show();
-        $('#trivialOptionsDiv-' + instance).find('.trivial-Options').each(function (index) {
-            const option = mOptions.question.options[index]
-            $(this).css({
-                'border-color': bordeColors[index],
-                'background-color': "transparent",
-                'cursor': 'pointer',
-                'color': $eXeTrivial.colors.black
-            }).text(option);
-            if (option) {
-                $(this).show();
-            } else {
-                $(this).hide();
-            }
-        });
+        $('#trivialOptionsDiv-' + instance)
+            .find('.trivial-Options')
+            .each(function (index) {
+                const option = mOptions.question.options[index];
+                $(this)
+                    .css({
+                        'border-color': bordeColors[index],
+                        'background-color': 'transparent',
+                        cursor: 'pointer',
+                        color: $eXeTrivial.colors.black,
+                    })
+                    .text(option);
+                if (option) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
 
         const html = $('#trivialQuestionDiv-' + instance).html(),
             latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
-        if (latex) $exeDevices.iDevice.gamification.math.updateLatex(
-            '.trivial-IDevice',
-        );
+        if (latex)
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.trivial-IDevice'
+            );
     },
 
     drawSolution: function (instance) {
@@ -2549,63 +3168,74 @@ var $eXeTrivial = {
             letters = 'ABCD';
 
         mOptions.gameActived = false;
-        $('#trivialOptionsDiv-' + instance).find('.trivial-Options').each(function (i) {
-            let css = {};
-            if (mQuextion.typeSelect === 1) {
-                css = {
-                    'border-color': $eXeTrivial.borderColors.correct,
-                    'background-color': $eXeTrivial.colors.correct,
-                    'border-size': '1',
-                    'cursor': 'pointer',
-                    'color': $eXeTrivial.borderColors.black
-                };
-                let text = ''
-                if (solution[i] === "A") {
-                    text = mQuextion.options[0];
-                } else if (solution[i] === "B") {
-                    text = mQuextion.options[1];
-                } else if (solution[i] === "C") {
-                    text = mQuextion.options[2];
-                } else if (solution[i] === "D") {
-                    text = mQuextion.options[3];
-                }
-                $(this).text(text);
-            } else {
-                css = {
-                    'border-color': $eXeTrivial.borderColors.incorrect,
-                    'border-size': '1',
-                    'background-color': 'transparent',
-                    'cursor': 'pointer',
-                    'color': $eXeTrivial.borderColors.grey
-                };
-                if (solution.indexOf(letters[i]) !== -1) {
+        $('#trivialOptionsDiv-' + instance)
+            .find('.trivial-Options')
+            .each(function (i) {
+                let css = {};
+                if (mQuextion.typeSelect === 1) {
                     css = {
                         'border-color': $eXeTrivial.borderColors.correct,
                         'background-color': $eXeTrivial.colors.correct,
                         'border-size': '1',
-                        'cursor': 'pointer',
-                        'color': $eXeTrivial.borderColors.black
+                        cursor: 'pointer',
+                        color: $eXeTrivial.borderColors.black,
+                    };
+                    let text = '';
+                    if (solution[i] === 'A') {
+                        text = mQuextion.options[0];
+                    } else if (solution[i] === 'B') {
+                        text = mQuextion.options[1];
+                    } else if (solution[i] === 'C') {
+                        text = mQuextion.options[2];
+                    } else if (solution[i] === 'D') {
+                        text = mQuextion.options[3];
+                    }
+                    $(this).text(text);
+                } else {
+                    css = {
+                        'border-color': $eXeTrivial.borderColors.incorrect,
+                        'border-size': '1',
+                        'background-color': 'transparent',
+                        cursor: 'pointer',
+                        color: $eXeTrivial.borderColors.grey,
+                    };
+                    if (solution.indexOf(letters[i]) !== -1) {
+                        css = {
+                            'border-color': $eXeTrivial.borderColors.correct,
+                            'background-color': $eXeTrivial.colors.correct,
+                            'border-size': '1',
+                            cursor: 'pointer',
+                            color: $eXeTrivial.borderColors.black,
+                        };
                     }
                 }
-            }
-            $(this).css(css);
-        });
+                $(this).css(css);
+            });
     },
 
     clearQuestions: function (instance) {
         const mOptions = $eXeTrivial.options[instance];
-        mOptions.respuesta = "";
+        mOptions.respuesta = '';
 
         $('#trivialAnswers-' + instance + '> .trivial-AnswersOptions').remove();
-        const bordeColors = [$eXeTrivial.borderColors.red, $eXeTrivial.borderColors.blue, $eXeTrivial.borderColors.green, $eXeTrivial.borderColors.yellow];
+        const bordeColors = [
+            $eXeTrivial.borderColors.red,
+            $eXeTrivial.borderColors.blue,
+            $eXeTrivial.borderColors.green,
+            $eXeTrivial.borderColors.yellow,
+        ];
 
-        $('#trivialOptionsDiv-' + instance).find('.trivial-Options').each(function (index) {
-            $(this).css({
-                'border-color': bordeColors[index],
-                'background-color': "transparent",
-                'cursor': 'pointer'
-            }).text('');
-        });
+        $('#trivialOptionsDiv-' + instance)
+            .find('.trivial-Options')
+            .each(function (index) {
+                $(this)
+                    .css({
+                        'border-color': bordeColors[index],
+                        'background-color': 'transparent',
+                        cursor: 'pointer',
+                    })
+                    .text('');
+            });
     },
 
     loadPositions2: function (kw, kh, instance) {
@@ -3566,15 +4196,15 @@ var $eXeTrivial = {
         pT[40].p = 40;
         pT[41].r = 12;
         pT[41].p = 41;
-        pT[42].r = 1;;
+        pT[42].r = 1;
         pT[42].p = 42;
-        pT[43].r = 1;;
+        pT[43].r = 1;
         pT[43].p = 43;
-        pT[44].r = 1;;
+        pT[44].r = 1;
         pT[44].p = 44;
-        pT[45].r = 1;;
+        pT[45].r = 1;
         pT[45].p = 45;
-        pT[46].r = 1;;
+        pT[46].r = 1;
         pT[46].p = 46;
         pT[47].r = 2;
         pT[47].p = 47;
@@ -3626,7 +4256,7 @@ var $eXeTrivial = {
         pT[70].p = 70;
         pT[71].r = 6;
         pT[71].p = 71;
-        pT[72].r = 0;;
+        pT[72].r = 0;
         pT[72].p = 72;
         pT[0].s = 1;
         pT[1].s = 4;
@@ -4257,10 +4887,10 @@ var $eXeTrivial = {
             pos.push(posicion);
         } else {
             if (pA < 6) {
-                let pos2 = (tg - 7 + 24);
+                let pos2 = tg - 7 + 24;
                 pos.push(pos2);
             } else if (pA < 18) {
-                let pos2 = (tg - 19 + 27);
+                let pos2 = tg - 19 + 27;
                 pos.push(pos2);
             }
             pos.push(posicion);
@@ -4280,8 +4910,8 @@ var $eXeTrivial = {
             pos.push(pA - vd);
         } else {
             pos.push(pA - vd);
-            pos.push((ndB - 1) + (rd));
-            if ((pA == nB) && (vd == 4)) {
+            pos.push(ndB - 1 + rd);
+            if (pA == nB && vd == 4) {
                 pos[1] = 30;
             }
         }
@@ -4298,7 +4928,7 @@ var $eXeTrivial = {
             pos.push(30);
         } else {
             for (let j = 1; j < 3; j++) {
-                nodos = 26 + (3 * (j - 1));
+                nodos = 26 + 3 * (j - 1);
                 if (nodos != nU) {
                     pos.push(nodos - (rD - 2));
                 }
@@ -4344,11 +4974,11 @@ var $eXeTrivial = {
             pos.push(pA - vd);
         } else {
             pos.push(Math.abs(pA - vd));
-            pos.push((ndB - 1) + (rd));
+            pos.push(ndB - 1 + rd);
             if (nB == 0) {
                 pos[0] = 21 - rd;
             }
-            if ((pA == nB) && (vd == 4)) {
+            if (pA == nB && vd == 4) {
                 pos[1] = 30;
             }
         }
@@ -4363,12 +4993,12 @@ var $eXeTrivial = {
             num = [0, -6, -5, -4, -3, -2, -1];
         if (num.indexOf(rd) != -1) {
             pos.push(pA + vd);
-            if ((mOptions.pT[pA].r == 6) && (rd == 0)) {
+            if (mOptions.pT[pA].r == 6 && rd == 0) {
                 pos[0] = 0;
             }
         } else {
             pos.push(pA + vd);
-            pos.push((ndU - 1) + (rd));
+            pos.push(ndU - 1 + rd);
             if (nU == 0) pos[1] = rd;
             if (nU == 0) pos[0] = pA + vd - 1;
         }
@@ -4385,7 +5015,7 @@ var $eXeTrivial = {
             pos.push(30);
         } else {
             for (let j = 1; j < 4; j++) {
-                nodos = 23 + (3 * (j - 1));
+                nodos = 23 + 3 * (j - 1);
                 if (nodos != nU) {
                     pos.push(nodos - (rD - 2));
                 }
@@ -4434,12 +5064,12 @@ var $eXeTrivial = {
             num = [0, -5, -4, -3, -2, -1];
         if (num.indexOf(rd) != -1) {
             pos.push(pA + vd);
-            if ((mOptions.pT[pA].r == 8) && (rd == 0)) {
+            if (mOptions.pT[pA].r == 8 && rd == 0) {
                 pos[0] = 0;
             }
         } else {
             pos.push(pA + vd);
-            pos.push((ndU - 1) + (rd));
+            pos.push(ndU - 1 + rd);
             if (nU == 0) pos[1] = rd;
         }
         return pos;
@@ -4452,11 +5082,11 @@ var $eXeTrivial = {
             pos.push(pA - vd);
         } else {
             pos.push(Math.abs(pA - vd));
-            pos.push((ndB - 1) + (rd));
+            pos.push(ndB - 1 + rd);
             if (nB == 0) {
                 pos[0] = 24 - rd;
             }
-            if ((pA == nB) && (vd == 4)) {
+            if (pA == nB && vd == 4) {
                 pos[1] = 36;
             }
         }
@@ -4473,7 +5103,7 @@ var $eXeTrivial = {
             pos.push(36);
         } else {
             for (let j = 1; j < 5; j++) {
-                nodos = 26 + (3 * (j - 1));
+                nodos = 26 + 3 * (j - 1);
                 if (nodos != nU) {
                     pos.push(nodos - (rD - 2));
                 }
@@ -4524,12 +5154,12 @@ var $eXeTrivial = {
             num = [0, -5, -4, -3, -2, -1];
         if (num.indexOf(rd) != -1) {
             pos.push(pA + vd);
-            if ((mOptions.pT[pA].r == 10) && (rd == 0)) {
+            if (mOptions.pT[pA].r == 10 && rd == 0) {
                 pos[0] = 0;
             }
         } else {
             pos.push(pA + vd);
-            pos.push((ndU - 1) + (rd));
+            pos.push(ndU - 1 + rd);
             if (nU == 0) pos[1] = rd;
         }
         return pos;
@@ -4542,11 +5172,11 @@ var $eXeTrivial = {
             pos.push(pA - vd);
         } else {
             pos.push(Math.abs(pA - vd));
-            pos.push((ndB - 1) + (rd));
+            pos.push(ndB - 1 + rd);
             if (nB == 0) {
                 pos[0] = 30 - rd;
             }
-            if ((pA == nB) && (vd == 5)) {
+            if (pA == nB && vd == 5) {
                 pos[1] = 50;
             }
         }
@@ -4580,7 +5210,7 @@ var $eXeTrivial = {
             pos.push(50);
         } else {
             for (let j = 1; j < 6; j++) {
-                nodos = 33 + (4 * (j - 1));
+                nodos = 33 + 4 * (j - 1);
                 if (nodos != nU) {
                     pos.push(nodos - (rD - 2));
                 }
@@ -4616,12 +5246,12 @@ var $eXeTrivial = {
             num = [0, -6, -5, -4, -3, -2, -1];
         if (num.indexOf(rd) != -1) {
             pos.push(pA + vd);
-            if ((mOptions.pT[pA].r == 12) && (rd == 0)) {
+            if (mOptions.pT[pA].r == 12 && rd == 0) {
                 pos[0] = 0;
             }
         } else {
             pos.push(pA + vd);
-            pos.push((ndU - 1) + (rd));
+            pos.push(ndU - 1 + rd);
             if (nU == 0) pos[1] = rd;
         }
         return pos;
@@ -4634,11 +5264,11 @@ var $eXeTrivial = {
             pos.push(pA - vd);
         } else {
             pos.push(Math.abs(pA - vd));
-            pos.push((ndB - 1) + (rd));
+            pos.push(ndB - 1 + rd);
             if (nB == 0) {
                 pos[0] = 42 - rd;
             }
-            if ((pA == nB) && (vd == 6)) {
+            if (pA == nB && vd == 6) {
                 pos[1] = 72;
             }
         }
@@ -4655,7 +5285,7 @@ var $eXeTrivial = {
             pos.push(72);
         } else {
             for (let j = 1; j < 7; j++) {
-                nodos = 46 + (5 * (j - 1));
+                nodos = 46 + 5 * (j - 1);
                 if (nodos != proS) {
                     pos.push(nodos - (rD - 2));
                 }
@@ -4680,9 +5310,7 @@ var $eXeTrivial = {
         }
         return pos;
     },
-
-
-}
+};
 $(function () {
     $eXeTrivial.init();
 });
