@@ -20,9 +20,12 @@ ENV VERSION=${VERSION} \
     nginx_root_directory=/app/public \
     SITE_URL=http://localhost \
     DEBUG=false \
-    client_max_body_size=50M \
-    post_max_size=50M \
-    upload_max_filesize=50M \
+    client_max_body_size=512M \
+    post_max_size=512M \
+    upload_max_filesize=512M \
+    memory_limit=512M \
+    max_execution_time=600 \
+    max_input_time=600 \
     max_input_vars=5000 \
     # Mercure configuration variables
     SERVER_NAME=:80 \
