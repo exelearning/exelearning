@@ -323,6 +323,13 @@ class Properties
             'category' => self::TRANS_PREFIX.'General',
             'heritable' => true,
         ],
+        'highlight' => [
+            'title' => self::TRANS_PREFIX.'Highlight page',
+            'value' => 'false',
+            'type' => 'checkbox',
+            'category' => self::TRANS_PREFIX.'General',
+            'heritable' => false,
+        ],
         // Teacher mode is not applicable at page level
         'description' => [
             'title' => self::TRANS_PREFIX.'Description',

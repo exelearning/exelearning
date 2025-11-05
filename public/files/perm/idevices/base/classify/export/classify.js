@@ -37,7 +37,12 @@ var $eXeClasifica = {
     jqueryui: 1,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Classify', 'classify', 'clasifica-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Classify',
+            'classify',
+            'clasifica-IDevice'
+        );
     },
     enable: function () {
         $eXeClasifica.loadGame();
@@ -54,7 +59,7 @@ var $eXeClasifica = {
                 mOption = $eXeClasifica.loadDataGame(
                     dl,
                     $imagesLink,
-                    $audiosLink,
+                    $audiosLink
                 ),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -75,15 +80,15 @@ var $eXeClasifica = {
 
             $('#clasificaGameMinimize-' + i)
                 .css('cursor', 'pointer')
-                .show()
+                .show();
             $('#clasificaGameContainer-' + i).show();
             $('#clasificaMessageMaximize-' + i).text(msg);
             $('#clasificaDivFeedBack-' + i).prepend(
-                $('.clasifica-feedback-game', this),
+                $('.clasifica-feedback-game', this)
             );
             $eXeClasifica.addCards(i, mOption.cardsGame);
             if (mOption.showMinimize) {
-                $('#clasificaGameContainer-' + i).hide();;
+                $('#clasificaGameContainer-' + i).hide();
             } else {
                 $('#clasificaGameMinimize-' + i).hide();
             }
@@ -101,17 +106,15 @@ var $eXeClasifica = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $eXeClasifica,
-                node,
+                node
             );
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.clasifica-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.clasifica-IDevice');
     },
 
     loadDataGame: function (data, imgsLink, audioLink) {
         let json = $exeDevices.iDevice.gamification.helpers.decrypt(
-            data.text(),
+            data.text()
         );
 
         let mOptions =
@@ -155,7 +158,7 @@ var $eXeClasifica = {
         mOptions.wordsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.wordsGame,
-                mOptions.percentajeQuestions,
+                mOptions.percentajeQuestions
             );
         mOptions.numberQuestions = mOptions.wordsGame.length;
         mOptions.wordsGameFix = [...mOptions.wordsGame];
@@ -289,7 +292,7 @@ var $eXeClasifica = {
         mOptions.scorerp = score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeClasifica.isInExe,
+            $eXeClasifica.isInExe
         );
     },
 
@@ -337,22 +340,23 @@ var $eXeClasifica = {
                 cardData.group,
                 cardData.color,
                 cardData.backcolor,
-                instance,
+                instance
             );
         });
         $('#clasificaSlide-' + instance).append(cards);
 
         if (mOptions.imgCard.length > 4) {
             $('#clasificaMainContainer-' + instance)
-                .find('.CQP-CardContainer').each(function () {
-                    $(this).find('.CQP-CardFront').css({
-                        'background-image': 'url(' + mOptions.imgCard + ')',
-                        'background-size': 'cover'
-                    });
+                .find('.CQP-CardContainer')
+                .each(function () {
+                    $(this)
+                        .find('.CQP-CardFront')
+                        .css({
+                            'background-image': 'url(' + mOptions.imgCard + ')',
+                            'background-size': 'cover',
+                        });
                 });
         }
-
-
     },
 
     createCard: function (
@@ -367,7 +371,7 @@ var $eXeClasifica = {
         group,
         color,
         backcolor,
-        instance,
+        instance
     ) {
         const mOptions = $eXeClasifica.options[instance],
             malt = alt || '',
@@ -418,10 +422,13 @@ var $eXeClasifica = {
             const $cardAudio = $item.find('.CQP-LinkAudio');
             const audio = $cardAudio.data('audio');
             if (typeof audio !== 'undefined' && audio && audio.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+                $exeDevices.iDevice.gamification.media.playSound(
+                    audio,
+                    mOptions
+                );
             }
         } catch (err) {
-            // 
+            //
         }
 
         const group = $item.data('group'),
@@ -443,7 +450,7 @@ var $eXeClasifica = {
             message = $eXeClasifica.getMessageAnswer(
                 correctAnswer,
                 number,
-                instance,
+                instance
             );
         } else {
             if (group === groupp) {
@@ -459,7 +466,7 @@ var $eXeClasifica = {
                 message = $eXeClasifica.getMessageAnswer(
                     correctAnswer,
                     number,
-                    instance,
+                    instance
                 );
             }
         }
@@ -468,7 +475,7 @@ var $eXeClasifica = {
             messge = $eXeClasifica.getMessageAnswer(
                 correctAnswer,
                 number,
-                instance,
+                instance
             );
 
         $eXeClasifica.showMessage(type, message, instance);
@@ -480,16 +487,16 @@ var $eXeClasifica = {
             latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#clasificaMultimedia-' + instance,
+                '#clasificaMultimedia-' + instance
             );
     },
 
     initializeDragAndDrop: function (instance) {
         const $cards = $(`#clasificaMainContainer-${instance}`).find(
-            '.CQP-CardContainer',
-        ),
+                '.CQP-CardContainer'
+            ),
             $containers = $(`#clasificaMainContainer-${instance}`).find(
-                '.CQP-CC-' + instance,
+                '.CQP-CC-' + instance
             );
 
         $cards.draggable({
@@ -567,13 +574,13 @@ var $eXeClasifica = {
             (e) => {
                 e.preventDefault();
                 const element = document.getElementById(
-                    'clasificaGameContainer-' + instance,
+                    'clasificaGameContainer-' + instance
                 );
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
                     element,
-                    instance,
+                    instance
                 );
-            },
+            }
         );
 
         $('#clasificaFeedBackClose-' + instance).on('click', () => {
@@ -583,7 +590,7 @@ var $eXeClasifica = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $('#clasificaMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $('#clasificaCodeAccessDiv-' + instance).show();
             $('#clasificaCubierta-' + instance).show();
@@ -595,7 +602,7 @@ var $eXeClasifica = {
             (e) => {
                 e.preventDefault();
                 $eXeClasifica.enterCodeAccess(instance);
-            },
+            }
         );
 
         $('#clasificaCodeAccessE-' + instance).on('keydown', (event) => {
@@ -611,7 +618,7 @@ var $eXeClasifica = {
         $(window).on('unload.eXeClasifica beforeunload.eXeClasifica', () => {
             if ($eXeClasifica.mScorm) {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeClasifica.mScorm,
+                    $eXeClasifica.mScorm
                 );
             }
         });
@@ -680,9 +687,9 @@ var $eXeClasifica = {
                     .data('audio');
                 $exeDevices.iDevice.gamification.media.playSound(
                     audio,
-                    mOptions,
+                    mOptions
                 );
-            },
+            }
         );
 
         $('#clasificaPErrors-' + instance).text(0);
@@ -754,7 +761,7 @@ var $eXeClasifica = {
 
         $('#clasificaGameContainer-' + instance).off(
             'click',
-            '.CQP-FullLinkImage',
+            '.CQP-FullLinkImage'
         );
         $('#clasificaGameContainer-' + instance).on(
             'click',
@@ -766,16 +773,16 @@ var $eXeClasifica = {
                 if (largeImageSrc && largeImageSrc.length > 3) {
                     $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
                         largeImageSrc,
-                        $('#clasificaGameContainer-' + instance),
+                        $('#clasificaGameContainer-' + instance)
                     );
                 }
-            },
+            }
         );
 
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -805,7 +812,7 @@ var $eXeClasifica = {
         $('#clasificaRebootNo-' + instance).off('click');
         $('#clasificaMultimedia-' + instance).off(
             'click',
-            '.CQP-LinkAudio, .CQP-LinkAudioBig',
+            '.CQP-LinkAudio, .CQP-LinkAudioBig'
         );
         $('#clasificaMultimedia-' + instance)
             .find('img')
@@ -874,10 +881,9 @@ var $eXeClasifica = {
             if (mOptions.isScorm === 1) {
                 $eXeClasifica.sendScore(true, instance);
                 $('#clasificaRepeatActivity-' + instance).text(
-                    mOptions.msgs.msgYouScore + ': ' + score,
+                    mOptions.msgs.msgYouScore + ': ' + score
                 );
                 $eXeClasifica.initialScore = score;
-
             }
             $eXeClasifica.saveEvaluation(instance);
         }
@@ -903,7 +909,7 @@ var $eXeClasifica = {
                 mOptions.gameLevel === 2 ||
                 (mOptions.gameLevel === 0 &&
                     $eXeClasifica.getNumberCorrectsAnswers(instance) ===
-                    mOptions.cardsGame.length)
+                        mOptions.cardsGame.length)
             ) {
                 $eXeClasifica.gameOver(instance);
             } else if (mOptions.gameLevel === 1) {
@@ -916,13 +922,13 @@ var $eXeClasifica = {
         const mOptions = $eXeClasifica.options[instance];
         showScoreCallback(instance);
         const score = ((mOptions.hits * 10) / mOptions.numberQuestions).toFixed(
-            2,
+            2
         );
 
         if (mOptions.isScorm === 1) {
             $eXeClasifica.sendScore(true, instance);
             $('#clasificaRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+                mOptions.msgs.msgYouScore + ': ' + score
             );
             $eXeClasifica.initialScore = score;
         }
@@ -952,7 +958,7 @@ var $eXeClasifica = {
         ) {
             mOptions.obtainedClue = true;
             $('#clasificaPShowClue-' + instance).text(
-                mOptions.itinerary.clueGame,
+                mOptions.itinerary.clueGame
             );
             $('#clasificaShowClue-' + instance).show();
             $('#clasificaCubierta-' + instance).show();
@@ -962,7 +968,7 @@ var $eXeClasifica = {
     gameOver: function (instance) {
         const mOptions = $eXeClasifica.options[instance],
             $cards = $('#clasificaMultimedia-' + instance).find(
-                '.CQP-CardContainer',
+                '.CQP-CardContainer'
             );
         if (!mOptions.gameStarted) return;
 
@@ -994,7 +1000,7 @@ var $eXeClasifica = {
 
     setFontSize: function (instance) {
         const $flcds = $('#clasificaGameContainer-' + instance).find(
-            '.CQP-CardContainer',
+            '.CQP-CardContainer'
         );
         $flcds.each(function () {
             const $card = $(this),
@@ -1097,7 +1103,7 @@ var $eXeClasifica = {
             .show();
         $('#clasificaGameScoreBoard-' + instance)
             .find(
-                'div.exeQuextIcons-Hit, div.exeQuextIcons-Error, div.exeQuextIcons-Score',
+                'div.exeQuextIcons-Hit, div.exeQuextIcons-Error, div.exeQuextIcons-Score'
             )
             .show();
         $('#clasificaStartGame-' + instance).show();
@@ -1115,17 +1121,17 @@ var $eXeClasifica = {
         if (percentageHits < 0.5) {
             msg = mOptions.msgs.msgQ5.replace(
                 '%s',
-                mOptions.cardsGame.length - mOptions.hits,
+                mOptions.cardsGame.length - mOptions.hits
             );
         } else if (percentageHits < 0.7) {
             msg = mOptions.msgs.msgQ7.replace(
                 '%s',
-                mOptions.cardsGame.length - mOptions.hits,
+                mOptions.cardsGame.length - mOptions.hits
             );
         } else if (percentageHits < 1) {
             msg = mOptions.msgs.msgQ9.replace(
                 '%s',
-                mOptions.cardsGame.length - mOptions.hits,
+                mOptions.cardsGame.length - mOptions.hits
             );
         } else {
             msg = mOptions.msgs.msgAllCorrect;
@@ -1137,7 +1143,7 @@ var $eXeClasifica = {
     showLevel1Score: function (instance) {
         const mOptions = $eXeClasifica.options[instance],
             $cc = $('#clasificaMultimedia-' + instance).find(
-                '.CQP-CardContainer',
+                '.CQP-CardContainer'
             );
 
         mOptions.gameOver = true;
@@ -1173,7 +1179,7 @@ var $eXeClasifica = {
     showLevel0Score: function (instance) {
         const mOptions = $eXeClasifica.options[instance],
             $cc = $('#clasificaMultimedia-' + instance).find(
-                '.CQP-CardContainer',
+                '.CQP-CardContainer'
             );
 
         $cc.each(function () {
@@ -1202,7 +1208,7 @@ var $eXeClasifica = {
         if (mOptions.hits < mOptions.cardsGame.length) {
             msg = mOptions.msgs.msgUnansweredQuestions.replace(
                 '%s',
-                mOptions.cardsGame.length - mOptions.hits,
+                mOptions.cardsGame.length - mOptions.hits
             );
         } else {
             if (mOptions.attempts === mOptions.cardsGame.length) {
@@ -1211,7 +1217,7 @@ var $eXeClasifica = {
             } else {
                 msg = mOptions.msgs.msgTooManyTries.replace(
                     '%s',
-                    mOptions.attempts,
+                    mOptions.attempts
                 );
             }
         }
@@ -1278,8 +1284,8 @@ var $eXeClasifica = {
                 .on('error', () => $cursor.hide());
 
             $text.show().css({
-                'color': color,
-                'background-color': $eXeClasifica.hexToRgba(backcolor, 0.7)
+                color: color,
+                'background-color': $eXeClasifica.hexToRgba(backcolor, 0.7),
             });
         }
 
@@ -1304,18 +1310,22 @@ var $eXeClasifica = {
     },
 
     hexToRgba: function (hex, alpha = 1) {
-
         if (typeof hex !== 'string' || hex.trim() === '') {
             return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
         }
         const raw = hex.trim();
         if (/^rgba?\(/i.test(raw)) {
-
-            if (/^rgba\(/i.test(raw) && (alpha === 1 || alpha === undefined)) return raw;
+            if (/^rgba\(/i.test(raw) && (alpha === 1 || alpha === undefined))
+                return raw;
             try {
-                const nums = raw.replace(/rgba?\(|\)|\s/g, '').split(',').map(v => parseFloat(v));
+                const nums = raw
+                    .replace(/rgba?\(|\)|\s/g, '')
+                    .split(',')
+                    .map((v) => parseFloat(v));
                 const [r = 255, g = 255, b = 255] = nums;
-                const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : (nums[3] ?? 1);
+                const a = Number.isFinite(alpha)
+                    ? Math.min(1, Math.max(0, alpha))
+                    : (nums[3] ?? 1);
                 return `rgba(${r | 0}, ${g | 0}, ${b | 0}, ${a})`;
             } catch (e) {
                 return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
@@ -1325,18 +1335,24 @@ var $eXeClasifica = {
         if (![3, 6].includes(h.length) || /[^0-9a-f]/i.test(h)) {
             return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
         }
-        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        if (h.length === 3)
+            h = h
+                .split('')
+                .map((c) => c + c)
+                .join('');
         const r = parseInt(h.slice(0, 2), 16);
         const g = parseInt(h.slice(2, 4), 16);
         const b = parseInt(h.slice(4, 6), 16);
-        const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, Number(alpha))) : 1;
+        const a = Number.isFinite(alpha)
+            ? Math.min(1, Math.max(0, Number(alpha)))
+            : 1;
         return `rgba(${r}, ${g}, ${b}, ${a})`;
     },
 
     refreshCards: function (instance) {
         const mOptions = $eXeClasifica.options[instance],
             $cards = $('#clasificaGameContainer-' + instance).find(
-                '.CQP-CardContainer',
+                '.CQP-CardContainer'
             );
 
         if (!mOptions || mOptions.refreshCard) return;
@@ -1390,7 +1406,7 @@ var $eXeClasifica = {
 
     initCards: function (instance) {
         const $cards = $('#clasificaMultimedia-' + instance).find(
-            '.CQP-CardContainer',
+            '.CQP-CardContainer'
         );
 
         $cards.each(function () {
@@ -1399,11 +1415,11 @@ var $eXeClasifica = {
         });
 
         const hasLatex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(
-            $('#clasificaMultimedia-' + instance).html(),
+            $('#clasificaMultimedia-' + instance).html()
         );
         if (hasLatex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#clasificaMultimedia-' + instance,
+                '#clasificaMultimedia-' + instance
             );
         }
 
@@ -1418,7 +1434,7 @@ var $eXeClasifica = {
         $eXeClasifica.addCards(instance, mOptions.cardsGame);
 
         const $cards = $('#clasificaGameContainer-' + instance).find(
-            '.CQP-CardContainer',
+            '.CQP-CardContainer'
         );
 
         $cards.find('.CQP-Card').removeClass('CQP-CardOK CQP-CardKO');
@@ -1432,7 +1448,7 @@ var $eXeClasifica = {
             3,
             mOptions.msgs.mgsGameStart,
             instance,
-            false,
+            false
         );
 
         Object.assign(mOptions, {
@@ -1483,7 +1499,10 @@ var $eXeClasifica = {
                 if (mOptions.gameStarted) {
                     let $node = $('#clasificaMainContainer-' + instance);
                     let $content = $('#node-content');
-                    if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                    if (
+                        !$node.length ||
+                        ($content.length && $content.attr('mode') === 'edition')
+                    ) {
                         clearInterval(mOptions.counterClock);
                         return;
                     }
@@ -1525,10 +1544,10 @@ var $eXeClasifica = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
                     instance,
-                    false,
+                    false
                 );
             }
         }
@@ -1536,7 +1555,7 @@ var $eXeClasifica = {
 
     isMobile: () =>
         navigator.userAgent.match(
-            /Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i,
+            /Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i
         ),
 
     getRetroFeedMessages: function (iHit, instance) {
@@ -1588,12 +1607,12 @@ var $eXeClasifica = {
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $eXeClasifica.borderColors.red,
-            $eXeClasifica.borderColors.green,
-            $eXeClasifica.borderColors.blue,
-            $eXeClasifica.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeClasifica.borderColors.red,
+                $eXeClasifica.borderColors.green,
+                $eXeClasifica.borderColors.blue,
+                $eXeClasifica.borderColors.yellow,
+            ],
             color = colors[type];
 
         $('#clasificaMessage-' + instance)

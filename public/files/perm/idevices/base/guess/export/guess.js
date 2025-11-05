@@ -26,7 +26,12 @@ var $guess = {
     mScorm: null,
     hasVideo: false,
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Guess', 'guess', 'adivina-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Guess',
+            'guess',
+            'adivina-IDevice'
+        );
     },
 
     enable: function () {
@@ -46,7 +51,7 @@ var $guess = {
                     dl,
                     imagesLink,
                     audioLink,
-                    version,
+                    version
                 ),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -74,7 +79,7 @@ var $guess = {
             }
             $('#adivinaMessageMaximize-' + i).text(msg);
             $('#adivinaDivFeedBack-' + i).prepend(
-                $('.adivina-feedback-game', this),
+                $('.adivina-feedback-game', this)
             );
             $guess.addEvents(i);
             $('#adivinaDivFeedBack-' + i).hide();
@@ -88,20 +93,17 @@ var $guess = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $guess,
-                node,
+                node
             );
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.adivina-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.adivina-IDevice');
 
         if ($guess.hasVideo) $guess.loadApiPlayer();
     },
     loadApiPlayer: function () {
         if (!this.hasVideo) return;
 
-        $exeDevices.iDevice.gamification.media.YouTubeAPILoader
-            .load()
+        $exeDevices.iDevice.gamification.media.YouTubeAPILoader.load()
             .then(() => this.activatePlayer())
             .catch(() => this.showStartedButton());
     },
@@ -154,7 +156,7 @@ var $guess = {
                     $guess.showMessage(1, '', instance);
                 } else {
                     console.warn(
-                        `Número de instancia inválido para ${iframe.id}`,
+                        `Número de instancia inválido para ${iframe.id}`
                     );
                 }
             }
@@ -229,7 +231,7 @@ var $guess = {
 
             if (p.type !== 2) {
                 p.url = $exeDevices.iDevice.gamification.media.extractURLGD(
-                    p.url,
+                    p.url
                 );
             }
 
@@ -258,7 +260,7 @@ var $guess = {
             }
 
             const idyt = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                p.url,
+                p.url
             );
             if (p.type === 2 && idyt) {
                 mOptions.hasVideo = true;
@@ -270,7 +272,7 @@ var $guess = {
 
         if (
             $exeDevices.iDevice.gamification.media.getIDYoutube(
-                mOptions.idVideo,
+                mOptions.idVideo
             )
         ) {
             mOptions.hasVideo = true;
@@ -302,9 +304,14 @@ var $guess = {
         mOptions.wordsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.wordsGame,
-                mOptions.percentajeQuestions,
+                mOptions.percentajeQuestions
             );
-        mOptions.wordsGame = mOptions.optionsRamdon && mOptions.percentajeQuestions === 100 ? $exeDevices.iDevice.gamification.helpers.shuffleAds(mOptions.wordsGame) : mOptions.wordsGame
+        mOptions.wordsGame =
+            mOptions.optionsRamdon && mOptions.percentajeQuestions === 100
+                ? $exeDevices.iDevice.gamification.helpers.shuffleAds(
+                      mOptions.wordsGame
+                  )
+                : mOptions.wordsGame;
         mOptions.numberQuestions = mOptions.wordsGame.length;
 
         return mOptions;
@@ -459,7 +466,7 @@ var $guess = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $guess.isInExe,
+            $guess.isInExe
         );
     },
 
@@ -482,7 +489,7 @@ var $guess = {
         type,
         casesensitive,
         instance,
-        solution,
+        solution
     ) {
         $('#adivinaEPhrase-' + instance)
             .find('.ADVNP-Word')
@@ -512,7 +519,7 @@ var $guess = {
             let cleanWord = phrase_array[i];
             if (cleanWord != '') {
                 $('<div class="ADVNP-Word"></div>').appendTo(
-                    '#adivinaEPhrase-' + instance,
+                    '#adivinaEPhrase-' + instance
                 );
                 for (let j = 0; j < cleanWord.length; j++) {
                     let letter =
@@ -546,7 +553,7 @@ var $guess = {
             latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#adivinaDefinition-' + instance,
+                '#adivinaDefinition-' + instance
             );
         }
         return cPhrase;
@@ -617,7 +624,7 @@ var $guess = {
         });
 
         mOptions.localPlayer = document.getElementById(
-            `adivinaVideoLocal-${instance}`,
+            `adivinaVideoLocal-${instance}`
         );
 
         $phrase.hide();
@@ -634,11 +641,11 @@ var $guess = {
 
         if (mOptions.gameMode === 2) {
             const $gameContainerIcons = $gameContainer.find(
-                '.exeQuextIcons-Hit, .exeQuextIcons-Error, .exeQuextIcons-Score',
+                '.exeQuextIcons-Hit, .exeQuextIcons-Error, .exeQuextIcons-Score'
             );
             $gameContainerIcons.hide();
             $(
-                `#adivinaPErrors-${instance}, #adivinaPHits-${instance}, #adivinaPScore-${instance}`,
+                `#adivinaPErrors-${instance}, #adivinaPHits-${instance}, #adivinaPScore-${instance}`
             ).hide();
         }
 
@@ -655,11 +662,11 @@ var $guess = {
         $linkFullScreen.on('click', (e) => {
             e.preventDefault();
             const element = document.getElementById(
-                `adivinaGameContainer-${instance}`,
+                `adivinaGameContainer-${instance}`
             );
             $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
                 element,
-                instance,
+                instance
             );
         });
 
@@ -695,12 +702,12 @@ var $guess = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $(`#adivinaMesajeAccesCodeE-${instance}`).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $codeAccessDiv.show();
             $startGame.hide();
             $(
-                `#adivinaQuestion-${instance}, #adivinaDefinition-${instance}, #adivinaDivInstructions-${instance}`,
+                `#adivinaQuestion-${instance}, #adivinaDefinition-${instance}, #adivinaDivInstructions-${instance}`
             ).hide();
             $guess.showCubiertaOptions(true, instance);
         }
@@ -766,7 +773,7 @@ var $guess = {
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -862,7 +869,7 @@ var $guess = {
 
         mOptions.counter =
             $exeDevices.iDevice.gamification.helpers.getTimeSeconds(
-                mOptions.wordsGame[0].time,
+                mOptions.wordsGame[0].time
             );
 
         if (mOptions.wordsGame[0].type === 2) {
@@ -875,7 +882,10 @@ var $guess = {
             if (mOptions.gameStarted && mOptions.activeCounter) {
                 let $node = $('#adivinaMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -896,7 +906,7 @@ var $guess = {
                             1,
                             mOptions.caseSensitive,
                             instance,
-                            true,
+                            true
                         );
                     }
                     setTimeout(() => {
@@ -922,7 +932,7 @@ var $guess = {
 
     updateTime: function (tiempo, instance) {
         $('#adivinaPTime-' + instance).text(
-            $exeDevices.iDevice.gamification.helpers.getTimeToString(tiempo),
+            $exeDevices.iDevice.gamification.helpers.getTimeToString(tiempo)
         );
     },
 
@@ -986,9 +996,9 @@ var $guess = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
-                    instance,
+                    instance
                 );
             }
         }
@@ -1027,7 +1037,7 @@ var $guess = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1042,7 +1052,7 @@ var $guess = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1080,7 +1090,7 @@ var $guess = {
         const mOptions = $guess.options[instance],
             q = mOptions.wordsGame[i],
             tiempo = $exeDevices.iDevice.gamification.helpers.getTimeToString(
-                $exeDevices.iDevice.gamification.helpers.getTimeSeconds(q.time),
+                $exeDevices.iDevice.gamification.helpers.getTimeSeconds(q.time)
             );
 
         mOptions.gameActived = true;
@@ -1098,7 +1108,7 @@ var $guess = {
             0,
             $guess.options[instance].caseSensitive,
             instance,
-            false,
+            false
         );
 
         $('#adivinaEdAnswer-' + instance).val('');
@@ -1139,11 +1149,11 @@ var $guess = {
             $guess.showMessage(0, '', instance);
         } else if (q.type === 2) {
             let urllv =
-                $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                    q.url,
-                ),
+                    $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                        q.url
+                    ),
                 idVideo = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                    q.url,
+                    q.url
                 ),
                 type = urllv ? 1 : 0,
                 id = type === 0 ? idVideo : urllv;
@@ -1174,12 +1184,12 @@ var $guess = {
             if (q.soundVideo === 0) {
                 $exeDevices.iDevice.gamification.media.muteVideo(
                     true,
-                    mOptions,
+                    mOptions
                 );
             } else {
                 $exeDevices.iDevice.gamification.media.muteVideo(
                     false,
-                    mOptions,
+                    mOptions
                 );
             }
         }
@@ -1193,7 +1203,7 @@ var $guess = {
         if (q.type != 2 && q.audio.trim().length > 5) {
             $exeDevices.iDevice.gamification.media.playSound(
                 q.audio.trim(),
-                mOptions,
+                mOptions
             );
         }
 
@@ -1286,8 +1296,8 @@ var $guess = {
         }
     },
 
-    updateTimerDisplay: function () { },
-    updateProgressBar: function () { },
+    updateTimerDisplay: function () {},
+    updateProgressBar: function () {},
 
     showImage: function (url, instance) {
         const mOptions = $guess.options[instance],
@@ -1408,11 +1418,11 @@ var $guess = {
 
         if (x > 0 || y > 0) {
             const containerElement = document.getElementById(
-                `adivinaMultimedia-${instance}`,
-            ),
+                    `adivinaMultimedia-${instance}`
+                ),
                 containerPos = containerElement.getBoundingClientRect(),
                 imgElement = document.getElementById(
-                    `adivinaImage-${instance}`,
+                    `adivinaImage-${instance}`
                 ),
                 imgPos = imgElement.getBoundingClientRect(),
                 marginTop = imgPos.top - containerPos.top,
@@ -1460,7 +1470,7 @@ var $guess = {
 
         const mActiveQuestion = $guess.updateNumberQuestion(
             mOptions.activeQuestion,
-            instance,
+            instance
         );
 
         if (mActiveQuestion === null) {
@@ -1470,7 +1480,7 @@ var $guess = {
         } else {
             mOptions.counter =
                 $exeDevices.iDevice.gamification.helpers.getTimeSeconds(
-                    mOptions.wordsGame[mActiveQuestion].time,
+                    mOptions.wordsGame[mActiveQuestion].time
                 );
             if (mOptions.wordsGame[mActiveQuestion].type === 2) {
                 const durationVideo =
@@ -1490,9 +1500,8 @@ var $guess = {
             ).toFixed(2);
             $guess.sendScore(true, instance);
             $(`#adivinaRepeatActivity-${instance}`).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`,
+                `${mOptions.msgs.msgYouScore}: ${score}`
             );
-
         }
         $guess.saveEvaluation(instance);
     },
@@ -1532,12 +1541,12 @@ var $guess = {
 
         mOptions.gameActived = false;
         $(
-            `#adivinaBtnReply-${instance}, #adivinaBtnMoveOn-${instance}, #adivinaEdAnswer-${instance}`,
+            `#adivinaBtnReply-${instance}, #adivinaBtnMoveOn-${instance}, #adivinaEdAnswer-${instance}`
         ).prop('disabled', true);
 
         const userAnswer = mOptions.caseSensitive
-            ? answord
-            : answord.toUpperCase(),
+                ? answord
+                : answord.toUpperCase(),
             correctSolution = mOptions.caseSensitive
                 ? solution
                 : solution.toUpperCase(),
@@ -1558,7 +1567,7 @@ var $guess = {
             const $pShowClue = $(`#adivinaPShowClue-${instance}`);
             $pShowClue.show();
             $pShowClue.text(
-                `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+                `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
             );
         }
 
@@ -1571,7 +1580,7 @@ var $guess = {
                 type,
                 mOptions.caseSensitive,
                 instance,
-                true,
+                true
             );
         }
 
@@ -1588,7 +1597,7 @@ var $guess = {
 
         mOptions.gameActived = false;
         $(
-            `#adivinaBtnReply-${instance}, #adivinaBtnMoveOn-${instance}, #adivinaEdAnswer-${instance}`,
+            `#adivinaBtnReply-${instance}, #adivinaBtnMoveOn-${instance}, #adivinaEdAnswer-${instance}`
         ).prop('disabled', true);
 
         const type = $guess.updateScore(value, instance),
@@ -1607,7 +1616,7 @@ var $guess = {
             const $pShowClue = $(`#adivinaPShowClue-${instance}`);
             $pShowClue.show();
             $pShowClue.text(
-                `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+                `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
             );
         }
 
@@ -1620,7 +1629,7 @@ var $guess = {
                 type,
                 mOptions.caseSensitive,
                 instance,
-                true,
+                true
             );
         }
 
@@ -1762,12 +1771,12 @@ var $guess = {
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $guess.borderColors.red,
-            $guess.borderColors.green,
-            $guess.borderColors.blue,
-            $guess.borderColors.yellow,
-        ],
+                '#555555',
+                $guess.borderColors.red,
+                $guess.borderColors.green,
+                $guess.borderColors.blue,
+                $guess.borderColors.yellow,
+            ],
             color = colors[type];
 
         $('#adivinaPAuthor-' + instance).html(message);
@@ -1776,7 +1785,7 @@ var $guess = {
         });
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#adivinaPAuthor-' + instance,
+            '#adivinaPAuthor-' + instance
         );
     },
 };

@@ -30,43 +30,54 @@ var $casestudy = {
         msgCaseStudy: 'Caso práctico',
     },
 
-    init: function () {
-    },
+    init: function () {},
 
     renderView: function (data, accesibility, template, ideviceId) {
-        data.msgs = typeof data.msgs == "undefined" ? $casestudy.msgs : data.msgs
+        data.msgs =
+            typeof data.msgs == 'undefined' ? $casestudy.msgs : data.msgs;
         const htmlContent = this.createInterfaceCaseStudy(data);
         return template.replace('{content}', htmlContent);
     },
 
     renderBehaviour: function (data, accesibility, ideviceId) {
-        data.msgs = typeof data.msgs == "undefined" ? $casestudy.msgs : data.msgs
-        const $title = $('#' + data.ideviceId).closest('article').find('header h1.box-title');
-        if (data.title && data.title == 'Case Study' && $title.text() == 'Case Study') {
-            $title.text(data.msgs.msgCaseStudy)
+        data.msgs =
+            typeof data.msgs == 'undefined' ? $casestudy.msgs : data.msgs;
+        const $title = $('#' + data.ideviceId)
+            .closest('article')
+            .find('header h1.box-title');
+        if (
+            data.title &&
+            data.title == 'Case Study' &&
+            $title.text() == 'Case Study'
+        ) {
+            $title.text(data.msgs.msgCaseStudy);
         }
         this.addEvents(data);
-        const dataString = JSON.stringify(data)
-        var hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(dataString);
+        const dataString = JSON.stringify(data);
+        var hasLatex =
+            $exeDevices.iDevice.gamification.math.hasLatex(dataString);
 
         if (!hasLatex) return;
-        const mathjaxLoaded = (typeof window.MathJax !== 'undefined');
+        const mathjaxLoaded = typeof window.MathJax !== 'undefined';
 
         if (!mathjaxLoaded) {
             $exeDevices.iDevice.gamification.math.loadMathJax();
         } else {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '.exe-casestudy-container',
+                '.exe-casestudy-container'
             );
         }
-
     },
 
     createInterfaceCaseStudy: function (data) {
         const infoContentHTML = $casestudy.createInfoHTML(
-            data.textInfoDurationInput === "" ? "" : data.textInfoDurationTextInput,
+            data.textInfoDurationInput === ''
+                ? ''
+                : data.textInfoDurationTextInput,
             data.textInfoDurationInput,
-            data.textInfoParticipantsInput === "" ? "" : data.textInfoParticipantsTextInput,
+            data.textInfoParticipantsInput === ''
+                ? ''
+                : data.textInfoParticipantsTextInput,
             data.textInfoParticipantsInput
         );
         const history = data.history;
@@ -99,10 +110,14 @@ var $casestudy = {
                     <div class="CSP-Activity mb-3">
                         ${activity1}
                     </div>
-                    ${hasFeedback ? `
+                    ${
+                        hasFeedback
+                            ? `
                     <button type="button" class="CSP-FeedbackBtn btn btn-primary mb-3">
                         ${button}
-                    </button>` : ''}
+                    </button>`
+                            : ''
+                    }
                     <div class="CSP-FeedbackText" style="display: none;">
                         ${feedback}
                     </div>
@@ -112,7 +127,12 @@ var $casestudy = {
             .join('');
     },
 
-    createInfoHTML(durationText, durationValue, participantsText, participantsValue) {
+    createInfoHTML(
+        durationText,
+        durationValue,
+        participantsText,
+        participantsValue
+    ) {
         return `
             <dl>
                 <div class="inline"><dt><span title="${durationText}">${durationText}</span></dt><dd>${durationValue}</dd></div>
@@ -121,17 +141,15 @@ var $casestudy = {
     },
 
     addEvents: function (data) {
-        $(`.CSP-Activities`)
-            .off('click', '.CSP-FeedbackBtn');
-        $(`.CSP-Activities`)
-            .on('click', '.CSP-FeedbackBtn', function () {
-                const $activityDiv = $(this).closest('.CSP-ActivityDiv');
-                const $fb = $activityDiv.find('.CSP-FeedbackText');
-                $fb.slideToggle(200, function () {
-                    $exeDevices.iDevice.gamification.math.updateLatex('.CSP-FeedbackText');
-                });
-
+        $(`.CSP-Activities`).off('click', '.CSP-FeedbackBtn');
+        $(`.CSP-Activities`).on('click', '.CSP-FeedbackBtn', function () {
+            const $activityDiv = $(this).closest('.CSP-ActivityDiv');
+            const $fb = $activityDiv.find('.CSP-FeedbackText');
+            $fb.slideToggle(200, function () {
+                $exeDevices.iDevice.gamification.math.updateLatex(
+                    '.CSP-FeedbackText'
+                );
             });
+        });
     },
-
 };

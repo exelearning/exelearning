@@ -48,11 +48,10 @@ var $geogebraactivity = {
         if (!navigator.onLine) {
             return;
         }
-        if (!($('html').is('#exe-index'))) {
+        if (!$('html').is('#exe-index')) {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
-
 
         this.indicator.start();
         if ($('body').hasClass('exe-scorm')) {
@@ -66,7 +65,7 @@ var $geogebraactivity = {
         if (typeof pipwerks == 'undefined')
             eXe.app.loadScript(
                 this.scormAPIwrapper,
-                '$geogebraactivity.loadSCOFunctions()',
+                '$geogebraactivity.loadSCOFunctions()'
             );
         else this.loadSCOFunctions();
     },
@@ -75,7 +74,7 @@ var $geogebraactivity = {
         if (typeof scorm == 'undefined')
             eXe.app.loadScript(
                 this.scormFunctions,
-                '$geogebraactivity.loadGeogebraScript()',
+                '$geogebraactivity.loadGeogebraScript()'
             );
         else this.loadGeogebraScript();
     },
@@ -84,7 +83,7 @@ var $geogebraactivity = {
         if (typeof GGBApplet == 'undefined')
             eXe.app.loadScript(
                 this.geogebraScript,
-                '$geogebraactivity.enable()',
+                '$geogebraactivity.enable()'
             );
         else this.enable();
     },
@@ -104,14 +103,14 @@ var $geogebraactivity = {
                 let instructions = $('.auto-geogebra-instructions', this);
                 if (instructions.length == 1 && instructions.text() != '') {
                     intro = instructions.wrap(
-                        '<div class="auto-geogebra-instructions"></div>',
+                        '<div class="auto-geogebra-instructions"></div>'
                     );
                 }
                 let aft = '';
                 let after = $('.auto-geogebra-extra-content', this);
                 if (after.length == 1 && after.text() != '') {
                     aft = after.wrap(
-                        '<div class="auto-geogebra-extra-content"></div>',
+                        '<div class="auto-geogebra-extra-content"></div>'
                     );
                 }
                 let ath = '';
@@ -138,7 +137,7 @@ var $geogebraactivity = {
                         z++
                     ) {
                         $geogebraactivity.messages[z] = unescape(
-                            $geogebraactivity.messages[z],
+                            $geogebraactivity.messages[z]
                         );
                     }
                 }
@@ -154,7 +153,7 @@ var $geogebraactivity = {
                         z++
                     ) {
                         $geogebraactivity.messagesScorm[z] = unescape(
-                            $geogebraactivity.messagesScorm[z],
+                            $geogebraactivity.messagesScorm[z]
                         );
                     }
                 }
@@ -240,7 +239,7 @@ var $geogebraactivity = {
             } else if (currentClass.indexOf('auto-geogebra-height-') == 0) {
                 currentClass = currentClass.replace(
                     'auto-geogebra-height-',
-                    '',
+                    ''
                 );
                 currentClass = parseInt(currentClass);
                 if (!isNaN(currentClass) && currentClass > 0)
@@ -250,7 +249,7 @@ var $geogebraactivity = {
             } else if (currentClass.indexOf('auto-geogebra-border-') == 0) {
                 currentClass = currentClass.replace(
                     'auto-geogebra-border-',
-                    '',
+                    ''
                 );
                 borderColor = '#' + currentClass;
             } else if (currentClass.indexOf('auto-geogebra-scale-') == 0) {
@@ -262,13 +261,13 @@ var $geogebraactivity = {
             ) {
                 evaluationID = currentClass.replace(
                     'auto-geogebra-evaluation-id-',
-                    '',
+                    ''
                 );
                 evaluationID = evaluationID == '0' ? '' : evaluationID;
             } else if (currentClass.indexOf('auto-geogebra-ideviceid-') == 0) {
                 ideviceID = currentClass.replace(
                     'auto-geogebra-ideviceid-',
-                    '',
+                    ''
                 );
             } else if (currentClass.indexOf('auto-geogebra-weight-') == 0) {
                 weighted = currentClass.replace('auto-geogebra-weight-', '');
@@ -330,43 +329,64 @@ var $geogebraactivity = {
             sfx,
             weighted,
             $geogebraactivity.messagesScorm,
-            evaluationID,
+            evaluationID
         );
-        if (c.length > 2 && c[2] == 'auto-geogebra-scorm' || (ideviceID && evaluationID && evaluationID.length > 4)) {
-            options.textButtonScorm = window['$geogebraactivityButtonText' + inst] || options.textButtonScorm
-            let fB = $exeDevices.iDevice.gamification.scorm.addButtonScoreNew(options)
+        if (
+            (c.length > 2 && c[2] == 'auto-geogebra-scorm') ||
+            (ideviceID && evaluationID && evaluationID.length > 4)
+        ) {
+            options.textButtonScorm =
+                window['$geogebraactivityButtonText' + inst] ||
+                options.textButtonScorm;
+            let fB =
+                $exeDevices.iDevice.gamification.scorm.addButtonScoreNew(
+                    options
+                );
             $(e).after(fB);
-            $(e).closest('.idevice_node').on('click', '.Games-SendScore', function (e) {
-                e.preventDefault();
-                $geogebraactivity.sendScore(options);
-                $geogebraactivity.saveEvaluation(options);
-            });
-            $(e).closest('.idevice_node ').find('.Games-registerActivity').hide();
+            $(e)
+                .closest('.idevice_node')
+                .on('click', '.Games-SendScore', function (e) {
+                    e.preventDefault();
+                    $geogebraactivity.sendScore(options);
+                    $geogebraactivity.saveEvaluation(options);
+                });
+            $(e)
+                .closest('.idevice_node ')
+                .find('.Games-registerActivity')
+                .hide();
             $geogebraactivity.optionsScorm.push(options);
             if (c.length > 2 && c[2] == 'auto-geogebra-scorm') {
-                $exeDevices.iDevice.gamification.scorm.registerActivity(options);
-                if (typeof pipwerks != "undefined" && pipwerks.SCORM) {
-                    $(e).closest('.idevice_node').find('.Games-registerActivity').show();
-
+                $exeDevices.iDevice.gamification.scorm.registerActivity(
+                    options
+                );
+                if (typeof pipwerks != 'undefined' && pipwerks.SCORM) {
+                    $(e)
+                        .closest('.idevice_node')
+                        .find('.Games-registerActivity')
+                        .show();
                 }
-
             }
             const hasScorm12 = typeof window.API !== 'undefined';
             const hasScorm2004 = typeof window.API_1484_11 !== 'undefined';
-            if (evaluationID && evaluationID.length > 4 && !hasScorm12 && !hasScorm2004) {
-                $('#auto-geogebra-' + sfx).closest('.idevice_node').find('.Games-RepeatActivity').hide();
+            if (
+                evaluationID &&
+                evaluationID.length > 4 &&
+                !hasScorm12 &&
+                !hasScorm2004
+            ) {
+                $('#auto-geogebra-' + sfx)
+                    .closest('.idevice_node')
+                    .find('.Games-RepeatActivity')
+                    .hide();
             }
-
         }
-
 
         setTimeout(function () {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 options,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
-
     },
     getIdeviceID: function (sfx) {
         const ideviceid =
@@ -378,7 +398,6 @@ var $geogebraactivity = {
     },
 
     getOptions: function (sfx, weighted, messagesScorm, evaluationID) {
-
         let messages = $geogebraactivity.messages;
         let messagesEval = [];
         for (let z = 0; z < messages.length; z++) {
@@ -453,16 +472,15 @@ var $geogebraactivity = {
                         ? messagesEval[3]
                         : 'You score',
             },
-
         };
         return options;
     },
 
     saveEvaluation: function (options) {
         const mOptions = JSON.parse(JSON.stringify(options));
-        const SCORE_RAW = "SCORMRawScore";
-        const SCORE_MIN = "SCORMMinScore";
-        const SCORE_MAX = "SCORMMaxScore";
+        const SCORE_RAW = 'SCORMRawScore';
+        const SCORE_MIN = 'SCORMMinScore';
+        const SCORE_MAX = 'SCORMMaxScore';
         let score = ggbApplet.getValue(SCORE_RAW);
         score = score.toFixed(2);
         if (
@@ -478,11 +496,10 @@ var $geogebraactivity = {
             score = (score_scaled * 10).toFixed(2);
         }
 
-
         mOptions.scorerp = score;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            mOptions.isInExe,
+            mOptions.isInExe
         );
     },
 
@@ -491,12 +508,12 @@ var $geogebraactivity = {
             return;
         }
         const mOptions = JSON.parse(JSON.stringify(options));
-        mOptions.gameStarted = true
+        mOptions.gameStarted = true;
         pipwerks.SCORM.SetScoreMax('100');
         pipwerks.SCORM.SetScoreMin('0');
-        const SCORE_RAW = "SCORMRawScore";
-        const SCORE_MIN = "SCORMMinScore";
-        const SCORE_MAX = "SCORMMaxScore";
+        const SCORE_RAW = 'SCORMRawScore';
+        const SCORE_MIN = 'SCORMMinScore';
+        const SCORE_MAX = 'SCORMMaxScore';
 
         let score = 0;
         if (
@@ -507,7 +524,8 @@ var $geogebraactivity = {
             let score_raw = ggbApplet.getValue(SCORE_RAW),
                 score_min = ggbApplet.getValue(SCORE_MIN),
                 score_max = ggbApplet.getValue(SCORE_MAX),
-                score_scaled = (score_raw - score_min) / (score_max - score_min);
+                score_scaled =
+                    (score_raw - score_min) / (score_max - score_min);
             score = (score_scaled * 10).toFixed(2);
         }
 
@@ -518,10 +536,8 @@ var $geogebraactivity = {
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(false, mOptions);
 
-        $geogebraactivity.previousScore = mOptions.previousScore;    
-
+        $geogebraactivity.previousScore = mOptions.previousScore;
     },
-
 };
 $(function () {
     $geogebraactivity.init();
