@@ -7,7 +7,6 @@
 - Improved iDevices, interface, translations, and installer workflows across platforms
 - Full support for Linux, Windows, and macOS desktop versions
 - Collaborative editing available in the online version
-- Fixed large ELP imports reporting "The file content is wrong" when an open session exists; the UI now prompts to close it and retries without reuploading chunks
 
 ---
 
