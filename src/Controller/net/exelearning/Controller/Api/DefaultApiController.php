@@ -63,7 +63,7 @@ class DefaultApiController extends AbstractController
      */
     protected function hydrateRequestBody(Request $request): void
     {
-        if (!\in_array($request->getMethod(), ['PUT', 'PATCH', 'DELETE'], true)) {
+        if (!\in_array($request->getMethod(), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
             return;
         }
 
