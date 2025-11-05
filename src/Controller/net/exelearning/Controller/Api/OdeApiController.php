@@ -856,6 +856,20 @@ class OdeApiController extends DefaultApiController
                     $forceCloseOdeUserPreviousSession
                 );
             } catch (\Exception $e) {
+                $this->logger->error(
+                    'Error checking local ODE file: '.$e->getMessage(),
+                    [
+                        'exception' => $e,
+                        'elpFileName' => $elpFileName,
+                        'elpFilePath' => $elpFilePath,
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                        'trace' => $e->getTraceAsString(),
+                        'file:' => $this,
+                        'line:' => __LINE__,
+                    ]
+                );
+
                 $result['responseMessage'] = $this->translator->trans('The file content is wrong');
                 $responseData['responseMessage'] = $result['responseMessage'];
 
