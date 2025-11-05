@@ -27,22 +27,23 @@ var $eXeSopa = {
         white: '#ffffff',
         yellow: '#fcf4d3',
     },
-    hits: 0,
-    score: 0,
-    options: {},
+    instances: [],
     hasSCORMbutton: false,
     isInExe: false,
     userName: '',
     previousScore: '',
     initialScore: '',
-    game: null,
-    optionsPuzzle: {},
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Word search', 'word-search', 'sopa-IDevice');        
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Word search',
+            'word-search',
+            'sopa-IDevice'
+        );
     },
 
     enable: function () {
@@ -50,94 +51,168 @@ var $eXeSopa = {
     },
 
     loadGame: function () {
-        $eXeSopa.options = {};
-
         $eXeSopa.activities.each(function (i) {
-            if (i == 0) {
-                let version = $('.sopa-version', this).eq(0).text(),
-                    dl = $('.sopa-DataGame', this),
-                    imagesLink = $('.sopa-LinkImages', this),
-                    audioLink = $('.sopa-LinkAudios', this),
-                    mOption = $eXeSopa.loadDataGame(
-                        dl,
-                        imagesLink,
-                        audioLink,
-                        version,
-                    ),
-                    msg = mOption.msgs.msgPlayStart;
+            let version = $('.sopa-version', this).eq(0).text(),
+                dl = $('.sopa-DataGame', this),
+                imagesLink = $('.sopa-LinkImages', this),
+                audioLink = $('.sopa-LinkAudios', this),
+                mOption = $eXeSopa.loadDataGame(
+                    dl,
+                    imagesLink,
+                    audioLink,
+                    version
+                ),
+                msg = mOption.msgs.msgPlayStart;
 
-                mOption.scorerp = 0;
-                mOption.idevicePath = $eXeSopa.idevicePath;
-                mOption.main = 'sopaMainContainer';
-                mOption.idevice = 'sopa-IDevice';
+            mOption.scorerp = 0;
+            mOption.idevicePath = $eXeSopa.idevicePath;
+            mOption.instanceId = i;
+            mOption.main = 'sopaMainContainer-' + i;
+            mOption.idevice = 'sopa-IDevice';
+            mOption.hits = 0;
+            mOption.score = 0;
+            mOption.game = null;
+            mOption.optionsPuzzle = {};
 
-                $eXeSopa.options = mOption;
-
-                const sopa = $eXeSopa.createInterfaceSopa(i);
-
-                dl.before(sopa).remove();
-
-                $('#sopaGameMinimize').hide();
-                $('#sopaGameContainer').hide();
-                if (mOption.showMinimize) {
-                    $('#sopaGameMinimize')
-                        .css({
-                            cursor: 'pointer',
-                        })
-                        .show();
-                } else {
-                    $('#sopaGameContainer').show();
-                }
-                $('#sopaDivFeedBack').hide();
-                $('#sopaMessageMaximize').text(msg);
-                $('#sopaDivFeedBack').prepend($('.sopa-feedback-game', this));
-                $eXeSopa.addEvents();
-            } else {
-                alert('Only one Word search game per page.');
+            // Configurar orientaciones del puzzle
+            let ors = ['horizontal', 'vertical'];
+            if (mOption.reverses && mOption.diagonals) {
+                ors = [
+                    'horizontal',
+                    'vertical',
+                    'horizontalBack',
+                    'verticalUp',
+                    'diagonal',
+                    'diagonalUp',
+                    'diagonalBack',
+                    'diagonalUpBack',
+                ];
+            } else if (mOption.diagonals) {
+                ors = ['horizontal', 'vertical', 'diagonal', 'diagonalUp'];
+            } else if (mOption.reverses) {
+                ors = ['horizontal', 'vertical', 'horizontalBack', 'verticalUp'];
             }
+            mOption.optionsPuzzle.orientations = ors;
+
+            // Guardar instancia
+            $eXeSopa.instances[i] = mOption;
+
+            const sopa = $eXeSopa.createInterfaceSopa(i);
+
+            dl.before(sopa).remove();
+
+            const $container = $('#sopaMainContainer-' + i);
+            $container.find('#sopaGameMinimize-' + i).hide();
+            $container.find('#sopaGameContainer-' + i).hide();
+            if (mOption.showMinimize) {
+                $container.find('#sopaGameMinimize-' + i)
+                    .css({
+                        cursor: 'pointer',
+                    })
+                    .show();
+            } else {
+                $container.find('#sopaGameContainer-' + i).show();
+            }
+            $container.find('#sopaDivFeedBack-' + i).hide();
+            $container.find('#sopaMessageMaximize-' + i).text(msg);
+            $container.find('#sopaDivFeedBack-' + i).prepend($('.sopa-feedback-game', this));
+            
+            $eXeSopa.addEvents(i);
+            
+            // Agregar palabras
+            for (let j = 0; j < mOption.wordsGame.length; j++) {
+                let word = mOption.wordsGame[j].word,
+                    definition = mOption.wordsGame[j].definition,
+                    image = mOption.wordsGame[j].url.length > 4,
+                    audio = mOption.wordsGame[j].audio.length > 4;
+                WordFindGame.append(
+                    $container.find('#sopaWords-' + i),
+                    word,
+                    definition,
+                    j,
+                    image,
+                    audio
+                );
+            }
+
+            $eXeSopa.recreatePuzzle(i);
+
+            $container.show();
         });
 
-        for (let i = 0; i < $eXeSopa.options.wordsGame.length; i++) {
-            let word = $eXeSopa.options.wordsGame[i].word,
-                definition = $eXeSopa.options.wordsGame[i].definition,
-                image = $eXeSopa.options.wordsGame[i].url.length > 4,
-                audio = $eXeSopa.options.wordsGame[i].audio.length > 4;
-            WordFindGame.append(
-                $('#sopaWords'),
-                word,
-                definition,
-                i,
-                image,
-                audio,
-            );
-        }
-
-        $eXeSopa.recreatePuzzle();
-
-        $('#sopaMainContainer').show();
-
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.sopa-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.sopa-IDevice');
     },
 
-    recreatePuzzle: function () {
-        try {
-            $eXeSopa.game = new WordFindGame('#sopaPuzzle', {
-                maxGridGrowth: 6,
-                maxAttempts: 100,
-                orientations: $eXeSopa.optionsPuzzle,
-            });
-        } catch (error) {
-            $('#sopaMessage')
-                .text(`${error}, ${$eXeSopa.options.msgs.msgManyWord}`)
-                .css({
-                    color: 'red',
+    recreatePuzzle: function (instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
+        const puzzleSelector = '#sopaPuzzle-' + instanceId;
+        const $container = $('#sopaMainContainer-' + instanceId);
+        
+        let attempts = 0;
+        const maxRetries = 3; // Número de palabras a eliminar si es necesario
+        
+        while (attempts <= maxRetries) {
+            try {
+                mOptions.game = new WordFindGame(puzzleSelector, {
+                    maxGridGrowth: 10,
+                    maxAttempts: 100,
+                    orientations: mOptions.optionsPuzzle,
+                    instanceId: instanceId
                 });
-            return;
+                
+                // Si tiene éxito, salir del bucle
+                if (window.game) window.game = mOptions.game;
+                
+                // Si se eliminaron palabras, solo mostrar en consola (no en pantalla)
+                if (attempts > 0) {
+                    console.info(`Sopa de letras generada exitosamente después de eliminar ${attempts} palabra(s).`);
+                }
+                return;
+                
+            } catch (error) {
+                attempts++;
+                
+                if (attempts > maxRetries) {
+                    // Ya no hay más intentos, mostrar error
+                    $container.find('#sopaMessage-' + instanceId)
+                        .text(mOptions.msgs.msgManyWord || 'No se pudo generar la sopa de letras. Intenta con menos palabras o palabras más cortas.')
+                        .css({
+                            color: 'red',
+                        });
+                    $container.find('#sopaMultimedia-' + instanceId).hide();
+                    $container.find('#sopaResolve-' + instanceId).hide();
+                    console.error('Error al generar sopa de letras después de ' + maxRetries + ' intentos:', error);
+                    return;
+                }
+                
+                // Encontrar y eliminar la palabra más larga del wordsGame
+                const longestWordIndex = mOptions.wordsGame.reduce((maxIdx, word, idx, arr) => 
+                    word.word.length > arr[maxIdx].word.length ? idx : maxIdx, 0
+                );
+                
+                const removedWord = mOptions.wordsGame[longestWordIndex].word;
+                mOptions.wordsGame.splice(longestWordIndex, 1);
+                
+                console.warn(`Intento ${attempts}: Eliminada palabra "${removedWord}" (${removedWord.length} letras). Quedan ${mOptions.wordsGame.length} palabras. Reintentando...`);
+                
+                // Actualizar la lista de palabras en el DOM antes de reintentar
+                $container.find('#sopaWords-' + instanceId).empty();
+                for (let j = 0; j < mOptions.wordsGame.length; j++) {
+                    let word = mOptions.wordsGame[j].word,
+                        definition = mOptions.wordsGame[j].definition,
+                        image = mOptions.wordsGame[j].url.length > 4,
+                        audio = mOptions.wordsGame[j].audio.length > 4;
+                    WordFindGame.append(
+                        $container.find('#sopaWords-' + instanceId),
+                        word,
+                        definition,
+                        j,
+                        image,
+                        audio
+                    );
+                }
+            }
         }
-
-        if (window.game) window.game = $eXeSopa.game;
     },
 
     loadDataGame: function (data, imgsLink, audioLink, version) {
@@ -202,101 +277,82 @@ var $eXeSopa = {
         mOptions.wordsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.wordsGame,
-                mOptions.percentajeQuestions,
+                mOptions.percentajeQuestions
             );
         mOptions.numberQuestions = mOptions.wordsGame.length;
-        $eXeSopa.optionsPuzzle = {};
 
-        let ors = ['horizontal', 'vertical'];
-        if (mOptions.reverses && mOptions.diagonals) {
-            ors = [
-                'horizontal',
-                'vertical',
-                'horizontalBack',
-                'verticalUp',
-                'diagonal',
-                'diagonalUp',
-                'diagonalBack',
-                'diagonalUpBack',
-            ];
-        } else if (mOptions.diagonals) {
-            ors = ['horizontal', 'vertical', 'diagonal', 'diagonalUp'];
-        } else if (mOptions.reverses) {
-            ors = ['horizontal', 'vertical', 'horizontalBack', 'verticalUp'];
-        }
-        $eXeSopa.optionsPuzzle.orientations = ors;
         return mOptions;
     },
 
-    createInterfaceSopa: function () {
+    createInterfaceSopa: function (instanceId) {
         const path = $eXeSopa.idevicePath,
-            mOptions = $eXeSopa.options,
-            msgs = $eXeSopa.options.msgs,
+            mOptions = $eXeSopa.instances[instanceId],
+            msgs = mOptions.msgs,
             html = `
-        <div class="SPP-MainContainer" id="sopaMainContainer">
-            <div class="SPP-GameMinimize" id="sopaGameMinimize">
-                <a href="#" class="SPP-LinkMaximize" id="sopaLinkMaximize" title="${msgs.msgMaximize}">
+        <div class="SPP-MainContainer" id="sopaMainContainer-${instanceId}" data-instance="${instanceId}">
+            <div class="SPP-GameMinimize" id="sopaGameMinimize-${instanceId}">
+                <a href="#" class="SPP-LinkMaximize" id="sopaLinkMaximize-${instanceId}" title="${msgs.msgMaximize}">
                     <img src="${path}sopaIcon.png" class="SPP-IconMinimize SPP-Activo" alt="">
-                    <div class="SPP-MessageMaximize" id="sopaMessageMaximize"></div>
+                    <div class="SPP-MessageMaximize" id="sopaMessageMaximize-${instanceId}"></div>
                 </a>
             </div>
-            <div class="SPP-GameContainer" id="sopaGameContainer">
-                <div class="SPP-GameScoreBoard" id="sopaGameScoreBoard">
+            <div class="SPP-GameContainer" id="sopaGameContainer-${instanceId}">
+                <div class="SPP-GameScoreBoard" id="sopaGameScoreBoard-${instanceId}">
                     <div class="SPP-GameScores">
                         <div class="exeQuextIcons exeQuextIcons-Number" title="${msgs.msgNumQuestions}"></div>
-                        <p><span class="sr-av">${msgs.msgNumQuestions}: </span><span id="sopaPNumber">0</span></p>
+                        <p><span class="sr-av">${msgs.msgNumQuestions}: </span><span id="sopaPNumber-${instanceId}">0</span></p>
                         <div class="exeQuextIcons exeQuextIcons-Hit" title="${msgs.msgHits}"></div>
-                        <p><span class="sr-av">${msgs.msgHits}: </span><span id="sopaPHits">0</span></p>
+                        <p><span class="sr-av">${msgs.msgHits}: </span><span id="sopaPHits-${instanceId}">0</span></p>
                         <div class="exeQuextIcons exeQuextIcons-Score" title="${msgs.msgScore}"></div>
-                        <p><span class="sr-av">${msgs.msgScore}: </span><span id="sopaPScore">0</span></p>
+                        <p><span class="sr-av">${msgs.msgScore}: </span><span id="sopaPScore-${instanceId}">0</span></p>
                     </div>
-                    <div class="SPP-LifesGame" id="sopaLifesSopa"></div>
+                    <div class="SPP-LifesGame" id="sopaLifesSopa-${instanceId}"></div>
                     <div class="SPP-TimeNumber">
                         <strong><span class="sr-av">${msgs.msgTime}:</span></strong>
                         <div class="exeQuextIcons exeQuextIcons-Time" title="${msgs.msgTime}"></div>
-                        <p id="sopaPTime" class="SPP-PTime">00:00</p>
-                        <a href="#" class="SPP-LinkMinimize" id="sopaLinkMinimize" title="${msgs.msgMinimize}">
+                        <p id="sopaPTime-${instanceId}" class="SPP-PTime">00:00</p>
+                        <a href="#" class="SPP-LinkMinimize" id="sopaLinkMinimize-${instanceId}" title="${msgs.msgMinimize}">
                             <strong><span class="sr-av">${msgs.msgMinimize}:</span></strong>
                             <div class="exeQuextIcons exeQuextIcons-Minimize SPP-Activo"></div>
                         </a>
-                        <a href="#" class="SPP-LinkFullScreen" id="sopaLinkFullScreen" title="${msgs.msgFullScreen}">
+                        <a href="#" class="SPP-LinkFullScreen" id="sopaLinkFullScreen-${instanceId}" title="${msgs.msgFullScreen}">
                             <strong><span class="sr-av">${msgs.msgFullScreen}:</span></strong>
-                            <div class="exeQuextIcons exeQuextIcons-FullScreen SPP-Activo" id="sopaFullScreen"></div>
+                            <div class="exeQuextIcons exeQuextIcons-FullScreen SPP-Activo" id="sopaFullScreen-${instanceId}"></div>
                         </a>
                     </div>
                 </div>
-                <div class="SPP-ShowClue" id="sopaShowClue">
+                <div class="SPP-ShowClue" id="sopaShowClue-${instanceId}">
                     <div class="sr-av">${msgs.msgClue}</div>
-                    <p class="SPP-PShowClue SPP-parpadea" id="sopaPShowClue"></p>
+                    <p class="SPP-PShowClue SPP-parpadea" id="sopaPShowClue-${instanceId}"></p>
                 </div>
-                <div class="SPP-Flex" id="sopaDivImgHome">
-                    <img src="${path}sopaIcon.png" class="SPP-ImagesHome" id="sopaPHome" alt="${msgs.msgNoImage}" />
+                <div class="SPP-Flex" id="sopaDivImgHome-${instanceId}">
+                    <img src="${path}sopaIcon.png" class="SPP-ImagesHome" id="sopaPHome-${instanceId}" alt="${msgs.msgNoImage}" />
                 </div>
-                <div class="SPP-StartGame"><a href="#" id="sopaStartGame">${msgs.msgPlayStart}</a></div>
-                <div class="SPP-Message" id="sopaMessage"></div>
-                <div class="SPP-Multimedia" id="sopaMultimedia">
-                    <div id="sopaPuzzle" class="SPP-Puzzle"></div>
-                    <ul id="sopaWords" class="SPP-Words"></ul>
+                <div class="SPP-StartGame"><a href="#" id="sopaStartGame-${instanceId}">${msgs.msgPlayStart}</a></div>
+                <div class="SPP-Message" id="sopaMessage-${instanceId}"></div>
+                <div class="SPP-Multimedia" id="sopaMultimedia-${instanceId}">
+                    <div id="sopaPuzzle-${instanceId}" class="SPP-Puzzle"></div>
+                    <ul id="sopaWords-${instanceId}" class="SPP-Words"></ul>
                 </div>
                  <div class="SPP-ResolveDiv ">
-                    <button class="btn btn-primary" id="sopaResolve">${msgs.msgEnd}</button>
+                    <button class="btn btn-primary" id="sopaResolve-${instanceId}">${msgs.msgEnd}</button>
                  </div>                
-                <div class="SPP-Cubierta" id="sopaCubierta">
-                    <div class="SPP-CodeAccessDiv" id="sopaCodeAccessDiv">
-                        <div class="SPP-MessageCodeAccessE" id="sopaMesajeAccesCodeE"></div>
+                <div class="SPP-Cubierta" id="sopaCubierta-${instanceId}">
+                    <div class="SPP-CodeAccessDiv" id="sopaCodeAccessDiv-${instanceId}">
+                        <div class="SPP-MessageCodeAccessE" id="sopaMesajeAccesCodeE-${instanceId}"></div>
                         <div class="SPP-DataCodeAccessE">
                             <label class="sr-av">${msgs.msgCodeAccess}:</label>
-                            <input type="text" class="SPP-CodeAccessE form-control" id="sopaCodeAccessE">
-                            <a href="#" id="sopaCodeAccessButton" title="${msgs.msgReply}">
+                            <input type="text" class="SPP-CodeAccessE form-control" id="sopaCodeAccessE-${instanceId}">
+                            <a href="#" id="sopaCodeAccessButton-${instanceId}" title="${msgs.msgReply}">
                                 <strong><span class="sr-av">${msgs.msgReply}</span></strong>
                                 <div class="exeQuextIcons exeQuextIcons-Submit SPP-Activo"></div>
                             </a>
                         </div>
                         </div>
-                    <div class="SPP-DivFeedBack" id="sopaDivFeedBack">
-                        <input type="button" id="sopaFeedBackClose" value="${msgs.msgClose}" class="feedbackbutton" />
+                    <div class="SPP-DivFeedBack" id="sopaDivFeedBack-${instanceId}">
+                        <input type="button" id="sopaFeedBackClose-${instanceId}" value="${msgs.msgClose}" class="feedbackbutton" />
                     </div>
-                        ${this.getDetailMedia()}
+                        ${this.getDetailMedia(instanceId)}
                 </div>
             </div>
         </div>
@@ -304,94 +360,100 @@ var $eXeSopa = {
         return html;
     },
 
-    showCubiertaOptions(mode) {
+    showCubiertaOptions(mode, instanceId) {
+        const $container = $('#sopaMainContainer-' + instanceId);
+        const $cubierta = $container.find('#sopaCubierta-' + instanceId);
+        const $gameContainer = $container.find('#sopaGameContainer-' + instanceId);
+        
         if (mode === false) {
-            $('#sopaCubierta').fadeOut(function () {
-                $('#sopaGameContainer').css('height', 'auto');
-                $('#sopaMainContainer').css('height', 'auto');
+            $cubierta.fadeOut(function () {
+                $gameContainer.css('height', 'auto');
+                $container.css('height', 'auto');
             });
             return;
         }
 
-        $('#sopaCodeAccessDiv').hide();
-        $('#sopaDivFeedBack').hide();
-        $('#sopaMFDetails').hide();
+        $container.find('#sopaCodeAccessDiv-' + instanceId).hide();
+        $container.find('#sopaDivFeedBack-' + instanceId).hide();
+        $container.find('#sopaMFDetails-' + instanceId).hide();
         switch (mode) {
             case 0:
-                $('#sopaCodeAccessDiv').show();
+                $container.find('#sopaCodeAccessDiv-' + instanceId).show();
                 break;
             case 1:
-                $('#sopaDivFeedBack').find('.sopa-feedback-game').show();
-                $('#sopaDivFeedBack').show();
+                $container.find('#sopaDivFeedBack-' + instanceId).find('.sopa-feedback-game').show();
+                $container.find('#sopaDivFeedBack-' + instanceId).show();
                 break;
             case 2:
-                $('#sopaMFDetails').show();
+                $container.find('#sopaMFDetails-' + instanceId).show();
                 setTimeout(function () {
                     const max = Math.max(
-                        $('#sopaMFDetails').innerHeight() + 50,
-                        $('#sopaGameContainer').innerHeight() + 50,
+                        $container.find('#sopaMFDetails-' + instanceId).innerHeight() + 50,
+                        $gameContainer.innerHeight() + 50
                     );
-                    $('#sopaCubierta').height(max);
+                    $cubierta.height(max);
                 }, 0);
                 break;
             default:
                 break;
         }
-        $('#sopaCubierta').fadeIn(function () {
+        $cubierta.fadeIn(function () {
             const max = Math.max(
-                $('#sopaCubierta').innerHeight(),
-                $('#sopaGameContainer').innerHeight(),
+                $cubierta.innerHeight(),
+                $gameContainer.innerHeight()
             );
-            $('#sopaGameContainer').height(max);
-            $('#sopaMainContainer').height(
+            $gameContainer.height(max);
+            $container.height(
                 max +
-                $('.SSP-GameScoreBoard').eq(0).innerHeight() +
-                $('.SSP-ShowClue').eq(0).innerHeight() +
-                30,
+                    $container.find('.SSP-GameScoreBoard').eq(0).innerHeight() +
+                    $container.find('.SSP-ShowClue').eq(0).innerHeight() +
+                    30
             );
         });
     },
 
-    getDetailMedia: function () {
-        const msgs = $eXeSopa.options.msgs,
+    getDetailMedia: function (instanceId) {
+        const msgs = $eXeSopa.instances[instanceId].msgs,
             html = `
-            <div class="SPP-Detail" id="sopaMFDetails">
+            <div class="SPP-Detail" id="sopaMFDetails-${instanceId}">
                 <div class="SPP-Flex">
-                    <a href="#" class="SPP-LinkClose" id="sopaMLinkClose1" title="${msgs.msgClose}">
+                    <a href="#" class="SPP-LinkClose" id="sopaMLinkClose1-${instanceId}" title="${msgs.msgClose}">
                         <strong class="sr-av">${msgs.msgClose}:</strong>
                         <div class="SPP-IconsToolBar exeQuextIcons-CWGame SPP-Activo"></div>
                     </a>
                 </div>
-                <div class="SPP-MultimediaPoint" id="sopaMMultimediaPoint}">
-                    <img class="SPP-Images" id="sopaMImagePoint" alt="${msgs.msgNoImage}" />
-                    <img class="SPP-Cursor" id="sopaMCursor" src="${$eXeSopa.idevicePath}exequextcursor.gif" alt="" />
-                    <a href="#" class="SPP-FullLinkImage" id="sopaFullLinkImage" title="${msgs.msgFullScreen}">
+                <div class="SPP-MultimediaPoint" id="sopaMMultimediaPoint-${instanceId}">
+                    <img class="SPP-Images" id="sopaMImagePoint-${instanceId}" alt="${msgs.msgNoImage}" />
+                    <img class="SPP-Cursor" id="sopaMCursor-${instanceId}" src="${$eXeSopa.idevicePath}exequextcursor.gif" alt="" />
+                    <a href="#" class="SPP-FullLinkImage" id="sopaFullLinkImage-${instanceId}" title="${msgs.msgFullScreen}">
                         <strong><span class="sr-av">${msgs.msgFullScreen}:</span></strong>
                         <div class="exeQuextIcons exeQuextIcons-FullImage SPP-Activo"></div>
                     </a>
                 </div>
-                <div class="SPP-AuthorPoint" id="sopaMAuthorPoint"></div>
-                <div class="SPP-Footer" id="sopaMFooterPoint"></div>
+                <div class="SPP-AuthorPoint" id="sopaMAuthorPoint-${instanceId}"></div>
+                <div class="SPP-Footer" id="sopaMFooterPoint-${instanceId}"></div>
             </div>
         `;
         return html;
     },
 
-    startGame: function () {
-        let mOptions = $eXeSopa.options;
+    startGame: function (instanceId) {
+        let mOptions = $eXeSopa.instances[instanceId];
+        const $container = $('#sopaMainContainer-' + instanceId);
+        
         if (mOptions.gameStarted) return;
         if (mOptions.showResolve) {
-            $('#sopaResolve').show();
+            $container.find('#sopaResolve-' + instanceId).show();
         }
-        $('#sopaMessage').fadeIn();
-        $('#sopaMultimedia').fadeIn();
-        $('#sopaDivImgHome').hide();
-        $('#sopaPHits').text(mOptions.hits);
-        $('#sopaPScore').text(mOptions.score);
-        $('#sopaStartGame').hide();
+        $container.find('#sopaMessage-' + instanceId).fadeIn();
+        $container.find('#sopaMultimedia-' + instanceId).fadeIn();
+        $container.find('#sopaDivImgHome-' + instanceId).hide();
+        $container.find('#sopaPHits-' + instanceId).text(mOptions.hits);
+        $container.find('#sopaPScore-' + instanceId).text(mOptions.score);
+        $container.find('#sopaStartGame-' + instanceId).hide();
 
-        $eXeSopa.hits = 0;
-        $eXeSopa.score = 0;
+        mOptions.hits = 0;
+        mOptions.score = 0;
         mOptions.counter = 0;
         mOptions.gameOver = false;
         mOptions.obtainedClue = false;
@@ -399,70 +461,74 @@ var $eXeSopa = {
         mOptions.activeCounter = true;
         mOptions.gameStarted = true;
 
-        $eXeSopa.uptateTime(mOptions.counter);
+        $eXeSopa.uptateTime(mOptions.counter, instanceId);
         mOptions.counterClock = setInterval(function () {
-            let $node = $('#sopaMainContainer');
+            let $node = $('#sopaMainContainer-' + instanceId);
             let $content = $('#node-content');
-            if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+            if (
+                !$node.length ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
                 clearInterval(mOptions.counterClock);
                 return;
             }
 
             if (mOptions.gameStarted && mOptions.activeCounter) {
                 mOptions.counter--;
-                $eXeSopa.uptateTime(mOptions.counter);
+                $eXeSopa.uptateTime(mOptions.counter, instanceId);
                 if (mOptions.counter <= 0) {
                     mOptions.activeCounter = false;
-                    $eXeSopa.game.solve();
-                    $eXeSopa.gameOver(2);
+                    mOptions.game.solve();
+                    $eXeSopa.gameOver(2, instanceId);
                 }
             }
         }, 1000);
     },
 
-    uptateTime: function (time) {
-        $('#sopaPTime').text(
-            $exeDevices.iDevice.gamification.helpers.getTimeToString(time),
+    uptateTime: function (time, instanceId) {
+        $('#sopaPTime-' + instanceId).text(
+            $exeDevices.iDevice.gamification.helpers.getTimeToString(time)
         );
     },
 
-    showMessage: function (type, message) {
+    showMessage: function (type, message, instanceId) {
         let colors = [
-            '#555555',
-            $eXeSopa.borderColors.red,
-            $eXeSopa.borderColors.green,
-            $eXeSopa.borderColors.blue,
-            $eXeSopa.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeSopa.borderColors.red,
+                $eXeSopa.borderColors.green,
+                $eXeSopa.borderColors.blue,
+                $eXeSopa.borderColors.yellow,
+            ],
             color = colors[type];
-        $('#sopaMessage').text(message);
-        $('#sopaMessage').css({
+        $('#sopaMessage-' + instanceId).text(message);
+        $('#sopaMessage-' + instanceId).css({
             color: color,
         });
     },
 
-    showPoint: function (num) {
-        let mOptions = $eXeSopa.options,
+    showPoint: function (num, instanceId) {
+        let mOptions = $eXeSopa.instances[instanceId],
             q = mOptions.wordsGame[num];
+        const $container = $('#sopaMainContainer-' + instanceId);
 
-        $('#sopaMFDetails').show();
-        $('#sopaMAuthorPoint').html(q.author);
-        $('#sopaMFooterPoint').text(q.definition);
+        $container.find('#sopaMFDetails-' + instanceId).show();
+        $container.find('#sopaMAuthorPoint-' + instanceId).html(q.author);
+        $container.find('#sopaMFooterPoint-' + instanceId).text(q.definition);
 
         if (q.definition.length > 0) {
-            $('#sopaMFooterPoint').show();
+            $container.find('#sopaMFooterPoint-' + instanceId).show();
         }
 
-        $eXeSopa.showImagePoint(q.url, q.x, q.y, q.author, q.alt);
+        $eXeSopa.showImagePoint(q.url, q.x, q.y, q.author, q.alt, instanceId);
 
         if (q.author.length > 0) {
-            $('#sopaMAuthorPoint').show();
+            $container.find('#sopaMAuthorPoint-' + instanceId).show();
         }
 
-        const html = $('#sopaFDetails').html(),
+        const html = $container.find('#sopaFDetails-' + instanceId).html(),
             latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
         if (latex) {
-            $exeDevices.iDevice.gamification.math.updateLatex('#sopaFDetails');
+            $exeDevices.iDevice.gamification.math.updateLatex('#sopaFDetails-' + instanceId);
         }
     },
 
@@ -484,10 +550,12 @@ var $eXeSopa = {
         }
     },
 
-    showImagePoint: function (url, x, y, author, alt) {
-        const $Image = $('#sopaMImagePoint'),
-            $cursor = $('#sopaMCursor'),
-            $Author = $('#sopaMAuthorPoint');
+    showImagePoint: function (url, x, y, author, alt, instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
+        const $container = $('#sopaMainContainer-' + instanceId);
+        const $Image = $container.find('#sopaMImagePoint-' + instanceId),
+            $cursor = $container.find('#sopaMCursor-' + instanceId),
+            $Author = $container.find('#sopaMAuthorPoint-' + instanceId);
 
         $Author.html(author);
         $Image
@@ -499,40 +567,39 @@ var $eXeSopa = {
                     this.naturalWidth == 0
                 ) {
                     $Image.hide();
-                    $Image.attr('alt', $eXeSopa.options.msgs.msgNoImage);
-                    $noImage.show();
-                    $eXeSopa.showCubiertaOptions(2);
+                    $Image.attr('alt', mOptions.msgs.msgNoImage);
+                    $eXeSopa.showCubiertaOptions(2, instanceId);
                     return false;
                 } else {
                     $Image.show();
                     $Image.attr('alt', alt);
-                    $eXeSopa.showCubiertaOptions(2);
+                    $eXeSopa.showCubiertaOptions(2, instanceId);
                     $eXeSopa.positionPointerCard($cursor, x, y);
                     return true;
                 }
             })
             .on('error', function () {
                 $Image.hide();
-                $Image.attr('alt', $eXeSopa.options.msgs.msgNoImage);
-                $eXeSopa.showCubiertaOptions(2);
+                $Image.attr('alt', mOptions.msgs.msgNoImage);
+                $eXeSopa.showCubiertaOptions(2, instanceId);
                 return false;
             });
-        $('#sopaMMultimediaPoint').show();
+        $container.find('#sopaMMultimediaPoint-' + instanceId).show();
     },
 
-    saveEvaluation: function () {
-        const mOptions = $eXeSopa.options;
-        mOptions.scorerp = (10 * $eXeSopa.hits) / mOptions.wordsGame.length;
+    saveEvaluation: function (instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
+        mOptions.scorerp = (10 * mOptions.hits) / mOptions.wordsGame.length;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeSopa.isInExe,
+            $eXeSopa.isInExe
         );
     },
 
-    sendScore: function (auto) {
-        const mOptions = $eXeSopa.options;
+    sendScore: function (auto, instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
 
-        mOptions.scorerp = (10 * $eXeSopa.hits) / mOptions.wordsGame.length;
+        mOptions.scorerp = (10 * mOptions.hits) / mOptions.wordsGame.length;
         mOptions.previousScore = $eXeSopa.previousScore;
         mOptions.userName = $eXeSopa.userName;
 
@@ -545,161 +612,166 @@ var $eXeSopa = {
         return phrase.replace(/[&\s\n\r]+/g, ' ').trim();
     },
 
-    removeEvents: function () {
-        $(window).off('unload.eXeSopa beforeunload.eXeSopa');
+    removeEvents: function (instanceId) {
+        const $container = $('#sopaMainContainer-' + instanceId);
+        
+        $(window).off('unload.eXeSopa' + instanceId + ' beforeunload.eXeSopa' + instanceId);
 
-        $('#sopaLinkMaximize').off('click touchstart');
-        $('#sopaLinkMinimize').off('click touchstart');
-        $('#sopaLinkFullScreen').off('click touchstart');
-        $('#sopaFeedBackClose').off('click');
-        $('#sopaLinkAudio').off('click');
-        $('#sopaCodeAccessButton').off('click touchstart');
-        $('#sopaCodeAccessE').off('keydown');
-        $('#sopaSendScore').off('click');
-        $('#sopaMainContainer')
+        $container.find('#sopaLinkMaximize-' + instanceId).off('click touchstart');
+        $container.find('#sopaLinkMinimize-' + instanceId).off('click touchstart');
+        $container.find('#sopaLinkFullScreen-' + instanceId).off('click touchstart');
+        $container.find('#sopaFeedBackClose-' + instanceId).off('click');
+        $container.find('#sopaLinkAudio-' + instanceId).off('click');
+        $container.find('#sopaCodeAccessButton-' + instanceId).off('click touchstart');
+        $container.find('#sopaCodeAccessE-' + instanceId).off('keydown');
+        $container.find('#sopaSendScore-' + instanceId).off('click');
+        $container
             .closest('.idevice_node')
             .off('click', '.Games-SendScore');
-        $('#sopaResolve').off('click');
-        $('#sopaWords').off('click', '.SPP-LinkSound');
-        $('#sopaWords').off('click', '.SPP-LinkImage');
-        $('#sopaMLinkClose1').off('click');
-        $('#sopaStartGame').off('click');
+        $container.find('#sopaResolve-' + instanceId).off('click');
+        $container.find('#sopaWords-' + instanceId).off('click', '.SPP-LinkSound');
+        $container.find('#sopaWords-' + instanceId).off('click', '.SPP-LinkImage');
+        $container.find('#sopaMLinkClose1-' + instanceId).off('click');
+        $container.find('#sopaStartGame-' + instanceId).off('click');
+        $container.find('#sopaFullLinkImage-' + instanceId).off('click');
     },
 
-    addEvents: function () {
-        const mOptions = $eXeSopa.options;
-        $eXeSopa.removeEvents();
+    addEvents: function (instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
+        const $container = $('#sopaMainContainer-' + instanceId);
+        
+        $eXeSopa.removeEvents(instanceId);
 
-        $('#sopaLinkMaximize').on('click touchstart', (e) => {
+        $container.find('#sopaLinkMaximize-' + instanceId).on('click touchstart', (e) => {
             e.preventDefault();
-            $('#sopaGameContainer').show();
-            $('#sopaGameMinimize').hide();
+            $container.find('#sopaGameContainer-' + instanceId).show();
+            $container.find('#sopaGameMinimize-' + instanceId).hide();
         });
 
-        $('#sopaLinkMinimize').on('click touchstart', (e) => {
+        $container.find('#sopaLinkMinimize-' + instanceId).on('click touchstart', (e) => {
             e.preventDefault();
-            $('#sopaGameContainer').hide();
-            $('#sopaGameMinimize').css('visibility', 'visible').show();
+            $container.find('#sopaGameContainer-' + instanceId).hide();
+            $container.find('#sopaGameMinimize-' + instanceId).css('visibility', 'visible').show();
         });
 
-        $('#sopaGamerOver').hide();
-
-        $('#sopaLinkFullScreen').on('click touchstart', (e) => {
+        $container.find('#sopaLinkFullScreen-' + instanceId).on('click touchstart', (e) => {
             e.preventDefault();
             $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
-                document.getElementById('sopaGameContainer'),
+                document.getElementById('sopaGameContainer-' + instanceId)
             );
         });
 
-        $('#sopaFeedBackClose').on('click', () =>
-            $eXeSopa.showCubiertaOptions(false),
+        $container.find('#sopaFeedBackClose-' + instanceId).on('click', () =>
+            $eXeSopa.showCubiertaOptions(false, instanceId)
         );
 
-        $('#sopaLinkAudio').on('click', (e) => {
+        $container.find('#sopaLinkAudio-' + instanceId).on('click', (e) => {
             e.preventDefault(mOptions);
             $exeDevices.iDevice.gamification.media.stopSound(mOptions);
             $exeDevices.iDevice.gamification.media.playSound(
                 mOptions.wordsGame[mOptions.activeQuestion].audio,
-                mOptions,
+                mOptions
             );
         });
 
         if (mOptions.itinerary.showCodeAccess) {
-            $('#sopaMesajeAccesCodeE').text(
-                mOptions.itinerary.messageCodeAccess,
+            $container.find('#sopaMesajeAccesCodeE-' + instanceId).text(
+                mOptions.itinerary.messageCodeAccess
             );
-            $eXeSopa.showCubiertaOptions(0);
+            $eXeSopa.showCubiertaOptions(0, instanceId);
         }
 
-        $('#sopaCodeAccessButton').on('click touchstart', (e) => {
+        $container.find('#sopaCodeAccessButton-' + instanceId).on('click touchstart', (e) => {
             e.preventDefault();
-            $eXeSopa.enterCodeAccess();
+            $eXeSopa.enterCodeAccess(instanceId);
         });
 
-        $('#sopaCodeAccessE').on('keydown', (event) => {
+        $container.find('#sopaCodeAccessE-' + instanceId).on('keydown', (event) => {
             if (event.which === 13) {
-                $eXeSopa.enterCodeAccess();
+                $eXeSopa.enterCodeAccess(instanceId);
                 return false;
             }
             return true;
         });
 
-        $('#sopaPNumber').text(mOptions.numberQuestions);
+        $container.find('#sopaPNumber-' + instanceId).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeSopa beforeunload.eXeSopa', () => {
-            if ($eXeSopa.mScorm) $exeDevices.iDevice.gamification.scorm.endScorm($eXeSopa.mScorm);
+        $(window).on('unload.eXeSopa' + instanceId + ' beforeunload.eXeSopa' + instanceId, () => {
+            if ($eXeSopa.mScorm)
+                $exeDevices.iDevice.gamification.scorm.endScorm(
+                    $eXeSopa.mScorm
+                );
         });
 
-        $('#sopaInstructions').text(mOptions.instructions);
+        if (mOptions.instructions) {
+            $container.find('#sopaInstructions-' + instanceId).text(mOptions.instructions);
+        }
 
-        $('#sopaMainContainer')
+        $container
             .closest('.idevice_node')
             .on('click', '.Games-SendScore', function (e) {
                 e.preventDefault();
-                $eXeSopa.sendScore(false);
-                $eXeSopa.saveEvaluation();
+                $eXeSopa.sendScore(false, instanceId);
+                $eXeSopa.saveEvaluation(instanceId);
             });
 
-        $('#sopaResolve').on('click', (e) => {
+        $container.find('#sopaResolve-' + instanceId).on('click', (e) => {
             e.preventDefault();
-            $eXeSopa.game.solve();
-            $eXeSopa.gameOver(1);
+            mOptions.game.solve();
+            $eXeSopa.gameOver(1, instanceId);
         });
 
-        $('#sopaWords').on('click', '.SPP-LinkSound', function (e) {
+        $container.find('#sopaWords-' + instanceId).on('click', '.SPP-LinkSound', function (e) {
             e.preventDefault();
             $exeDevices.iDevice.gamification.media.playSound(
                 mOptions.wordsGame[$(this).data('mnumber')].audio,
-                mOptions,
+                mOptions
             );
         });
 
-        $('#sopaWords').on('click', '.SPP-LinkImage', function (e) {
+        $container.find('#sopaWords-' + instanceId).on('click', '.SPP-LinkImage', function (e) {
             e.preventDefault();
-            $eXeSopa.showPoint($(this).data('mnumber'));
+            $eXeSopa.showPoint($(this).data('mnumber'), instanceId);
         });
 
-        $('#sopaMLinkClose1').on('click', (e) => {
+        $container.find('#sopaMLinkClose1-' + instanceId).on('click', (e) => {
             e.preventDefault();
-            $eXeSopa.showCubiertaOptions(false);
+            $eXeSopa.showCubiertaOptions(false, instanceId);
         });
 
-        $eXeSopa.showMessage(3, mOptions.msgs.mgsGameStart);
+        $eXeSopa.showMessage(3, mOptions.msgs.mgsGameStart, instanceId);
 
-        $('#sopaStartGame').on('click', (e) => {
+        $container.find('#sopaStartGame-' + instanceId).on('click', (e) => {
             e.preventDefault();
-            $eXeSopa.startGame();
+            $eXeSopa.startGame(instanceId);
         });
 
-        $(
-            '#sopaPTimeTitle, .exeQuextIcons-Time, #sopaPTime, #sopaStartGame, #sopaDivImgHome, #sopaPShowClue',
-        ).hide();
+        $container.find('#sopaPTimeTitle-' + instanceId + ', #sopaPTime-' + instanceId + ', #sopaStartGame-' + instanceId + ', #sopaDivImgHome-' + instanceId + ', #sopaPShowClue-' + instanceId).hide();
 
-        if (mOptions.showResolve) $('#sopaResolve').show();
+        if (mOptions.showResolve) $container.find('#sopaResolve-' + instanceId).show();
 
         mOptions.gameStarted = true;
 
         if (mOptions.time > 0) {
             mOptions.gameStarted = false;
-            $('#sopaResolve, #sopaMessage, #sopaMultimedia').hide();
-            $(
-                '#sopaDivImgHome, #sopaPTimeTitle, .exeQuextIcons-Time, #sopaPTime, #sopaStartGame',
-            ).show();
+            $container.find('#sopaResolve-' + instanceId + ', #sopaMessage-' + instanceId + ', #sopaMultimedia-' + instanceId).hide();
+            $container.find('#sopaDivImgHome-' + instanceId + ', #sopaPTimeTitle-' + instanceId + ', #sopaPTime-' + instanceId + ', #sopaStartGame-' + instanceId).show();
+            $container.find('.exeQuextIcons-Time').show();
         }
 
-        $('#sopaFullLinkImage').on('click', function (e) {
+        $container.find('#sopaFullLinkImage-' + instanceId).on('click', function (e) {
             e.preventDefault();
-            const largeImageSrc = $('#sopaMImagePoint').attr('src');
+            const largeImageSrc = $container.find('#sopaMImagePoint-' + instanceId).attr('src');
             if (largeImageSrc && largeImageSrc.length > 3) {
                 $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
                     largeImageSrc,
-                    $('#sopaGameContainer'),
+                    $container.find('#sopaGameContainer-' + instanceId)
                 );
             }
         });
 
-        $('#sopaPShowClue').text(
-            `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+        $container.find('#sopaPShowClue-' + instanceId).text(
+            `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
         );
 
         if (mOptions.isScorm > 0) {
@@ -709,42 +781,46 @@ var $eXeSopa = {
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                $eXeSopa.isInExe
             );
         }, 500);
     },
 
-    refreshGame: function () {
-        const mOptions = $eXeSopa.options;
+    refreshGame: function (instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
         if (!mOptions || mOptions.gameOver || !mOptions.gameStarted) return;
 
         const q = mOptions.wordsGame[mOptions.activeQuestion];
         if (typeof q != 'undefined') {
-            $eXeSopa.positionPointerCard($('sopaMCursor'), q.x, q.y);
+            const $cursor = $('#sopaMCursor-' + instanceId);
+            $eXeSopa.positionPointerCard($cursor, q.x, q.y);
         }
     },
 
-    enterCodeAccess: function () {
-        const mOptions = $eXeSopa.options;
+    enterCodeAccess: function (instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
+        const $container = $('#sopaMainContainer-' + instanceId);
+        
         if (
             mOptions.itinerary.codeAccess.toLowerCase() ==
-            $('#sopaCodeAccessE').val().toLowerCase()
+            $container.find('#sopaCodeAccessE-' + instanceId).val().toLowerCase()
         ) {
-            $eXeSopa.showCubiertaOptions(false);
-            $('#sopaLinkMaximize').trigger('click');
+            $eXeSopa.showCubiertaOptions(false, instanceId);
+            $container.find('#sopaLinkMaximize-' + instanceId).trigger('click');
         } else {
-            $('#sopaMesajeAccesCodeE')
+            $container.find('#sopaMesajeAccesCodeE-' + instanceId)
                 .fadeOut(300)
                 .fadeIn(200)
                 .fadeOut(300)
                 .fadeIn(200);
-            $('#sopaCodeAccessE').val('');
-
+            $container.find('#sopaCodeAccessE-' + instanceId).val('');
         }
     },
 
-    gameOver: function (mode) {
-        const mOptions = $eXeSopa.options;
+    gameOver: function (mode, instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
+        const $container = $('#sopaMainContainer-' + instanceId);
+        
         mOptions.gameStarted = false;
         mOptions.gameOver = true;
 
@@ -753,92 +829,59 @@ var $eXeSopa = {
         clearInterval(mOptions.counterClock);
         mOptions.activeCounter = false;
 
-        const score = (($eXeSopa.hits * 10) / mOptions.numberQuestions).toFixed(
-            2,
-        );
-        if (
-            mOptions.isScorm === 1
-        ) {
-            $eXeSopa.sendScore(true);
-            $('#sopaRepeatActivity').text(
-                `${mOptions.msgs.msgYouScore}: ${score}`,
+        const score = ((mOptions.hits * 10) / mOptions.numberQuestions).toFixed(2);
+        
+        if (mOptions.isScorm === 1) {
+            $eXeSopa.sendScore(true, instanceId);
+            $container.find('#sopaRepeatActivity-' + instanceId).text(
+                `${mOptions.msgs.msgYouScore}: ${score}`
             );
             $eXeSopa.initialScore = score;
         }
 
-        $eXeSopa.saveEvaluation();
+        $eXeSopa.saveEvaluation(instanceId);
 
         if (mOptions.itinerary.showClue) {
-            const text = $('#sopaPShowClue').text(),
+            const text = $container.find('#sopaPShowClue-' + instanceId).text(),
                 pc = mOptions.msgs.msgTryAgain.replace(
                     '%s',
-                    mOptions.itinerary.percentageClue,
+                    mOptions.itinerary.percentageClue
                 );
             mclue = mOptions.obtainedClue ? text : pc;
-            $('#sopaPShowClue').text(mclue).show();
+            $container.find('#sopaPShowClue-' + instanceId).text(mclue).show();
         }
 
-        let message = `${$eXeSopa.getRetroFeedMessages(true)} ${mOptions.msgs.msgWordsFind.replace('%s', score)}`;
+        let message = `${$eXeSopa.getRetroFeedMessages(true, instanceId)} ${mOptions.msgs.msgWordsFind.replace('%s', score)}`;
         if (mode === 1) {
             message = mOptions.msgs.msgEndGameM.replace('%s', score);
         } else if (mode === 2) {
             message = mOptions.msgs.msgEndTime.replace('%s', score);
         }
 
-        const type =
-            ($eXeSopa.hits * 10) / mOptions.numberQuestions >= 5 ? 2 : 1;
-        $eXeSopa.showMessage(type, message);
-        $eXeSopa.showFeedBack();
+        const type = (mOptions.hits * 10) / mOptions.numberQuestions >= 5 ? 2 : 1;
+        $eXeSopa.showMessage(type, message, instanceId);
+        $eXeSopa.showFeedBack(instanceId);
     },
 
-    showFeedBack: function () {
-        const mOptions = $eXeSopa.options,
-            puntos = ($eXeSopa.hits * 100) / mOptions.wordsGame.length;
+    showFeedBack: function (instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId],
+            puntos = (mOptions.hits * 100) / mOptions.wordsGame.length;
         if (mOptions.feedBack) {
             if (puntos >= mOptions.percentajeFB) {
-                $eXeSopa.showCubiertaOptions(1);
+                $eXeSopa.showCubiertaOptions(1, instanceId);
             } else {
                 $eXeSopa.showMessage(
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
+                    instanceId
                 );
             }
         }
     },
 
-    showScoreGame: function () {
-        const mOptions = $eXeSopa.options,
-            msgs = mOptions.msgs,
-            $sopaHistGame = $('#sopaHistGame'),
-            $sopaLostGame = $('#sopaLostGame'),
-            $sopaOverPoint = $('#sopaOverScore'),
-            $sopaOverHits = $('#sopaOverHits'),
-            $sopaGamerOver = $('#sopaGamerOver');
-
-        let message = '',
-            messageColor = 1;
-
-        $sopaHistGame.hide();
-        $sopaLostGame.hide();
-        $sopaOverPoint.show();
-        $sopaOverHits.show();
-
-        message =
-            $eXeSopa.getRetroFeedMessages(true) +
-            ' ' +
-            msgs.msgWordsFind.replace('%s', $eXeSopa.score.toFixed(2));
-        messageColor = 2;
-        $sopaHistGame.show();
-        $eXeSopa.showMessage(messageColor, message);
-
-        const msscore = msgs.msgScore + ': ' + $eXeSopa.score.toFixed(2);
-        $sopaOverPoint.html(msscore);
-        $sopaOverHits.html(msgs.msgHits + ': ' + $eXeSopa.hits);
-        $sopaGamerOver.show();
-    },
 
     paintMouse: function (image, cursor, x, y) {
         x = parseFloat(x) || 0;
@@ -858,8 +901,10 @@ var $eXeSopa = {
         }
     },
 
-    updateScore: function (num, mCurWord, number) {
-        const mOptions = $eXeSopa.options;
+    updateScore: function (num, mCurWord, number, instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
+        const $container = $('#sopaMainContainer-' + instanceId);
+        
         let message = '',
             obtainedPoints = 0,
             sscore = 0,
@@ -867,68 +912,64 @@ var $eXeSopa = {
 
         if (mOptions.gameOver) return;
 
-        $eXeSopa.hits = num + 1;
+        mOptions.hits = num + 1;
         obtainedPoints = 10 / mOptions.wordsGame.length || 0;
         points =
             obtainedPoints % 1 == 0
                 ? obtainedPoints
                 : obtainedPoints.toFixed(2);
 
-        $eXeSopa.score =
-            $eXeSopa.score + obtainedPoints > 0
-                ? $eXeSopa.score + obtainedPoints
+        mOptions.score =
+            mOptions.score + obtainedPoints > 0
+                ? mOptions.score + obtainedPoints
                 : 0;
 
-        sscore = $eXeSopa.score;
+        sscore = mOptions.score;
         sscore =
-            $eXeSopa.score % 1 == 0
-                ? $eXeSopa.score
-                : $eXeSopa.score.toFixed(2);
-        $('#sopaPScore').text(sscore);
-        $('#sopaPHits').text($eXeSopa.hits);
-        $('input.SSP-Word[value="' + mCurWord + '"]')
+            mOptions.score % 1 == 0
+                ? mOptions.score
+                : mOptions.score.toFixed(2);
+        $container.find('#sopaPScore-' + instanceId).text(sscore);
+        $container.find('#sopaPHits-' + instanceId).text(mOptions.hits);
+        $container.find('input.SSP-Word[value="' + mCurWord + '"]')
             .siblings('span')
             .css('color', '#de1111');
-        $('input.SSP-Word[value="' + mCurWord + '"]').addClass('SPP-WordFound');
+        $container.find('input.SSP-Word[value="' + mCurWord + '"]').addClass('SPP-WordFound');
 
-        message = $eXeSopa.getMessageAnswer(true, points);
-        $eXeSopa.showMessage(2, message);
+        message = $eXeSopa.getMessageAnswer(true, points, instanceId);
+        $eXeSopa.showMessage(2, message, instanceId);
         if (mOptions.wordsGame[number].audio.length > 4) {
             $exeDevices.iDevice.gamification.media.playSound(
                 mOptions.wordsGame[number].audio,
-                mOptions,
+                mOptions
             );
         }
 
         const percentageHits =
-            ($eXeSopa.hits / mOptions.wordsGame.length) * 100;
+            (mOptions.hits / mOptions.wordsGame.length) * 100;
         if (
             mOptions.itinerary.showClue &&
             percentageHits >= mOptions.itinerary.percentageClue
         ) {
             if (!mOptions.obtainedClue) {
                 mOptions.obtainedClue = true;
-                $('#sopaPShowClue').show();
+                $container.find('#sopaPShowClue-' + instanceId).show();
             }
         }
 
         const score = (percentageHits / 10).toFixed(2);
         if (mOptions.isScorm == 1) {
-            $eXeSopa.sendScore(true);
-            $('#sopaRepeatActivity').text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+            $eXeSopa.sendScore(true, instanceId);
+            $container.find('#sopaRepeatActivity-' + instanceId).text(
+                mOptions.msgs.msgYouScore + ': ' + score
             );
             $eXeSopa.initialScore = score;
-
-            $('#sopaRepeatActivity').text(
-                mOptions.msgs.msgYouScore + ': ' + score,
-            );
         }
-        $eXeSopa.saveEvaluation();
+        $eXeSopa.saveEvaluation(instanceId);
     },
 
-    getRetroFeedMessages: function (iHit) {
-        const mOptions = $eXeSopa.options;
+    getRetroFeedMessages: function (iHit, instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId];
 
         let sMessages = iHit
             ? mOptions.msgs.msgSuccesses
@@ -937,27 +978,27 @@ var $eXeSopa = {
         return sMessages[Math.floor(Math.random() * sMessages.length)];
     },
 
-    getMessageAnswer: function (correctAnswer, npts) {
+    getMessageAnswer: function (correctAnswer, npts, instanceId) {
         let message = '';
 
         if (correctAnswer) {
-            message = $eXeSopa.getMessageCorrectAnswer(npts);
+            message = $eXeSopa.getMessageCorrectAnswer(npts, instanceId);
         } else {
-            message = $eXeSopa.getMessageErrorAnswer(npts);
+            message = $eXeSopa.getMessageErrorAnswer(instanceId);
         }
         return message;
     },
 
-    getMessageCorrectAnswer: function (npts) {
-        const mOptions = $eXeSopa.options,
-            messageCorrect = $eXeSopa.getRetroFeedMessages(true),
+    getMessageCorrectAnswer: function (npts, instanceId) {
+        const mOptions = $eXeSopa.instances[instanceId],
+            messageCorrect = $eXeSopa.getRetroFeedMessages(true, instanceId),
             message =
                 messageCorrect + ' ' + npts + ' ' + mOptions.msgs.msgPoints;
         return message;
     },
 
-    getMessageErrorAnswer: function () {
-        return $eXeSopa.getRetroFeedMessages(false);
+    getMessageErrorAnswer: function (instanceId) {
+        return $eXeSopa.getRetroFeedMessages(false, instanceId);
     },
 
     drawImage: function (image, mData) {
@@ -971,7 +1012,7 @@ var $eXeSopa = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,
@@ -998,7 +1039,6 @@ var $eXeSopa = {
             y: yImagen,
         };
     },
-
 };
 $(function () {
     $eXeSopa.init();
@@ -1012,7 +1052,7 @@ $(function () {
  * For all details and documentation:
  *     http://github.com/bunkat/wordfind
  */
-(function () {
+((function () {
     'use strict';
     ('undefined' != typeof exports && null !== exports
         ? exports
@@ -1020,15 +1060,15 @@ $(function () {
     ).wordfind = (function () {
         let t = 'abcdefghijklmnoprstuvwy';
         var n = [
-            'horizontal',
-            'horizontalBack',
-            'vertical',
-            'verticalUp',
-            'diagonal',
-            'diagonalUp',
-            'diagonalBack',
-            'diagonalUpBack',
-        ],
+                'horizontal',
+                'horizontalBack',
+                'vertical',
+                'verticalUp',
+                'diagonal',
+                'diagonalUp',
+                'diagonalBack',
+                'diagonalUpBack',
+            ],
             r = {
                 horizontal: function (t, n, r) {
                     return {
@@ -1170,44 +1210,44 @@ $(function () {
                 var o = l(t, n, e);
                 if (0 === o.length) return !1;
                 var a = o[Math.floor(Math.random() * o.length)];
-                return f(t, e, a.x, a.y, r[a.orientation]), !0;
+                return (f(t, e, a.x, a.y, r[a.orientation]), !0);
             },
             l = function (t, n, a) {
                 for (
                     var i = [],
-                    l = n.height,
-                    f = n.width,
-                    d = a.length,
-                    c = 0,
-                    h = 0,
-                    v = n.orientations.length;
+                        l = n.height,
+                        f = n.width,
+                        d = a.length,
+                        c = 0,
+                        h = 0,
+                        v = n.orientations.length;
                     h < v;
                     h++
                 )
                     for (
                         var g = n.orientations[h],
-                        p = e[g],
-                        $ = r[g],
-                        P = o[g],
-                        S = 0,
-                        x = 0;
+                            p = e[g],
+                            $ = r[g],
+                            P = o[g],
+                            S = 0,
+                            x = 0;
                         x < l;
 
                     )
                         if (p(S, x, l, f, d)) {
                             var w = u(a, t, S, x, $);
-                            (w >= c || (!n.preferOverlap && w > -1)) &&
+                            ((w >= c || (!n.preferOverlap && w > -1)) &&
                                 ((c = w),
-                                    i.push({
-                                        x: S,
-                                        y: x,
-                                        orientation: g,
-                                        overlap: w,
-                                    })),
-                                ++S >= f && ((S = 0), x++);
+                                i.push({
+                                    x: S,
+                                    y: x,
+                                    orientation: g,
+                                    overlap: w,
+                                })),
+                                ++S >= f && ((S = 0), x++));
                         } else {
                             var z = P(S, x, d);
-                            (S = z.x), (x = z.y);
+                            ((S = z.x), (x = z.y));
                         }
                 return n.preferOverlap ? s(i, c) : i;
             },
@@ -1238,42 +1278,42 @@ $(function () {
                 if (!r.length) throw Error('Zero words provided');
                 for (
                     var o,
-                    i,
-                    l = 0,
-                    u = 0,
-                    s = e || {},
-                    f = (o = r.slice(0).sort())[0].length,
-                    d = {
-                        height: s.height || f,
-                        width: s.width || f,
-                        orientations: s.orientations || n,
-                        fillBlanks: void 0 === s.fillBlanks || s.fillBlanks,
-                        allowExtraBlanks:
-                            void 0 === s.allowExtraBlanks ||
-                            s.allowExtraBlanks,
-                        maxAttempts: s.maxAttempts || 3,
-                        maxGridGrowth:
-                            void 0 !== s.maxGridGrowth
-                                ? s.maxGridGrowth
-                                : 10,
-                        preferOverlap:
-                            void 0 === s.preferOverlap || s.preferOverlap,
-                    };
+                        i,
+                        l = 0,
+                        u = 0,
+                        s = e || {},
+                        f = (o = r.slice(0).sort())[0].length,
+                        d = {
+                            height: s.height || f,
+                            width: s.width || f,
+                            orientations: s.orientations || n,
+                            fillBlanks: void 0 === s.fillBlanks || s.fillBlanks,
+                            allowExtraBlanks:
+                                void 0 === s.allowExtraBlanks ||
+                                s.allowExtraBlanks,
+                            maxAttempts: s.maxAttempts || 3,
+                            maxGridGrowth:
+                                void 0 !== s.maxGridGrowth
+                                    ? s.maxGridGrowth
+                                    : 10,
+                            preferOverlap:
+                                void 0 === s.preferOverlap || s.preferOverlap,
+                        };
                     !i;
 
                 ) {
-                    for (; !i && l++ < d.maxAttempts;) i = a(o, d);
+                    for (; !i && l++ < d.maxAttempts; ) i = a(o, d);
                     if (!i) {
                         if (++u > d.maxGridGrowth)
                             throw Error(
-                                `No valid ${d.width}x${d.height} grid found and not allowed to grow more`,
+                                `No valid ${d.width}x${d.height} grid found and not allowed to grow more`
                             );
-                        console.log(
-                            `No valid ${d.width}x${d.height} grid found after ${l - 1} attempts, trying with bigger grid`,
+                        (console.log(
+                            `No valid ${d.width}x${d.height} grid found after ${l - 1} attempts, trying with bigger grid`
                         ),
                             d.height++,
                             d.width++,
-                            (l = 0);
+                            (l = 0));
                     }
                 }
                 if (d.fillBlanks) {
@@ -1283,20 +1323,20 @@ $(function () {
                     'function' == typeof d.fillBlanks
                         ? (h = d.fillBlanks)
                         : 'string' == typeof d.fillBlanks
-                            ? ((c = d.fillBlanks.toLowerCase().split('')),
-                                (h = () => c.pop() || (v++ && '')))
-                            : (h = () => t[Math.floor(Math.random() * t.length)]);
+                          ? ((c = d.fillBlanks.toLowerCase().split('')),
+                            (h = () => c.pop() || (v++ && '')))
+                          : (h = () => t[Math.floor(Math.random() * t.length)]);
                     var g = this.fillBlanks({
                         puzzle: i,
                         extraLetterGenerator: h,
                     });
                     if (c && c.length)
                         throw Error(
-                            `Some extra letters provided were not used: ${c}`,
+                            `Some extra letters provided were not used: ${c}`
                         );
                     if (c && v && !d.allowExtraBlanks)
                         throw Error(
-                            `${v} extra letters were missing to fill the grid`,
+                            `${v} extra letters were missing to fill the grid`
                         );
                     var p = 100 * (1 - g / (d.width * d.height));
                 }
@@ -1314,7 +1354,7 @@ $(function () {
                         o.splice(e, 1);
                         try {
                             return this.newPuzzleLax(o, n);
-                        } catch (a) { }
+                        } catch (a) {}
                     }
                     throw r;
                 }
@@ -1328,15 +1368,15 @@ $(function () {
             solve: function (t, r) {
                 for (
                     var e = {
-                        height: t.length,
-                        width: t[0].length,
-                        orientations: n,
-                        preferOverlap: !0,
-                    },
-                    o = [],
-                    a = [],
-                    i = 0,
-                    u = r.length;
+                            height: t.length,
+                            width: t[0].length,
+                            orientations: n,
+                            preferOverlap: !0,
+                        },
+                        o = [],
+                        a = [],
+                        i = 0,
+                        u = r.length;
                     i < u;
                     i++
                 ) {
@@ -1357,7 +1397,7 @@ $(function () {
                         n += ('' === o[a] ? ' ' : o[a]) + ' ';
                     n += '\n';
                 }
-                return console.log(n), n;
+                return (console.log(n), n);
             },
         };
     })();
@@ -1365,22 +1405,22 @@ $(function () {
     (function (t, n, r) {
         'use strict';
         var e = function (t, r) {
-            for (var e = '', o = 0, a = r.length; o < a; o++) {
-                var i = r[o];
-                e += '<div>';
-                for (var l = 0, u = i.length; l < u; l++)
-                    (e +=
-                        '<button class="SPP-PuzzleSquare" x="' +
-                        l +
-                        '" y="' +
-                        o +
-                        '">'),
-                        (e += i[l] || '&nbsp;'),
-                        (e += '</button>');
-                e += '</div>';
-            }
-            n(t).html(e);
-        },
+                for (var e = '', o = 0, a = r.length; o < a; o++) {
+                    var i = r[o];
+                    e += '<div>';
+                    for (var l = 0, u = i.length; l < u; l++)
+                        ((e +=
+                            '<button class="SPP-PuzzleSquare" x="' +
+                            l +
+                            '" y="' +
+                            o +
+                            '">'),
+                            (e += i[l] || '&nbsp;'),
+                            (e += '</button>'));
+                    e += '</div>';
+                }
+                n(t).html(e);
+            },
             o = function (t, n, e, o) {
                 for (var a in r.orientations) {
                     var i = (0, r.orientations[a])(t, n, 1);
@@ -1389,6 +1429,10 @@ $(function () {
                 return null;
             },
             a = function (a, i) {
+                // Extraer instanceId de las opciones
+                var instanceId = i.instanceId || 0;
+                var $container = n('#sopaMainContainer-' + instanceId);
+                
                 var l,
                     u,
                     s,
@@ -1397,23 +1441,23 @@ $(function () {
                     c = [],
                     h = '',
                     v = function (t) {
-                        t.preventDefault(),
+                        (t.preventDefault(),
                             n(this).addClass('selected'),
                             (f = this),
                             c.push(this),
-                            (h = n(this).text());
+                            (h = n(this).text()));
                     },
-                    g = function (n) {
-                        n.preventDefault();
-                        var r =
-                            n.originalEvent.touches[0] ||
-                            n.originalEvent.changedTouches[0],
-                            e = r.clientX,
-                            o = r.clientY;
-                        $(t.elementFromPoint(e, o));
+                    g = function (r) {
+                        r.preventDefault();
+                        var e =
+                                r.originalEvent.touches[0] ||
+                                r.originalEvent.changedTouches[0],
+                            o = e.clientX,
+                            a = e.clientY;
+                        $(t.elementFromPoint(o, a));
                     },
                     p = function (t) {
-                        t.preventDefault(), $(this);
+                        (t.preventDefault(), $(this));
                     },
                     $ = function (t) {
                         if (f) {
@@ -1425,27 +1469,27 @@ $(function () {
                                         r = a + 1;
                                         break;
                                     }
-                                for (; r < c.length;)
-                                    n(c[c.length - 1]).removeClass('selected'),
+                                for (; r < c.length; )
+                                    (n(c[c.length - 1]).removeClass('selected'),
                                         c.splice(r, 1),
-                                        (h = h.substr(0, h.length - 1));
+                                        (h = h.substr(0, h.length - 1)));
                                 var l = o(
                                     n(f).attr('x') - 0,
                                     n(f).attr('y') - 0,
                                     n(t).attr('x') - 0,
-                                    n(t).attr('y') - 0,
+                                    n(t).attr('y') - 0
                                 );
                                 l &&
                                     ((c = [f]),
-                                        (h = n(f).text()),
-                                        e !== f &&
+                                    (h = n(f).text()),
+                                    e !== f &&
                                         (n(e).removeClass('selected'), (e = f)),
-                                        (d = l));
+                                    (d = l));
                                 var u = o(
                                     n(e).attr('x') - 0,
                                     n(e).attr('y') - 0,
                                     n(t).attr('x') - 0,
-                                    n(t).attr('y') - 0,
+                                    n(t).attr('y') - 0
                                 );
                                 u && ((d && d !== u) || ((d = u), P(t)));
                             }
@@ -1454,9 +1498,9 @@ $(function () {
                     P = function (t) {
                         for (var r = 0, e = l.length; r < e; r++)
                             if (0 === l[r].indexOf(h + n(t).text())) {
-                                n(t).addClass('selected'),
+                                (n(t).addClass('selected'),
                                     c.push(t),
-                                    (h += n(t).text());
+                                    (h += n(t).text()));
                                 break;
                             }
                     },
@@ -1475,49 +1519,50 @@ $(function () {
                                     $eXeSopa &&
                                     typeof $eXeSopa.updateScore == 'function'
                                 ) {
-                                    n('.selected').addClass('found'),
+                                    ($container.find('.selected').addClass('found'),
                                         $eXeSopa.updateScore(
                                             s.length - l.length,
                                             r,
                                             e,
+                                            instanceId
                                         ),
-                                        l.splice(o, 1);
+                                        l.splice(o, 1));
                                 }
                             }
                             0 === l.length &&
-                                ($eXeSopa.gameOver(0),
-                                    n('.SPP-PuzzleSquare').addClass('complete'));
+                                ($eXeSopa.gameOver(0, instanceId),
+                                $container.find('.SPP-PuzzleSquare').addClass('complete'));
                         }
-                        n('.selected').removeClass('selected'),
+                        ($container.find('.selected').removeClass('selected'),
                             (f = null),
                             (c = []),
                             (h = ''),
-                            (d = null);
+                            (d = null));
                     };
-                n('input.SSP-Word').removeClass('SPP-WordFound'),
-                    (l = n('input.SSP-Word')
+                ($container.find('input.SSP-Word').removeClass('SPP-WordFound'),
+                    (l = $container.find('input.SSP-Word')
                         .toArray()
                         .map((t) => t.value.toLowerCase())
                         .filter((t) => t)
                         .sort()),
-                    (s = n('input.SSP-Word')
+                    (s = $container.find('input.SSP-Word')
                         .toArray()
                         .map((t) => t.value)
                         .filter((t) => t)),
-                    e(a, (u = r.newPuzzleLax(l, $eXeSopa.optionsPuzzle))),
-                    n('.SPP-PuzzleSquare').click(function (t) {
+                    e(a, (u = r.newPuzzleLax(l, i.orientations))),
+                    $container.find('.SPP-PuzzleSquare').click(function (t) {
                         t.preventDefault();
                     }),
                     window.navigator.msPointerEnabled
-                        ? (n('.SPP-PuzzleSquare').on('MSPointerDown', v),
-                            n('.SPP-PuzzleSquare').on('MSPointerOver', $),
-                            n('.SPP-PuzzleSquare').on('MSPointerUp', S))
-                        : (n('.SPP-PuzzleSquare').mousedown(v),
-                            n('.SPP-PuzzleSquare').mouseenter(p),
-                            n('.SPP-PuzzleSquare').mouseup(S),
-                            n('.SPP-PuzzleSquare').on('touchstart', v),
-                            n('.SPP-PuzzleSquare').on('touchmove', g),
-                            n('.SPP-PuzzleSquare').on('touchend', S)),
+                        ? ($container.find('.SPP-PuzzleSquare').on('MSPointerDown', v),
+                          $container.find('.SPP-PuzzleSquare').on('MSPointerOver', $),
+                          $container.find('.SPP-PuzzleSquare').on('MSPointerUp', S))
+                        : ($container.find('.SPP-PuzzleSquare').mousedown(v),
+                          $container.find('.SPP-PuzzleSquare').mouseenter(p),
+                          $container.find('.SPP-PuzzleSquare').mouseup(S),
+                          $container.find('.SPP-PuzzleSquare').on('touchstart', v),
+                          $container.find('.SPP-PuzzleSquare').on('touchmove', g),
+                          $container.find('.SPP-PuzzleSquare').on('touchend', S)),
                     (this.solve = function () {
                         for (
                             var t = r.solve(u, l).found, e = 0, o = t.length;
@@ -1529,52 +1574,52 @@ $(function () {
                                 s = t[e].x,
                                 f = t[e].y,
                                 d = r.orientations[i],
-                                c = n('input.SSP-Word[value="' + a + '"]');
+                                c = $container.find('input.SSP-Word[value="' + a + '"]');
                             if (!c.hasClass('SPP-WordFound')) {
                                 for (var h = 0, v = a.length; h < v; h++) {
                                     var g = d(s, f, h);
-                                    n(
-                                        '[x="' + g.x + '"][y="' + g.y + '"]',
+                                    $container.find(
+                                        '[x="' + g.x + '"][y="' + g.y + '"]'
                                     ).addClass('solved');
                                 }
                                 c.addClass('SPP-WordFound');
                             }
                         }
-                    });
+                    }));
             };
-        (a.emptySquaresCount = function () {
+        ((a.emptySquaresCount = function () {
             var t = n('.SPP-PuzzleSquare').toArray();
             return t.length - t.filter((t) => t.textContent.trim()).length;
         }),
             (a.insertWordBefore = function (t, r) {
                 n(
                     '<li><input class="SSP-Word" value="' +
-                    (r || '') +
-                    '"></li>',
+                        (r || '') +
+                        '"></li>'
                 ).insertBefore(t);
             }),
             (a.append = function (t, r, e, o, a, i) {
                 n(
                     '<li class="Sopa-Li"><span>' +
-                    (o + 1) +
-                    '.-  </span>' +
-                    (a
-                        ? '<a href="#" data-mnumber="' +
-                        o +
-                        '" class="SPP-LinkImage" title="">      <div class="SopaIcons SopaIcon-Image SPP-Activo"></div>      </a>'
-                        : '') +
-                    ' ' +
-                    (i
-                        ? '<a href="#" data-mnumber="' +
-                        o +
-                        '" class="SPP-LinkSound" title=""><div class="SopaIcons SopaIcon-Audio SPP-Activo"></div></a>'
-                        : '') +
-                    '<span>' +
-                    (e || '') +
-                    '</span><input class="SSP-Word SPP-WordsHide" value="' +
-                    (r || '') +
-                    '"></li>',
+                        (o + 1) +
+                        '.-  </span>' +
+                        (a
+                            ? '<a href="#" data-mnumber="' +
+                              o +
+                              '" class="SPP-LinkImage" title="">      <div class="SopaIcons SopaIcon-Image SPP-Activo"></div>      </a>'
+                            : '') +
+                        ' ' +
+                        (i
+                            ? '<a href="#" data-mnumber="' +
+                              o +
+                              '" class="SPP-LinkSound" title=""><div class="SopaIcons SopaIcon-Audio SPP-Activo"></div></a>'
+                            : '') +
+                        '<span>' +
+                        (e || '') +
+                        '</span><input class="SSP-Word SPP-WordsHide" value="' +
+                        (r || '') +
+                        '"></li>'
                 ).appendTo(t);
             }),
-            (window.WordFindGame = a);
-    })(document, jQuery, wordfind);
+            (window.WordFindGame = a));
+    })(document, jQuery, wordfind));
