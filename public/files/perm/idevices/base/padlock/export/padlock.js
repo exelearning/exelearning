@@ -37,7 +37,12 @@ var $padlock = {
     mScorm: null,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Padlock', 'padlock', 'candado-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Padlock',
+            'padlock',
+            'candado-IDevice'
+        );
     },
 
     enable: function () {
@@ -86,7 +91,7 @@ var $padlock = {
             $('#candadoMessageMaximize-' + i).text(msg);
 
             $('#candadoInstructions-' + i).append(
-                $('.candado-instructions', this),
+                $('.candado-instructions', this)
             );
             $('#candadoFeedRetro-' + i).append($('.candado-retro', this));
             $('#candadoMainContainer-' + i)
@@ -98,9 +103,7 @@ var $padlock = {
             $padlock.addEvents(i);
             $('#candadoMainContainer-' + i).show();
         });
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.candado-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.candado-IDevice');
     },
 
     createInterfaceCandado: function (instance) {
@@ -181,14 +184,14 @@ var $padlock = {
             };
         localStorage.setItem(
             'dataCandado-' + mOptions.id,
-            JSON.stringify(data),
+            JSON.stringify(data)
         );
     },
 
     getCandadoData: function (instance) {
         const mOptions = $padlock.options[instance];
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataCandado-' + mOptions.id),
+            localStorage.getItem('dataCandado-' + mOptions.id)
         );
     },
 
@@ -301,7 +304,7 @@ var $padlock = {
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -336,7 +339,10 @@ var $padlock = {
         mOptions.counterClock = setInterval(() => {
             let $node = $('#candadoMainContainer-' + instance);
             let $content = $('#node-content');
-            if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+            if (
+                !$node.length ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
                 clearInterval(mOptions.counterClock);
                 return;
             }
@@ -376,7 +382,7 @@ var $padlock = {
         $('#candadoShowRetro-' + instance).focus();
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#candadoMainContainer-' + instance,
+            '#candadoMainContainer-' + instance
         );
     },
 
@@ -384,8 +390,8 @@ var $padlock = {
         const adjustedTime = tiempo < 0 ? 0 : tiempo;
         $('#candadoPTime-' + instance).text(
             $exeDevices.iDevice.gamification.helpers.getTimeToString(
-                adjustedTime,
-            ),
+                adjustedTime
+            )
         );
     },
 
@@ -434,11 +440,11 @@ var $padlock = {
 
     checkWord: function (answord, word) {
         const normalize = (str) =>
-            str
-                .trim()
-                .replace(/\s+/g, ' ')
-                .toUpperCase()
-                .replace(/[.,;]$/, ''),
+                str
+                    .trim()
+                    .replace(/\s+/g, ' ')
+                    .toUpperCase()
+                    .replace(/[.,;]$/, ''),
             sWord = normalize(word),
             sAnsWord = normalize(answord);
 
@@ -484,7 +490,7 @@ var $padlock = {
         mOptions.scorerp = 10;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $padlock.isInExe,
+            $padlock.isInExe
         );
     },
 

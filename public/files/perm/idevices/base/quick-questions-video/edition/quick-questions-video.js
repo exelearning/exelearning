@@ -45,7 +45,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
         this.setMessagesInfo();
         this.createForm();
@@ -66,7 +66,9 @@ var $exeDevice = {
             msgNewGame: c_('Click here for a new game'),
             msgYouHas: c_('You have got %1 hits and %2 misses'),
             msgCodeAccess: c_('Access code'),
-            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgInformationLooking: c_(
+                'Cool! The information you were looking for'
+            ),
             msgErrors: c_('Errors'),
             msgHits: c_('Hits'),
             msgScore: c_('Score'),
@@ -84,11 +86,21 @@ var $exeDevice = {
             msgLoseLive: c_('You lost one life'),
             msgLostLives: c_('You lost all your lives!'),
             msgAllQuestions: c_('Questions completed!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgNotNetwork: c_('You can only play this game with internet connection.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgNotNetwork: c_(
+                'You can only play this game with internet connection.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgQuestion: c_('Question'),
             msgAnswer: c_('Answer'),
             msgOnlySaveScore: c_('You can only save the score once!'),
@@ -96,17 +108,29 @@ var $exeDevice = {
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
             msgClose: c_('Close'),
             msgOption: c_('Option'),
             msgRickText: c_('Rich Text'),
-            msgUseFulInformation: c_('and information that will be very useful'),
+            msgUseFulInformation: c_(
+                'and information that will be very useful'
+            ),
             msgLoading: c_('Loading. Please wait...'),
             msgPoints: c_('points'),
             msgIndicateWord: c_('Provide a word or phrase'),
@@ -128,35 +152,63 @@ var $exeDevice = {
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Video test'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideDefinition = _('Please provide the word definition or the valid URL of an image');
-        msgs.msgESelectFile = _('The selected file does not contain a valid game');
-        msgs.msgEURLValid = _('You must upload or indicate the valid URL of an image');
+        msgs.msgEProvideDefinition = _(
+            'Please provide the word definition or the valid URL of an image'
+        );
+        msgs.msgESelectFile = _(
+            'The selected file does not contain a valid game'
+        );
+        msgs.msgEURLValid = _(
+            'You must upload or indicate the valid URL of an image'
+        );
         msgs.msgEProvideWord = _('Please provide one word or phrase');
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgEUnavailableVideo = _('This video is not currently available');
         msgs.msgECompleteQuestion = _('You have to complete the question');
-        msgs.msgECompleteAllOptions = _('You have to complete all the selected options');
+        msgs.msgECompleteAllOptions = _(
+            'You have to complete all the selected options'
+        );
         msgs.msgESelectSolution = _('Choose the right answer');
         msgs.msgECompleteURLYoutube = _('Please type or paste a valid URL.');
-        msgs.msgEStartEndVideo = _('You have to indicate the start and the end of the video that you want to show');
-        msgs.msgEStartEndIncorrect = _('The video end value must be higher than the start one');
+        msgs.msgEStartEndVideo = _(
+            'You have to indicate the start and the end of the video that you want to show'
+        );
+        msgs.msgEStartEndIncorrect = _(
+            'The video end value must be higher than the start one'
+        );
         msgs.msgWriteText = _('You have to type a text in the editor');
-        msgs.msgEPoiIncorrect = _('That second is not part of the video. Please check the video duration.');
+        msgs.msgEPoiIncorrect = _(
+            'That second is not part of the video. Please check the video duration.'
+        );
         msgs.msgEPointExist = _('There is already a question in that second.');
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideSolution = _('Please write the solution');
-        msgs.msgEDefintion = _('Please provide the definition of the word or phrase');
-        msgs.msgProvideFB = _('Write the message to be displayed when passing the game');
-        msgs.msgDuration = _("The video's end time must be shorter than its total duration");
-        msgs.msgFormatVideo = _('Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)');
-        msgs.msgExportFileError = _("Games with local videos or audios can't be exported");
-        msgs.msgNoSuportBrowser = _('Your browser is not compatible with this tool.');
-        msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
+        msgs.msgEDefintion = _(
+            'Please provide the definition of the word or phrase'
+        );
+        msgs.msgProvideFB = _(
+            'Write the message to be displayed when passing the game'
+        );
+        msgs.msgDuration = _(
+            "The video's end time must be shorter than its total duration"
+        );
+        msgs.msgFormatVideo = _(
+            'Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)'
+        );
+        msgs.msgExportFileError = _(
+            "Games with local videos or audios can't be exported"
+        );
+        msgs.msgNoSuportBrowser = _(
+            'Your browser is not compatible with this tool.'
+        );
+        msgs.msgIDLenght = _(
+            'The report identifier must have at least 5 characters'
+        );
     },
 
     getId: function () {
@@ -243,12 +295,12 @@ var $exeDevice = {
             $exeDevice.durationVideo = lduration;
             if (
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                    $('#vquextEVIEnd').val(),
+                    $('#vquextEVIEnd').val()
                 ) == 0
             ) {
                 const duration =
                     $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                        lduration,
+                        lduration
                     );
                 $('#vquextEVIEnd').val(duration);
             }
@@ -266,15 +318,21 @@ var $exeDevice = {
             $exeDevice.startVideo(
                 url,
                 $exeDevice.startVideoQuExt,
-                $exeDevice.endVideoQuExt,
+                $exeDevice.endVideoQuExt
             );
             $exeDevice.showPlayer();
             // Si no hay fin establecido y ya tenemos duración, fijarlo
             if (typeof $exeDevice.player.getDuration === 'function') {
                 const lduration = Math.floor($exeDevice.player.getDuration());
-                const currentEnd = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#vquextEVIEnd').val() || '00:00:00');
+                const currentEnd =
+                    $exeDevices.iDevice.gamification.helpers.hourToSeconds(
+                        $('#vquextEVIEnd').val() || '00:00:00'
+                    );
                 if (!isNaN(lduration) && lduration > 0 && currentEnd === 0) {
-                    const durationStr = $exeDevices.iDevice.gamification.helpers.secondsToHour(lduration);
+                    const durationStr =
+                        $exeDevices.iDevice.gamification.helpers.secondsToHour(
+                            lduration
+                        );
                     $('#vquextEVIEnd').val(durationStr);
                     $exeDevice.durationVideo = lduration;
                     $exeDevice.endVideoQuExt = lduration;
@@ -374,7 +432,7 @@ var $exeDevice = {
             if (typeof $exeDevice.player.getCurrentTime === 'function') {
                 const time =
                     $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                        $exeDevice.player.getCurrentTime(),
+                        $exeDevice.player.getCurrentTime()
                     );
                 $('#vquextEVITime').text(time);
             }
@@ -384,12 +442,15 @@ var $exeDevice = {
                     $exeDevice.durationVideo = lduration;
                     if ($exeDevice.endVideoQuExt < 1) {
                         $exeDevice.endVideoQuExt = $exeDevice.durationVideo;
-                        const currentEnd = $exeDevices.iDevice.gamification.helpers.hourToSeconds($('#vquextEVIEnd').val() || '00:00:00');
+                        const currentEnd =
+                            $exeDevices.iDevice.gamification.helpers.hourToSeconds(
+                                $('#vquextEVIEnd').val() || '00:00:00'
+                            );
                         if (currentEnd === 0) {
                             $('#vquextEVIEnd').val(
                                 $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                                    $exeDevice.durationVideo,
-                                ),
+                                    $exeDevice.durationVideo
+                                )
                             );
                         }
                     }
@@ -402,7 +463,7 @@ var $exeDevice = {
         $('#progress-bar').val(
             ($eXeDevice.player.getCurrentTime() /
                 $eXeDevice.player.getDuration()) *
-            100,
+                100
         );
     },
 
@@ -436,10 +497,13 @@ var $exeDevice = {
             $exeDevice.durationVideo = Math.floor(this.duration);
             const endVideo =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                    $('#vquextEVIEnd').val(),
+                    $('#vquextEVIEnd').val()
                 ) || 0;
             if (endVideo < 1) {
-                const endStr = $exeDevices.iDevice.gamification.helpers.secondsToHour($exeDevice.durationVideo);
+                const endStr =
+                    $exeDevices.iDevice.gamification.helpers.secondsToHour(
+                        $exeDevice.durationVideo
+                    );
                 $('#vquextEVIEnd').val(endStr);
                 $exeDevice.endVideoQuExt = $exeDevice.durationVideo;
             }
@@ -454,7 +518,7 @@ var $exeDevice = {
         ) {
             const currentTime = $exeDevice.localPlayer.currentTime,
                 time = $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                    Math.floor(currentTime),
+                    Math.floor(currentTime)
                 );
             $('#vquextEVITime').text(time);
             if (
@@ -472,7 +536,7 @@ var $exeDevice = {
             $('#progress-bar').val(
                 (Math.round($exeDevice.localPlayer.currentTime) /
                     Math.round($exeDevice.localPlayer.duration)) *
-                100,
+                    100
             );
         }
     },
@@ -549,16 +613,16 @@ var $exeDevice = {
     },
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#vquextEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#vquextEPercentajeQuestions').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
         let num = Math.max(
             Math.round((percentaje * $exeDevice.questionsGame.length) / 100),
-            1,
+            1
         );
         $('#vquextENumeroPercentaje').text(
-            `${num}/${$exeDevice.questionsGame.length}`,
+            `${num}/${$exeDevice.questionsGame.length}`
         );
     },
 
@@ -609,22 +673,22 @@ var $exeDevice = {
 
         $(
             "input.VDQXTE-Number[name='vqxnumber'][value='" +
-            p.numberOptions +
-            "']",
+                p.numberOptions +
+                "']"
         ).prop('checked', true);
         $(
             "input.VDQXTE-ESolution[name='vqxsolution'][value='" +
-            p.solution +
-            "']",
+                p.solution +
+                "']"
         ).prop('checked', true);
         $("input.VDQXTE-Times[name='vqxtime'][value='" + p.time + "']").prop(
             'checked',
-            true,
+            true
         );
         $(
             "input.VDQXTE-TypeQuestion[name='vquexttypequestion'][value='" +
-            p.typeQuestion +
-            "']",
+                p.typeQuestion +
+                "']"
         ).prop('checked', true);
     },
 
@@ -656,7 +720,6 @@ var $exeDevice = {
             $('#vquextENoImageVideo').toggle(!imageVideo);
             $exeDevice.muteVideo(!soundVideo);
         }
-
     },
 
     showPlayer: function () {
@@ -688,11 +751,11 @@ var $exeDevice = {
         $('#vquextPoint, #vquextEInitVideo, #vquextEEndVideo').val('00:00:00');
         $('#vquextECheckSoundVideo, #vquextECheckImageVideo').prop(
             'checked',
-            true,
+            true
         );
 
         $(
-            '#vquextEQuestion, #vquextESolutionWord, #vquextEDefinitionWord, #vquextEMessageOK, #vquextEMessageKO',
+            '#vquextEQuestion, #vquextESolutionWord, #vquextEDefinitionWord, #vquextEMessageOK, #vquextEMessageKO'
         ).val('');
 
         $('.VDQXTE-EAnwersOptions').val('');
@@ -710,7 +773,7 @@ var $exeDevice = {
         const hours = String(Math.floor(totalSec / 3600)).padStart(2, '0'),
             minutes = String(Math.floor((totalSec % 3600) / 60)).padStart(
                 2,
-                '0',
+                '0'
             ),
             seconds = String(totalSec % 60).padStart(2, '0');
         return `${hours}:${minutes}:${seconds}`;
@@ -895,7 +958,7 @@ var $exeDevice = {
                                         <option value="4">5m</option>
                                         <option value="5">10m</option>
                                     </select>
-                                    <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_("Accept")}</button> 
+                                    <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                                 </div>
                                 <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
                                     <div class="toggle-item mb-0">
@@ -1203,7 +1266,7 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
 
@@ -1222,7 +1285,9 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.answersRamdon = game.answersRamdon || false;
         game.percentajeFB =
             typeof game.percentajeFB != 'undefined' ? game.percentajeFB : 100;
@@ -1273,25 +1338,25 @@ var $exeDevice = {
         $('#vquextEVIURL').val(game.idVideoQuExt);
         $('#vquextEVIEnd').val(
             $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                game.endVideoQuExt,
-            ),
+                game.endVideoQuExt
+            )
         );
         $('#vquextEVIStart').val(
             $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                game.startVideoQuExt,
-            ),
+                game.startVideoQuExt
+            )
         );
         $('#vquextEHasFeedBack').prop('checked', game.feedBack);
         $('#vquextEPercentajeFB').val(game.percentajeFB);
         $(
             "input.VDQXTE-TypeGame[name='vqxtgamemode'][value='" +
-            game.gameMode +
-            "']",
+                game.gameMode +
+                "']"
         ).prop('checked', true);
         $('#vquextEUseLives').prop('disabled', game.gameMode != 0);
         $('#vquextENumberLives').prop(
             'disabled',
-            game.gameMode != 0 && !game.useLives,
+            game.gameMode != 0 && !game.useLives
         );
         $('#vquextECustomMessages').prop('checked', game.customMessages);
         $('#vquextEAuthor').val(game.authorVideo);
@@ -1309,7 +1374,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
-            game.repeatActivity,
+            game.repeatActivity
         );
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.videoType =
@@ -1346,7 +1411,7 @@ var $exeDevice = {
     updateGameMode: function (gamemode, feedback, useLives) {
         $('#vquextEUseLives, #vquextENumberLives, #vquextEPercentajeFB').prop(
             'disabled',
-            true,
+            true
         );
         $('#vquextEHasFeedBack')
             .prop('disabled', gamemode === 2)
@@ -1402,11 +1467,11 @@ var $exeDevice = {
         $exeDevice.localPlayer.removeEventListener(
             'timeupdate',
             $exeDevice.timeUpdateVideoLocal,
-            false,
+            false
         );
         $exeDevice.localPlayer.removeEventListener(
             'loadedmetadata',
-            $exeDevice.getDataVideoLocal,
+            $exeDevice.getDataVideoLocal
         );
 
         $exeDevice.changesSaved = true;
@@ -1425,8 +1490,6 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent() || '',
             textFeedBack =
                 tinyMCE.get('vquextEFeedBackEditor').getContent() || '';
-
-
 
         let html = '<div class="vquext-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
@@ -1462,11 +1525,11 @@ var $exeDevice = {
             idVideoQuExt = $('#vquextEVIURL').val().trim(),
             startVideoQuExt =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                    $('#vquextEVIStart').val(),
+                    $('#vquextEVIStart').val()
                 ),
             endVideoQuExt =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                    $('#vquextEVIEnd').val(),
+                    $('#vquextEVIEnd').val()
                 ),
             validExtAudio = ['mp3', 'wav'],
             validExt = ['mp4', 'ogg', 'webm', 'ogv'],
@@ -1481,13 +1544,13 @@ var $exeDevice = {
                     .startsWith('https://drive.google.com') &&
                     idVideoQuExt.toLowerCase().includes('sharing')),
             isMediaTeca = idVideoQuExt.startsWith(
-                'https://mediateca.educa.madrid.org/',
+                'https://mediateca.educa.madrid.org/'
             );
 
         if (
             (videoType === 0 &&
                 !$exeDevices.iDevice.gamification.media.getIDYoutube(
-                    idVideoQuExt,
+                    idVideoQuExt
                 )) ||
             (videoType === 1 && !isVideoLocal) ||
             (videoType === 2 && !isAudio) ||
@@ -1509,7 +1572,7 @@ var $exeDevice = {
         p.id = questionsGame[active].id;
         p.type = 3;
         p.pointVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-            $('#vquextPoint').val(),
+            $('#vquextPoint').val()
         );
         p.time = parseInt($('input[name=vqxtime]:checked').val());
         p.numberOptions = parseInt($('input[name=vqxnumber]:checked').val());
@@ -1526,7 +1589,7 @@ var $exeDevice = {
         p.fVideo = 0;
         p.eText = '';
         p.typeQuestion = parseInt(
-            $('input[name=vquexttypequestion]:checked').val(),
+            $('input[name=vquexttypequestion]:checked').val()
         );
         p.quextion =
             p.typeQuestion === 1
@@ -1587,11 +1650,11 @@ var $exeDevice = {
     validateData: function () {
         const clear = $exeDevice.removeTags,
             instructionsExe = escape(
-                tinyMCE.get('eXeGameInstructions').getContent(),
+                tinyMCE.get('eXeGameInstructions').getContent()
             ),
             textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
             textFeedBack = escape(
-                tinyMCE.get('vquextEFeedBackEditor').getContent(),
+                tinyMCE.get('vquextEFeedBackEditor').getContent()
             ),
             showMinimize = $('#vquextEShowMinimize').is(':checked'),
             answersRamdon = $('#vquextEAnswersRamdon').is(':checked'),
@@ -1600,20 +1663,21 @@ var $exeDevice = {
             pauseVideo = $('#vquextEPauseVideo').is(':checked'),
             showSolution = $('#vquextEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
-                clear($('#vquextETimeShowSolution').val()),
+                clear($('#vquextETimeShowSolution').val())
             ),
             useLives = $('#vquextEUseLives').is(':checked'),
             numberLives = parseInt(clear($('#vquextENumberLives').val())),
             idVideoQuExt = $('#vquextEVIURL').val().trim(),
             endVideoQuExt =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                    $('#vquextEVIEnd').val(),
+                    $('#vquextEVIEnd').val()
                 ),
             startVideoQuExt =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                    $('#vquextEVIStart').val(),
+                    $('#vquextEVIStart').val()
                 ),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#vquextEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#vquextEPercentajeFB').val())),
             gameMode = parseInt($('input[name=vqxtgamemode]:checked').val()),
@@ -1635,13 +1699,13 @@ var $exeDevice = {
                     .startsWith('https://drive.google.com') &&
                     idVideoQuExt.toLowerCase().includes('sharing')),
             isMediaTeca = idVideoQuExt.startsWith(
-                'https://mediateca.educa.madrid.org/videos',
+                'https://mediateca.educa.madrid.org/videos'
             ),
             authorVideo = $('#vquextEAuthor').val(),
             isNavigable = $('#vquextENavigable').is(':checked'),
             repeatQuestion = $('#vquextERepeatQuestion').is(':checked'),
             percentajeQuestions = parseInt(
-                clear($('#vquextEPercentajeQuestions').val()),
+                clear($('#vquextEPercentajeQuestions').val())
             ),
             modeBoard = $('#vquextEModeBoard').is(':checked'),
             evaluation = $('#vquextEEvaluation').is(':checked'),
@@ -1658,7 +1722,7 @@ var $exeDevice = {
         if (
             ($exeDevice.videoType === 0 &&
                 !$exeDevices.iDevice.gamification.media.getIDYoutube(
-                    idVideoQuExt,
+                    idVideoQuExt
                 )) ||
             ($exeDevice.videoType === 1 && !isVideoLocal) ||
             ($exeDevice.videoType === 2 && !isAudio) ||
@@ -1705,7 +1769,7 @@ var $exeDevice = {
                     .every((opt) => opt.length > 0);
                 if (!completAnswer) {
                     $exeDevice.showMessage(
-                        $exeDevice.msgs.msgECompleteAllOptions,
+                        $exeDevice.msgs.msgECompleteAllOptions
                     );
                     return false;
                 }
@@ -1800,7 +1864,7 @@ var $exeDevice = {
             function () {
                 const type = parseInt($(this).val());
                 $exeDevice.showTypeQuestion(type);
-            },
+            }
         );
 
         $('#vquextEAdd').on('click', function (e) {
@@ -1894,7 +1958,7 @@ var $exeDevice = {
                         color: 'white',
                     });
                 }
-            },
+            }
         );
 
         $('#vquextPoint, #vquextEVIStart, #vquextEVIEnd').on(
@@ -1904,7 +1968,7 @@ var $exeDevice = {
                     'background-color': 'white',
                     color: '#2c6d2c',
                 });
-            },
+            }
         );
 
         $('#vquextPoint').css('color', '#2c6d2c');
@@ -2007,7 +2071,7 @@ var $exeDevice = {
                     fb = $('#vquextEHasFeedBack').is(':checked'),
                     ul = $('#vquextEUseLives').is(':checked');
                 $exeDevice.updateGameMode(gm, fb, ul);
-            },
+            }
         );
 
         $('#vquextEGameModeHelpLnk').click(function () {
@@ -2019,7 +2083,7 @@ var $exeDevice = {
             $exeDevice.startVideo(
                 $exeDevice.idVideoQuExt,
                 $exeDevice.pointStart,
-                $exeDevice.pointEnd,
+                $exeDevice.pointEnd
             );
             $exeDevice.showPlayer();
         }
@@ -2068,7 +2132,11 @@ var $exeDevice = {
             for (let i = 0; i < $exeDevice.questionsGame.length; i++) {
                 $exeDevice.questionsGame[i].time = selectedTime;
             }
-            $('input.VDQXTE-Times[name="vqxtime"][value="' + selectedTime + '"]').prop('checked', true);
+            $(
+                'input.VDQXTE-Times[name="vqxtime"][value="' +
+                    selectedTime +
+                    '"]'
+            ).prop('checked', true);
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
@@ -2088,7 +2156,7 @@ var $exeDevice = {
         localPlayer.removeEventListener(
             'timeupdate',
             timeUpdateVideoLocal,
-            false,
+            false
         );
         localPlayer.removeEventListener('loadedmetadata', getDataVideoLocal);
 
@@ -2099,7 +2167,7 @@ var $exeDevice = {
             localPlayer.addEventListener(
                 'timeupdate',
                 timeUpdateVideoLocal,
-                false,
+                false
             );
         } else {
             $exeDevice.timeUpdateInterval = setInterval(() => {

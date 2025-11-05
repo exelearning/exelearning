@@ -36,7 +36,12 @@ var $quickquestionsmultiplechoice = {
     mScorm: null,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Multiple Choice Quiz', 'quick-questions-multiple-choice', 'selecciona-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Multiple Choice Quiz',
+            'quick-questions-multiple-choice',
+            'selecciona-IDevice'
+        );
     },
 
     enable: function () {
@@ -69,7 +74,7 @@ var $quickquestionsmultiplechoice = {
                     dl,
                     imagesLink,
                     audioLink,
-                    version,
+                    version
                 ),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -96,7 +101,7 @@ var $quickquestionsmultiplechoice = {
             }
             $('#seleccionaMessageMaximize-' + i).text(msg);
             $('#seleccionaDivFeedBack-' + i).prepend(
-                $('.selecciona-feedback-game', this),
+                $('.selecciona-feedback-game', this)
             );
 
             $('#seleccionaDivFeedBack-' + i).hide();
@@ -118,11 +123,11 @@ var $quickquestionsmultiplechoice = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $quickquestionsmultiplechoice,
-                node,
+                node
             );
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.selecciona-IDevice',
+            '.selecciona-IDevice'
         );
 
         if ($quickquestionsmultiplechoice.hasVideo)
@@ -279,7 +284,7 @@ var $quickquestionsmultiplechoice = {
                 () => `
                         <strong class="sr-av">${msgs.msgLive}:</strong>
                         <div class="exeQuextIcons exeQuextIcons-Life" title="${msgs.msgLive}"></div>
-                    `,
+                    `
             )
             .join('');
         return lives;
@@ -290,7 +295,7 @@ var $quickquestionsmultiplechoice = {
                 (option, index) => `
             <div class="sr-av">${msgs.msgOption} ${option}:</div>
             <a href="#" class="SLCNP-Option${index + 1} SLCNP-Options" id="seleccionaOption${index + 1}-${instance}" data-number="${index}"></a>
-        `,
+        `
             )
             .join('');
 
@@ -307,8 +312,8 @@ var $quickquestionsmultiplechoice = {
 
     loadDataGame: function (data, imgsLink, audioLink) {
         let json = $exeDevices.iDevice.gamification.helpers.decrypt(
-            data.text(),
-        ),
+                data.text()
+            ),
             mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json);
         mOptions.gameOver = false;
@@ -353,11 +358,11 @@ var $quickquestionsmultiplechoice = {
             if (mOptions.selectsGame[i].type != 2) {
                 mOptions.selectsGame[i].url =
                     $exeDevices.iDevice.gamification.media.extractURLGD(
-                        mOptions.selectsGame[i].url,
+                        mOptions.selectsGame[i].url
                     );
             }
             const idyt = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                mOptions.selectsGame[i].url,
+                mOptions.selectsGame[i].url
             );
             if (mOptions.selectsGame[i].type == 2 && idyt) {
                 mOptions.hasVideo = true;
@@ -367,7 +372,7 @@ var $quickquestionsmultiplechoice = {
 
         if (
             $exeDevices.iDevice.gamification.media.getIDYoutube(
-                mOptions.idVideo,
+                mOptions.idVideo
             )
         ) {
             mOptions.hasVideo = true;
@@ -433,11 +438,10 @@ var $quickquestionsmultiplechoice = {
         }
 
         if (mOptions.order != 2 && mOptions.percentajeQuestions < 100) {
-
             mOptions.selectsGame =
                 $exeDevices.iDevice.gamification.helpers.getQuestions(
                     mOptions.selectsGame,
-                    mOptions.percentajeQuestions,
+                    mOptions.percentajeQuestions
                 );
         }
 
@@ -451,9 +455,10 @@ var $quickquestionsmultiplechoice = {
         }
 
         if (mOptions.order == 1) {
-            mOptions.selectsGame = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                mOptions.selectsGame,
-            );
+            mOptions.selectsGame =
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(
+                    mOptions.selectsGame
+                );
         }
         mOptions.numberQuestions = mOptions.selectsGame.length;
         return mOptions;
@@ -462,8 +467,7 @@ var $quickquestionsmultiplechoice = {
     loadApiPlayer: function () {
         if (!this.hasVideo) return;
 
-        $exeDevices.iDevice.gamification.media.YouTubeAPILoader
-            .load()
+        $exeDevices.iDevice.gamification.media.YouTubeAPILoader.load()
             .then(() => this.activatePlayer())
             .catch(() => this.showStartedButton());
     },
@@ -486,7 +490,7 @@ var $quickquestionsmultiplechoice = {
                     events: {
                         onReady:
                             $quickquestionsmultiplechoice.onPlayerReady.bind(
-                                this,
+                                this
                             ),
                     },
                 });
@@ -502,7 +506,7 @@ var $quickquestionsmultiplechoice = {
                             autoplay: 0,
                             controls: 1,
                         },
-                    },
+                    }
                 );
             }
         });
@@ -538,7 +542,7 @@ var $quickquestionsmultiplechoice = {
                         $quickquestionsmultiplechoice.showMessage(
                             1,
                             '',
-                            instance,
+                            instance
                         );
                         if (
                             $quickquestionsmultiplechoice.options &&
@@ -547,13 +551,13 @@ var $quickquestionsmultiplechoice = {
                                 .idVideo
                         ) {
                             $(
-                                `#seleccionaLinkVideoIntroShow-${instance}`,
+                                `#seleccionaLinkVideoIntroShow-${instance}`
                             ).show();
                         }
                     }
                 } else {
                     console.warn(
-                        `Número de instancia inválido para ${iframe.id}`,
+                        `Número de instancia inválido para ${iframe.id}`
                     );
                 }
             }
@@ -569,7 +573,7 @@ var $quickquestionsmultiplechoice = {
 
         const mOptions = $quickquestionsmultiplechoice.options[instance],
             idVideo = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                mOptions.idVideo,
+                mOptions.idVideo
             );
 
         mOptions.endVideo =
@@ -582,7 +586,7 @@ var $quickquestionsmultiplechoice = {
             mOptions.startVideo,
             mOptions.endVideo,
             instance,
-            0,
+            0
         );
     },
 
@@ -605,12 +609,15 @@ var $quickquestionsmultiplechoice = {
             mOptions.timeUpdateIntervalIntro = setInterval(() => {
                 let $node = $('#seleccionaMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.timeUpdateIntervalIntro);
                     return;
                 }
                 $quickquestionsmultiplechoice.updateTimerDisplayLocalIntro(
-                    instance,
+                    instance
                 );
             }, 1000);
             $('#seleccionaVideoIntroLocal-' + instance).show();
@@ -647,7 +654,10 @@ var $quickquestionsmultiplechoice = {
             mOptions.timeUpdateInterval = setInterval(() => {
                 let $node = $('#seleccionaMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.timeUpdateInterval);
                     return;
                 }
@@ -711,7 +721,7 @@ var $quickquestionsmultiplechoice = {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
             idVideo =
                 $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                    mOptions.idVideo,
+                    mOptions.idVideo
                 );
 
         mOptions.endVideo =
@@ -725,7 +735,7 @@ var $quickquestionsmultiplechoice = {
             mOptions.endVideo,
             mOptions,
             instance,
-            1,
+            1
         );
     },
 
@@ -778,9 +788,9 @@ var $quickquestionsmultiplechoice = {
         }
     },
 
-    updateTimerDisplay: function () { },
-    updateProgressBar: function () { },
-    onPlayerError: function () { },
+    updateTimerDisplay: function () {},
+    updateProgressBar: function () {},
+    onPlayerError: function () {},
 
     removeEvents: function (instance) {
         $(window).off('unload.exeSelecciona beforeunload.exeSelecciona');
@@ -817,15 +827,15 @@ var $quickquestionsmultiplechoice = {
         $quickquestionsmultiplechoice.removeEvents(instance);
         $(window).on('unload.exeSelecciona beforeunload.exeSelecciona', () => {
             $exeDevices.iDevice.gamification.scorm.endScorm(
-                $quickquestionsmultiplechoice.mScorm,
+                $quickquestionsmultiplechoice.mScorm
             );
         });
 
         mOptions.localPlayer = document.getElementById(
-            `seleccionaVideoLocal-${instance}`,
+            `seleccionaVideoLocal-${instance}`
         );
         mOptions.localPlayerIntro = document.getElementById(
-            `seleccionaVideoIntroLocal-${instance}`,
+            `seleccionaVideoIntroLocal-${instance}`
         );
 
         $(`#seleccionaGamerOver-${instance}`).css('display', 'flex');
@@ -856,7 +866,7 @@ var $quickquestionsmultiplechoice = {
             });
 
         $(
-            `#seleccionaGamerOver-${instance}, #seleccionaCodeAccessDiv-${instance}, #seleccionaVideo-${instance}, #seleccionaVideoLocal-${instance}, #seleccionaImagen-${instance}, #seleccionaCursor-${instance}, #seleccionaAnswerDiv-${instance}`,
+            `#seleccionaGamerOver-${instance}, #seleccionaCodeAccessDiv-${instance}, #seleccionaVideo-${instance}, #seleccionaVideoLocal-${instance}, #seleccionaImagen-${instance}, #seleccionaCursor-${instance}, #seleccionaAnswerDiv-${instance}`
         ).hide();
         $(`#seleccionaCover-${instance}`).show();
 
@@ -865,7 +875,7 @@ var $quickquestionsmultiplechoice = {
             (e) => {
                 e.preventDefault();
                 $quickquestionsmultiplechoice.enterCodeAccess(instance);
-            },
+            }
         );
 
         $(`#seleccionaCodeAccessE-${instance}`).on('keydown', (event) => {
@@ -908,12 +918,12 @@ var $quickquestionsmultiplechoice = {
             (e) => {
                 e.preventDefault();
                 const element = document.getElementById(
-                    `seleccionaGameContainer-${instance}`,
+                    `seleccionaGameContainer-${instance}`
                 );
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
-                    element,
+                    element
                 );
-            },
+            }
         );
 
         $quickquestionsmultiplechoice.updateLives(instance);
@@ -922,13 +932,13 @@ var $quickquestionsmultiplechoice = {
         $(`#seleccionaGameContainer-${instance} .SLCNP-StartGame`).show();
         $(`#seleccionaQuestionDiv-${instance}`).hide();
         $(`#seleccionaBottonContainer-${instance}`).addClass(
-            'SLCNP-BottonContainerDivEnd',
+            'SLCNP-BottonContainerDivEnd'
         );
 
         if (mOptions.itinerary.showCodeAccess) {
             $(`#seleccionaAnswerDiv-${instance}`).hide();
             $(`#seleccionaMesajeAccesCodeE-${instance}`).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $(`#seleccionaCodeAccessDiv-${instance}`).show();
             $(`#seleccionaGameContainer-${instance} .SLCNP-StartGame`).hide();
@@ -961,7 +971,7 @@ var $quickquestionsmultiplechoice = {
             e.preventDefault();
             $(`#seleccionaVideoIntroDiv-${instance}`).hide();
             $(`#seleccionaStartGame-${instance}`).text(
-                mOptions.msgs.msgPlayStart,
+                mOptions.msgs.msgPlayStart
             );
             $quickquestionsmultiplechoice.stopVideoIntro(mOptions);
         });
@@ -982,25 +992,25 @@ var $quickquestionsmultiplechoice = {
                 e.preventDefault();
                 if (
                     $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                        mOptions.idVideo,
+                        mOptions.idVideo
                     )
                 ) {
                     $quickquestionsmultiplechoice.playVideoIntroLocal(instance);
                 } else {
                     $quickquestionsmultiplechoice.playVideoIntro(instance);
                 }
-            },
+            }
         );
 
         if (mOptions.gameMode === 2) {
             const $gameContainer = $(`#seleccionaGameContainer-${instance}`);
             $gameContainer
                 .find(
-                    '.exeQuextIcons-Hit, .exeQuextIcons-Error, .exeQuextIcons-Score',
+                    '.exeQuextIcons-Hit, .exeQuextIcons-Error, .exeQuextIcons-Score'
                 )
                 .hide();
             $(
-                `#seleccionaPErrors-${instance}, #seleccionaPHits-${instance}, #seleccionaPScore-${instance}`,
+                `#seleccionaPErrors-${instance}, #seleccionaPHits-${instance}, #seleccionaPScore-${instance}`
             ).hide();
         }
 
@@ -1027,14 +1037,14 @@ var $quickquestionsmultiplechoice = {
             $quickquestionsmultiplechoice.showMessage(
                 0,
                 'Cargando. Por favor, espere',
-                instance,
+                instance
             );
         }
 
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -1048,7 +1058,7 @@ var $quickquestionsmultiplechoice = {
 
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $quickquestionsmultiplechoice.isInExe,
+            $quickquestionsmultiplechoice.isInExe
         );
     },
 
@@ -1096,7 +1106,7 @@ var $quickquestionsmultiplechoice = {
         for (let i = 0; i < mOptions.respuesta.length; i++) {
             const answerClass = `SLCNP-Answer${letters.indexOf(mOptions.respuesta[i]) + 1}`;
             $(`#seleccionaAnswers-${instance}`).append(
-                `<div class="SLCNP-AnswersOptions ${answerClass}"></div>`,
+                `<div class="SLCNP-AnswersOptions ${answerClass}"></div>`
             );
         }
     },
@@ -1155,7 +1165,7 @@ var $quickquestionsmultiplechoice = {
         $quickquestionsmultiplechoice.showMessage(
             0,
             mQuestion.author,
-            instance,
+            instance
         );
     },
 
@@ -1221,11 +1231,11 @@ var $quickquestionsmultiplechoice = {
 
         if (x > 0 || y > 0) {
             const containerElement = document.getElementById(
-                `seleccionaMultimedia-${instance}`,
-            ),
+                    `seleccionaMultimedia-${instance}`
+                ),
                 containerPos = containerElement.getBoundingClientRect(),
                 imgElement = document.getElementById(
-                    `seleccionaImagen-${instance}`,
+                    `seleccionaImagen-${instance}`
                 ),
                 imgPos = imgElement.getBoundingClientRect(),
                 marginTop = imgPos.top - containerPos.top,
@@ -1247,8 +1257,7 @@ var $quickquestionsmultiplechoice = {
         if (codeEntered === correctCode) {
             $quickquestionsmultiplechoice.showCubiertaOptions(false, instance);
             $quickquestionsmultiplechoice.startGame(instance);
-            $(`#seleccionaLinkMaximize-${instance}`).trigger('click')
-
+            $(`#seleccionaLinkMaximize-${instance}`).trigger('click');
         } else {
             $(`#seleccionaMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
@@ -1289,7 +1298,7 @@ var $quickquestionsmultiplechoice = {
                         message = msgs.msgAllQuestions;
                         $seleccionaPShowClue
                             .text(
-                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
                             )
                             .show();
                     } else {
@@ -1297,8 +1306,8 @@ var $quickquestionsmultiplechoice = {
                             .text(
                                 msgs.msgTryAgain.replace(
                                     '%s',
-                                    mOptions.itinerary.percentageClue,
-                                ),
+                                    mOptions.itinerary.percentageClue
+                                )
                             )
                             .show();
                     }
@@ -1312,7 +1321,7 @@ var $quickquestionsmultiplechoice = {
                     if (mOptions.obtainedClue) {
                         $seleccionaPShowClue
                             .text(
-                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+                                `${msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
                             )
                             .show();
                     } else {
@@ -1320,8 +1329,8 @@ var $quickquestionsmultiplechoice = {
                             .text(
                                 msgs.msgTryAgain.replace(
                                     '%s',
-                                    mOptions.itinerary.percentageClue,
-                                ),
+                                    mOptions.itinerary.percentageClue
+                                )
                             )
                             .show();
                     }
@@ -1341,7 +1350,7 @@ var $quickquestionsmultiplechoice = {
         $quickquestionsmultiplechoice.showMessage(
             messageColor,
             message,
-            instance,
+            instance
         );
 
         const scoreText =
@@ -1370,7 +1379,7 @@ var $quickquestionsmultiplechoice = {
         mOptions.obtainedClue = false;
 
         $(
-            `#seleccionaVideoIntroContainer-${instance}, #seleccionaLinkVideoIntroShow-${instance}, #seleccionaPShowClue-${instance}`,
+            `#seleccionaVideoIntroContainer-${instance}, #seleccionaLinkVideoIntroShow-${instance}, #seleccionaPShowClue-${instance}`
         ).hide();
         $(`#seleccionaGameContainer-${instance} .SLCNP-StartGame`).hide();
         $(`#seleccionaQuestion-${instance}`).text('');
@@ -1398,14 +1407,17 @@ var $quickquestionsmultiplechoice = {
             if (mOptions.gameStarted && mOptions.activeCounter) {
                 let $node = $('#seleccionaMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
                 mOptions.counter--;
                 $quickquestionsmultiplechoice.updateTime(
                     mOptions.counter,
-                    instance,
+                    instance
                 );
                 $quickquestionsmultiplechoice.updateSoundVideo(instance);
 
@@ -1417,14 +1429,14 @@ var $quickquestionsmultiplechoice = {
                         if (
                             !$quickquestionsmultiplechoice.sameQuestion(
                                 false,
-                                instance,
+                                instance
                             )
                         ) {
                             const currentQuestion =
                                 mOptions.selectsGame[mOptions.activeQuestion];
                             if (currentQuestion.typeSelect !== 2) {
                                 $quickquestionsmultiplechoice.drawSolution(
-                                    instance,
+                                    instance
                                 );
                             } else {
                                 $quickquestionsmultiplechoice.drawPhrase(
@@ -1434,7 +1446,7 @@ var $quickquestionsmultiplechoice = {
                                     1,
                                     false,
                                     instance,
-                                    true,
+                                    true
                                 );
                             }
                         }
@@ -1443,7 +1455,7 @@ var $quickquestionsmultiplechoice = {
                         $quickquestionsmultiplechoice.newQuestion(
                             instance,
                             false,
-                            false,
+                            false
                         );
                     }, timeShowSolution);
                     return;
@@ -1491,7 +1503,7 @@ var $quickquestionsmultiplechoice = {
 
         $quickquestionsmultiplechoice.showImage('', instance);
         $(
-            `#seleccionaDivModeBoard-${instance}, #seleccionaVideo-${instance}, #seleccionaVideoLocal-${instance}, #seleccionaLinkAudio-${instance}, #seleccionaImagen-${instance}, #seleccionaEText-${instance}, #seleccionaCursor-${instance}, #seleccionaCover-${instance}`,
+            `#seleccionaDivModeBoard-${instance}, #seleccionaVideo-${instance}, #seleccionaVideoLocal-${instance}, #seleccionaLinkAudio-${instance}, #seleccionaImagen-${instance}, #seleccionaEText-${instance}, #seleccionaCursor-${instance}, #seleccionaCover-${instance}`
         ).hide();
 
         $quickquestionsmultiplechoice.stopVideo(instance);
@@ -1510,7 +1522,7 @@ var $quickquestionsmultiplechoice = {
         $(`#seleccionaStartGame-${instance}`).text(mOptions.msgs.msgNewGame);
         $(`#seleccionaGameContainer-${instance} .SLCNP-StartGame`).show();
         $(
-            `#seleccionaQuestionDiv-${instance}, #seleccionaAnswerDiv-${instance}, #seleccionaWordDiv-${instance}`,
+            `#seleccionaQuestionDiv-${instance}, #seleccionaAnswerDiv-${instance}, #seleccionaWordDiv-${instance}`
         ).hide();
 
         mOptions.gameOver = true;
@@ -1526,7 +1538,7 @@ var $quickquestionsmultiplechoice = {
                 ).toFixed(2);
                 $quickquestionsmultiplechoice.sendScore(true, instance);
                 $(`#seleccionaRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`,
+                    `${mOptions.msgs.msgYouScore}: ${score}`
                 );
                 $quickquestionsmultiplechoice.initialScore = score;
             }
@@ -1536,10 +1548,10 @@ var $quickquestionsmultiplechoice = {
 
         if (
             $exeDevices.iDevice.gamification.media.getIDYoutube(
-                mOptions.idVideo,
+                mOptions.idVideo
             ) !== '' ||
             $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                mOptions.idVideo,
+                mOptions.idVideo
             )
         ) {
             $(`#seleccionaLinkVideoIntroShow-${instance}`).show();
@@ -1566,9 +1578,9 @@ var $quickquestionsmultiplechoice = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
-                    instance,
+                    instance
                 );
             }
         }
@@ -1581,13 +1593,13 @@ var $quickquestionsmultiplechoice = {
         type,
         casesensitive,
         instance,
-        solution,
+        solution
     ) {
         const $phraseContainer = $(`#seleccionaEPhrase-${instance}`);
         $phraseContainer.find('.SLCNP-Word').remove();
 
         $(
-            `#seleccionaBtnReply-${instance}, #seleccionaBtnMoveOn-${instance}, #seleccionaEdAnswer-${instance}`,
+            `#seleccionaBtnReply-${instance}, #seleccionaBtnMoveOn-${instance}, #seleccionaEdAnswer-${instance}`
         ).prop('disabled', true);
         $(`#seleccionaQuestionDiv-${instance}`).hide();
         $(`#seleccionaWordDiv-${instance}`).show();
@@ -1600,7 +1612,7 @@ var $quickquestionsmultiplechoice = {
         const cPhrase = $quickquestionsmultiplechoice.clear(phrase),
             letterShow = $quickquestionsmultiplechoice.getShowLetter(
                 cPhrase,
-                nivel,
+                nivel
             ),
             h = cPhrase.replace(/\s/g, '&');
         let nPhrase = [];
@@ -1615,14 +1627,14 @@ var $quickquestionsmultiplechoice = {
         phraseArray.forEach((cleanWord) => {
             if (cleanWord !== '') {
                 const $wordDiv = $('<div class="SLCNP-Word"></div>').appendTo(
-                    $phraseContainer,
+                    $phraseContainer
                 );
                 for (let char of cleanWord) {
                     let letterClass = 'blue';
                     if (type === 1) letterClass = 'red';
                     if (type === 2) letterClass = 'green';
                     $wordDiv.append(
-                        `<div class="SLCNP-Letter ${letterClass}">${char}</div>`,
+                        `<div class="SLCNP-Letter ${letterClass}">${char}</div>`
                     );
                 }
             }
@@ -1635,7 +1647,7 @@ var $quickquestionsmultiplechoice = {
         const htmlContent = $(`#seleccionaWordDiv-${instance}`).html();
         if (/(?:\\\(|\\\[|\\begin\{.*?})/.test(htmlContent)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `seleccionaWordDiv-${instance}`,
+                `seleccionaWordDiv-${instance}`
             );
         }
 
@@ -1669,14 +1681,14 @@ var $quickquestionsmultiplechoice = {
 
         const time = $exeDevices.iDevice.gamification.helpers.getTimeToString(
             $exeDevices.iDevice.gamification.helpers.getTimeSeconds(
-                mQuestion.time,
-            ),
+                mQuestion.time
+            )
         );
         $(`#seleccionaPTime-${instance}`).text(time);
         $(`#seleccionaQuestion-${instance}`).text(mQuestion.quextion);
 
         $(
-            `#seleccionaImagen-${instance}, #seleccionaEText-${instance}, #seleccionaVideo-${instance}, #seleccionaLinkAudio-${instance}, #seleccionaCursor-${instance}`,
+            `#seleccionaImagen-${instance}, #seleccionaEText-${instance}, #seleccionaVideo-${instance}, #seleccionaLinkAudio-${instance}, #seleccionaCursor-${instance}`
         ).hide();
         $(`#seleccionaCover-${instance}`).show();
 
@@ -1708,11 +1720,11 @@ var $quickquestionsmultiplechoice = {
             $quickquestionsmultiplechoice.showMessage(0, '', instance);
         } else if (mQuestion.type === 2) {
             const idVideo = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                mQuestion.url,
-            ),
+                    mQuestion.url
+                ),
                 urlVideo =
                     $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                        mQuestion.url,
+                        mQuestion.url
                     ),
                 type = urlVideo ? 1 : 0,
                 id = type === 0 ? idVideo : urlVideo;
@@ -1722,13 +1734,13 @@ var $quickquestionsmultiplechoice = {
                 q.iVideo,
                 q.fVideo,
                 instance,
-                type,
+                type
             );
 
             $quickquestionsmultiplechoice.showMessage(0, '', instance);
 
             $(
-                `#seleccionaVideo-${instance}, #seleccionaVideoLocal-${instance}`,
+                `#seleccionaVideo-${instance}, #seleccionaVideoLocal-${instance}`
             ).hide();
             if (mQuestion.imageVideo === 0) {
                 $(`#seleccionaCover-${instance}`).show();
@@ -1742,12 +1754,12 @@ var $quickquestionsmultiplechoice = {
             if (mQuestion.soundVideo === 0) {
                 $exeDevices.iDevice.gamification.media.muteVideo(
                     true,
-                    mOptions,
+                    mOptions
                 );
             } else {
                 $exeDevices.iDevice.gamification.media.muteVideo(
                     false,
-                    instance,
+                    instance
                 );
             }
         }
@@ -1764,10 +1776,10 @@ var $quickquestionsmultiplechoice = {
                 mQuestion.typeSelect,
                 false,
                 instance,
-                false,
+                false
             );
             $(
-                `#seleccionaBtnReply-${instance}, #seleccionaBtnMoveOn-${instance}, #seleccionaEdAnswer-${instance}`,
+                `#seleccionaBtnReply-${instance}, #seleccionaBtnMoveOn-${instance}, #seleccionaEdAnswer-${instance}`
             ).prop('disabled', false);
             $(`#seleccionaEdAnswer-${instance}`).focus().val('');
 
@@ -1789,7 +1801,7 @@ var $quickquestionsmultiplechoice = {
                 ).toFixed(2);
                 $quickquestionsmultiplechoice.sendScore(true, instance);
                 $(`#seleccionaRepeatActivity-${instance}`).text(
-                    `${mOptions.msgs.msgYouScore}: ${score}`,
+                    `${mOptions.msgs.msgYouScore}: ${score}`
                 );
             }
         }
@@ -1808,7 +1820,7 @@ var $quickquestionsmultiplechoice = {
         ) {
             $exeDevices.iDevice.gamification.media.playSound(
                 q.audio.trim(),
-                mOptions,
+                mOptions
             );
         }
     },
@@ -1817,7 +1829,7 @@ var $quickquestionsmultiplechoice = {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
         $(`#seleccionaPLifes-${instance}`).text(mOptions.livesLeft);
         const $livesIcons = $(`#seleccionaLifesGame-${instance}`).find(
-            '.exeQuextIcons-Life',
+            '.exeQuextIcons-Life'
         );
 
         if (mOptions.useLives) {
@@ -1843,7 +1855,7 @@ var $quickquestionsmultiplechoice = {
                 mOptions.activeQuestion,
                 correctAnswer,
                 start,
-                instance,
+                instance
             );
 
         if (mActiveQuestion === null) {
@@ -1852,7 +1864,7 @@ var $quickquestionsmultiplechoice = {
         } else {
             mOptions.counter =
                 $exeDevices.iDevice.gamification.helpers.getTimeSeconds(
-                    mOptions.selectsGame[mActiveQuestion].time,
+                    mOptions.selectsGame[mActiveQuestion].time
                 );
             if (mOptions.selectsGame[mActiveQuestion].type === 2) {
                 const durationVideo =
@@ -1862,7 +1874,7 @@ var $quickquestionsmultiplechoice = {
             }
             $quickquestionsmultiplechoice.showQuestion(
                 mActiveQuestion,
-                instance,
+                instance
             );
             mOptions.activeCounter = true;
             const numQ = mOptions.numberQuestions - mActiveQuestion;
@@ -1935,13 +1947,13 @@ var $quickquestionsmultiplechoice = {
         if (question.typeSelect === 2) {
             solution = question.solutionQuestion.toUpperCase();
             answer = $.trim(
-                $(`#seleccionaEdAnswer-${instance}`).val(),
+                $(`#seleccionaEdAnswer-${instance}`).val()
             ).toUpperCase();
             if (answer.length === 0) {
                 $quickquestionsmultiplechoice.showMessage(
                     1,
                     mOptions.msgs.msgIndicateWord,
-                    instance,
+                    instance
                 );
                 mOptions.gameActived = true;
                 return;
@@ -1952,7 +1964,7 @@ var $quickquestionsmultiplechoice = {
                 $quickquestionsmultiplechoice.showMessage(
                     1,
                     mOptions.msgs.msgOrders,
-                    instance,
+                    instance
                 );
                 mOptions.gameActived = true;
                 return;
@@ -1982,7 +1994,7 @@ var $quickquestionsmultiplechoice = {
         ) {
             $exeDevices.iDevice.gamification.media.playSound(
                 question.audio.trim(),
-                mOptions,
+                mOptions
             );
 
             $(`#seleccionaLinkAudio-${instance}`).show();
@@ -2004,7 +2016,7 @@ var $quickquestionsmultiplechoice = {
             timeShowSolution = 5000;
             $(`#seleccionaPShowClue-${instance}`)
                 .text(
-                    `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+                    `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
                 )
                 .show();
             mOptions.obtainedClue = true;
@@ -2025,7 +2037,7 @@ var $quickquestionsmultiplechoice = {
                     mType,
                     false,
                     instance,
-                    true,
+                    true
                 );
             }
         }
@@ -2057,7 +2069,7 @@ var $quickquestionsmultiplechoice = {
         ) {
             $exeDevices.iDevice.gamification.media.playSound(
                 question.audio.trim(),
-                mOptions,
+                mOptions
             );
             $(`#seleccionaLinkAudio-${instance}`).show();
         }
@@ -2079,7 +2091,7 @@ var $quickquestionsmultiplechoice = {
             message += ` ${mOptions.msgs.msgUseFulInformation}`;
             $(`#seleccionaPShowClue-${instance}`)
                 .text(
-                    `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+                    `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
                 )
                 .show();
             mOptions.obtainedClue = true;
@@ -2100,7 +2112,7 @@ var $quickquestionsmultiplechoice = {
                     mType,
                     false,
                     instance,
-                    true,
+                    true
                 );
             }
         }
@@ -2179,7 +2191,7 @@ var $quickquestionsmultiplechoice = {
         message = $quickquestionsmultiplechoice.getMessageAnswer(
             correctAnswer,
             points,
-            instance,
+            instance
         );
         $quickquestionsmultiplechoice.showMessage(type, message, instance);
     },
@@ -2230,7 +2242,7 @@ var $quickquestionsmultiplechoice = {
             message = $quickquestionsmultiplechoice.getMessageAnswer(
                 correctAnswer,
                 points,
-                instance,
+                instance
             );
         } else {
             question.answerScore = 0;
@@ -2259,12 +2271,12 @@ var $quickquestionsmultiplechoice = {
                 message = $quickquestionsmultiplechoice.getMessageAnswer(
                     correctAnswer,
                     points,
-                    instance,
+                    instance
                 );
             } else {
                 message =
                     $quickquestionsmultiplechoice.getMessageErrorAnswerRepeat(
-                        instance,
+                        instance
                     );
             }
         }
@@ -2279,11 +2291,11 @@ var $quickquestionsmultiplechoice = {
     getMessageAnswer: function (correctAnswer, npts, instance) {
         const mse = $quickquestionsmultiplechoice.getMessageErrorAnswer(
             npts,
-            instance,
+            instance
         );
         const msc = $quickquestionsmultiplechoice.getMessageCorrectAnswer(
             npts,
-            instance,
+            instance
         );
         return correctAnswer ? msc : mse;
     },
@@ -2292,7 +2304,7 @@ var $quickquestionsmultiplechoice = {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
             messageCorrect = $quickquestionsmultiplechoice.getRetroFeedMessages(
                 true,
-                instance,
+                instance
             ),
             pts = mOptions.msgs.msgPoints || 'puntos';
         let message = '';
@@ -2319,7 +2331,7 @@ var $quickquestionsmultiplechoice = {
         const mOptions = $quickquestionsmultiplechoice.options[instance],
             messageError = $quickquestionsmultiplechoice.getRetroFeedMessages(
                 false,
-                instance,
+                instance
             ),
             pts = mOptions.msgs.msgPoints || 'puntos';
         let message = '';
@@ -2350,7 +2362,7 @@ var $quickquestionsmultiplechoice = {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
         let message = $quickquestionsmultiplechoice.getRetroFeedMessages(
             false,
-            instance,
+            instance
         );
 
         if (
@@ -2367,7 +2379,7 @@ var $quickquestionsmultiplechoice = {
         const mOptions = $quickquestionsmultiplechoice.options[instance];
         let message = $quickquestionsmultiplechoice.getRetroFeedMessages(
             true,
-            instance,
+            instance
         );
 
         if (
@@ -2382,12 +2394,12 @@ var $quickquestionsmultiplechoice = {
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $quickquestionsmultiplechoice.borderColors.red,
-            $quickquestionsmultiplechoice.borderColors.green,
-            $quickquestionsmultiplechoice.borderColors.blue,
-            $quickquestionsmultiplechoice.borderColors.yellow,
-        ],
+                '#555555',
+                $quickquestionsmultiplechoice.borderColors.red,
+                $quickquestionsmultiplechoice.borderColors.green,
+                $quickquestionsmultiplechoice.borderColors.blue,
+                $quickquestionsmultiplechoice.borderColors.yellow,
+            ],
             mcolor = colors[type],
             weight = type === 0 ? 'normal' : 'normal';
 
@@ -2397,7 +2409,7 @@ var $quickquestionsmultiplechoice = {
         });
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            `#seleccionaPAuthor-${instance}`,
+            `#seleccionaPAuthor-${instance}`
         );
     },
 
@@ -2457,13 +2469,13 @@ var $quickquestionsmultiplechoice = {
                     })
                     .text(option || '')
                     .toggle(!!option);
-            },
+            }
         );
 
         const html = $(`#seleccionaQuestionDiv-${instance}`).html();
         if (/(?:\\\(|\\\[|\\begin\{.*?})/.test(html)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `seleccionaQuestionDiv-${instance}`,
+                `seleccionaQuestionDiv-${instance}`
             );
         }
     },
@@ -2538,7 +2550,7 @@ var $quickquestionsmultiplechoice = {
                         cursor: 'pointer',
                     })
                     .text('');
-            },
+            }
         );
     },
 };
