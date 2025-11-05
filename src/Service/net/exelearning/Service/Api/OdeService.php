@@ -1430,10 +1430,12 @@ class OdeService implements OdeServiceInterface
 
         // First check content.xml
         $xmlFileName = Constants::PERMANENT_SAVE_CONTENT_FILENAME;
+        $epubExportDir = $odeSessionDistDirPath.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB.DIRECTORY_SEPARATOR;
         $xmlFilePathName = $odeSessionDistDirPath.$xmlFileName;
         $isOdeXml = file_exists($xmlFilePathName);
+        $isOdeXmlEpub = file_exists($epubExportDir.$xmlFileName);
 
-        if ($isOdeXml) {
+        if ($isOdeXml || $isOdeXmlEpub) {
             $odeResponse['elpName'] = $zipFileName;
             $odeResponse['elpPath'] = $destinationFilePathName;
             $odeResponse['responseMessage'] = 'OK';
@@ -1456,17 +1458,29 @@ class OdeService implements OdeServiceInterface
 
         // Check content.elp
         $elpFileName = false;
+        $elpFilePathName = null;
 
         $zipFilesList = scandir($odeSessionDistDirPath);
         foreach ($zipFilesList as $file) {
             if (Constants::FILE_EXTENSION_ELP == pathinfo($file, PATHINFO_EXTENSION)) {
                 $elpFileName = $file;
+                $elpFilePathName = $odeSessionDistDirPath.$elpFileName;
                 break;
             }
         }
 
+        if (false === $elpFileName) {
+            $zipFilesList = scandir($epubExportDir);
+            foreach ($zipFilesList as $file) {
+                if (Constants::FILE_EXTENSION_ELP == pathinfo($file, PATHINFO_EXTENSION)) {
+                    $elpFileName = $file;
+                    $elpFilePathName = $epubExportDir.$elpFileName;
+                    break;
+                }
+            }
+        }
+
         if ($elpFileName) {
-            $elpFilePathName = $odeSessionDistDirPath.$elpFileName;
             $isZipEditable = file_exists($elpFilePathName);
 
             if ($isZipEditable) {
@@ -1523,6 +1537,12 @@ class OdeService implements OdeServiceInterface
         }
 
         $fileName = Constants::PERMANENT_SAVE_CONTENT_FILENAME;
+
+        // In case of epub, the content.xml is inside EPUB dir
+        if (Constants::FILE_EXTENSION_EPUB == strtolower(pathinfo($elpFileName, PATHINFO_EXTENSION))) {
+            $odeSessionDistDirPath = $odeSessionDistDirPath.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB.DIRECTORY_SEPARATOR;
+        }
+
         $xmlFilePathName = $odeSessionDistDirPath.$fileName;
 
         // Check if it's new xml or an old version of xml
