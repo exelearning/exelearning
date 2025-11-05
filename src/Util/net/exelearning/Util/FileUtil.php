@@ -186,7 +186,7 @@ class FileUtil
      * For files larger than threshold, uses streaming.
      *
      * @param string $filePathName Path to the file
-     * @param int $thresholdMB Threshold in MB to use streaming (default: 100MB)
+     * @param int    $thresholdMB  Threshold in MB to use streaming (default: 100MB)
      *
      * @return string File contents
      */
@@ -202,7 +202,7 @@ class FileUtil
 
         // For large files, read in chunks
         $handle = fopen($filePathName, 'rb');
-        if ($handle === false) {
+        if (false === $handle) {
             throw new \RuntimeException('Failed to open file: '.$filePathName);
         }
 
@@ -212,13 +212,13 @@ class FileUtil
         try {
             while (!feof($handle)) {
                 $chunk = fread($handle, $chunkSize);
-                if ($chunk === false) {
+                if (false === $chunk) {
                     throw new \RuntimeException('Failed to read file chunk');
                 }
                 $contents .= $chunk;
 
                 // Periodically free memory
-                if (strlen($contents) % (50 * 1024 * 1024) === 0) {
+                if (0 === strlen($contents) % (50 * 1024 * 1024)) {
                     gc_collect_cycles();
                 }
             }
@@ -717,11 +717,9 @@ class FileUtil
      * Extracts a ZIP file optimized for large files.
      * Uses chunked extraction and memory management.
      *
-     * @param string $zip_file Path to ZIP file
-     * @param string $dest_dir Destination directory
-     * @param int $fileSizeThresholdMB Threshold for large file handling (default: 100MB)
-     *
-     * @return void
+     * @param string $zip_file            Path to ZIP file
+     * @param string $dest_dir            Destination directory
+     * @param int    $fileSizeThresholdMB Threshold for large file handling (default: 100MB)
      */
     public static function extractZipToOptimized(string $zip_file, string $dest_dir, int $fileSizeThresholdMB = 100): void
     {
@@ -737,6 +735,7 @@ class FileUtil
         // For smaller ZIP files, use standard method
         if ($zipFileSize < $thresholdBytes) {
             self::extractZipTo($zip_file, $dest_dir);
+
             return;
         }
 
@@ -761,16 +760,16 @@ class FileUtil
 
             // Extract files in batches to manage memory
             $batchSize = 50;
-            for ($i = 0; $i < $numFiles; $i++) {
+            for ($i = 0; $i < $numFiles; ++$i) {
                 $stat = $zip->statIndex($i);
-                if ($stat === false) {
+                if (false === $stat) {
                     continue;
                 }
 
                 $filename = $stat['name'];
 
                 // Skip directories
-                if (substr($filename, -1) === '/') {
+                if ('/' === substr($filename, -1)) {
                     continue;
                 }
 
@@ -784,12 +783,12 @@ class FileUtil
                 if ($fileSize > 50 * 1024 * 1024) { // Files > 50MB
                     // Extract using stream to avoid loading entire file in memory
                     $stream = $zip->getStream($filename);
-                    if ($stream === false) {
+                    if (false === $stream) {
                         throw new \RuntimeException('Failed to open stream for file: '.$filename);
                     }
 
                     $outputStream = fopen($targetPath, 'wb');
-                    if ($outputStream === false) {
+                    if (false === $outputStream) {
                         throw new \RuntimeException('Failed to create output file: '.$targetPath);
                     }
 
@@ -797,12 +796,12 @@ class FileUtil
                     $chunkSize = 8192 * 1024; // 8MB chunks
                     while (!feof($stream)) {
                         $chunk = fread($stream, $chunkSize);
-                        if ($chunk === false) {
+                        if (false === $chunk) {
                             fclose($stream);
                             fclose($outputStream);
                             throw new \RuntimeException('Failed to read chunk from: '.$filename);
                         }
-                        if (fwrite($outputStream, $chunk) === false) {
+                        if (false === fwrite($outputStream, $chunk)) {
                             fclose($stream);
                             fclose($outputStream);
                             throw new \RuntimeException('Failed to write chunk to: '.$targetPath);
@@ -814,11 +813,11 @@ class FileUtil
                 } else {
                     // For smaller files, use direct extraction
                     $fileContent = $zip->getFromIndex($i);
-                    if ($fileContent === false) {
+                    if (false === $fileContent) {
                         throw new \RuntimeException('Failed to extract file: '.$filename);
                     }
 
-                    if (file_put_contents($targetPath, $fileContent) === false) {
+                    if (false === file_put_contents($targetPath, $fileContent)) {
                         throw new \RuntimeException('Failed to write file: '.$targetPath);
                     }
                 }

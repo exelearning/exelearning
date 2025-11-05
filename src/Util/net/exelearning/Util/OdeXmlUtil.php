@@ -731,7 +731,7 @@ class OdeXmlUtil
      *
      * @param string $odeSessionId
      * @param string $elpContentFileContent
-     * @param int $fileSizeThresholdMB Threshold to use optimized processing (default: 100MB)
+     * @param int    $fileSizeThresholdMB   Threshold to use optimized processing (default: 100MB)
      *
      * @return array
      */
@@ -896,8 +896,8 @@ class OdeXmlUtil
                 array_push($odeResponse['odeNavStructureSyncs'], $odeNavStructureSync);
 
                 // Free memory every 10 nav structures
-                $navStructureCount++;
-                if ($navStructureCount % 10 === 0) {
+                ++$navStructureCount;
+                if (0 === $navStructureCount % 10) {
                     gc_collect_cycles();
                 }
             }
