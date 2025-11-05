@@ -1,5 +1,5 @@
 /*
- * MojoMagnify 
+ * MojoMagnify
  * Based on MojoMagnify 0.1.10 - JavaScript Image Magnifier
  * Copyright (c) 2008-2010 Jacob Seidelin, ...
  * Modified by Fran Macías 2013 for exelearning.net
@@ -7,16 +7,19 @@
  */
 
 var MojoMagnify = (function () {
-    const dfstyle = 'background:#fff;width:80px;padding:3px;border:1px solid #ccc;height:28px;margin:5px';
-    const dc = tag => document.createElement(tag);
-    const addEvent = (el, ev, handler) => el.addEventListener(ev, handler, false);
-    const removeEvent = (el, ev, handler) => el.removeEventListener(ev, handler, false);
+    const dfstyle =
+        'background:#fff;width:80px;padding:3px;border:1px solid #ccc;height:28px;margin:5px';
+    const dc = (tag) => document.createElement(tag);
+    const addEvent = (el, ev, handler) =>
+        el.addEventListener(ev, handler, false);
+    const removeEvent = (el, ev, handler) =>
+        el.removeEventListener(ev, handler, false);
 
     const getEventMousePos = (el, e) => {
         const rect = el.getBoundingClientRect();
         return {
             x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            y: e.clientY - rect.top,
         };
     };
 
@@ -49,7 +52,13 @@ var MojoMagnify = (function () {
         zoomImg.style.top = `${zy}px`;
     };
 
-    const makeMagnifiable = (img, zoomSrc, opt = {}, zSize = 100, zZoom = 1) => {
+    const makeMagnifiable = (
+        img,
+        zoomSrc,
+        opt = {},
+        zSize = 100,
+        zZoom = 1
+    ) => {
         if (img.__mojoMagnifyImage) {
             img.__mojoMagnifyImage.src = zoomSrc;
             return;
@@ -57,9 +66,8 @@ var MojoMagnify = (function () {
 
         let rawZoom = parseFloat(zZoom);
         rawZoom = isNaN(rawZoom) ? 1 : rawZoom;
-        const zoomFactor = rawZoom > 8
-            ? parseFloat((rawZoom / 100).toFixed(1))
-            : rawZoom;
+        const zoomFactor =
+            rawZoom > 8 ? parseFloat((rawZoom / 100).toFixed(1)) : rawZoom;
         img.__mojoMagnifyZoomFactor = zoomFactor;
 
         let rawSize = parseFloat(zSize) || 100;
@@ -83,7 +91,7 @@ var MojoMagnify = (function () {
             display: 'block',
             width: `${w}px`,
             height: `${h}px`,
-            marginBottom: '40px'
+            marginBottom: '40px',
         });
 
         const overlay = dc('div');
@@ -96,7 +104,7 @@ var MojoMagnify = (function () {
             overflow: 'hidden',
             display: 'none',
             pointerEvents: 'none',
-            zIndex: 10
+            zIndex: 10,
         });
         wrapper.append(overlay);
 
@@ -108,15 +116,15 @@ var MojoMagnify = (function () {
             width: `${lensSize}px`,
             height: `${lensSize}px`,
             left: '-9999px',
-            borderRadius: `${lensSize / 2}px` 
+            borderRadius: `${lensSize / 2}px`,
         });
         overlay.append(zoom);
-        
+
         const zoomImg = dc('img');
         Object.assign(zoomImg.style, {
             position: 'absolute',
             maxWidth: 'none',
-            maxHeight: 'none'
+            maxHeight: 'none',
         });
         zoom.append(zoomImg);
 
@@ -132,17 +140,18 @@ var MojoMagnify = (function () {
         const controls = dc('div');
         controls.style.margin = '10px 0';
 
-
         const selectZoom = dc('select');
         const zOpts = [1, 1.5, 2, 2.5, 3, 4, 6];
         if (!zOpts.includes(zoomFactor)) zOpts.push(zoomFactor);
-        zOpts.sort((a, b) => a - b).forEach(v => {
-            const o = dc('option');
-            o.value = v;
-            o.textContent = `x${v}`;
-            if (v === zoomFactor) o.selected = true;
-            selectZoom.append(o);
-        });
+        zOpts
+            .sort((a, b) => a - b)
+            .forEach((v) => {
+                const o = dc('option');
+                o.value = v;
+                o.textContent = `x${v}`;
+                if (v === zoomFactor) o.selected = true;
+                selectZoom.append(o);
+            });
         selectZoom.style = dfstyle;
         selectZoom.onchange = () => {
             const newFactor = parseFloat(selectZoom.value);
@@ -155,13 +164,15 @@ var MojoMagnify = (function () {
         const selectSize = dc('select');
         const sOpts = [50, 100, 150, 200, 250, 300, 400];
         if (!sOpts.includes(lensSize)) sOpts.push(lensSize);
-        sOpts.sort((a, b) => a - b).forEach(v => {
-            const o = dc('option');
-            o.value = v;
-            o.textContent = `${v}`;
-            if (v === lensSize) o.selected = true;
-            selectSize.append(o);
-        });
+        sOpts
+            .sort((a, b) => a - b)
+            .forEach((v) => {
+                const o = dc('option');
+                o.value = v;
+                o.textContent = `${v}`;
+                if (v === lensSize) o.selected = true;
+                selectSize.append(o);
+            });
         selectSize.style = dfstyle;
         selectSize.onchange = () => {
             const sz = parseInt(selectSize.value, 10);
@@ -176,7 +187,7 @@ var MojoMagnify = (function () {
         img.__mojoControls = controls;
 
         let last = 0;
-        addEvent(img, 'mousemove', e => {
+        addEvent(img, 'mousemove', (e) => {
             const now = Date.now();
             if (now - last < 50) return;
             last = now;
@@ -184,15 +195,17 @@ var MojoMagnify = (function () {
             const pos = getEventMousePos(img, e);
             setZoomPos(img, pos.x, pos.y, pos);
         });
-        addEvent(img, 'mouseleave', () => overlay.style.display = 'none');
+        addEvent(img, 'mouseleave', () => (overlay.style.display = 'none'));
 
-        setTimeout(() => zoomImg.src = zoomSrc, 1);
+        setTimeout(() => (zoomImg.src = zoomSrc), 1);
     };
 
     const init = () => {
-        document.querySelectorAll('img[data-magnifysrc]').forEach(img => {
+        document.querySelectorAll('img[data-magnifysrc]').forEach((img) => {
             const zoomSrc = img.getAttribute('data-magnifysrc');
-            const opt = { full: img.getAttribute('data-magnifyfull') === 'true' };
+            const opt = {
+                full: img.getAttribute('data-magnifyfull') === 'true',
+            };
             makeMagnifiable(
                 img,
                 zoomSrc,

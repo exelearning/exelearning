@@ -39,7 +39,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         ); // Avoid invalid HTML
 
         this.setMessagesInfo();
@@ -55,7 +55,9 @@ var $exeDevice = {
             msgClue: c_('Cool! The clue is:'),
             msgCodeAccess: c_('Access code'),
             msgRequiredAccessKey: c_('Access code required'),
-            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgInformationLooking: c_(
+                'Cool! The information you were looking for'
+            ),
             msgPlayStart: c_('Click here to play'),
             msgErrors: c_('Errors'),
             msgHits: c_('Hits'),
@@ -70,23 +72,43 @@ var $exeDevice = {
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
             mgsAllQuestions: c_('Questions completed!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgWrote: c_('Write the correct word and click on Reply. If you hesitate, click on Move on.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgWrote: c_(
+                'Write the correct word and click on Reply. If you hesitate, click on Move on.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgLoading: c_('Loading. Please wait...'),
             msgPoints: c_('points'),
@@ -100,35 +122,37 @@ var $exeDevice = {
             msgCheck: c_('Check'),
             msgShowSolution: c_('Show solutions'),
             msgReboot: c_('Play Again'),
-            msgGameOver: c_('The game is over. You scored %s. Hits: %s out of %s.'),
+            msgGameOver: c_(
+                'The game is over. You scored %s. Hits: %s out of %s.'
+            ),
             msgSelectWord: c_('Click on a word’s square to see the definition'),
             msgHorizontals: c_('Horizontals'),
             msgVerticals: c_('Verticals'),
             msgShowDefinitions: c_('Show/hide definitions'),
             msgShowBack: c_('Show/hide background image'),
             msgSolutionWord: c_('Word'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgEProvideDefinition = _(
-            'You must provide a definition, an image, and/or an audio for the word',
+            'You must provide a definition, an image, and/or an audio for the word'
         );
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgEProvideWord = _('Provide a word');
         msgs.msgEOneQuestion = _('The crossword must have at least two words');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
         msgs.msgMaximeSize = _(
-            'The word cannot contain more than fourteen characters or white spaces',
+            'The word cannot contain more than fourteen characters or white spaces'
         );
     },
 
@@ -377,7 +401,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#ccgmEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#ccgmEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -438,7 +462,7 @@ var $exeDevice = {
             $('#ccgmEURLImage').val(),
             $('#ccgmEXImage').val(),
             $('#ccgmEYImage').val(),
-            $('#ccgmEAlt').val(),
+            $('#ccgmEAlt').val()
         );
     },
 
@@ -478,9 +502,9 @@ var $exeDevice = {
             }
 
             const dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(
-                    dataJson,
-                ),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(
+                        dataJson
+                    ),
                 $imagesLink = $('.crucigrama-LinkImages', wrapper),
                 $audiosLink = $('.crucigrama-LinkAudios', wrapper),
                 $imageBack = $('.crucigrama-LinkBack', wrapper);
@@ -529,7 +553,7 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.showQuestion(0);
         }
@@ -562,7 +586,6 @@ var $exeDevice = {
 
         dataGame.msgs = i18n;
         let json = JSON.stringify(dataGame);
-
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
@@ -612,10 +635,10 @@ var $exeDevice = {
             function () {
                 $exeDevice.checkAltImage = false;
                 let saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
         return false;
     },
@@ -707,7 +730,8 @@ var $exeDevice = {
             showSolution = $('#ccgmEShowSolution').is(':checked'),
             hasBack = $('#ccgmBack0').is(':checked'),
             urlBack = $('#ccgmEURLBack').val().trim(),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#ccgmECaseSensitive').is(':checked'),
             tilde = $('#ccgmETilde').is(':checked'),
             feedBack = $('#ccgmEHasFeedBack').is(':checked'),
@@ -745,7 +769,7 @@ var $exeDevice = {
                 mquestion.audio.length < 4
             ) {
                 $exeDevice.showMessage(
-                    `${$exeDevice.msgs.msgEProvideDefinition} ${mquestion.word}`,
+                    `${$exeDevice.msgs.msgEProvideDefinition} ${mquestion.word}`
                 );
                 return false;
             }
@@ -813,7 +837,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
@@ -839,7 +863,7 @@ var $exeDevice = {
                     $image.show();
                     $imageno.hide();
                 })
-                .on('error', function () { });
+                .on('error', function () {});
         }
     },
 
@@ -984,8 +1008,8 @@ var $exeDevice = {
                 if (!file) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt) or a Moodle XML file (.xml)',
-                        ),
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
+                        )
                     );
                     return;
                 }
@@ -1000,8 +1024,8 @@ var $exeDevice = {
                 ) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt) or a Moodle XML file (.xml)',
-                        ),
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
+                        )
                     );
                     return;
                 }
@@ -1023,12 +1047,9 @@ var $exeDevice = {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                (selectedFile.startsWith('files')) &&
-                !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1044,12 +1065,9 @@ var $exeDevice = {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $('#ccgmEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                (selectedFile.startsWith('files')) &&
-                !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1076,7 +1094,7 @@ var $exeDevice = {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: mp3, ogg, wav`,
+                    `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else {
                 if (selectedFile.length > 4) {
@@ -1103,7 +1121,7 @@ var $exeDevice = {
                     if ($exeDevice.validateQuestion()) {
                         $exeDevice.active = Math.min(
                             num - 1,
-                            $exeDevice.wordsGame.length - 1,
+                            $exeDevice.wordsGame.length - 1
                         );
                         $exeDevice.showQuestion($exeDevice.active);
                     } else {
@@ -1155,9 +1173,13 @@ var $exeDevice = {
 
         $('#ccgmBack0').on('change', function () {
             if ($(this).is(':checked')) {
-                $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv').removeClass('d-none').addClass('d-flex');
+                $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv')
+                    .removeClass('d-none')
+                    .addClass('d-flex');
             } else {
-                $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv').removeClass('d-flex').addClass('d-none');
+                $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv')
+                    .removeClass('d-flex')
+                    .addClass('d-none');
             }
         });
 
@@ -1167,12 +1189,9 @@ var $exeDevice = {
                 selectedFile = $('#ccgmEURLBack').val(),
                 ext = selectedFile.split('.').pop().toLowerCase(),
                 hasBack = $('#ccgmBack0').is(':checked');
-            if (
-                selectedFile.startsWith('files') &&
-                !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1184,12 +1203,9 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase(),
                 hasBack = $('#ccgmBack0').is(':checked');
-            if (
-                selectedFile.startsWith('files') &&
-                !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1203,7 +1219,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
-            $exeDevice.insertWords,
+            $exeDevice.insertWords
         );
 
         //eXe 3.0 Dismissible messages
@@ -1230,7 +1246,7 @@ var $exeDevice = {
 
         $('#ccgmEImage').removeAttr('src alt title');
         $(
-            '#ccgmEURLImage, #ccgmEXImage, #ccgmEYImage, #ccgmEAuthor, #ccgmEAlt, #ccgmEDefinitionWord, #ccgmESolutionWord, #ccgmEURLAudio',
+            '#ccgmEURLImage, #ccgmEXImage, #ccgmEYImage, #ccgmEAuthor, #ccgmEAlt, #ccgmEDefinitionWord, #ccgmESolutionWord, #ccgmEURLAudio'
         ).val('');
         $('#ccgmEXImage, #ccgmEYImage').val('0');
     },
@@ -1269,7 +1285,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.wordsGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.wordsGame[$exeDevice.active])
             );
             $('#ccgmEPaste').show();
         }
@@ -1289,7 +1305,7 @@ var $exeDevice = {
             $exeDevice.wordsGame.splice(
                 $exeDevice.active,
                 0,
-                $exeDevice.clipBoard,
+                $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
         } else if ($exeDevice.typeEdit === 1) {
@@ -1298,7 +1314,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.wordsGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showQuestion($exeDevice.active);
             $('#ccgmENumQuestions').text($exeDevice.wordsGame.length);
@@ -1342,9 +1358,12 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
-        game.weighted =  typeof game.weighted !== 'undefined' ? game.weighted : 100;
-        game.tilde =  typeof game.tilde !== 'undefined' ? game.tilde : true;
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
+        game.weighted =
+            typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        game.tilde = typeof game.tilde !== 'undefined' ? game.tilde : true;
         $exeDevice.id = $exeDevice.getIdeviceID();
         $('#ccgmEShowMinimize').prop('checked', game.showMinimize);
         $('#ccgmETime').val(game.time);
@@ -1365,7 +1384,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
         $exeDevice.wordsGame = game.wordsGame;
 
@@ -1380,7 +1399,9 @@ var $exeDevice = {
         $('#ccgmbackground, #ccgmbackground1').hide();
 
         if (game.hasBack) {
-            $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv').removeClass('d-none').addClass('d-flex');
+            $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv')
+                .removeClass('d-none')
+                .addClass('d-flex');
             if (game.urlBack.length > 4) {
                 $('#ccgmEURLBack').val(game.urlBack);
             }
@@ -1499,7 +1520,12 @@ var $exeDevice = {
                 const parts = line.split('#');
                 p.word = parts[0];
                 p.definition = parts[1];
-                if (p.word && p.definition && p.word.length < 15 && !p.word.includes(' ')) {
+                if (
+                    p.word &&
+                    p.definition &&
+                    p.word.length < 15 &&
+                    !p.word.includes(' ')
+                ) {
                     words.push(p);
                 }
             }
@@ -1569,10 +1595,10 @@ var $exeDevice = {
                 return true;
             }
             const questionText = $question
-                .find('questiontext')
-                .first()
-                .text()
-                .trim(),
+                    .find('questiontext')
+                    .first()
+                    .text()
+                    .trim(),
                 $answers = $question.find('answer');
             let word = '',
                 maxFraction = -1;
@@ -1600,7 +1626,7 @@ var $exeDevice = {
     addWords: function (words) {
         if (!words || words.length == 0) {
             eXe.app.alert(
-                _('Sorry, there are no questions for this type of activity.'),
+                _('Sorry, there are no questions for this type of activity.')
             );
             return;
         }
@@ -1629,7 +1655,7 @@ var $exeDevice = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,

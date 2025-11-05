@@ -43,7 +43,12 @@ var $eXeMathProblems = {
     mScorm: null,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Math problems', 'mathproblems', 'mathproblems-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Math problems',
+            'mathproblems',
+            'mathproblems-IDevice'
+        );
     },
 
     enable: function () {
@@ -59,7 +64,7 @@ var $eXeMathProblems = {
                 mOption = $eXeMathProblems.loadDataGame(
                     dl,
                     $wordings,
-                    $feedbacks,
+                    $feedbacks
                 ),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -90,7 +95,7 @@ var $eXeMathProblems = {
 
             $('#mthpMessageMaximize-' + i).text(msg);
             $('#mthpDivFeedBack-' + i).prepend(
-                $('.mathproblems-feedback-game', this),
+                $('.mathproblems-feedback-game', this)
             );
 
             $eXeMathProblems.addEvents(i);
@@ -103,11 +108,11 @@ var $eXeMathProblems = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $eXeMathProblems,
-                node,
+                node
             );
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.mathproblems-IDevice',
+            '.mathproblems-IDevice'
         );
     },
 
@@ -145,8 +150,8 @@ var $eXeMathProblems = {
                 : options.errorAbsolute;
         options.errorRelative =
             options.version == 1 &&
-                typeof options.percentajeError != 'undefined' &&
-                options.percentajeError > 0
+            typeof options.percentajeError != 'undefined' &&
+            options.percentajeError > 0
                 ? options.percentajeError / 100
                 : options.errorRelative;
         options.evaluation =
@@ -163,7 +168,7 @@ var $eXeMathProblems = {
         options.questions =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 options.questions,
-                options.percentajeQuestions,
+                options.percentajeQuestions
             );
 
         return options;
@@ -178,14 +183,15 @@ var $eXeMathProblems = {
         const formatRegex = /^(!?-?\d+(?:\.\d+)?)(\s+-\s+!?-?\d+(?:\.\d+)?)?$/;
         let isValid = formatRegex.test(dm);
         if (isValid && dm.includes(' - ')) {
-            let [start, end] = dm.split(' - ').map(Number); 
+            let [start, end] = dm.split(' - ').map(Number);
             isValid = start <= end;
         }
         return isValid;
     },
 
     validateIntervalsWithHash: function (domain) {
-        const regex = /^-?\d+(?:\.\d+)?\s+-\s*-?\d+(?:\.\d+)?\s*#\s*\d+(?:\.\d+)?$/;
+        const regex =
+            /^-?\d+(?:\.\d+)?\s+-\s*-?\d+(?:\.\d+)?\s*#\s*\d+(?:\.\d+)?$/;
         let dm = domain.replace(/\s+/g, ' ').trim();
         if (!regex.test(dm)) {
             return false;
@@ -224,19 +230,20 @@ var $eXeMathProblems = {
             if (value.includes(' - ')) {
                 if (value.includes('#')) {
                     this.processRangedExpression(value).forEach((item) =>
-                        definedSet.add(item),
+                        definedSet.add(item)
                     );
                 } else {
-                    let [startStr, endStr] = value.split(' - ').map(s => s.trim());
+                    let [startStr, endStr] = value
+                        .split(' - ')
+                        .map((s) => s.trim());
                     let start = Number(startStr);
                     let end = Number(endStr);
-    
+
                     if (Number.isInteger(start) && Number.isInteger(end)) {
                         for (let i = start; i <= end; i++) {
                             exclude ? disallowed.add(i) : definedSet.add(i);
                         }
                     } else {
-
                         let decimalsStart = this.getDecimalPlaces(startStr);
                         let decimalsEnd = this.getDecimalPlaces(endStr);
                         let minDecimals = Math.max(decimalsStart, decimalsEnd);
@@ -246,8 +253,14 @@ var $eXeMathProblems = {
                         for (let i = start; i <= end; i += step) {
                             let value = Number(i.toFixed(minDecimals));
                             if (value <= end) {
-                                let cleanValue = Number(this.removeTrailingZeros(value.toFixed(minDecimals)));
-                                exclude ? disallowed.add(cleanValue) : definedSet.add(cleanValue);
+                                let cleanValue = Number(
+                                    this.removeTrailingZeros(
+                                        value.toFixed(minDecimals)
+                                    )
+                                );
+                                exclude
+                                    ? disallowed.add(cleanValue)
+                                    : definedSet.add(cleanValue);
                             }
                         }
                     }
@@ -266,7 +279,7 @@ var $eXeMathProblems = {
     processRangedExpression: function (str) {
         let [range, stepStr] = str.split('#');
         let step = Number(stepStr);
-        let [startStr, endStr] = range.split(' - ').map(s => s.trim());
+        let [startStr, endStr] = range.split(' - ').map((s) => s.trim());
         let start = Number(startStr);
         let end = Number(endStr);
         let result = [];
@@ -274,12 +287,18 @@ var $eXeMathProblems = {
         let decimalsInStep = this.getDecimalPlaces(stepStr);
         let decimalsInStart = this.getDecimalPlaces(startStr);
         let decimalsInEnd = this.getDecimalPlaces(endStr);
-        let maxDecimals = Math.max(decimalsInStep, decimalsInStart, decimalsInEnd);
-        
+        let maxDecimals = Math.max(
+            decimalsInStep,
+            decimalsInStart,
+            decimalsInEnd
+        );
+
         for (let i = start; i <= end; i += step) {
             let value = Number(i.toFixed(maxDecimals));
             if (value <= end) {
-                let cleanValue = Number(this.removeTrailingZeros(value.toFixed(maxDecimals)));
+                let cleanValue = Number(
+                    this.removeTrailingZeros(value.toFixed(maxDecimals))
+                );
                 result.push(cleanValue);
             }
         }
@@ -298,18 +317,18 @@ var $eXeMathProblems = {
                 this.processRangedExpression(value).forEach((val) =>
                     isDisallowed
                         ? disallowedValuesSet.add(val)
-                        : possibleValuesSet.add(val),
+                        : possibleValuesSet.add(val)
                 );
             } else {
                 this.processSimpleExpression(value).forEach((val) =>
                     isDisallowed
                         ? disallowedValuesSet.add(val)
-                        : possibleValuesSet.add(val),
+                        : possibleValuesSet.add(val)
                 );
             }
         });
         const possibleValues = [...possibleValuesSet].filter(
-            (value) => !disallowedValuesSet.has(value),
+            (value) => !disallowedValuesSet.has(value)
         );
         if (!possibleValues.length) return 1;
         const randomIndex = Math.floor(Math.random() * possibleValues.length);
@@ -334,7 +353,7 @@ var $eXeMathProblems = {
                     text,
                     values,
                     options,
-                    i,
+                    i
                 );
                 text = data.text;
                 solutions = data.solutions;
@@ -354,7 +373,7 @@ var $eXeMathProblems = {
                     let option = $eXeMathProblems.getOptionsArray(
                         solutions[j],
                         4,
-                        false,
+                        false
                     );
                     wronganswer.push(option);
                 }
@@ -391,10 +410,10 @@ var $eXeMathProblems = {
 
     checkValuesFormule: function (formule, text, values, options, num) {
         let result = {
-            formule: '',
-            text: '',
-            solutions: [],
-        },
+                formule: '',
+                text: '',
+                solutions: [],
+            },
             solutions = [],
             mtext = text,
             nf = formule,
@@ -408,7 +427,7 @@ var $eXeMathProblems = {
                 let rg = new RegExp(values[j], 'g'),
                     number = $eXeMathProblems.getDefinidedValue(
                         values[j],
-                        options.questions[num].domains,
+                        options.questions[num].domains
                     );
                 mtext = mtext.replace(rg, number);
                 nf = nf.replace(rg, number);
@@ -419,7 +438,7 @@ var $eXeMathProblems = {
                     number = $eXeMathProblems.getRandomNo(
                         options.questions[num].min,
                         options.questions[num].max,
-                        options.questions[num].decimals,
+                        options.questions[num].decimals
                     );
                 mtext = mtext.replace(rg, number);
                 nf = nf.replace(rg, number);
@@ -606,7 +625,7 @@ var $eXeMathProblems = {
             latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#mthpMainContainer-' + instance,
+                '#mthpMainContainer-' + instance
             );
 
         mOptions.gameActived = true;
@@ -666,7 +685,7 @@ var $eXeMathProblems = {
             $eXeMathProblems.showMessage(
                 1,
                 mOptions.msgs.msgIndicateWord,
-                instance,
+                instance
             );
             return;
         }
@@ -690,7 +709,7 @@ var $eXeMathProblems = {
             $eXeMathProblems.showMessage(
                 1,
                 mOptions.msgs.msgDuplicateAnswer,
-                instance,
+                instance
             );
             return;
         }
@@ -806,7 +825,7 @@ var $eXeMathProblems = {
         mOptions.scorerp = (10 * mOptions.hits) / mOptions.numberQuestions;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeMathProblems.isInExe,
+            $eXeMathProblems.isInExe
         );
     },
 
@@ -844,13 +863,13 @@ var $eXeMathProblems = {
             function (e) {
                 e.preventDefault();
                 const element = document.getElementById(
-                    'mthpGameContainer-' + instance,
+                    'mthpGameContainer-' + instance
                 );
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
                     element,
-                    instance,
+                    instance
                 );
-            },
+            }
         );
 
         $('#mthpFeedBackClose-' + instance).on('click', function () {
@@ -862,7 +881,7 @@ var $eXeMathProblems = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $('#mthpMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $eXeMathProblems.showCubiertaOptions(0, instance);
         }
@@ -872,7 +891,7 @@ var $eXeMathProblems = {
             function (e) {
                 e.preventDefault();
                 $eXeMathProblems.enterCodeAccess(instance);
-            },
+            }
         );
 
         $('#mthpCodeAccessE-' + instance).on('keydown', function (event) {
@@ -887,7 +906,7 @@ var $eXeMathProblems = {
         $(window).on('unload', function () {
             if (typeof $eXeMathProblems.mScorm != 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeMathProblems.mScorm,
+                    $eXeMathProblems.mScorm
                 );
             }
         });
@@ -946,7 +965,7 @@ var $eXeMathProblems = {
         setTimeout(function () {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -979,7 +998,10 @@ var $eXeMathProblems = {
             if (mOptions.gameStarted && mOptions.activeCounter) {
                 let $node = $('#mthpMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -995,8 +1017,8 @@ var $eXeMathProblems = {
                     setTimeout(function () {
                         if (
                             mOptions.numberQuestions -
-                            mOptions.hits -
-                            mOptions.errors <=
+                                mOptions.hits -
+                                mOptions.errors <=
                             0
                         ) {
                             $eXeMathProblems.gameOver(0, instance);
@@ -1018,7 +1040,7 @@ var $eXeMathProblems = {
         const mOptions = $eXeMathProblems.options[instance],
             mActiveQuestion = $eXeMathProblems.updateNumberQuestion(
                 mOptions.activeQuestion,
-                instance,
+                instance
             ),
             $mthpPNumber = $('#mthpPNumber-' + instance);
 
@@ -1091,13 +1113,13 @@ var $eXeMathProblems = {
 
         let message = mOptions.msgs.msgEndGameM.replace(
             '%s',
-            mOptions.score.toFixed(2),
+            mOptions.score.toFixed(2)
         );
         type = mOptions.score >= 5 ? 2 : 1;
 
         $eXeMathProblems.showMessage(type, message, instance);
         const aa = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.questions,
+            mOptions.questions
         );
         mOptions.questions = mOptions.optionsRamdon ? aa : mOptions.questions;
         $eXeMathProblems.loadProblems(mOptions);
@@ -1144,9 +1166,9 @@ var $eXeMathProblems = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
-                    instance,
+                    instance
                 );
             }
             if (
@@ -1154,7 +1176,7 @@ var $eXeMathProblems = {
                 $('#mthpCubierta-' + instance).height()
             ) {
                 $('#mthpGameContainer-' + instance).height(
-                    $('#mthpCubierta-' + instance).height() + 80,
+                    $('#mthpCubierta-' + instance).height() + 80
                 );
             }
         }
@@ -1233,12 +1255,12 @@ var $eXeMathProblems = {
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $eXeMathProblems.borderColors.red,
-            $eXeMathProblems.borderColors.green,
-            $eXeMathProblems.borderColors.blue,
-            $eXeMathProblems.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeMathProblems.borderColors.red,
+                $eXeMathProblems.borderColors.green,
+                $eXeMathProblems.borderColors.blue,
+                $eXeMathProblems.borderColors.yellow,
+            ],
             color = colors[type];
         $('#mthpMessage-' + instance).text(message);
         $('#mthpMessage-' + instance).css({

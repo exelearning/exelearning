@@ -283,7 +283,7 @@ var $exeDevice = {
                         optElement.prop('selected', true);
                     }
                     select.append(optElement);
-                },
+                }
             );
 
             const selectCell = $('<td></td>').append(select);
@@ -309,10 +309,10 @@ var $exeDevice = {
                 row.append(cell);
             }
             const addButton = $('<button>' + _('Add') + '</button>').addClass(
-                'CTJ-Add',
-            ),
+                    'CTJ-Add'
+                ),
                 deleteButton = $(
-                    '<button>' + _('Delete') + '</button>',
+                    '<button>' + _('Delete') + '</button>'
                 ).addClass('CTJ-Delete'),
                 editCell = $('<td></td>')
                     .addClass('CTJ-Editions')
@@ -348,9 +348,12 @@ var $exeDevice = {
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
         let html = '<div class="listacotejo-IDevice">';
-        const instructions = tinyMCE.get("eXeGameInstructions").getContent();
+        const instructions = tinyMCE.get('eXeGameInstructions').getContent();
         if (instructions !== '') {
-            divContent = '<div class="listacotejo-instructions CTJ-instructions">' + instructions + "</div>";
+            divContent =
+                '<div class="listacotejo-instructions CTJ-instructions">' +
+                instructions +
+                '</div>';
         }
 
         html += divContent;
@@ -461,7 +464,7 @@ var $exeDevice = {
         }
         if (isMoreThanOneLevelFilled) {
             $exeDevice.showMessage(
-                _(`You can only use text at this item's level`),
+                _(`You can only use text at this item's level`)
             );
             return false;
         }
@@ -505,13 +508,13 @@ var $exeDevice = {
         if (scoreError == 1) {
             $exeDevice.showMessage(
                 _(
-                    'You must indicate the number of points for each item to be assesed',
-                ),
+                    'You must indicate the number of points for each item to be assesed'
+                )
             );
             return false;
         } else if (scoreError == 2) {
             $exeDevice.showMessage(
-                _('You cannot indicate a score for this type of boxes'),
+                _('You cannot indicate a score for this type of boxes')
             );
             return false;
         }
@@ -565,11 +568,11 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (
-                (selectedFile.indexOf('files') == 0) &&
+                selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
                 $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
             }
@@ -579,7 +582,7 @@ var $exeDevice = {
                 '#ctjEImageLogo',
                 '#ctjEImageNoLogo',
                 url,
-                alt,
+                alt
             );
         });
 
@@ -589,11 +592,11 @@ var $exeDevice = {
                 selectedFile = $('#ctjEURLLogo').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (
-                (selectedFile.indexOf('files') == 0) &&
+                selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
                 $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
             }
@@ -603,7 +606,7 @@ var $exeDevice = {
                 '#ctjEImageLogo',
                 '#ctjEImageNoLogo',
                 url,
-                alt,
+                alt
             );
         });
 
@@ -612,11 +615,11 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (
-                (selectedFile.indexOf('files') == 0) &&
+                selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
                 $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
             }
@@ -626,7 +629,7 @@ var $exeDevice = {
                 '#ctjEImageCommunity',
                 '#ctjEImageNoCommunity',
                 url,
-                alt,
+                alt
             );
         });
 
@@ -636,11 +639,11 @@ var $exeDevice = {
                 selectedFile = $('#ctjEURLCommunity').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (
-                (selectedFile.indexOf('files') == 0) &&
+                selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
                 $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
             }
@@ -650,7 +653,7 @@ var $exeDevice = {
                 '#ctjEImageCommunity',
                 '#ctjEImageNoCommunity',
                 url,
-                alt,
+                alt
             );
         });
 
@@ -660,11 +663,11 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase();
 
             if (
-                (selectedFile.indexOf('files') == 0) &&
+                selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
                 $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
             }
@@ -674,7 +677,7 @@ var $exeDevice = {
                 '#ctjEImageDecorative',
                 '#ctjEImageNoDecorative',
                 url,
-                alt,
+                alt
             );
         });
 
@@ -684,11 +687,11 @@ var $exeDevice = {
                 selectedFile = $('#ctjEURLDecorative').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (
-                (selectedFile.indexOf('files') == 0) &&
+                selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
                 $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
             }
@@ -698,7 +701,7 @@ var $exeDevice = {
                 '#ctjEImageDecorative',
                 '#ctjEImageNoDecorative',
                 url,
-                alt,
+                alt
             );
         });
 
@@ -729,11 +732,11 @@ var $exeDevice = {
         $('#ctjUseScore').change(function () {
             if ($(this).is(':checked')) {
                 $(
-                    '.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points',
+                    '.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points'
                 ).show();
             } else {
                 $(
-                    '.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points',
+                    '.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points'
                 ).hide();
             }
         });
@@ -790,18 +793,15 @@ var $exeDevice = {
             selectorInput,
             selectorImage,
             selectorNoImage,
-            altText,
+            altText
         ) => {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                 selectedFile = $(selectorInput).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
 
-            if (
-                (selectedFile.startsWith('files')) &&
-                !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -809,7 +809,7 @@ var $exeDevice = {
                 selectorImage,
                 selectorNoImage,
                 selectedFile,
-                altText,
+                altText
             );
             return true;
         };
@@ -873,7 +873,7 @@ var $exeDevice = {
                     inputSelector,
                     imageSelector,
                     noImageSelector,
-                    altText,
+                    altText
                 );
             });
 
@@ -883,7 +883,7 @@ var $exeDevice = {
                     inputSelector,
                     imageSelector,
                     noImageSelector,
-                    altText,
+                    altText
                 );
             });
         });
@@ -951,7 +951,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
@@ -966,7 +966,7 @@ var $exeDevice = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,
@@ -1033,21 +1033,21 @@ var $exeDevice = {
             '#ctjEImageLogo',
             '#ctjEImageNoLogo',
             game.urlLogo,
-            _('Project logo'),
+            _('Project logo')
         );
 
         $exeDevice.showImage(
             '#ctjEImageCommunity',
             '#ctjEImageNoCommunity',
             game.urlCommunity,
-            _('Community/Company'),
+            _('Community/Company')
         );
 
         $exeDevice.showImage(
             '#ctjEImageDecorative',
             '#ctjEImageNoDecorative',
             game.urlDecorative,
-            _('Decorative image'),
+            _('Decorative image')
         );
     },
 

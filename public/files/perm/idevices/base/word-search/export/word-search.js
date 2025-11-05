@@ -90,7 +90,12 @@ var $eXeSopa = {
             } else if (mOption.diagonals) {
                 ors = ['horizontal', 'vertical', 'diagonal', 'diagonalUp'];
             } else if (mOption.reverses) {
-                ors = ['horizontal', 'vertical', 'horizontalBack', 'verticalUp'];
+                ors = [
+                    'horizontal',
+                    'vertical',
+                    'horizontalBack',
+                    'verticalUp',
+                ];
             }
             mOption.optionsPuzzle.orientations = ors;
 
@@ -105,7 +110,8 @@ var $eXeSopa = {
             $container.find('#sopaGameMinimize-' + i).hide();
             $container.find('#sopaGameContainer-' + i).hide();
             if (mOption.showMinimize) {
-                $container.find('#sopaGameMinimize-' + i)
+                $container
+                    .find('#sopaGameMinimize-' + i)
                     .css({
                         cursor: 'pointer',
                     })
@@ -115,10 +121,12 @@ var $eXeSopa = {
             }
             $container.find('#sopaDivFeedBack-' + i).hide();
             $container.find('#sopaMessageMaximize-' + i).text(msg);
-            $container.find('#sopaDivFeedBack-' + i).prepend($('.sopa-feedback-game', this));
-            
+            $container
+                .find('#sopaDivFeedBack-' + i)
+                .prepend($('.sopa-feedback-game', this));
+
             $eXeSopa.addEvents(i);
-            
+
             // Agregar palabras
             for (let j = 0; j < mOption.wordsGame.length; j++) {
                 let word = mOption.wordsGame[j].word,
@@ -147,54 +155,70 @@ var $eXeSopa = {
         const mOptions = $eXeSopa.instances[instanceId];
         const puzzleSelector = '#sopaPuzzle-' + instanceId;
         const $container = $('#sopaMainContainer-' + instanceId);
-        
+
         let attempts = 0;
         const maxRetries = 3; // Número de palabras a eliminar si es necesario
-        
+
         while (attempts <= maxRetries) {
             try {
                 mOptions.game = new WordFindGame(puzzleSelector, {
                     maxGridGrowth: 10,
                     maxAttempts: 100,
                     orientations: mOptions.optionsPuzzle,
-                    instanceId: instanceId
+                    instanceId: instanceId,
                 });
-                
+
                 // Si tiene éxito, salir del bucle
                 if (window.game) window.game = mOptions.game;
-                
+
                 // Si se eliminaron palabras, solo mostrar en consola (no en pantalla)
                 if (attempts > 0) {
-                    console.info(`Sopa de letras generada exitosamente después de eliminar ${attempts} palabra(s).`);
+                    console.info(
+                        `Sopa de letras generada exitosamente después de eliminar ${attempts} palabra(s).`
+                    );
                 }
                 return;
-                
             } catch (error) {
                 attempts++;
-                
+
                 if (attempts > maxRetries) {
                     // Ya no hay más intentos, mostrar error
-                    $container.find('#sopaMessage-' + instanceId)
-                        .text(mOptions.msgs.msgManyWord || 'No se pudo generar la sopa de letras. Intenta con menos palabras o palabras más cortas.')
+                    $container
+                        .find('#sopaMessage-' + instanceId)
+                        .text(
+                            mOptions.msgs.msgManyWord ||
+                                'No se pudo generar la sopa de letras. Intenta con menos palabras o palabras más cortas.'
+                        )
                         .css({
                             color: 'red',
                         });
                     $container.find('#sopaMultimedia-' + instanceId).hide();
                     $container.find('#sopaResolve-' + instanceId).hide();
-                    console.error('Error al generar sopa de letras después de ' + maxRetries + ' intentos:', error);
+                    console.error(
+                        'Error al generar sopa de letras después de ' +
+                            maxRetries +
+                            ' intentos:',
+                        error
+                    );
                     return;
                 }
-                
+
                 // Encontrar y eliminar la palabra más larga del wordsGame
-                const longestWordIndex = mOptions.wordsGame.reduce((maxIdx, word, idx, arr) => 
-                    word.word.length > arr[maxIdx].word.length ? idx : maxIdx, 0
+                const longestWordIndex = mOptions.wordsGame.reduce(
+                    (maxIdx, word, idx, arr) =>
+                        word.word.length > arr[maxIdx].word.length
+                            ? idx
+                            : maxIdx,
+                    0
                 );
-                
+
                 const removedWord = mOptions.wordsGame[longestWordIndex].word;
                 mOptions.wordsGame.splice(longestWordIndex, 1);
-                
-                console.warn(`Intento ${attempts}: Eliminada palabra "${removedWord}" (${removedWord.length} letras). Quedan ${mOptions.wordsGame.length} palabras. Reintentando...`);
-                
+
+                console.warn(
+                    `Intento ${attempts}: Eliminada palabra "${removedWord}" (${removedWord.length} letras). Quedan ${mOptions.wordsGame.length} palabras. Reintentando...`
+                );
+
                 // Actualizar la lista de palabras en el DOM antes de reintentar
                 $container.find('#sopaWords-' + instanceId).empty();
                 for (let j = 0; j < mOptions.wordsGame.length; j++) {
@@ -363,8 +387,10 @@ var $eXeSopa = {
     showCubiertaOptions(mode, instanceId) {
         const $container = $('#sopaMainContainer-' + instanceId);
         const $cubierta = $container.find('#sopaCubierta-' + instanceId);
-        const $gameContainer = $container.find('#sopaGameContainer-' + instanceId);
-        
+        const $gameContainer = $container.find(
+            '#sopaGameContainer-' + instanceId
+        );
+
         if (mode === false) {
             $cubierta.fadeOut(function () {
                 $gameContainer.css('height', 'auto');
@@ -381,14 +407,19 @@ var $eXeSopa = {
                 $container.find('#sopaCodeAccessDiv-' + instanceId).show();
                 break;
             case 1:
-                $container.find('#sopaDivFeedBack-' + instanceId).find('.sopa-feedback-game').show();
+                $container
+                    .find('#sopaDivFeedBack-' + instanceId)
+                    .find('.sopa-feedback-game')
+                    .show();
                 $container.find('#sopaDivFeedBack-' + instanceId).show();
                 break;
             case 2:
                 $container.find('#sopaMFDetails-' + instanceId).show();
                 setTimeout(function () {
                     const max = Math.max(
-                        $container.find('#sopaMFDetails-' + instanceId).innerHeight() + 50,
+                        $container
+                            .find('#sopaMFDetails-' + instanceId)
+                            .innerHeight() + 50,
                         $gameContainer.innerHeight() + 50
                     );
                     $cubierta.height(max);
@@ -440,7 +471,7 @@ var $eXeSopa = {
     startGame: function (instanceId) {
         let mOptions = $eXeSopa.instances[instanceId];
         const $container = $('#sopaMainContainer-' + instanceId);
-        
+
         if (mOptions.gameStarted) return;
         if (mOptions.showResolve) {
             $container.find('#sopaResolve-' + instanceId).show();
@@ -528,7 +559,9 @@ var $eXeSopa = {
         const html = $container.find('#sopaFDetails-' + instanceId).html(),
             latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
         if (latex) {
-            $exeDevices.iDevice.gamification.math.updateLatex('#sopaFDetails-' + instanceId);
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '#sopaFDetails-' + instanceId
+            );
         }
     },
 
@@ -614,23 +647,35 @@ var $eXeSopa = {
 
     removeEvents: function (instanceId) {
         const $container = $('#sopaMainContainer-' + instanceId);
-        
-        $(window).off('unload.eXeSopa' + instanceId + ' beforeunload.eXeSopa' + instanceId);
 
-        $container.find('#sopaLinkMaximize-' + instanceId).off('click touchstart');
-        $container.find('#sopaLinkMinimize-' + instanceId).off('click touchstart');
-        $container.find('#sopaLinkFullScreen-' + instanceId).off('click touchstart');
+        $(window).off(
+            'unload.eXeSopa' + instanceId + ' beforeunload.eXeSopa' + instanceId
+        );
+
+        $container
+            .find('#sopaLinkMaximize-' + instanceId)
+            .off('click touchstart');
+        $container
+            .find('#sopaLinkMinimize-' + instanceId)
+            .off('click touchstart');
+        $container
+            .find('#sopaLinkFullScreen-' + instanceId)
+            .off('click touchstart');
         $container.find('#sopaFeedBackClose-' + instanceId).off('click');
         $container.find('#sopaLinkAudio-' + instanceId).off('click');
-        $container.find('#sopaCodeAccessButton-' + instanceId).off('click touchstart');
+        $container
+            .find('#sopaCodeAccessButton-' + instanceId)
+            .off('click touchstart');
         $container.find('#sopaCodeAccessE-' + instanceId).off('keydown');
         $container.find('#sopaSendScore-' + instanceId).off('click');
-        $container
-            .closest('.idevice_node')
-            .off('click', '.Games-SendScore');
+        $container.closest('.idevice_node').off('click', '.Games-SendScore');
         $container.find('#sopaResolve-' + instanceId).off('click');
-        $container.find('#sopaWords-' + instanceId).off('click', '.SPP-LinkSound');
-        $container.find('#sopaWords-' + instanceId).off('click', '.SPP-LinkImage');
+        $container
+            .find('#sopaWords-' + instanceId)
+            .off('click', '.SPP-LinkSound');
+        $container
+            .find('#sopaWords-' + instanceId)
+            .off('click', '.SPP-LinkImage');
         $container.find('#sopaMLinkClose1-' + instanceId).off('click');
         $container.find('#sopaStartGame-' + instanceId).off('click');
         $container.find('#sopaFullLinkImage-' + instanceId).off('click');
@@ -639,31 +684,40 @@ var $eXeSopa = {
     addEvents: function (instanceId) {
         const mOptions = $eXeSopa.instances[instanceId];
         const $container = $('#sopaMainContainer-' + instanceId);
-        
+
         $eXeSopa.removeEvents(instanceId);
 
-        $container.find('#sopaLinkMaximize-' + instanceId).on('click touchstart', (e) => {
-            e.preventDefault();
-            $container.find('#sopaGameContainer-' + instanceId).show();
-            $container.find('#sopaGameMinimize-' + instanceId).hide();
-        });
+        $container
+            .find('#sopaLinkMaximize-' + instanceId)
+            .on('click touchstart', (e) => {
+                e.preventDefault();
+                $container.find('#sopaGameContainer-' + instanceId).show();
+                $container.find('#sopaGameMinimize-' + instanceId).hide();
+            });
 
-        $container.find('#sopaLinkMinimize-' + instanceId).on('click touchstart', (e) => {
-            e.preventDefault();
-            $container.find('#sopaGameContainer-' + instanceId).hide();
-            $container.find('#sopaGameMinimize-' + instanceId).css('visibility', 'visible').show();
-        });
+        $container
+            .find('#sopaLinkMinimize-' + instanceId)
+            .on('click touchstart', (e) => {
+                e.preventDefault();
+                $container.find('#sopaGameContainer-' + instanceId).hide();
+                $container
+                    .find('#sopaGameMinimize-' + instanceId)
+                    .css('visibility', 'visible')
+                    .show();
+            });
 
-        $container.find('#sopaLinkFullScreen-' + instanceId).on('click touchstart', (e) => {
-            e.preventDefault();
-            $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
-                document.getElementById('sopaGameContainer-' + instanceId)
-            );
-        });
+        $container
+            .find('#sopaLinkFullScreen-' + instanceId)
+            .on('click touchstart', (e) => {
+                e.preventDefault();
+                $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
+                    document.getElementById('sopaGameContainer-' + instanceId)
+                );
+            });
 
-        $container.find('#sopaFeedBackClose-' + instanceId).on('click', () =>
-            $eXeSopa.showCubiertaOptions(false, instanceId)
-        );
+        $container
+            .find('#sopaFeedBackClose-' + instanceId)
+            .on('click', () => $eXeSopa.showCubiertaOptions(false, instanceId));
 
         $container.find('#sopaLinkAudio-' + instanceId).on('click', (e) => {
             e.preventDefault(mOptions);
@@ -675,36 +729,50 @@ var $eXeSopa = {
         });
 
         if (mOptions.itinerary.showCodeAccess) {
-            $container.find('#sopaMesajeAccesCodeE-' + instanceId).text(
-                mOptions.itinerary.messageCodeAccess
-            );
+            $container
+                .find('#sopaMesajeAccesCodeE-' + instanceId)
+                .text(mOptions.itinerary.messageCodeAccess);
             $eXeSopa.showCubiertaOptions(0, instanceId);
         }
 
-        $container.find('#sopaCodeAccessButton-' + instanceId).on('click touchstart', (e) => {
-            e.preventDefault();
-            $eXeSopa.enterCodeAccess(instanceId);
-        });
-
-        $container.find('#sopaCodeAccessE-' + instanceId).on('keydown', (event) => {
-            if (event.which === 13) {
+        $container
+            .find('#sopaCodeAccessButton-' + instanceId)
+            .on('click touchstart', (e) => {
+                e.preventDefault();
                 $eXeSopa.enterCodeAccess(instanceId);
-                return false;
+            });
+
+        $container
+            .find('#sopaCodeAccessE-' + instanceId)
+            .on('keydown', (event) => {
+                if (event.which === 13) {
+                    $eXeSopa.enterCodeAccess(instanceId);
+                    return false;
+                }
+                return true;
+            });
+
+        $container
+            .find('#sopaPNumber-' + instanceId)
+            .text(mOptions.numberQuestions);
+
+        $(window).on(
+            'unload.eXeSopa' +
+                instanceId +
+                ' beforeunload.eXeSopa' +
+                instanceId,
+            () => {
+                if ($eXeSopa.mScorm)
+                    $exeDevices.iDevice.gamification.scorm.endScorm(
+                        $eXeSopa.mScorm
+                    );
             }
-            return true;
-        });
-
-        $container.find('#sopaPNumber-' + instanceId).text(mOptions.numberQuestions);
-
-        $(window).on('unload.eXeSopa' + instanceId + ' beforeunload.eXeSopa' + instanceId, () => {
-            if ($eXeSopa.mScorm)
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeSopa.mScorm
-                );
-        });
+        );
 
         if (mOptions.instructions) {
-            $container.find('#sopaInstructions-' + instanceId).text(mOptions.instructions);
+            $container
+                .find('#sopaInstructions-' + instanceId)
+                .text(mOptions.instructions);
         }
 
         $container
@@ -721,18 +789,22 @@ var $eXeSopa = {
             $eXeSopa.gameOver(1, instanceId);
         });
 
-        $container.find('#sopaWords-' + instanceId).on('click', '.SPP-LinkSound', function (e) {
-            e.preventDefault();
-            $exeDevices.iDevice.gamification.media.playSound(
-                mOptions.wordsGame[$(this).data('mnumber')].audio,
-                mOptions
-            );
-        });
+        $container
+            .find('#sopaWords-' + instanceId)
+            .on('click', '.SPP-LinkSound', function (e) {
+                e.preventDefault();
+                $exeDevices.iDevice.gamification.media.playSound(
+                    mOptions.wordsGame[$(this).data('mnumber')].audio,
+                    mOptions
+                );
+            });
 
-        $container.find('#sopaWords-' + instanceId).on('click', '.SPP-LinkImage', function (e) {
-            e.preventDefault();
-            $eXeSopa.showPoint($(this).data('mnumber'), instanceId);
-        });
+        $container
+            .find('#sopaWords-' + instanceId)
+            .on('click', '.SPP-LinkImage', function (e) {
+                e.preventDefault();
+                $eXeSopa.showPoint($(this).data('mnumber'), instanceId);
+            });
 
         $container.find('#sopaMLinkClose1-' + instanceId).on('click', (e) => {
             e.preventDefault();
@@ -746,33 +818,73 @@ var $eXeSopa = {
             $eXeSopa.startGame(instanceId);
         });
 
-        $container.find('#sopaPTimeTitle-' + instanceId + ', #sopaPTime-' + instanceId + ', #sopaStartGame-' + instanceId + ', #sopaDivImgHome-' + instanceId + ', #sopaPShowClue-' + instanceId).hide();
+        $container
+            .find(
+                '#sopaPTimeTitle-' +
+                    instanceId +
+                    ', #sopaPTime-' +
+                    instanceId +
+                    ', #sopaStartGame-' +
+                    instanceId +
+                    ', #sopaDivImgHome-' +
+                    instanceId +
+                    ', #sopaPShowClue-' +
+                    instanceId
+            )
+            .hide();
 
-        if (mOptions.showResolve) $container.find('#sopaResolve-' + instanceId).show();
+        if (mOptions.showResolve)
+            $container.find('#sopaResolve-' + instanceId).show();
 
         mOptions.gameStarted = true;
 
         if (mOptions.time > 0) {
             mOptions.gameStarted = false;
-            $container.find('#sopaResolve-' + instanceId + ', #sopaMessage-' + instanceId + ', #sopaMultimedia-' + instanceId).hide();
-            $container.find('#sopaDivImgHome-' + instanceId + ', #sopaPTimeTitle-' + instanceId + ', #sopaPTime-' + instanceId + ', #sopaStartGame-' + instanceId).show();
+            $container
+                .find(
+                    '#sopaResolve-' +
+                        instanceId +
+                        ', #sopaMessage-' +
+                        instanceId +
+                        ', #sopaMultimedia-' +
+                        instanceId
+                )
+                .hide();
+            $container
+                .find(
+                    '#sopaDivImgHome-' +
+                        instanceId +
+                        ', #sopaPTimeTitle-' +
+                        instanceId +
+                        ', #sopaPTime-' +
+                        instanceId +
+                        ', #sopaStartGame-' +
+                        instanceId
+                )
+                .show();
             $container.find('.exeQuextIcons-Time').show();
         }
 
-        $container.find('#sopaFullLinkImage-' + instanceId).on('click', function (e) {
-            e.preventDefault();
-            const largeImageSrc = $container.find('#sopaMImagePoint-' + instanceId).attr('src');
-            if (largeImageSrc && largeImageSrc.length > 3) {
-                $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
-                    largeImageSrc,
-                    $container.find('#sopaGameContainer-' + instanceId)
-                );
-            }
-        });
+        $container
+            .find('#sopaFullLinkImage-' + instanceId)
+            .on('click', function (e) {
+                e.preventDefault();
+                const largeImageSrc = $container
+                    .find('#sopaMImagePoint-' + instanceId)
+                    .attr('src');
+                if (largeImageSrc && largeImageSrc.length > 3) {
+                    $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
+                        largeImageSrc,
+                        $container.find('#sopaGameContainer-' + instanceId)
+                    );
+                }
+            });
 
-        $container.find('#sopaPShowClue-' + instanceId).text(
-            `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
-        );
+        $container
+            .find('#sopaPShowClue-' + instanceId)
+            .text(
+                `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
+            );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -800,15 +912,19 @@ var $eXeSopa = {
     enterCodeAccess: function (instanceId) {
         const mOptions = $eXeSopa.instances[instanceId];
         const $container = $('#sopaMainContainer-' + instanceId);
-        
+
         if (
             mOptions.itinerary.codeAccess.toLowerCase() ==
-            $container.find('#sopaCodeAccessE-' + instanceId).val().toLowerCase()
+            $container
+                .find('#sopaCodeAccessE-' + instanceId)
+                .val()
+                .toLowerCase()
         ) {
             $eXeSopa.showCubiertaOptions(false, instanceId);
             $container.find('#sopaLinkMaximize-' + instanceId).trigger('click');
         } else {
-            $container.find('#sopaMesajeAccesCodeE-' + instanceId)
+            $container
+                .find('#sopaMesajeAccesCodeE-' + instanceId)
                 .fadeOut(300)
                 .fadeIn(200)
                 .fadeOut(300)
@@ -820,7 +936,7 @@ var $eXeSopa = {
     gameOver: function (mode, instanceId) {
         const mOptions = $eXeSopa.instances[instanceId];
         const $container = $('#sopaMainContainer-' + instanceId);
-        
+
         mOptions.gameStarted = false;
         mOptions.gameOver = true;
 
@@ -829,13 +945,15 @@ var $eXeSopa = {
         clearInterval(mOptions.counterClock);
         mOptions.activeCounter = false;
 
-        const score = ((mOptions.hits * 10) / mOptions.numberQuestions).toFixed(2);
-        
+        const score = ((mOptions.hits * 10) / mOptions.numberQuestions).toFixed(
+            2
+        );
+
         if (mOptions.isScorm === 1) {
             $eXeSopa.sendScore(true, instanceId);
-            $container.find('#sopaRepeatActivity-' + instanceId).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`
-            );
+            $container
+                .find('#sopaRepeatActivity-' + instanceId)
+                .text(`${mOptions.msgs.msgYouScore}: ${score}`);
             $eXeSopa.initialScore = score;
         }
 
@@ -848,7 +966,10 @@ var $eXeSopa = {
                     mOptions.itinerary.percentageClue
                 );
             mclue = mOptions.obtainedClue ? text : pc;
-            $container.find('#sopaPShowClue-' + instanceId).text(mclue).show();
+            $container
+                .find('#sopaPShowClue-' + instanceId)
+                .text(mclue)
+                .show();
         }
 
         let message = `${$eXeSopa.getRetroFeedMessages(true, instanceId)} ${mOptions.msgs.msgWordsFind.replace('%s', score)}`;
@@ -858,7 +979,8 @@ var $eXeSopa = {
             message = mOptions.msgs.msgEndTime.replace('%s', score);
         }
 
-        const type = (mOptions.hits * 10) / mOptions.numberQuestions >= 5 ? 2 : 1;
+        const type =
+            (mOptions.hits * 10) / mOptions.numberQuestions >= 5 ? 2 : 1;
         $eXeSopa.showMessage(type, message, instanceId);
         $eXeSopa.showFeedBack(instanceId);
     },
@@ -882,7 +1004,6 @@ var $eXeSopa = {
         }
     },
 
-
     paintMouse: function (image, cursor, x, y) {
         x = parseFloat(x) || 0;
         y = parseFloat(y) || 0;
@@ -904,7 +1025,7 @@ var $eXeSopa = {
     updateScore: function (num, mCurWord, number, instanceId) {
         const mOptions = $eXeSopa.instances[instanceId];
         const $container = $('#sopaMainContainer-' + instanceId);
-        
+
         let message = '',
             obtainedPoints = 0,
             sscore = 0,
@@ -931,10 +1052,13 @@ var $eXeSopa = {
                 : mOptions.score.toFixed(2);
         $container.find('#sopaPScore-' + instanceId).text(sscore);
         $container.find('#sopaPHits-' + instanceId).text(mOptions.hits);
-        $container.find('input.SSP-Word[value="' + mCurWord + '"]')
+        $container
+            .find('input.SSP-Word[value="' + mCurWord + '"]')
             .siblings('span')
             .css('color', '#de1111');
-        $container.find('input.SSP-Word[value="' + mCurWord + '"]').addClass('SPP-WordFound');
+        $container
+            .find('input.SSP-Word[value="' + mCurWord + '"]')
+            .addClass('SPP-WordFound');
 
         message = $eXeSopa.getMessageAnswer(true, points, instanceId);
         $eXeSopa.showMessage(2, message, instanceId);
@@ -960,9 +1084,9 @@ var $eXeSopa = {
         const score = (percentageHits / 10).toFixed(2);
         if (mOptions.isScorm == 1) {
             $eXeSopa.sendScore(true, instanceId);
-            $container.find('#sopaRepeatActivity-' + instanceId).text(
-                mOptions.msgs.msgYouScore + ': ' + score
-            );
+            $container
+                .find('#sopaRepeatActivity-' + instanceId)
+                .text(mOptions.msgs.msgYouScore + ': ' + score);
             $eXeSopa.initialScore = score;
         }
         $eXeSopa.saveEvaluation(instanceId);
@@ -1432,7 +1556,7 @@ $(function () {
                 // Extraer instanceId de las opciones
                 var instanceId = i.instanceId || 0;
                 var $container = n('#sopaMainContainer-' + instanceId);
-                
+
                 var l,
                     u,
                     s,
@@ -1519,7 +1643,9 @@ $(function () {
                                     $eXeSopa &&
                                     typeof $eXeSopa.updateScore == 'function'
                                 ) {
-                                    ($container.find('.selected').addClass('found'),
+                                    ($container
+                                        .find('.selected')
+                                        .addClass('found'),
                                         $eXeSopa.updateScore(
                                             s.length - l.length,
                                             r,
@@ -1531,7 +1657,9 @@ $(function () {
                             }
                             0 === l.length &&
                                 ($eXeSopa.gameOver(0, instanceId),
-                                $container.find('.SPP-PuzzleSquare').addClass('complete'));
+                                $container
+                                    .find('.SPP-PuzzleSquare')
+                                    .addClass('complete'));
                         }
                         ($container.find('.selected').removeClass('selected'),
                             (f = null),
@@ -1540,12 +1668,14 @@ $(function () {
                             (d = null));
                     };
                 ($container.find('input.SSP-Word').removeClass('SPP-WordFound'),
-                    (l = $container.find('input.SSP-Word')
+                    (l = $container
+                        .find('input.SSP-Word')
                         .toArray()
                         .map((t) => t.value.toLowerCase())
                         .filter((t) => t)
                         .sort()),
-                    (s = $container.find('input.SSP-Word')
+                    (s = $container
+                        .find('input.SSP-Word')
                         .toArray()
                         .map((t) => t.value)
                         .filter((t) => t)),
@@ -1554,15 +1684,27 @@ $(function () {
                         t.preventDefault();
                     }),
                     window.navigator.msPointerEnabled
-                        ? ($container.find('.SPP-PuzzleSquare').on('MSPointerDown', v),
-                          $container.find('.SPP-PuzzleSquare').on('MSPointerOver', $),
-                          $container.find('.SPP-PuzzleSquare').on('MSPointerUp', S))
+                        ? ($container
+                              .find('.SPP-PuzzleSquare')
+                              .on('MSPointerDown', v),
+                          $container
+                              .find('.SPP-PuzzleSquare')
+                              .on('MSPointerOver', $),
+                          $container
+                              .find('.SPP-PuzzleSquare')
+                              .on('MSPointerUp', S))
                         : ($container.find('.SPP-PuzzleSquare').mousedown(v),
                           $container.find('.SPP-PuzzleSquare').mouseenter(p),
                           $container.find('.SPP-PuzzleSquare').mouseup(S),
-                          $container.find('.SPP-PuzzleSquare').on('touchstart', v),
-                          $container.find('.SPP-PuzzleSquare').on('touchmove', g),
-                          $container.find('.SPP-PuzzleSquare').on('touchend', S)),
+                          $container
+                              .find('.SPP-PuzzleSquare')
+                              .on('touchstart', v),
+                          $container
+                              .find('.SPP-PuzzleSquare')
+                              .on('touchmove', g),
+                          $container
+                              .find('.SPP-PuzzleSquare')
+                              .on('touchend', S)),
                     (this.solve = function () {
                         for (
                             var t = r.solve(u, l).found, e = 0, o = t.length;
@@ -1574,13 +1716,17 @@ $(function () {
                                 s = t[e].x,
                                 f = t[e].y,
                                 d = r.orientations[i],
-                                c = $container.find('input.SSP-Word[value="' + a + '"]');
+                                c = $container.find(
+                                    'input.SSP-Word[value="' + a + '"]'
+                                );
                             if (!c.hasClass('SPP-WordFound')) {
                                 for (var h = 0, v = a.length; h < v; h++) {
                                     var g = d(s, f, h);
-                                    $container.find(
-                                        '[x="' + g.x + '"][y="' + g.y + '"]'
-                                    ).addClass('solved');
+                                    $container
+                                        .find(
+                                            '[x="' + g.x + '"][y="' + g.y + '"]'
+                                        )
+                                        .addClass('solved');
                                 }
                                 c.addClass('SPP-WordFound');
                             }

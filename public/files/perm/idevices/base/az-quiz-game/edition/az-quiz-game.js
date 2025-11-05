@@ -74,12 +74,24 @@ var $exeDevice = {
             msgTowRounds: c_('Two rounds'),
             msgImage: c_('Image'),
             msgNoImage: c_('No image'),
-            msgWrote: c_('Write the correct word and click on Reply. If you hesitate, click on Move on.'),
-            msgNotNetwork: c_('You can only play this game with internet connection.'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgWrote: c_(
+                'Write the correct word and click on Reply. If you hesitate, click on Move on.'
+            ),
+            msgNotNetwork: c_(
+                'You can only play this game with internet connection.'
+            ),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgShowRoulette: c_('Show word wheel'),
             msgHideRoulette: c_('Hide word wheel'),
             msgQuestion: c_('Question'),
@@ -88,13 +100,21 @@ var $exeDevice = {
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
             msgAuthor: c_('Authorship'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgFullScreen: c_('Full Screen'),
             msgExitFullScreen: c_('Exit Full Screen'),
             msgMoveOne: c_('Move on'),
@@ -112,7 +132,7 @@ var $exeDevice = {
             msgUnanswered: c_('Not answered'),
             msgScore: c_('Score'),
             msgWeight: c_('Weight'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
@@ -120,37 +140,39 @@ var $exeDevice = {
         msgs.msgNotStart = _('%1 does not start with letter %2');
         msgs.msgNotContain = _('%1 does not contain letter %2');
         msgs.msgProvideDefinition = _(
-            'Please provide the word definition or the valid URL of an image',
+            'Please provide the word definition or the valid URL of an image'
         );
         msgs.msgGame = _('Game');
         msgs.msgSelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgURLValid = _(
-            'You must upload or indicate the valid URL of an image',
+            'You must upload or indicate the valid URL of an image'
         );
         msgs.msgOneWord = _('Please provide at least one word');
         msgs.msgProvideTimeSolution = _(
-            'You must provide the time to view the solution',
+            'You must provide the time to view the solution'
         );
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
     },
 
     createForm: function () {
         let path = this.idevicePath,
-            wordInstructions = _("Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s");
+            wordInstructions = _(
+                "Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s"
+            );
         wordInstructions = wordInstructions.replace(
             '%s',
-            `<img src="${path}roscoIcoStart.png" alt="${_('Starts with/Contains')}" title="${_('Starts with/Contains')}" />`,
+            `<img src="${path}roscoIcoStart.png" alt="${_('Starts with/Contains')}" title="${_('Starts with/Contains')}" />`
         );
         const html = `
             <div id="roscoIdeviceForm">
@@ -260,7 +282,7 @@ var $exeDevice = {
         if (words.length > 0) {
             const swords = $exeDevice.getImportLetters(
                 $exeDevice.letters,
-                words,
+                words
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
@@ -433,14 +455,14 @@ var $exeDevice = {
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
-            dataGame.itinerary,
+            dataGame.itinerary
         );
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             dataGame.isScorm,
             dataGame.textButtonScorm,
             dataGame.repeatActivity,
-            dataGame.weighted,
+            dataGame.weighted
         );
     },
 
@@ -506,7 +528,7 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
         }
     },
@@ -608,7 +630,7 @@ var $exeDevice = {
 
         $iconSelection.attr(
             'src',
-            $exeDevice.idevicePath + 'roscoSelectImageInactive.png',
+            $exeDevice.idevicePath + 'roscoSelectImageInactive.png'
         );
         image.attr('alt', '');
 
@@ -643,7 +665,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     image.attr('alt', alt).show();
@@ -652,7 +674,7 @@ var $exeDevice = {
                     $exeDevice.paintMouse(this, $cursor, x, y);
                     $iconSelection.attr(
                         'src',
-                        $exeDevice.idevicePath + 'roscoSelectImage.png',
+                        $exeDevice.idevicePath + 'roscoSelectImage.png'
                     );
                     return true;
                 }
@@ -687,7 +709,6 @@ var $exeDevice = {
     },
 
     save: function () {
-
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
@@ -704,9 +725,7 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame);
 
-
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
-
 
         let divContent = '';
         if (dataGame.instructions !== '') {
@@ -721,7 +740,7 @@ var $exeDevice = {
             textAfter = tinymce.editors[1].getContent();
 
         let html = '<div class="rosco-IDevice">';
-    html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html +=
             '<div class="rosco-version js-hidden">' +
             $exeDevice.roscoVersion +
@@ -784,7 +803,7 @@ var $exeDevice = {
                         document
                             .getElementsByClassName('button-save-idevice')[0]
                             .click();
-                    },
+                    }
                 );
                 return false;
             }
@@ -851,7 +870,7 @@ var $exeDevice = {
     startContainsAll: function (letter, word, type) {
         const words = word.split('|');
         return words.every((sWord) =>
-            this.startContains(letter, $.trim(sWord).toUpperCase(), type),
+            this.startContains(letter, $.trim(sWord).toUpperCase(), type)
         );
     },
 
@@ -954,7 +973,8 @@ var $exeDevice = {
                 parseInt(clear($.trim($('#roscoTimeShowSolution').val()))) || 0,
             durationGame = parseInt(clear($('#roscoDuration').val())) || 0,
             numberTurns = parseInt(clear($('#roscoNumberTurns').val())) || 0,
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#roscoCaseSensitive').is(':checked'),
             evaluation = $('#roscoEEvaluation').is(':checked'),
             evaluationID = $('#roscoEEvaluationID').val(),
@@ -1180,7 +1200,7 @@ var $exeDevice = {
             });
             if (word && questionText) {
                 words.push(
-                    `${$exeDevice.removeTags(word)}#${$exeDevice.removeTags(questionText)}`,
+                    `${$exeDevice.removeTags(word)}#${$exeDevice.removeTags(questionText)}`
                 );
             }
         });
@@ -1188,7 +1208,7 @@ var $exeDevice = {
         if (words.length > 0) {
             const swords = $exeDevice.getImportLetters(
                 $exeDevice.letters,
-                words,
+                words
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
@@ -1226,7 +1246,7 @@ var $exeDevice = {
         if (words.length > 0) {
             const swords = $exeDevice.getImportLetters(
                 $exeDevice.letters,
-                words,
+                words
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
@@ -1294,10 +1314,10 @@ var $exeDevice = {
                 .attr('alt', alt);
         });
 
-    $('#roscoDataWord input.roscoURLImageEdition').on(
+        $('#roscoDataWord input.roscoURLImageEdition').on(
             'change',
             function () {
-        const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
+                const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
                     selectedFile = $(this).val(),
                     ext = selectedFile.split('.').pop().toLowerCase();
                 if (
@@ -1305,27 +1325,37 @@ var $exeDevice = {
                     !validExt.includes(ext)
                 ) {
                     eXe.app.alert(
-                        _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                        _('Supported formats') +
+                            ': jpg, jpeg, gif, png, svg, webp'
                     );
                     return false;
                 }
-        const $imageBar = $(this).closest('.roscoImageBarEdition');
-        const img = $imageBar.find('.roscoHomeImageEdition');
-        const url = selectedFile;
-        const alt = $imageBar.find('.roscoAlt').val();
-        let x = parseFloat($imageBar.find('.roscoXImageEdition').val());
-        let y = parseFloat($imageBar.find('.roscoYImageEdition').val());
+                const $imageBar = $(this).closest('.roscoImageBarEdition');
+                const img = $imageBar.find('.roscoHomeImageEdition');
+                const url = selectedFile;
+                const alt = $imageBar.find('.roscoAlt').val();
+                let x = parseFloat($imageBar.find('.roscoXImageEdition').val());
+                let y = parseFloat($imageBar.find('.roscoYImageEdition').val());
                 x = x || 0;
                 y = y || 0;
                 $exeDevice.showImage(img, url, x, y, alt, 1);
 
-        // Sincroniza icono activo/inactivo
-        const $container = $(this).closest('.roscoWordMutimediaEdition');
-        const hasImage = $.trim($(this).val() || '').length > 0;
-        const hasAudio = $.trim($container.find('.roscoURLAudioEdition').val() || '').length > 0;
-        const icon = (hasImage || hasAudio) ? 'roscoSelectImage.png' : 'roscoSelectImageInactive.png';
-        $container.find('.roscoSelectImageEdition').attr('src', $exeDevice.idevicePath + icon);
-            },
+                // Sincroniza icono activo/inactivo
+                const $container = $(this).closest(
+                    '.roscoWordMutimediaEdition'
+                );
+                const hasImage = $.trim($(this).val() || '').length > 0;
+                const hasAudio =
+                    $.trim($container.find('.roscoURLAudioEdition').val() || '')
+                        .length > 0;
+                const icon =
+                    hasImage || hasAudio
+                        ? 'roscoSelectImage.png'
+                        : 'roscoSelectImageInactive.png';
+                $container
+                    .find('.roscoSelectImageEdition')
+                    .attr('src', $exeDevice.idevicePath + icon);
+            }
         );
 
         $('#roscoDataWord input.roscoURLAudioEdition').on(
@@ -1339,12 +1369,21 @@ var $exeDevice = {
                 }
 
                 // Sincroniza icono activo/inactivo
-                const $container = $(this).closest('.roscoWordMutimediaEdition');
-                const hasImage = $.trim($container.find('.roscoURLImageEdition').val() || '').length > 0;
+                const $container = $(this).closest(
+                    '.roscoWordMutimediaEdition'
+                );
+                const hasImage =
+                    $.trim($container.find('.roscoURLImageEdition').val() || '')
+                        .length > 0;
                 const hasAudio = $.trim($(this).val() || '').length > 0;
-                const icon = (hasImage || hasAudio) ? 'roscoSelectImage.png' : 'roscoSelectImageInactive.png';
-                $container.find('.roscoSelectImageEdition').attr('src', $exeDevice.idevicePath + icon);
-            },
+                const icon =
+                    hasImage || hasAudio
+                        ? 'roscoSelectImage.png'
+                        : 'roscoSelectImageInactive.png';
+                $container
+                    .find('.roscoSelectImageEdition')
+                    .attr('src', $exeDevice.idevicePath + icon);
+            }
         );
 
         $('#roscoDataWord a.roscoPlayAudio').on('click', function (e) {
@@ -1363,78 +1402,126 @@ var $exeDevice = {
 
         // Uso de delegación para soportar elementos añadidos tras updateFieldGame
         // Handler con namespace para poder desregistrar fácilmente y evitar duplicados.
-        $(document).off('click.roscoSelectImg').on('click.roscoSelectImg', '#roscoDataWord a.roscoLinkSelectImage', function (e) {
-            e.preventDefault();
-            const $container = $(this).closest('.roscoWordMutimediaEdition');
-            const $panel = $container.children('.roscoImageBarEdition');
-            if (!$panel.length) return;
+        $(document)
+            .off('click.roscoSelectImg')
+            .on(
+                'click.roscoSelectImg',
+                '#roscoDataWord a.roscoLinkSelectImage',
+                function (e) {
+                    e.preventDefault();
+                    const $container = $(this).closest(
+                        '.roscoWordMutimediaEdition'
+                    );
+                    const $panel = $container.children('.roscoImageBarEdition');
+                    if (!$panel.length) return;
 
-            // Evita cola de animaciones si se hace clic repetidamente rápido.
-            $panel.stop(true, true).slideToggle(180);
+                    // Evita cola de animaciones si se hace clic repetidamente rápido.
+                    $panel.stop(true, true).slideToggle(180);
 
-            const img = $panel.find('.roscoHomeImageEdition');
-            const url = $panel.find('.roscoURLImageEdition').val();
-            const alt = $panel.find('.roscoAlt').val();
-            let y = parseFloat($panel.find('.roscoYImageEdition').val()) || 0;
-            let x = parseFloat($panel.find('.roscoXImageEdition').val()) || 0;
+                    const img = $panel.find('.roscoHomeImageEdition');
+                    const url = $panel.find('.roscoURLImageEdition').val();
+                    const alt = $panel.find('.roscoAlt').val();
+                    let y =
+                        parseFloat($panel.find('.roscoYImageEdition').val()) ||
+                        0;
+                    let x =
+                        parseFloat($panel.find('.roscoXImageEdition').val()) ||
+                        0;
 
-            $exeDevice.stopSound();
-            $exeDevice.showImage(img, url, x, y, alt, 0);
+                    $exeDevice.stopSound();
+                    $exeDevice.showImage(img, url, x, y, alt, 0);
 
-            // Sincroniza icono activo/inactivo también aquí
-            const hasImage = $.trim($panel.find('.roscoURLImageEdition').val() || '').length > 0;
-            const hasAudio = $.trim($panel.find('.roscoURLAudioEdition').val() || '').length > 0;
-            const icon = (hasImage || hasAudio) ? 'roscoSelectImage.png' : 'roscoSelectImageInactive.png';
-            $container.find('.roscoSelectImageEdition').attr('src', $exeDevice.idevicePath + icon);
+                    // Sincroniza icono activo/inactivo también aquí
+                    const hasImage =
+                        $.trim($panel.find('.roscoURLImageEdition').val() || '')
+                            .length > 0;
+                    const hasAudio =
+                        $.trim($panel.find('.roscoURLAudioEdition').val() || '')
+                            .length > 0;
+                    const icon =
+                        hasImage || hasAudio
+                            ? 'roscoSelectImage.png'
+                            : 'roscoSelectImageInactive.png';
+                    $container
+                        .find('.roscoSelectImageEdition')
+                        .attr('src', $exeDevice.idevicePath + icon);
 
-            if (!hasImage) {
-                const $cursor = $panel.find('.roscoCursorEdition');
-                const $noImage = $panel.find('.roscoNoImageEdition');
-                img.hide();
-                $cursor.hide();
-                $noImage.show();
-            }
-        });
+                    if (!hasImage) {
+                        const $cursor = $panel.find('.roscoCursorEdition');
+                        const $noImage = $panel.find('.roscoNoImageEdition');
+                        img.hide();
+                        $cursor.hide();
+                        $noImage.show();
+                    }
+                }
+            );
 
         $('#roscoDataWord a.roscoLinkClose').on('click', function (e) {
             e.preventDefault();
             $exeDevice.stopSound();
             const $container = $(this).closest('.roscoWordMutimediaEdition');
-            const hasImage = $.trim($container.find('.roscoURLImageEdition').val() || '').length > 0;
-            const hasAudio = $.trim($container.find('.roscoURLAudioEdition').val() || '').length > 0;
-            const icon = (hasImage || hasAudio) ? 'roscoSelectImage.png' : 'roscoSelectImageInactive.png';
-            $container.find('.roscoSelectImageEdition').attr('src', $exeDevice.idevicePath + icon);
+            const hasImage =
+                $.trim($container.find('.roscoURLImageEdition').val() || '')
+                    .length > 0;
+            const hasAudio =
+                $.trim($container.find('.roscoURLAudioEdition').val() || '')
+                    .length > 0;
+            const icon =
+                hasImage || hasAudio
+                    ? 'roscoSelectImage.png'
+                    : 'roscoSelectImageInactive.png';
+            $container
+                .find('.roscoSelectImageEdition')
+                .attr('src', $exeDevice.idevicePath + icon);
             $container.find('.roscoImageBarEdition').slideUp();
         });
 
+        $(document).on(
+            'focusout',
+            '#roscoDataWord .roscoWordEdition',
+            function () {
+                const $input = $(this);
+                const word = $input.val().trim();
+                const $row = $input.closest('.roscoFileWordEdition');
+                const $letterEl = $row.find('h3.roscoLetterEdition').first();
+                const letter = $letterEl.text();
+                const color = word
+                    ? $exeDevice.colors.blue
+                    : $exeDevice.colors.grey;
+                const mletter = $exeDevice.getCaracterLetter(letter);
 
-        $(document).on('focusout', '#roscoDataWord .roscoWordEdition', function () {
-            const $input = $(this);
-            const word = $input.val().trim();
-            const $row = $input.closest('.roscoFileWordEdition');
-            const $letterEl = $row.find('h3.roscoLetterEdition').first();
-            const letter = $letterEl.text();
-            const color = word ? $exeDevice.colors.blue : $exeDevice.colors.grey;
-            const mletter = $exeDevice.getCaracterLetter(letter);
+                $letterEl.css('background-color', color);
 
-            $letterEl.css('background-color', color);
+                if (!word.length) return;
 
-            if (!word.length) return; 
+                const $startIcon = $row.find('.roscoStartEdition').first();
+                const mType =
+                    $startIcon.attr('src') &&
+                    $startIcon.attr('src').includes('roscoContains.png')
+                        ? 1
+                        : 0;
 
+                if ($exeDevice.modeBoard) return;
 
-            const $startIcon = $row.find('.roscoStartEdition').first();
-            const mType = $startIcon.attr('src') && $startIcon.attr('src').includes('roscoContains.png') ? 1 : 0;
-
-            if ($exeDevice.modeBoard) return; 
-
-            if (mType === 0 && !$exeDevice.startContainsAll(mletter, word, mType)) {
-                const message = msgs.msgNotStart.replace('%1', word).replace('%2', letter);
-                eXe.app.alert(message);
-            } else if (mType === 1 && !$exeDevice.startContainsAll(mletter, word, mType)) {
-                const message = msgs.msgNotContain.replace('%1', word).replace('%2', letter);
-                eXe.app.alert(message);
+                if (
+                    mType === 0 &&
+                    !$exeDevice.startContainsAll(mletter, word, mType)
+                ) {
+                    const message = msgs.msgNotStart
+                        .replace('%1', word)
+                        .replace('%2', letter);
+                    eXe.app.alert(message);
+                } else if (
+                    mType === 1 &&
+                    !$exeDevice.startContainsAll(mletter, word, mType)
+                ) {
+                    const message = msgs.msgNotContain
+                        .replace('%1', word)
+                        .replace('%2', letter);
+                    eXe.app.alert(message);
+                }
             }
-        });
+        );
 
         $('#roscoShowSolution').on('change', function () {
             const mark = $(this).is(':checked');
@@ -1448,16 +1535,20 @@ var $exeDevice = {
         // Delegación para soportar imágenes añadidas dinámicamente y evitar bindings duplicados
         $(document)
             .off('click.roscoImg')
-            .on('click.roscoImg', '#roscoDataWord img.roscoHomeImageEdition', function (e) {
-                $exeDevice.clickImage(this, e.pageX, e.pageY);
-            });
+            .on(
+                'click.roscoImg',
+                '#roscoDataWord img.roscoHomeImageEdition',
+                function (e) {
+                    $exeDevice.clickImage(this, e.pageX, e.pageY);
+                }
+            );
 
         $('.roscoWordMutimediaEdition').on(
             'dblclick',
             'img.roscoHomeImageEdition',
             function () {
                 $exeDevice.clickImage(this, 0, 0);
-            },
+            }
         );
 
         $('.roscoWordMutimediaEdition').on(
@@ -1475,7 +1566,7 @@ var $exeDevice = {
                 $x.val(0);
                 $y.val(0);
                 $(this).hide();
-            },
+            }
         );
 
         const sanitizeInput = function (input) {
@@ -1499,7 +1590,7 @@ var $exeDevice = {
             this.value =
                 this.value.trim() === ''
                     ? 1
-                    :  Math.min(Math.max(this.value, 0), 2);
+                    : Math.min(Math.max(this.value, 0), 2);
         });
 
         $('#roscoDuration').on('focusout', function () {
@@ -1529,8 +1620,8 @@ var $exeDevice = {
                 if (!file) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt) or a Moodle XML file (.xml)',
-                        ),
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
+                        )
                     );
                     return;
                 }
@@ -1545,8 +1636,8 @@ var $exeDevice = {
                 ) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt) or a Moodle XML file (.xml)',
-                        ),
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
+                        )
                     );
                     return;
                 }
@@ -1574,21 +1665,22 @@ var $exeDevice = {
             return false;
         });
 
-
         $(document).on('click', '.toggle-item', function (e) {
             if ($(e.target).is('input, label, a, button')) return;
             const id = $(this).attr('idevice-id');
             if (!id) return;
             const $input = $('#' + id);
             if ($input.length) {
-                $input.prop('checked', !$input.is(':checked')).trigger('change');
+                $input
+                    .prop('checked', !$input.is(':checked'))
+                    .trigger('change');
             }
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             1,
-            $exeDevice.insertWords,
+            $exeDevice.insertWords
         );
 
         //eXe 3.0 Dismissible messages
@@ -1698,7 +1790,7 @@ var $exeDevice = {
                         .toUpperCase();
                     if (abcs.includes(sletter)) {
                         result_letters.push(
-                            `${sletter}#1#${sword}#${sdefinition}`,
+                            `${sletter}#1#${sword}#${sdefinition}`
                         );
                         usedWords.add(sword);
                         abcs = abcs.replace(sletter, '');
@@ -1757,7 +1849,7 @@ var $exeDevice = {
         if (words.length > 0) {
             const swords = $exeDevice.getImportLetters(
                 $exeDevice.letters,
-                words,
+                words
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
@@ -1773,7 +1865,7 @@ var $exeDevice = {
     updateImportFields: function (wordsArray) {
         const resetFields = () => {
             $(
-                '.roscoDefinitionEdition, .roscoWordEdition, .roscoURLAudioEdition, .roscoURLImageEdition',
+                '.roscoDefinitionEdition, .roscoWordEdition, .roscoURLAudioEdition, .roscoURLImageEdition'
             ).val('');
             $('.roscoXImageEdition, .roscoYImageEdition').val('0');
             $('.roscoStartEdition')
@@ -1781,7 +1873,7 @@ var $exeDevice = {
                 .attr('alt', _('The word starts with...'));
             $('.roscoLetterEdition').css(
                 'background-color',
-                $exeDevice.colors.grey,
+                $exeDevice.colors.grey
             );
         };
 
@@ -1795,7 +1887,7 @@ var $exeDevice = {
                     .text()
                     .toUpperCase(),
                 wordData = wordsArray.find(
-                    (word) => word.split('#')[0].toUpperCase() === letter,
+                    (word) => word.split('#')[0].toUpperCase() === letter
                 );
 
             if (wordData) {
@@ -1812,7 +1904,7 @@ var $exeDevice = {
                         .find('.roscoStartEdition')
                         .attr(
                             'src',
-                            $exeDevice.idevicePath + 'roscoContains.png',
+                            $exeDevice.idevicePath + 'roscoContains.png'
                         )
                         .attr('alt', _('The word contains...'));
                 }
