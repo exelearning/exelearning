@@ -39,9 +39,13 @@ var $eXeFlipCards = {
     mScorm: null,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Memory cards', 'flipcards', 'flipcards-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Memory cards',
+            'flipcards',
+            'flipcards-IDevice'
+        );
     },
-
 
     enable: function () {
         $eXeFlipCards.loadGame();
@@ -67,7 +71,7 @@ var $eXeFlipCards = {
 
             if (mOption.type == 3) {
                 mOption.cardsGame = $eXeFlipCards.createCardsData(
-                    mOption.cardsGame,
+                    mOption.cardsGame
                 );
             }
 
@@ -122,7 +126,7 @@ var $eXeFlipCards = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $eXeFlipCards,
-                node,
+                node
             );
 
         if (this.hasLATEX) {
@@ -130,7 +134,7 @@ var $eXeFlipCards = {
                 $eXeFlipCards.math.loadMathJax();
             } else {
                 $exeDevices.iDevice.gamification.math.updateLatex(
-                    '.flipcards-IDevice',
+                    '.flipcards-IDevice'
                 );
             }
         }
@@ -239,10 +243,10 @@ var $eXeFlipCards = {
         mOptions.cardsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.cardsGame,
-                mOptions.percentajeCards,
+                mOptions.percentajeCards
             );
         const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.cardsGame,
+            mOptions.cardsGame
         );
         mOptions.cardsGame = mOptions.randomCards ? al : mOptions.cardsGame;
         mOptions.numberCards = mOptions.cardsGame.length;
@@ -251,18 +255,18 @@ var $eXeFlipCards = {
         for (let i = 0; i < mOptions.cardsGame.length; i++) {
             mOptions.cardsGame[i].isCorrect = true;
             mOptions.cardsGame[i].eText = $eXeFlipCards.decodeURIComponentSafe(
-                mOptions.cardsGame[i].eText,
+                mOptions.cardsGame[i].eText
             );
             mOptions.cardsGame[i].eTextBk =
                 $eXeFlipCards.decodeURIComponentSafe(
-                    mOptions.cardsGame[i].eTextBk,
+                    mOptions.cardsGame[i].eTextBk
                 );
             if (
                 /(?:\\\(|\\\[|\\begin\{.*?})/.test(
-                    mOptions.cardsGame[i].eText,
+                    mOptions.cardsGame[i].eText
                 ) ||
                 /(?:\\\(|\\\[|\\begin\{.*?})/.test(
-                    mOptions.cardsGame[i].eTextBk,
+                    mOptions.cardsGame[i].eTextBk
                 )
             ) {
                 $eXeFlipCards.hasLATEX = true;
@@ -347,7 +351,7 @@ var $eXeFlipCards = {
             $eXeFlipCards.showMessageMemory(
                 3,
                 mOptions.msgs.mgsClickCard,
-                instance,
+                instance
             );
         }, 2000);
     },
@@ -372,7 +376,7 @@ var $eXeFlipCards = {
                 : mOptions.score.toFixed(2);
 
         $('#flcdsPNumber-' + instance).text(
-            mOptions.realNumberCards - mOptions.hits,
+            mOptions.realNumberCards - mOptions.hits
         );
         $('#flcdsPScore-' + instance).text(sscore);
         $('#flcdsPHits-' + instance).text(mOptions.hits);
@@ -451,12 +455,12 @@ var $eXeFlipCards = {
 
     showMessageMemory: function (type, message, instance, end) {
         const colors = [
-            '#555555',
-            $eXeFlipCards.borderColors.red,
-            $eXeFlipCards.borderColors.green,
-            $eXeFlipCards.borderColors.blue,
-            $eXeFlipCards.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeFlipCards.borderColors.red,
+                $eXeFlipCards.borderColors.green,
+                $eXeFlipCards.borderColors.blue,
+                $eXeFlipCards.borderColors.yellow,
+            ],
             color = colors[type];
 
         $('#flcdsMessage-' + instance).text(message);
@@ -475,7 +479,7 @@ var $eXeFlipCards = {
     updateCoversMemory: function (instance, answers) {
         const mOptions = $eXeFlipCards.options[instance],
             $cardContainers = $('#flcdsMultimedia-' + instance).find(
-                '.FLCDSP-CardContainerMemory',
+                '.FLCDSP-CardContainerMemory'
             );
 
         $cardContainers.each(function () {
@@ -518,7 +522,7 @@ var $eXeFlipCards = {
             if (!mOptions.obtainedClue) {
                 mOptions.obtainedClue = true;
                 $('#flcdsPShowClue-' + instance).text(
-                    mOptions.itinerary.clueGame,
+                    mOptions.itinerary.clueGame
                 );
                 $('#flcdsCubierta-' + instance).show();
                 $('#flcdsShowClue-' + instance).fadeIn();
@@ -540,7 +544,7 @@ var $eXeFlipCards = {
                 {
                     zoom: '110%',
                 },
-                'slow',
+                'slow'
             );
         });
 
@@ -595,7 +599,6 @@ var $eXeFlipCards = {
             ).toFixed(2);
             $eXeFlipCards.sendScore(true, instance);
             $eXeFlipCards.initialScore = score;
-
         }
         $eXeFlipCards.saveEvaluation(instance);
 
@@ -674,14 +677,14 @@ var $eXeFlipCards = {
                 },
                 function () {
                     $card.removeClass('FLCDSP-HoverMemory');
-                },
+                }
             );
         }
     },
 
     initCardsMemory: function (instance) {
         const $cards = $('#flcdsMultimedia-' + instance).find(
-            '.FLCDSP-CardContainerMemory',
+            '.FLCDSP-CardContainerMemory'
         );
         $cards.each(function () {
             $(this).data('state', '0');
@@ -689,7 +692,7 @@ var $eXeFlipCards = {
             $eXeFlipCards.showCardMemory($(this), instance);
         });
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#flcdsMultimedia-' + instance,
+            '#flcdsMultimedia-' + instance
         );
     },
 
@@ -743,7 +746,7 @@ var $eXeFlipCards = {
                             x,
                             y,
                             1,
-                            instance,
+                            instance
                         );
                     }
                 })
@@ -770,7 +773,7 @@ var $eXeFlipCards = {
                             x,
                             y,
                             1,
-                            instance,
+                            instance
                         );
                     }
                 })
@@ -825,7 +828,10 @@ var $eXeFlipCards = {
             mOptions.counterClock = setInterval(function () {
                 let $node = $('#flcdsMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -850,9 +856,9 @@ var $eXeFlipCards = {
         $eXeFlipCards.showMessageMemory(
             3,
             mOptions.msgs.mgsClickCard,
-            instance,
+            instance
         );
-        $eXeFlipCards.refreshCards(instance)
+        $eXeFlipCards.refreshCards(instance);
         mOptions.gameStarted = true;
     },
 
@@ -860,7 +866,7 @@ var $eXeFlipCards = {
         const mOptions = $eXeFlipCards.options[instance];
         mOptions.active = 0;
         const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.cardsGame,
+            mOptions.cardsGame
         );
         mOptions.cardsGame = mOptions.randomCards ? al : mOptions.cardsGame;
 
@@ -878,7 +884,7 @@ var $eXeFlipCards = {
         $eXeFlipCards.initCards(instance);
 
         const $cards = $('#flcdsMultimedia-' + instance).find(
-            '.FLCDSP-CardDraw',
+            '.FLCDSP-CardDraw'
         );
         $cards
             .off()
@@ -891,14 +897,14 @@ var $eXeFlipCards = {
                     if (largeImageSrc && largeImageSrc.length > 3) {
                         $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
                             largeImageSrc,
-                            $('#flcdsGameContainer-' + instance),
+                            $('#flcdsGameContainer-' + instance)
                         );
                     }
                     return;
                 }
                 if (
                     $(e.target).closest(
-                        '.FLCDSP-LinkAudioFront, .FLCDSP-LinkAudioBack',
+                        '.FLCDSP-LinkAudioFront, .FLCDSP-LinkAudioBack'
                     ).length
                 ) {
                     $eXeFlipCards.checkAudio($(this), 1000, instance);
@@ -906,7 +912,7 @@ var $eXeFlipCards = {
                 }
                 $(this)
                     .find(
-                        '.FLCDSP-FullLinkImage-Back, .FLCDSP-FullLinkImage-Front, .FLCDSP-LinkAudioFront, .FLCDSP-LinkAudioBack, .FLCDSP-CursorFront, .FLCDSP-Cursor-Back',
+                        '.FLCDSP-FullLinkImage-Back, .FLCDSP-FullLinkImage-Front, .FLCDSP-LinkAudioFront, .FLCDSP-LinkAudioBack, .FLCDSP-CursorFront, .FLCDSP-Cursor-Back'
                     )
                     .hide();
                 const $flipInner = $(this).find('.FLCDSP-FlipCardInner').eq(0);
@@ -914,11 +920,11 @@ var $eXeFlipCards = {
                     if (mOptions.type === 2) {
                         $('#flcdsLinkV-' + instance).css(
                             'visibility',
-                            'visible',
+                            'visible'
                         );
                         $('#flcdsLinkF-' + instance).css(
                             'visibility',
-                            'visible',
+                            'visible'
                         );
                     }
                     $flipInner.addClass('flipped');
@@ -926,7 +932,7 @@ var $eXeFlipCards = {
                         $(this),
                         true,
                         mOptions,
-                        instance,
+                        instance
                     );
                 } else {
                     $flipInner.removeClass('flipped');
@@ -934,7 +940,7 @@ var $eXeFlipCards = {
                         $(this),
                         false,
                         mOptions,
-                        instance,
+                        instance
                     );
                 }
                 $exeDevices.iDevice.gamification.media.stopSound(mOptions);
@@ -943,7 +949,8 @@ var $eXeFlipCards = {
             });
 
         $cards.on('mouseenter', function () {
-            if (!$eXeFlipCards.isMobile()) $eXeFlipCards.checkAudio($(this), 50, instance);
+            if (!$eXeFlipCards.isMobile())
+                $eXeFlipCards.checkAudio($(this), 50, instance);
         });
 
         $eXeFlipCards.handleNavigationControls(mOptions, instance);
@@ -982,11 +989,11 @@ var $eXeFlipCards = {
         const mOptions = $eXeFlipCards.options[instance];
         $('#flcdsPreviousCard-' + instance).fadeTo(
             100,
-            mOptions.active > 0 ? 1 : 0.2,
+            mOptions.active > 0 ? 1 : 0.2
         );
         $('#flcdsNextCard-' + instance).fadeTo(
             200,
-            mOptions.active < mOptions.cardsGame.length - 1 ? 1 : 0.2,
+            mOptions.active < mOptions.cardsGame.length - 1 ? 1 : 0.2
         );
     },
 
@@ -1004,7 +1011,8 @@ var $eXeFlipCards = {
 
         if (image?.length > 3)
             $card.find(`.FLCDSP - FullLinkImage - ${side} `).show();
-        if (audio?.length > 3) $card.find(`.FLCDSP - LinkAudio - ${side} `).show();
+        if (audio?.length > 3)
+            $card.find(`.FLCDSP - LinkAudio - ${side} `).show();
         if (cursorVisible) $card.find(`.FLCDSP - Cursor - ${side} `).show();
 
         if (isFlipped) {
@@ -1013,10 +1021,7 @@ var $eXeFlipCards = {
 
         $exeDevices.iDevice.gamification.media.stopSound(mOptions);
 
-        if (
-            mOptions.isScorm === 1 &&
-            mOptions.type < 2
-        ) {
+        if (mOptions.isScorm === 1 && mOptions.type < 2) {
             $eXeFlipCards.sendScore(true, instance);
         }
 
@@ -1065,8 +1070,8 @@ var $eXeFlipCards = {
 
     handleCardFullImage: function ($card) {
         const $image = $card
-            .find('.FLCDSP-FlipCardInner')
-            .find('.FLCDSP-FullLinkImage'),
+                .find('.FLCDSP-FlipCardInner')
+                .find('.FLCDSP-FullLinkImage'),
             $imageback = $card
                 .find('.flip-card.back')
                 .find('.FLCDSP-FullLinkImage'),
@@ -1087,7 +1092,7 @@ var $eXeFlipCards = {
 
     handleNavigationControls: function (mOptions, instance) {
         const $cards = $('#flcdsMultimedia-' + instance).find(
-            '.FLCDSP-CardDraw',
+            '.FLCDSP-CardDraw'
         );
         if (
             mOptions.type === 2 ||
@@ -1259,9 +1264,9 @@ var $eXeFlipCards = {
         $flcdsHistGame.show();
 
         const numcards =
-            mOptions.type == 3
-                ? mOptions.cardsGame.length / 2
-                : mOptions.cardsGame.length,
+                mOptions.type == 3
+                    ? mOptions.cardsGame.length / 2
+                    : mOptions.cardsGame.length,
             score = ((mOptions.hits * 10) / numcards).toFixed(2);
         if (type == 1) {
             message = msgs.msgEndTime.replace('%s', score);
@@ -1283,7 +1288,7 @@ var $eXeFlipCards = {
             } else {
                 mclue = msgs.msgTryAgain.replace(
                     '%s',
-                    mOptions.itinerary.percentageClue,
+                    mOptions.itinerary.percentageClue
                 );
             }
         }
@@ -1355,22 +1360,24 @@ var $eXeFlipCards = {
             const card = $eXeFlipCards.createCardMemory(
                 cardsGame[i].number,
                 cardsGame[i],
-                instance,
+                instance
             );
             cards += card;
         }
         $('#flcdsMultimedia-' + instance).append(cards);
         if (mOptions.imgCard.length > 4) {
             $('#flcdsMultimedia-' + instance)
-                .find('.FLCDSP-CardContainerMemory').each(function () {
-                    $(this).find('.FLCDSP-CardFrontMemory').css({
-                        'background-image': 'url(' + mOptions.imgCard + ')',
-                        'background-size': 'cover'
-                    });
+                .find('.FLCDSP-CardContainerMemory')
+                .each(function () {
+                    $(this)
+                        .find('.FLCDSP-CardFrontMemory')
+                        .css({
+                            'background-image': 'url(' + mOptions.imgCard + ')',
+                            'background-size': 'cover',
+                        });
                 });
         }
-        $eXeFlipCards.refreshCardsMemory(instance)
-
+        $eXeFlipCards.refreshCardsMemory(instance);
     },
 
     showClue: function (instance) {
@@ -1507,7 +1514,6 @@ var $eXeFlipCards = {
             $('#flcdsGameMinimize-' + instance)
                 .css('visibility', 'visible')
                 .show();
-
         });
 
         $('#flcdsLinkV-' + instance).on('click touchstart', (e) => {
@@ -1530,16 +1536,16 @@ var $eXeFlipCards = {
         $('#flcdsGameButtons-' + instance).toggle(mOptions.type === 2);
         $('#flcdsCubierta-' + instance).hide();
         $('#flcdsCodeAccessDiv-' + instance).toggle(
-            mOptions.itinerary.showCodeAccess,
+            mOptions.itinerary.showCodeAccess
         );
         $('#flcdsLinkV-' + instance + ', #flcdsLinkF-' + instance).css(
             'visibility',
-            'hidden',
+            'hidden'
         );
 
         if (mOptions.itinerary.showCodeAccess) {
             $('#flcdsMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $('#flcdsCubierta-' + instance).show();
         }
@@ -1562,7 +1568,7 @@ var $eXeFlipCards = {
         $(window).on('unload.eXeFlipCards', () => {
             if ($eXeFlipCards.mScorm)
                 $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeFlipCards.mScorm,
+                    $eXeFlipCards.mScorm
                 );
         });
 
@@ -1598,7 +1604,7 @@ var $eXeFlipCards = {
             e.preventDefault();
             $eXeFlipCards.nextCard(instance);
             if (mOptions.isScorm == 1) {
-                $eXeFlipCards.sendScore(true, instance)
+                $eXeFlipCards.sendScore(true, instance);
             }
         });
 
@@ -1606,7 +1612,7 @@ var $eXeFlipCards = {
             e.preventDefault();
             $eXeFlipCards.previousCard(instance);
             if (mOptions.isScorm == 1) {
-                $eXeFlipCards.sendScore(true, instance)
+                $eXeFlipCards.sendScore(true, instance);
             }
         });
 
@@ -1622,11 +1628,11 @@ var $eXeFlipCards = {
             '.FLCDSP-CardContainerMemory',
             function () {
                 $eXeFlipCards.cardClick(this, instance);
-            },
+            }
         );
 
         $('#flcdsStartLevels-' + instance).toggle(
-            mOptions.type === 3 && mOptions.time > 0,
+            mOptions.type === 3 && mOptions.time > 0
         );
 
         if (mOptions.type === 3 && mOptions.time === 0) {
@@ -1638,11 +1644,11 @@ var $eXeFlipCards = {
         $('#flcdsLinkFullScreen-' + instance).on('click touchstart', (e) => {
             e.preventDefault();
             const element = document.getElementById(
-                'flcdsGameContainer-' + instance,
+                'flcdsGameContainer-' + instance
             );
             $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
                 element,
-                instance,
+                instance
             );
         });
 
@@ -1655,7 +1661,10 @@ var $eXeFlipCards = {
             e.preventDefault();
             const audioId = this.dataset.audio;
             if (audioId && audioId.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(audioId, mOptions);
+                $exeDevices.iDevice.gamification.media.playSound(
+                    audioId,
+                    mOptions
+                );
             } else {
                 console.warn('Audio inválido en el enlace:', this);
             }
@@ -1663,7 +1672,7 @@ var $eXeFlipCards = {
 
         $('#flcdsGameContainer-' + instance).off(
             'click',
-            '.FLCDSP-FullLinkImage-Memory',
+            '.FLCDSP-FullLinkImage-Memory'
         );
         $('#flcdsGameContainer-' + instance).on(
             'click',
@@ -1675,15 +1684,15 @@ var $eXeFlipCards = {
                 if (largeImageSrc && largeImageSrc.length > 3) {
                     $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
                         largeImageSrc,
-                        $('#flcdsGameContainer-' + instance),
+                        $('#flcdsGameContainer-' + instance)
                     );
                 }
-            },
+            }
         );
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
         $eXeFlipCards.refreshGame(instance);
@@ -1707,7 +1716,7 @@ var $eXeFlipCards = {
         $('#flcdsStartGame-' + instance).off('click');
         $('#flcdsMultimedia-' + instance).off(
             'click',
-            '.FLCDSP-CardContainerMemory',
+            '.FLCDSP-CardContainerMemory'
         );
         $('#flcdsLinkFullScreen-' + instance).off('click touchstart');
     },
@@ -1741,11 +1750,14 @@ var $eXeFlipCards = {
                 3,
                 mOptions.msgs.mgsClickCard,
                 instance,
-                false,
+                false
             );
         }
 
-        const sound = $cc.find('.FLCDSP-LinkAudioMemory').data('audio') || $cc.find('.FLCDSP-LinkAudioMemoryBig').data('audio') || '';
+        const sound =
+            $cc.find('.FLCDSP-LinkAudioMemory').data('audio') ||
+            $cc.find('.FLCDSP-LinkAudioMemoryBig').data('audio') ||
+            '';
         if (sound.length > 3) {
             $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
         }
@@ -1754,8 +1766,14 @@ var $eXeFlipCards = {
         mOptions.gameActived = true;
 
         if (mOptions.selecteds.length === 2) {
-            if (parseInt(mOptions.selecteds[0]) === parseInt(mOptions.selecteds[1])) {
-                $eXeFlipCards.correctPairMemory(mOptions.selecteds[0], instance,);
+            if (
+                parseInt(mOptions.selecteds[0]) ===
+                parseInt(mOptions.selecteds[1])
+            ) {
+                $eXeFlipCards.correctPairMemory(
+                    mOptions.selecteds[0],
+                    instance
+                );
             } else {
                 $eXeFlipCards.uncorrectPairMemory(instance);
             }
@@ -1849,7 +1867,7 @@ var $eXeFlipCards = {
                 setTimeout(function () {
                     $exeDevices.iDevice.gamification.media.playSound(
                         audioBK,
-                        mOptions,
+                        mOptions
                     );
                 }, time);
                 $(card).find('.FLCDSP-LinkAudioBack').show();
@@ -1859,7 +1877,7 @@ var $eXeFlipCards = {
                 setTimeout(function () {
                     $exeDevices.iDevice.gamification.media.playSound(
                         audio,
-                        mOptions,
+                        mOptions
                     );
                 }, time);
                 $(card).find('.FLCDSP-LinkAudio').show();
@@ -1881,7 +1899,6 @@ var $eXeFlipCards = {
             }
         }
     },
-
 
     getScoreVisited: function (instance) {
         const mOptions = $eXeFlipCards.options[instance],
@@ -1925,9 +1942,9 @@ var $eXeFlipCards = {
         $cursor.hide();
         if (x > 0 || y > 0) {
             const parentClass =
-                type == 0
-                    ? '.FLCDSP-ImageContain'
-                    : '.FLCDSP-ImageContainMemory',
+                    type == 0
+                        ? '.FLCDSP-ImageContain'
+                        : '.FLCDSP-ImageContainMemory',
                 siblingClass =
                     type == 0 ? '.FLCDSP-Image' : '.FLCDSP-ImageMemory',
                 containerElement = $cursor.parents(parentClass).eq(0),
@@ -2003,7 +2020,7 @@ var $eXeFlipCards = {
                             x,
                             y,
                             0,
-                            instance,
+                            instance
                         );
                     }
                 })
@@ -2088,7 +2105,7 @@ var $eXeFlipCards = {
                             x,
                             y,
                             0,
-                            instance,
+                            instance
                         );
                     }
                 })
@@ -2099,14 +2116,14 @@ var $eXeFlipCards = {
             if (text.length > 0) {
                 $text.show();
                 $text.css({
-                    'color': color,
+                    color: color,
                     'background-color': $eXeFlipCards.hexToRgba(backcolor, 0.7),
                 });
             }
         } else if (text.length > 0) {
             $text.show();
             $text.css({
-                'color': color,
+                color: color,
                 'background-color': backcolor,
             });
         }
@@ -2145,7 +2162,7 @@ var $eXeFlipCards = {
     refreshCardsMemory: function (instance) {
         const mOptions = $eXeFlipCards.options[instance],
             $flcds = $('#flcdsMultimedia-' + instance).find(
-                '.FLCDSP-CardContainerMemory',
+                '.FLCDSP-CardContainerMemory'
             );
         mOptions.refreshCard = true;
 
@@ -2207,11 +2224,13 @@ var $eXeFlipCards = {
 
     setFontSize: function (instance) {
         const $flcds = $('#flcdsMultimedia-' + instance).find(
-            '.FLCDSP-CardDraw',
+            '.FLCDSP-CardDraw'
         );
         $flcds.each(function () {
             const $card = $(this),
-                $text = $card.find('.FLCDSP-FlipCardFront').find('.FLCDSP-EText'),
+                $text = $card
+                    .find('.FLCDSP-FlipCardFront')
+                    .find('.FLCDSP-EText'),
                 latex =
                     $text.find('mjx-container').length > 0 ||
                     /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test($text.text());
@@ -2222,7 +2241,9 @@ var $eXeFlipCards = {
                 $eXeFlipCards.setFontSizeMath($text, instance);
             }
 
-            const $textb = $card.find('.FLCDSP-FlipCardBack').find('.FLCDSP-EText'),
+            const $textb = $card
+                    .find('.FLCDSP-FlipCardBack')
+                    .find('.FLCDSP-EText'),
                 latexb =
                     $textb.find('mjx-container').length > 0 ||
                     /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test($text.text());
@@ -2236,7 +2257,7 @@ var $eXeFlipCards = {
 
     setFontSizeMemory: function (instance) {
         const $flcds = $('#flcdsMultimedia-' + instance).find(
-            '.FLCDSP-CardContainerMemory',
+            '.FLCDSP-CardContainerMemory'
         );
         $flcds.each(function () {
             const $card = $(this),
@@ -2328,14 +2349,14 @@ var $eXeFlipCards = {
 
     initCards: function (instance) {
         const $flcds = $('#flcdsMultimedia-' + instance).find(
-            '.FLCDSP-CardDraw',
+            '.FLCDSP-CardDraw'
         );
         $flcds.each(function () {
             $eXeFlipCards.showCard($(this), instance);
         });
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#flcdsMultimedia-' + instance,
+            '#flcdsMultimedia-' + instance
         );
     },
 
@@ -2370,18 +2391,18 @@ var $eXeFlipCards = {
         $('#flcdsPHits-' + instance).text(mOptions.hits);
         $('#flcdsPErrors-' + instance).text(mOptions.errors);
         $('#flcdsPNumber-' + instance).text(
-            mOptions.realNumberCards - mOptions.hits - mOptions.errors,
+            mOptions.realNumberCards - mOptions.hits - mOptions.errors
         );
     },
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $eXeFlipCards.borderColors.red,
-            $eXeFlipCards.borderColors.green,
-            $eXeFlipCards.borderColors.blue,
-            $eXeFlipCards.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeFlipCards.borderColors.red,
+                $eXeFlipCards.borderColors.green,
+                $eXeFlipCards.borderColors.blue,
+                $eXeFlipCards.borderColors.yellow,
+            ],
             color = colors[type],
             $flcdsMessage = $('#flcdsMessage-' + instance);
         $flcdsMessage.html(message);
@@ -2400,7 +2421,7 @@ var $eXeFlipCards = {
                 : $eXeFlipCards.getScoreVisited(instance);
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeFlipCards.isInExe,
+            $eXeFlipCards.isInExe
         );
     },
 
@@ -2429,44 +2450,70 @@ var $eXeFlipCards = {
             document.head.appendChild(script);
         },
 
-        engine: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js",
+        engine: 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-svg.js',
 
         engineConfig: {
             loader: {
-                load: ['[tex]/ams', '[tex]/amscd', '[tex]/cancel', '[tex]/centernot',
-                    '[tex]/color', '[tex]/colortbl', '[tex]/configmacros', '[tex]/gensymb',
-                    '[tex]/mathtools', '[tex]/mhchem', '[tex]/newcommand', '[tex]/noerrors',
-                    '[tex]/noundefined', '[tex]/physics', '[tex]/textmacros', '[tex]/gensymb',
-                    '[tex]/textcomp', '[tex]/bbox', '[tex]/upgreek', '[tex]/verb'
-                ]
+                load: [
+                    '[tex]/ams',
+                    '[tex]/amscd',
+                    '[tex]/cancel',
+                    '[tex]/centernot',
+                    '[tex]/color',
+                    '[tex]/colortbl',
+                    '[tex]/configmacros',
+                    '[tex]/gensymb',
+                    '[tex]/mathtools',
+                    '[tex]/mhchem',
+                    '[tex]/newcommand',
+                    '[tex]/noerrors',
+                    '[tex]/noundefined',
+                    '[tex]/physics',
+                    '[tex]/textmacros',
+                    '[tex]/gensymb',
+                    '[tex]/textcomp',
+                    '[tex]/bbox',
+                    '[tex]/upgreek',
+                    '[tex]/verb',
+                ],
             },
             tex: {
-                inlineMath: [
-                    ["\\(", "\\)"]
-                ],
-                displayMath: [
-                    ["\\[", "\\]"]
-                ],
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['\\[', '\\]']],
                 processEscapes: true,
                 tags: 'ams',
                 packages: {
-                    '[+]': ['ams', 'amscd', 'cancel', 'centernot', 'color', 'colortbl',
-                        'configmacros', 'gensymb', 'mathtools', 'mhchem', 'newcommand', 'noerrors',
-                        'noundefined', 'physics', 'textmacros', 'upgreek', 'verb'
-                    ]
+                    '[+]': [
+                        'ams',
+                        'amscd',
+                        'cancel',
+                        'centernot',
+                        'color',
+                        'colortbl',
+                        'configmacros',
+                        'gensymb',
+                        'mathtools',
+                        'mhchem',
+                        'newcommand',
+                        'noerrors',
+                        'noundefined',
+                        'physics',
+                        'textmacros',
+                        'upgreek',
+                        'verb',
+                    ],
                 },
                 physics: {
                     italicdiff: false,
-                    arrowdel: false
+                    arrowdel: false,
                 },
             },
             textmacros: {
                 packages: {
-                    '[+]': ['textcomp', 'bbox']
-                }
-            }
+                    '[+]': ['textcomp', 'bbox'],
+                },
+            },
         },
-
     },
 };
 $(function () {
