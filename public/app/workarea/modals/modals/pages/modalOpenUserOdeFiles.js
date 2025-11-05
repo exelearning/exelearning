@@ -660,6 +660,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 forceCloseSession,
                 odeFile
             );
+            this.ensureModalBackdropCleared(350);
 
             return;
         }
@@ -794,6 +795,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                     // Modal is closed inside openLocalElpFile
                 }
             } else {
+                this.ensureModalBackdropCleared(350);
                 // Show error
                 progressModal.showError(
                     response['responseMessage'] ||
@@ -910,6 +912,7 @@ export default class modalOpenUserOdeFiles extends Modal {
             // Close progress modal before loading project
             if (progressModal) {
                 progressModal.hide();
+                this.ensureModalBackdropCleared(350);
             }
 
             if (!isImportIdevices) {
@@ -981,6 +984,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 // If we already checked the session (progressModal present), just show error
                 if (progressModal) {
                     progressModal.hide();
+                    this.ensureModalBackdropCleared(350);
                     const message =
                         typeof response.responseMessage === 'string'
                             ? response.responseMessage.toLowerCase()
@@ -1074,6 +1078,24 @@ export default class modalOpenUserOdeFiles extends Modal {
                     contentId: 'error',
                 });
             }, this.timeMax);
+        }
+    }
+
+    ensureModalBackdropCleared(delay = 0) {
+        const removeBackdrops = () => {
+            if (document.querySelector('.modal.show')) {
+                return;
+            }
+            document
+                .querySelectorAll('.modal-backdrop')
+                .forEach((backdrop) => backdrop.remove());
+            document.body.classList.remove('modal-open');
+        };
+
+        if (delay > 0) {
+            setTimeout(removeBackdrops, delay);
+        } else {
+            removeBackdrops();
         }
     }
 
