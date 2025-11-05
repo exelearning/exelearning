@@ -51,14 +51,20 @@ var $exeDevice = {
         this.ci18n = {
             msgStartGame: c_('Click here to start'),
             msgSubmit: c_('Submit'),
-            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgInformationLooking: c_(
+                'Cool! The information you were looking for'
+            ),
             msgPlayStart: c_('Click here to play'),
             msgMinimize: c_('Minimize'),
             msgMaximize: c_('Maximize'),
             msgTime: c_('Time per question'),
             msgNoImage: c_('No picture question'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
             msgInformation: c_('Information'),
             mgsSolution: c_('Solution'),
             msgDate: c_('Date'),
@@ -66,65 +72,89 @@ var $exeDevice = {
             msgChallenge: c_('Trial'), // Reto in ES
             msgChallengesCompleted: c_('Completed trials'),
             msgStartTime: c_('Starting time'),
-            msgReadTime: c_("Read the instructions and click on a trial when you're ready to play."),
-            msgChallengesAllCompleted: c_("You've completed all the trials! You can now complete the game."),
+            msgReadTime: c_(
+                "Read the instructions and click on a trial when you're ready to play."
+            ),
+            msgChallengesAllCompleted: c_(
+                "You've completed all the trials! You can now complete the game."
+            ),
             msgDesafioSolved: c_('You made it! You can restart to play again.'),
             msgDesafioSolved1: c_('You solved the trial! Congratulations!'),
             msgEndTime: c_('Time Over. Please restart to try again.'),
             msgSolutionError: c_('Sorry. Wrong solution.'),
             msgSolutionCError: c_('Sorry. The solution is wrong.'),
-            msgChallengeSolved: c_('You solved this trial! Please select another one.'),
-            msgDesafioReboot: c_('This will restart the game and reset its starting time. Do you want to continue?'),
-            msgCompleteAllChallenged: c_('You must complete all the trials before facing the final challenge.'),
+            msgChallengeSolved: c_(
+                'You solved this trial! Please select another one.'
+            ),
+            msgDesafioReboot: c_(
+                'This will restart the game and reset its starting time. Do you want to continue?'
+            ),
+            msgCompleteAllChallenged: c_(
+                'You must complete all the trials before facing the final challenge.'
+            ),
             msgSolvedChallenge: c_('You already completed this trial.'),
             msgWriteChallenge: c_('Complete the trial. Write the solution.'),
             msgEndTimeRestart: c_('Time Over. Please restart to try again.'),
             msgReboot: c_('Restart'),
             msgHelp: c_('Help'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgYouScore: c_('Your score'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Challenge'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgTitleDesafio = _('Please write the challenge title.');
         msgs.msgDescriptionDesafio = _(
-            'Please write the challenge description.',
+            'Please write the challenge description.'
         );
         msgs.msgSolutionDesafio = _('Please write the challenge solution.');
         msgs.msgOneChallenge = _('Please add at least one trial.');
-        msgs.msgTenChallenges = _('You can only add ten trials to a challenge.');
+        msgs.msgTenChallenges = _(
+            'You can only add ten trials to a challenge.'
+        );
         msgs.msgDataChanllenge = _(
-            'Please write the title, description and solution of all the trials.',
+            'Please write the title, description and solution of all the trials.'
         );
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgClue = _('Help');
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
     },
 
@@ -207,7 +237,7 @@ var $exeDevice = {
         $exeDevice.saveChallenge();
         $exeDevice.typeEdit = 0;
         $exeDevice.clipBoard = JSON.parse(
-            JSON.stringify($exeDevice.challengesGame[$exeDevice.active]),
+            JSON.stringify($exeDevice.challengesGame[$exeDevice.active])
         );
         $('#desafioEPaste').show();
     },
@@ -231,7 +261,7 @@ var $exeDevice = {
             $exeDevice.challengesGame.splice(
                 $exeDevice.active,
                 0,
-                $exeDevice.clipBoard,
+                $exeDevice.clipBoard
             );
             $exeDevice.updateFeedBack();
             $exeDevice.showChallenge($exeDevice.active);
@@ -241,7 +271,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.challengesGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.updateFeedBack();
             $exeDevice.showChallenge($exeDevice.active);
@@ -292,8 +322,8 @@ var $exeDevice = {
                 ? $exeDevice.challengesGame.length - 1
                 : num;
 
-        const hide = sel => $(sel).addClass('js-hidden');
-        const show = sel => $(sel).removeClass('js-hidden');
+        const hide = (sel) => $(sel).addClass('js-hidden');
+        const show = (sel) => $(sel).removeClass('js-hidden');
 
         hide('label[for="desafioEDSolution"], #desafioEDSolution');
         hide('label[for="desafioEDTitle"], #desafioEDTitle');
@@ -323,7 +353,6 @@ var $exeDevice = {
             $('#desafioECTime2').val(c.clues[1].time);
             $('#desafioECTime3').val(c.clues[2].time);
         }
-
     },
 
     createForm: function () {
@@ -796,7 +825,7 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
         }
@@ -823,7 +852,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
         $exeDevice.showDesafio();
     },
@@ -924,10 +953,10 @@ var $exeDevice = {
         $exeDevice.desafioTitle = $('#desafioEDTitle').val();
         $exeDevice.desafioSolution = $('#desafioEDSolution').val();
         $exeDevice.desafioType = parseInt(
-            $('#desafioEDType option:selected').val(),
+            $('#desafioEDType option:selected').val()
         );
         $exeDevice.desafioTime = parseInt(
-            $('#desafioEDTime option:selected').val(),
+            $('#desafioEDTime option:selected').val()
         );
         $exeDevice.desafioDescription = '';
 
@@ -1079,9 +1108,8 @@ var $exeDevice = {
     },
 
     showDesafio: function () {
-
-        const hide = sel => $(sel).addClass('js-hidden');
-        const show = sel => $(sel).removeClass('js-hidden');
+        const hide = (sel) => $(sel).addClass('js-hidden');
+        const show = (sel) => $(sel).removeClass('js-hidden');
 
         show('label[for="desafioEDSolution"], #desafioEDSolution');
         show('label[for="desafioEDTitle"], #desafioEDTitle');

@@ -7,7 +7,6 @@
  * License: http://creativecommons.org/licenses/by-sa/4.0/
  */
 var $imagegallery = {
-
     /**
      * eXe idevice engine
      * Json idevice api function
@@ -22,10 +21,9 @@ var $imagegallery = {
      */
     renderView: function (data, accesibility, template) {
         // Generate html content from data values
-        ;
-        let htmlContent = $imagegallery.getStringGallery(data)
+        let htmlContent = $imagegallery.getStringGallery(data);
         // Insert the html content inside the template
-        let html = template.replace("{content}", htmlContent);
+        let html = template.replace('{content}', htmlContent);
 
         // Save html in database
         return html;
@@ -46,31 +44,31 @@ var $imagegallery = {
             isInExe = eXe.app.isInExe();
         if (!isInExe && $node.length == 1) {
             let gallery = $imagegallery.getStringGallery(data);
-            $node.html(gallery)
+            $node.html(gallery);
         }
 
         // Disabled links
-        document.querySelectorAll(".image-galleryIdevice .imageGallery-IDevice a").forEach(img => {
-            img.addEventListener("click", event => {
-                event.stopPropagation();
-                event.preventDefault();
-            })
-        })
+        document
+            .querySelectorAll('.image-galleryIdevice .imageGallery-IDevice a')
+            .forEach((img) => {
+                img.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                });
+            });
 
         // Simplelightbox
         if (typeof SimpleLightbox !== 'undefined') {
             this.createSLightboxGallery(data.ideviceId);
         } else {
-            var interval = setInterval(
-                function () {
-                    if (typeof SimpleLightbox !== 'undefined') {
-                        $imagegallery.createSLightboxGallery(data.ideviceId);
-                        clearInterval(interval);
-                    }
-                }, 200);
+            var interval = setInterval(function () {
+                if (typeof SimpleLightbox !== 'undefined') {
+                    $imagegallery.createSLightboxGallery(data.ideviceId);
+                    clearInterval(interval);
+                }
+            }, 200);
         }
     },
-
 
     changeDirectory(file, data) {
         const $node = $('#' + data.ideviceId),
@@ -88,16 +86,18 @@ var $imagegallery = {
     },
 
     getStringGallery: function (data) {
-
         let ideviceId = data.ideviceId;
-        let idIncremental = 0
+        let idIncremental = 0;
         let htmlContent = `
             <div class="imageGallery-IDevice">
                 <div class="imageGallery-body">`;
         Object.entries(data).forEach(([key, value]) => {
-            if (key !== "ideviceId") {
+            if (key !== 'ideviceId') {
                 let imageURL = $imagegallery.changeDirectory(value.img, data);
-                let thumbnailURL = $imagegallery.changeDirectory(value.thumbnail, data);
+                let thumbnailURL = $imagegallery.changeDirectory(
+                    value.thumbnail,
+                    data
+                );
                 let imageTitle = value.title;
                 let imageLinkTitle = value.linktitle;
                 let imageAuthor = value.author;
@@ -113,11 +113,11 @@ var $imagegallery = {
                 htmlContent += `</div>`;
                 idIncremental++;
             }
-        })
+        });
         htmlContent += `
                 </div>
             </div>`;
-        return htmlContent
+        return htmlContent;
     },
 
     /**
@@ -125,9 +125,7 @@ var $imagegallery = {
      * Engine execution order: 3
      *
      */
-    init: function () {
-
-    },
+    init: function () {},
 
     /**
      * Create a new simple ligthbox gallery
@@ -137,36 +135,45 @@ var $imagegallery = {
         let selector = `[id="${ideviceId}"] .imageGallery-IDevice a`;
         new SimpleLightbox(selector, {
             // Custom lightbox for exe. Now we can take values from multiple attributes
-            captionsData: ["title", "titlelink", "author", "authorlink", "license", "licenselink"],
-            captionPosition: "outside"
+            captionsData: [
+                'title',
+                'titlelink',
+                'author',
+                'authorlink',
+                'license',
+                'licenselink',
+            ],
+            captionPosition: 'outside',
         });
     },
 
     getLinkLicense: function (attrLicense) {
-
         let linkLicense = '';
-        if (attrLicense === 'pd' || attrLicense === 'copyright' || attrLicense === '') {
+        if (
+            attrLicense === 'pd' ||
+            attrLicense === 'copyright' ||
+            attrLicense === ''
+        ) {
             linkLicense = '';
-        }
-        else if (attrLicense === 'gnu-gpl') {
+        } else if (attrLicense === 'gnu-gpl') {
             linkLicense = 'http://www.gnu.org/licenses/gpl.html';
-        }
-        else if (attrLicense === 'CC0') {
-            linkLicense = 'http://creativecommons.org/publicdomain/zero/1.0/deed';
-
-        } else if (attrLicense === "CC-BY"
-            || attrLicense === "CC-BY-SA"
-            || attrLicense === "CC-BY-ND"
-            || attrLicense === "CC-BY-NC"
-            || attrLicense === "CC-BY-NC-SA"
-            || attrLicense === "CC-BY-NC-ND") {
+        } else if (attrLicense === 'CC0') {
+            linkLicense =
+                'http://creativecommons.org/publicdomain/zero/1.0/deed';
+        } else if (
+            attrLicense === 'CC-BY' ||
+            attrLicense === 'CC-BY-SA' ||
+            attrLicense === 'CC-BY-ND' ||
+            attrLicense === 'CC-BY-NC' ||
+            attrLicense === 'CC-BY-NC-SA' ||
+            attrLicense === 'CC-BY-NC-ND'
+        ) {
             linkLicense = 'http://creativecommons.org/licenses/';
-        }
-        else {
+        } else {
             // linkLicense = attrLicense;
-            linkLicense = "";
+            linkLicense = '';
         }
 
         return linkLicense;
-    }
-}
+    },
+};

@@ -159,7 +159,12 @@ var $exeDevice = {
                 const parts = line.split('#');
                 p.word = parts[0];
                 p.definition = parts[1];
-                if (p.word && p.definition && p.word.length <= 14 && !p.word.includes(' ')) {
+                if (
+                    p.word &&
+                    p.definition &&
+                    p.word.length <= 14 &&
+                    !p.word.includes(' ')
+                ) {
                     words.push(p);
                 }
             }
@@ -196,7 +201,12 @@ var $exeDevice = {
                     .find('DEFINITION')
                     .text()
                     .replace(/<[^>]*>/g, '');
-            if (concept && definition && concept.length <= 14 && !concept.includes(' ')) {
+            if (
+                concept &&
+                definition &&
+                concept.length <= 14 &&
+                !concept.includes(' ')
+            ) {
                 let wd = {
                     word: concept,
                     definition: definition,
