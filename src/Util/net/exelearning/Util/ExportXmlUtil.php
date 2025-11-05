@@ -1831,6 +1831,17 @@ class ExportXmlUtil
                     }
                 }
                 $navLi->addAttribute('odePageId', $key);
+
+                // Check if page has highlight property enabled
+                $pageProperties = $odeNavStructureSyncs[$indexNode]->getOdeNavStructureSyncProperties();
+                $isHighlighted = false;
+                foreach ($pageProperties as $property) {
+                    if ('highlight' === $property->getKey() && 'true' === $property->getValue()) {
+                        $isHighlighted = true;
+                        break;
+                    }
+                }
+
                 $navLink = $navLi->addChild('a', $name);
                 $navLink->addAttribute('href', !$isPreview ? $resourcesPrefix.$url : $url);
                 $class = '';
@@ -1840,6 +1851,12 @@ class ExportXmlUtil
                 if (0 == $indexNode) {
                     $class .= $class ? ' main-node' : 'main-node';
                 }
+
+                // Add highlight class to anchor element if enabled
+                if ($isHighlighted) {
+                    $class .= $class ? ' package-link' : 'package-link';
+                }
+
                 if (!empty($class)) {
                     $navLink->addAttribute('class', $class);
                 }

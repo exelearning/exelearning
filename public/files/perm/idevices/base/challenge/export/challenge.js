@@ -39,9 +39,13 @@ var $eXeDesafio = {
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
 
-
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Challenge', 'challenge', 'desafio-IDevice');         
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Challenge',
+            'challenge',
+            'desafio-IDevice'
+        );
     },
 
     saveEvaluation: function (instance) {
@@ -55,7 +59,7 @@ var $eXeDesafio = {
 
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeDesafio.isInExe,
+            $eXeDesafio.isInExe
         );
     },
 
@@ -108,7 +112,7 @@ var $eXeDesafio = {
 
             $('#desafioMessageMaximize-' + i).text(msg);
             $('#desafioDescription-' + i).append(
-                $('.desafio-EDescription', this),
+                $('.desafio-EDescription', this)
             );
             $('.desafio-ChallengeDescription', this).each(function () {
                 $('#desafioFeedBacks-' + i).append($(this));
@@ -117,7 +121,6 @@ var $eXeDesafio = {
             $('#desafioFeedBacks-' + i).hide();
 
             $eXeDesafio.addEvents(i);
-
         });
 
         let node = document.querySelector('.page-content');
@@ -127,12 +130,10 @@ var $eXeDesafio = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $eXeDesafio,
-                node,
+                node
             );
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.desafio-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.desafio-IDevice');
     },
 
     createInterfaceChallenger: function (instance) {
@@ -220,7 +221,7 @@ var $eXeDesafio = {
         <a href="#" class="desafio-LinkChallenge" data-number="${i}" id="desafioLink${i}-${instance}" title="${msgs.msgChallenge} ${i + 1}">
             <strong><span class="sr-av">${msgs.msgChallenge}:</span></strong>
             <div class="exeQuextRetos exeQuextRetos-C${i} desafio-Activo"></div>
-        </a>`,
+        </a>`
             )
             .join('');
         return options;
@@ -246,12 +247,12 @@ var $eXeDesafio = {
 
     checkWord: function (word, answord) {
         let sWord = word
-            .trim()
-            .replace(/\s+/g, ' ')
-            .toUpperCase()
-            .replace(/\.$/, '')
-            .replace(/,$/, '')
-            .replace(/;$/, ''),
+                .trim()
+                .replace(/\s+/g, ' ')
+                .toUpperCase()
+                .replace(/\.$/, '')
+                .replace(/,$/, '')
+                .replace(/;$/, ''),
             sAnsWord = answord
                 .trim()
                 .replace(/\s+/g, ' ')
@@ -302,7 +303,7 @@ var $eXeDesafio = {
         mOptions.timesShow = [];
         mOptions.stateChallenges = $eXeDesafio.createArrayStateChallenges(
             mOptions.desafioType,
-            mOptions.challengesGame.length,
+            mOptions.challengesGame.length
         );
         mOptions.clueTimes = [];
         mOptions.desafioID =
@@ -329,10 +330,10 @@ var $eXeDesafio = {
                 ) {
                     if (mOptions.challengesGame[i].clues[z].clue.length > 0) {
                         mOptions.challengesGame[i].clueTimes.push(
-                            mOptions.challengesGame[i].clues[z].time * 60,
+                            mOptions.challengesGame[i].clues[z].time * 60
                         );
                         mOptions.challengesGame[i].clueTexts.push(
-                            mOptions.challengesGame[i].clues[z].clue,
+                            mOptions.challengesGame[i].clues[z].clue
                         );
                     }
                 }
@@ -356,8 +357,8 @@ var $eXeDesafio = {
         });
 
         const $buttonChalleng = $(`#desafioGameChallenges-${instance}`).find(
-            '.desafio-LinkChallenge',
-        ),
+                '.desafio-LinkChallenge'
+            ),
             l = 24,
             t = 24,
             file = 'exequextretosicos.png';
@@ -413,14 +414,14 @@ var $eXeDesafio = {
             if (mOptions.gameStarted || mOptions.gameOver) {
                 $eXeDesafio.saveDataStorage(instance);
                 $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeDesafio.mScorm,
+                    $eXeDesafio.mScorm
                 );
             }
         });
         $(`#desafioSolutionDiv-${instance}`).hide();
 
         const $buttonChalleng = $(`#desafioGameChallenges-${instance}`).find(
-            '.desafio-LinkChallenge',
+            '.desafio-LinkChallenge'
         );
 
         $buttonChalleng.each(function (i) {
@@ -438,7 +439,7 @@ var $eXeDesafio = {
                 e.preventDefault();
                 $(`#desafioGameContainer-${instance}`).show();
                 $(`#desafioGameMinimize-${instance}`).hide();
-            },
+            }
         );
 
         $(`#desafioLinkMinimize-${instance}`).on(
@@ -449,7 +450,7 @@ var $eXeDesafio = {
                 $(`#desafioGameMinimize-${instance}`)
                     .css('visibility', 'visible')
                     .show();
-            },
+            }
         );
 
         $(`#desafioGamerOver-${instance}`).hide();
@@ -478,7 +479,7 @@ var $eXeDesafio = {
                 }
                 const number = parseInt($(this).data('number'));
                 $eXeDesafio.showChallenge(number, instance);
-            },
+            }
         );
 
         $(`#desafioDesafio-${instance}`).on('click touchstart', function (e) {
@@ -495,7 +496,7 @@ var $eXeDesafio = {
                 if (window.confirm(mOptions.msgs.msgDesafioReboot)) {
                     $eXeDesafio.rebootGame(instance);
                 }
-            },
+            }
         );
 
         $(`#desafioStartGame-${instance}`).text(mOptions.msgs.msgPlayStart);
@@ -510,11 +511,11 @@ var $eXeDesafio = {
             function (e) {
                 e.preventDefault();
                 const dstate = $(`#desafioSolution-${instance}`).prop(
-                    'readonly',
+                    'readonly'
                 );
                 if (dstate) return;
                 $eXeDesafio.answerChallenge(instance);
-            },
+            }
         );
 
         $(`#desafioInstructions-${instance}`).text(mOptions.instructions);
@@ -531,17 +532,17 @@ var $eXeDesafio = {
 
         if (typeof mOptions.desafioID !== 'undefined') {
             const dataDesafio = $eXeDesafio.getDesafioStorage(
-                mOptions.desafioID,
+                mOptions.desafioID
             );
             if (dataDesafio) {
                 if (
                     mOptions.desafioType !== dataDesafio.desafioType ||
                     dataDesafio.numberChallenges !==
-                    mOptions.challengesGame.length ||
+                        mOptions.challengesGame.length ||
                     dataDesafio.desafioTime !== mOptions.desafioTime
                 ) {
                     localStorage.removeItem(
-                        `dataDesafio-${mOptions.desafioID}`,
+                        `dataDesafio-${mOptions.desafioID}`
                     );
                 } else {
                     $eXeDesafio.reloadGame(instance, dataDesafio);
@@ -566,7 +567,7 @@ var $eXeDesafio = {
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -586,7 +587,7 @@ var $eXeDesafio = {
         $(`#desafioSolution-${instance}`).off('keydown');
         $(`#desafioGameChallenges-${instance}`).off(
             'click touchstart',
-            '.desafio-LinkChallenge',
+            '.desafio-LinkChallenge'
         );
         $(`#desafioDesafio-${instance}`).off('click touchstart');
         $(`#desafioRebootButton-${instance}`).off('click touchstart');
@@ -605,7 +606,7 @@ var $eXeDesafio = {
         localStorage.removeItem('dataDesafio-' + mOptions.desafioID);
         mOptions.stateChallenges = $eXeDesafio.createArrayStateChallenges(
             mOptions.desafioType,
-            mOptions.challengesGame.length,
+            mOptions.challengesGame.length
         );
 
         mOptions.gameOver = false;
@@ -629,7 +630,7 @@ var $eXeDesafio = {
         $eXeDesafio.startGame(
             instance,
             mOptions.typeQuestion,
-            mOptions.activeChallenge,
+            mOptions.activeChallenge
         );
     },
 
@@ -658,7 +659,7 @@ var $eXeDesafio = {
                         type = 1;
                         $('#desafioSolution-' + instance).prop(
                             'readonly',
-                            true,
+                            true
                         );
                         $('#desafioSolutionDiv-' + instance).hide();
                         message = mOptions.msgs.msgCompleteAllChallenged;
@@ -672,9 +673,7 @@ var $eXeDesafio = {
         $eXeDesafio.showMessage(type, message, instance);
         $eXeDesafio.changeImageButtonState(instance, mOptions.typeQuestion);
         $('#desafioClues-' + instance).html('');
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.desafio-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.desafio-IDevice');
     },
 
     showChallenge: function (number, instance) {
@@ -721,9 +720,7 @@ var $eXeDesafio = {
         $eXeDesafio.showMessage(type, message, instance);
         $eXeDesafio.changeImageButtonState(instance, mOptions.typeQuestion);
         $eXeDesafio.showClues(number, instance);
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.desafio-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.desafio-IDevice');
     },
 
     showClues(number, instance) {
@@ -744,9 +741,7 @@ var $eXeDesafio = {
         }
 
         $('#desafioClues-' + instance).html(text);
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.desafio-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.desafio-IDevice');
     },
 
     saveDataStorage: function (instance) {
@@ -756,7 +751,7 @@ var $eXeDesafio = {
         if (mOptions.desafioDate === '') {
             mOptions.desafioDate = $eXeDesafio.getActualFullDate();
             $('#desafioDate-' + instance).text(
-                `${mOptions.msgs.msgStartTime}: ${mOptions.desafioDate}`,
+                `${mOptions.msgs.msgStartTime}: ${mOptions.desafioDate}`
             );
         }
 
@@ -787,12 +782,12 @@ var $eXeDesafio = {
             ).toFixed(2);
             $eXeDesafio.sendScore(true, instance);
             $('#desafioRepeatActivity-' + instance).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`,
+                `${mOptions.msgs.msgYouScore}: ${score}`
             );
         }
         localStorage.setItem(
             'dataDesafio-' + mOptions.desafioID,
-            JSON.stringify(data),
+            JSON.stringify(data)
         );
     },
 
@@ -823,7 +818,7 @@ var $eXeDesafio = {
 
     getDesafioStorage: function (id) {
         return $exeDevices.iDevice.gamification.helpers.isJsonString(
-            localStorage.getItem('dataDesafio-' + id),
+            localStorage.getItem('dataDesafio-' + id)
         );
     },
 
@@ -862,7 +857,7 @@ var $eXeDesafio = {
 
         $eXeDesafio.showMessage(mtype, message, instance);
         $desafioOverPoint.text(
-            `${msgs.msgChallengesCompleted}: ${mOptions.solvedsChallenges.length}`,
+            `${msgs.msgChallengesCompleted}: ${mOptions.solvedsChallenges.length}`
         );
         $desafioGamerOver.show();
         $('#desafioDescription-' + instance).hide();
@@ -887,7 +882,7 @@ var $eXeDesafio = {
         }
 
         $('#desafioDate-' + instance).text(
-            `${mOptions.msgs.msgStartTime}: ${dataDesafio.desafioDate}`,
+            `${mOptions.msgs.msgStartTime}: ${dataDesafio.desafioDate}`
         );
 
         const ds = dataDesafio.desafioSolved ? 0 : 1;
@@ -907,7 +902,7 @@ var $eXeDesafio = {
             $eXeDesafio.startGame(
                 instance,
                 mOptions.typeQuestion,
-                mOptions.activeChallenge,
+                mOptions.activeChallenge
             );
         }
     },
@@ -956,7 +951,10 @@ var $eXeDesafio = {
             if (mOptions.gameStarted) {
                 let $node = $('#desafioMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -976,7 +974,7 @@ var $eXeDesafio = {
                     ) {
                         $eXeDesafio.showClues(
                             mOptions.activeChallenge,
-                            instance,
+                            instance
                         );
                     }
                 }
@@ -997,7 +995,13 @@ var $eXeDesafio = {
         let mHours = Math.floor(parseInt(iTime) / 3600);
         let mMinutes = parseInt(iTime / 60) % 60;
         let mSeconds = iTime % 60;
-        return (mHours < 10 ? "0" + mHours : mHours) + ":" + (mMinutes < 10 ? "0" + mMinutes : mMinutes) + ":" + (mSeconds < 10 ? "0" + mSeconds : mSeconds);
+        return (
+            (mHours < 10 ? '0' + mHours : mHours) +
+            ':' +
+            (mMinutes < 10 ? '0' + mMinutes : mMinutes) +
+            ':' +
+            (mSeconds < 10 ? '0' + mSeconds : mSeconds)
+        );
     },
 
     gameOver: function (type, instance) {
@@ -1114,12 +1118,12 @@ var $eXeDesafio = {
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $eXeDesafio.borderColors.red,
-            $eXeDesafio.borderColors.green,
-            $eXeDesafio.borderColors.blue,
-            $eXeDesafio.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeDesafio.borderColors.red,
+                $eXeDesafio.borderColors.green,
+                $eXeDesafio.borderColors.blue,
+                $eXeDesafio.borderColors.yellow,
+            ],
             color = colors[type];
 
         $(`#desafioPInformation-${instance}`).text(message).css({

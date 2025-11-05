@@ -27,7 +27,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
@@ -61,26 +61,44 @@ var $exeDevice = {
             msgNoImage: c_('No picture question'),
             msgLoseLive: c_('You lost one life'),
             msgAllQuestions: c_('Questions completed!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
             msgYouScore: c_('Your score'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
             msgClose: c_('Close'),
             msgClue: c_('Hint'),
             msgShowClue: c_('Show a clue'),
             msgShowNewClue: c_('Show another clue'),
-            msgUseFulInformation: c_('and information that will be very useful'),
+            msgUseFulInformation: c_(
+                'and information that will be very useful'
+            ),
             msgLoading: c_('Loading. Please wait...'),
             msgPoints: c_('points'),
             msgAudio: c_('Audio'),
@@ -94,34 +112,36 @@ var $exeDevice = {
             msgCorrectAnswer: c_('The right answer is:'),
             msgMoveOne: c_('Move on'),
             msgUseClue: c_('You used one clue. You can only get %s points.'),
-            msgUseAllClues: c_('You already used all the clues. You can only get %s points.'),
+            msgUseAllClues: c_(
+                'You already used all the clues. You can only get %s points.'
+            ),
             msgModeWhiteBoard: c_('Digital whiteboard mode'),
             msgCheckLetter: c_('Check the letter'),
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Identify'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgECompleteQuestion = _('You have to complete the question');
         msgs.msgECompleteAllClues = _('Please complete all the clues');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgIndicateSolution = _(
-            'Indicate the character, object or solution to discover',
+            'Indicate the character, object or solution to discover'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         ); //eXe 3.0
     },
 
@@ -181,7 +201,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.questionsGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.questionsGame[$exeDevice.active])
             );
             $('#idfEPaste').show();
         }
@@ -201,7 +221,7 @@ var $exeDevice = {
             $exeDevice.questionsGame.splice(
                 $exeDevice.active,
                 0,
-                $exeDevice.clipBoard,
+                $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
         } else if ($exeDevice.typeEdit == 1) {
@@ -210,7 +230,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.questionsGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showQuestion($exeDevice.active);
             $('#idfENumQuestions').text($exeDevice.questionsGame.length);
@@ -254,17 +274,17 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#idfEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#idfEPercentajeQuestions').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = percentaje < 1 ? 1 : percentaje;
         percentaje = percentaje > 100 ? 100 : percentaje;
         let num = Math.round(
-            (percentaje * $exeDevice.questionsGame.length) / 100,
+            (percentaje * $exeDevice.questionsGame.length) / 100
         );
         num = num == 0 ? 1 : num;
         $('#idfENumeroPercentaje').text(
-            num + '/' + $exeDevice.questionsGame.length,
+            num + '/' + $exeDevice.questionsGame.length
         );
     },
 
@@ -337,7 +357,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
@@ -708,7 +728,7 @@ var $exeDevice = {
                 json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
             }
             let dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $imagesLink = $('.identifica-LinkImages', wrapper),
                 $audiosLink = $('.identifica-LinkAudios', wrapper);
 
@@ -756,7 +776,7 @@ var $exeDevice = {
                 $('#idfEFeedBackEditor').val(textFeedBack.html());
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
         }
@@ -774,7 +794,9 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.questonsRamdo = game.questonsRamdo || false;
         game.percentajeFB =
             typeof game.percentajeFB != 'undefined' ? game.percentajeFB : 100;
@@ -832,7 +854,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
 
         if (game.feedBack) {
@@ -935,10 +957,10 @@ var $exeDevice = {
             function () {
                 $exeDevice.checkAltImage = false;
                 let saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
         return false;
     },
@@ -1061,7 +1083,7 @@ var $exeDevice = {
     addWords: function (valids) {
         if (valids === 0) {
             eXe.app.alert(
-                _('Sorry, there are no questions for this type of activity.'),
+                _('Sorry, there are no questions for this type of activity.')
             );
             return;
         }
@@ -1201,27 +1223,28 @@ var $exeDevice = {
     validateData: function () {
         const instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
-                tinyMCE.get('eXeGameInstructions').getContent(),
+                tinyMCE.get('eXeGameInstructions').getContent()
             ),
             textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
             textFeedBack = escape(
-                tinyMCE.get('idfEFeedBackEditor').getContent(),
+                tinyMCE.get('idfEFeedBackEditor').getContent()
             ),
             showMinimize = $('#idfEShowMinimize').is(':checked'),
             avancedMode = $('#idfESAvancedMode').is(':checked'),
             questionsRamdon = $('#idfEQuestionRamdon').is(':checked'),
             showSolution = $('#idfEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
-                $exeDevice.removeTags($('#idfETimeShowSolution').val()),
+                $exeDevice.removeTags($('#idfETimeShowSolution').val())
             ),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#idfEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(
-                $exeDevice.removeTags($('#idfEPercentajeFB').val()),
+                $exeDevice.removeTags($('#idfEPercentajeFB').val())
             ),
             customMessages = $('#idfECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
-                $exeDevice.removeTags($('#idfEPercentajeQuestions').val()),
+                $exeDevice.removeTags($('#idfEPercentajeQuestions').val())
             ),
             evaluation = $('#idfEEvaluation').is(':checked'),
             evaluationID = $('#idfEEvaluationID').val(),
@@ -1294,7 +1317,9 @@ var $exeDevice = {
     addEvents: function () {
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            $input.closest('.toggle-item[role="switch"]').attr('aria-checked', checked);
+            $input
+                .closest('.toggle-item[role="switch"]')
+                .attr('aria-checked', checked);
             const targetSel = $input.data('target');
             if (targetSel) {
                 const $target = $(targetSel);
@@ -1305,24 +1330,25 @@ var $exeDevice = {
                 }
             }
         };
-        $('.toggle-input').each(function () { initToggle($(this)); });
-        $(document).on('change', '.toggle-input', function () { initToggle($(this)); });
-        $('#idfEPaste, #idfEAuthorAlt').hide();
-        $('#idfEAuthorAlt').removeClass('d-flex').addClass('d-none')
-        $('#idfEShowMore').on('click', (e) => {
-            const $target = $('#idfEAuthorAlt')
-            const show = $target.hasClass('d-none')
-            $target.toggleClass('d-none', !show)
-                .toggleClass('d-flex', show)
+        $('.toggle-input').each(function () {
+            initToggle($(this));
         });
-
-
+        $(document).on('change', '.toggle-input', function () {
+            initToggle($(this));
+        });
+        $('#idfEPaste, #idfEAuthorAlt').hide();
+        $('#idfEAuthorAlt').removeClass('d-flex').addClass('d-none');
+        $('#idfEShowMore').on('click', (e) => {
+            const $target = $('#idfEAuthorAlt');
+            const show = $target.hasClass('d-none');
+            $target.toggleClass('d-none', !show).toggleClass('d-flex', show);
+        });
 
         $('#idfShowCodeAccess').on('change', function () {
             const marcado = $(this).is(':checked');
             $('#idfCodeAccess, #idfMessageCodeAccess').prop(
                 'disabled',
-                !marcado,
+                !marcado
             );
         });
 
@@ -1439,12 +1465,9 @@ var $exeDevice = {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                (selectedFile.startsWith('files')) &&
-                !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1460,12 +1483,9 @@ var $exeDevice = {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp`'],
                 selectedFile = $('#idfEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                (selectedFile.startsWith('files')) &&
-                !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1498,7 +1518,7 @@ var $exeDevice = {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: mp3, ogg, wav`,
+                    `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
                 $exeDevice.stopSound();
@@ -1529,7 +1549,7 @@ var $exeDevice = {
                     if ($exeDevice.validateQuestion() !== false) {
                         $exeDevice.active = Math.min(
                             num - 1,
-                            $exeDevice.questionsGame.length - 1,
+                            $exeDevice.questionsGame.length - 1
                         );
                         $exeDevice.showQuestion($exeDevice.active);
                     } else $(this).val($exeDevice.active + 1);
@@ -1549,7 +1569,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             4,
-            $exeDevice.insertQuestions,
+            $exeDevice.insertQuestions
         );
 
         //eXe 3.0 Dismissible messages

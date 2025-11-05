@@ -49,8 +49,12 @@ var $exeDevice = {
             msgEnterCode: c_('Enter the access code'),
             msgErrorCode: c_('The access code is not correct'),
             msgRequiredAccessKey: c_('Access code required'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
             msgEShowActivity: c_('Show activity'),
             msgSubmit: c_('Check'),
             msgUncompletedActivity: c_('Incomplete activity'),
@@ -58,15 +62,23 @@ var $exeDevice = {
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
             msgYouScore: c_('Your score'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgTypeGame: c_('Padlock'),
-        }
+        };
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
@@ -82,14 +94,14 @@ var $exeDevice = {
         msgs.msgERebootActivity = _('Repeat activity');
         msgs.msgCustomMessage = _('Error message');
         msgs.msgNumFaildedAttemps = _(
-            'Errors (number of attempts) to display the message',
+            'Errors (number of attempts) to display the message'
         );
         msgs.msgEnterCustomMessage = _('Please write the error message.');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
     },
 
@@ -210,11 +222,12 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.scorm.init();
 
         // Inicializar toggles accesibles
-        $('.toggle-input').each(function(){
-            const $i=$(this), $item=$i.closest('.toggle-item');
-            $item.attr('aria-checked',$i.is(':checked'));
-            $i.on('change.padlockToggle',function(){
-                $item.attr('aria-checked',$i.is(':checked'));
+        $('.toggle-input').each(function () {
+            const $i = $(this),
+                $item = $i.closest('.toggle-item');
+            $item.attr('aria-checked', $i.is(':checked'));
+            $i.on('change.padlockToggle', function () {
+                $item.attr('aria-checked', $i.is(':checked'));
             });
         });
 
@@ -249,7 +262,7 @@ var $exeDevice = {
                 .html();
             candadoRetro = $('.candado-retro', wrapper).eq(0).html();
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.typeActive = 0;
             $exeDevice.evaluation =
@@ -266,14 +279,14 @@ var $exeDevice = {
             $('#candadoEDTime').val(dataGame.candadoTime);
             $('#candadoEShowMinimize').prop(
                 'checked',
-                dataGame.candadoShowMinimize,
+                dataGame.candadoShowMinimize
             );
             $('#candadoEReboot').prop('checked', dataGame.candadoReboot);
             $('#candadoEAttemps').val(dataGame.candadoAttemps);
             $('#candadoEErrorMessage').val(dataGame.candadoErrorMessage);
             $('#candadoEErrorMessage').prop(
                 'disabled',
-                dataGame.candadoAttemps === 0,
+                dataGame.candadoAttemps === 0
             );
             $('#candadoEEvaluation').prop('checked', dataGame.evaluation);
             $('#candadoEEvaluationID').val(dataGame.evaluationID);
@@ -289,7 +302,7 @@ var $exeDevice = {
                 dataGame.isScorm,
                 dataGame.textButtonScorm,
                 dataGame.repeatActivity,
-                dataGame.weighted,
+                dataGame.weighted
             );
         }
     },
@@ -349,11 +362,11 @@ var $exeDevice = {
                 .getContent(),
             candadoRetro = tinyMCE.get('candadoEFeedBack').getContent();
         $exeDevice.candadoTime = parseInt(
-            $('#candadoEDTime option:selected').val(),
+            $('#candadoEDTime option:selected').val()
         );
         $exeDevice.candadoSolution = $('#candadoEDSolution').val();
         $exeDevice.candadoShowMinimize = $('#candadoEShowMinimize').is(
-            ':checked',
+            ':checked'
         );
         $exeDevice.candadoReboot = $('#candadoEReboot').is(':checked');
         $exeDevice.candadoAttemps = $('#candadoEAttemps').val();
