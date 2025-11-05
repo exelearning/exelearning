@@ -297,6 +297,19 @@ class Properties
             'category' => self::TRANS_PREFIX.'General',
             'heritable' => false,
         ],
+        'subtitle' => [
+            'title' => self::TRANS_PREFIX.'Subtitle',
+            'type' => 'text',
+            'category' => self::TRANS_PREFIX.'General',
+            'heritable' => false,
+        ],
+        'hidePageTitle' => [
+            'title' => self::TRANS_PREFIX.'Hide page title',
+            'type' => 'checkbox',
+            'category' => self::TRANS_PREFIX.'General',
+            'value' => 'false',
+            'heritable' => false,
+        ],
         'titleHtml' => [
             'title' => self::TRANS_PREFIX.'Title HTML',
             'type' => 'text',

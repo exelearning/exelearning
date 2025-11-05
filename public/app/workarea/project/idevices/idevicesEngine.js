@@ -1408,6 +1408,8 @@ export default class IdevicesEngine {
     async loadApiComponentsInContentByPage(idPage) {
         // Remove node content title
         this.removeNodeContentPageTitle();
+        // Remove node content subtitle
+        this.removeNodeContentPageSubtitle();
         // Remove node content attribute lang
         this.removeNodeContentLangAttribute();
         // In case it is the root node
@@ -1478,6 +1480,10 @@ export default class IdevicesEngine {
                         this.setNodeContentPageTitle(
                             data.odeNavStructureSyncProperties
                         );
+                        // Set page subtitle
+                        this.setNodeContentPageSubtitle(
+                            data.odeNavStructureSyncProperties
+                        );
                         // Resolve
                         resolve(true);
                     },
@@ -1529,7 +1535,15 @@ export default class IdevicesEngine {
             '#page-title-node-content'
         );
         if (pageTitleElement) {
-            if (
+            let hidePageTitle =
+                properties &&
+                properties.hidePageTitle &&
+                (properties.hidePageTitle.value === 'true' ||
+                    properties.hidePageTitle.value === true);
+
+            if (hidePageTitle) {
+                pageTitleElement.classList.add('hidden');
+            } else if (
                 properties &&
                 properties.titlePage &&
                 properties.titlePage.value != ''
@@ -1538,13 +1552,50 @@ export default class IdevicesEngine {
                 pageTitleElement.classList.remove('hidden');
             }
             // Add case for empty value
-            if (
+            else if (
                 properties &&
                 properties.titlePage &&
                 properties.titlePage.value == ''
             ) {
                 pageTitleElement.innerText = properties.titlePage.value;
                 pageTitleElement.classList.add('hidden');
+            }
+        }
+    }
+
+    /**
+     * Set page subtitle in node content
+     *
+     */
+    setNodeContentPageSubtitle(properties) {
+        let pageSubtitleElement = this.nodeContainerElement.querySelector(
+            '#page-subtitle-node-content'
+        );
+        if (pageSubtitleElement) {
+            let hidePageTitle =
+                properties &&
+                properties.hidePageTitle &&
+                (properties.hidePageTitle.value === 'true' ||
+                    properties.hidePageTitle.value === true);
+
+            if (hidePageTitle) {
+                pageSubtitleElement.classList.add('hidden');
+            } else if (
+                properties &&
+                properties.subtitle &&
+                properties.subtitle.value != ''
+            ) {
+                pageSubtitleElement.innerText = properties.subtitle.value;
+                pageSubtitleElement.classList.remove('hidden');
+            }
+            // Add case for empty value
+            else if (
+                properties &&
+                properties.subtitle &&
+                properties.subtitle.value == ''
+            ) {
+                pageSubtitleElement.innerText = properties.subtitle.value;
+                pageSubtitleElement.classList.add('hidden');
             }
         }
     }
@@ -1571,6 +1622,20 @@ export default class IdevicesEngine {
         );
         pageTitleElement.innerHTML = '';
         pageTitleElement.classList.add('hidden');
+    }
+
+    /**
+     * Remove page subtitle in node content
+     *
+     */
+    removeNodeContentPageSubtitle() {
+        let pageSubtitleElement = this.nodeContainerElement.querySelector(
+            '#page-subtitle-node-content'
+        );
+        if (pageSubtitleElement) {
+            pageSubtitleElement.innerHTML = '';
+            pageSubtitleElement.classList.add('hidden');
+        }
     }
 
     /**

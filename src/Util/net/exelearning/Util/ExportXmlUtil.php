@@ -1953,6 +1953,8 @@ class ExportXmlUtil
         $pageHeader->addAttribute('id', 'header-'.$odeNavStructureSync->getOdePageId());
         $headerEmpty = true;
         $titlePage = isset($pagePropertiesDict['titlePage']) ? $pagePropertiesDict['titlePage'] : '';
+        $subtitle = isset($pagePropertiesDict['subtitle']) ? $pagePropertiesDict['subtitle'] : '';
+        $hidePageTitle = isset($pagePropertiesDict['hidePageTitle']) ? $pagePropertiesDict['hidePageTitle'] : 'false';
 
         // Page header imgs container
         if ($showHeaderImgs) {
@@ -2011,10 +2013,20 @@ class ExportXmlUtil
         if ('' != $packageTitleValue) {
             $pageTitleTag = 'h2';
         }
-        if ('' != $titlePage) {
-            $headerEmpty = false;
-            $pageTitle = $pageHeader->addChild($pageTitleTag, $titlePage);
-            $pageTitle->addAttribute('class', 'page-title');
+
+        if ('false' == $hidePageTitle || 'false' === $hidePageTitle || false === $hidePageTitle) {
+            if ('' != $titlePage) {
+                $headerEmpty = false;
+                $pageTitle = $pageHeader->addChild($pageTitleTag, $titlePage);
+                $pageTitle->addAttribute('class', 'page-title');
+            }
+
+            // Page subtitle
+            if ('' != $subtitle) {
+                $headerEmpty = false;
+                $pageSubtitle = $pageHeader->addChild('h3', $subtitle);
+                $pageSubtitle->addAttribute('class', 'page-subtitle');
+            }
         }
 
         if ($headerEmpty) {
