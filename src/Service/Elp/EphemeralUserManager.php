@@ -14,7 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 class EphemeralUserManager
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
     ) {
     }
 

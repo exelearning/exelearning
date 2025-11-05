@@ -312,16 +312,17 @@ curl -X POST "http://localhost:8080/api/v2/export/epub3" \
 
 ### Configuration
 
-The following environment variables control the ELP API endpoints:
+The ELP API endpoints use standard PHP configuration for file uploads:
 
-- `ELP_API_MAX_UPLOAD_SIZE_MB` (default: 100): Maximum upload size in megabytes for convert/export endpoints.
-- `ELP_API_UPLOAD_DIR` (optional): Directory for temporary uploaded files. Defaults to system temp directory if not set.
+- **Upload size limit:** Respects PHP's `upload_max_filesize` setting (configured in `php.ini`)
+- **Temporary storage:** Uses system temp directory (`sys_get_temp_dir()`) with automatic cleanup
+- **No additional configuration required**
 
-Add to your `.env` file:
+To adjust the maximum upload size, modify your `php.ini` or web server configuration:
 
-```bash
-ELP_API_MAX_UPLOAD_SIZE_MB=100
-ELP_API_UPLOAD_DIR=/path/to/upload/dir
+```ini
+upload_max_filesize = 100M
+post_max_size = 100M
 ```
 
 ---
@@ -330,10 +331,10 @@ ELP_API_UPLOAD_DIR=/path/to/upload/dir
 
 1. **Ephemeral Users:** The API creates temporary users for each conversion/export operation to avoid conflicts with the authenticated user's session. These users are automatically cleaned up after the operation completes.
 
-2. **Temporary Files:** Uploaded files and export artifacts are stored in temporary directories and cleaned up automatically. The cleanup happens immediately after the response is sent.
+2. **Temporary Files:** Uploaded files are stored in the system temp directory (`/tmp/exe_api_uploads` or equivalent) and cleaned up automatically. Export artifacts are also stored temporarily and removed after the response is sent.
 
 3. **File Validation:** All uploaded files are validated for:
-   - File size (configurable limit)
+   - File size (PHP's `upload_max_filesize` limit)
    - File extension (must be `.elp`, `.elpx`, or `.zip`)
    - MIME type (must be a ZIP archive)
    - Valid ELP structure (checked by ODE service)

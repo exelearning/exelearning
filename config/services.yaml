@@ -68,10 +68,6 @@ parameters:
     # Allow users to import/install iDevices
     app.online_idevices_install: '%env(bool:ONLINE_IDEVICES_INSTALL)%'
 
-    # ELP API Configuration
-    app.elp_api_max_upload_size_mb: '%env(default::int:ELP_API_MAX_UPLOAD_SIZE_MB)%'
-    app.elp_api_upload_dir: '%env(default::string:ELP_API_UPLOAD_DIR)%'
-
 services:
     Symfony\Component\DependencyInjection\ContainerInterface: '@service_container'
     # default configuration for services in *this* file
@@ -214,12 +210,6 @@ services:
         decorates: translator
         arguments:
             - '@.inner'
-
-    # ELP Conversion and Export Services
-    App\Service\Elp\UploadedElpStorage:
-        arguments:
-            $uploadDir: '%app.elp_api_upload_dir%'
-            $maxUploadSizeMb: '%app.elp_api_max_upload_size_mb%'
 
 twig:
     globals:

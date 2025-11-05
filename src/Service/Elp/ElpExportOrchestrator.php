@@ -29,11 +29,11 @@ class ElpExportOrchestrator
     /**
      * Export an ELP file to the specified format.
      *
-     * @param string      $inputPath  Path to input ELP file
-     * @param string      $outputDir  Directory where export should be saved
-     * @param string      $format     Export format (elp, html5, html5-sp, scorm12, scorm2004, ims, epub3)
-     * @param User        $user       User context for the export
-     * @param string|bool $baseUrl    Optional base URL for links
+     * @param string      $inputPath Path to input ELP file
+     * @param string      $outputDir Directory where export should be saved
+     * @param string      $format    Export format (elp, html5, html5-sp, scorm12, scorm2004, ims, epub3)
+     * @param User        $user      User context for the export
+     * @param string|bool $baseUrl   Optional base URL for links
      *
      * @return array{success: bool, message: string, exportPath?: string, files?: array}
      */
@@ -42,7 +42,7 @@ class ElpExportOrchestrator
         string $outputDir,
         string $format,
         User $user,
-        $baseUrl = false
+        $baseUrl = false,
     ): array {
         // Validate input file
         if (!file_exists($inputPath)) {

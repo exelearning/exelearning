@@ -20,15 +20,16 @@ class UploadedElpStorage
     ];
 
     private string $uploadDir;
-    private int $maxUploadSizeMb;
+    private int $maxUploadSizeBytes;
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        ?string $uploadDir = null,
-        int $maxUploadSizeMb = 100
     ) {
-        $this->uploadDir = $uploadDir ?? sys_get_temp_dir().DIRECTORY_SEPARATOR.'exe_api_uploads';
-        $this->maxUploadSizeMb = $maxUploadSizeMb;
+        // Use system temp directory for API uploads
+        $this->uploadDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'exe_api_uploads';
+
+        // Get PHP's upload_max_filesize setting
+        $this->maxUploadSizeBytes = $this->parsePhpSize(ini_get('upload_max_filesize'));
 
         // Ensure upload directory exists
         if (!is_dir($this->uploadDir)) {
@@ -43,37 +44,28 @@ class UploadedElpStorage
      * @param User         $user         User context for the upload
      * @param bool         $validateSize Whether to validate file size
      *
-     * @throws \RuntimeException If validation fails
-     *
      * @return string Path to the stored file
+     *
+     * @throws \RuntimeException If validation fails
      */
     public function store(UploadedFile $file, User $user, bool $validateSize = true): string
     {
-        // Validate size
-        if ($validateSize && $file->getSize() > $this->maxUploadSizeMb * 1024 * 1024) {
-            throw new \RuntimeException(sprintf(
-                'File too large. Maximum size is %d MB',
-                $this->maxUploadSizeMb
-            ));
+        // Validate size against PHP's upload_max_filesize
+        if ($validateSize && $file->getSize() > $this->maxUploadSizeBytes) {
+            throw new \RuntimeException(sprintf('File too large. Maximum size is %s', $this->formatBytes($this->maxUploadSizeBytes)));
         }
 
         // Validate extension
         $originalName = $file->getClientOriginalName() ?: 'upload.elp';
         $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
         if (!in_array($ext, self::ALLOWED_EXTENSIONS, true)) {
-            throw new \RuntimeException(sprintf(
-                'Invalid file extension. Allowed: %s',
-                implode(', ', self::ALLOWED_EXTENSIONS)
-            ));
+            throw new \RuntimeException(sprintf('Invalid file extension. Allowed: %s', implode(', ', self::ALLOWED_EXTENSIONS)));
         }
 
         // Validate MIME type (basic check)
         $mimeType = $file->getMimeType();
         if ($mimeType && !in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
-            throw new \RuntimeException(sprintf(
-                'Invalid MIME type: %s. Expected ZIP archive.',
-                $mimeType
-            ));
+            throw new \RuntimeException(sprintf('Invalid MIME type: %s. Expected ZIP archive.', $mimeType));
         }
 
         // Generate safe filename
@@ -157,10 +149,44 @@ class UploadedElpStorage
     }
 
     /**
-     * Get the maximum upload size in MB.
+     * Get the maximum upload size in bytes.
      */
-    public function getMaxUploadSizeMb(): int
+    public function getMaxUploadSizeBytes(): int
     {
-        return $this->maxUploadSizeMb;
+        return $this->maxUploadSizeBytes;
+    }
+
+    /**
+     * Parse PHP size string (e.g., "8M", "100M", "1G") to bytes.
+     */
+    private function parsePhpSize(string $size): int
+    {
+        $size = trim($size);
+        $unit = strtolower(substr($size, -1));
+        $value = (int) substr($size, 0, -1);
+
+        return match ($unit) {
+            'g' => $value * 1024 * 1024 * 1024,
+            'm' => $value * 1024 * 1024,
+            'k' => $value * 1024,
+            default => (int) $size, // No unit or invalid, treat as bytes
+        };
+    }
+
+    /**
+     * Format bytes to human-readable string.
+     */
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $index = 0;
+        $value = $bytes;
+
+        while ($value >= 1024 && $index < count($units) - 1) {
+            $value /= 1024;
+            ++$index;
+        }
+
+        return round($value, 2).' '.$units[$index];
     }
 }
