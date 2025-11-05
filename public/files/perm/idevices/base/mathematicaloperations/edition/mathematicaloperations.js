@@ -54,7 +54,9 @@ var $exeDevice = {
             msgCodeAccess: c_('Access code'),
             msgPlayAgain: c_('Play Again'),
             msgRequiredAccessKey: c_('Access code required'),
-            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgInformationLooking: c_(
+                'Cool! The information you were looking for'
+            ),
             msgPlayStart: c_('Click here to play'),
             msgErrors: c_('Errors'),
             msgHits: c_('Hits'),
@@ -68,22 +70,40 @@ var $exeDevice = {
             msgExitFullScreen: c_('Exit Full Screen'),
             msgNumQuestions: c_('Number of questions'),
             mgsAllQuestions: c_('Questions completed!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgAnswer: c_('Answer'),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgPrevious: c_('Previous'),
             msgNext: c_('Next'),
             msgQuestion: c_('Question'),
@@ -105,49 +125,51 @@ var $exeDevice = {
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Math operations'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideDefinition = _('Please provide the definition of the word or phrase');
+        msgs.msgEProvideDefinition = _(
+            'Please provide the definition of the word or phrase'
+        );
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image',
+            'You must upload or indicate the valid URL of an image'
         );
         msgs.msgEProvideWord = _('Please provide one word or phrase');
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgEUnavailableVideo = _('This video is not currently available');
         msgs.msgECompleteQuestion = _('You have to complete the question');
         msgs.msgECompleteAllOptions = _(
-            'You have to complete all the selected options',
+            'You have to complete all the selected options'
         );
         msgs.msgESelectSolution = _('Choose the right answer');
         msgs.msgECompleteURLYoutube = _(
-            'Type the right URL of a Youtube video',
+            'Type the right URL of a Youtube video'
         );
         msgs.msgEStartEndVideo = _(
-            'You have to indicate the start and the end of the video that you want to show',
+            'You have to indicate the start and the end of the video that you want to show'
         );
         msgs.msgEStartEndIncorrect = _(
-            'The video end value must be higher than the start one',
+            'The video end value must be higher than the start one'
         );
         msgs.msgWriteText = _('You have to type a text in the editor');
         msgs.msgSilentPoint = _(
-            'The silence time is wrong. Check the video duration.',
+            'The silence time is wrong. Check the video duration.'
         );
         msgs.msgTypeChoose = _(
-            'Please check all the answers in the right order',
+            'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
     },
     createForm: function () {
@@ -385,7 +407,8 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#eRMQShowMinimize').is(':checked'),
             type = $('#eRMQtype').val(),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#eRMQHasFeedBack').is(':checked'),
             percentajeFB = parseInt($('#eRMQPercentajeFB').val()),
             decimalsInOperands = parseInt($('#eRMQdecimals').val()),
@@ -412,7 +435,7 @@ var $exeDevice = {
         let num = $('#eRMQnum');
         if (num.val() == '') {
             $exeDevice.showMessage(
-                _('Please specify the number of operations'),
+                _('Please specify the number of operations')
             );
             num.focus();
             return false;
@@ -421,7 +444,7 @@ var $exeDevice = {
         let min = $('#eRMQmin');
         if (min.val() == '') {
             $exeDevice.showMessage(
-                _('Please define the minimal value of the operand'),
+                _('Please define the minimal value of the operand')
             );
             min.focus();
             return false;
@@ -431,7 +454,7 @@ var $exeDevice = {
         let max = $('#eRMQmax');
         if (max.val() == '') {
             $exeDevice.showMessage(
-                _('Please define the highest value of the operand'),
+                _('Please define the highest value of the operand')
             );
             max.focus();
             return false;
@@ -441,7 +464,7 @@ var $exeDevice = {
 
         if (parseInt(min) >= parseInt(max)) {
             $exeDevice.showMessage(
-                _('The highest number should be bigger than the smallest one'),
+                _('The highest number should be bigger than the smallest one')
             );
             return false;
         }
@@ -587,7 +610,6 @@ var $exeDevice = {
         let json = JSON.stringify(dataGame),
             divContent = '';
 
-
         const textFeedBack = tinyMCE.get('eRMQFeedBackEditor').getContent();
         if (dataGame.instructions != '')
             divContent =
@@ -630,21 +652,27 @@ var $exeDevice = {
 
     addEvents: function () {
         // Inicialización de toggles (estado aria y targets)
-        const initToggle = function($input){
+        const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            $input.closest('.toggle-item[role="switch"]').attr('aria-checked', checked);
+            $input
+                .closest('.toggle-item[role="switch"]')
+                .attr('aria-checked', checked);
             const targetSel = $input.data('target');
-            if(targetSel){
+            if (targetSel) {
                 const $target = $(targetSel);
-                if(checked){
-                    $target.css('display','flex');
-                }else{
+                if (checked) {
+                    $target.css('display', 'flex');
+                } else {
                     $target.hide();
                 }
             }
         };
-        $('.toggle-input').each(function(){ initToggle($(this)); });
-        $(document).on('change','.toggle-input',function(){ initToggle($(this)); });
+        $('.toggle-input').each(function () {
+            initToggle($(this));
+        });
+        $(document).on('change', '.toggle-input', function () {
+            initToggle($(this));
+        });
         if (
             window.File &&
             window.FileReader &&
@@ -772,7 +800,9 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.mode = typeof game.mode == 'undefined' ? 0 : game.mode;
         game.solution =
             typeof game.solution == 'undefined' ? true : game.solution;
@@ -827,7 +857,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
 
         if (game.feedBack) {

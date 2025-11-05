@@ -37,7 +37,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
         this.setMessagesInfo();
         this.createForm();
@@ -61,22 +61,40 @@ var $exeDevice = {
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
             msgLoseT: c_('You lost 330 points'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgAudio: c_('Audio'),
             msgTimeOver: c_('Time is up'),
@@ -92,21 +110,33 @@ var $exeDevice = {
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgChangeMode: c_('Change visualization mode'),
             msgTypeGame: c_('Select media files'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _('The selected file does not contain a valid game');
-        msgs.msgEURLValid = _('You must upload or indicate the valid URL of an image');
+        msgs.msgESelectFile = _(
+            'The selected file does not contain a valid game'
+        );
+        msgs.msgEURLValid = _(
+            'You must upload or indicate the valid URL of an image'
+        );
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgTypeChoose = _('Please check all the answers in the right order');
+        msgs.msgTypeChoose = _(
+            'Please check all the answers in the right order'
+        );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideFB = _('Message to display when passing the game');
-        msgs.msgNoSuportBrowser = _('Your browser is not compatible with this tool.');
-        msgs.msgCompleteData = _('You must indicate an image, a text or/and an audio for each card');
+        msgs.msgNoSuportBrowser = _(
+            'Your browser is not compatible with this tool.'
+        );
+        msgs.msgCompleteData = _(
+            'You must indicate an image, a text or/and an audio for each card'
+        );
         msgs.msgPairsMax = _('Maximum number of activities: 30');
-        msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
+        msgs.msgIDLenght = _(
+            'The report identifier must have at least 5 characters'
+        );
     },
 
     createForm: function () {
@@ -298,10 +328,10 @@ var $exeDevice = {
             </div>
             `;
 
-    this.ideviceBody.innerHTML = html;
-    $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-    $exeDevicesEdition.iDevice.gamification.scorm.init();
-    this.enableForm();
+        this.ideviceBody.innerHTML = html;
+        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        this.enableForm();
     },
 
     removeCard: function () {
@@ -310,8 +340,8 @@ var $exeDevice = {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             const next = $('#slcmEDatosCarta-' + $exeDevice.activeID)
-                .next('div.SLCME-EDatosCarta')
-                .data('id'),
+                    .next('div.SLCME-EDatosCarta')
+                    .data('id'),
                 prev = $('#slcmEDatosCarta-' + $exeDevice.activeID)
                     .prev('div.SLCME-EDatosCarta')
                     .data('id');
@@ -324,7 +354,7 @@ var $exeDevice = {
             }
             $('.SLCME-EDatosCarta').removeClass('SLCME-EActive');
             $('#slcmEDatosCarta-' + $exeDevice.activeID).addClass(
-                'SLCME-EActive',
+                'SLCME-EActive'
             );
             $exeDevice.hideFlex($('#slcmEPasteC'));
         }
@@ -333,13 +363,13 @@ var $exeDevice = {
     copyCard: function () {
         $exeDevice.typeEditC = 0;
         $exeDevice.idPaste = $exeDevice.activeID;
-    $exeDevice.showFlex($('#slcmEPasteC'));
+        $exeDevice.showFlex($('#slcmEPasteC'));
     },
 
     cutCard: function () {
         $exeDevice.typeEditC = 1;
         $exeDevice.idPaste = $exeDevice.activeID;
-    $exeDevice.showFlex($('#slcmEPasteC'));
+        $exeDevice.showFlex($('#slcmEPasteC'));
     },
 
     pasteCard: function () {
@@ -387,7 +417,7 @@ var $exeDevice = {
         $card.find('.SLCME-EState').eq(0).prop('checked', safe.state);
 
         $exeDevice.showImage($exeDevice.activeID);
-    if (safe.eText.trim().length > 0) {
+        if (safe.eText.trim().length > 0) {
             $exeDevice.showFlex($card.find('.SLCME-ETextDiv'));
         } else {
             $exeDevice.hideFlex($card.find('.SLCME-ETextDiv'));
@@ -416,7 +446,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#slcmEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#slcmEPercentajeQuestions').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -451,8 +481,11 @@ var $exeDevice = {
         $('#slcmEAltDefinition').val(phrase.alt);
         $('#slcmEAuthorDefinition').val(phrase.author);
         $('#slcmEImageDefinition').attr('src', phrase.url);
-    $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
-        if (phrase.url.trim().length > 4) $('#slcmEImageDefinitionDiv').removeClass('d-none').addClass('d-flex');
+        $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
+        if (phrase.url.trim().length > 4)
+            $('#slcmEImageDefinitionDiv')
+                .removeClass('d-none')
+                .addClass('d-flex');
         $('#slcmEMessageOK').val(phrase.msgHit);
         $('#slcmEMessageKO').val(phrase.msgError);
         $('#slcmEDefinition').val(phrase.definition);
@@ -474,7 +507,9 @@ var $exeDevice = {
 
     addCard: function (clone) {
         $exeDevice.activeID = $exeDevice.getID();
-        $('#slcmEPhrase').find('div.SLCME-EDatosCarta').removeClass('SLCME-EActive');
+        $('#slcmEPhrase')
+            .find('div.SLCME-EDatosCarta')
+            .removeClass('SLCME-EActive');
         const path = $exeDevice.idevicePath,
             card = `
             <div class="SLCME-EDatosCarta SLCME-EActive" id="slcmEDatosCarta-${$exeDevice.activeID}" data-id="${$exeDevice.activeID}">
@@ -542,14 +577,13 @@ var $exeDevice = {
         return $card;
     },
 
-
     addPickerButton: function (cardId) {
         const $container = $('#slcmEDatosCarta-' + cardId);
         if (!$container.length) return;
 
         $container
             .find(
-                '.exe-file-picker:not(.initialized), .exe-image-picker:not(.initialized)',
+                '.exe-file-picker:not(.initialized), .exe-image-picker:not(.initialized)'
             )
             .each(function () {
                 const $input = $(this);
@@ -574,7 +608,7 @@ var $exeDevice = {
                 }
                 if (
                     !$container.find(
-                        `input[type="button"][data-filepicker="${id}"]`,
+                        `input[type="button"][data-filepicker="${id}"]`
                     ).length
                 ) {
                     const $button = $('<input>', {
@@ -652,7 +686,9 @@ var $exeDevice = {
     },
 
     addEventCard: function (id) {
-        $('#slcmEAuthorAlt-' + id).removeClass('d-flex').addClass('d-none');
+        $('#slcmEAuthorAlt-' + id)
+            .removeClass('d-flex')
+            .addClass('d-none');
 
         $('#slcmEURLImage-' + id).on('change', function () {
             $exeDevice.loadImage(id);
@@ -674,20 +710,28 @@ var $exeDevice = {
         });
 
         $('#slcmEShowMore-' + id).on('click', function (e) {
-            e.preventDefault()
+            e.preventDefault();
             if ($('#slcmEAuthorAlt-' + id).hasClass('d-none')) {
-                $('#slcmEAuthorAlt-' + id).removeClass('d-none').addClass('d-flex')
+                $('#slcmEAuthorAlt-' + id)
+                    .removeClass('d-none')
+                    .addClass('d-flex');
             } else {
-                $('#slcmEAuthorAlt-' + id).removeClass('d-flex').addClass('d-none')
+                $('#slcmEAuthorAlt-' + id)
+                    .removeClass('d-flex')
+                    .addClass('d-none');
             }
         });
 
         $('#slcmEText-' + id).on('keyup', function () {
             $('#slcmETextDiv-' + id).text($(this).val());
             if ($(this).val().trim().length > 0) {
-                $('#slcmETextDiv-' + $exeDevice.activeID).removeClass('d-flex').addClass('d-none');;
+                $('#slcmETextDiv-' + $exeDevice.activeID)
+                    .removeClass('d-flex')
+                    .addClass('d-none');
             } else {
-                $('#slcmETextDiv-' + $exeDevice.activeID).removeClass('d-none').addClass('d-flex');
+                $('#slcmETextDiv-' + $exeDevice.activeID)
+                    .removeClass('d-none')
+                    .addClass('d-flex');
             }
         });
 
@@ -765,16 +809,22 @@ var $exeDevice = {
             if (typeof hex !== 'string' || hex.trim() === '') hex = '#ffffff';
             hex = hex.trim();
             if (hex[0] !== '#') {
-                if (/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(hex)) hex = '#' + hex; else hex = '#ffffff';
+                if (/^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(hex))
+                    hex = '#' + hex;
+                else hex = '#ffffff';
             }
             const raw = hex.replace('#', '');
-            const parts = raw.match(new RegExp('(.{' + raw.length / 3 + '})', 'g')).map(function (l) {
-                return parseInt(raw.length % 2 ? l + l : l, 16);
-            });
+            const parts = raw
+                .match(new RegExp('(.{' + raw.length / 3 + '})', 'g'))
+                .map(function (l) {
+                    return parseInt(raw.length % 2 ? l + l : l, 16);
+                });
             const alpha = isFinite(opacity) ? opacity : 1;
             return 'rgba(' + parts.concat(alpha).join(',') + ')';
         } catch (e) {
-            return 'rgba(255,255,255,' + (isFinite(opacity) ? opacity : 1) + ')';
+            return (
+                'rgba(255,255,255,' + (isFinite(opacity) ? opacity : 1) + ')'
+            );
         }
     },
 
@@ -819,7 +869,7 @@ var $exeDevice = {
             json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
 
             const dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $audiosDef = $('.seleccionamedias-LinkAudiosDef', wrapper),
                 $imagesDef = $('.seleccionamedias-LinkImagesDef', wrapper),
                 $audiosError = $('.seleccionamedias-LinkAudiosError', wrapper),
@@ -827,12 +877,12 @@ var $exeDevice = {
 
             for (let i = 0; i < dataGame.phrasesGame.length; i++) {
                 const $imagesLink = $(
-                    '.seleccionamedias-LinkImages-' + i,
-                    wrapper,
-                ),
+                        '.seleccionamedias-LinkImages-' + i,
+                        wrapper
+                    ),
                     $audiosLink = $(
                         '.seleccionamedias-LinkAudios-' + i,
-                        wrapper,
+                        wrapper
                     ),
                     cards = dataGame.phrasesGame[i].cards;
 
@@ -930,7 +980,7 @@ var $exeDevice = {
                 $('#slcmEFeedBackEditor').val(textFeedBack.html());
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.showPhrase(0, true);
         }
@@ -963,7 +1013,6 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame),
             divContent = '';
-
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
@@ -1018,10 +1067,10 @@ var $exeDevice = {
             function () {
                 $exeDevice.checkAltImage = false;
                 let saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
 
         return false;
@@ -1152,17 +1201,18 @@ var $exeDevice = {
             textFeedBack = tinyMCE.get('slcmEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#slcmEShowMinimize').is(':checked'),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#slcmEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#slcmEPercentajeFB').val())),
             customMessages = $('#slcmECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
-                clear($('#slcmEPercentajeQuestions').val()),
+                clear($('#slcmEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#slcmETime').val())),
             showSolution = $('#slcmEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
-                clear($('#slcmETimeShowSolution').val()),
+                clear($('#slcmETimeShowSolution').val())
             ),
             author = $('#slcmEAuthor').val(),
             phrasesGame = $exeDevice.phrasesGame,
@@ -1220,9 +1270,9 @@ var $exeDevice = {
             alt = $('#slcmEAlt-' + id).val(),
             url = $('#slcmEURLImage-' + id).val();
 
-    $exeDevice.hideFlex($image);
+        $exeDevice.hideFlex($image);
         $image.attr('alt', alt);
-    $exeDevice.showFlex($nimage);
+        $exeDevice.showFlex($nimage);
         $image
             .prop('src', url)
             .on('load', function () {
@@ -1236,7 +1286,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $exeDevice.showFlex($image);
@@ -1278,7 +1328,7 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-    $exeDevice.hideFlex($('#slcmEPasteC'));
+        $exeDevice.hideFlex($('#slcmEPasteC'));
 
         $('#slcmEAddC').on('click', function (e) {
             e.preventDefault();
@@ -1311,7 +1361,7 @@ var $exeDevice = {
             $(this).addClass('SLCME-EActive');
         });
 
-    $exeDevice.hideFlex($('#slcmEPaste'));
+        $exeDevice.hideFlex($('#slcmEPaste'));
         $('#slcmEAdd').on('click', function (e) {
             e.preventDefault();
             $exeDevice.addPhrase();
@@ -1374,7 +1424,7 @@ var $exeDevice = {
                 $exeDevices.iDevice.gamification.share.exportGame(
                     dataGame,
                     _('Select media files'),
-                    'gameQEIdeviceForm',
+                    'gameQEIdeviceForm'
                 );
             });
         } else {
@@ -1392,11 +1442,11 @@ var $exeDevice = {
         });
 
         $('#slcmECustomMessages').on('change', function () {
-            const messages = $(this).is(':checked')
+            const messages = $(this).is(':checked');
             $('.SLCME-ECustomMessageDiv')
                 .toggleClass('d-none', !messages)
-                .toggleClass('d-flex', messages)
-        })
+                .toggleClass('d-flex', messages);
+        });
 
         $('#slcmEPercentajeQuestions').on('keyup', function () {
             let v = this.value;
@@ -1506,22 +1556,30 @@ var $exeDevice = {
         });
 
         $('#slcmEEvaluationHelpLnk').on('click', function (e) {
-            e.preventDefault()
+            e.preventDefault();
             if ($('#slcmEEvaluationHelp').hasClass('d-none')) {
-                $('#slcmEEvaluationHelp').removeClass('d-none').addClass('d-flex')
+                $('#slcmEEvaluationHelp')
+                    .removeClass('d-none')
+                    .addClass('d-flex');
             } else {
-                $('#slcmEEvaluationHelp').removeClass('d-flex').addClass('d-none')
+                $('#slcmEEvaluationHelp')
+                    .removeClass('d-flex')
+                    .addClass('d-none');
             }
-        })
+        });
 
         $('#slcmEShowMoreDefinition').on('click', function (e) {
-            e.preventDefault()
+            e.preventDefault();
             if ($('#slcmEDefinitionAltAuthor').hasClass('d-none')) {
-                $('#slcmEDefinitionAltAuthor').removeClass('d-none').addClass('d-flex')
+                $('#slcmEDefinitionAltAuthor')
+                    .removeClass('d-none')
+                    .addClass('d-flex');
             } else {
-                $('#slcmEDefinitionAltAuthor').removeClass('d-flex').addClass('d-none')
+                $('#slcmEDefinitionAltAuthor')
+                    .removeClass('d-flex')
+                    .addClass('d-none');
             }
-        })
+        });
 
         $('#slcmEURLImageDefinition').on('change', function () {
             $exeDevice.loadImageDefinition();
@@ -1538,11 +1596,9 @@ var $exeDevice = {
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
             url = $('#slcmEURLImage-' + id).val(),
             ext = url.split('.').pop().toLowerCase();
-        if (
-            url.indexOf('files') == 0 && validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
         }
@@ -1557,26 +1613,20 @@ var $exeDevice = {
             $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
             return false;
         }
-        if (
-            url.indexOf('files') == 0 &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
         }
-    $exeDevice.showFlex($('#slcmEImageDefinitionDiv'));
+        $exeDevice.showFlex($('#slcmEImageDefinitionDiv'));
         $('#slcmEImageDefinition').attr('src', url);
     },
 
     loadAudio: function (url) {
         const validExt = ['mp3', 'ogg', 'wav'],
             ext = url.split('.').pop().toLowerCase();
-        if (
-            url.indexOf('files') == 0 &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, waq');
             return false;
         } else {
@@ -1605,7 +1655,7 @@ var $exeDevice = {
         $('#slcmEAuthorDefinition').val('');
         $('#slcmEImageDefinition').attr('src', '');
         $('#slcmEURLAudioDefinition').attr('src', '');
-    $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
+        $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
     },
 
     addPhrase: function () {
@@ -1649,7 +1699,7 @@ var $exeDevice = {
         if ($exeDevice.validatePhrase()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.phrasesGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.phrasesGame[$exeDevice.active])
             );
             $exeDevice.showFlex($('#slcmEPaste'));
         }
@@ -1680,7 +1730,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.phrasesGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showPhrase($exeDevice.active);
             $('#slcmENumPhrases').text($exeDevice.phrasesGame.length);
@@ -1725,7 +1775,9 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.evaluation =
             typeof game.evaluation != 'undefined' ? game.evaluation : false;
         game.evaluationID =
@@ -1794,7 +1846,7 @@ var $exeDevice = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,
@@ -1863,7 +1915,7 @@ var $exeDevice = {
                 $el.removeClass('d-none').addClass('d-flex');
             } else if ($el.hasClass('d-flex')) {
                 $el.removeClass('d-flex').addClass('d-none');
-            } else {                
+            } else {
                 if ($el.is(':visible')) {
                     $el.hide();
                 } else {

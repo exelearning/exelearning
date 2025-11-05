@@ -41,8 +41,13 @@ var $eXeHiddenImage = {
     mScorm: null,
     _imgResizeObservers: {},
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Hidden Image', 'hidden-image', 'hiddenimage-IDevice');
-     },
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Hidden Image',
+            'hidden-image',
+            'hiddenimage-IDevice'
+        );
+    },
 
     enable: function () {
         $eXeHiddenImage.loadGame();
@@ -59,7 +64,7 @@ var $eXeHiddenImage = {
                     dl,
                     imagesLink,
                     audioLink,
-                    version,
+                    version
                 ),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -89,7 +94,7 @@ var $eXeHiddenImage = {
         });
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.hiddenimage-IDevice',
+            '.hiddenimage-IDevice'
         );
     },
 
@@ -100,7 +105,7 @@ var $eXeHiddenImage = {
         }
     },
 
-    scheduleReflow: function(instance){
+    scheduleReflow: function (instance) {
         const doPass = () => {
             $eXeHiddenImage.updateOverlaySize(instance);
             $eXeHiddenImage.createSquares(instance);
@@ -117,7 +122,7 @@ var $eXeHiddenImage = {
         setTimeout(doPass, 200);
     },
 
-    updateOverlaySize: function(instance){
+    updateOverlaySize: function (instance) {
         const $img = $('#hiPImage-' + instance);
         const $overlay = $('#hipOverlay-' + instance);
         if (!$img.length || !$overlay.length) return;
@@ -143,7 +148,7 @@ var $eXeHiddenImage = {
                 height: h + 'px',
                 left: left + 'px',
                 top: top + 'px',
-                'z-index': 2
+                'z-index': 2,
             });
         }
     },
@@ -253,9 +258,8 @@ var $eXeHiddenImage = {
                     
             </div>
         </div>
-    </div>`
-        return html
-
+    </div>`;
+        return html;
     },
     getHome: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance],
@@ -265,9 +269,8 @@ var $eXeHiddenImage = {
                 <a href="#" id="hiPStartGameImage-${instance}">
                     <img src="${path}hidden-image-icon.png" alt="${msgs.msgPlayStart}">  
                 </a>                               
-            </div>`
-        return html
-
+            </div>`;
+        return html;
     },
 
     showCubiertaOptions: function (mode, instance) {
@@ -302,11 +305,14 @@ var $eXeHiddenImage = {
             const question = mOptions.questionsGame[i];
             question.audio =
                 typeof question.audio === 'undefined' ? '' : question.audio;
-            question.url =
-                $exeDevices.iDevice.gamification.media.extractURLGD(
-                    question.url,
-                );
-            if (typeof question.attempts !== 'number' || isNaN(question.attempts) || question.attempts <= 0) {
+            question.url = $exeDevices.iDevice.gamification.media.extractURLGD(
+                question.url
+            );
+            if (
+                typeof question.attempts !== 'number' ||
+                isNaN(question.attempts) ||
+                question.attempts <= 0
+            ) {
                 question.attempts = 4;
             }
         }
@@ -327,7 +333,8 @@ var $eXeHiddenImage = {
                 : '';
         mOptions.id = typeof mOptions.id !== 'undefined' ? mOptions.id : false;
 
-        mOptions.revealTime = mOptions.revealTime == 0 ? 10000000000 : mOptions.revealTime * 1000;
+        mOptions.revealTime =
+            mOptions.revealTime == 0 ? 10000000000 : mOptions.revealTime * 1000;
 
         imgsLink.each(function () {
             const iq = parseInt($(this).text(), 10);
@@ -350,17 +357,19 @@ var $eXeHiddenImage = {
                 }
             }
         });
-        mOptions.questionsGame = mOptions.percentajeQuestions < 100
-            ? $exeDevices.iDevice.gamification.helpers.getQuestions(
-                mOptions.questionsGame,
-                mOptions.percentajeQuestions,
-            )
-            : mOptions.questionsGame;
+        mOptions.questionsGame =
+            mOptions.percentajeQuestions < 100
+                ? $exeDevices.iDevice.gamification.helpers.getQuestions(
+                      mOptions.questionsGame,
+                      mOptions.percentajeQuestions
+                  )
+                : mOptions.questionsGame;
 
         if (mOptions.optionsRamdon) {
-            mOptions.questionsGame = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                mOptions.questionsGame,
-            );
+            mOptions.questionsGame =
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(
+                    mOptions.questionsGame
+                );
         }
 
         mOptions.numberQuestions = mOptions.questionsGame.length;
@@ -368,14 +377,13 @@ var $eXeHiddenImage = {
         return mOptions;
     },
 
-
     addEvents: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
         $eXeHiddenImage.removeEvents(instance);
 
         $(window).on('unload.eXehiP beforeunload.eXehiP', () => {
             $exeDevices.iDevice.gamification.scorm.endScorm(
-                $eXeHiddenImage.mScorm,
+                $eXeHiddenImage.mScorm
             );
         });
 
@@ -421,7 +429,6 @@ var $eXeHiddenImage = {
             return true;
         });
 
-
         $('#hiPOptionsDiv-' + instance).on(
             'click touchstart',
             '.HIP-Options',
@@ -429,13 +436,13 @@ var $eXeHiddenImage = {
                 e.preventDefault();
                 const respuesta = $(this).data('number');
                 $eXeHiddenImage.answerQuestion(respuesta, instance);
-            },
+            }
         );
 
         $('#hiPLinkFullScreen-' + instance).on('click touchstart', (e) => {
             e.preventDefault();
             const element = document.getElementById(
-                'hiPGameContainer-' + instance,
+                'hiPGameContainer-' + instance
             );
             $exeDevices.iDevice.gamification.helpers.toggleFullscreen(element);
         });
@@ -446,7 +453,7 @@ var $eXeHiddenImage = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $('#hiPMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $('#hiPCodeAccessDiv-' + instance).show();
             $('#hiPGameContainer-' + instance + ' .HIP-StartGame').hide();
@@ -468,26 +475,25 @@ var $eXeHiddenImage = {
                 $eXeHiddenImage.startGame(instance);
             });
 
-        $('#hiPStartGameImage-' + instance)
-            .on('click', (e) => {
-                e.preventDefault();
-                $eXeHiddenImage.startGame(instance);
-            });
-
+        $('#hiPStartGameImage-' + instance).on('click', (e) => {
+            e.preventDefault();
+            $eXeHiddenImage.startGame(instance);
+        });
 
         $('#hiPLinkAudio-' + instance).on('click', (e) => {
             e.preventDefault();
             const audio = mOptions.questionsGame[mOptions.activeQuestion].audio;
             $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            if(audio && audio.length > 3){
-                $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            if (audio && audio.length > 3) {
+                $exeDevices.iDevice.gamification.media.playSound(
+                    audio,
+                    mOptions
+                );
             }
-           
         });
 
-
         const gameContainer = document.querySelector(
-            '#hiPGameContainer-' + instance,
+            '#hiPGameContainer-' + instance
         );
 
         gameContainer.addEventListener('fullscreenchange', () => {
@@ -501,13 +507,17 @@ var $eXeHiddenImage = {
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
 
-        $(document).on("click", ".HIP-Square", function () {
+        $(document).on('click', '.HIP-Square', function () {
             if (mOptions.attempts <= 0) {
-                $eXeHiddenImage.showMessage(3, mOptions.msgs.msgattempts0, instance);
+                $eXeHiddenImage.showMessage(
+                    3,
+                    mOptions.msgs.msgattempts0,
+                    instance
+                );
                 return;
             }
             var $this = $(this);
@@ -516,25 +526,33 @@ var $eXeHiddenImage = {
                     $this.fadeIn(200);
                 }, mOptions.revealTime);
             });
-            mOptions.attempts = mOptions.attempts - 1
+            mOptions.attempts = mOptions.attempts - 1;
 
             if (mOptions.attempts > 0) {
-                let message = mOptions.msgs.msgCardClick.replace('%s', mOptions.attempts);
+                let message = mOptions.msgs.msgCardClick.replace(
+                    '%s',
+                    mOptions.attempts
+                );
                 $eXeHiddenImage.showMessage(0, message, instance);
             } else {
-                $eXeHiddenImage.showMessage(3, mOptions.msgs.msgattempts0, instance);
+                $eXeHiddenImage.showMessage(
+                    3,
+                    mOptions.msgs.msgattempts0,
+                    instance
+                );
             }
-
         });
         $(window).on('resize', () => {
             $eXeHiddenImage.scheduleReflow(instance);
         });
 
-        $(document).on('fullscreenchange webkitfullscreenchange mozfullscreenchange MSFullscreenChange', () => {
-            $eXeHiddenImage.scheduleReflow(instance);
-        });
+        $(document).on(
+            'fullscreenchange webkitfullscreenchange mozfullscreenchange MSFullscreenChange',
+            () => {
+                $eXeHiddenImage.scheduleReflow(instance);
+            }
+        );
         $eXeHiddenImage.setupImageResizeObserver(instance);
-
     },
 
     removeEvents: function (instance) {
@@ -547,21 +565,19 @@ var $eXeHiddenImage = {
             .off('click', '.Games-SendScore');
         $('#hiPCodeAccessButton-' + instance).off('click touchstart');
         $('#hiPCodeAccessE-' + instance).off('keydown');
-        $('#hiPOptionsDiv-' + instance).off(
-            'click touchstart',
-            '.HIP-Options',
-        );
+        $('#hiPOptionsDiv-' + instance).off('click touchstart', '.HIP-Options');
         $('#hiPLinkFullScreen-' + instance).off('click touchstart');
         $('#hiPStartGame-' + instance).off('click');
         $('#hiPLinkAudio-' + instance).off('click');
 
-          const obs = $eXeHiddenImage._imgResizeObservers[instance];
+        const obs = $eXeHiddenImage._imgResizeObservers[instance];
         if (obs) {
-            try { obs.disconnect(); } catch (e) {}
+            try {
+                obs.disconnect();
+            } catch (e) {}
             delete $eXeHiddenImage._imgResizeObservers[instance];
         }
     },
-
 
     enterCodeAccess: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance],
@@ -573,7 +589,7 @@ var $eXeHiddenImage = {
         if (accessCode === enteredCode) {
             $eXeHiddenImage.showCubiertaOptions(false, instance);
             $eXeHiddenImage.startGame(instance);
-            $('#hiPLinkMaximize-' + instance).trigger('click')
+            $('#hiPLinkMaximize-' + instance).trigger('click');
         } else {
             $('#hiPMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
@@ -584,7 +600,7 @@ var $eXeHiddenImage = {
         }
     },
 
-    setupImageResizeObserver: function(instance){
+    setupImageResizeObserver: function (instance) {
         const img = document.getElementById('hiPImage-' + instance);
         if (!img || typeof ResizeObserver === 'undefined') return;
         if ($eXeHiddenImage._imgResizeObservers[instance]) return;
@@ -594,8 +610,8 @@ var $eXeHiddenImage = {
         try {
             ro.observe(img);
             $eXeHiddenImage._imgResizeObservers[instance] = ro;
-        } catch(e) {
-            // 
+        } catch (e) {
+            //
         }
     },
 
@@ -612,7 +628,7 @@ var $eXeHiddenImage = {
         $('#hiPGameContainer-' + instance + ' .HIP-StartGame').hide();
         $('#hiPQuestionDiv-' + instance).show();
         $('#hiPQuestion-' + instance).text('');
-        $('#hiPHome-' + instance).hide()
+        $('#hiPHome-' + instance).hide();
         $('#hiPContainer-' + instance).css('display', 'flex');
 
         mOptions.hits = 0;
@@ -622,15 +638,16 @@ var $eXeHiddenImage = {
         mOptions.activeQuestion = -1;
         mOptions.validQuestions = mOptions.numberQuestions;
 
-
         $('#hiPNumber-' + instance).text(mOptions.numberQuestions);
-
 
         mOptions.counterClock = setInterval(() => {
             if (mOptions.gameStarted && mOptions.activeCounter) {
                 let $node = $('#hiPMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -639,7 +656,11 @@ var $eXeHiddenImage = {
                 if (mOptions.counter <= 0) {
                     mOptions.activeCounter = false;
                     $eXeHiddenImage.answerQuestion(false, instance);
-                    $eXeHiddenImage.showMessage(1, mOptions.msgs.msgEndTime, instance)
+                    $eXeHiddenImage.showMessage(
+                        1,
+                        mOptions.msgs.msgEndTime,
+                        instance
+                    );
                 }
             }
         }, 1000);
@@ -650,10 +671,9 @@ var $eXeHiddenImage = {
         $('#hiPHits-' + instance).text(mOptions.hits);
         $('#hiPErrors-' + instance).text(mOptions.errors);
         $('#hiPScore-' + instance).text(mOptions.score);
-        $eXeHiddenImage.saveEvaluation(instance)
+        $eXeHiddenImage.saveEvaluation(instance);
         $eXeHiddenImage.newQuestion(instance);
     },
-
 
     uptateTime: function (time, instance) {
         const mTime =
@@ -672,14 +692,13 @@ var $eXeHiddenImage = {
             mOptions.questionsGame.length
         ).toFixed(2);
 
-
         clearInterval(mOptions.counterClock);
-        $('#hiPHome-' + instance).css('display', 'flex')
-        $('#hiPContainer-' + instance).hide()
+        $('#hiPHome-' + instance).css('display', 'flex');
+        $('#hiPContainer-' + instance).hide();
         $exeDevices.iDevice.gamification.media.stopSound(mOptions);
 
         const typem = parseInt(score) >= 5 ? 2 : 1;
-        const message = msgs.msgGameOver.replace('%s', score)
+        const message = msgs.msgGameOver.replace('%s', score);
         $eXeHiddenImage.showMessage(typem, message, instance);
         $eXeHiddenImage.clearQuestions(instance);
         $('#hiPNumber-' + instance).text('0');
@@ -690,10 +709,8 @@ var $eXeHiddenImage = {
 
         if (mOptions.isScorm > 0) {
             $eXeHiddenImage.sendScore(true, instance);
-
         }
         $eXeHiddenImage.saveEvaluation(instance);
-
     },
 
     showQuestion: function (i, instance) {
@@ -710,17 +727,19 @@ var $eXeHiddenImage = {
 
         $('#hiPQuestion-' + instance).text(mQuestion.question);
         $('#hiPLinkAudio-' + instance).hide();
-        $eXeHiddenImage.showAuthor('', instance)
+        $eXeHiddenImage.showAuthor('', instance);
 
         mOptions.attempts = mQuestion.attempts;
-        let message = mOptions.msgs.msgCardClick.replace('%s', mOptions.attempts)
+        let message = mOptions.msgs.msgCardClick.replace(
+            '%s',
+            mOptions.attempts
+        );
         $eXeHiddenImage.showMessage(0, message, instance);
 
         if (mOptions.isScorm > 0) {
             $eXeHiddenImage.sendScore(true, instance);
         }
 
-        
         $eXeHiddenImage.showImageNeo(mQuestion.url, instance);
 
         if (mQuestion.audio.length > 4) {
@@ -734,21 +753,20 @@ var $eXeHiddenImage = {
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#hiPQuestionDiv-' + instance,
+                '#hiPQuestionDiv-' + instance
             );
         }
         const audio = mOptions.questionsGame[i].audio;
-        if(audio && audio.length > 4){
+        if (audio && audio.length > 4) {
             $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
         }
-        
     },
 
     ramdonOptions: function (instance) {
         let mOptions = $eXeHiddenImage.options[instance],
             arrayRamdon = mOptions.question.options.slice(
                 0,
-                mOptions.question.numberOptions,
+                mOptions.question.numberOptions
             ),
             sSolution = mOptions.question.options[mOptions.question.solution];
         arrayRamdon =
@@ -770,42 +788,43 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance],
             mQuestion = mOptions.questionsGame[mOptions.activeQuestion],
             $image = $('#hiPImage-' + instance);
-    
-      $image.attr('alt', 'No image')
-          .hide();
-    
+
+        $image.attr('alt', 'No image').hide();
+
         const imgEl = $image[0];
 
         function onImageLoad() {
-            if (!imgEl.complete || typeof imgEl.naturalWidth === 'undefined' || imgEl.naturalWidth === 0) {
+            if (
+                !imgEl.complete ||
+                typeof imgEl.naturalWidth === 'undefined' ||
+                imgEl.naturalWidth === 0
+            ) {
                 $image.hide();
                 $eXeHiddenImage.showAuthor('', instance);
             } else {
                 $eXeHiddenImage.showAuthor(mQuestion.author, instance);
-                $image.attr('alt', mQuestion.alt)
-                      .css('opacity', 0)
-                      .show();
+                $image.attr('alt', mQuestion.alt).css('opacity', 0).show();
                 setTimeout(function () {
                     $eXeHiddenImage.scheduleReflow(instance);
                     $image.css('opacity', 1);
                 }, 500);
             }
         }
-    
+
         function onImageError() {
             $image.hide();
             $eXeHiddenImage.showAuthor('', instance);
             return false;
         }
-    
-        $image.off('load error')
-              .on('load', onImageLoad)
-              .on('error', onImageError);
-    
+
+        $image
+            .off('load error')
+            .on('load', onImageLoad)
+            .on('error', onImageError);
 
         $image.attr('src', '');
         $image.attr('src', url);
-    
+
         if (imgEl.complete) {
             if (imgEl.naturalWidth === 0) {
                 onImageError.call(imgEl);
@@ -814,7 +833,6 @@ var $eXeHiddenImage = {
             }
         }
     },
-    
 
     showImageNeo1: function (url, instance) {
         const mOptions = $eXeHiddenImage.options[instance],
@@ -838,13 +856,12 @@ var $eXeHiddenImage = {
                 } else {
                     $eXeHiddenImage.showAuthor(mQuestion.author, instance);
                     $image.attr('alt', mQuestion.alt);
-                    $image.css('opacity', 0)
+                    $image.css('opacity', 0);
                     $image.show();
                     setTimeout(function () {
-                        $eXeHiddenImage.createSquares(instance)
-                        $image.css('opacity', 1)
-                    }, 500)
-
+                        $eXeHiddenImage.createSquares(instance);
+                        $image.css('opacity', 1);
+                    }, 500);
                 }
             })
             .on('error', function () {
@@ -852,50 +869,56 @@ var $eXeHiddenImage = {
                 $eXeHiddenImage.showAuthor('', instance);
                 return false;
             });
-
     },
 
     createSquares: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
         const mQuestion = mOptions.questionsGame[mOptions.activeQuestion];
-        const $overlay = $("#hipOverlay-" + instance);
+        const $overlay = $('#hipOverlay-' + instance);
         $eXeHiddenImage.updateOverlaySize(instance);
         const overlayEl = $overlay.get(0);
         if (!overlayEl) return;
         const overlayRect = overlayEl.getBoundingClientRect();
         const overlayWidth = overlayRect.width;
         const overlayHeight = overlayRect.height;
-        if (!overlayWidth || !overlayHeight || mQuestion.columns <= 0 || mQuestion.rows <= 0) return;
+        if (
+            !overlayWidth ||
+            !overlayHeight ||
+            mQuestion.columns <= 0 ||
+            mQuestion.rows <= 0
+        )
+            return;
         const baseW = overlayWidth / mQuestion.columns;
         const baseH = overlayHeight / mQuestion.rows;
         $overlay.empty();
         for (let row = 0; row < mQuestion.rows; row++) {
             const top = row * baseH;
-            const height = (row === mQuestion.rows - 1)
-                ? (overlayHeight - baseH * (mQuestion.rows - 1))
-                : baseH;
+            const height =
+                row === mQuestion.rows - 1
+                    ? overlayHeight - baseH * (mQuestion.rows - 1)
+                    : baseH;
             for (let col = 0; col < mQuestion.columns; col++) {
                 const left = col * baseW;
-                const width = (col === mQuestion.columns - 1)
-                    ? (overlayWidth - baseW * (mQuestion.columns - 1))
-                    : baseW;
+                const width =
+                    col === mQuestion.columns - 1
+                        ? overlayWidth - baseW * (mQuestion.columns - 1)
+                        : baseW;
                 const $hipsquare = $("<div class='HIP-Square'></div>");
                 $hipsquare.css({
-                    'position': 'absolute',
-                    'width': width.toFixed(3) + "px",
-                    'height': height.toFixed(3) + "px",
-                    'top': top.toFixed(3) + "px",
-                    'left': left.toFixed(3) + "px"
+                    position: 'absolute',
+                    width: width.toFixed(3) + 'px',
+                    height: height.toFixed(3) + 'px',
+                    top: top.toFixed(3) + 'px',
+                    left: left.toFixed(3) + 'px',
                 });
                 $overlay.append($hipsquare);
             }
         }
-
     },
 
     hideSquares: function (instance, callback) {
-        const $overlay = $("#hipOverlay-" + instance);
-        const squares = $overlay.find(".HIP-Square").toArray();
+        const $overlay = $('#hipOverlay-' + instance);
+        const squares = $overlay.find('.HIP-Square').toArray();
 
         for (let i = squares.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -912,23 +935,20 @@ var $eXeHiddenImage = {
             $(squares[index]).fadeOut(100);
             index++;
         }, 50);
-
     },
-
-
 
     newQuestion: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
         const mActiveQuestion = $eXeHiddenImage.updateNumberQuestion(
             mOptions.activeQuestion,
-            instance,
+            instance
         );
         if (mActiveQuestion === null) {
             $('#hiPNumber-' + instance).text('0');
             $eXeHiddenImage.gameOver(0, instance);
             return;
         }
-        mOptions.counter = mOptions.questionsGame[mActiveQuestion].time ;
+        mOptions.counter = mOptions.questionsGame[mActiveQuestion].time;
 
         $eXeHiddenImage.showQuestion(mActiveQuestion, instance);
         mOptions.activeCounter = true;
@@ -963,31 +983,34 @@ var $eXeHiddenImage = {
         if (correctAnswer) {
             mOptions.hits++;
             points = 10 / mOptions.questionsGame.length;
-            points = points > 0
-                ? (Number.isInteger(points) ? points : points.toFixed(2))
-                : '0';
-
+            points =
+                points > 0
+                    ? Number.isInteger(points)
+                        ? points
+                        : points.toFixed(2)
+                    : '0';
         } else {
             mOptions.errors++;
             type = 1;
-
-
         }
 
         $('#hiPScore-' + instance).text(sscore);
         $('#hiPHits-' + instance).text(mOptions.hits);
         $('#hiPErrors-' + instance).text(mOptions.errors);
         mOptions.score = (mOptions.hits * 10) / mOptions.questionsGame.length;
-        sscore = mOptions.score > 0
-            ? (Number.isInteger(mOptions.score) ? mOptions.score : mOptions.score.toFixed(2))
-            : '0';
+        sscore =
+            mOptions.score > 0
+                ? Number.isInteger(mOptions.score)
+                    ? mOptions.score
+                    : mOptions.score.toFixed(2)
+                : '0';
 
         $('#hiPScore-' + instance).text(sscore);
 
         message = $eXeHiddenImage.getMessageAnswer(
             correctAnswer,
             points,
-            instance,
+            instance
         );
         $eXeHiddenImage.showMessage(type, message, instance);
     },
@@ -1009,7 +1032,7 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance],
             messageCorrect = $eXeHiddenImage.getRetroFeedMessages(
                 true,
-                instance,
+                instance
             ),
             pts = mOptions.msgs.msgPoints;
         let message = '';
@@ -1019,7 +1042,6 @@ var $eXeHiddenImage = {
         ) {
             message = mOptions.questionsGame[mOptions.activeQuestion].msgHit;
             message += '. ' + npts + ' ' + pts;
-
         } else {
             message = messageCorrect + ' ' + npts + ' ' + pts;
         }
@@ -1030,7 +1052,7 @@ var $eXeHiddenImage = {
         const mOptions = $eXeHiddenImage.options[instance],
             messageError = $eXeHiddenImage.getRetroFeedMessages(
                 false,
-                instance,
+                instance
             ),
             pts = mOptions.msgs.msgPoints;
 
@@ -1040,10 +1062,14 @@ var $eXeHiddenImage = {
             mOptions.customMessages &&
             mOptions.questionsGame[mOptions.activeQuestion].msgError.length > 0
         ) {
-            message = mOptions.questionsGame[mOptions.activeQuestion].msgError + '. ' + npts + ' ' + pts;
-
+            message =
+                mOptions.questionsGame[mOptions.activeQuestion].msgError +
+                '. ' +
+                npts +
+                ' ' +
+                pts;
         } else {
-            message = messageError + ' ' + npts + ' ' + pts
+            message = messageError + ' ' + npts + ' ' + pts;
         }
         return message;
     },
@@ -1069,13 +1095,14 @@ var $eXeHiddenImage = {
         }
         $eXeHiddenImage.saveEvaluation(instance);
 
-        $eXeHiddenImage.hideSquares(instance, $eXeHiddenImage.startNewQuestion)
-
+        $eXeHiddenImage.hideSquares(instance, $eXeHiddenImage.startNewQuestion);
     },
 
     startNewQuestion: function (instance) {
         const mOptions = $eXeHiddenImage.options[instance];
-        $("#hipOverlay-" + instance).find(".HIP-Square").hide();
+        $('#hipOverlay-' + instance)
+            .find('.HIP-Square')
+            .hide();
 
         const percentageHits = (mOptions.hits / mOptions.numberQuestions) * 100;
 
@@ -1089,28 +1116,26 @@ var $eXeHiddenImage = {
             $('#hiPShowClue-' + instance)
                 .show()
                 .text(
-                    `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+                    `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
                 );
             mOptions.obtainedClue = true;
         }
         if (mOptions.showSolution) {
             timeShowSolution = mOptions.timeShowSolution * 1000;
-
         }
         setTimeout(() => {
             $eXeHiddenImage.newQuestion(instance);
         }, timeShowSolution);
-
     },
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $eXeHiddenImage.borderColors.red,
-            $eXeHiddenImage.borderColors.green,
-            $eXeHiddenImage.borderColors.blue,
-            $eXeHiddenImage.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeHiddenImage.borderColors.red,
+                $eXeHiddenImage.borderColors.green,
+                $eXeHiddenImage.borderColors.blue,
+                $eXeHiddenImage.borderColors.yellow,
+            ],
             mcolor = colors[type],
             weight = type === 0 ? 'normal' : 'normal';
         $('#hiPMessage-' + instance)
@@ -1120,9 +1145,9 @@ var $eXeHiddenImage = {
                 'font-weight': weight,
             })
             .show();
-        $('#hiPMessageDiv-' + instance).show()
+        $('#hiPMessageDiv-' + instance).show();
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#hiPMessage-' + instance,
+            '#hiPMessage-' + instance
         );
     },
 
@@ -1134,11 +1159,10 @@ var $eXeHiddenImage = {
             })
             .show();
 
-        $('#hiPAuthorLicence-' + instance).show()
+        $('#hiPAuthorLicence-' + instance).show();
         if (!message) {
-            $('#hiPAuthorLicence-' + instance).hide()
+            $('#hiPAuthorLicence-' + instance).hide();
         }
-
     },
 
     drawQuestions: function (instance) {
@@ -1156,7 +1180,7 @@ var $eXeHiddenImage = {
                     })
                     .text(option || '')
                     .toggle(!!option);
-            },
+            }
         );
     },
 
@@ -1178,22 +1202,20 @@ var $eXeHiddenImage = {
                         cursor: 'default',
                     });
                 }
-            },
+            }
         );
     },
 
     clearQuestions: function (instance) {
-        $('#hiPOptionsDiv-' + instance + ' > .HIP-Options').each(
-            function () {
-                $(this)
-                    .css({
-                        'border-color': $eXeHiddenImage.borderColors.grey,
-                        'background-color': 'transparent',
-                        cursor: 'pointer',
-                    })
-                    .text('');
-            },
-        );
+        $('#hiPOptionsDiv-' + instance + ' > .HIP-Options').each(function () {
+            $(this)
+                .css({
+                    'border-color': $eXeHiddenImage.borderColors.grey,
+                    'background-color': 'transparent',
+                    cursor: 'pointer',
+                })
+                .text('');
+        });
     },
 
     saveEvaluation: function (instance) {
@@ -1201,7 +1223,7 @@ var $eXeHiddenImage = {
         mOptions.scorerp = (10 * mOptions.hits) / mOptions.questionsGame.length;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeHiddenImage.isInExe,
+            $eXeHiddenImage.isInExe
         );
     },
 

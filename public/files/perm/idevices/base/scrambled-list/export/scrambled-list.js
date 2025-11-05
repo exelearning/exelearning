@@ -39,7 +39,6 @@ var $scrambledlist = {
      * @returns {String}
      */
     renderView: function (data, accesibility, template, ideviceId) {
-
         const ldata = $scrambledlist.updateConfig(data, ideviceId);
         let optionsText = '';
         ldata.options.forEach((option) => {
@@ -66,18 +65,18 @@ var $scrambledlist = {
         ) {
             html = html.replace(
                 '{buttonText}',
-                ldata.exportScorm.buttonTextSave,
+                ldata.exportScorm.buttonTextSave
             );
         } else {
             html = html.replace(
                 '{buttonText}',
-                this.removeTags(ldata.buttonText),
+                this.removeTags(ldata.buttonText)
             );
         }
         html = html.replace('{rightText}', this.removeTags(ldata.rightText));
         html = html.replace(
             '{scormMessage}',
-            $scrambledlist.getScormHtml(ldata),
+            $scrambledlist.getScormHtml(ldata)
         );
         html = html.replace('{wrongText}', this.removeTags(ldata.wrongText));
         html = html.replace('{afterElement}', ldata.afterElement);
@@ -101,7 +100,10 @@ var $scrambledlist = {
         data.isScorm = data.isScorm || 0;
         data.time = data.time || 0;
         data.repeatActivity = true;
-        data.showSolutions = typeof data.showSolutions !== "undefined" ? data.showSolutions : true;
+        data.showSolutions =
+            typeof data.showSolutions !== 'undefined'
+                ? data.showSolutions
+                : true;
 
         data.textButtonScorm =
             data.escapedData && data.exportScorm.textButtonScorm
@@ -133,7 +135,6 @@ var $scrambledlist = {
         return data;
     },
 
-
     /**
      * Json idevice api function
      * Engine execution order: 2
@@ -145,7 +146,6 @@ var $scrambledlist = {
      * @returns {Boolean}
      */
     renderBehaviour(data, accesibility, ideviceId) {
-
         const ldata = $scrambledlist.updateConfig(data, ideviceId);
 
         let $node = $('#' + ldata.id);
@@ -157,40 +157,40 @@ var $scrambledlist = {
             if ($('body').hasClass('exe-epub3')) {
                 $(this).prepend(
                     '<p>' +
-                    $exe_i18n.epubDisabled +
-                    '</p><p><strong>' +
-                    $exe_i18n.solution +
-                    ':</strong></p>',
+                        $exe_i18n.epubDisabled +
+                        '</p><p><strong>' +
+                        $exe_i18n.solution +
+                        ':</strong></p>'
                 );
             } else {
                 $scrambledlist.enableList(this, instance);
             }
         });
 
-        if (!($('html').is('#exe-index'))) {
+        if (!$('html').is('#exe-index')) {
             this.scormAPIwrapper = '../libs/SCORM_API_wrapper.js';
             this.scormFunctions = '../libs/SCOFunctions.js';
         }
 
-        if (document.body.classList.contains('exe-scorm') && ldata.isScorm > 0) {
-            if (typeof window.scorm !== "undefined" && window.scorm.init()) {
+        if (
+            document.body.classList.contains('exe-scorm') &&
+            ldata.isScorm > 0
+        ) {
+            if (typeof window.scorm !== 'undefined' && window.scorm.init()) {
                 this.initScormData(ldata);
             } else {
                 this.loadSCORM_API_wrapper(ldata);
             }
         } else if (ldata.isScorm > 0) {
-            $exeDevices.iDevice.gamification.scorm.registerActivity(ldata)
+            $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
         }
 
-
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '#sl' + ldata.id,
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('#sl' + ldata.id);
 
         setTimeout(function () {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 ldata,
-                ldata.isInExe,
+                ldata.isInExe
             );
         }, 500);
         return true;
@@ -203,7 +203,7 @@ var $scrambledlist = {
             const escapedData = $scrambledlist.escapeForCallback(parsedData);
             eXe.app.loadScript(
                 this.scormAPIwrapper,
-                '$scrambledlist.loadSCOFunctions("' + escapedData + '")',
+                '$scrambledlist.loadSCOFunctions("' + escapedData + '")'
             );
         } else {
             this.loadSCOFunctions(parsedData);
@@ -212,8 +212,14 @@ var $scrambledlist = {
 
     initScormData: function (ldata) {
         $scrambledlist.mScorm = window.scorm;
-        $scrambledlist.userName = $exeDevices.iDevice.gamification.scorm.getUserName($scrambledlist.mScorm);
-        $scrambledlist.previousScore = $exeDevices.iDevice.gamification.scorm.getPreviousScore($scrambledlist.mScorm);
+        $scrambledlist.userName =
+            $exeDevices.iDevice.gamification.scorm.getUserName(
+                $scrambledlist.mScorm
+            );
+        $scrambledlist.previousScore =
+            $exeDevices.iDevice.gamification.scorm.getPreviousScore(
+                $scrambledlist.mScorm
+            );
 
         if (typeof $scrambledlist.mScorm.SetScoreMax === 'function') {
             $scrambledlist.mScorm.SetScoreMax(100);
@@ -227,7 +233,7 @@ var $scrambledlist = {
             $scrambledlist.mScorm.SetScoreMin(0);
         }
         $scrambledlist.initialScore = $scrambledlist.previousScore;
-        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata)
+        $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
     },
 
     escapeForCallback: function (obj) {
@@ -243,7 +249,7 @@ var $scrambledlist = {
             const escapedData = $scrambledlist.escapeForCallback(parsedData);
             eXe.app.loadScript(
                 this.scormFunctions,
-                '$scrambledlist.initSCORM("' + escapedData + '")',
+                '$scrambledlist.initSCORM("' + escapedData + '")'
             );
         } else {
             this.initSCORM(parsedData);
@@ -251,12 +257,11 @@ var $scrambledlist = {
     },
 
     initSCORM: function (ldata) {
-        let parsedData = (typeof ldata === 'string') ? JSON.parse(ldata) : ldata;
+        let parsedData = typeof ldata === 'string' ? JSON.parse(ldata) : ldata;
         $scrambledlist.mScorm = window.scorm;
         if ($scrambledlist.mScorm.init()) {
             this.initScormData(parsedData);
         }
-
     },
 
     /**
@@ -268,7 +273,7 @@ var $scrambledlist = {
      * @param {Object} data
      * @param {Number} accesibility
      */
-    init: function () { },
+    init: function () {},
 
     enableList: function (activity, instance) {
         var lists = $('ul', activity);
@@ -333,7 +338,7 @@ var $scrambledlist = {
                             this,
                             parseInt(c[0]),
                             parseInt(c[1]),
-                            parseInt(c[2]),
+                            parseInt(c[2])
                         );
                         return false;
                     };
@@ -392,7 +397,7 @@ var $scrambledlist = {
     },
 
     getListHTML: function (activity, lis, list, listOrder) {
-        const listItems = lis.map(item => `<li>${item}</li>`).join('');
+        const listItems = lis.map((item) => `<li>${item}</li>`).join('');
         const html = `
           <ul class="exe-sortableList-options" id="exe-sortableList-${listOrder}">
             ${listItems}
@@ -421,7 +426,6 @@ var $scrambledlist = {
             $scrambledlist.check(this, listOrder);
         });
     },
-
 
     check: function (e, listOrder) {
         // No more sorting
@@ -459,7 +463,6 @@ var $scrambledlist = {
 
         var data = $(e).closest('.idevice_node').attr('data-idevice-json-data');
 
-
         data = JSON.parse(data);
 
         this.saveEvaluation(nRightAnswers, userList[0].children.length, data);
@@ -472,35 +475,31 @@ var $scrambledlist = {
                 feedback
                     .html(
                         '<p>' +
-                        $('.exe-sortableList-rightText', activity).text() +
-                        '</p>',
+                            $('.exe-sortableList-rightText', activity).text() +
+                            '</p>'
                     )
                     .hide()
                     .attr('class', 'feedback feedback-right')
                     .fadeIn();
-            else
-                if (!data.showSolutions) {
-                    feedback
-                        .html(
-                            '<p>' + data.msgs.msgTestFailed + '</p>'
-                        ).hide()
-                        .attr('class', 'feedback feedback-wrong')
-                        .fadeIn();
-
-                } else {
-                    feedback
-                        .html(
-                            '<p>' +
+            else if (!data.showSolutions) {
+                feedback
+                    .html('<p>' + data.msgs.msgTestFailed + '</p>')
+                    .hide()
+                    .attr('class', 'feedback feedback-wrong')
+                    .fadeIn();
+            } else {
+                feedback
+                    .html(
+                        '<p>' +
                             $('.exe-sortableList-wrongText', activity).text() +
                             '</p><ul>' +
                             rightAnswers.html() +
-                            '</ul>',
-                        )
-                        .hide()
-                        .attr('class', 'feedback feedback-wrong')
-                        .fadeIn();
-                }
-
+                            '</ul>'
+                    )
+                    .hide()
+                    .attr('class', 'feedback feedback-wrong')
+                    .fadeIn();
+            }
         }
         $exeDevices.iDevice.gamification.math.updateLatex('#sl' + data.id);
     },
@@ -567,7 +566,8 @@ var $scrambledlist = {
             msgOnlySave: 'Solo puedes guardar una vez',
             msgOnlySaveAuto:
                 'Tu puntuación se guardará después de cada pregunta. Solo puedes jugar una vez.',
-            msgSaveAuto: 'Tu puntuación se guardará automáticamente después de cada pregunta.',
+            msgSaveAuto:
+                'Tu puntuación se guardará automáticamente después de cada pregunta.',
             msgSeveralScore:
                 'Puedes guardar la puntuación tantas veces como quieras',
             msgPlaySeveralTimes:
@@ -581,7 +581,7 @@ var $scrambledlist = {
             msgSubmit: 'Enviar',
             msgTime: 'Tiempo',
             msgCheck: 'Comprobar',
-            msgTestFailed: "No has superado la prueba. Inténtalo de nuevo.",
+            msgTestFailed: 'No has superado la prueba. Inténtalo de nuevo.',
         };
         return msgs;
     },
@@ -602,8 +602,8 @@ var $scrambledlist = {
     'function' == typeof define && define.amd
         ? define(['jquery'], t)
         : 'object' == typeof exports
-            ? (module.exports = t(require('jquery')))
-            : (e.sortable = t(e.jQuery));
+          ? (module.exports = t(require('jquery')))
+          : (e.sortable = t(e.jQuery));
 })(this, function (e) {
     'use strict';
     var t,
@@ -611,21 +611,21 @@ var $scrambledlist = {
         r = e(),
         n = [],
         i = function (e) {
-            e.off('dragstart.h5s'),
+            (e.off('dragstart.h5s'),
                 e.off('dragend.h5s'),
                 e.off('selectstart.h5s'),
                 e.off('dragover.h5s'),
                 e.off('dragenter.h5s'),
-                e.off('drop.h5s');
+                e.off('drop.h5s'));
         },
         o = function (e) {
-            e.off('dragover.h5s'), e.off('dragenter.h5s'), e.off('drop.h5s');
+            (e.off('dragover.h5s'), e.off('dragenter.h5s'), e.off('drop.h5s'));
         },
         d = function (e, t) {
-            (e.dataTransfer.effectAllowed = 'move'),
+            ((e.dataTransfer.effectAllowed = 'move'),
                 e.dataTransfer.setData('text', ''),
                 e.dataTransfer.setDragImage &&
-                e.dataTransfer.setDragImage(t.item, t.x, t.y);
+                    e.dataTransfer.setDragImage(t.item, t.x, t.y));
         },
         s = function (e, t) {
             return (
@@ -639,40 +639,40 @@ var $scrambledlist = {
         },
         f = function (e, t) {
             var a = l(t);
-            (a = s(e, a)), d(e, a);
+            ((a = s(e, a)), d(e, a));
         },
         h = function (e, t) {
             return 'undefined' == typeof e ? t : e;
         },
         g = function (e) {
-            e.removeData('opts'),
+            (e.removeData('opts'),
                 e.removeData('connectWith'),
                 e.removeData('items'),
-                e.removeAttr('aria-dropeffect');
+                e.removeAttr('aria-dropeffect'));
         },
         c = function (e) {
-            e.removeAttr('aria-grabbed'),
+            (e.removeAttr('aria-grabbed'),
                 e.removeAttr('draggable'),
-                e.removeAttr('role');
+                e.removeAttr('role'));
         },
         u = function (e, t) {
             return e[0] === t[0]
                 ? !0
                 : void 0 !== e.data('connectWith')
-                    ? e.data('connectWith') === t.data('connectWith')
-                    : !1;
+                  ? e.data('connectWith') === t.data('connectWith')
+                  : !1;
         },
         p = function (e) {
             var t = e.data('opts') || {},
                 a = e.children(t.items),
                 r = t.handle ? a.find(t.handle) : a;
-            o(e), g(e), r.off('mousedown.h5s'), i(a), c(a);
+            (o(e), g(e), r.off('mousedown.h5s'), i(a), c(a));
         },
         m = function (t) {
             var a = t.data('opts'),
                 r = t.children(a.items),
                 n = a.handle ? r.find(a.handle) : r;
-            t.attr('aria-dropeffect', 'move'), n.attr('draggable', 'true');
+            (t.attr('aria-dropeffect', 'move'), n.attr('draggable', 'true'));
             var i = (document || window.document).createElement('span');
             'function' != typeof i.dragDrop ||
                 a.disableIEFix ||
@@ -686,15 +686,15 @@ var $scrambledlist = {
             var t = e.data('opts'),
                 a = e.children(t.items),
                 r = t.handle ? a.find(t.handle) : a;
-            e.attr('aria-dropeffect', 'none'),
+            (e.attr('aria-dropeffect', 'none'),
                 r.attr('draggable', !1),
-                r.off('mousedown.h5s');
+                r.off('mousedown.h5s'));
         },
         b = function (e) {
             var t = e.data('opts'),
                 a = e.children(t.items),
                 r = t.handle ? a.find(t.handle) : a;
-            i(a), r.off('mousedown.h5s'), o(e);
+            (i(a), r.off('mousedown.h5s'), o(e));
         },
         x = function (i, o) {
             var s = e(i),
@@ -718,12 +718,12 @@ var $scrambledlist = {
                         draggingClass: 'sortable-dragging',
                         hoverClass: !1,
                     },
-                    o,
+                    o
                 )),
                 s.each(function () {
                     var i = e(this);
                     if (/enable|disable|destroy/.test(l)) return void x[l](i);
-                    (o = h(i.data('opts'), o)), i.data('opts', o), b(i);
+                    ((o = h(i.data('opts'), o)), i.data('opts', o), b(i));
                     var s,
                         g,
                         c,
@@ -731,52 +731,52 @@ var $scrambledlist = {
                         v =
                             null === o.placeholder
                                 ? e(
-                                    '<' +
-                                    (/^ul|ol$/i.test(this.tagName)
-                                        ? 'li'
-                                        : 'div') +
-                                    ' class="' +
-                                    o.placeholderClass +
-                                    '"/>',
-                                )
+                                      '<' +
+                                          (/^ul|ol$/i.test(this.tagName)
+                                              ? 'li'
+                                              : 'div') +
+                                          ' class="' +
+                                          o.placeholderClass +
+                                          '"/>'
+                                  )
                                 : e(o.placeholder).addClass(o.placeholderClass);
                     if (!i.attr('data-sortable-id')) {
                         var I = n.length;
-                        (n[I] = i),
+                        ((n[I] = i),
                             i.attr('data-sortable-id', I),
-                            p.attr('data-item-sortable-id', I);
+                            p.attr('data-item-sortable-id', I));
                     }
                     if (
                         (i.data('items', o.items),
-                            (r = r.add(v)),
-                            o.connectWith && i.data('connectWith', o.connectWith),
-                            m(i),
-                            p.attr('role', 'option'),
-                            p.attr('aria-grabbed', 'false'),
-                            o.hoverClass)
+                        (r = r.add(v)),
+                        o.connectWith && i.data('connectWith', o.connectWith),
+                        m(i),
+                        p.attr('role', 'option'),
+                        p.attr('aria-grabbed', 'false'),
+                        o.hoverClass)
                     ) {
                         var C = 'sortable-over';
-                        'string' == typeof o.hoverClass && (C = o.hoverClass),
+                        ('string' == typeof o.hoverClass && (C = o.hoverClass),
                             p.hover(
                                 function () {
                                     e(this).addClass(C);
                                 },
                                 function () {
                                     e(this).removeClass(C);
-                                },
-                            );
+                                }
+                            ));
                     }
-                    p.on('dragstart.h5s', function (r) {
-                        r.stopImmediatePropagation(),
+                    (p.on('dragstart.h5s', function (r) {
+                        (r.stopImmediatePropagation(),
                             o.dragImage
                                 ? (d(r.originalEvent, {
-                                    item: o.dragImage,
-                                    x: 0,
-                                    y: 0,
-                                }),
-                                    console.log(
-                                        'WARNING: dragImage option is deprecated and will be removed in the future!',
-                                    ))
+                                      item: o.dragImage,
+                                      x: 0,
+                                      y: 0,
+                                  }),
+                                  console.log(
+                                      'WARNING: dragImage option is deprecated and will be removed in the future!'
+                                  ))
                                 : f(r.originalEvent, e(this), o.dragImage),
                             (t = e(this)),
                             t.addClass(o.draggingClass),
@@ -788,20 +788,20 @@ var $scrambledlist = {
                                 item: t,
                                 placeholder: v,
                                 startparent: g,
-                            });
+                            }));
                     }),
                         p.on('dragend.h5s', function () {
                             t &&
                                 (t.removeClass(o.draggingClass),
-                                    t.attr('aria-grabbed', 'false'),
-                                    t.show(),
-                                    r.detach(),
-                                    (c = e(this).parent()),
-                                    t.parent().triggerHandler('sortstop', {
-                                        item: t,
-                                        startparent: g,
-                                    }),
-                                    (s !== t.index() || g.get(0) !== c.get(0)) &&
+                                t.attr('aria-grabbed', 'false'),
+                                t.show(),
+                                r.detach(),
+                                (c = e(this).parent()),
+                                t.parent().triggerHandler('sortstop', {
+                                    item: t,
+                                    startparent: g,
+                                }),
+                                (s !== t.index() || g.get(0) !== c.get(0)) &&
                                     t.parent().triggerHandler('sortupdate', {
                                         item: t,
                                         index: c
@@ -813,17 +813,17 @@ var $scrambledlist = {
                                         startparent: g,
                                         endparent: c,
                                     }),
-                                    (t = null),
-                                    (a = null));
+                                (t = null),
+                                (a = null));
                         }),
                         e(this)
                             .add([v])
                             .on('drop.h5s', function (a) {
                                 return u(i, e(t).parent())
                                     ? (a.stopPropagation(),
-                                        r.filter(':visible').after(t),
-                                        t.trigger('dragend.h5s'),
-                                        !1)
+                                      r.filter(':visible').after(t),
+                                      t.trigger('dragend.h5s'),
+                                      !1)
                                     : void 0;
                             }),
                         p
@@ -832,15 +832,15 @@ var $scrambledlist = {
                                 if (u(i, e(t).parent())) {
                                     if (
                                         (n.preventDefault(),
-                                            (n.originalEvent.dataTransfer.dropEffect =
-                                                'move'),
-                                            p.is(this))
+                                        (n.originalEvent.dataTransfer.dropEffect =
+                                            'move'),
+                                        p.is(this))
                                     ) {
                                         var d = e(this).height();
                                         if (
                                             (o.forcePlaceholderSize &&
                                                 v.height(a),
-                                                d > a)
+                                            d > a)
                                         ) {
                                             var s = d - a,
                                                 l = e(this).offset().top;
@@ -852,22 +852,22 @@ var $scrambledlist = {
                                             if (
                                                 v.index() > e(this).index() &&
                                                 n.originalEvent.pageY >
-                                                l + d - s
+                                                    l + d - s
                                             )
                                                 return !1;
                                         }
-                                        t.hide(),
+                                        (t.hide(),
                                             v.index() < e(this).index()
                                                 ? e(this).after(v)
                                                 : e(this).before(v),
-                                            r.not(v).detach();
+                                            r.not(v).detach());
                                     } else
                                         r.is(this) ||
                                             e(this).children(o.items).length ||
                                             (r.detach(), e(this).append(v));
                                     return !1;
                                 }
-                            });
+                            }));
                 })
             );
         };
