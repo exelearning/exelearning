@@ -1506,7 +1506,26 @@ class OdeService implements OdeServiceInterface
 
         try {
             Util::checkPhpZipExtension();
-            FileUtil::extractZipTo($destinationFilePathName, $odeSessionDistDirPath);
+
+            // Use optimized extraction for large files (>100MB)
+            $fileSize = filesize($destinationFilePathName);
+            $thresholdBytes = 100 * 1024 * 1024; // 100MB
+
+            if ($fileSize > $thresholdBytes) {
+                $this->logger->info(
+                    'Using optimized ZIP extraction for large file',
+                    [
+                        'fileName' => $elpFileName,
+                        'fileSize' => $fileSize,
+                        'fileSizeMB' => round($fileSize / (1024 * 1024), 2),
+                        'file:' => $this,
+                        'line' => __LINE__,
+                    ]
+                );
+                FileUtil::extractZipToOptimized($destinationFilePathName, $odeSessionDistDirPath, 100);
+            } else {
+                FileUtil::extractZipTo($destinationFilePathName, $odeSessionDistDirPath);
+            }
         } catch (PhpZipExtensionException $e) {
             $this->logger->error(
                 $e->getDescription(),
@@ -1539,7 +1558,25 @@ class OdeService implements OdeServiceInterface
             }
         }
 
-        $elpContentFileContent = FileUtil::getFileContent($xmlFilePathName);
+        // Use optimized file reading for large XML files
+        $xmlFileSize = filesize($xmlFilePathName);
+        $xmlThresholdBytes = 100 * 1024 * 1024; // 100MB
+
+        if ($xmlFileSize > $xmlThresholdBytes) {
+            $this->logger->info(
+                'Using optimized file reading for large XML',
+                [
+                    'fileName' => $fileName,
+                    'fileSize' => $xmlFileSize,
+                    'fileSizeMB' => round($xmlFileSize / (1024 * 1024), 2),
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+            $elpContentFileContent = FileUtil::getFileContentOptimized($xmlFilePathName, 100);
+        } else {
+            $elpContentFileContent = FileUtil::getFileContent($xmlFilePathName);
+        }
 
         $odeResponse = [];
 
@@ -1549,7 +1586,22 @@ class OdeService implements OdeServiceInterface
                 $odeResponse = OdeXmlUtil::readOldExeXml($newOdeSessionId, $elpContentFileContent, $this->translator);
             } else {
                 if (!$isImportIdevices) {
-                    $odeResponse = OdeXmlUtil::readOdeXml($newOdeSessionId, $elpContentFileContent);
+                    // Use optimized XML reading for large files
+                    if ($xmlFileSize > $xmlThresholdBytes) {
+                        $this->logger->info(
+                            'Using optimized XML parsing for large file',
+                            [
+                                'fileName' => $fileName,
+                                'fileSize' => $xmlFileSize,
+                                'fileSizeMB' => round($xmlFileSize / (1024 * 1024), 2),
+                                'file:' => $this,
+                                'line' => __LINE__,
+                            ]
+                        );
+                        $odeResponse = OdeXmlUtil::readOdeXmlOptimized($newOdeSessionId, $elpContentFileContent, 100);
+                    } else {
+                        $odeResponse = OdeXmlUtil::readOdeXml($newOdeSessionId, $elpContentFileContent);
+                    }
 
                     // Check if the ode has style theme directory
                     $themeDirPath = $odeSessionDistDirPath.Constants::EXPORT_DIR_THEME;

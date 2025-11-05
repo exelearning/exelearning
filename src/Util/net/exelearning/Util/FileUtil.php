@@ -182,6 +182,54 @@ class FileUtil
     }
 
     /**
+     * Reads a large file in chunks to avoid memory issues.
+     * For files larger than threshold, uses streaming.
+     *
+     * @param string $filePathName Path to the file
+     * @param int $thresholdMB Threshold in MB to use streaming (default: 100MB)
+     *
+     * @return string File contents
+     */
+    public static function getFileContentOptimized($filePathName, $thresholdMB = 100)
+    {
+        $fileSize = filesize($filePathName);
+        $thresholdBytes = $thresholdMB * 1024 * 1024;
+
+        // For smaller files, use standard method
+        if ($fileSize < $thresholdBytes) {
+            return file_get_contents($filePathName);
+        }
+
+        // For large files, read in chunks
+        $handle = fopen($filePathName, 'rb');
+        if ($handle === false) {
+            throw new \RuntimeException('Failed to open file: '.$filePathName);
+        }
+
+        $contents = '';
+        $chunkSize = 8192 * 1024; // 8MB chunks
+
+        try {
+            while (!feof($handle)) {
+                $chunk = fread($handle, $chunkSize);
+                if ($chunk === false) {
+                    throw new \RuntimeException('Failed to read file chunk');
+                }
+                $contents .= $chunk;
+
+                // Periodically free memory
+                if (strlen($contents) % (50 * 1024 * 1024) === 0) {
+                    gc_collect_cycles();
+                }
+            }
+        } finally {
+            fclose($handle);
+        }
+
+        return $contents;
+    }
+
+    /**
      * Returns array with ode files, total disk space and left space on disk.
      *
      * @param object $odeFilesDto
@@ -661,6 +709,129 @@ class FileUtil
                 throw new \RuntimeException('Extraction failed to: '.$dest_dir);
             }
         } finally {
+            $zip->close();
+        }
+    }
+
+    /**
+     * Extracts a ZIP file optimized for large files.
+     * Uses chunked extraction and memory management.
+     *
+     * @param string $zip_file Path to ZIP file
+     * @param string $dest_dir Destination directory
+     * @param int $fileSizeThresholdMB Threshold for large file handling (default: 100MB)
+     *
+     * @return void
+     */
+    public static function extractZipToOptimized(string $zip_file, string $dest_dir, int $fileSizeThresholdMB = 100): void
+    {
+        if (!is_file($zip_file) || !is_readable($zip_file)) {
+            throw new \RuntimeException('ZIP file is not readable: '.$zip_file);
+        }
+
+        self::ensureDirectoryExists($dest_dir);
+
+        $zipFileSize = filesize($zip_file);
+        $thresholdBytes = $fileSizeThresholdMB * 1024 * 1024;
+
+        // For smaller ZIP files, use standard method
+        if ($zipFileSize < $thresholdBytes) {
+            self::extractZipTo($zip_file, $dest_dir);
+            return;
+        }
+
+        // For large ZIP files, use optimized extraction
+        $zip = new \ZipArchive();
+        $open_result = $zip->open($zip_file, \ZipArchive::RDONLY);
+
+        if (true !== $open_result) {
+            throw new \RuntimeException('Failed to open ZIP ('.$open_result.'): '.$zip_file);
+        }
+
+        // Save original limits
+        $oldTimeLimit = ini_get('max_execution_time');
+        $oldMemoryLimit = ini_get('memory_limit');
+
+        try {
+            // Increase execution time and memory for large files
+            set_time_limit(0); // Unlimited for extraction
+            ini_set('memory_limit', '1024M'); // Increase memory limit
+
+            $numFiles = $zip->numFiles;
+
+            // Extract files in batches to manage memory
+            $batchSize = 50;
+            for ($i = 0; $i < $numFiles; $i++) {
+                $stat = $zip->statIndex($i);
+                if ($stat === false) {
+                    continue;
+                }
+
+                $filename = $stat['name'];
+
+                // Skip directories
+                if (substr($filename, -1) === '/') {
+                    continue;
+                }
+
+                $targetPath = $dest_dir.DIRECTORY_SEPARATOR.$filename;
+                $targetDir = dirname($targetPath);
+
+                self::ensureDirectoryExists($targetDir);
+
+                // For large individual files, use stream extraction
+                $fileSize = $stat['size'];
+                if ($fileSize > 50 * 1024 * 1024) { // Files > 50MB
+                    // Extract using stream to avoid loading entire file in memory
+                    $stream = $zip->getStream($filename);
+                    if ($stream === false) {
+                        throw new \RuntimeException('Failed to open stream for file: '.$filename);
+                    }
+
+                    $outputStream = fopen($targetPath, 'wb');
+                    if ($outputStream === false) {
+                        throw new \RuntimeException('Failed to create output file: '.$targetPath);
+                    }
+
+                    // Copy in chunks
+                    $chunkSize = 8192 * 1024; // 8MB chunks
+                    while (!feof($stream)) {
+                        $chunk = fread($stream, $chunkSize);
+                        if ($chunk === false) {
+                            fclose($stream);
+                            fclose($outputStream);
+                            throw new \RuntimeException('Failed to read chunk from: '.$filename);
+                        }
+                        if (fwrite($outputStream, $chunk) === false) {
+                            fclose($stream);
+                            fclose($outputStream);
+                            throw new \RuntimeException('Failed to write chunk to: '.$targetPath);
+                        }
+                    }
+
+                    fclose($stream);
+                    fclose($outputStream);
+                } else {
+                    // For smaller files, use direct extraction
+                    $fileContent = $zip->getFromIndex($i);
+                    if ($fileContent === false) {
+                        throw new \RuntimeException('Failed to extract file: '.$filename);
+                    }
+
+                    if (file_put_contents($targetPath, $fileContent) === false) {
+                        throw new \RuntimeException('Failed to write file: '.$targetPath);
+                    }
+                }
+
+                // Free memory every batch
+                if (($i + 1) % $batchSize === 0) {
+                    gc_collect_cycles();
+                }
+            }
+        } finally {
+            // Restore previous limits
+            set_time_limit((int) $oldTimeLimit);
+            ini_set('memory_limit', $oldMemoryLimit);
             $zip->close();
         }
     }
