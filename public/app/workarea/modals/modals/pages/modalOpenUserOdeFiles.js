@@ -510,7 +510,7 @@ export default class modalOpenUserOdeFiles extends Modal {
     async openUserOdeFilesWithOpenSession(id) {
         const params = {
             elpFileName: id,
-            forceCloseOdeUserPreviousSession: true,
+            forceCloseOdeUserPreviousSession: '1',
             odeSessionId: eXeLearning.app.project.odeSession,
         };
         const response = await eXeLearning.app.api.postSelectedOdeFile(params);
@@ -632,6 +632,38 @@ export default class modalOpenUserOdeFiles extends Modal {
             }
         }
 
+        const hasPreUploadedData =
+            skipSessionCheck &&
+            forceCloseSession &&
+            odeFile &&
+            odeFile._preUploadedOdeData &&
+            odeFile._preUploadedOdeData.odeFileName &&
+            odeFile._preUploadedOdeData.odeFilePath;
+
+        if (hasPreUploadedData) {
+            if (this.modal && this.modal._isShown) {
+                this.close();
+            }
+
+            const progressModal = eXeLearning.app.modals.uploadprogress;
+            progressModal.show({
+                fileName: odeFile.name,
+                fileSize: odeFile.size,
+            });
+            progressModal.setProcessingPhase('extracting');
+
+            await this.openLocalElpFile(
+                odeFile._preUploadedOdeData.odeFileName,
+                odeFile._preUploadedOdeData.odeFilePath,
+                isImportIdevices,
+                progressModal,
+                forceCloseSession,
+                odeFile
+            );
+
+            return;
+        }
+
         // Check for unsaved changes BEFORE uploading (only for large files and not imports)
         if (!skipSessionCheck && !isImportIdevices && !isImportProperties) {
             const odeParams = {
@@ -646,7 +678,11 @@ export default class modalOpenUserOdeFiles extends Modal {
                         odeParams
                     );
 
-                if (sessionCheck['leaveSession'] || sessionCheck['askSave']) {
+                if (
+                    sessionCheck['leaveSession'] ||
+                    sessionCheck['askSave'] ||
+                    sessionCheck['leaveEmptySession']
+                ) {
                     // There are unsaved changes - show confirmation modal
                     const data = {
                         title: _('Open project'),
@@ -725,6 +761,13 @@ export default class modalOpenUserOdeFiles extends Modal {
                 odeFileName = response['odeFileName'];
                 const odeFilePath = response['odeFilePath'];
 
+                if (odeFile) {
+                    odeFile._preUploadedOdeData = {
+                        odeFileName,
+                        odeFilePath,
+                    };
+                }
+
                 if (isImportProperties) {
                     eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
                         false,
@@ -745,7 +788,8 @@ export default class modalOpenUserOdeFiles extends Modal {
                         odeFilePath,
                         isImportIdevices,
                         progressModal,
-                        forceCloseSession
+                        forceCloseSession,
+                        odeFile
                     );
                     // Modal is closed inside openLocalElpFile
                 }
@@ -827,7 +871,8 @@ export default class modalOpenUserOdeFiles extends Modal {
         odeFilePath,
         isImportIdevices,
         progressModal = null,
-        forceCloseSession = false
+        forceCloseSession = false,
+        originalFile = null
     ) {
         const selectedNavId =
             eXeLearning.app.menus.menuStructure.menuStructureBehaviour.nodeSelected.getAttribute(
@@ -839,6 +884,7 @@ export default class modalOpenUserOdeFiles extends Modal {
             odeVersion: eXeLearning.app.project.odeVersion,
             odeId: eXeLearning.app.project.odeId,
         };
+        const forceCloseFlag = forceCloseSession ? '1' : '0';
         const data = {
             title: _('Open project'),
             forceOpen: _('Open without saving changes'),
@@ -847,7 +893,12 @@ export default class modalOpenUserOdeFiles extends Modal {
             odeFileName,
             odeFilePath,
             odeNavStructureSyncId: selectedNavId,
-            forceCloseOdeUserPreviousSession: forceCloseSession,
+            forceCloseOdeUserPreviousSession: forceCloseFlag,
+        };
+        const clearPreUploadedData = () => {
+            if (originalFile && originalFile._preUploadedOdeData) {
+                delete originalFile._preUploadedOdeData;
+            }
         };
 
         let response;
@@ -890,6 +941,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 // Load project
                 await eXeLearning.app.project.openLoad();
                 this.loadOdeTheme(response);
+                clearPreUploadedData();
             } else {
                 eXeLearning.app.project.updateCurrentOdeUsersUpdateFlag(
                     false,
@@ -914,6 +966,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 } catch (_e) {
                     eXeLearning.app.project.updateUserPage(selectedNavId);
                 }
+                clearPreUploadedData();
             }
         } else {
             if (isImportIdevices) {
@@ -928,6 +981,26 @@ export default class modalOpenUserOdeFiles extends Modal {
                 // If we already checked the session (progressModal present), just show error
                 if (progressModal) {
                     progressModal.hide();
+                    const message =
+                        typeof response.responseMessage === 'string'
+                            ? response.responseMessage.toLowerCase()
+                            : '';
+
+                    if (message.includes('user already has an open session')) {
+                        eXeLearning.app.modals.sessionlogout.show({
+                            title: _('Open project'),
+                            forceOpen: _('Open without saving'),
+                            openOdeFile: true,
+                            localOdeFile: true,
+                            isLargeFile: true,
+                            odeFile: originalFile,
+                            odeFileName,
+                            odeFilePath,
+                        });
+
+                        return;
+                    }
+
                     setTimeout(() => {
                         eXeLearning.app.modals.alert.show({
                             title: _('Import error'),
@@ -961,7 +1034,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         const params = {
             odeFileName,
             odeFilePath,
-            forceCloseOdeUserPreviousSession: true,
+            forceCloseOdeUserPreviousSession: '1',
         };
         const response = await eXeLearning.app.api.postLocalOdeFile(params);
         if (response.responseMessage == 'OK') {
