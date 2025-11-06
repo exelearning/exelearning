@@ -261,7 +261,6 @@ var $exeDevice = {
                             <span>${_('Quick edit')}</span>
                             <button id="eXeQuickEditButton" class="btn btn-primary">${_('Show')}</button>
                         </div>
-                        ${$exeDevicesEdition.iDevice.gamification.edition.getEditionQuick()}
                         <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
                             <span class="toggle-item" role="switch" aria-checked="false">
                                 <span class="toggle-control">
@@ -1220,25 +1219,6 @@ var $exeDevice = {
             $exeDevice.updateQuestionsNumber();
         });
 
-        $exeDevicesEdition.iDevice.gamification.edition.addEvents(
-            function (content) {
-                const lines = content.split('\n');
-                const lineFormat = /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/;
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (line.length === 0) continue;
-                    if (!lineFormat.test(line)) {
-                        const lineNumber = i + 1;
-                        $exeDevice.showMessage(
-                            `${_('Invalid format on line')} ${lineNumber}: "${line}"\n${_('Expected format')}: palabra#definición`
-                        );
-                        return;
-                    }
-                }
-
-                $exeDevice.insertWords(lines);
-            }
-        );
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents(
             $exeDevice.insertWords
         );
@@ -1246,29 +1226,6 @@ var $exeDevice = {
             0,
             $exeDevice.insertWords
         );
-        $('#eXeQuickEditButton')
-            .off('click')
-            .on('click', function () {
-                if (!$exeDevice.validateQuestion()) {
-                    return;
-                }
-                const $container = $('#eXeQuickGame');
-                const isVisible = $container.is(':visible');
-                if (!isVisible) {
-                    const data = $exeDevice.getLinesQuestions(
-                        $exeDevice.wordsGame
-                    );
-                    const textData = data.join('\n');
-                    $exeDevicesEdition.iDevice.gamification.edition.setValues(
-                        textData
-                    );
-                    $container.slideDown();
-                    $(this).text(_('Hide'));
-                } else {
-                    $container.slideUp();
-                    $(this).text(_('Show'));
-                }
-            });
 
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').on('click', function () {
