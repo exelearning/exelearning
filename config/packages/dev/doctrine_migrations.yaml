@@ -1,0 +1,4 @@
+# config/packages/dev/doctrine_migrations.yaml
+
+doctrine_migrations:
+    enable_profiler: false

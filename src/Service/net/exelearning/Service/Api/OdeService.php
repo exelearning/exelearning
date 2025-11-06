@@ -554,6 +554,7 @@ class OdeService implements OdeServiceInterface
             'odeId' => $odeId,
             'odeVersionName' => $odeVersionName,
             'isDownload' => $isDownload ? 'true' : 'false',
+            'eXeVersion' => Constants::APP_VERSION,
         ];
 
         // Ode XML structure
