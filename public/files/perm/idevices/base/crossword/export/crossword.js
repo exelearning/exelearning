@@ -148,55 +148,75 @@ var $eXeCrucigrama = {
         const verticalWords = mOptions.wordsGame.slice(0, mOptions.half),
             horizontalWords = mOptions.wordsGame.slice(mOptions.half);
 
-        let lettersShow = [];
-        for (let j = 0; j < mOptions.wordsGame.length; j++) {
-            let sindices = $eXeCrucigrama.calculateLettersToShow(
-                instance,
-                mOptions.wordsGame[j].word
-            );
-            lettersShow.push(sindices);
-        }
-
         $eXeCrucigrama.placeVerticalWords(instance, verticalWords);
         $eXeCrucigrama.placeHorizontalWords(instance, horizontalWords);
+
+        let lettersShow = {};
+        mOptions.wordsGame.forEach((wordObj, index) => {
+            let sindices = $eXeCrucigrama.calculateLettersToShow(
+                instance,
+                wordObj.word
+            );
+            lettersShow[index] = sindices;
+        });
 
         for (let row = 0; row < mOptions.boardSize; row++) {
             for (let col = 0; col < mOptions.boardSize; col++) {
                 const $cell = $('<div>').addClass('CCGMP-Cell');
                 if (mOptions.grid[row][col]) {
-                    const wordindex =
-                            mOptions.grid[row][col].hi !== -1
+                    const cellData = mOptions.grid[row][col];
+                    const hasHorizontal =
+                        cellData.hi !== undefined && cellData.hi !== -1;
+                    const hasVertical =
+                        cellData.vi !== undefined && cellData.vi !== -1;
+
+                    // Para determinar el wordindex principal (usado en data-wordindex)
+                    const wordindex = hasHorizontal ? cellData.hi : cellData.vi,
+                        indexLetter = hasHorizontal
+                            ? cellData.lhi
+                            : cellData.lvi,
+                        word = mOptions.wordsGame[wordindex].word;
+
+                    // Verificar si la letra debe mostrarse en cualquiera de las palabras
+                    let shouldShowLetter = false;
+                    if (hasHorizontal && lettersShow[cellData.hi]) {
+                        shouldShowLetter = lettersShow[cellData.hi].includes(
+                            cellData.lhi
+                        );
+                    }
+                    if (
+                        !shouldShowLetter &&
+                        hasVertical &&
+                        lettersShow[cellData.vi]
+                    ) {
+                        shouldShowLetter = lettersShow[cellData.vi].includes(
+                            cellData.lvi
+                        );
+                    }
+
+                    const $input = $('<input>').attr({
+                        'data-row': row,
+                        'data-col': col,
+                        'data-wordindex': wordindex,
+                        'data-hi':
+                            mOptions.grid[row][col].hi !== undefined
                                 ? mOptions.grid[row][col].hi
-                                : mOptions.grid[row][col].vi,
-                        indexLetter =
-                            wordindex < mOptions.half
+                                : -1,
+                        'data-vi':
+                            mOptions.grid[row][col].vi !== undefined
+                                ? mOptions.grid[row][col].vi
+                                : -1,
+                        'data-lhi':
+                            mOptions.grid[row][col].lhi !== undefined
+                                ? mOptions.grid[row][col].lhi
+                                : -1,
+                        'data-lvi':
+                            mOptions.grid[row][col].lvi !== undefined
                                 ? mOptions.grid[row][col].lvi
-                                : mOptions.grid[row][col].lhi,
-                        word = mOptions.wordsGame[wordindex].word,
-                        indicesToShow = lettersShow[wordindex],
-                        $input = $('<input>').attr({
-                            'data-row': row,
-                            'data-col': col,
-                            'data-wordindex': wordindex,
-                            'data-hi':
-                                mOptions.grid[row][col].hi !== undefined
-                                    ? mOptions.grid[row][col].hi
-                                    : -1,
-                            'data-vi':
-                                mOptions.grid[row][col].vi !== undefined
-                                    ? mOptions.grid[row][col].vi
-                                    : -1,
-                            'data-lhi':
-                                mOptions.grid[row][col].lhi !== undefined
-                                    ? mOptions.grid[row][col].lhi
-                                    : -1,
-                            'data-lvi':
-                                mOptions.grid[row][col].lvi !== undefined
-                                    ? mOptions.grid[row][col].lvi
-                                    : -1,
-                            readonly: true,
-                        });
-                    if (indicesToShow.includes(indexLetter)) {
+                                : -1,
+                        readonly: true,
+                    });
+                    if (shouldShowLetter) {
                         $input.val(word[indexLetter]);
                     }
                     $input.addClass('ccgm-input');
@@ -892,7 +912,7 @@ var $eXeCrucigrama = {
     ) {
         let mOptions = $eXeCrucigrama.options[instance];
         if (horizontal) {
-            wordindex += Math.floor(mOptions.wordsGame.length / 2);
+            wordindex += mOptions.half;
         }
 
         mOptions.mappedWords[wordindex] = [];
@@ -972,6 +992,7 @@ var $eXeCrucigrama = {
                     rowsUsed
                 );
                 if (position) {
+                    const numero = index + mOptions.half + 1;
                     $eXeCrucigrama.placeWord(
                         instance,
                         wordObj.word,
@@ -979,7 +1000,7 @@ var $eXeCrucigrama = {
                         position.col,
                         true,
                         currentGrid,
-                        index + Math.floor(mOptions.wordsGame.length / 2) + 1,
+                        numero,
                         index
                     );
                     placedWords.push(wordObj);
@@ -1017,6 +1038,7 @@ var $eXeCrucigrama = {
                     col + firstWord.word.length <= mOptions.boardSize
                 ) {
                     const index = horizontalWords.indexOf(firstWord);
+                    const numero = index + mOptions.half + 1;
                     $eXeCrucigrama.placeWord(
                         instance,
                         firstWord.word,
@@ -1024,7 +1046,7 @@ var $eXeCrucigrama = {
                         col,
                         true,
                         mOptions.grid,
-                        index + Math.floor(mOptions.wordsGame.length / 2) + 1,
+                        numero,
                         index
                     );
                     maxPlacedWords.push(firstWord);
@@ -1053,6 +1075,7 @@ var $eXeCrucigrama = {
                     col + secondWord.word.length <= mOptions.boardSize
                 ) {
                     const index = horizontalWords.indexOf(secondWord);
+                    const numero = index + mOptions.half + 1;
                     $eXeCrucigrama.placeWord(
                         instance,
                         secondWord.word,
@@ -1060,7 +1083,7 @@ var $eXeCrucigrama = {
                         col,
                         true,
                         mOptions.grid,
-                        index + Math.floor(mOptions.wordsGame.length / 2) + 1,
+                        numero,
                         index
                     );
                     maxPlacedWords.push(secondWord);
@@ -1585,18 +1608,22 @@ var $eXeCrucigrama = {
             $crossword = $('#ccgmCrossword-' + instance);
 
         wordindex = parseInt(wordindex);
+        const isVertical = wordindex < mOptions.half;
 
         let wordWithUnderscores = item.word
             .split('')
             .map((char, index) => {
-                const davi = $crossword.find(
-                    `input[data-wordindex="${wordindex}"][data-lvi="${index}"]`
-                );
-                const dahi = $crossword.find(
-                    `input[data-wordindex="${wordindex}"][data-lhi="${index}"]`
-                );
-                let $input =
-                    wordindex < mOptions.wordsGame.length ? davi : dahi;
+                // Search by data-vi for vertical words, data-hi for horizontal words
+                let $input;
+                if (isVertical) {
+                    $input = $crossword.find(
+                        `input[data-vi="${wordindex}"][data-lvi="${index}"]`
+                    );
+                } else {
+                    $input = $crossword.find(
+                        `input[data-hi="${wordindex}"][data-lhi="${index}"]`
+                    );
+                }
                 return $input.length > 0 && $input.val() ? $input.val() : '_';
             })
             .join('');
@@ -2382,16 +2409,18 @@ var $eXeCrucigrama = {
                     $exeDevices.iDevice.gamification.media.stopSound(mOptions);
                     e.preventDefault();
                     let currentNumber = parseInt($(this).data('number')) + 1;
-                    currentNumber =
-                        mOptions.activeQuestion < mOptions.wordsGame.length
-                            ? currentNumber
-                            : 0;
+                    // Wrap around to 0 if we exceed the number of words
+                    if (currentNumber >= mOptions.wordsGame.length) {
+                        currentNumber = 0;
+                    }
                     mOptions.activeQuestion = currentNumber;
                     let input = $('#ccgmMainContainer-' + instance).find(
                         `input.CCGMP-InputWordDef[data-number=${currentNumber}]`
                     );
-                    input.focus();
-                    input[0].setSelectionRange(0, 0);
+                    if (input.length > 0) {
+                        input.focus();
+                        input[0].setSelectionRange(0, 0);
+                    }
                 } else if (
                     $eXeCrucigrama.isIgnoredKey(e.key) ||
                     e.key === 'ArrowDown' ||
@@ -2597,7 +2626,7 @@ var $eXeCrucigrama = {
         }
     },
 
-    completeCrosswordFromInputs: function (instance) {
+    completeCrosswordFromInputs: function (instance, preserveExisting = false) {
         let mOptions = $eXeCrucigrama.options[instance];
 
         $('#ccgmMainContainer-' + instance)
@@ -2615,7 +2644,11 @@ var $eXeCrucigrama = {
                             `input[data-row=${row}][data-col=${col}]`
                         );
                         if ($cellInput.length) {
-                            $cellInput.val(letter);
+                            // Si preserveExisting es true, solo rellenar celdas vacías
+                            // Si es false, sobrescribir siempre (comportamiento original para verificación)
+                            if (!preserveExisting || !$cellInput.val()) {
+                                $cellInput.val(letter);
+                            }
                         }
                     });
                 }
@@ -2630,7 +2663,8 @@ var $eXeCrucigrama = {
         $('#ccgmDefinitions-' + instance).hide();
         $('#ccgmMultimedia-' + instance).show();
 
-        $eXeCrucigrama.completeCrosswordFromInputs(instance);
+        // Preserve existing values (like hint letters) when copying from definitions
+        $eXeCrucigrama.completeCrosswordFromInputs(instance, true);
 
         mOptions.focused = 0;
         if (mOptions.activeQuestion >= 0) {
