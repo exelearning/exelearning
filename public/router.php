@@ -39,7 +39,18 @@ $mimeTypes = [
  */
 function serveFile(string $path, array $mimeTypes): void {
     if (!file_exists($path)) {
+        // Return a friendly HTML 404 page if available (used by PHP built-in server)
         header('HTTP/1.1 404 Not Found');
+
+        $notFoundPage = __DIR__ . '/404.html';
+        if (file_exists($notFoundPage)) {
+            header("Content-Type: text/html; charset=UTF-8");
+            // readfile is fine here; the file is static and local
+            readfile($notFoundPage);
+            exit;
+        }
+
+        // Fallback to plain text when no HTML page is provided
         echo "File not found: " . htmlspecialchars($path);
         exit;
     }
