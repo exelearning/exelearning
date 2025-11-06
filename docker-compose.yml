@@ -39,6 +39,28 @@ services:
         echo "this is a test line 2"
         php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail
 
+  #  ⚠️ WARNING: Uncomment this for using mariadb as local database for development 
+  #     # Database settings
+  #     DB_DRIVER: pdo_mysql
+  #     DB_HOST: mariadb
+  #     DB_PORT: 3306
+  #     DB_NAME: "${DB_NAME:-exelearning}"
+  #     DB_USER: "${DB_USER:-exelearning}"
+  #     DB_PASSWORD: "${DB_PASSWORD:-exelearning}"
+  #     DB_CHARSET: "${DB_CHARSET:-utf8mb4}"
+  #     DB_SERVER_VERSION: 10.6
+  #   depends_on:
+  #     - mariadb
+  # mariadb:
+  #   image: mariadb:12.0
+  #   restart: unless-stopped
+  #   environment:
+  #     MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-root}"
+  #     MARIADB_DATABASE: "${DB_NAME:-exelearning}"
+  #     MARIADB_USER: "${DB_USER:-exelearning}"
+  #     MARIADB_PASSWORD: "${DB_PASSWORD:-exelearning}"
+
+
   # Watches SCSS changes and compiles main.scss to main.css using sass
   scss-watcher:
     image: node:25-alpine
