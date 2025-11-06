@@ -604,15 +604,12 @@ export default class NavbarFile {
                 confirmExec: () => {
                     const input = document.createElement('input');
                     input.type = 'file';
-                    input.accept = '.elpx,.elp,.zip';
+                    input.accept='.elpx,.elp,.zip,.epub';
                     input.classList.add('visually-hidden');
                     document.body.appendChild(input);
 
                     input.addEventListener('change', () => {
-                        if (!input.files || !input.files.length) {
-                            input.remove();
-                            return;
-                        }
+                        if (!input.files || !input.files.length) { input.remove(); return; }
 
                         const file = input.files[0];
                         const formData = new FormData();
