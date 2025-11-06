@@ -16,11 +16,24 @@ class ErrorController extends AbstractController
         $statusCode = $exception->getStatusCode();
         $message = $exception->getMessage();
 
-        // Render your custom template
-        return $this->render('security/error.html.twig', [
-            'status_code' => $statusCode,
-            'status_text' => Response::$statusTexts[$statusCode] ?? '',
-            'error' => $message,
-        ], new Response('', $statusCode));
+        // Try to render specific error template, fall back to generic if not found
+        try {
+            return $this->render(
+                sprintf('@Twig/Exception/error%d.html.twig', $statusCode),
+                [
+                    'status_code' => $statusCode,
+                    'status_text' => Response::$statusTexts[$statusCode] ?? '',
+                    'error' => $message,
+                ],
+                new Response('', $statusCode)
+            );
+        } catch (\Twig\Error\LoaderError $e) {
+            // If specific template not found, use generic error template
+            return $this->render('security/error.html.twig', [
+                'status_code' => $statusCode,
+                'status_text' => Response::$statusTexts[$statusCode] ?? '',
+                'error' => $message,
+            ], new Response('', $statusCode));
+        }
     }
 }
