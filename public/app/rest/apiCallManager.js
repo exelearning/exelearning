@@ -55,6 +55,19 @@ export default class ApiCallManager {
     }
 
     /**
+     * Get upload limits configuration
+     *
+     * Returns the effective file upload size limit considering both
+     * PHP limits and application configuration.
+     *
+     * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string, limitingFactor: string, details: object}>}
+     */
+    async getUploadLimits() {
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/config/upload-limits`;
+        return await this.func.get(url);
+    }
+
+    /**
      * Get the third party code information
      *
      * @returns
