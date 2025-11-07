@@ -608,19 +608,19 @@ export default class NavbarFile {
                     input.classList.add('visually-hidden');
                     document.body.appendChild(input);
 
-                    input.addEventListener('change', () => {
+                    input.addEventListener('change', async () => {
                         if (!input.files || !input.files.length) {
                             input.remove();
                             return;
                         }
 
                         const file = input.files[0];
-                        const formData = new FormData();
-                        formData.append(
-                            'odeSessionId',
-                            eXeLearning.app.project.odeSession
-                        );
-                        formData.append('file', file);
+                        const progressModal =
+                            eXeLearning.app.modals.uploadprogress;
+                        progressModal.show({
+                            fileName: file.name,
+                            fileSize: file.size,
+                        });
 
                         const refreshStructure = (targetId = false) => {
                             const structure =
@@ -636,38 +636,157 @@ export default class NavbarFile {
                             }
                         };
 
-                        eXeLearning.app.api
-                            .postImportElpToRoot(formData)
-                            .then((response) => {
-                                if (response.responseMessage === 'OK') {
-                                    const structure =
-                                        eXeLearning?.app?.project?.structure;
-                                    const selectedNodeId =
-                                        structure &&
-                                        typeof structure.getSelectNodeNavId ===
-                                            'function'
-                                            ? structure.getSelectNodeNavId()
-                                            : null;
-                                    refreshStructure(selectedNodeId || false);
-                                } else {
-                                    const message =
-                                        response.responseMessage ||
-                                        _('Unexpected error importing file.');
+                        const ensureModalBackdropCleared = (delay = 0) => {
+                            const removeBackdrops = () => {
+                                if (document.querySelector('.modal.show')) {
+                                    return;
+                                }
+                                document
+                                    .querySelectorAll('.modal-backdrop')
+                                    .forEach((backdrop) => backdrop.remove());
+                                document.body.classList.remove('modal-open');
+                            };
+
+                            if (delay > 0) {
+                                setTimeout(removeBackdrops, delay);
+                            } else {
+                                removeBackdrops();
+                            }
+                        };
+
+                        try {
+                            // Upload file in chunks (15 MB)
+                            const chunkSize = 1024 * 1024 * 15;
+                            const totalSize = file.size;
+                            let start = 0;
+                            let uploadedBytes = 0;
+                            let response;
+
+                            while (start < totalSize) {
+                                const end = Math.min(
+                                    start + chunkSize,
+                                    totalSize
+                                );
+                                const blob = file.slice(start, end);
+                                const fd = new FormData();
+                                fd.append('odeFilePart', blob);
+                                fd.append('odeFileName', [file.name]);
+                                fd.append('odeSessionId', [
+                                    eXeLearning.app.project.odeSession,
+                                ]);
+
+                                response =
+                                    await eXeLearning.app.api.postLocalLargeOdeFile(
+                                        fd
+                                    );
+
+                                if (response['responseMessage'] !== 'OK') {
+                                    break;
+                                }
+
+                                // Update progress
+                                uploadedBytes += blob.size;
+                                const percentage =
+                                    (uploadedBytes / totalSize) * 100;
+                                progressModal.updateUploadProgress(
+                                    percentage,
+                                    uploadedBytes,
+                                    totalSize
+                                );
+
+                                start = end;
+                            }
+
+                            if (response['responseMessage'] !== 'OK') {
+                                progressModal.showError(
+                                    response['responseMessage'] ||
+                                        _('Error while uploading the file.')
+                                );
+                                setTimeout(() => {
+                                    progressModal.hide();
+                                    eXeLearning.app.modals.alert.show({
+                                        title: _('Error'),
+                                        body:
+                                            response['responseMessage'] ||
+                                            _(
+                                                'Unexpected error importing file.'
+                                            ),
+                                    });
+                                }, 2000);
+                                input.remove();
+                                return;
+                            }
+
+                            // Set extracting phase
+                            progressModal.setProcessingPhase('extracting');
+
+                            // Call JSON-based import API
+                            const payload = {
+                                odeSessionId:
+                                    eXeLearning.app.project.odeSession,
+                                odeFileName: response['odeFileName'],
+                                odeFilePath: response['odeFilePath'],
+                            };
+
+                            const importResponse =
+                                await eXeLearning.app.api.postImportElpToRootFromLocal(
+                                    payload
+                                );
+
+                            if (
+                                importResponse &&
+                                importResponse.responseMessage === 'OK'
+                            ) {
+                                progressModal.setComplete(
+                                    true,
+                                    _('Completed successfully')
+                                );
+                                const structure =
+                                    eXeLearning?.app?.project?.structure;
+                                const selectedNodeId =
+                                    structure &&
+                                    typeof structure.getSelectNodeNavId ===
+                                        'function'
+                                        ? structure.getSelectNodeNavId()
+                                        : null;
+                                refreshStructure(selectedNodeId || false);
+                                setTimeout(() => {
+                                    progressModal.hide();
+                                    ensureModalBackdropCleared(350);
+                                }, 600);
+                            } else {
+                                const message =
+                                    importResponse?.responseMessage ||
+                                    _('Unexpected error importing file.');
+                                progressModal.showError(message);
+                                setTimeout(() => {
+                                    progressModal.hide();
                                     eXeLearning.app.modals.alert.show({
                                         title: _('Error'),
                                         body: message,
                                     });
-                                }
-                            })
-                            .catch(() => {
+                                }, 2000);
+                            }
+                        } catch (err) {
+                            console.error('Import error:', err);
+                            progressModal.showError(
+                                _(
+                                    'An unexpected error occurred while processing the file.'
+                                )
+                            );
+                            setTimeout(() => {
+                                progressModal.hide();
                                 eXeLearning.app.modals.alert.show({
                                     title: _('Error'),
-                                    body: _('Unexpected error importing file.'),
+                                    body: _(
+                                        'An unexpected error occurred while processing the file.'
+                                    ),
                                 });
-                            })
-                            .finally(() => {
-                                input.remove();
-                            });
+                            }, 2000);
+                        } finally {
+                            ensureModalBackdropCleared(350);
+                            input.remove();
+                        }
                     });
 
                     input.click();
