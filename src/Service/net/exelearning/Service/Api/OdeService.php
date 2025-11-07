@@ -2377,7 +2377,7 @@ class OdeService implements OdeServiceInterface
         }
 
         // Insert into current_ode_users
-        $this->currentOdeUsersService->createCurrentOdeUsers(
+        $currentOdeUser = $this->currentOdeUsersService->createCurrentOdeUsers(
             $odeValues['odeId'],
             $odeValues['odeVersionId'],
             $odeValues['odeSessionId'],
@@ -2386,6 +2386,11 @@ class OdeService implements OdeServiceInterface
         );
 
         $result = $this->processContentXml($odeValues, $user);
+
+        if ($currentOdeUser && $currentOdeUser->getCreatedAt() instanceof \DateTimeInterface) {
+            $cleanReference = \DateTimeImmutable::createFromMutable($currentOdeUser->getCreatedAt())->modify('-1 second');
+            $this->markSessionAsClean($odeValues['odeSessionId'], $cleanReference);
+        }
 
         return $result;
     }
@@ -2411,6 +2416,31 @@ class OdeService implements OdeServiceInterface
         }
 
         return $result;
+    }
+
+    /**
+     * Normalizes timestamps for freshly imported sessions so baseline comparisons work reliably.
+     */
+    private function markSessionAsClean(string $odeSessionId, \DateTimeImmutable $cleanReference): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $formatted = $cleanReference->format('Y-m-d H:i:s');
+        $tables = [
+            'ode_nav_structure_sync',
+            'ode_pag_structure_sync',
+            'ode_components_sync',
+            'ode_properties_sync',
+        ];
+
+        foreach ($tables as $table) {
+            $connection->executeStatement(
+                sprintf('UPDATE %s SET created_at = :clean, updated_at = :clean WHERE ode_session_id = :sid', $table),
+                [
+                    'clean' => $formatted,
+                    'sid' => $odeSessionId,
+                ]
+            );
+        }
     }
 
     /**

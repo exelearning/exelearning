@@ -294,6 +294,12 @@ class IdeviceHelper
             }
 
             $iDeviceConfigFilePathName = $this->getIdeviceConfigFilePathName($iDeviceDir, $type, $user);
+
+            // Skip if config file doesn't exist
+            if (!file_exists($iDeviceConfigFilePathName)) {
+                continue;
+            }
+
             $iDeviceConfigFileContent = FileUtil::getFileContent($iDeviceConfigFilePathName);
             $iDeviceConfigArray = XmlUtil::loadXmlStringToArray($iDeviceConfigFileContent);
 

@@ -14,6 +14,7 @@ use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdeFiles;
 use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
+use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Entity\net\exelearning\Entity\OdePropertiesSync;
 use App\Exception\net\exelearning\Exception\Logical\AutosaveRecentSaveException;
 use App\Exception\net\exelearning\Exception\Logical\UserAlreadyOpenSessionException;
@@ -661,78 +662,20 @@ class OdeApiController extends DefaultApiController
             return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);
         }
 
-        // Repositories
-        $navRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
-        $currentUsersRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
-        $propsRepo = $this->entityManager->getRepository(OdePropertiesSync::class);
-        $componentsRepo = $this->entityManager->getRepository(OdeComponentsSync::class);
+        $baselineInstant = $this->resolveSessionBaselineInstant($odeId, $odeSessionId);
+        $componentCount = $this->countEntitiesForSession(OdeComponentsSync::class, $odeSessionId);
+        $navCount = $this->countEntitiesForSession(OdeNavStructureSync::class, $odeSessionId);
 
-        // Count nav nodes
-        // If your Doctrine version supports Repository::count(), use it; otherwise use a QB COUNT(*)
-        $numNavNodes = method_exists($navRepo, 'count')
-            ? (int) $navRepo->count(['odeSessionId' => $odeSessionId])
-            : (int) $navRepo->createQueryBuilder('n')
-                ->select('COUNT(n.id)')
-                ->andWhere('n.odeSessionId = :sid')
-                ->setParameter('sid', $odeSessionId)
-                ->getQuery()->getSingleScalarResult();
+        $hasDirtyComponents = $this->hasEntityChangesAfter(OdeComponentsSync::class, $odeSessionId, $baselineInstant);
+        $hasDirtyBlocks = $this->hasEntityChangesAfter(OdePagStructureSync::class, $odeSessionId, $baselineInstant);
+        $hasDirtyNav = $this->hasEntityChangesAfter(OdeNavStructureSync::class, $odeSessionId, $baselineInstant);
+        $hasDirtyProperties = $this->hasTrackedPropertyChanges($odeSessionId, $baselineInstant);
 
-        // First nav node (LIMIT 1) to check the page name safely
-        $firstNode = $navRepo->findBy(['odeSessionId' => $odeSessionId], ['id' => 'ASC'], 1)[0] ?? null;
+        $hasPendingChanges = $hasDirtyComponents || $hasDirtyBlocks || $hasDirtyNav || $hasDirtyProperties;
 
-        $hasChangedPageName = false;
-        if ($firstNode instanceof OdeNavStructureSync) {
-            $titlePage = Constants::ODE_PAGE_NAME;
-            $translatedTitle = $this->translator->trans($titlePage);
-            $pageName = (string) $firstNode->getPageName();
-            if ($translatedTitle !== $pageName && $titlePage !== $pageName) {
-                $hasChangedPageName = true;
-            }
-        }
-
-        // Count current users in session/version
-        $totalCurrentOdeUsers = method_exists($currentUsersRepo, 'count')
-            ? (int) $currentUsersRepo->count(['odeId' => $odeId, 'odeversionId' => $odeVersionId, 'odeSessionId' => $odeSessionId])
-            : (int) $currentUsersRepo->createQueryBuilder('c')
-                ->select('COUNT(c.id)')
-                ->andWhere('c.odeId = :odeId')
-                ->andWhere('c.odeversionId = :odeVer')
-                ->andWhere('c.odeSessionId = :sid')
-                ->setParameters(['odeId' => $odeId, 'odeVer' => $odeVersionId, 'sid' => $odeSessionId])
-                ->getQuery()->getSingleScalarResult();
-
-        // Do we have edited properties?
-        $hasChangesOdeProperties = (bool)
-            $propsRepo->createQueryBuilder('p')
-                ->select('COUNT(p.id)')
-                ->andWhere('p.odeSessionId = :sid')
-                ->andWhere('p.key IN (:keys)')
-                ->andWhere('p.value <> :empty')
-                ->setParameter('sid', $odeSessionId)
-                ->setParameter('keys', ['pp_title', 'pp_author', 'pp_description', 'pp_extraHeadContent', 'footer'])
-                ->setParameter('empty', '')
-                ->getQuery()->getSingleScalarResult()
-        ;
-
-        // Any components created?
-        $hasComponents = method_exists($componentsRepo, 'count')
-            ? ($componentsRepo->count(['odeSessionId' => $odeSessionId]) > 0)
-            : ((int) $componentsRepo->createQueryBuilder('x')
-                ->select('COUNT(x.id)')
-                ->andWhere('x.odeSessionId = :sid')
-                ->setParameter('sid', $odeSessionId)
-                ->getQuery()->getSingleScalarResult() > 0);
-
-        // Final decision (explicit parentheses for clarity)
-        $askSave = (
-            (1 === $totalCurrentOdeUsers && ($hasComponents || $numNavNodes > 1))
-            || $hasChangesOdeProperties
-            || $hasChangedPageName
-        );
-
-        if ($askSave) {
+        if ($hasPendingChanges) {
             $responseData['askSave'] = true;
-        } elseif (!$hasComponents && $numNavNodes <= 1 && !$hasChangesOdeProperties && !$hasChangedPageName) {
+        } elseif (0 === $componentCount && $navCount <= 1) {
             $responseData['leaveEmptySession'] = true;
         } else {
             $responseData['leaveSession'] = true;
@@ -1800,6 +1743,97 @@ class OdeApiController extends DefaultApiController
                 '{availableSpace}' => $availableSpaceFormatted,
             ]
         );
+    }
+
+    /**
+     * Determines when the session content last matched the persisted version.
+     */
+    private function resolveSessionBaselineInstant(?string $odeId, string $odeSessionId): \DateTimeImmutable
+    {
+        $lastPersistedAt = null;
+
+        if (!empty($odeId)) {
+            $lastFile = $this->entityManager->getRepository(OdeFiles::class)->getLastFileForOde($odeId);
+            if ($lastFile && $lastFile->getUpdatedAt() instanceof \DateTimeInterface) {
+                $lastPersistedAt = \DateTimeImmutable::createFromMutable($lastFile->getUpdatedAt());
+            }
+        }
+
+        $currentUsersRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
+        $sessionUsers = $currentUsersRepo->findBy(['odeSessionId' => $odeSessionId]);
+
+        $sessionCreatedAt = null;
+        foreach ($sessionUsers as $sessionUser) {
+            $createdAt = $sessionUser->getCreatedAt();
+            if ($createdAt instanceof \DateTimeInterface) {
+                $createdImmutable = \DateTimeImmutable::createFromMutable($createdAt);
+                if (null === $sessionCreatedAt || $createdImmutable < $sessionCreatedAt) {
+                    $sessionCreatedAt = $createdImmutable;
+                }
+            }
+        }
+
+        if ($sessionCreatedAt instanceof \DateTimeImmutable) {
+            if (null === $lastPersistedAt || $sessionCreatedAt > $lastPersistedAt) {
+                $lastPersistedAt = $sessionCreatedAt;
+            }
+        }
+
+        return $lastPersistedAt ?? new \DateTimeImmutable();
+    }
+
+    /**
+     * Counts persisted entities for a given session.
+     */
+    private function countEntitiesForSession(string $entityClass, string $odeSessionId): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(e.id)')
+            ->from($entityClass, 'e')
+            ->andWhere('e.odeSessionId = :sid')
+            ->setParameter('sid', $odeSessionId)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Checks whether any entity instances were updated after the provided timestamp.
+     */
+    private function hasEntityChangesAfter(string $entityClass, string $odeSessionId, \DateTimeImmutable $since): bool
+    {
+        $count = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(e.id)')
+            ->from($entityClass, 'e')
+            ->andWhere('e.odeSessionId = :sid')
+            ->andWhere('(e.updatedAt >= :since OR (e.updatedAt IS NULL AND e.createdAt >= :since))')
+            ->setParameter('sid', $odeSessionId)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) $count > 0;
+    }
+
+    /**
+     * Checks if tracked project metadata fields changed after the provided timestamp.
+     */
+    private function hasTrackedPropertyChanges(string $odeSessionId, \DateTimeImmutable $since): bool
+    {
+        $trackedKeys = ['pp_title', 'pp_author', 'pp_description', 'pp_extraHeadContent', 'footer'];
+
+        $count = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(OdePropertiesSync::class, 'p')
+            ->andWhere('p.odeSessionId = :sid')
+            ->andWhere('p.key IN (:keys)')
+            ->andWhere('(p.updatedAt >= :since OR (p.updatedAt IS NULL AND p.createdAt >= :since))')
+            ->setParameter('sid', $odeSessionId)
+            ->setParameter('keys', $trackedKeys)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) $count > 0;
     }
 
     /**
