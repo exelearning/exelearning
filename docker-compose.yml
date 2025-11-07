@@ -17,17 +17,31 @@ services:
     restart: unless-stopped # Restart the container unless it is stopped manually
     volumes:
       ##FORDELETEINCI-START
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./public:/app/public
-      - ./translations:/app/translations
-      - ./templates:/app/templates
+      # Source code - CACHED (you edit on Windows, container reads)
+      - ./src:/app/src:cached
+      - ./tests:/app/tests:cached
+      - ./templates:/app/templates:cached
+      - ./translations:/app/translations:cached
+      - ./public:/app/public:cached
       ##FORDELETEINCI-END
-      - ./config:/app/config
+
+      # Config - CACHED (mainly read-only)
+      - ./config:/app/config:cached
+
+      # Composer files - no modifier (require consistency)
       - ./composer.json:/app/composer.json
       - ./composer.lock:/app/composer.lock
-      - mnt-data:/mnt/data:rw # Mount the volume for persistent data
-      - ./e2e_screenshots:/tmp/e2e_screenshots
+
+      # Anonym volumes - MUCH faster
+      - /app/vendor          # ← Not synchronized with host
+      - /app/var             # ← Cache and logs
+      - /app/node_modules    # ← To avoid copying npm files
+
+      # Persistent data
+      - mnt-data:/mnt/data:rw
+
+      # Screenshots - DELEGATED (container writes)
+      - ./e2e_screenshots:/tmp/e2e_screenshots:delegated
     tmpfs:
       - /app/public/bundles:rw,size=64m,mode=1777 # public/bundles mounted as tmpfs to avoid permission errors
     environment:
@@ -85,7 +99,7 @@ services:
     profiles:
       - e2e # Container only will be started with --profile e2e option
     volumes:
-      - ./tests/Fixtures:/app/tests/Fixtures # Mount the SAME Fixtures directory
+      - ./tests/Fixtures:/app/tests/Fixtures:cached # Mount the SAME Fixtures directory
 
 volumes:
   mnt-data:
