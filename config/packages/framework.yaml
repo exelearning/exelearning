@@ -24,7 +24,8 @@ framework:
 
     # https://symfony.com/doc/7.3/deployment/proxies.html
     trusted_proxies: '%env(TRUSTED_PROXIES)%'
-    trusted_headers: '%env(csv:TRUSTED_HEADERS)%'
+    trusted_headers: '%env(TRUSTED_HEADERS)%'
+
 
     cache:
         # The path where the cache will be stored.
