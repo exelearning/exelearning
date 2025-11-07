@@ -730,8 +730,7 @@ var $eXeCrucigrama = {
 
         if (typeof wordindex !== 'undefined') {
             const word = mOptions.wordsGame[wordindex].word;
-            const isHorizontal =
-                wordindex >= Math.floor(mOptions.wordsGame.length / 2);
+            const isHorizontal = wordindex >= mOptions.half;
 
             let wordWithUnderscores = '';
             for (let index = 0; index < word.length; index++) {
@@ -801,10 +800,7 @@ var $eXeCrucigrama = {
                         $lhi = $main.find(
                             `input[data-hi="${i}"][data-lhi="${index}"]`
                         ),
-                        $input =
-                            i < Math.floor(mOptions.wordsGame.length / 2)
-                                ? $lvi
-                                : $lhi;
+                        $input = i < mOptions.half ? $lvi : $lhi;
                     return $input.length > 0 && $input.val()
                         ? $input.val()
                         : '_';
