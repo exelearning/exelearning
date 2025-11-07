@@ -297,12 +297,6 @@ class Properties
             'category' => self::TRANS_PREFIX.'General',
             'heritable' => false,
         ],
-        'subtitle' => [
-            'title' => self::TRANS_PREFIX.'Subtitle',
-            'type' => 'text',
-            'category' => self::TRANS_PREFIX.'General',
-            'heritable' => false,
-        ],
         'hidePageTitle' => [
             'title' => self::TRANS_PREFIX.'Hide page title',
             'type' => 'checkbox',
@@ -434,6 +428,14 @@ class Properties
         'pp_title' => [
             'title' => self::TRANS_PREFIX.'Title',
             'help' => self::TRANS_PREFIX.'The name given to the resource.',
+            'alwaysVisible' => true,
+            'type' => 'text',
+            'category' => 'properties',
+            'groups' => ['properties_package'],
+        ],
+        'pp_subtitle' => [
+            'title' => self::TRANS_PREFIX.'Subtitle',
+            'help' => self::TRANS_PREFIX.'Subtitle for the package',
             'alwaysVisible' => true,
             'type' => 'text',
             'category' => 'properties',

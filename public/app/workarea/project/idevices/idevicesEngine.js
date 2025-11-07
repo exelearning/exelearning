@@ -1480,10 +1480,6 @@ export default class IdevicesEngine {
                         this.setNodeContentPageTitle(
                             data.odeNavStructureSyncProperties
                         );
-                        // Set page subtitle
-                        this.setNodeContentPageSubtitle(
-                            data.odeNavStructureSyncProperties
-                        );
                         // Resolve
                         resolve(true);
                     },
@@ -1564,43 +1560,6 @@ export default class IdevicesEngine {
     }
 
     /**
-     * Set page subtitle in node content
-     *
-     */
-    setNodeContentPageSubtitle(properties) {
-        let pageSubtitleElement = this.nodeContainerElement.querySelector(
-            '#page-subtitle-node-content'
-        );
-        if (pageSubtitleElement) {
-            let hidePageTitle =
-                properties &&
-                properties.hidePageTitle &&
-                (properties.hidePageTitle.value === 'true' ||
-                    properties.hidePageTitle.value === true);
-
-            if (hidePageTitle) {
-                pageSubtitleElement.classList.add('hidden');
-            } else if (
-                properties &&
-                properties.subtitle &&
-                properties.subtitle.value != ''
-            ) {
-                pageSubtitleElement.innerText = properties.subtitle.value;
-                pageSubtitleElement.classList.remove('hidden');
-            }
-            // Add case for empty value
-            else if (
-                properties &&
-                properties.subtitle &&
-                properties.subtitle.value == ''
-            ) {
-                pageSubtitleElement.innerText = properties.subtitle.value;
-                pageSubtitleElement.classList.add('hidden');
-            }
-        }
-    }
-
-    /**
      * Remove header in node content
      *
      */
@@ -1609,7 +1568,7 @@ export default class IdevicesEngine {
             '#header-node-content'
         );
         headerElement.innerHTML = '';
-        headerElement.classList.add('hidden');
+        headerElement.classList.add('sr-av');
     }
 
     /**

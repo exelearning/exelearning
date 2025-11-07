@@ -1953,7 +1953,7 @@ class ExportXmlUtil
         $pageHeader->addAttribute('id', 'header-'.$odeNavStructureSync->getOdePageId());
         $headerEmpty = true;
         $titlePage = isset($pagePropertiesDict['titlePage']) ? $pagePropertiesDict['titlePage'] : '';
-        $subtitle = isset($pagePropertiesDict['subtitle']) ? $pagePropertiesDict['subtitle'] : '';
+        $subtitle = isset($odeProperties['pp_subtitle']) ? $odeProperties['pp_subtitle']->getValue() : '';
         $hidePageTitle = isset($pagePropertiesDict['hidePageTitle']) ? $pagePropertiesDict['hidePageTitle'] : 'false';
 
         // Page header imgs container
@@ -2004,8 +2004,16 @@ class ExportXmlUtil
             $packageTitleValue = '';
         } // The single page export has its own package title
         if ('' != $packageTitleValue) {
-            $packageTitle = $pageHeader->addChild('h1', $packageTitleValue);
+            $packageTitle = $pageHeader->addChild('h1', htmlspecialchars($packageTitleValue, ENT_XML1, 'UTF-8'));
             $packageTitle->addAttribute('class', 'package-title');
+        }
+
+        // Package subtitle (immediately after package title)
+        $packageSubtitleTag = 'h2';
+        if ('' != $subtitle) {
+            $headerEmpty = false;
+            $packageSubtitle = $pageHeader->addChild($packageSubtitleTag, htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));
+            $packageSubtitle->addAttribute('class', 'package-subtitle');
         }
 
         // Page title
@@ -2014,24 +2022,17 @@ class ExportXmlUtil
             $pageTitleTag = 'h2';
         }
 
-        // Page subtitle tag (one level below page title)
-        $pageSubtitleTag = 'h2';
-        if ('h2' == $pageTitleTag) {
-            $pageSubtitleTag = 'h3';
-        }
-
-        if ('false' == $hidePageTitle || 'false' === $hidePageTitle || false === $hidePageTitle) {
+        if ('false' === $hidePageTitle || false === $hidePageTitle) {
             if ('' != $titlePage) {
                 $headerEmpty = false;
-                $pageTitle = $pageHeader->addChild($pageTitleTag, $titlePage);
+                $pageTitle = $pageHeader->addChild($pageTitleTag, htmlspecialchars($titlePage, ENT_XML1, 'UTF-8'));
                 $pageTitle->addAttribute('class', 'page-title');
             }
-
-            // Page subtitle
-            if ('' != $subtitle) {
+        } else {
+            if ('' != $titlePage) {
                 $headerEmpty = false;
-                $pageSubtitle = $pageHeader->addChild($pageSubtitleTag, $subtitle);
-                $pageSubtitle->addAttribute('class', 'page-subtitle');
+                $pageTitle = $pageHeader->addChild($pageTitleTag, htmlspecialchars($titlePage, ENT_XML1, 'UTF-8'));
+                $pageTitle->addAttribute('class', 'page-title sr-av');
             }
         }
 
