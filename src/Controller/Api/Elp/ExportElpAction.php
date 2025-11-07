@@ -4,13 +4,16 @@ namespace App\Controller\Api\Elp;
 
 use App\Constants;
 use App\Helper\net\exelearning\Helper\UserHelper;
+use App\Service\Archive\ZipArchiver;
 use App\Service\Elp\ElpExportOrchestrator;
 use App\Service\Elp\EphemeralUserManager;
 use App\Service\Elp\UploadedElpStorage;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 
 /**
@@ -37,6 +40,7 @@ class ExportElpAction extends AbstractController
         private readonly ElpExportOrchestrator $exportOrchestrator,
         private readonly UploadedElpStorage $storage,
         private readonly EphemeralUserManager $userManager,
+        private readonly ZipArchiver $zipArchiver,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -109,6 +113,17 @@ class ExportElpAction extends AbstractController
                 $baseUrl = false;
             }
 
+            // Get optional download parameter
+            $downloadParam = $request->query->get('download');
+            $download = null !== $downloadParam && '0' !== $downloadParam && 'false' !== strtolower((string) $downloadParam);
+
+            $this->logger->info('Export request received', [
+                'correlation_id' => $correlationId,
+                'format' => $format,
+                'download_param_raw' => $downloadParam,
+                'download_mode' => $download ? 'yes' : 'no',
+            ]);
+
             // Store uploaded file
             try {
                 $inputPath = $this->storage->store($file, $dbUser);
@@ -171,7 +186,62 @@ class ExportElpAction extends AbstractController
                     'files_count' => count($result['files'] ?? []),
                 ]);
 
-                // Build response
+                // Determine archive path for download mode
+                if ($download) {
+                    $this->logger->info('Entering download mode', [
+                        'correlation_id' => $correlationId,
+                        'format' => $format,
+                        'output_dir' => $outputDir,
+                    ]);
+
+                    $archivePath = $this->determineArchivePath($outputDir, $format, $correlationId);
+
+                    if (!$archivePath) {
+                        $this->logger->error('Failed to determine archive path', [
+                            'correlation_id' => $correlationId,
+                            'format' => $format,
+                        ]);
+
+                        return $this->json([
+                            'code' => 'EXPORT_FAILED',
+                            'detail' => 'Failed to prepare download archive',
+                        ], 500);
+                    }
+
+                    $archiveSize = file_exists($archivePath) ? filesize($archivePath) : 0;
+
+                    $this->logger->info('Serving download archive', [
+                        'correlation_id' => $correlationId,
+                        'format' => $format,
+                        'archive_path' => basename($archivePath),
+                        'archive_size' => $archiveSize,
+                    ]);
+
+                    // Generate sanitized filename
+                    $timestamp = (new \DateTimeImmutable('now'))->format('YmdHis');
+                    $randomSuffix = bin2hex(random_bytes(4));
+                    $sanitizedFormat = preg_replace('/[^a-zA-Z0-9_-]/', '_', $format);
+                    $downloadFilename = sprintf('export_%s_%s_%s.zip', $sanitizedFormat, $timestamp, $randomSuffix);
+
+                    $response = new BinaryFileResponse($archivePath);
+                    $response->setContentDisposition(
+                        ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+                        $downloadFilename
+                    );
+                    $response->headers->set('Content-Type', 'application/zip');
+                    $response->deleteFileAfterSend(true);
+
+                    // Clean up output directory after response is sent
+                    register_shutdown_function(function () use ($outputDir) {
+                        if (is_dir($outputDir)) {
+                            $this->removeDirectory($outputDir);
+                        }
+                    });
+
+                    return $response;
+                }
+
+                // JSON mode: return metadata
                 $response = [
                     'status' => 'success',
                     'format' => $format,
@@ -181,8 +251,6 @@ class ExportElpAction extends AbstractController
                 ];
 
                 // Clean up output directory after sending response
-                // In a production environment, you would keep these files and generate signed URLs
-                // For now, we'll just return the file list and clean up
                 register_shutdown_function(function () use ($outputDir) {
                     if (is_dir($outputDir)) {
                         $this->removeDirectory($outputDir);
@@ -208,6 +276,108 @@ class ExportElpAction extends AbstractController
                 'detail' => 'An unexpected error occurred',
             ], 500);
         }
+    }
+
+    /**
+     * Determine the archive file path for download.
+     *
+     * Strategy:
+     * 1. If format is elp/elpx and export produced a single .elp/.elpx file, use that.
+     * 2. If export directory contains exactly one .zip file, use that.
+     * 3. Otherwise, create a ZIP from the export directory.
+     *
+     * @return string|null Path to archive file, or null on failure
+     */
+    private function determineArchivePath(string $outputDir, string $format, string $correlationId): ?string
+    {
+        try {
+            $files = $this->scanDirectoryFiles($outputDir);
+
+            // Strategy 1: elp/elpx format with single .elp/.elpx file
+            if (in_array($format, ['elp', 'elpx'], true)) {
+                $elpFiles = array_filter($files, function ($file) {
+                    return preg_match('/\.(elp|elpx)$/i', $file);
+                });
+
+                if (1 === count($elpFiles)) {
+                    $elpFile = reset($elpFiles);
+                    $this->logger->info('Using existing ELP archive', [
+                        'correlation_id' => $correlationId,
+                        'file' => basename($elpFile),
+                    ]);
+
+                    return $elpFile;
+                }
+            }
+
+            // Strategy 2: Single .zip file in export directory
+            $zipFiles = array_filter($files, function ($file) {
+                return preg_match('/\.zip$/i', $file);
+            });
+
+            if (1 === count($zipFiles)) {
+                $zipFile = reset($zipFiles);
+                $this->logger->info('Using existing ZIP archive', [
+                    'correlation_id' => $correlationId,
+                    'file' => basename($zipFile),
+                ]);
+
+                return $zipFile;
+            }
+
+            // Strategy 3: Create ZIP from entire directory
+            $this->logger->info('Creating ZIP archive from export directory', [
+                'correlation_id' => $correlationId,
+                'files_count' => count($files),
+            ]);
+
+            $targetZip = sys_get_temp_dir().DIRECTORY_SEPARATOR.'exe_archive_'.uniqid().'.zip';
+            $this->zipArchiver->createFromDirectory($outputDir, $targetZip);
+
+            $this->logger->info('ZIP archive created successfully', [
+                'correlation_id' => $correlationId,
+                'archive' => basename($targetZip),
+                'size' => filesize($targetZip),
+            ]);
+
+            return $targetZip;
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to determine archive path', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Scan directory for files (non-recursive, returns full paths).
+     *
+     * @return array<string>
+     */
+    private function scanDirectoryFiles(string $dir): array
+    {
+        $files = [];
+        $items = scandir($dir);
+
+        if (false === $items) {
+            return $files;
+        }
+
+        foreach ($items as $item) {
+            if ('.' === $item || '..' === $item) {
+                continue;
+            }
+
+            $path = $dir.DIRECTORY_SEPARATOR.$item;
+            if (is_file($path)) {
+                $files[] = $path;
+            }
+        }
+
+        return $files;
     }
 
     /**

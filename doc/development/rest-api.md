@@ -252,8 +252,12 @@ curl -X POST "http://localhost:8080/api/v2/convert/elp?download=1" \
   - `file` (required): The ELP file to export
   - `baseUrl` (optional): Base URL for links in exported content (e.g., `https://cdn.example.com/content`)
 
+**Query Parameters:**
+- `download` (optional): Set to `1` to download the exported content as a ZIP file instead of returning JSON metadata.
+
 **Success Response (201):**
 
+Without `download=1`:
 ```json
 {
   "status": "success",
@@ -271,6 +275,14 @@ curl -X POST "http://localhost:8080/api/v2/convert/elp?download=1" \
 }
 ```
 
+With `download=1`:
+- Returns a ZIP archive containing the exported content as binary download.
+- **Content-Type:** `application/zip`
+- **Content-Disposition:** `attachment; filename="export_{format}_{timestamp}_{random}.zip"`
+- For `elp`/`elpx` formats: streams the generated `.elp`/`.elpx` archive directly.
+- For formats that produce a single ZIP (e.g., SCORM packages): streams that ZIP file.
+- For other formats: creates and streams a ZIP containing all exported files.
+
 **Error Responses:**
 - `400 INVALID_FORMAT`: Invalid export format specified
 - `400 MISSING_FILE`: No file uploaded
@@ -286,26 +298,41 @@ curl -X POST "http://localhost:8080/api/v2/convert/elp?download=1" \
 **Examples:**
 
 ```bash
-# Export to HTML5
+# Export to HTML5 and get JSON metadata
 curl -X POST "http://localhost:8080/api/v2/export/html5" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/course.elp"
 
-# Export to HTML5 with custom base URL
-curl -X POST "http://localhost:8080/api/v2/export/html5" \
+# Export to HTML5 and download as ZIP
+curl -L -X POST "http://localhost:8080/api/v2/export/html5?download=1" \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/course.elp" \
-  -F "baseUrl=https://cdn.example.com/courses"
+  -o export_html5.zip
 
-# Export to SCORM 1.2
-curl -X POST "http://localhost:8080/api/v2/export/scorm12" \
+# Export to HTML5 with custom base URL and download
+curl -L -X POST "http://localhost:8080/api/v2/export/html5?download=1" \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/course.elp"
+  -F "file=@/path/to/course.elp" \
+  -F "baseUrl=https://cdn.example.com/courses" \
+  -o export_html5.zip
 
-# Export to EPUB3
-curl -X POST "http://localhost:8080/api/v2/export/epub3" \
+# Export to SCORM 1.2 and download
+curl -L -X POST "http://localhost:8080/api/v2/export/scorm12?download=1" \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/path/to/course.elp"
+  -F "file=@/path/to/course.elp" \
+  -o export_scorm12.zip
+
+# Export to EPUB3 and download
+curl -L -X POST "http://localhost:8080/api/v2/export/epub3?download=1" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/path/to/course.elp" \
+  -o export_epub3.zip
+
+# Export to ELP format and download
+curl -L -X POST "http://localhost:8080/api/v2/export/elp?download=1" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/path/to/course.elp" \
+  -o exported.elp
 ```
 
 ---
