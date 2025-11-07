@@ -654,9 +654,10 @@ class OdeApiController extends DefaultApiController
 
         $responseData = [];
 
-        if ($odeSessionId === '') {
+        if ('' === $odeSessionId) {
             $this->logger->error('invalid data', ['odeSessionId' => $odeSessionId, 'file:' => $this, 'line' => __LINE__]);
             $responseData['responseMessage'] = 'error: invalid data';
+
             return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);
         }
 
@@ -701,17 +702,17 @@ class OdeApiController extends DefaultApiController
                 ->getQuery()->getSingleScalarResult();
 
         // Do we have edited properties?
-        $hasChangesOdeProperties = (bool) (
+        $hasChangesOdeProperties = (bool)
             $propsRepo->createQueryBuilder('p')
                 ->select('COUNT(p.id)')
                 ->andWhere('p.odeSessionId = :sid')
                 ->andWhere('p.key IN (:keys)')
                 ->andWhere('p.value <> :empty')
                 ->setParameter('sid', $odeSessionId)
-                ->setParameter('keys', ['pp_title','pp_author','pp_description','pp_extraHeadContent','footer'])
+                ->setParameter('keys', ['pp_title', 'pp_author', 'pp_description', 'pp_extraHeadContent', 'footer'])
                 ->setParameter('empty', '')
                 ->getQuery()->getSingleScalarResult()
-        );
+        ;
 
         // Any components created?
         $hasComponents = method_exists($componentsRepo, 'count')
@@ -724,7 +725,7 @@ class OdeApiController extends DefaultApiController
 
         // Final decision (explicit parentheses for clarity)
         $askSave = (
-            ($totalCurrentOdeUsers === 1 && ($hasComponents || $numNavNodes > 1))
+            (1 === $totalCurrentOdeUsers && ($hasComponents || $numNavNodes > 1))
             || $hasChangesOdeProperties
             || $hasChangedPageName
         );
@@ -739,7 +740,6 @@ class OdeApiController extends DefaultApiController
 
         return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);
     }
-
 
     #[Route('/ode/session/close', methods: ['POST'], name: 'api_odes_ode_session_close')]
     public function closeOdeSessionAction(Request $request)
@@ -1735,7 +1735,7 @@ class OdeApiController extends DefaultApiController
         $value = trim($value);
 
         // Unlimited
-        if ($value === '-1') {
+        if ('-1' === $value) {
             return PHP_INT_MAX;
         }
 
