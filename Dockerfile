@@ -29,7 +29,7 @@ ENV VERSION=${VERSION} \
     max_input_vars=5000 \
     fastcgi_read_timeout=300s \
     fastcgi_send_timeout=300s \
-    OPCACHE_PRELOAD=/app/config/preload.php \
+    opcache_preload=/app/config/preload.php \
     # Mercure configuration variables
     SERVER_NAME=:80 \
     MERCURE_PUBLISHER_JWT_KEY=!ChangeThisMercureHubJWTSecretKey! \

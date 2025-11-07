@@ -6,6 +6,9 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Compile the entire container into a single file
+    .container.dumper.inline_factories: true
+
     auth_temp_email_domain_default: 'domain.local'
     base_path: '%env(string:BASE_PATH)%'
 
