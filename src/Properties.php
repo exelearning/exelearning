@@ -47,7 +47,7 @@ class Properties
         ],
         'versionControl' => [
             'title' => self::TRANS_PREFIX.'Version control',
-            'value' => "'".Settings::VERSION_CONTROL."'",
+            'value' => 'true',
             'type' => 'checkbox',
             'category' => self::TRANS_PREFIX.'General settings',
         ],
