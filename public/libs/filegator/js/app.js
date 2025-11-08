@@ -2362,7 +2362,13 @@
                             item: e
                         }).then((function(e) {
                             var a = document.createElement("textarea");
-                            a.textContent = e.path, a.setAttribute("style", "position:absolute; right:200%;"), document.body.appendChild(a), a.select(), a.setSelectionRange(0, 99999), document.execCommand("copy"), a.remove()
+
+                            // To review:
+                            // See #238 (avoid wrong pahts on the Windows desktop version)
+                            let lnk = e.path;
+                            lnk = lnk.replace(/\\/g, "/");
+
+                            a.textContent = lnk, a.setAttribute("style", "position:absolute; right:200%;"), document.body.appendChild(a), a.select(), a.setSelectionRange(0, 99999), document.execCommand("copy"), a.remove()
                         }))
                     },
                     getOpenPathPlugin: function(e) {

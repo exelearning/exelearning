@@ -28,13 +28,12 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
 
         this.setMessagesInfo();
         this.createForm();
     },
-
 
     refreshTranslations: function () {
         this.ci18n = {
@@ -45,7 +44,9 @@ var $exeDevice = {
             msgClue: c_('Cool! The clue is:'),
             msgCodeAccess: c_('Access code'),
             msgRequiredAccessKey: c_('Access code required'),
-            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgInformationLooking: c_(
+                'Cool! The information you were looking for'
+            ),
             msgPlayStart: c_('Click here to play'),
             msgErrors: c_('Errors'),
             msgHits: c_('Hits'),
@@ -61,21 +62,39 @@ var $exeDevice = {
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
             mgsAllQuestions: c_('Questions completed!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgLoading: c_('Loading. Please wait...'),
             msgCorrect: c_('Correct'),
@@ -92,13 +111,21 @@ var $exeDevice = {
             msgShowSolution: c_('Show solutions'),
             msgReboot: c_('Play again'),
             msgIdentify: c_('Identify'),
-            msgGameOver: c_('The game is over. Your score is %s. Correct answers: %s out of %s.'),
+            msgGameOver: c_(
+                'The game is over. Your score is %s. Correct answers: %s out of %s.'
+            ),
             msgNumberValid: c_('Enter a valid atomic number'),
             msgNameValid: c_('The element name must contain only letters'),
-            msgSymbolValid: c_('The symbol must contain one or two letters, starting with an uppercase letter'),
+            msgSymbolValid: c_(
+                'The symbol must contain one or two letters, starting with an uppercase letter'
+            ),
             msgGroupValid: c_('Select a group of chemical elements'),
-            msgConfigurationValid: c_('Write a valid configuration based, if applicable, on the preceding noble gas'),
-            msgOxitacionValid: c_('Enter the oxidation states of this element, separated by commas'),
+            msgConfigurationValid: c_(
+                'Write a valid configuration based, if applicable, on the preceding noble gas'
+            ),
+            msgOxitacionValid: c_(
+                'Enter the oxidation states of this element, separated by commas'
+            ),
             msgAtomicNumber: c_('Atomic number'),
             msgNumberClick: c_('Find the element with the number'),
             msgSymbolClick: c_('Click on this chemical element'),
@@ -106,14 +133,22 @@ var $exeDevice = {
             msgOneElement: c_('Click on a chemical element'),
             msgOtherElement: c_('Correct. Click on another element'),
             msgNotOK: c_('That is not correct. Try again'),
-            msgNotAttempts: c_('You have used all your attempts. Try another element'),
+            msgNotAttempts: c_(
+                'You have used all your attempts. Try another element'
+            ),
             msgNotAttemptsEQ: c_('Try another element'),
             msgOtherEQ: c_('That is not correct. Next element'),
-            msgIsOKEQ: c_('Correct. This is the chemical element we are looking for'),
-            msgIsErrorAt: c_('That is not correct. You clicked on: %s. Number of attempts: %d. Try again'),
+            msgIsOKEQ: c_(
+                'Correct. This is the chemical element we are looking for'
+            ),
+            msgIsErrorAt: c_(
+                'That is not correct. You clicked on: %s. Number of attempts: %d. Try again'
+            ),
             msgIsEndAttempts: c_('You have used all your attempts'),
             mgsNotOkClick: c_('That is not correct. You clicked on: %s.'),
-            mgsCompleteEQ: c_('Complete the missing information in this element'),
+            mgsCompleteEQ: c_(
+                'Complete the missing information in this element'
+            ),
             mgsSelectEQ: c_('Click on one of the marked chemical elements.'),
             msgProvideFB: c_('Message to display when passing the game'),
             msgNumber: c_('Number'),
@@ -253,25 +288,25 @@ var $exeDevice = {
             Livermorium: c_('Livermorium'),
             Tennessine: c_('Tennessine'),
             Oganesson: c_('Oganesson'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
         msgs.msgMaximeSize = _(
-            'The word cannot contain more than fourteen characters or white spaces',
+            'The word cannot contain more than fourteen characters or white spaces'
         );
         msgs.msgSeletOneType = _(
-            'You must select at least one type of data to complet',
+            'You must select at least one type of data to complet'
         );
         msgs.msgSeletOneGroup = _(
-            'You must select at least one group of elements',
+            'You must select at least one group of elements'
         );
     },
 
@@ -487,7 +522,7 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
         }
     },
@@ -545,7 +580,7 @@ var $exeDevice = {
             'ptEoxidations',
         ];
         const statusArray = checkboxes.map((selector) =>
-            $(selector).is(':checked') ? 1 : 0,
+            $(selector).is(':checked') ? 1 : 0
         );
         const anyChecked = statusArray.some((status) => status === 1);
 
@@ -563,7 +598,7 @@ var $exeDevice = {
         ];
         if (types.length !== checkboxes.length) {
             console.error(
-                'The status array length must match the number of checkboxes.',
+                'The status array length must match the number of checkboxes.'
             );
             return;
         }
@@ -586,7 +621,8 @@ var $exeDevice = {
             _('Actinides'),
         ];
 
-        let html = '<div class="d-flex align-items-center mb-3 gap-2 flex-wrap">';
+        let html =
+            '<div class="d-flex align-items-center mb-3 gap-2 flex-wrap">';
         html += `<span class="me-2">${_('Element Groups')}:</span>`;
         html += `
             <span class="toggle-item" role="switch" aria-checked="true">
@@ -612,10 +648,10 @@ var $exeDevice = {
 
     getCheckboxGroupsStates: function () {
         const checkboxes = document.querySelectorAll(
-            ".PTP-periodic-table-groups input[type='checkbox']",
+            ".PTP-periodic-table-groups input[type='checkbox']"
         );
         const states = Array.from(checkboxes).map((checkbox) =>
-            checkbox.checked ? 1 : 0,
+            checkbox.checked ? 1 : 0
         );
         const anyChecked = states.some((status) => status === 1);
         return anyChecked ? states : false;
@@ -623,7 +659,7 @@ var $exeDevice = {
 
     setCheckboxGroupStates: function (statesArray) {
         const checkboxes = document.querySelectorAll(
-            ".PTP-periodic-table-groups input[type='checkbox']",
+            ".PTP-periodic-table-groups input[type='checkbox']"
         );
         checkboxes.forEach((checkbox, index) => {
             checkbox.checked = statesArray[index] === 1;
@@ -637,7 +673,8 @@ var $exeDevice = {
             time = $('#ptETime').val(),
             showMinimize = $('#ptEShowMinimize').is(':checked'),
             showSolution = $('#ptEShowSolution').is(':checked'),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#ptEHasFeedBack').is(':checked'),
             percentajeFB = parseInt($('#ptEPercentajeFB').val()),
             evaluation = $('#ptEEvaluation').is(':checked'),
@@ -726,8 +763,12 @@ var $exeDevice = {
                 }
             }
         };
-        $('.toggle-input').each(function () { initToggle($(this)); });
-        $(document).on('change', '.toggle-input', function () { initToggle($(this)); });
+        $('.toggle-input').each(function () {
+            initToggle($(this));
+        });
+        $(document).on('change', '.toggle-input', function () {
+            initToggle($(this));
+        });
 
         $('#ptEHasFeedBack').on('change', function () {
             const checked = $(this).is(':checked');
@@ -759,10 +800,10 @@ var $exeDevice = {
                 this.value = Math.min(Math.max(this.value, 0), 59);
             });
 
-    $('input[name="ptmode"]').on('change', function () {
+        $('input[name="ptmode"]').on('change', function () {
             var selectedValue = $(this).val();
             if (selectedValue === '1') {
-                $('#ptCompleteData').css('display','flex');
+                $('#ptCompleteData').css('display', 'flex');
                 $('#ptGameType').hide();
             } else if (selectedValue === '0') {
                 $('#ptGameType').css('display', 'flex');
@@ -781,17 +822,17 @@ var $exeDevice = {
                 if (selectedValue === '0') {
                     if ($(this).is(':checked')) {
                         $(
-                            '#ptCheckBoxesGroups input[type="checkbox"]:not([value="0"])',
+                            '#ptCheckBoxesGroups input[type="checkbox"]:not([value="0"])'
                         ).prop('checked', false);
                     }
                 } else {
                     if ($(this).is(':checked') || !$(this).is(':checked')) {
                         $(
-                            '#ptCheckBoxesGroups input[type="checkbox"][value="0"]',
+                            '#ptCheckBoxesGroups input[type="checkbox"][value="0"]'
                         ).prop('checked', false);
                     }
                 }
-            },
+            }
         );
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
@@ -805,7 +846,9 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
@@ -825,14 +868,14 @@ var $exeDevice = {
 
         $("input[name='ptmode'][value='" + game.mode + "']").prop(
             'checked',
-            true,
+            true
         );
         $("input[name='ptgametype'][value='" + game.gameType + "']").prop(
             'checked',
-            true,
+            true
         );
         if (game.mode == 1) {
-            $('#ptCompleteData').css('display','flex');
+            $('#ptCompleteData').css('display', 'flex');
             $('#ptGameType').hide();
         } else if (game.mode == 0) {
             $('#ptGameType').show();
@@ -846,7 +889,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
 
         if (game.feedBack) {

@@ -36,7 +36,12 @@ var $eXeSeleccionaMedias = {
     scormFunctions: 'libs/SCOFunctions.js',
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Select media files', 'select-media-files', 'seleccionamedias-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Select media files',
+            'select-media-files',
+            'seleccionamedias-IDevice'
+        );
     },
 
     enable: function () {
@@ -99,7 +104,7 @@ var $eXeSeleccionaMedias = {
             }
 
             $('#slcmpDivFeedBack-' + i).prepend(
-                $('.seleccionamedias-feedback-game', this),
+                $('.seleccionamedias-feedback-game', this)
             );
 
             $eXeSeleccionaMedias.showPhrase(0, i);
@@ -109,7 +114,7 @@ var $eXeSeleccionaMedias = {
         });
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.seleccionamedias-IDevice',
+            '.seleccionamedias-IDevice'
         );
     },
 
@@ -247,11 +252,11 @@ var $eXeSeleccionaMedias = {
         mOptions.phrasesGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.phrasesGame,
-                mOptions.percentajeQuestions,
+                mOptions.percentajeQuestions
             );
         mOptions.phrasesGame =
             $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                mOptions.phrasesGame,
+                mOptions.phrasesGame
             );
         mOptions.numberQuestions = mOptions.phrasesGame.length;
         mOptions.fullscreen = false;
@@ -260,7 +265,7 @@ var $eXeSeleccionaMedias = {
         mOptions.phrasesGame.forEach((phrase) => {
             phrase.cards = $eXeSeleccionaMedias.getCardsPart(
                 phrase.cards,
-                mOptions.numberMaxCards,
+                mOptions.numberMaxCards
             );
         });
 
@@ -277,11 +282,8 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.addCards(mOptions.phrase.cards, instance);
         $eXeSeleccionaMedias.showMessage(1, '', instance);
 
-
         $(`#slcmpAudioDef-${instance}`).hide();
-        $(`#slcmpQuestion-${instance}`)
-            .html(mOptions.phrase.definition)
-            .show();
+        $(`#slcmpQuestion-${instance}`).html(mOptions.phrase.definition).show();
 
         if (num > 0) {
             if (
@@ -290,13 +292,12 @@ var $eXeSeleccionaMedias = {
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
                     mOptions.phrase.audioDefinition,
-                    mOptions,
+                    mOptions
                 );
                 $(`#slcmpAudioDef-${instance}`).css('display', 'block');
             }
         }
         $eXeSeleccionaMedias.showImage(num, instance);
-
     },
 
     getCardsPart(questions, number) {
@@ -446,7 +447,7 @@ var $eXeSeleccionaMedias = {
                     const mData = $eXeSeleccionaMedias.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $eXeSeleccionaMedias.drawImage(this, mData);
                     $imageDiv.show();
@@ -477,7 +478,7 @@ var $eXeSeleccionaMedias = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,
@@ -510,7 +511,7 @@ var $eXeSeleccionaMedias = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.numberQuestions;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeSeleccionaMedias.isInExe,
+            $eXeSeleccionaMedias.isInExe
         );
     },
 
@@ -588,13 +589,13 @@ var $eXeSeleccionaMedias = {
                 }).append(
                     $('<img>', {
                         src: `${$eXeSeleccionaMedias.idevicePath}exequextplayaudio.svg`,
-                    }),
+                    })
                 );
                 $sonidoEnlace.on('click', (e) => {
                     e.preventDefault();
                     $exeDevices.iDevice.gamification.media.playSound(
                         card.audio,
-                        mOptions,
+                        mOptions
                     );
                 });
                 $divImage.append($sonidoEnlace);
@@ -614,11 +615,11 @@ var $eXeSeleccionaMedias = {
 
         let imagesLoaded = 0;
         const totalImages = cardsGame.filter(
-            (t) => t.url && t.url.trim() !== '',
+            (t) => t.url && t.url.trim() !== ''
         ).length;
 
         const $viewModeIcon = $(`#slcViewMode-${instance}`).find(
-            'div.exeQuextIcons',
+            'div.exeQuextIcons'
         );
         if (mOptions.modeTable) {
             $viewModeIcon
@@ -627,7 +628,7 @@ var $eXeSeleccionaMedias = {
         }
 
         const $gameContainer = $(`#slcmpGameContainer-${instance}`).find(
-            '.SLCMP-Multimedia',
+            '.SLCMP-Multimedia'
         );
         if (totalImages === 0) {
             if (mOptions.modeTable) {
@@ -682,8 +683,8 @@ var $eXeSeleccionaMedias = {
             const phraseGame = mOptions.phrasesGame[mOptions.active];
             const msg =
                 mOptions.customMessages &&
-                    phraseGame.msgHit &&
-                    phraseGame.msgHit.length > 0
+                phraseGame.msgHit &&
+                phraseGame.msgHit.length > 0
                     ? phraseGame.msgHit
                     : mOptions.msgs.msgAllOK;
             $eXeSeleccionaMedias.showMessage(2, msg, instance);
@@ -705,8 +706,8 @@ var $eXeSeleccionaMedias = {
             const phraseGame = mOptions.phrasesGame[mOptions.active];
             msg =
                 mOptions.customMessages &&
-                    phraseGame.msgError &&
-                    phraseGame.msgError.length > 0
+                phraseGame.msgError &&
+                phraseGame.msgError.length > 0
                     ? phraseGame.msgError
                     : msg;
             $eXeSeleccionaMedias.showMessage(1, msg, instance);
@@ -755,7 +756,7 @@ var $eXeSeleccionaMedias = {
             function (e) {
                 e.preventDefault();
                 $(this).toggleClass('SLCMP-Select');
-            },
+            }
         );
     },
 
@@ -765,7 +766,7 @@ var $eXeSeleccionaMedias = {
 
     addEvents: function (instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
-        $eXeSeleccionaMedias.removeEvents(instance)
+        $eXeSeleccionaMedias.removeEvents(instance);
         $('#slcmpLinkMaximize-' + instance).on(
             'click touchstart',
             function (e) {
@@ -777,10 +778,9 @@ var $eXeSeleccionaMedias = {
                     $('#slcmpStartGame-' + instance).hide();
                 }
                 if (mOptions.active >= 0) {
-                    $eXeSeleccionaMedias.showImage(mOptions.active, instance)
+                    $eXeSeleccionaMedias.showImage(mOptions.active, instance);
                 }
-
-            },
+            }
         );
 
         $('#slcmpLinkMinimize-' + instance).on(
@@ -791,7 +791,7 @@ var $eXeSeleccionaMedias = {
                 $('#slcmpGameMinimize-' + instance)
                     .css('visibility', 'visible')
                     .show();
-            },
+            }
         );
 
         $('#slcmpCubierta-' + instance).hide();
@@ -803,13 +803,13 @@ var $eXeSeleccionaMedias = {
             function (e) {
                 e.preventDefault();
                 const element = document.getElementById(
-                    'slcmpGameContainer-' + instance,
+                    'slcmpGameContainer-' + instance
                 );
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
                     element,
-                    instance,
+                    instance
                 );
-            },
+            }
         );
 
         $('#slcmpFeedBackClose-' + instance).on('click', function () {
@@ -819,7 +819,7 @@ var $eXeSeleccionaMedias = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $('#slcmpMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $('#slcmpCodeAccessDiv-' + instance).show();
             $('#slcmpCubierta-' + instance).show();
@@ -830,7 +830,7 @@ var $eXeSeleccionaMedias = {
             function (e) {
                 e.preventDefault();
                 $eXeSeleccionaMedias.enterCodeAccess(instance);
-            },
+            }
         );
 
         $('#slcmpCodeAccessE-' + instance).on('keydown', function (event) {
@@ -843,13 +843,16 @@ var $eXeSeleccionaMedias = {
 
         $('#slcmpPNumber-' + instance).text(mOptions.numberQuestions);
 
-        $(window).on('unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias', function () {
-            if (typeof $eXeSeleccionaMedias.mScorm != 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeSeleccionaMedias.mScorm,
-                );
+        $(window).on(
+            'unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias',
+            function () {
+                if (typeof $eXeSeleccionaMedias.mScorm != 'undefined') {
+                    $exeDevices.iDevice.gamification.scorm.endScorm(
+                        $eXeSeleccionaMedias.mScorm
+                    );
+                }
             }
-        });
+        );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -892,7 +895,7 @@ var $eXeSeleccionaMedias = {
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $('#slcmpAuthorGame-' + instance).html(
-                mOptions.msgs.msgAuthor + '; ' + mOptions.author,
+                mOptions.msgs.msgAuthor + '; ' + mOptions.author
             );
             $('#slcmpAuthorGame-' + instance).show();
         }
@@ -925,7 +928,7 @@ var $eXeSeleccionaMedias = {
             $('#slcViewMode-' + instance)
                 .find('div.exeQuextIcons')
                 .removeClass(
-                    'exeQuextIcons-ModeMansory exeQuextIcons-ModeTable',
+                    'exeQuextIcons-ModeMansory exeQuextIcons-ModeTable'
                 );
             const $multimediaContainer = $('#slcmpMultimedia-' + instance);
             if ($multimediaContainer.hasClass('SLCMP-ModeTable')) {
@@ -945,18 +948,23 @@ var $eXeSeleccionaMedias = {
             }
         });
 
-        $('#slcmpMainContainer-' + instance).closest('article').on('click', '.box-toggle-on', function (e) {
-
-            if (!$('#slcmpMultimedia-' + instance).hasClass('SLCMP-ModeTable')) {
-                $eXeSeleccionaMedias.destroyMasonry(instance);
-                $eXeSeleccionaMedias.initializeMasonry(instance);
-            }
-        });
+        $('#slcmpMainContainer-' + instance)
+            .closest('article')
+            .on('click', '.box-toggle-on', function (e) {
+                if (
+                    !$('#slcmpMultimedia-' + instance).hasClass(
+                        'SLCMP-ModeTable'
+                    )
+                ) {
+                    $eXeSeleccionaMedias.destroyMasonry(instance);
+                    $eXeSeleccionaMedias.initializeMasonry(instance);
+                }
+            });
 
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
 
@@ -996,7 +1004,9 @@ var $eXeSeleccionaMedias = {
         $('#slcmpFeedBackClose-' + instance).off('click');
         $('#slcmpCodeAccessButton-' + instance).off('click touchstart');
         $('#slcmpCodeAccessE-' + instance).off('keydown');
-        $(window).off('unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias');
+        $(window).off(
+            'unload.eXeSeleccionaMedias beforeunload.eXeSeleccionaMedias'
+        );
         $('#slcmpMainContainer-' + instance)
             .closest('.seleccionamedias-IDevice')
             .off('click', '.Games-SendScore');
@@ -1023,7 +1033,7 @@ var $eXeSeleccionaMedias = {
 
     initializeMasonry: function (instance) {
         const $grid = $('#slcmpMainContainer-' + instance).find(
-            '.SLCMP-Multimedia',
+            '.SLCMP-Multimedia'
         );
         $grid.masonry({
             itemSelector: '.SLCMP-GridItem',
@@ -1054,7 +1064,9 @@ var $eXeSeleccionaMedias = {
             if (mOptions.active < mOptions.phrasesGame.length) {
                 $eXeSeleccionaMedias.showPhrase(mOptions.active, instance);
                 $eXeSeleccionaMedias.activateHover(instance);
-                $exeDevices.iDevice.gamification.math.updateLatex('.seleccionamedias-IDevice');
+                $exeDevices.iDevice.gamification.math.updateLatex(
+                    '.seleccionamedias-IDevice'
+                );
             } else {
                 $eXeSeleccionaMedias.gameOver(0, instance);
             }
@@ -1099,7 +1111,7 @@ var $eXeSeleccionaMedias = {
         mOptions.nattempts = mOptions.attempts > 0 ? mOptions.attempts : 0;
 
         $('#slcmpQuestion-' + instance).html(
-            mOptions.phrasesGame[0].definition,
+            mOptions.phrasesGame[0].definition
         );
         $('#slcmpQuestion-' + instance).show();
         $('#slcmpGameButtons-' + instance).css('display', 'flex');
@@ -1123,7 +1135,10 @@ var $eXeSeleccionaMedias = {
             mOptions.counterClock = setInterval(function () {
                 let $node = $('#slcmpMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -1145,7 +1160,7 @@ var $eXeSeleccionaMedias = {
         ) {
             $exeDevices.iDevice.gamification.media.playSound(
                 mOptions.phrase.audioDefinition,
-                mOptions,
+                mOptions
             );
         }
 
@@ -1205,10 +1220,10 @@ var $eXeSeleccionaMedias = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
                     instance,
-                    false,
+                    false
                 );
             }
         }
@@ -1259,7 +1274,7 @@ var $eXeSeleccionaMedias = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1278,7 +1293,7 @@ var $eXeSeleccionaMedias = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1297,7 +1312,7 @@ var $eXeSeleccionaMedias = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1316,7 +1331,7 @@ var $eXeSeleccionaMedias = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1327,14 +1342,14 @@ var $eXeSeleccionaMedias = {
 
         $eXeSeleccionaMedias.showMessage(messageColor, message, instance, true);
         $slcmpOverNumCards.html(
-            msgs.msgActivities + ': ' + mOptions.phrasesGame.length,
+            msgs.msgActivities + ': ' + mOptions.phrasesGame.length
         );
         $slcmpOverHits.html(msgs.msgHits + ': ' + mOptions.hits);
         $slcmpOverErrors.html(msgs.msgErrors + ': ' + mOptions.errors);
         $slcmpOverScore.html(
             msgs.msgScore +
-            ': ' +
-            ((mOptions.hits / mOptions.numberQuestions) * 10).toFixed(2),
+                ': ' +
+                ((mOptions.hits / mOptions.numberQuestions) * 10).toFixed(2)
         );
         $slcmpGameOver.show();
         $slcmpCubierta.show();
@@ -1373,7 +1388,7 @@ var $eXeSeleccionaMedias = {
                 : mOptions.score.toFixed(2);
 
         $('#slcmpPNumber-' + instance).text(
-            mOptions.phrasesGame.length - mOptions.hits - mOptions.errors,
+            mOptions.phrasesGame.length - mOptions.hits - mOptions.errors
         );
         $('#slcmpPErrors-' + instance).text(mOptions.errors);
         $('#slcmpPScore-' + instance).text(sscore);

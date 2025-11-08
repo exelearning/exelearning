@@ -341,7 +341,7 @@ export default class IdeviceBlockNode {
         btnEdit.appendChild(icon);
 
         btnEdit.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            // To review (see #579) if (eXeLearning.app.project.checkOpenIdevice()) return;
             eXeLearning.app.project
                 .isAvalaibleOdeComponent(this.blockId, null)
                 .then((response) => {
@@ -467,7 +467,7 @@ export default class IdeviceBlockNode {
      */
     addBehaviourChangeIcon() {
         this.iconElement.addEventListener('click', (event) => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            // To review (see #579) if (eXeLearning.app.project.checkOpenIdevice()) return;
             // Check odeComponent flag
             eXeLearning.app.project
                 .isAvalaibleOdeComponent(this.blockId, null)

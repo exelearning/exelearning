@@ -51,7 +51,12 @@ var $eXeMathOperations = {
     mScorm: null,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Math operations', 'mathematicaloperations', 'mathoperations-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Math operations',
+            'mathematicaloperations',
+            'mathoperations-IDevice'
+        );
     },
 
     enable: function () {
@@ -89,7 +94,7 @@ var $eXeMathOperations = {
 
             $('#mthoMessageMaximize-' + i).text(msg);
             $('#mthoDivFeedBack-' + i).prepend(
-                $('.mathoperations-feedback-game', this),
+                $('.mathoperations-feedback-game', this)
             );
             $eXeMathOperations.addEvents(i);
             $('#mthoDivFeedBack-' + i).hide();
@@ -100,11 +105,11 @@ var $eXeMathOperations = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $eXeMathOperations,
-                node,
+                node
             );
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.mathoperations-IDevice',
+            '.mathoperations-IDevice'
         );
     },
 
@@ -192,7 +197,6 @@ var $eXeMathOperations = {
         $('#mthoPShowClue-' + instance).hide();
 
         $eXeMathOperations.createQuestions(instance);
-
     },
     createQuestions: function (instance) {
         const mOptions = $eXeMathOperations.options[instance];
@@ -207,7 +211,7 @@ var $eXeMathOperations = {
                 mOptions.components[i][1],
                 mOptions.components[i][2],
                 mOptions.components[i][3],
-                mOptions.decimalsInOperands,
+                mOptions.decimalsInOperands
             );
         }
         html += '<p class="MTHO-pagination">';
@@ -415,21 +419,21 @@ var $eXeMathOperations = {
                 }
                 let operation =
                     operationsToDo[
-                    $eXeMathOperations.getRandomNo(
-                        0,
-                        operationsToDo.length,
-                        0,
-                    )
+                        $eXeMathOperations.getRandomNo(
+                            0,
+                            operationsToDo.length,
+                            0
+                        )
                     ];
                 let operandA = $eXeMathOperations.getRandomNo(
                     mOptions.min,
                     mOptions.max,
-                    mOptions.decimalsInOperands,
+                    mOptions.decimalsInOperands
                 );
                 let operandB = $eXeMathOperations.getRandomNo(
                     mOptions.min,
                     mOptions.max,
-                    mOptions.decimalsInOperands,
+                    mOptions.decimalsInOperands
                 );
                 let result;
                 if (operation == '+') result = operandA + operandB;
@@ -559,14 +563,14 @@ var $eXeMathOperations = {
             'normal',
             function () {
                 $('input[type=text]', this).focus();
-            },
+            }
         );
         // Update the links
         let counter = target + 1;
         $('#mathoPage-' + instance).html(counter);
         let visibility = 'visible';
         let nextLink = document.getElementById(
-            'MTHO-' + instance + '-nextLink',
+            'MTHO-' + instance + '-nextLink'
         );
         if (nextLink) {
             if (counter == total) visibility = 'hidden';
@@ -579,7 +583,7 @@ var $eXeMathOperations = {
         visibility = 'visible';
 
         let prevLink = document.getElementById(
-            'MTHO-' + instance + '-prevLink',
+            'MTHO-' + instance + '-prevLink'
         );
         if (prevLink) {
             if (counter == 1) visibility = 'hidden';
@@ -594,14 +598,14 @@ var $eXeMathOperations = {
             latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#mthoMultimedia-' + instance,
+                '#mthoMultimedia-' + instance
             );
     },
 
     getRandomNo: function (from, to, allowDecimals) {
         if (allowDecimals != 0)
             return parseFloat(
-                (Math.random() * to + from).toFixed(allowDecimals),
+                (Math.random() * to + from).toFixed(allowDecimals)
             );
         else return Math.floor(Math.random() * to) + from;
     },
@@ -626,7 +630,7 @@ var $eXeMathOperations = {
         // Update the links
         let visibility = 'visible';
         let nextLink = document.getElementById(
-            'MTHO-' + instance + '-nextLink',
+            'MTHO-' + instance + '-nextLink'
         );
         if (nextLink) {
             if (counter == total) visibility = 'hidden';
@@ -637,7 +641,7 @@ var $eXeMathOperations = {
                     counter - 1,
                     total,
                     instance,
-                    'next',
+                    'next'
                 );
                 return false;
             };
@@ -645,7 +649,7 @@ var $eXeMathOperations = {
 
         visibility = 'visible';
         let prevLink = document.getElementById(
-            'MTHO-' + instance + '-prevLink',
+            'MTHO-' + instance + '-prevLink'
         );
         if (prevLink) {
             if (counter == 1) visibility = 'hidden';
@@ -656,7 +660,7 @@ var $eXeMathOperations = {
                     counter - 1,
                     total,
                     instance,
-                    'prev',
+                    'prev'
                 );
                 return false;
             };
@@ -714,7 +718,7 @@ var $eXeMathOperations = {
         operation,
         operandB,
         result,
-        numberOfDecimals,
+        numberOfDecimals
     ) {
         let mOptions = $eXeMathOperations.options[instance];
         if (operation == '*') operation = 'x';
@@ -837,7 +841,7 @@ var $eXeMathOperations = {
             result = $eXeMathOperations.checkAnswerNumbers(
                 e,
                 type,
-                numberOfDecimals,
+                numberOfDecimals
             );
         }
         return result;
@@ -930,13 +934,13 @@ var $eXeMathOperations = {
             operandA,
             operandB,
             operation,
-            true,
+            true
         );
         if (
             $eXeMathOperations.compareFractions(
                 operationResult,
                 rightResult,
-                mOptions.solution,
+                mOptions.solution
             )
         )
             right = true;
@@ -955,13 +959,13 @@ var $eXeMathOperations = {
         let nextFormId =
             parseFloat(e.id.replace('mathoQuestion-' + instance + '-', '')) + 1;
         let nextForm = document.getElementById(
-            'mathoQuestion-' + instance + '-' + nextFormId,
+            'mathoQuestion-' + instance + '-' + nextFormId
         );
         if (nextForm) {
             $eXeMathOperations.goTo(
                 nextFormId,
                 $('form.mathoQuestion-' + instance).length,
-                instance,
+                instance
             );
         }
         // Summary
@@ -988,7 +992,7 @@ var $eXeMathOperations = {
                     operandA,
                     operandB,
                     '+',
-                    mOptions.solution,
+                    mOptions.solution
                 ) == opR
             )
                 rightResult += '+ ';
@@ -997,7 +1001,7 @@ var $eXeMathOperations = {
                     operandA,
                     operandB,
                     '-',
-                    mOptions.solution,
+                    mOptions.solution
                 ) == opR
             )
                 rightResult += '- ';
@@ -1006,7 +1010,7 @@ var $eXeMathOperations = {
                     operandA,
                     operandB,
                     '*',
-                    mOptions.solution,
+                    mOptions.solution
                 ) == opR
             )
                 rightResult += 'x ';
@@ -1015,7 +1019,7 @@ var $eXeMathOperations = {
                     operandA,
                     operandB,
                     ':',
-                    mOptions.solution,
+                    mOptions.solution
                 ) == opR
             )
                 rightResult += ': ';
@@ -1029,21 +1033,21 @@ var $eXeMathOperations = {
                         opR,
                         opB,
                         '+',
-                        mOptions.solution,
+                        mOptions.solution
                     );
                 else if (operation == '*' || operation == 'x')
                     rightResult = $eXeMathOperations.operateFractions(
                         opR,
                         opB,
                         ':',
-                        mOptions.solution,
+                        mOptions.solution
                     );
                 else
                     rightResult = $eXeMathOperations.operateFractions(
                         opR,
                         opB,
                         '*',
-                        mOptions.solution,
+                        mOptions.solution
                     );
             }
         }
@@ -1056,28 +1060,28 @@ var $eXeMathOperations = {
                         opR,
                         opA,
                         '-',
-                        mOptions.solution,
+                        mOptions.solution
                     );
                 else if (operation == '-')
                     rightResult = $eXeMathOperations.operateFractions(
                         opR,
                         opA,
                         '-',
-                        mOptions.solution,
+                        mOptions.solution
                     );
                 else if (operation == '*' || operation == 'x')
                     rightResult = $eXeMathOperations.operateFractions(
                         opR,
                         opA,
                         ':',
-                        mOptions.solution,
+                        mOptions.solution
                     );
                 else
                     rightResult = $eXeMathOperations.operateFractions(
                         opR,
                         opA,
                         '*',
-                        mOptions.solution,
+                        mOptions.solution
                     );
             }
         }
@@ -1087,11 +1091,11 @@ var $eXeMathOperations = {
         solutionTD.html(rightResult);
         // Qualification
         let qualification = this.removeUnnecessaryDecimals(
-            (100 * parseFloat(rightAnswered.html())) / trs.length,
+            (100 * parseFloat(rightAnswered.html())) / trs.length
         );
         $('#' + base + 'result').html(qualification);
         $eXeMathOperations.exe.games.math.updateLatex(
-            '#mthoMultimedia-' + instance,
+            '#mthoMultimedia-' + instance
         );
         $eXeMathOperations.updateScore(right, instance);
         return false;
@@ -1218,13 +1222,13 @@ var $eXeMathOperations = {
         let nextFormId =
             parseFloat(e.id.replace('mathoQuestion-' + instance + '-', '')) + 1;
         let nextForm = document.getElementById(
-            'mathoQuestion-' + instance + '-' + nextFormId,
+            'mathoQuestion-' + instance + '-' + nextFormId
         );
         if (nextForm) {
             $eXeMathOperations.goTo(
                 nextFormId,
                 $('form.mathoQuestion-' + instance).length,
-                instance,
+                instance
             );
         }
 
@@ -1254,7 +1258,7 @@ var $eXeMathOperations = {
                 operationResult,
                 mOptions.errorType,
                 mOptions.errorRelative,
-                mOptions.errorAbsolute,
+                mOptions.errorAbsolute
             );
         }
 
@@ -1290,7 +1294,7 @@ var $eXeMathOperations = {
         solutionTD.html(rightResult);
         // Qualification
         let qualification = this.removeUnnecessaryDecimals(
-            (100 * parseFloat(rightAnswered.html())) / trs.length,
+            (100 * parseFloat(rightAnswered.html())) / trs.length
         );
         $('#' + base + 'result').html(qualification);
         $eXeMathOperations.updateScore(right, instance);
@@ -1421,13 +1425,13 @@ var $eXeMathOperations = {
         let nextFormId =
             parseFloat(e.id.replace('mathoQuestion-' + instance + '-', '')) + 1;
         let nextForm = document.getElementById(
-            'mathoQuestion-' + instance + '-' + nextFormId,
+            'mathoQuestion-' + instance + '-' + nextFormId
         );
         if (nextForm) {
             $eXeMathOperations.goTo(
                 nextFormId,
                 $('form.mathoQuestion-' + instance).length,
-                instance,
+                instance
             );
         }
         // Summary
@@ -1487,7 +1491,7 @@ var $eXeMathOperations = {
         solutionTD.html(rightResult);
         // Qualification
         let qualification = this.removeUnnecessaryDecimals(
-            (100 * parseFloat(rightAnswered.html())) / trs.length,
+            (100 * parseFloat(rightAnswered.html())) / trs.length
         );
         $('#' + base + 'result').html(qualification);
         $eXeMathOperations.updateScore(right, instance);
@@ -1524,7 +1528,7 @@ var $eXeMathOperations = {
         mOptions.scorerp = (10 * mOptions.hits) / mOptions.number;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeMathOperations.isInExe,
+            $eXeMathOperations.isInExe
         );
     },
 
@@ -1561,12 +1565,12 @@ var $eXeMathOperations = {
             function (e) {
                 e.preventDefault();
                 const element = document.getElementById(
-                    'mthoGameContainer-' + instance,
+                    'mthoGameContainer-' + instance
                 );
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
-                    element,
+                    element
                 );
-            },
+            }
         );
 
         $('#mthoFeedBackClose-' + instance).on('click', function () {
@@ -1576,7 +1580,7 @@ var $eXeMathOperations = {
         $('#mthoPShowClue-' + instance).hide();
         if (mOptions.itinerary.showCodeAccess) {
             $('#mthoMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $eXeMathOperations.showCubiertaOptions(0, instance);
         }
@@ -1585,7 +1589,7 @@ var $eXeMathOperations = {
             function (e) {
                 e.preventDefault();
                 $eXeMathOperations.enterCodeAccess(instance);
-            },
+            }
         );
 
         $('#mthoCodeAccessE-' + instance).on('keydown', function (event) {
@@ -1600,7 +1604,7 @@ var $eXeMathOperations = {
         $(window).on('unload', function () {
             if (typeof $eXeMathOperations.mScorm != 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeMathOperations.mScorm,
+                    $eXeMathOperations.mScorm
                 );
             }
         });
@@ -1627,7 +1631,9 @@ var $eXeMathOperations = {
                     mOptions.gameStarted = false;
                     $eXeMathOperations.startGame(instance);
                 }
-                $exeDevices.iDevice.gamification.math.updateLatex('mthoMultimedia-' + instance);
+                $exeDevices.iDevice.gamification.math.updateLatex(
+                    'mthoMultimedia-' + instance
+                );
             } else {
                 $eXeMathOperations.startGame(instance);
             }
@@ -1655,7 +1661,7 @@ var $eXeMathOperations = {
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -1682,7 +1688,10 @@ var $eXeMathOperations = {
                 if (mOptions.gameStarted && mOptions.activeCounter) {
                     let $node = $('#mthoMainContainer-' + instance);
                     let $content = $('#node-content');
-                    if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                    if (
+                        !$node.length ||
+                        ($content.length && $content.attr('mode') === 'edition')
+                    ) {
                         clearInterval(mOptions.counterClock);
                         return;
                     }
@@ -1757,7 +1766,7 @@ var $eXeMathOperations = {
                 $eXeMathOperations.initialScore === ''
             ) {
                 const score = ((mOptions.hits * 10) / mOptions.number).toFixed(
-                    2,
+                    2
                 );
                 $eXeMathOperations.sendScore(true, instance);
                 $eXeMathOperations.initialScore = score;
@@ -1785,9 +1794,9 @@ var $eXeMathOperations = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
-                    instance,
+                    instance
                 );
             }
         }
@@ -1838,12 +1847,12 @@ var $eXeMathOperations = {
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $eXeMathOperations.borderColors.red,
-            $eXeMathOperations.borderColors.green,
-            $eXeMathOperations.borderColors.blue,
-            $eXeMathOperations.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeMathOperations.borderColors.red,
+                $eXeMathOperations.borderColors.green,
+                $eXeMathOperations.borderColors.blue,
+                $eXeMathOperations.borderColors.yellow,
+            ],
             color = colors[type];
         $('#mthoPShowClue-' + instance).text(message);
         $('#mthoPShowClue-' + instance).css({
@@ -1862,42 +1871,42 @@ var $eXeMathOperations = {
                 resultado = $eXeMathOperations.addFractions(
                     fraction1,
                     fraction2,
-                    type,
+                    type
                 );
                 break;
             case '-':
                 resultado = $eXeMathOperations.subtractFractions(
                     fraction1,
                     fraction2,
-                    type,
+                    type
                 );
                 break;
             case '*':
                 resultado = $eXeMathOperations.multiplyFractions(
                     fraction1,
                     fraction2,
-                    type,
+                    type
                 );
                 break;
             case '/':
                 resultado = $eXeMathOperations.divideFractions(
                     fraction1,
                     fraction2,
-                    type,
+                    type
                 );
                 break;
             case ':':
                 resultado = $eXeMathOperations.divideFractions(
                     fraction1,
                     fraction2,
-                    type,
+                    type
                 );
                 break;
             case 'x':
                 resultado = $eXeMathOperations.multiplyFractions(
                     fraction1,
                     fraction2,
-                    type,
+                    type
                 );
                 break;
             default:
@@ -1906,11 +1915,11 @@ var $eXeMathOperations = {
         let result = $eXeMathOperations.simplifyFraction(
             resultado.numerator,
             resultado.denominator,
-            type,
+            type
         );
         return $eXeMathOperations.formatFraction(
             result.numerator,
-            result.denominator,
+            result.denominator
         );
     },
 
@@ -1930,7 +1939,7 @@ var $eXeMathOperations = {
         return $eXeMathOperations.simplifyFraction(
             numerator,
             commonDenominator,
-            type,
+            type
         );
     },
 
@@ -1941,7 +1950,7 @@ var $eXeMathOperations = {
         return $eXeMathOperations.simplifyFraction(
             numerator,
             commonDenominator,
-            type,
+            type
         );
     },
     multiplyFractions: function (f1, f2, type) {
@@ -1950,7 +1959,7 @@ var $eXeMathOperations = {
         return $eXeMathOperations.simplifyFraction(
             numerator,
             denominator,
-            type,
+            type
         );
     },
 
@@ -1960,7 +1969,7 @@ var $eXeMathOperations = {
         return $eXeMathOperations.simplifyFraction(
             numerator,
             denominator,
-            type,
+            type
         );
     },
 
@@ -2069,23 +2078,23 @@ var $eXeMathOperations = {
                 }
                 let operation =
                     operationsToDo[
-                    $eXeMathOperations.getRandomNo(
-                        0,
-                        operationsToDo.length,
-                        0,
-                    )
+                        $eXeMathOperations.getRandomNo(
+                            0,
+                            operationsToDo.length,
+                            0
+                        )
                     ];
                 let operandA = $eXeMathOperations.generateFraction(
                     mOptions.min,
                     mOptions.max,
                     mOptions.negativeFractions,
-                    mOptions.solution,
+                    mOptions.solution
                 );
                 let operandB = $eXeMathOperations.generateFraction(
                     mOptions.min,
                     mOptions.max,
                     mOptions.negativeFractions,
-                    mOptions.solution,
+                    mOptions.solution
                 );
                 if (operation == '-' && !mOptions.negativeFractions) {
                     if ($eXeMathOperations.is_minor(operandA, operandB)) {
@@ -2098,7 +2107,7 @@ var $eXeMathOperations = {
                     operandA,
                     operandB,
                     operation,
-                    true,
+                    true
                 );
                 let oA = $eXeMathOperations.createLatex(operandA);
                 let oB = $eXeMathOperations.createLatex(operandB);
@@ -2154,7 +2163,7 @@ var $eXeMathOperations = {
         let fc = $eXeMathOperations.simplifyFraction(
             numerator,
             denominator,
-            type,
+            type
         );
         if (fc.denominator == 1) {
             return `${fc.numerator}`;

@@ -1091,7 +1091,7 @@ div:fullscreen .SPP-LinkMinimize {
     display: none;
 }
 
-#sopaWords {
+[id^="sopaWords"] {
     max-width: 70%;
 }
 
@@ -1103,12 +1103,12 @@ div:fullscreen .SPP-LinkMinimize {
 }
 
 @media only screen and (max-width: 600px) {
-    #sopaWords {
+    [id^="sopaWords"] {
         max-width: 100%;
     }
 }
 
-#sopaResolve {
+[id^="sopaResolve"] {
     margin-top: 1em;
      cursor: pointer;
 
@@ -1187,7 +1187,7 @@ select {
     margin-top: 1rem;
 }
 
-.SPP-MainContainer #sopaMessage {
+.SPP-MainContainer [id^="sopaMessage"] {
     margin-top: 0.7em;
     margin-bottom: 0.7em;
     font-size: 1.3em;
