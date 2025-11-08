@@ -273,7 +273,9 @@ class OdeXmlUtil
                 // OdeComponentsSyncs
                 $xmlOdeComponents = $xmlOdePagStructure->addChild(self::ODE_XML_TAG_ODE_COMPONENTS);
 
-                foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
+                // CRITICAL: Use getOdeComponentsSyncsBySessionId() to filter components by current session
+                // This prevents exporting duplicate components from old/stale sessions
+                foreach ($odePagStructureSync->getOdeComponentsSyncsBySessionId() as $odeComponentsSync) {
                     // Generate new id
                     // $newOdeIdeviceId = Util::generateIdCheckUnique($generatedIds);
                     $newOdeIdeviceId = $odeComponentsSync->getOdeIdeviceId();
@@ -1074,7 +1076,8 @@ class OdeXmlUtil
 
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
-                foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
+                // CRITICAL: Filter by session ID to avoid processing components from old sessions
+                foreach ($odePagStructureSync->getOdeComponentsSyncsBySessionId() as $odeComponentsSync) {
                     $htmlView = $odeComponentsSync->getHtmlView() ?? '';
                     if (str_contains($htmlView, Constants::IDEVICE_NODE_LINK_NAME_IN_EXE)) {
                         $odeComponentsSync->replaceOldInternalLinks($fullPathMap);
