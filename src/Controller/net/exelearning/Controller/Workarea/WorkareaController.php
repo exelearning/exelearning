@@ -32,6 +32,8 @@ class WorkareaController extends DefaultWorkareaController
     private $currentOdeUsersService;
     private $logger;
     private $currentOdeUsersSyncChangesService;
+    private readonly bool $countUserAutosaveSpace;
+    private readonly int $userRecentOdeFilesAmount;
 
     /**
      * @param CurrentOdeUsersService $currentOdeUsersService
@@ -48,6 +50,8 @@ class WorkareaController extends DefaultWorkareaController
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
         CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService,
         HubInterface $hubInterface,
+        bool $countUserAutosaveSpace,
+        int $userRecentOdeFilesAmount,
     ) {
         $this->entityManager = $entityManager;
         $this->logger = $logger;
@@ -58,6 +62,8 @@ class WorkareaController extends DefaultWorkareaController
         $this->translator = $translator;
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->currentOdeUsersSyncChangesService = $currentOdeUsersSyncChangesService;
+        $this->countUserAutosaveSpace = $countUserAutosaveSpace;
+        $this->userRecentOdeFilesAmount = $userRecentOdeFilesAmount;
     }
 
     #[Route('/workarea', name: 'workarea')]
@@ -255,9 +261,9 @@ class WorkareaController extends DefaultWorkareaController
                     'platformIntegration' => $platformIntegration,
                     'userStyles' => $userStyles,
                     'userIdevices' => $userIdevices,
-                    'countUserAutosaveSpace' => Settings::COUNT_USER_AUTOSAVE_SPACE_ODE_FILES,
+                    'countUserAutosaveSpace' => $this->countUserAutosaveSpace,
                     'userStorageMaxDiskSpaceBytes' => SettingsUtil::getUserStorageMaxDiskSpaceInBytes(),
-                    'userRecentOdeFilesAmount' => Settings::USER_RECENT_ODE_FILES_AMOUNT,
+                    'userRecentOdeFilesAmount' => $this->userRecentOdeFilesAmount,
                 ],
                 'symfony' => [
                     'odeSessionId' => $odeSessionId,

@@ -217,6 +217,11 @@ services:
             $autosaveMaxFiles: '%app.permanent_save_autosave_max_number_of_files%'
         tags: ['doctrine.repository_service']
 
+    App\Controller\net\exelearning\Controller\Workarea\WorkareaController:
+        arguments:
+            $countUserAutosaveSpace: '%app.count_user_autosave_space_ode_files%'
+            $userRecentOdeFilesAmount: '%app.user_recent_ode_files_amount%'
+
     # Register custom Doctrine repositories as services
     App\Entity\Project\ProjectPropertyRepository:
         autowire: true
