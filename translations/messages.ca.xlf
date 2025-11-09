@@ -12875,119 +12875,119 @@
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
-        <target></target>
+        <target>~Error en pujar el fitxer.</target>
       </trans-unit>
       <trans-unit id="ZVCy6PA" resname="Completed successfully">
         <source>Completed successfully</source>
-        <target></target>
+        <target>~Completat amb èxit</target>
       </trans-unit>
       <trans-unit id="CEZIpnQ" resname="An unexpected error occurred while processing the file.">
         <source>An unexpected error occurred while processing the file.</source>
-        <target></target>
+        <target>~S'ha produït un error inesperat en processar el fitxer.</target>
       </trans-unit>
       <trans-unit id="vGlqvyV" resname="Unexpected error during upload">
         <source>Unexpected error during upload</source>
-        <target></target>
+        <target>~Error inesperat durant la pujada</target>
       </trans-unit>
       <trans-unit id="DlutuO4" resname="New from Template">
         <source>New from Template</source>
-        <target></target>
+        <target>~Nou des de plantilla</target>
       </trans-unit>
       <trans-unit id="M_Llf6E" resname="Failed to load template. Please try again.">
         <source>Failed to load template. Please try again.</source>
-        <target></target>
+        <target>~No s'ha pogut carregar la plantilla. Torneu-ho a intentar.</target>
       </trans-unit>
       <trans-unit id="xCsb28x" resname="Processing file">
         <source>Processing file</source>
-        <target></target>
+        <target>~Processant fitxer</target>
       </trans-unit>
       <trans-unit id="ywaQ_Vp" resname="Preparing upload...">
         <source>Preparing upload...</source>
-        <target></target>
+        <target>~Preparant la pujada...</target>
       </trans-unit>
       <trans-unit id="AVv4iei" resname="This may take a few moments for large files...">
         <source>This may take a few moments for large files...</source>
-        <target></target>
+        <target>~Això pot trigar uns moments per a fitxers grans...</target>
       </trans-unit>
       <trans-unit id="oPy4NMk" resname="Uploading">
         <source>Uploading</source>
-        <target></target>
+        <target>~Pujant</target>
       </trans-unit>
       <trans-unit id="uSZfo5R" resname="Uploading file...">
         <source>Uploading file...</source>
-        <target></target>
+        <target>~Pujant fitxer...</target>
       </trans-unit>
       <trans-unit id="Pjnplq6" resname="Extracting files...">
         <source>Extracting files...</source>
-        <target></target>
+        <target>~Extraient fitxers...</target>
       </trans-unit>
       <trans-unit id="UU1fb0X" resname="Extracting ZIP file contents. This may take several minutes for large files.">
         <source>Extracting ZIP file contents. This may take several minutes for large files.</source>
-        <target></target>
+        <target>~Extraient el contingut del fitxer ZIP. Això pot trigar diversos minuts per a fitxers grans.</target>
       </trans-unit>
       <trans-unit id="qmGls_W" resname="Processing content...">
         <source>Processing content...</source>
-        <target></target>
+        <target>~Processant contingut...</target>
       </trans-unit>
       <trans-unit id="a0ZvaE4" resname="Reading and validating file structure. Almost done!">
         <source>Reading and validating file structure. Almost done!</source>
-        <target></target>
+        <target>~Llegint i validant l'estructura del fitxer. Gairebé acabat!</target>
       </trans-unit>
       <trans-unit id="msb5FOD" resname="Finalizing...">
         <source>Finalizing...</source>
-        <target></target>
+        <target>~Finalitzant...</target>
       </trans-unit>
       <trans-unit id="z9fMpq3" resname="Completing the process...">
         <source>Completing the process...</source>
-        <target></target>
+        <target>~Completant el procés...</target>
       </trans-unit>
       <trans-unit id="641t3eO" resname="Processing...">
         <source>Processing...</source>
-        <target></target>
+        <target>~Processant...</target>
       </trans-unit>
       <trans-unit id="WrPqN4D" resname="Please wait...">
         <source>Please wait...</source>
-        <target></target>
+        <target>~Si us plau, espereu...</target>
       </trans-unit>
       <trans-unit id="4.iC7Dw" resname="Error processing file">
         <source>Error processing file</source>
-        <target></target>
+        <target>~Error en processar el fitxer</target>
       </trans-unit>
       <trans-unit id="SDFoFKb" resname="Quick edit">
         <source>Quick edit</source>
-        <target></target>
+        <target>~Edició ràpida</target>
       </trans-unit>
       <trans-unit id="VLYpTCb" resname="Another user is editing an iDevice on this block.">
         <source>Another user is editing an iDevice on this block.</source>
-        <target></target>
+        <target>~Un altre usuari està editant un iDevice en aquest bloc.</target>
       </trans-unit>
       <trans-unit id="qSRqFDl" resname="Missing file name or path">
         <source>Missing file name or path</source>
-        <target></target>
+        <target>~Falta el nom o la ruta del fitxer</target>
       </trans-unit>
       <trans-unit id="T7Qvhcc" resname="Invalid request data">
         <source>Invalid request data</source>
-        <target></target>
+        <target>~Dades de sol·licitud no vàlides</target>
       </trans-unit>
       <trans-unit id="dsSqvHh" resname="Uploaded file not found">
         <source>Uploaded file not found</source>
-        <target></target>
+        <target>~Fitxer pujat no trobat</target>
       </trans-unit>
       <trans-unit id="ORp5XHR" resname="Invalid file type">
         <source>Invalid file type</source>
-        <target></target>
+        <target>~Tipus de fitxer no vàlid</target>
       </trans-unit>
       <trans-unit id="Jyiz9H6" resname="Highlight this page in the website navigation menu">
         <source>Highlight this page in the website navigation menu</source>
-        <target></target>
+        <target>~Destaca aquesta pàgina al menú de navegació del lloc web</target>
       </trans-unit>
       <trans-unit id="dBXXN24" resname="Subtitle">
         <source>Subtitle</source>
-        <target></target>
+        <target>~Subtítol</target>
       </trans-unit>
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
-        <target></target>
+        <target>~Afegeix informació addicional al títol principal.</target>
       </trans-unit>
     </body>
   </file>
