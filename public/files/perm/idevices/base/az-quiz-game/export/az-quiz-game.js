@@ -42,7 +42,12 @@ var $azquizgame = {
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'A-Z quiz', 'az-quiz-game', 'rosco-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'A-Z quiz',
+            'az-quiz-game',
+            'rosco-IDevice'
+        );
     },
 
     enable: function () {
@@ -61,7 +66,7 @@ var $azquizgame = {
                     dl,
                     imagesLink,
                     audiosLink,
-                    version,
+                    version
                 );
 
             option.radiusLetter =
@@ -108,12 +113,10 @@ var $azquizgame = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $azquizgame,
-                node,
+                node
             );
 
-            $exeDevices.iDevice.gamification.math.updateLatex(
-                '.rosco-IDevice',
-            );
+        $exeDevices.iDevice.gamification.math.updateLatex('.rosco-IDevice');
     },
 
     loadDataGame: function (data, imgsLink, audiosLink, version) {
@@ -149,7 +152,7 @@ var $azquizgame = {
                 wordGame.audio = wordGame.audio ?? '';
             }
             wordGame.url = $exeDevices.iDevice.gamification.media.extractURLGD(
-                wordGame.url,
+                wordGame.url
             );
         });
 
@@ -160,7 +163,7 @@ var $azquizgame = {
         const aLetters = this.getLettersRosco(instance),
             mOptions = this.options[instance],
             sTime = $exeDevices.iDevice.gamification.helpers.getTimeToString(
-                mOptions.durationGame,
+                mOptions.durationGame
             ),
             msgs = mOptions.msgs,
             path = $azquizgame.idevicePath,
@@ -420,10 +423,10 @@ var $azquizgame = {
         $('#roscoCodeAccessButton-' + instance).on('click', function (e) {
             e.preventDefault();
             const keyIntroduced = $.trim(
-                $('#roscoEdCodeAccess-' + instance).val(),
-            ).toUpperCase(),
+                    $('#roscoEdCodeAccess-' + instance).val()
+                ).toUpperCase(),
                 correctKey = $.trim(
-                    mOptions.itinerary.codeAccess,
+                    mOptions.itinerary.codeAccess
                 ).toUpperCase();
             if (keyIntroduced === correctKey) {
                 $azquizgame.showCubiertaOptions(false, instance);
@@ -460,7 +463,7 @@ var $azquizgame = {
                     .find('span')
                     .text(mOptions.msgs.msgHideRoulette)
                     .attr('title', mOptions.msgs.msgHideRoulette);
-            },
+            }
         );
 
         $('#roscoLinkArrowMinimize-' + instance).on(
@@ -473,7 +476,7 @@ var $azquizgame = {
                 $('#roscoGameMinimize-' + instance)
                     .css('visibility', 'visible')
                     .show();
-            },
+            }
         );
 
         $('#roscoEdCodeAccess-' + instance).on('keydown', function (event) {
@@ -568,11 +571,11 @@ var $azquizgame = {
         $azquizgame.drawText(
             mOptions.msgs.msgReady,
             $azquizgame.colors.blue,
-            instance,
+            instance
         );
         $('#roscoPMessages-' + instance).css(
             'color',
-            $azquizgame.colors.blackl,
+            $azquizgame.colors.blackl
         );
         $azquizgame.drawRows(instance);
 
@@ -591,7 +594,7 @@ var $azquizgame = {
         $(window).on('unload.eXeRosco beforeunload.eXeRosco', function () {
             if (typeof $azquizgame.mScorm !== 'undefined') {
                 $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $azquizgame.mScorm,
+                    $azquizgame.mScorm
                 );
                 $azquizgame.gameOver(1, instance);
             }
@@ -621,12 +624,12 @@ var $azquizgame = {
             function (e) {
                 e.preventDefault();
                 const element = document.getElementById(
-                    'roscoMainContainer-' + instance,
+                    'roscoMainContainer-' + instance
                 );
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
-                    element,
+                    element
                 );
-            },
+            }
         );
 
         $('#roscoModeBoardOK-' + instance).on('click', function (e) {
@@ -681,11 +684,11 @@ var $azquizgame = {
                 e.preventDefault();
                 const audioSrc = $(this).data('audio');
                 new Audio(audioSrc).play();
-            },
+            }
         );
         if (mOptions.itinerary.showCodeAccess) {
             $('#roscoMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $('#roscoCodeAccessDiv-' + instance).show();
             if (mOptions.showMinimize) {
@@ -701,7 +704,7 @@ var $azquizgame = {
         setTimeout(function () {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
 
@@ -711,7 +714,7 @@ var $azquizgame = {
             if (largeImageSrc && largeImageSrc.length > 3) {
                 $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
                     largeImageSrc,
-                    $('#roscoGameContainer-' + instance),
+                    $('#roscoGameContainer-' + instance)
                 );
             }
         });
@@ -788,7 +791,10 @@ var $azquizgame = {
         mOptions.counterClock = setInterval(function () {
             let $node = $('#roscoMainContainer-' + instance);
             let $content = $('#node-content');
-            if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+            if (
+                !$node.length ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
                 clearInterval(mOptions.counterClock);
                 return;
             }
@@ -845,9 +851,9 @@ var $azquizgame = {
 
     updateTime: function (tiempo, instance) {
         const mTime =
-            $exeDevices.iDevice.gamification.helpers.getTimeToString(
-                tiempo,
-            ),
+                $exeDevices.iDevice.gamification.helpers.getTimeToString(
+                    tiempo
+                ),
             mOptions = $azquizgame.options[instance];
 
         $('#roscoPTime-' + instance).text(mTime);
@@ -891,7 +897,7 @@ var $azquizgame = {
         $azquizgame.drawText(
             msgs.msgGameOver,
             $azquizgame.colors.red,
-            instance,
+            instance
         );
 
         $('#roscoEdReply-' + instance).val('');
@@ -900,13 +906,12 @@ var $azquizgame = {
         mOptions.gameStarted = false;
 
         if (mOptions.isScorm === 1) {
-            const score = (
-                (mOptions.hits * 10) /
-                mOptions.validWords
-            ).toFixed(2);
+            const score = ((mOptions.hits * 10) / mOptions.validWords).toFixed(
+                2
+            );
             $azquizgame.sendScore(true, instance);
             $('#roscoRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+                mOptions.msgs.msgYouScore + ': ' + score
             );
             $azquizgame.initialScore = score;
         }
@@ -967,7 +972,7 @@ var $azquizgame = {
             mWord = mOptions.wordsGame[activeLetter],
             definition = $azquizgame.getRandomDefinition(mWord.definition),
             letter = $azquizgame.getRealLetter(
-                mOptions.letters.charAt(activeLetter),
+                mOptions.letters.charAt(activeLetter)
             ),
             start = (
                 mWord.type === 0 ? msgs.msgStartWith : msgs.msgContaint
@@ -993,11 +998,11 @@ var $azquizgame = {
 
         if (mOptions.isScorm === 1) {
             const score = ((mOptions.hits * 10) / mOptions.validWords).toFixed(
-                2,
+                2
             );
             $azquizgame.sendScore(true, instance);
             $('#roscoRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+                mOptions.msgs.msgYouScore + ': ' + score
             );
         }
 
@@ -1010,7 +1015,7 @@ var $azquizgame = {
         if (mWord.audio.trim().length > 4)
             $exeDevices.iDevice.gamification.media.playSound(
                 mWord.audio.trim(),
-                mOptions,
+                mOptions
             );
 
         if (mOptions.modeBoard)
@@ -1023,7 +1028,7 @@ var $azquizgame = {
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                '#roscoPDefinition-' + instance,
+                '#roscoPDefinition-' + instance
             );
     },
 
@@ -1092,8 +1097,8 @@ var $azquizgame = {
 
         if (x > 0 || y > 0) {
             const containerElement = document.getElementById(
-                'roscoMultimedia-' + instance,
-            ),
+                    'roscoMultimedia-' + instance
+                ),
                 containerPos = containerElement.getBoundingClientRect(),
                 imgElement = document.getElementById('roscoImage-' + instance),
                 imgPos = imgElement.getBoundingClientRect(),
@@ -1114,7 +1119,7 @@ var $azquizgame = {
 
         const mActiveWord = $azquizgame.updateNumberWord(
             mOptions.activeWord,
-            instance,
+            instance
         );
 
         if (mActiveWord === null) {
@@ -1167,7 +1172,7 @@ var $azquizgame = {
                             .removeClass('exeQuextIcons-TwoRounds')
                             .attr('alt', 'Two turns');
                         $('#roscoNumberRoundsSpan-' + instance).text(
-                            mOptions.msgOneRound,
+                            mOptions.msgOneRound
                         );
                     }
 
@@ -1225,7 +1230,7 @@ var $azquizgame = {
             $azquizgame.drawText(
                 msgs.msgIndicateWord,
                 $azquizgame.colors.red,
-                instance,
+                instance
             );
             return;
         }
@@ -1264,8 +1269,8 @@ var $azquizgame = {
         $('#roscotPErrors-' + instance).text(mOptions.errors);
 
         let timeShowSolution = mOptions.showSolution
-            ? mOptions.timeShowSolution * 1000
-            : 1000,
+                ? mOptions.timeShowSolution * 1000
+                : 1000,
             clue = false;
 
         if (
@@ -1280,8 +1285,8 @@ var $azquizgame = {
                 .show()
                 .text(
                     mOptions.msgs.msgInformation +
-                    ': ' +
-                    mOptions.itinerary.clueGame,
+                        ': ' +
+                        mOptions.itinerary.clueGame
                 );
         }
 
@@ -1353,8 +1358,8 @@ var $azquizgame = {
                 .show()
                 .text(
                     mOptions.msgs.msgInformation +
-                    ': ' +
-                    mOptions.itinerary.clueGame,
+                        ': ' +
+                        mOptions.itinerary.clueGame
                 );
         }
 
@@ -1377,9 +1382,9 @@ var $azquizgame = {
 
     checkWord: function (word, answord) {
         const cleanWord = (str) =>
-            $.trim(str)
-                .replace(/\s+/g, ' ')
-                .replace(/[.,;]$/, ''),
+                $.trim(str)
+                    .replace(/\s+/g, ' ')
+                    .replace(/[.,;]$/, ''),
             sWord = cleanWord(word),
             sAnsWord = cleanWord(answord);
 
@@ -1457,7 +1462,7 @@ var $azquizgame = {
             x + width,
             y + height,
             x + width - radius.br,
-            y + height,
+            y + height
         );
         ctxt.lineTo(x + radius.bl, y + height);
         ctxt.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
@@ -1489,8 +1494,8 @@ var $azquizgame = {
         for (let i = 0; i < mOptions.letters.length; i++) {
             letter = $azquizgame.getRealLetter(mOptions.letters.charAt(i));
             let angle =
-                (mOptions.angleSize * (i + mOptions.letters.length - 6)) %
-                mOptions.letters.length,
+                    (mOptions.angleSize * (i + mOptions.letters.length - 6)) %
+                    mOptions.letters.length,
                 yPoint = yCenter + radius * Math.sin(angle),
                 xPoint = xCenter + radius * Math.cos(angle),
                 font = $azquizgame.getFontSizeLetters(instance);
@@ -1538,7 +1543,7 @@ var $azquizgame = {
                     mLetter = mOptions.letters.charAt(iNumber);
                 letter = '#letterR' + mLetter + '-' + instance;
                 mLetter = $azquizgame.getRealLetter(
-                    mOptions.letters.charAt(iNumber),
+                    mOptions.letters.charAt(iNumber)
                 );
                 $(letter).css({
                     'background-color': mBackColor,
@@ -1613,7 +1618,7 @@ var $azquizgame = {
                 xMessage + 13,
                 yMessage - 32,
                 257,
-                24,
+                24
             );
             $('#roscoPMessages-' + instance)
                 .css('color', lColor)
@@ -1632,7 +1637,7 @@ var $azquizgame = {
                 xMessage + 10,
                 posTextoAnimoY + 10,
                 257,
-                24,
+                24
             );
         }
         $('#roscoPMessages-' + instance).css('color', lColor);
@@ -1725,7 +1730,7 @@ var $azquizgame = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.validWords;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $azquizgame.isInExe,
+            $azquizgame.isInExe
         );
     },
 

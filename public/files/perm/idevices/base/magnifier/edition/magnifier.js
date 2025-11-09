@@ -14,12 +14,11 @@ var $exeDevice = {
     idevicePath: '',
     msgs: {
         msgFullScreen: _('Full screen'),
-        msgNotImage: _('The image is not available.')
+        msgNotImage: _('The image is not available.'),
     },
     id: false,
     ci18n: {
         msgTypeGame: _('Magnifier'),
-
     },
     idevicePath: '',
     defaultImage: '',
@@ -31,18 +30,17 @@ var $exeDevice = {
 
         this.idevicePath = path;
 
-        this.defaultImage = path + 'hood.jpg'
+        this.defaultImage = path + 'hood.jpg';
 
         this.id = $(element).attr('idevice-id');
         this.setMessagesInfo();
         this.createForm();
     },
 
-
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
     },
 
@@ -50,13 +48,11 @@ var $exeDevice = {
         eXe.app.alert(msg);
     },
 
-
     createForm: function () {
         const path = $exeDevice.idevicePath;
         const zoomOptions = [
-            100, 110, 120, 130, 140, 150,
-            160, 170, 180, 190, 200, 250,
-            300, 400, 600
+            100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 250, 300,
+            400, 600,
         ];
 
         const html = `
@@ -94,7 +90,7 @@ var $exeDevice = {
                         <label for="mnfInitialZoomSelect" class="col-auto col-form-label">${_('Initial Zoom')}:</label>
                         <div class="col-auto">
                             <select class="form-select" id="mnfInitialZoomSelect">
-                                ${zoomOptions.map(v => `<option value="${v}"${v === 200 ? ' selected' : ''}>${v}%</option>`).join('')}
+                                ${zoomOptions.map((v) => `<option value="${v}"${v === 200 ? ' selected' : ''}>${v}%</option>`).join('')}
                             </select>
                         </div>
                     </div>
@@ -120,7 +116,6 @@ var $exeDevice = {
         this.addEvents();
     },
 
-
     loadPreviousValues: function () {
         let dataGame = this.idevicePreviousData;
 
@@ -139,8 +134,8 @@ var $exeDevice = {
         const imageResource = data.imageResource;
         const initialZSize = data.initialZSize ?? 100;
         const isDefaultImage = data.isDefaultImage;
-        const pathImage = isDefaultImage == "0" ? imageResource : '';
-        const image = isDefaultImage == "0" ? imageResource : defaultImage;
+        const pathImage = isDefaultImage == '0' ? imageResource : '';
+        const image = isDefaultImage == '0' ? imageResource : defaultImage;
 
         $('#mnfFileInput').val(pathImage);
         $exeDevice.loadImageWithFallback(data);
@@ -158,13 +153,12 @@ var $exeDevice = {
         }
     },
     loadImageWithFallback: function (data) {
-        $('#mnfPreviewImage').off('error')
+        $('#mnfPreviewImage')
+            .off('error')
             .on('error', function () {
-                $(this).off('error')
-                    .attr('src', $exeDevice.defaultImage);
-                data.isDefaultImage = "0"
+                $(this).off('error').attr('src', $exeDevice.defaultImage);
+                data.isDefaultImage = '0';
                 $('#mnfFileInput').val('');
-
             })
             .attr('src', data.image);
     },
@@ -182,10 +176,15 @@ var $exeDevice = {
             const selectedFile = $(this).val().trim();
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(`${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`);
+                $exeDevice.showMessage(
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
+                );
                 return;
             }
-            $('#mnfPreviewImage').attr('src', selectedFile || $exeDevice.defaultImage);
+            $('#mnfPreviewImage').attr(
+                'src',
+                selectedFile || $exeDevice.defaultImage
+            );
         });
         $('#mnfWidthInput')
             .on('input', function () {
@@ -197,8 +196,12 @@ var $exeDevice = {
             })
             .on('change blur', function () {
                 let val = parseInt($(this).val(), 10);
-                if (isNaN(val)) { $(this).val(''); return; }
-                const min = 200, max = 1000;
+                if (isNaN(val)) {
+                    $(this).val('');
+                    return;
+                }
+                const min = 200,
+                    max = 1000;
                 if (val < min) val = min;
                 if (val > max) val = max;
                 $(this).val(val);
@@ -208,7 +211,7 @@ var $exeDevice = {
     validateData: function () {
         const id = $exeDevice.id,
             imageResource = $('#mnfFileInput').val(),
-            isDefaultImage = imageResource ? "0" : "1",
+            isDefaultImage = imageResource ? '0' : '1',
             width = $('#mnfWidthInput').val() || '',
             height = $('#mnfHeightInput').val() || '',
             initialZSize = $('#mnfInitialZoomSelect').val() || 100,
@@ -218,7 +221,8 @@ var $exeDevice = {
             defaultImage = $exeDevice.idevicePath + 'hood.jpg';
 
         let html = '';
-        if (tinyMCE.get('instructions')) html = tinyMCE.get('instructions').getContent();
+        if (tinyMCE.get('instructions'))
+            html = tinyMCE.get('instructions').getContent();
 
         const textTextarea = html;
 
@@ -237,6 +241,5 @@ var $exeDevice = {
             glassSize,
             ideviceId: id,
         };
-    }
-
+    },
 };

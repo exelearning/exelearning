@@ -180,7 +180,53 @@ server {
 
 * **Volumes:** Each Compose file declares named volumes for app data and databases.
 * **Backups:** Snapshot volumes regularly (`mariadb-data`, `postgres-data`, `exelearning-data`) and any external storage used by `FILES_DIR`.
-* **DB tools:** `mysqldump` / `pg_dump` for live exports; for SQLite, copy the DB file when the service is stopped. 
+* **DB tools:** `mysqldump` / `pg_dump` for live exports; for SQLite, copy the DB file when the service is stopped.
+
+---
+
+## Custom templates
+
+eXeLearning supports project templates that users can select via **File → New from Template**. Templates are `.elpx` files organized by language code under `public/templates/<lang>/`.
+
+### Mounting custom templates
+
+To provide custom templates in a Docker deployment, mount a volume to the templates directory:
+
+```yaml
+services:
+  exelearning:
+    volumes:
+      # Mount custom templates for all languages
+      - ./my-templates:/app/public/templates
+
+      # Or mount templates for a specific language
+      - ./my-en-templates:/app/public/templates/en
+      - ./my-es-templates:/app/public/templates/es
+```
+
+### Template structure
+
+Templates are organized by language code:
+
+```
+templates/
+├── en/          # English templates
+│   ├── basic.elpx
+│   └── course.elpx
+├── es/          # Spanish templates
+│   ├── basic.elpx
+│   └── course.elpx
+└── ...
+```
+
+The filename (without `.elpx` extension) is displayed as the template name in the UI. You can use spaces and special characters in filenames (e.g., `My Course Template.elpx`).
+
+### Creating templates
+
+1. Design your project in eXeLearning
+2. Export it as an `.elpx` file (**File → Download as... → eXeLearning content**)
+3. Place it in the appropriate language folder in your templates directory
+4. Templates will automatically appear in the **File → New from Template** menu
 
 ---
 

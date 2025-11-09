@@ -1,3 +1,5 @@
+# config/packages/dev/web_profiler.yaml
+
 web_profiler:
     toolbar: true
     intercept_redirects: false

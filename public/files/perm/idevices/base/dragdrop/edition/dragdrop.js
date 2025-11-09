@@ -42,7 +42,7 @@ var $exeDevice = {
     initCards: function () {
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
         if (!$exeDevice.cardsGame.length)
             $exeDevice.cardsGame.push($exeDevice.getDefaultCard());
@@ -65,23 +65,37 @@ var $exeDevice = {
             msgFullScreen: c_('Full Screen'),
             msgExitFullScreen: c_('Exit Full Screen'),
             msgNoImage: c_('No picture question'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgAudio: c_('Audio'),
             msgNumQuestions: c_('Number of cards'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
             msgEndGameM: c_('You finished the game. Your score is %s.'),
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
@@ -89,30 +103,30 @@ var $exeDevice = {
             msgTypeGame: c_('Drag and drop'),
             msgCheck: c_('Check'),
             msgRestart: c_('Restart'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgCompleteData = _(
-            "You must complete the text and add an image or video",
+            'You must complete the text and add an image or video'
         );
         msgs.msgCompleteDataBack = _(
-            "You must complete the text and add an image or video",
+            'You must complete the text and add an image or video'
         );
         msgs.msgEOneCard = _('Please create at least one activity');
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
     },
 
@@ -379,7 +393,7 @@ var $exeDevice = {
         if (!$exeDevice.validateCard()) return;
         $exeDevice.typeEdit = 0;
         $exeDevice.clipBoard = JSON.parse(
-            JSON.stringify($exeDevice.cardsGame[$exeDevice.active]),
+            JSON.stringify($exeDevice.cardsGame[$exeDevice.active])
         );
         $('#dadEPasteC').show();
     },
@@ -397,7 +411,7 @@ var $exeDevice = {
             $exeDevice.cardsGame.splice(
                 $exeDevice.active,
                 0,
-                $exeDevice.clipBoard,
+                $exeDevice.clipBoard
             );
             $exeDevice.showCard($exeDevice.active);
         } else if ($exeDevice.typeEdit == 1) {
@@ -406,7 +420,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.cardsGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $('#dadENumCards').text($exeDevice.cardsGame.length);
             $('#dadENumberCard').val($exeDevice.active + 1);
@@ -511,7 +525,7 @@ var $exeDevice = {
 
     updateCardsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#dadEPercentajeCards').val()),
+            $exeDevice.removeTags($('#dadEPercentajeCards').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
@@ -525,8 +539,6 @@ var $exeDevice = {
     },
 
     addEventCard: function () {
-
-
         const loadAndPlayImage = (index) => $exeDevice.loadImage(index),
             loadAndPlayAudio = (selector) =>
                 $exeDevice.loadAudio($(selector).val());
@@ -574,14 +586,14 @@ var $exeDevice = {
 
         $('#dadEBgColor, #dadEBgColorBack').on('change', function () {
             const textDiv = $(this).is('#dadEBgColor')
-                ? '#dadETextDiv'
-                : '#dadETextDivBack',
+                    ? '#dadETextDiv'
+                    : '#dadETextDivBack',
                 bc = $exeDevice.hexToRgba($(this).val(), 0.7);
             $(textDiv).css('background-color', bc);
         });
 
         $('#dadEImage').on('click', (e) =>
-            $exeDevice.clickImage(e.pageX, e.pageY),
+            $exeDevice.clickImage(e.pageX, e.pageY)
         );
 
         $('#dadECursor').on('click', function () {
@@ -590,7 +602,7 @@ var $exeDevice = {
         });
 
         $('#dadEImageBack').on('click', (e) =>
-            $exeDevice.clickImageBack(e.pageX, e.pageY),
+            $exeDevice.clickImageBack(e.pageX, e.pageY)
         );
 
         $('#dadECursorBack').on('click', function () {
@@ -698,7 +710,7 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.showCard(0);
         }
@@ -761,7 +773,7 @@ var $exeDevice = {
                 document
                     .getElementsByClassName('button-save-idevice')[0]
                     .click();
-            },
+            }
         );
         return false;
     },
@@ -808,9 +820,10 @@ var $exeDevice = {
             showMinimize = $('#dadEShowMinimize').is(':checked'),
             showSolution = $('#dadEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
-                clear($('#dadETimeShowSolution').val()),
+                clear($('#dadETimeShowSolution').val())
             ),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#dadEPercentajeCards').val())),
             author = $('#dadEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
@@ -889,7 +902,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
@@ -968,8 +981,12 @@ var $exeDevice = {
                 }
             }
         };
-        $('.toggle-input').each(function () { initToggle($(this)); });
-        $(document).on('change', '.toggle-input', function () { initToggle($(this)); });
+        $('.toggle-input').each(function () {
+            initToggle($(this));
+        });
+        $(document).on('change', '.toggle-input', function () {
+            initToggle($(this));
+        });
 
         $('#dadEAddC').on('click', (e) => {
             e.preventDefault();
@@ -1007,7 +1024,7 @@ var $exeDevice = {
                     dadELastC: 'lastCard',
                 };
                 $exeDevice[actions[e.currentTarget.id]]();
-            },
+            }
         );
 
         if (
@@ -1114,7 +1131,9 @@ var $exeDevice = {
             });
 
         $('#dragdropQIdeviceForm').on('click', 'input.DAD-Type', function () {
-            $('#dadETimeDiv').toggleClass('d-none', $(this).val() !== '2').toggleClass('d-flex', $(this).val() === '2');
+            $('#dadETimeDiv')
+                .toggleClass('d-none', $(this).val() !== '2')
+                .toggleClass('d-flex', $(this).val() === '2');
         });
         $('#dadEEvaluation').on('change', function () {
             const marcado = $(this).is(':checked');
@@ -1194,12 +1213,9 @@ var $exeDevice = {
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
             ext = url.split('.').pop().toLowerCase();
 
-        if (
-            (url.indexOf('files') == 0) &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg,  webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg,  webp'
             );
             return false;
         }
@@ -1210,10 +1226,7 @@ var $exeDevice = {
         const validExt = ['mp3', 'ogg', 'waw'],
             ext = url.split('.').pop().toLowerCase();
 
-        if (
-            (url.startsWith('files')) &&
-            !validExt.includes(ext)
-        ) {
+        if (url.startsWith('files') && !validExt.includes(ext)) {
             $exeDevice.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
             return false;
         }
@@ -1227,7 +1240,9 @@ var $exeDevice = {
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.evaluation =
             typeof game.evaluation != 'undefined' ? game.evaluation : false;
         game.evaluationID =
@@ -1245,13 +1260,11 @@ var $exeDevice = {
         $('#dadETimeShowSolution').prop('disabled', !game.showSolution);
         $('#dadETime').val(game.time);
         $(
-            "input.DAD-Drags[name='flctypedrag'][value='" +
-            game.typeDrag +
-            "']",
+            "input.DAD-Drags[name='flctypedrag'][value='" + game.typeDrag + "']"
         ).prop('checked', true);
         $("input.DAD-Type[name='flctype'][value='" + game.type + "']").prop(
             'checked',
-            true,
+            true
         );
         $('#dadETimeDiv').removeClass('d-flex').addClass('d-none');
         $('#dadEEvaluation').prop('checked', game.evaluation);
@@ -1267,7 +1280,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
 
         $exeDevice.updateCardsNumber();
@@ -1336,8 +1349,8 @@ var $exeDevice = {
         if (type) {
             eXe.app.alert(
                 _(
-                    'You can only import data from text or XML files for “connect with arrows” matching games.',
-                ),
+                    'You can only import data from text or XML files for “connect with arrows” matching games.'
+                )
             );
             return;
         }
@@ -1379,8 +1392,8 @@ var $exeDevice = {
             if (type) {
                 eXe.app.alert(
                     _(
-                        'You can only import data from text or XML files for “connect with arrows” matching games.',
-                    ),
+                        'You can only import data from text or XML files for “connect with arrows” matching games.'
+                    )
                 );
                 return;
             }
@@ -1399,7 +1412,7 @@ var $exeDevice = {
                     break;
                 default:
                     return $exeDevice.showMessage(
-                        $exeDevice.msgs.msgESelectFile,
+                        $exeDevice.msgs.msgESelectFile
                     );
             }
         } else {
@@ -1422,8 +1435,8 @@ var $exeDevice = {
         $exeDevice.updateFieldGame(game);
 
         const instructions = unescape(
-            game.instructionsExe || game.instructions,
-        ),
+                game.instructionsExe || game.instructions
+            ),
             tAfter = unescape(game.textAfter || '');
 
         tinyMCE.get('eXeGameInstructions')
@@ -1514,7 +1527,7 @@ var $exeDevice = {
     addCards: function (cards) {
         if (!cards || cards.length == 0) {
             eXe.app.alert(
-                _('Sorry, there are no questions for this type of activity.'),
+                _('Sorry, there are no questions for this type of activity.')
             );
             return;
         }
