@@ -604,4 +604,201 @@ class FileHelper
 
         return $value;
     }
+
+    /**
+     * Returns absolute path to project temp directory. If dir doesn't exist it tries to create it.
+     * This is the project-based alternative to getOdeSessionTmpDir.
+     *
+     * @param string $projectId
+     *
+     * @return string|bool
+     */
+    public function getProjectTmpDir($projectId)
+    {
+        // Validate $projectId
+        if (strlen($projectId) < 8) {
+            return false;
+        }
+
+        $filesDir = $this->getFilesDir();
+        $projectTmpDir = $filesDir.'projects'.DIRECTORY_SEPARATOR.$projectId.DIRECTORY_SEPARATOR.'tmp'.DIRECTORY_SEPARATOR;
+
+        // If dir already exists
+        if (file_exists($projectTmpDir)) {
+            return $projectTmpDir;
+        } else { // Create dir
+            $mode = 0775;
+            $recursive = true;
+            $projectTmpDirCreated = FileUtil::createDir($projectTmpDir, $mode, $recursive);
+
+            if ($projectTmpDirCreated) {
+                return $projectTmpDir;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Returns absolute path to project current directory. If dir doesn't exist it tries to create it.
+     *
+     * @param string $projectId
+     *
+     * @return string|bool
+     */
+    public function getProjectCurrentDir($projectId)
+    {
+        // Validate $projectId
+        if (strlen($projectId) < 8) {
+            return false;
+        }
+
+        $filesDir = $this->getFilesDir();
+        $projectCurrentDir = $filesDir.'projects'.DIRECTORY_SEPARATOR.$projectId.DIRECTORY_SEPARATOR.'current'.DIRECTORY_SEPARATOR;
+
+        // If dir already exists
+        if (file_exists($projectCurrentDir)) {
+            return $projectCurrentDir;
+        } else { // Create dir
+            $mode = 0775;
+            $recursive = true;
+            $projectCurrentDirCreated = FileUtil::createDir($projectCurrentDir, $mode, $recursive);
+
+            if ($projectCurrentDirCreated) {
+                return $projectCurrentDir;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Returns absolute path to project versions directory. If dir doesn't exist it tries to create it.
+     *
+     * @param string $projectId
+     *
+     * @return string|bool
+     */
+    public function getProjectVersionsDir($projectId)
+    {
+        // Validate $projectId
+        if (strlen($projectId) < 8) {
+            return false;
+        }
+
+        $filesDir = $this->getFilesDir();
+        $projectVersionsDir = $filesDir.'projects'.DIRECTORY_SEPARATOR.$projectId.DIRECTORY_SEPARATOR.'versions'.DIRECTORY_SEPARATOR;
+
+        // If dir already exists
+        if (file_exists($projectVersionsDir)) {
+            return $projectVersionsDir;
+        } else { // Create dir
+            $mode = 0775;
+            $recursive = true;
+            $projectVersionsDirCreated = FileUtil::createDir($projectVersionsDir, $mode, $recursive);
+
+            if ($projectVersionsDirCreated) {
+                return $projectVersionsDir;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Returns absolute path to project base directory.
+     *
+     * @param string $projectId
+     *
+     * @return string|bool
+     */
+    public function getProjectDir($projectId)
+    {
+        // Validate $projectId
+        if (strlen($projectId) < 8) {
+            return false;
+        }
+
+        $filesDir = $this->getFilesDir();
+        return $filesDir.'projects'.DIRECTORY_SEPARATOR.$projectId.DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * Returns absolute path to project user temp directory. If dir doesn't exist it tries to create it.
+     *
+     * @param string $projectId
+     * @param User   $user
+     *
+     * @return string|bool
+     */
+    public function getProjectUserTmpDir($projectId, $user)
+    {
+        // Validate $projectId
+        if (strlen($projectId) < 8) {
+            return false;
+        }
+
+        $projectTmpDir = $this->getProjectTmpDir($projectId);
+
+        if (!$projectTmpDir) {
+            return false;
+        }
+
+        $projectUserTmpDir = $projectTmpDir.$user->getUserId().DIRECTORY_SEPARATOR;
+
+        // If dir already exists
+        if (file_exists($projectUserTmpDir)) {
+            return $projectUserTmpDir;
+        } else { // Create dir
+            $mode = 0775;
+            $recursive = true;
+            $projectUserTmpDirCreated = FileUtil::createDir($projectUserTmpDir, $mode, $recursive);
+
+            if ($projectUserTmpDirCreated) {
+                return $projectUserTmpDir;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Returns absolute path to project user export directory. If dir doesn't exist it tries to create it.
+     *
+     * @param string $projectId
+     * @param User   $user
+     * @param string $tempPath
+     *
+     * @return string|bool
+     */
+    public function getProjectUserTmpExportDir($projectId, $user, $tempPath = '')
+    {
+        // Validate $projectId
+        if (strlen($projectId) < 8) {
+            return false;
+        }
+
+        $projectUserTmpDir = $this->getProjectUserTmpDir($projectId, $user);
+
+        if (!$projectUserTmpDir) {
+            return false;
+        }
+
+        $projectUserTmpExportDir = $projectUserTmpDir.Constants::EXPORT_TMP_DIR.DIRECTORY_SEPARATOR.$tempPath;
+
+        // If dir already exists
+        if (file_exists($projectUserTmpExportDir)) {
+            return $projectUserTmpExportDir;
+        } else { // Create dir
+            $mode = 0775;
+            $recursive = true;
+            $projectUserTmpExportDirCreated = FileUtil::createDir($projectUserTmpExportDir, $mode, $recursive);
+
+            if ($projectUserTmpExportDirCreated) {
+                return $projectUserTmpExportDir;
+            } else {
+                return false;
+            }
+        }
+    }
 }

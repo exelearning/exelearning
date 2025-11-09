@@ -233,4 +233,195 @@ class OdeFilesRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    // =========================================================================
+    // OPTIMIZED QUERIES - Leverage performance indexes created in migration
+    // =========================================================================
+
+    /**
+     * Find all files by project_id.
+     * Uses index: idx_ode_files_project
+     *
+     * @param string $projectId
+     * @param string|null $orderBy Field to order by (updatedAt, createdAt)
+     * @param string $order ASC or DESC
+     * @return OdeFiles[]
+     */
+    public function findByProjectId(string $projectId, ?string $orderBy = 'updatedAt', string $order = 'DESC'): array
+    {
+        $qb = $this->createQueryBuilder('of')
+            ->where('of.projectId = :projectId')
+            ->setParameter('projectId', $projectId);
+
+        if ($orderBy) {
+            $qb->orderBy("of.{$orderBy}", $order);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Get the latest version of a project.
+     * Uses index: idx_ode_files_ode_updated (ode_id, updated_at)
+     *
+     * @param string $projectId
+     * @param bool|null $onlyManualSave true=only manual saves, false=only autosaves, null=all
+     * @return OdeFiles|null
+     */
+    public function getLatestProjectVersion(string $projectId, ?bool $onlyManualSave = null): ?OdeFiles
+    {
+        $qb = $this->createQueryBuilder('of')
+            ->where('of.odeId = :projectId')
+            ->setParameter('projectId', $projectId)
+            ->orderBy('of.updatedAt', 'DESC')
+            ->setMaxResults(1);
+
+        if ($onlyManualSave !== null) {
+            $qb->andWhere('of.isManualSave = :isManualSave')
+                ->setParameter('isManualSave', $onlyManualSave);
+        }
+
+        return $qb->getQuery()->getOneOrNullResult();
+    }
+
+    /**
+     * Get recent files by user with efficient ordering.
+     * Uses index: idx_ode_files_user_updated (user, updated_at)
+     *
+     * @param string $userName
+     * @param int $limit
+     * @param bool|null $onlyManualSave
+     * @return OdeFiles[]
+     */
+    public function getRecentFilesByUser(string $userName, int $limit = 10, ?bool $onlyManualSave = true): array
+    {
+        $qb = $this->createQueryBuilder('of')
+            ->where('of.user = :userName')
+            ->setParameter('userName', $userName)
+            ->orderBy('of.updatedAt', 'DESC')
+            ->setMaxResults($limit);
+
+        if ($onlyManualSave !== null) {
+            $qb->andWhere('of.isManualSave = :isManualSave')
+                ->setParameter('isManualSave', $onlyManualSave);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Get files by ode_id, user, and manual save status.
+     * Uses composite index: idx_ode_files_user_manual (ode_id, user, is_manual_save)
+     *
+     * @param string $odeId
+     * @param string $userName
+     * @param bool $isManualSave
+     * @return OdeFiles[]
+     */
+    public function findByOdeUserAndType(string $odeId, string $userName, bool $isManualSave): array
+    {
+        return $this->createQueryBuilder('of')
+            ->where('of.odeId = :odeId')
+            ->andWhere('of.user = :userName')
+            ->andWhere('of.isManualSave = :isManualSave')
+            ->setParameter('odeId', $odeId)
+            ->setParameter('userName', $userName)
+            ->setParameter('isManualSave', $isManualSave)
+            ->orderBy('of.updatedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Count total files by project.
+     * Uses index: idx_ode_files_project
+     *
+     * @param string $projectId
+     * @param bool|null $onlyManualSave
+     * @return int
+     */
+    public function countProjectFiles(string $projectId, ?bool $onlyManualSave = null): int
+    {
+        $qb = $this->createQueryBuilder('of')
+            ->select('COUNT(of.id)')
+            ->where('of.projectId = :projectId')
+            ->setParameter('projectId', $projectId);
+
+        if ($onlyManualSave !== null) {
+            $qb->andWhere('of.isManualSave = :isManualSave')
+                ->setParameter('isManualSave', $onlyManualSave);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Get distinct project IDs for a user ordered by most recent activity.
+     * Uses index: idx_ode_files_user_updated (user, updated_at)
+     *
+     * @param string $userName
+     * @param int|null $limit
+     * @return array Array of project IDs
+     */
+    public function getUserProjectIds(string $userName, ?int $limit = null): array
+    {
+        // Get distinct ode_ids with their latest updated_at
+        $qb = $this->createQueryBuilder('of')
+            ->select('of.odeId, MAX(of.updatedAt) as lastUpdate')
+            ->where('of.user = :userName')
+            ->setParameter('userName', $userName)
+            ->groupBy('of.odeId')
+            ->orderBy('lastUpdate', 'DESC');
+
+        if ($limit) {
+            $qb->setMaxResults($limit);
+        }
+
+        $results = $qb->getQuery()->getResult();
+
+        return array_column($results, 'odeId');
+    }
+
+    /**
+     * Get old autosave versions for cleanup.
+     * Optimized version using indexes.
+     *
+     * @param string $odeId
+     * @param int $keepVersions Number of recent versions to keep
+     * @return OdeFiles[]
+     */
+    public function getOldAutosavesForCleanup(string $odeId, int $keepVersions = 5): array
+    {
+        return $this->createQueryBuilder('of')
+            ->where('of.odeId = :odeId')
+            ->andWhere('of.isManualSave = :isManualSave')
+            ->setParameter('odeId', $odeId)
+            ->setParameter('isManualSave', false)
+            ->orderBy('of.updatedAt', 'DESC')
+            ->setFirstResult($keepVersions)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Get files updated within a date range for a user.
+     * Uses index: idx_ode_files_user_updated (user, updated_at)
+     *
+     * @param string $userName
+     * @param \DateTime $startDate
+     * @param \DateTime $endDate
+     * @return OdeFiles[]
+     */
+    public function findByUserAndDateRange(string $userName, \DateTime $startDate, \DateTime $endDate): array
+    {
+        return $this->createQueryBuilder('of')
+            ->where('of.user = :userName')
+            ->andWhere('of.updatedAt BETWEEN :startDate AND :endDate')
+            ->setParameter('userName', $userName)
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->orderBy('of.updatedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }

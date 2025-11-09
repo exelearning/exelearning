@@ -147,4 +147,159 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
         return $currentOdeUsersDeleted;
     }
+
+    // =========================================================================
+    // OPTIMIZED QUERIES - Leverage performance indexes created in migration
+    // =========================================================================
+
+    /**
+     * Find sessions by odeSessionId and user.
+     * Uses composite index: idx_current_ode_session_user (ode_session_id, user)
+     *
+     * @param string $odeSessionId
+     * @param string $user
+     * @return CurrentOdeUsers[]
+     */
+    public function findBySessionAndUser(string $odeSessionId, string $user): array
+    {
+        return $this->createQueryBuilder('cou')
+            ->where('cou.odeSessionId = :odeSessionId')
+            ->andWhere('cou.user = :user')
+            ->setParameter('odeSessionId', $odeSessionId)
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find inactive sessions (no activity in last N minutes).
+     * Uses index: idx_current_ode_last_action (last_action)
+     *
+     * @param int $inactiveMinutes Minutes of inactivity
+     * @return CurrentOdeUsers[]
+     */
+    public function findInactiveSessions(int $inactiveMinutes = 60): array
+    {
+        $cutoffTime = new \DateTime();
+        $cutoffTime->modify("-{$inactiveMinutes} minutes");
+
+        return $this->createQueryBuilder('cou')
+            ->where('cou.lastAction < :cutoffTime')
+            ->setParameter('cutoffTime', $cutoffTime)
+            ->orderBy('cou.lastAction', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find all sessions for a specific project/ode.
+     * Uses index: idx_current_ode_id (ode_id)
+     *
+     * @param string $odeId
+     * @return CurrentOdeUsers[]
+     */
+    public function findByOdeId(string $odeId): array
+    {
+        return $this->createQueryBuilder('cou')
+            ->where('cou.odeId = :odeId')
+            ->setParameter('odeId', $odeId)
+            ->orderBy('cou.lastAction', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find all sessions for a project.
+     * Uses index: idx_current_ode_project (project_id)
+     *
+     * @param string $projectId
+     * @return CurrentOdeUsers[]
+     */
+    public function findByProjectId(string $projectId): array
+    {
+        return $this->createQueryBuilder('cou')
+            ->where('cou.projectId = :projectId')
+            ->setParameter('projectId', $projectId)
+            ->orderBy('cou.lastAction', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Count active sessions for a project.
+     * Uses index: idx_current_ode_project (project_id)
+     *
+     * @param string $projectId
+     * @param int $activeWithinMinutes Consider active if action within N minutes
+     * @return int
+     */
+    public function countActiveProjectSessions(string $projectId, int $activeWithinMinutes = 30): int
+    {
+        $cutoffTime = new \DateTime();
+        $cutoffTime->modify("-{$activeWithinMinutes} minutes");
+
+        return (int) $this->createQueryBuilder('cou')
+            ->select('COUNT(cou.id)')
+            ->where('cou.projectId = :projectId')
+            ->andWhere('cou.lastAction >= :cutoffTime')
+            ->setParameter('projectId', $projectId)
+            ->setParameter('cutoffTime', $cutoffTime)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Get most recently active sessions.
+     * Uses index: idx_current_ode_last_action (last_action)
+     *
+     * @param int $limit
+     * @return CurrentOdeUsers[]
+     */
+    public function getRecentSessions(int $limit = 10): array
+    {
+        return $this->createQueryBuilder('cou')
+            ->orderBy('cou.lastAction', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find abandoned sessions for cleanup (old and inactive).
+     * Uses index: idx_current_ode_last_action (last_action)
+     *
+     * @param int $hoursInactive Hours without activity to consider abandoned
+     * @return CurrentOdeUsers[]
+     */
+    public function findAbandonedSessions(int $hoursInactive = 24): array
+    {
+        $cutoffTime = new \DateTime();
+        $cutoffTime->modify("-{$hoursInactive} hours");
+
+        return $this->createQueryBuilder('cou')
+            ->where('cou.lastAction < :cutoffTime')
+            ->setParameter('cutoffTime', $cutoffTime)
+            ->orderBy('cou.lastAction', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Get distinct user emails for a project.
+     * Uses index: idx_current_ode_project (project_id)
+     *
+     * @param string $projectId
+     * @return array Array of user emails
+     */
+    public function getProjectActiveUsers(string $projectId): array
+    {
+        $results = $this->createQueryBuilder('cou')
+            ->select('DISTINCT cou.user')
+            ->where('cou.projectId = :projectId')
+            ->setParameter('projectId', $projectId)
+            ->getQuery()
+            ->getResult();
+
+        return array_column($results, 'user');
+    }
 }

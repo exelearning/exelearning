@@ -4,8 +4,11 @@ namespace App\Controller\net\exelearning\Controller\Workarea;
 
 use App\Constants;
 use App\Entity\net\exelearning\Entity\User;
+use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
+use App\Entity\Project\Project;
 use App\Helper\net\exelearning\Helper\FileHelper;
 use App\Helper\net\exelearning\Helper\UserHelper;
+use App\Repository\Project\ProjectRepository;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersSyncChangesServiceInterface;
 use App\Service\net\exelearning\Service\FilesDir\FilesDirServiceInterface;
@@ -32,6 +35,7 @@ class WorkareaController extends DefaultWorkareaController
     private $currentOdeUsersService;
     private $logger;
     private $currentOdeUsersSyncChangesService;
+    private ProjectRepository $projectRepo;
     private readonly bool $countUserAutosaveSpace;
     private readonly int $userRecentOdeFilesAmount;
 
@@ -49,6 +53,7 @@ class WorkareaController extends DefaultWorkareaController
         Translator $translator,
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
         CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService,
+        ProjectRepository $projectRepo,
         HubInterface $hubInterface,
         bool $countUserAutosaveSpace,
         int $userRecentOdeFilesAmount,
@@ -62,6 +67,7 @@ class WorkareaController extends DefaultWorkareaController
         $this->translator = $translator;
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->currentOdeUsersSyncChangesService = $currentOdeUsersSyncChangesService;
+        $this->projectRepo = $projectRepo;
         $this->countUserAutosaveSpace = $countUserAutosaveSpace;
         $this->userRecentOdeFilesAmount = $userRecentOdeFilesAmount;
     }
@@ -69,11 +75,44 @@ class WorkareaController extends DefaultWorkareaController
     #[Route('/workarea', name: 'workarea')]
     public function workareaAction(Request $request)
     {
-        // Get odeSessionId
+        // Get projectId (primary parameter)
+        $requestedProjectId = $request->query->get('projectId') ?? $request->query->get('project');
+
+        // Legacy support: Get odeSessionId and redirect to project URL if needed
         $requestedOdeSessionId = $request->query->get('odeSessionId');
         $odeSessionId = $requestedOdeSessionId ?? $request->get('shareCode');
 
-        $requestedProjectId = $request->query->get('projectId') ?? $request->query->get('project');
+        // If odeSessionId is provided but no projectId, try to find the project
+        if ($odeSessionId && !$requestedProjectId) {
+            $currentOdeUsersRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
+            $session = $currentOdeUsersRepo->findOneBy(['odeSessionId' => $odeSessionId]);
+
+            if ($session) {
+                // Redirect to project-based URL
+                return $this->redirectToRoute('workarea', [
+                    'projectId' => $session->getOdeId()
+                ], 301);
+            }
+        }
+
+        // Project access control
+        $project = null;
+        if ($requestedProjectId) {
+            $project = $this->projectRepo->find($requestedProjectId);
+
+            if (!$project) {
+                throw $this->createNotFoundException('Project not found');
+            }
+
+            // Check access using ProjectVoter
+            if (!$this->isGranted('PROJECT_VIEW', $project)) {
+                throw $this->createAccessDeniedException('You do not have access to this project');
+            }
+
+            // Update last accessed timestamp
+            $project->updateLastAccessedAt();
+            $this->entityManager->flush();
+        }
 
         // Get elpFileName
         $odePlatformNew = $request->get('newOde');

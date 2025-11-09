@@ -83,6 +83,11 @@ parameters:
     app.user_recent_ode_files_amount: '%env(int:USER_RECENT_ODE_FILES_AMOUNT)%'
     app.collaborative_block_level: '%env(string:COLLABORATIVE_BLOCK_LEVEL)%'
 
+    # Storage cleanup configuration
+    app.session_max_inactive_hours: '%env(int:SESSION_MAX_INACTIVE_HOURS)%'
+    app.autosave_versions_to_keep: '%env(int:AUTOSAVE_VERSIONS_TO_KEEP)%'
+    app.manual_save_versions_to_keep: '%env(int:MANUAL_SAVE_VERSIONS_TO_KEEP)%'
+
 services:
     Symfony\Component\DependencyInjection\ContainerInterface: '@service_container'
     # default configuration for services in *this* file
@@ -221,6 +226,13 @@ services:
         arguments:
             $countUserAutosaveSpace: '%app.count_user_autosave_space_ode_files%'
             $userRecentOdeFilesAmount: '%app.user_recent_ode_files_amount%'
+
+    # Storage services configuration
+    App\Service\Storage\ProactiveCleanupService:
+        arguments:
+            $sessionMaxInactiveHours: '%app.session_max_inactive_hours%'
+            $autosaveVersionsToKeep: '%app.autosave_versions_to_keep%'
+            $manualSaveVersionsToKeep: '%app.manual_save_versions_to_keep%'
 
     # Register custom Doctrine repositories as services
     App\Entity\Project\ProjectPropertyRepository:
