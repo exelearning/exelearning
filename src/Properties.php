@@ -297,6 +297,13 @@ class Properties
             'category' => self::TRANS_PREFIX.'General',
             'heritable' => false,
         ],
+        'hidePageTitle' => [
+            'title' => self::TRANS_PREFIX.'Hide page title',
+            'type' => 'checkbox',
+            'category' => self::TRANS_PREFIX.'General',
+            'value' => 'false',
+            'heritable' => false,
+        ],
         'titleHtml' => [
             'title' => self::TRANS_PREFIX.'Title HTML',
             'type' => 'text',
@@ -324,7 +331,7 @@ class Properties
             'heritable' => true,
         ],
         'highlight' => [
-            'title' => self::TRANS_PREFIX.'Highlight page',
+            'title' => self::TRANS_PREFIX.'Highlight this page in the website navigation menu',
             'value' => 'false',
             'type' => 'checkbox',
             'category' => self::TRANS_PREFIX.'General',
@@ -421,6 +428,14 @@ class Properties
         'pp_title' => [
             'title' => self::TRANS_PREFIX.'Title',
             'help' => self::TRANS_PREFIX.'The name given to the resource.',
+            'alwaysVisible' => true,
+            'type' => 'text',
+            'category' => 'properties',
+            'groups' => ['properties_package'],
+        ],
+        'pp_subtitle' => [
+            'title' => self::TRANS_PREFIX.'Subtitle',
+            'help' => self::TRANS_PREFIX.'Adds additional information to the main title.',
             'alwaysVisible' => true,
             'type' => 'text',
             'category' => 'properties',

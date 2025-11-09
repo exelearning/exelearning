@@ -611,7 +611,7 @@ export default class NavbarFile {
             eXeLearning.app.modals.confirm.show({
                 title: _('Import (.elpx...)'),
                 body: _(
-                    'Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.'
+                    'Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.'
                 ),
                 confirmButtonText: _('Continue'),
                 cancelButtonText: _('Cancel'),

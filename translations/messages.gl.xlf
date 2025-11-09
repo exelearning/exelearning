@@ -1225,10 +1225,6 @@
         <source>Lowercase Greek letter pi</source>
         <target>Letra grega pi minúscula</target>
       </trans-unit>
-      <trans-unit id="gOAT7NB" resname="\\text{Display}">
-        <source>\\text{Display}</source>
-        <target>\\text{Display}</target>
-      </trans-unit>
       <trans-unit id="npAv28I" resname="Display mode">
         <source>Display mode</source>
         <target>Modo display</target>
@@ -1252,10 +1248,6 @@
       <trans-unit id="cnzcOY5" resname="Text">
         <source>Text</source>
         <target>Texto</target>
-      </trans-unit>
-      <trans-unit id="hB_.jxS" resname="\\text{text}">
-        <source>\\text{text}</source>
-        <target>\\text{text}</target>
       </trans-unit>
       <trans-unit id="TEJoYtI" resname="Delimiters">
         <source>Delimiters</source>
@@ -1813,25 +1805,13 @@
         <source>Arrow with text below</source>
         <target>Frecha con texto debaixo</target>
       </trans-unit>
-      <trans-unit id="5XjCsBj" resname="\\underset{\\text{text}}{\\xrightarrow{}}">
-        <source>\\underset{\\text{text}}{\\xrightarrow{}}</source>
-        <target>\\underset{\\text{text}}{\\xrightarrow{}}</target>
-      </trans-unit>
       <trans-unit id="rtCVSEI" resname="Arrow with text above">
         <source>Arrow with text above</source>
         <target>Frecha con texto arriba</target>
       </trans-unit>
-      <trans-unit id="ddEOSq2" resname="\\xrightarrow{\\text{text}}">
-        <source>\\xrightarrow{\\text{text}}</source>
-        <target>\\xrightarrow{\\text{text}}</target>
-      </trans-unit>
       <trans-unit id="2xsg9dy" resname="Arrow with text above and below">
         <source>Arrow with text above and below</source>
         <target>Frecha con texto arriba e debaixo</target>
-      </trans-unit>
-      <trans-unit id="Cv1DNLs" resname="\\xrightarrow[\\text{below}]{\\text{above}}">
-        <source>\\xrightarrow[\\text{below}]{\\text{above}}</source>
-        <target>\\xrightarrow[\\text{below}]{\\text{above}}</target>
       </trans-unit>
       <trans-unit id="fkj1H3d" resname="Right curve arrow">
         <source>Right curve arrow</source>
@@ -2053,73 +2033,37 @@
         <source>Tiny text</source>
         <target>Texto moi pequeno</target>
       </trans-unit>
-      <trans-unit id="VtzckdX" resname="\\tiny{Text}">
-        <source>\\tiny{Text}</source>
-        <target>\\tiny{Text}</target>
-      </trans-unit>
       <trans-unit id="u4Mz8gs" resname="Script size text">
         <source>Script size text</source>
         <target>Tamaño do texto do script</target>
-      </trans-unit>
-      <trans-unit id="xb1J0Me" resname="\\scriptsize{Text}">
-        <source>\\scriptsize{Text}</source>
-        <target>\\scriptsize{Text}</target>
       </trans-unit>
       <trans-unit id="KPMHiIf" resname="Small text">
         <source>Small text</source>
         <target>Texto pequeno</target>
       </trans-unit>
-      <trans-unit id="EemY5ul" resname="\\small{Text}">
-        <source>\\small{Text}</source>
-        <target>\\small{Text}</target>
-      </trans-unit>
       <trans-unit id="6WOADdb" resname="Normal size text">
         <source>Normal size text</source>
         <target>Texto normal</target>
-      </trans-unit>
-      <trans-unit id="l9LlduX" resname="\\normalsize{Text}">
-        <source>\\normalsize{Text}</source>
-        <target>\\normalsize{Text}</target>
       </trans-unit>
       <trans-unit id="A4PW2eq" resname="Large text">
         <source>Large text</source>
         <target>Texto grande</target>
       </trans-unit>
-      <trans-unit id="uwXAnP1" resname="\\large{Text}">
-        <source>\\large{Text}</source>
-        <target>\\large{Text}</target>
-      </trans-unit>
       <trans-unit id="B3vnaJp" resname="Larger text">
         <source>Larger text</source>
         <target>Texto máis grande</target>
-      </trans-unit>
-      <trans-unit id="CzZRl0W" resname="\\Large{Text}">
-        <source>\\Large{Text}</source>
-        <target>\\Large{Text}</target>
       </trans-unit>
       <trans-unit id="f5RgnTP" resname="Very large text">
         <source>Very large text</source>
         <target>Texto moi grande</target>
       </trans-unit>
-      <trans-unit id="83uOJQ2" resname="\\LARGE{Text}">
-        <source>\\LARGE{Text}</source>
-        <target>\\LARGE{Text}</target>
-      </trans-unit>
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
         <target>Texto moi grande</target>
       </trans-unit>
-      <trans-unit id="90C0T3C" resname="\\huge{Text}">
-        <source>\\huge{Text}</source>
-        <target>\\huge{Text}</target>
-      </trans-unit>
       <trans-unit id="TRj6FQx" resname="Huger text">
         <source>Huger text</source>
         <target>Texto máis grande</target>
-      </trans-unit>
-      <trans-unit id="tBdFWTt" resname="\\Huge{Text}">
-        <source>\\Huge{Text}</source>
-        <target>\\Huge{Text}</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
@@ -2128,10 +2072,6 @@
       <trans-unit id="_jCqQRd" resname="Math bold">
         <source>Math bold</source>
         <target>Grosa matemática</target>
-      </trans-unit>
-      <trans-unit id="Zp97vqw" resname="\\mathbf{\\text{bold m}}">
-        <source>\\mathbf{\\text{bold m}}</source>
-        <target>\\mathbf{\\text{bold m}}</target>
       </trans-unit>
       <trans-unit id="D3SztgJ" resname="Calligraphic">
         <source>Calligraphic</source>
@@ -2145,41 +2085,21 @@
         <source>Math italic</source>
         <target>Cursiva matemática</target>
       </trans-unit>
-      <trans-unit id="ARjgnqD" resname="\\mathit{italic}">
-        <source>\\mathit{italic}</source>
-        <target>\\mathit{italic}</target>
-      </trans-unit>
       <trans-unit id="fXrbOjv" resname="Upright (math roman)">
         <source>Upright (math roman)</source>
         <target>Recto (math roman)</target>
-      </trans-unit>
-      <trans-unit id="NVWvY_o" resname="\\mathrm{upright}">
-        <source>\\mathrm{upright}</source>
-        <target>\\mathrm{upright}</target>
       </trans-unit>
       <trans-unit id="O_wl2LD" resname="Typographic bold">
         <source>Typographic bold</source>
         <target>Grosa tipográfica</target>
       </trans-unit>
-      <trans-unit id="6.07ZqG" resname="\\textbf{bold t}">
-        <source>\\textbf{bold t}</source>
-        <target>\\textbf{bold t}</target>
-      </trans-unit>
       <trans-unit id="UZGwG.U" resname="Italic">
         <source>Italic</source>
         <target>Cursiva</target>
       </trans-unit>
-      <trans-unit id="KbnSS0Y" resname="\\textit{italic}">
-        <source>\\textit{italic}</source>
-        <target>\\textit{italic}</target>
-      </trans-unit>
       <trans-unit id="tPzgyNe" resname="Monospace">
         <source>Monospace</source>
         <target>Monoespaciado</target>
-      </trans-unit>
-      <trans-unit id="euV4Ueq" resname="\\texttt{monospace}">
-        <source>\\texttt{monospace}</source>
-        <target>\\texttt{monospace}</target>
       </trans-unit>
       <trans-unit id="anN2Yt5" resname="Plain text">
         <source>Plain text</source>
@@ -2349,14 +2269,6 @@
         <source>Epsilon variant</source>
         <target>Épsilon variante </target>
       </trans-unit>
-      <trans-unit id="EotzUE." resname="\\underbrace{a+b+c}_{&#9;ext{group}}">
-        <source>\\underbrace{a+b+c}_{	ext{group}}</source>
-        <target>\\underbrace{a+b+c}_{	ext{group}}</target>
-      </trans-unit>
-      <trans-unit id="4k9xpph" resname="\\overbrace{a+b+c}^{&#9;ext{group}}">
-        <source>\\overbrace{a+b+c}^{	ext{group}}</source>
-        <target>\\overbrace{a+b+c}^{	ext{group}}</target>
-      </trans-unit>
       <trans-unit id="Olp1Qyu" resname="pH and acid-base balance">
         <source>pH and acid-base balance</source>
         <target>pH e equilibrio ácido-base</target>
@@ -2445,10 +2357,6 @@
         <source>Quadratic mean</source>
         <target>Media cuadrática</target>
       </trans-unit>
-      <trans-unit id="wypXydW" resname="\\overline{x}_{\\text{quad}} = \\sqrt{\\frac{\\sum x_i^2}{n}}">
-        <source>\\overline{x}_{\\text{quad}} = \\sqrt{\\frac{\\sum x_i^2}{n}}</source>
-        <target>\\overline{x}_{\\text{quad}} = \\sqrt{\\frac{\\sum x_i^2}{n}}</target>
-      </trans-unit>
       <trans-unit id="GS4nryp" resname="Median">
         <source>Median</source>
         <target>Mediana</target>
@@ -2509,17 +2417,9 @@
         <source>Population kurtosis</source>
         <target>Curtose da poboación</target>
       </trans-unit>
-      <trans-unit id="0BCa34H" resname="\\text{Kurtosis}_{\\text{pop}} = \\frac{\\sum (x_i - \\overline{x})^4}{n\\sigma^4}">
-        <source>\\text{Kurtosis}_{\\text{pop}} = \\frac{\\sum (x_i - \\overline{x})^4}{n\\sigma^4}</source>
-        <target>\\text{Kurtosis}_{\\text{pop}} = \\frac{\\sum (x_i - \\overline{x})^4}{n\\sigma^4}</target>
-      </trans-unit>
       <trans-unit id="KVdJyzv" resname="Sample kurtosis">
         <source>Sample kurtosis</source>
         <target>Curtose da mostra</target>
-      </trans-unit>
-      <trans-unit id="6R4_Jnn" resname="\\text{Kurtosis}_{\\text{samp}} = \\frac{\\sum (x_i - \\overline{x})^4}{(n - 1)s^4}">
-        <source>\\text{Kurtosis}_{\\text{samp}} = \\frac{\\sum (x_i - \\overline{x})^4}{(n - 1)s^4}</source>
-        <target>\\text{Kurtosis}_{\\text{samp}} = \\frac{\\sum (x_i - \\overline{x})^4}{(n - 1)s^4}</target>
       </trans-unit>
       <trans-unit id="M2qx70T" resname="Frequencies">
         <source>Frequencies</source>
@@ -3772,6 +3672,18 @@
       <trans-unit id="fcdWVrX" resname="New">
         <source>New</source>
         <target>Novo</target>
+      </trans-unit>
+      <trans-unit id="Csyf_Vj" resname="New from Template...">
+        <source>New from Template...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="GbRjAbR" resname="Select a template to create a new project:">
+        <source>Select a template to create a new project:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="DchL58D" resname="No templates available for your language.">
+        <source>No templates available for your language.</source>
+        <target></target>
       </trans-unit>
       <trans-unit id="_SqArFZ" resname="Open">
         <source>Open</source>
@@ -12321,8 +12233,8 @@
         <source>Import (.elpx…)</source>
         <target>~Importar (.elpx…)</target>
       </trans-unit>
-      <trans-unit id="TFDXxIf" resname="Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.">
-        <source>Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.</source>
+      <trans-unit id="I0XyrRF" resname="Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.">
+        <source>Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.</source>
         <target>~Importa ficheiros .elpx, .elp ou .zip editables. O contido importado engadirase despois da última páxina do proxecto actual.</target>
       </trans-unit>
       <trans-unit id="IOajJx_" resname="Unexpected error importing file.">
@@ -12360,10 +12272,6 @@
       <trans-unit id="3IL1weY" resname="Select the correct options and click on the 'Reply' button.">
         <source>Select the correct options and click on the 'Reply' button.</source>
         <target></target>
-      </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target><![CDATA[__You must review %s&percnt; of the contents of the activity before completing the questionnaire.]]></target>
       </trans-unit>
       <trans-unit id="GySH111" resname="Show when the mouse is over the icon or active area">
         <source>Show when the mouse is over the icon or active area</source>
@@ -12960,6 +12868,126 @@
       <trans-unit id="TZosZdP" resname="Line highlight">
         <source>Line highlight</source>
         <target></target>
+      </trans-unit>
+      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+        <target><![CDATA[__You must review %s&percnt; of the contents of the activity before completing the questionnaire.]]></target>
+      </trans-unit>
+      <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
+        <source>Error while uploading the file.</source>
+        <target>~Erro ao subir o ficheiro.</target>
+      </trans-unit>
+      <trans-unit id="ZVCy6PA" resname="Completed successfully">
+        <source>Completed successfully</source>
+        <target>~Completado con éxito</target>
+      </trans-unit>
+      <trans-unit id="CEZIpnQ" resname="An unexpected error occurred while processing the file.">
+        <source>An unexpected error occurred while processing the file.</source>
+        <target>~Produciuse un erro inesperado ao procesar o ficheiro.</target>
+      </trans-unit>
+      <trans-unit id="vGlqvyV" resname="Unexpected error during upload">
+        <source>Unexpected error during upload</source>
+        <target>~Erro inesperado durante a subida</target>
+      </trans-unit>
+      <trans-unit id="DlutuO4" resname="New from Template">
+        <source>New from Template</source>
+        <target>~Novo desde plantilla</target>
+      </trans-unit>
+      <trans-unit id="M_Llf6E" resname="Failed to load template. Please try again.">
+        <source>Failed to load template. Please try again.</source>
+        <target>~Non se puido cargar a plantilla. Por favor, tente de novo.</target>
+      </trans-unit>
+      <trans-unit id="xCsb28x" resname="Processing file">
+        <source>Processing file</source>
+        <target>~Procesando ficheiro</target>
+      </trans-unit>
+      <trans-unit id="ywaQ_Vp" resname="Preparing upload...">
+        <source>Preparing upload...</source>
+        <target>~Preparando subida...</target>
+      </trans-unit>
+      <trans-unit id="AVv4iei" resname="This may take a few moments for large files...">
+        <source>This may take a few moments for large files...</source>
+        <target>~Isto pode tardar algúns momentos para ficheiros grandes...</target>
+      </trans-unit>
+      <trans-unit id="oPy4NMk" resname="Uploading">
+        <source>Uploading</source>
+        <target>~Subindo</target>
+      </trans-unit>
+      <trans-unit id="uSZfo5R" resname="Uploading file...">
+        <source>Uploading file...</source>
+        <target>~Subindo ficheiro...</target>
+      </trans-unit>
+      <trans-unit id="Pjnplq6" resname="Extracting files...">
+        <source>Extracting files...</source>
+        <target>~Extraendo ficheiros...</target>
+      </trans-unit>
+      <trans-unit id="UU1fb0X" resname="Extracting ZIP file contents. This may take several minutes for large files.">
+        <source>Extracting ZIP file contents. This may take several minutes for large files.</source>
+        <target>~Extraendo contido do ficheiro ZIP. Isto pode tardar varios minutos para ficheiros grandes.</target>
+      </trans-unit>
+      <trans-unit id="qmGls_W" resname="Processing content...">
+        <source>Processing content...</source>
+        <target>~Procesando contido...</target>
+      </trans-unit>
+      <trans-unit id="a0ZvaE4" resname="Reading and validating file structure. Almost done!">
+        <source>Reading and validating file structure. Almost done!</source>
+        <target>~Lendo e validando a estrutura do ficheiro. Case rematado!</target>
+      </trans-unit>
+      <trans-unit id="msb5FOD" resname="Finalizing...">
+        <source>Finalizing...</source>
+        <target>~Finalizando...</target>
+      </trans-unit>
+      <trans-unit id="z9fMpq3" resname="Completing the process...">
+        <source>Completing the process...</source>
+        <target>~Completando o proceso...</target>
+      </trans-unit>
+      <trans-unit id="641t3eO" resname="Processing...">
+        <source>Processing...</source>
+        <target>~Procesando...</target>
+      </trans-unit>
+      <trans-unit id="WrPqN4D" resname="Please wait...">
+        <source>Please wait...</source>
+        <target>~Agarde, por favor...</target>
+      </trans-unit>
+      <trans-unit id="4.iC7Dw" resname="Error processing file">
+        <source>Error processing file</source>
+        <target>~Erro ao procesar o ficheiro</target>
+      </trans-unit>
+      <trans-unit id="SDFoFKb" resname="Quick edit">
+        <source>Quick edit</source>
+        <target>~Edición rápida</target>
+      </trans-unit>
+      <trans-unit id="VLYpTCb" resname="Another user is editing an iDevice on this block.">
+        <source>Another user is editing an iDevice on this block.</source>
+        <target>~Outro usuario está editando un iDevice neste bloque.</target>
+      </trans-unit>
+      <trans-unit id="qSRqFDl" resname="Missing file name or path">
+        <source>Missing file name or path</source>
+        <target>~Falta o nome ou o camiño do ficheiro</target>
+      </trans-unit>
+      <trans-unit id="T7Qvhcc" resname="Invalid request data">
+        <source>Invalid request data</source>
+        <target>~Datos de solicitude non válidos</target>
+      </trans-unit>
+      <trans-unit id="dsSqvHh" resname="Uploaded file not found">
+        <source>Uploaded file not found</source>
+        <target>~Ficheiro subido non atopado</target>
+      </trans-unit>
+      <trans-unit id="ORp5XHR" resname="Invalid file type">
+        <source>Invalid file type</source>
+        <target>~Tipo de ficheiro non válido</target>
+      </trans-unit>
+      <trans-unit id="Jyiz9H6" resname="Highlight this page in the website navigation menu">
+        <source>Highlight this page in the website navigation menu</source>
+        <target>~Resaltar esta páxina no menú de navegación do sitio web</target>
+      </trans-unit>
+      <trans-unit id="dBXXN24" resname="Subtitle">
+        <source>Subtitle</source>
+        <target>~Subtítulo</target>
+      </trans-unit>
+      <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
+        <source>Adds additional information to the main title.</source>
+        <target>~Engade información adicional ao título principal.</target>
       </trans-unit>
     </body>
   </file>

@@ -291,6 +291,7 @@ class ParameterApiController extends DefaultApiController
         $this->translator->trans('Title in page');
         $this->translator->trans('Visible in export');
         $this->translator->trans('Visibility type');
+        $this->translator->trans('Highlight this page in the website navigation menu');
         // $this->translator->trans('Description');
         // $this->translator->trans('Advanced (SEO)');
 
@@ -301,6 +302,8 @@ class ParameterApiController extends DefaultApiController
         $this->translator->trans('Content metadata');
         // $this->translator->trans('Title');
         $this->translator->trans('The name given to the resource.');
+        $this->translator->trans('Subtitle');
+        $this->translator->trans('Adds additional information to the main title.');
         // $this->translator->trans('Language');
         $this->translator->trans('Select a language.');
         // $this->translator->trans('Authorship');

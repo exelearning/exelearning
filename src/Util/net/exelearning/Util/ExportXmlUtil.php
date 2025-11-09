@@ -1953,6 +1953,8 @@ class ExportXmlUtil
         $pageHeader->addAttribute('id', 'header-'.$odeNavStructureSync->getOdePageId());
         $headerEmpty = true;
         $titlePage = isset($pagePropertiesDict['titlePage']) ? $pagePropertiesDict['titlePage'] : '';
+        $subtitle = isset($odeProperties['pp_subtitle']) ? $odeProperties['pp_subtitle']->getValue() : '';
+        $hidePageTitle = isset($pagePropertiesDict['hidePageTitle']) ? $pagePropertiesDict['hidePageTitle'] : 'false';
 
         // Page header imgs container
         if ($showHeaderImgs) {
@@ -2002,8 +2004,16 @@ class ExportXmlUtil
             $packageTitleValue = '';
         } // The single page export has its own package title
         if ('' != $packageTitleValue) {
-            $packageTitle = $pageHeader->addChild('h1', $packageTitleValue);
+            $packageTitle = $pageHeader->addChild('h1', htmlspecialchars($packageTitleValue, ENT_XML1, 'UTF-8'));
             $packageTitle->addAttribute('class', 'package-title');
+        }
+
+        // Package subtitle (immediately after package title)
+        $packageSubtitleTag = 'p';
+        if ('' != $subtitle) {
+            $headerEmpty = false;
+            $packageSubtitle = $pageHeader->addChild($packageSubtitleTag, htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));
+            $packageSubtitle->addAttribute('class', 'package-subtitle');
         }
 
         // Page title
@@ -2011,10 +2021,19 @@ class ExportXmlUtil
         if ('' != $packageTitleValue) {
             $pageTitleTag = 'h2';
         }
-        if ('' != $titlePage) {
-            $headerEmpty = false;
-            $pageTitle = $pageHeader->addChild($pageTitleTag, $titlePage);
-            $pageTitle->addAttribute('class', 'page-title');
+
+        if ('false' === $hidePageTitle || false === $hidePageTitle) {
+            if ('' != $titlePage) {
+                $headerEmpty = false;
+                $pageTitle = $pageHeader->addChild($pageTitleTag, htmlspecialchars($titlePage, ENT_XML1, 'UTF-8'));
+                $pageTitle->addAttribute('class', 'page-title');
+            }
+        } else {
+            if ('' != $titlePage) {
+                $headerEmpty = false;
+                $pageTitle = $pageHeader->addChild($pageTitleTag, htmlspecialchars($titlePage, ENT_XML1, 'UTF-8'));
+                $pageTitle->addAttribute('class', 'page-title sr-av');
+            }
         }
 
         if ($headerEmpty) {
