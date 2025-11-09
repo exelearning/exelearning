@@ -1007,6 +1007,85 @@ class OdeApiController extends DefaultApiController
         return new JsonResponse($jsonData, $this->status, [], true);
     }
 
+    /**
+     * Import a previously uploaded file into the root by server local path.
+     * Accepts JSON: { odeSessionId, odeFileName, odeFilePath }.
+     */
+    #[Route('/ode/import/local/root', methods: ['POST'], name: 'api_odes_ode_local_elp_import_root_from_local')]
+    public function importElpToRootFromLocalAction(Request $request): JsonResponse
+    {
+        $responseData = [];
+
+        // Parse JSON body (relies on DefaultApiController::hydrateRequestBody supporting POST)
+        $this->hydrateRequestBody($request);
+
+        $odeSessionId = $request->get('odeSessionId');
+        $odeFileName = $request->get('odeFileName');
+        $odeFilePath = $request->get('odeFilePath');
+
+        if (empty($odeSessionId) || empty($odeFileName) || empty($odeFilePath)) {
+            $responseData['responseMessage'] = $this->translator->trans('Invalid request data');
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+
+        try {
+            // Validate that the file exists and is in the correct temporary directory
+            if (!file_exists($odeFilePath)) {
+                throw new \RuntimeException($this->translator->trans('Uploaded file not found'));
+            }
+
+            // Validate file extension
+            $extension = strtolower(pathinfo($odeFileName, PATHINFO_EXTENSION));
+            $allowedExtensions = ['elpx', 'elp', 'zip'];
+            if (!in_array($extension, $allowedExtensions, true)) {
+                throw new \RuntimeException($this->translator->trans('Invalid file type'));
+            }
+
+            // Get existing root nodes to calculate max order
+            $odeNavStructureRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+            $existingRootNodes = $odeNavStructureRepo->findBy(
+                [
+                    'odeSessionId' => $odeSessionId,
+                    'odeNavStructureSync' => null,
+                ]
+            );
+
+            $maxRootOrder = 0;
+            foreach ($existingRootNodes as $rootNode) {
+                $maxRootOrder = max($maxRootOrder, (int) $rootNode->getOdeNavStructureSyncOrder());
+            }
+
+            // Import the ELP pages
+            $this->odeService->importElpPages($odeFilePath, $odeSessionId, null, $maxRootOrder);
+
+            $responseData['responseMessage'] = 'OK';
+            $responseData['structure'] = $this->buildNavStructureListDto($odeSessionId);
+
+            $this->publish($odeSessionId, 'structure-changed');
+        } catch (\Throwable $throwable) {
+            $this->logger->error(
+                'Error importing ELP from local path: '.$throwable->getMessage(),
+                [
+                    'file' => $throwable->getFile(),
+                    'line' => $throwable->getLine(),
+                    'odeSessionId' => $odeSessionId,
+                    'odeFileName' => $odeFileName,
+                    'odeFilePath' => $odeFilePath,
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+            $message = $throwable->getMessage();
+            $responseData['responseMessage'] = $this->translator->trans('Import error').': '.$message;
+        }
+
+        $jsonData = $this->getJsonSerialized($responseData);
+
+        return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
     #[Route('/ode/local/xml/properties/open', methods: ['POST'], name: 'api_odes_ode_local_xml_properties_open')]
     public function openLocalXmlPropertiesAction(Request $request)
     {

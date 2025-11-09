@@ -200,6 +200,25 @@ export default class ApiCallManager {
     }
 
     /**
+     * Import a previously uploaded file into the root by server local path.
+     * Payload: { odeSessionId, odeFileName, odeFilePath }
+     * @param {Object} payload
+     * @returns {Promise<Object>}
+     */
+    async postImportElpToRootFromLocal(payload = {}) {
+        let url =
+            this.endpoints.api_odes_ode_local_elp_import_root_from_local?.path;
+        if (!url) {
+            // Fallback if route not yet defined
+            url =
+                this.apiUrlBase +
+                this.apiUrlBasePath +
+                '/api/ode-management/odes/ode/import/local/root';
+        }
+        return await this.func.post(url, payload);
+    }
+
+    /**
      *
      * @param {*} data
      * @returns
