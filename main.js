@@ -941,6 +941,13 @@ ipcMain.handle('app:setSavedPath', async (_e, { projectKey, filePath }) => {
   return true;
 });
 
+// Clear the remembered save path for a given project key
+ipcMain.handle('app:clearSavedPath', async (_e, { projectKey }) => {
+  if (!projectKey) return false;
+  clearSavedPath(projectKey);
+  return true;
+});
+
 // Open system file picker for .elpx files (offline open)
 ipcMain.handle('app:openElp', async (e) => {
   const senderWindow = BrowserWindow.fromWebContents(e.sender);
