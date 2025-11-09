@@ -137,6 +137,16 @@ export default class ApiCallBaseFunctions {
                     ? xhr.responseJSON
                     : null;
 
+            // Log specific known errors to help with debugging
+            if (errorResponse && errorResponse.responseMessage === 'Missing navigation node identifier') {
+                console.warn(
+                    '[API] Request failed: Navigation node identifier is missing.',
+                    'This typically means the structure is not fully loaded yet.',
+                    'URL:', url,
+                    'Method:', method
+                );
+            }
+
             return {
                 __error: true,
                 status: xhr && typeof xhr.status === 'number' ? xhr.status : 0,

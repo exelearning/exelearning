@@ -1124,14 +1124,18 @@ export default class IdevicesEngine {
         // Move window to idevice element
         if (ideviceNode.mode === 'edition') {
             // Set true Component flag
-            eXeLearning.app.project.changeUserFlagOnEdit(
-                true,
-                this.project.app.project.structure.nodeSelected.getAttribute(
-                    'nav-id'
-                ),
-                ideviceNode.blockId,
-                ideviceNode.ideviceContent.id
-            );
+            // Check if nodeSelected exists before accessing its attributes
+            const nodeSelected = this.project.app.project.structure.nodeSelected;
+            if (nodeSelected && typeof nodeSelected.getAttribute === 'function') {
+                eXeLearning.app.project.changeUserFlagOnEdit(
+                    true,
+                    nodeSelected.getAttribute('nav-id'),
+                    ideviceNode.blockId,
+                    ideviceNode.ideviceContent.id
+                );
+            } else {
+                console.warn('[iDevicesEngine] Navigation node not ready when adding iDevice in edition mode. User flag will not be set.');
+            }
             ideviceNode.goWindowToIdevice();
         }
     }

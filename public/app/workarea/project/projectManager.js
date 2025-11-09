@@ -2283,6 +2283,11 @@ export default class projectManager {
         }
 
         if (!odeNavStructureSyncId) {
+            console.warn(
+                '[ProjectManager] Cannot set user edit flag: Navigation node not selected or not ready.',
+                'This may happen if the structure is still loading. iDevice ID:', odeIdeviceId,
+                'Block ID:', blockId
+            );
             return {
                 responseMessage: 'MISSING_NAV_NODE',
             };
