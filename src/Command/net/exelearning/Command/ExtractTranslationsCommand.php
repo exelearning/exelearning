@@ -100,15 +100,17 @@ class ExtractTranslationsCommand extends Command
             '/<trans-unit\b[^>]*>.*?<source>(.*?)<\/source>.*?<\/trans-unit>/s',
             function ($matches) {
                 $source = $matches[1];
-                // Si empieza con \\ lo eliminamos
                 if (str_starts_with($source, '\\\\')) {
-                    return ''; // borrar este trans-unit
+                    return '';
                 }
 
                 return $matches[0]; // conservar el trans-unit
             },
             $updatedContent
         );
+
+        // Remove empty lines between trans-unit elements
+        $updatedContent = str_replace("      \n", '', $updatedContent);
 
         // Save the updated content back to the file
         file_put_contents($file, $updatedContent);

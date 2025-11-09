@@ -12865,31 +12865,6 @@
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
         <target><![CDATA[__You must review %s&percnt; of the contents of the activity before completing the questionnaire.]]></target>
       </trans-unit>
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
-      
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
         <target></target>
