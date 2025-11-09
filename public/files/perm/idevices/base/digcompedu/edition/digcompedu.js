@@ -69,9 +69,12 @@ var $exeDevice = {
         );
         this.selectionGranularity =
             this.idevicePreviousData.digcompeduGranularity || 'indicator';
-        this.activeLang = this.idevicePreviousData.digcompeduDataLang || this.defaultLang;
-        this.summaryTableHtml = this.idevicePreviousData.digcompeduSummaryTableHtml || '';
-        this.summaryTextHtml = this.idevicePreviousData.digcompeduSummaryTextHtml || '';
+        this.activeLang =
+            this.idevicePreviousData.digcompeduDataLang || this.defaultLang;
+        this.summaryTableHtml =
+            this.idevicePreviousData.digcompeduSummaryTableHtml || '';
+        this.summaryTextHtml =
+            this.idevicePreviousData.digcompeduSummaryTextHtml || '';
 
         this.loadFrameworkData(this.activeLang)
             .then((data) => {
@@ -104,7 +107,9 @@ var $exeDevice = {
         }
 
         const displayMode = this.getDisplayModeValue();
-        const langSelect = this.ideviceBody.querySelector(`#${this.dataLangSelectId}`);
+        const langSelect = this.ideviceBody.querySelector(
+            `#${this.dataLangSelectId}`
+        );
         const dataLang = langSelect ? langSelect.value : this.defaultLang;
 
         if (!this.summaryTableHtml || !this.summaryTextHtml) {
@@ -133,11 +138,15 @@ var $exeDevice = {
      */
     loadFrameworkData: function (lang) {
         if (this.frameworkDataCache[lang]) {
-            return Promise.resolve(this.cloneFrameworkData(this.frameworkDataCache[lang]));
+            return Promise.resolve(
+                this.cloneFrameworkData(this.frameworkDataCache[lang])
+            );
         }
 
         if (this.dataLoadPromises[lang]) {
-            return this.dataLoadPromises[lang].then((data) => this.cloneFrameworkData(data));
+            return this.dataLoadPromises[lang].then((data) =>
+                this.cloneFrameworkData(data)
+            );
         }
 
         const url = this.resolveEditionResource(
@@ -147,7 +156,11 @@ var $exeDevice = {
         const loadViaXHR = () =>
             new Promise((resolve, reject) => {
                 if (typeof XMLHttpRequest === 'undefined') {
-                    reject(new Error('XMLHttpRequest is not available in this environment.'));
+                    reject(
+                        new Error(
+                            'XMLHttpRequest is not available in this environment.'
+                        )
+                    );
                     return;
                 }
                 const request = new XMLHttpRequest();
@@ -159,14 +172,21 @@ var $exeDevice = {
                     if (request.readyState !== 4) {
                         return;
                     }
-                    if ((request.status >= 200 && request.status < 300) || request.status === 0) {
+                    if (
+                        (request.status >= 200 && request.status < 300) ||
+                        request.status === 0
+                    ) {
                         try {
                             resolve(JSON.parse(request.responseText));
                         } catch (parseError) {
                             reject(parseError);
                         }
                     } else {
-                        reject(new Error(`Failed to load ${url}: ${request.status}`));
+                        reject(
+                            new Error(
+                                `Failed to load ${url}: ${request.status}`
+                            )
+                        );
                     }
                 };
                 request.onerror = function () {
@@ -211,7 +231,9 @@ var $exeDevice = {
                 throw error;
             });
 
-        return this.dataLoadPromises[lang].then((data) => this.cloneFrameworkData(data));
+        return this.dataLoadPromises[lang].then((data) =>
+            this.cloneFrameworkData(data)
+        );
     },
 
     /**
@@ -232,7 +254,8 @@ var $exeDevice = {
             (area.competences || []).forEach((competence) => {
                 const competenceCode = String(competence.competence);
                 const competenceTitle = competence.title;
-                const competenceIndex = this.obtainCompetenceIndex(competenceCode);
+                const competenceIndex =
+                    this.obtainCompetenceIndex(competenceCode);
                 const competenceId = this.composeCompetenceId(competenceCode);
 
                 (competence.stages || []).forEach((stage) => {
@@ -242,12 +265,20 @@ var $exeDevice = {
                     (stage.levels || []).forEach((level) => {
                         const levelCode = level.nivel;
                         const levelTitle = level.title || '';
-                        const performanceStatement = level.performance_statements || '';
-                        const levelExamples = Array.isArray(level.examples) ? level.examples : [];
-                        const levelId = this.composeLevelId(competenceCode, levelCode);
+                        const performanceStatement =
+                            level.performance_statements || '';
+                        const levelExamples = Array.isArray(level.examples)
+                            ? level.examples
+                            : [];
+                        const levelId = this.composeLevelId(
+                            competenceCode,
+                            levelCode
+                        );
                         const groupKey = `${areaNumber}::${competenceCode}::${levelCode}`;
 
-                        const indicators = Array.isArray(level.achievement_indicators)
+                        const indicators = Array.isArray(
+                            level.achievement_indicators
+                        )
                             ? level.achievement_indicators.filter(Boolean)
                             : [];
 
@@ -283,10 +314,15 @@ var $exeDevice = {
                                     groupKey,
                                 };
 
-                                entry.searchIndex = this.composeSearchIndex(entry);
+                                entry.searchIndex =
+                                    this.composeSearchIndex(entry);
                                 this.rowsData.push(entry);
                                 this.indicatorLookup[entryId] = entry;
-                                this.registerLookupEntry(levelId, competenceId, entryId);
+                                this.registerLookupEntry(
+                                    levelId,
+                                    competenceId,
+                                    entryId
+                                );
                             });
                         } else {
                             const entryId = levelId;
@@ -315,7 +351,11 @@ var $exeDevice = {
                             entry.searchIndex = this.composeSearchIndex(entry);
                             this.rowsData.push(entry);
                             this.indicatorLookup[entryId] = entry;
-                            this.registerLookupEntry(levelId, competenceId, entryId);
+                            this.registerLookupEntry(
+                                levelId,
+                                competenceId,
+                                entryId
+                            );
                         }
                     });
                 });
@@ -381,14 +421,19 @@ var $exeDevice = {
             (entry.levelExamples || []).join(' '),
         ];
 
-        if (entry.indicatorNumber !== null && entry.indicatorNumber !== undefined) {
+        if (
+            entry.indicatorNumber !== null &&
+            entry.indicatorNumber !== undefined
+        ) {
             parts.push(String(entry.indicatorNumber));
         }
         if (entry.indicatorTitle) {
             parts.push(entry.indicatorTitle);
         }
 
-        return this.removeDiacritics(parts.filter(Boolean).join(' ').toLowerCase());
+        return this.removeDiacritics(
+            parts.filter(Boolean).join(' ').toLowerCase()
+        );
     },
 
     /**
@@ -423,7 +468,9 @@ var $exeDevice = {
             return '';
         }
         const indicatorSeparator = entryId.indexOf('.I');
-        return indicatorSeparator === -1 ? entryId : entryId.substring(0, indicatorSeparator);
+        return indicatorSeparator === -1
+            ? entryId
+            : entryId.substring(0, indicatorSeparator);
     },
 
     /**
@@ -432,10 +479,15 @@ var $exeDevice = {
     ensureGranularityCompatibility: function () {
         const allowed = ['competence', 'level', 'indicator'];
         if (allowed.indexOf(this.selectionGranularity) === -1) {
-            this.selectionGranularity = this.frameworkHasIndicators ? 'indicator' : 'level';
+            this.selectionGranularity = this.frameworkHasIndicators
+                ? 'indicator'
+                : 'level';
         }
 
-        if (!this.frameworkHasIndicators && this.selectionGranularity === 'indicator') {
+        if (
+            !this.frameworkHasIndicators &&
+            this.selectionGranularity === 'indicator'
+        ) {
             this.selectionGranularity = 'level';
         }
     },
@@ -492,7 +544,8 @@ var $exeDevice = {
      * @returns {string}
      */
     renderFiltersMarkup: function () {
-        const displayMode = this.idevicePreviousData.digcompeduDisplayMode || 'table';
+        const displayMode =
+            this.idevicePreviousData.digcompeduDisplayMode || 'table';
         const frameworkOptions = `
             <option value="es"${this.activeLang === 'es' ? ' selected' : ''}>${_('Español (MRCDD detallado)')}</option>
             <option value="en"${this.activeLang === 'en' ? ' selected' : ''}>${_('English (DigCompEdu core)')}</option>
@@ -633,17 +686,29 @@ var $exeDevice = {
      * Attach component behaviour once markup is rendered.
      */
     attachBehaviour: function () {
-        const searchInput = this.ideviceBody.querySelector(`#${this.searchInputId}`);
+        const searchInput = this.ideviceBody.querySelector(
+            `#${this.searchInputId}`
+        );
         if (searchInput) {
-            searchInput.addEventListener('input', this.applyFiltersAndSearch.bind(this));
+            searchInput.addEventListener(
+                'input',
+                this.applyFiltersAndSearch.bind(this)
+            );
         }
 
-        const levelFilters = this.ideviceBody.querySelectorAll(`.${this.levelFilterClass}`);
+        const levelFilters = this.ideviceBody.querySelectorAll(
+            `.${this.levelFilterClass}`
+        );
         levelFilters.forEach((checkbox) => {
-            checkbox.addEventListener('change', this.applyFiltersAndSearch.bind(this));
+            checkbox.addEventListener(
+                'change',
+                this.applyFiltersAndSearch.bind(this)
+            );
         });
 
-        const displayModeInputs = this.ideviceBody.querySelectorAll(`input[name="${this.displayModeName}"]`);
+        const displayModeInputs = this.ideviceBody.querySelectorAll(
+            `input[name="${this.displayModeName}"]`
+        );
         displayModeInputs.forEach((input) => {
             input.addEventListener('change', () => {
                 this.summaryTableHtml = '';
@@ -651,7 +716,9 @@ var $exeDevice = {
             });
         });
 
-        const langSelect = this.ideviceBody.querySelector(`#${this.dataLangSelectId}`);
+        const langSelect = this.ideviceBody.querySelector(
+            `#${this.dataLangSelectId}`
+        );
         if (langSelect) {
             langSelect.addEventListener('change', (event) => {
                 const newLang = event.target.value;
@@ -674,10 +741,13 @@ var $exeDevice = {
             });
         });
 
-        const fullscreenBtn = this.ideviceBody.querySelector(`#${this.fullscreenTriggerId}`);
+        const fullscreenBtn = this.ideviceBody.querySelector(
+            `#${this.fullscreenTriggerId}`
+        );
         if (fullscreenBtn) {
             fullscreenBtn.addEventListener('click', () => {
-                const expanded = fullscreenBtn.getAttribute('aria-expanded') === 'true';
+                const expanded =
+                    fullscreenBtn.getAttribute('aria-expanded') === 'true';
                 if (expanded) {
                     this.exitFullscreen();
                 } else {
@@ -686,31 +756,56 @@ var $exeDevice = {
             });
         }
 
-        const fullscreenClose = this.ideviceBody.querySelector(`#${this.fullscreenCloseId}`);
+        const fullscreenClose = this.ideviceBody.querySelector(
+            `#${this.fullscreenCloseId}`
+        );
         if (fullscreenClose) {
-            fullscreenClose.addEventListener('click', this.exitFullscreen.bind(this));
+            fullscreenClose.addEventListener(
+                'click',
+                this.exitFullscreen.bind(this)
+            );
         }
 
-        const resetBtn = this.ideviceBody.querySelector(`#${this.resetButtonId}`);
+        const resetBtn = this.ideviceBody.querySelector(
+            `#${this.resetButtonId}`
+        );
         if (resetBtn) {
             resetBtn.addEventListener('click', this.resetSelection.bind(this));
         }
 
-        const previewBtn = this.ideviceBody.querySelector(`#${this.modalOpenId}`);
+        const previewBtn = this.ideviceBody.querySelector(
+            `#${this.modalOpenId}`
+        );
         if (previewBtn) {
-            previewBtn.addEventListener('click', this.openSummaryModal.bind(this));
+            previewBtn.addEventListener(
+                'click',
+                this.openSummaryModal.bind(this)
+            );
         }
 
-        const modalClose = this.ideviceBody.querySelector(`#${this.modalCloseId}`);
-        const modalDismiss = this.ideviceBody.querySelector(`#${this.modalDismissId}`);
+        const modalClose = this.ideviceBody.querySelector(
+            `#${this.modalCloseId}`
+        );
+        const modalDismiss = this.ideviceBody.querySelector(
+            `#${this.modalDismissId}`
+        );
         if (modalClose) {
-            modalClose.addEventListener('click', this.closeSummaryModal.bind(this));
+            modalClose.addEventListener(
+                'click',
+                this.closeSummaryModal.bind(this)
+            );
         }
         if (modalDismiss) {
-            modalDismiss.addEventListener('click', this.closeSummaryModal.bind(this));
+            modalDismiss.addEventListener(
+                'click',
+                this.closeSummaryModal.bind(this)
+            );
         }
 
-        document.addEventListener('keydown', this.handleGlobalKeydown.bind(this));
+        document.addEventListener(
+            'keydown',
+            this.handleGlobalKeydown.bind(this)
+        );
 
         this.updateGranularityControls();
     },
@@ -721,7 +816,8 @@ var $exeDevice = {
      */
     handleGranularityChange: function (value) {
         const allowed = ['competence', 'level', 'indicator'];
-        let targetValue = allowed.indexOf(value) !== -1 ? value : this.selectionGranularity;
+        let targetValue =
+            allowed.indexOf(value) !== -1 ? value : this.selectionGranularity;
 
         if (targetValue === 'indicator' && !this.frameworkHasIndicators) {
             targetValue = 'level';
@@ -743,12 +839,17 @@ var $exeDevice = {
      * Synchronize granularity radio controls with current state.
      */
     updateGranularityControls: function () {
-        if (!this.frameworkHasIndicators && this.selectionGranularity === 'indicator') {
+        if (
+            !this.frameworkHasIndicators &&
+            this.selectionGranularity === 'indicator'
+        ) {
             this.selectionGranularity = 'level';
         }
 
         const granularityInputs = this.ideviceBody
-            ? this.ideviceBody.querySelectorAll(`input[name="${this.granularityName}"]`)
+            ? this.ideviceBody.querySelectorAll(
+                  `input[name="${this.granularityName}"]`
+              )
             : [];
 
         granularityInputs.forEach((input) => {
@@ -778,7 +879,12 @@ var $exeDevice = {
 
         const activeLevels = this.collectActiveLevels();
         const searchTerm = this.removeDiacritics(
-            (this.ideviceBody.querySelector(`#${this.searchInputId}`)?.value || '').trim().toLowerCase()
+            (
+                this.ideviceBody.querySelector(`#${this.searchInputId}`)
+                    ?.value || ''
+            )
+                .trim()
+                .toLowerCase()
         );
 
         const lastCells = [null, null, null, null, null];
@@ -872,14 +978,23 @@ var $exeDevice = {
             indicatorLabel.appendChild(strong);
             indicatorLabel.appendChild(titleSpan);
         } else {
-            indicatorLabel.textContent = entry.performanceStatement || entry.levelTitle || entry.levelCode;
+            indicatorLabel.textContent =
+                entry.performanceStatement ||
+                entry.levelTitle ||
+                entry.levelCode;
         }
 
         checkbox.id = entry.entryId;
         indicatorCell.appendChild(checkbox);
         indicatorCell.appendChild(indicatorLabel);
 
-        const cells = [areaCell, competenceCell, stageCell, levelCell, performanceCell];
+        const cells = [
+            areaCell,
+            competenceCell,
+            stageCell,
+            levelCell,
+            performanceCell,
+        ];
         cells.forEach((cell, index) => {
             const lastCell = lastCells[index];
             if (lastCell && lastCell.dataset.key === cell.dataset.key) {
@@ -997,14 +1112,17 @@ var $exeDevice = {
      * Update selection counter status text.
      */
     updateSelectionCounter: function () {
-        const counter = this.ideviceBody.querySelector(`#${this.selectionCounterId}`);
+        const counter = this.ideviceBody.querySelector(
+            `#${this.selectionCounterId}`
+        );
         if (!counter) {
             return;
         }
         const count = this.selectedIds.size;
-        counter.textContent = count === 0
-            ? _('No items selected.')
-            : _('Selected items: ') + count;
+        counter.textContent =
+            count === 0
+                ? _('No items selected.')
+                : _('Selected items: ') + count;
     },
 
     /**
@@ -1013,7 +1131,9 @@ var $exeDevice = {
      */
     collectActiveLevels: function () {
         const active = new Set();
-        const levelFilters = this.ideviceBody.querySelectorAll(`.${this.levelFilterClass}`);
+        const levelFilters = this.ideviceBody.querySelectorAll(
+            `.${this.levelFilterClass}`
+        );
         let anyChecked = false;
         levelFilters.forEach((checkbox) => {
             if (checkbox.checked) {
@@ -1036,11 +1156,15 @@ var $exeDevice = {
         this.summaryTableHtml = '';
         this.summaryTextHtml = '';
 
-        const searchInput = this.ideviceBody.querySelector(`#${this.searchInputId}`);
+        const searchInput = this.ideviceBody.querySelector(
+            `#${this.searchInputId}`
+        );
         if (searchInput) {
             searchInput.value = '';
         }
-        const levelFilters = this.ideviceBody.querySelectorAll(`.${this.levelFilterClass}`);
+        const levelFilters = this.ideviceBody.querySelectorAll(
+            `.${this.levelFilterClass}`
+        );
         levelFilters.forEach((checkbox) => {
             checkbox.checked = true;
         });
@@ -1054,7 +1178,9 @@ var $exeDevice = {
      * Re-check inputs based on current selection.
      */
     updateSelectionInputs: function () {
-        const checkboxes = this.ideviceBody.querySelectorAll(`#${this.tableBodyId} input[type="checkbox"]`);
+        const checkboxes = this.ideviceBody.querySelectorAll(
+            `#${this.tableBodyId} input[type="checkbox"]`
+        );
         checkboxes.forEach((checkbox) => {
             checkbox.checked = this.selectedIds.has(checkbox.value);
             checkbox.indeterminate = false;
@@ -1065,8 +1191,12 @@ var $exeDevice = {
      * Open fullscreen overlay.
      */
     enterFullscreen: function () {
-        const overlay = this.ideviceBody.querySelector(`#${this.fullscreenOverlayId}`);
-        const fullscreenBtn = this.ideviceBody.querySelector(`#${this.fullscreenTriggerId}`);
+        const overlay = this.ideviceBody.querySelector(
+            `#${this.fullscreenOverlayId}`
+        );
+        const fullscreenBtn = this.ideviceBody.querySelector(
+            `#${this.fullscreenTriggerId}`
+        );
         const editorRoot = this.ideviceBody.querySelector('.digcompedu-editor');
         const layout = this.ideviceBody.querySelector('.digcompedu-layout');
         if (!overlay) {
@@ -1076,12 +1206,16 @@ var $exeDevice = {
         if (wrapper && layout && editorRoot) {
             if (!this.fullscreenPlaceholder) {
                 this.fullscreenPlaceholder = document.createElement('div');
-                this.fullscreenPlaceholder.className = 'digcompedu-fullscreen-placeholder';
+                this.fullscreenPlaceholder.className =
+                    'digcompedu-fullscreen-placeholder';
                 this.fullscreenPlaceholder.setAttribute('aria-hidden', 'true');
                 this.fullscreenPlaceholder.style.display = 'none';
             }
             if (!this.fullscreenPlaceholder.parentNode) {
-                layout.parentNode.insertBefore(this.fullscreenPlaceholder, layout);
+                layout.parentNode.insertBefore(
+                    this.fullscreenPlaceholder,
+                    layout
+                );
             }
             wrapper.innerHTML = '';
             wrapper.appendChild(layout);
@@ -1092,7 +1226,9 @@ var $exeDevice = {
         document.body.classList.add('digcompedu-overlay-open');
 
         this.fullscreenPreviousFocus = document.activeElement;
-        const closeBtn = this.ideviceBody.querySelector(`#${this.fullscreenCloseId}`);
+        const closeBtn = this.ideviceBody.querySelector(
+            `#${this.fullscreenCloseId}`
+        );
         if (closeBtn) {
             closeBtn.focus();
         }
@@ -1106,17 +1242,29 @@ var $exeDevice = {
      * Exit fullscreen overlay.
      */
     exitFullscreen: function () {
-        const overlay = this.ideviceBody.querySelector(`#${this.fullscreenOverlayId}`);
-        const fullscreenBtn = this.ideviceBody.querySelector(`#${this.fullscreenTriggerId}`);
+        const overlay = this.ideviceBody.querySelector(
+            `#${this.fullscreenOverlayId}`
+        );
+        const fullscreenBtn = this.ideviceBody.querySelector(
+            `#${this.fullscreenTriggerId}`
+        );
         const editorRoot = this.ideviceBody.querySelector('.digcompedu-editor');
         if (!overlay) {
             return;
         }
         const wrapper = overlay.querySelector('.digcompedu-fullscreen-content');
-        const layout = wrapper ? wrapper.querySelector('.digcompedu-layout') : null;
+        const layout = wrapper
+            ? wrapper.querySelector('.digcompedu-layout')
+            : null;
         if (layout) {
-            if (this.fullscreenPlaceholder && this.fullscreenPlaceholder.parentNode) {
-                this.fullscreenPlaceholder.parentNode.insertBefore(layout, this.fullscreenPlaceholder);
+            if (
+                this.fullscreenPlaceholder &&
+                this.fullscreenPlaceholder.parentNode
+            ) {
+                this.fullscreenPlaceholder.parentNode.insertBefore(
+                    layout,
+                    this.fullscreenPlaceholder
+                );
             } else if (editorRoot) {
                 editorRoot.insertBefore(layout, editorRoot.firstChild);
             }
@@ -1135,7 +1283,10 @@ var $exeDevice = {
         overlay.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('digcompedu-overlay-open');
 
-        if (this.fullscreenPreviousFocus && typeof this.fullscreenPreviousFocus.focus === 'function') {
+        if (
+            this.fullscreenPreviousFocus &&
+            typeof this.fullscreenPreviousFocus.focus === 'function'
+        ) {
             this.fullscreenPreviousFocus.focus();
         } else if (fullscreenBtn) {
             fullscreenBtn.focus();
@@ -1154,7 +1305,9 @@ var $exeDevice = {
             return;
         }
 
-        const overlay = this.ideviceBody.querySelector(`#${this.fullscreenOverlayId}`);
+        const overlay = this.ideviceBody.querySelector(
+            `#${this.fullscreenOverlayId}`
+        );
         const modal = this.ideviceBody.querySelector(`#${this.modalId}`);
         if (overlay && overlay.getAttribute('aria-hidden') === 'false') {
             this.exitFullscreen();
@@ -1182,7 +1335,9 @@ var $exeDevice = {
         document.body.classList.add('digcompedu-overlay-open');
         this.modalPreviousFocus = document.activeElement;
 
-        const modalClose = this.ideviceBody.querySelector(`#${this.modalCloseId}`);
+        const modalClose = this.ideviceBody.querySelector(
+            `#${this.modalCloseId}`
+        );
         if (modalClose) {
             modalClose.focus();
         }
@@ -1198,7 +1353,10 @@ var $exeDevice = {
         }
         modal.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('digcompedu-overlay-open');
-        if (this.modalPreviousFocus && typeof this.modalPreviousFocus.focus === 'function') {
+        if (
+            this.modalPreviousFocus &&
+            typeof this.modalPreviousFocus.focus === 'function'
+        ) {
             this.modalPreviousFocus.focus();
         }
     },
@@ -1207,8 +1365,12 @@ var $exeDevice = {
      * Update modal preview content with stored summary.
      */
     updateSummaryPreview: function () {
-        const tablePreview = this.ideviceBody.querySelector(`#${this.summaryTablePreviewId}`);
-        const textPreview = this.ideviceBody.querySelector(`#${this.summaryTextPreviewId}`);
+        const tablePreview = this.ideviceBody.querySelector(
+            `#${this.summaryTablePreviewId}`
+        );
+        const textPreview = this.ideviceBody.querySelector(
+            `#${this.summaryTextPreviewId}`
+        );
         if (tablePreview) {
             tablePreview.innerHTML = this.summaryTableHtml || '';
         }
@@ -1301,16 +1463,21 @@ var $exeDevice = {
                 compTh.classList.add(`area${area.area}`);
                 competencesRow.appendChild(compTh);
 
-                const compIndex = this.obtainCompetenceIndex(String(competence.competence));
+                const compIndex = this.obtainCompetenceIndex(
+                    String(competence.competence)
+                );
                 const cell = document.createElement('td');
                 cell.classList.add(`a${area.area}c${compIndex}`, 'cell-level');
                 cell.textContent = '';
 
                 const areaGroup = grouped[area.area];
                 if (areaGroup) {
-                    const competenceGroup = areaGroup.competences[String(competence.competence)];
+                    const competenceGroup =
+                        areaGroup.competences[String(competence.competence)];
                     if (competenceGroup) {
-                        const highestLevel = this.obtainHighestLevel(Object.keys(competenceGroup.indicatorsByLevel));
+                        const highestLevel = this.obtainHighestLevel(
+                            Object.keys(competenceGroup.indicatorsByLevel)
+                        );
                         if (highestLevel) {
                             cell.textContent = highestLevel;
                         }
@@ -1362,45 +1529,69 @@ var $exeDevice = {
                 container.appendChild(heading);
 
                 const list = document.createElement('ul');
-                const competenceKeys = Object.keys(areaGroup.competences)
-                    .sort((a, b) => {
+                const competenceKeys = Object.keys(areaGroup.competences).sort(
+                    (a, b) => {
                         const indexA = areaGroup.competences[a].competenceIndex;
                         const indexB = areaGroup.competences[b].competenceIndex;
                         return Number(indexA) - Number(indexB);
-                    });
+                    }
+                );
 
                 competenceKeys.forEach((competenceCode) => {
                     const competence = areaGroup.competences[competenceCode];
-                    const levels = Object.keys(competence.indicatorsByLevel)
-                        .sort((a, b) => this.levelOrder.indexOf(a) - this.levelOrder.indexOf(b));
+                    const levels = Object.keys(
+                        competence.indicatorsByLevel
+                    ).sort(
+                        (a, b) =>
+                            this.levelOrder.indexOf(a) -
+                            this.levelOrder.indexOf(b)
+                    );
 
                     levels.forEach((levelCode) => {
-                        const indicators = competence.indicatorsByLevel[levelCode];
+                        const indicators =
+                            competence.indicatorsByLevel[levelCode];
                         const item = document.createElement('li');
                         const strong = document.createElement('strong');
                         strong.textContent = `${levelCode} for competence ${competenceCode}. `;
                         item.appendChild(strong);
 
-                        const hasIndicatorEntries = indicators.some((indicator) => indicator.type === 'indicator');
-                        const descriptor = hasIndicatorEntries ? 'indicator(s)' : 'level(s)';
+                        const hasIndicatorEntries = indicators.some(
+                            (indicator) => indicator.type === 'indicator'
+                        );
+                        const descriptor = hasIndicatorEntries
+                            ? 'indicator(s)'
+                            : 'level(s)';
                         const text = document.createTextNode(
                             `${competence.title} because it contributes to the digital competence development with ${descriptor} `
                         );
                         item.appendChild(text);
 
-                        const descriptions = indicators.map((indicator, index) => {
-                            const prefix = indicators.length > 1 && index === indicators.length - 1 ? _('and ') : '';
-                            if (indicator.type === 'indicator') {
-                                return `${prefix}${_('indicator')} ${indicator.indicatorNumber}. ${indicator.indicatorTitle}`;
+                        const descriptions = indicators.map(
+                            (indicator, index) => {
+                                const prefix =
+                                    indicators.length > 1 &&
+                                    index === indicators.length - 1
+                                        ? _('and ')
+                                        : '';
+                                if (indicator.type === 'indicator') {
+                                    return `${prefix}${_('indicator')} ${indicator.indicatorNumber}. ${indicator.indicatorTitle}`;
+                                }
+                                const statement =
+                                    indicator.performanceStatement ||
+                                    indicator.levelTitle ||
+                                    '';
+                                const levelLabel = `${_('level')} ${indicator.levelCode}`;
+                                return `${prefix}${levelLabel}: ${statement}`.trim();
                             }
-                            const statement = indicator.performanceStatement || indicator.levelTitle || '';
-                            const levelLabel = `${_('level')} ${indicator.levelCode}`;
-                            return `${prefix}${levelLabel}: ${statement}`.trim();
-                        });
+                        );
 
-                        const finalSentence = descriptions.join(indicators.length > 2 ? '; ' : ' ').trim();
+                        const finalSentence = descriptions
+                            .join(indicators.length > 2 ? '; ' : ' ')
+                            .trim();
                         if (finalSentence.length > 0) {
-                            item.appendChild(document.createTextNode(`${finalSentence}.`));
+                            item.appendChild(
+                                document.createTextNode(`${finalSentence}.`)
+                            );
                         }
                         list.appendChild(item);
                     });
@@ -1417,7 +1608,9 @@ var $exeDevice = {
      * @returns {string}
      */
     getDisplayModeValue: function () {
-        const checked = this.ideviceBody.querySelector(`input[name="${this.displayModeName}"]:checked`);
+        const checked = this.ideviceBody.querySelector(
+            `input[name="${this.displayModeName}"]:checked`
+        );
         return checked ? checked.value : 'table';
     },
 
@@ -1473,10 +1666,20 @@ var $exeDevice = {
             })
             .catch((error) => {
                 console.error('DigCompEdu framework change failed:', error);
-                if (typeof eXe !== 'undefined' && eXe.app && typeof eXe.app.alert === 'function') {
-                    eXe.app.alert(_('Unable to change framework. The previous data will remain loaded.'));
+                if (
+                    typeof eXe !== 'undefined' &&
+                    eXe.app &&
+                    typeof eXe.app.alert === 'function'
+                ) {
+                    eXe.app.alert(
+                        _(
+                            'Unable to change framework. The previous data will remain loaded.'
+                        )
+                    );
                 }
-                const frameworkSelect = this.ideviceBody.querySelector(`#${this.dataLangSelectId}`);
+                const frameworkSelect = this.ideviceBody.querySelector(
+                    `#${this.dataLangSelectId}`
+                );
                 if (frameworkSelect) {
                     frameworkSelect.value = previousLang;
                 }
@@ -1544,20 +1747,32 @@ var $exeDevice = {
      * @returns {string}
      */
     resolveEditionResource: function (relativePath) {
-        if (typeof eXe !== 'undefined' && eXe.app && typeof eXe.app.getIdeviceInstalled === 'function') {
+        if (
+            typeof eXe !== 'undefined' &&
+            eXe.app &&
+            typeof eXe.app.getIdeviceInstalled === 'function'
+        ) {
             const idevice = eXe.app.getIdeviceInstalled(this.prefix);
-            if (idevice && typeof idevice.getResourceServicePath === 'function') {
+            if (
+                idevice &&
+                typeof idevice.getResourceServicePath === 'function'
+            ) {
                 const basePath = idevice.pathEdition || idevice.path || '';
                 if (basePath) {
                     try {
-                        const absolute = new URL(relativePath, basePath).toString();
+                        const absolute = new URL(
+                            relativePath,
+                            basePath
+                        ).toString();
                         const normalized = absolute.replace(
                             /(\/perm\/idevices\/base\/)([^/]+)\//,
                             `$1${this.prefix}/`
                         );
                         return idevice.getResourceServicePath(normalized);
                     } catch (error) {
-                        const manual = basePath.replace(/\/$/, '/') + relativePath.replace(/^\.\//, '');
+                        const manual =
+                            basePath.replace(/\/$/, '/') +
+                            relativePath.replace(/^\.\//, '');
                         const normalizedManual = manual.replace(
                             /(\/perm\/idevices\/base\/)([^/]+)\//,
                             `$1${this.prefix}/`
@@ -1574,7 +1789,10 @@ var $exeDevice = {
         }
         try {
             const resolved = new URL(relativePath, base).toString();
-            return resolved.replace(/(perm\/idevices\/base\/)([^/]+)\//, `$1${this.prefix}/`);
+            return resolved.replace(
+                /(perm\/idevices\/base\/)([^/]+)\//,
+                `$1${this.prefix}/`
+            );
         } catch (error) {
             return relativePath;
         }
@@ -1592,7 +1810,10 @@ var $exeDevice = {
         for (let index = 0; index < scripts.length; index += 1) {
             const script = scripts[index];
             const src = script.getAttribute('src') || '';
-            if (src.indexOf('digcompedu.js') !== -1 && src.indexOf('/edition/') !== -1) {
+            if (
+                src.indexOf('digcompedu.js') !== -1 &&
+                src.indexOf('/edition/') !== -1
+            ) {
                 const lastSlash = src.lastIndexOf('/');
                 if (lastSlash !== -1) {
                     this.editionBasePath = src.substring(0, lastSlash + 1);

@@ -22,7 +22,9 @@ var $Digcompedu = {
         void pathMedia;
         const displayMode = data.digcompeduDisplayMode || 'table';
         const lang = data.digcompeduDataLang || 'es';
-        const selectedCount = Array.isArray(data.digcompeduSelected) ? data.digcompeduSelected.length : 0;
+        const selectedCount = Array.isArray(data.digcompeduSelected)
+            ? data.digcompeduSelected.length
+            : 0;
 
         const summaryTableHtml = this.buildSummaryTable(data);
         const summaryTextHtml = this.buildTextSummary(data, lang);
@@ -73,7 +75,9 @@ var $Digcompedu = {
         return data.digcompeduSummaryTextHtml || '';
     },
 
-    loadFrameworkData() { return null; },
+    loadFrameworkData() {
+        return null;
+    },
 };
 
 var $digcompedu = $Digcompedu;
