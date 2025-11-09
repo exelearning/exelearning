@@ -51,9 +51,11 @@ export default class ApiCallManager {
         if (odeSessionId) {
             params.set('odeSessionId', odeSessionId);
         }
-        if (projectId) {
-            params.set('projectId', projectId);
-        }
+        // Note: projectId parameter removed - backend endpoint doesn't support it
+        // The backend only handles odeSessionId and forceNewSession parameters
+        // if (projectId) {
+        //     params.set('projectId', projectId);
+        // }
         if (forceNewSession) {
             params.set('forceNewSession', '1');
         }

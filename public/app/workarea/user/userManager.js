@@ -3,6 +3,7 @@ import UserPreferences from './preferences/userPreferences.js';
 export default class UserManager {
     constructor(app) {
         this.app = app;
+        this.id = eXeLearning.user.id;
         this.name = eXeLearning.user.username;
         this.mode = this.modeValues.default;
         this.versionControl = null;

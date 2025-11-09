@@ -72,9 +72,9 @@
                     <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ "Preferences" | trans }}</a></li>
                     <li class="dropdown-divider"></li>
                     {% if config.isOfflineInstallation %}
-                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ "Exit" | trans }}</a></li>
+                    <li><button type="button" class="dropdown-item" id="head-bottom-logout-button">{{ "Exit" | trans }}</button></li>
                     {% else %}
-                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ "Logout" | trans }}</a></li>
+                    <li><button type="button" class="dropdown-item" id="head-bottom-logout-button">{{ "Logout" | trans }}</button></li>
                     {% endif %}
                 </ul>
             </div>

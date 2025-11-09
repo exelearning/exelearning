@@ -709,7 +709,7 @@ export default class NavbarFile {
             workareaPath = `${normalizedBase}/workarea`;
         }
 
-        window.open(workareaPath, '_blank', 'noopener');
+        window.open(workareaPath, '', 'noopener');
     }
 
     /**

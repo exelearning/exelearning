@@ -364,6 +364,7 @@ class WorkareaController extends DefaultWorkareaController
             $view,
             [
                 'user' => [
+                    'id' => $dbUser->getId(),
                     'username' => $userLoggedName,
                     'usernameFirsLetter' => $userLoggedNameFirsLetter,
                     'acceptedLopd' => $acceptedLopd,

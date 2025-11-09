@@ -101,12 +101,14 @@ export default class ModalShare extends Modal {
         }
 
         // Check if current user is the project owner
-        const currentUserId = eXeLearning.app.user?.id;
+        // Try to get user ID from app.user (UserManager) or fallback to eXeLearning.user
+        const currentUserId = eXeLearning.app.user?.id || eXeLearning.user?.id;
         console.log('Share modal debug:', {
             currentUserId,
             ownerId: this.projectData.owner?.id,
             ownerEmail: this.projectData.owner?.email,
             userObject: eXeLearning.app.user,
+            fallbackUser: eXeLearning.user,
         });
         // Use flexible comparison to handle both string and number IDs
         this.currentUserIsOwner =

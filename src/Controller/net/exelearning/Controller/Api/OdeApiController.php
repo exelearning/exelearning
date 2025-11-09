@@ -16,12 +16,14 @@ use App\Entity\net\exelearning\Entity\OdeFiles;
 use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Entity\net\exelearning\Entity\OdePropertiesSync;
+use App\Entity\Project\Project;
 use App\Exception\net\exelearning\Exception\Logical\AutosaveRecentSaveException;
 use App\Exception\net\exelearning\Exception\Logical\UserAlreadyOpenSessionException;
 use App\Exception\net\exelearning\Exception\Logical\UserInsufficientSpaceException;
 use App\Helper\net\exelearning\Helper\FileHelper;
 use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Properties;
+use App\Security\ProjectVoter;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersSyncChangesServiceInterface;
 use App\Service\net\exelearning\Service\Api\OdeComponentsSyncServiceInterface;
@@ -32,6 +34,7 @@ use App\Util\net\exelearning\Util\SettingsUtil;
 use App\Util\net\exelearning\Util\Util;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mercure\HubInterface;
@@ -49,6 +52,7 @@ class OdeApiController extends DefaultApiController
     private $currentOdeUsersService;
     private $currentOdeUsersSyncChangesService;
     private $translator;
+    private $security;
 
     public function __construct(
         EntityManagerInterface $entityManager,
@@ -62,6 +66,7 @@ class OdeApiController extends DefaultApiController
         TranslatorInterface $translator,
         SerializerInterface $serializer,
         HubInterface $hub,
+        Security $security,
     ) {
         $this->fileHelper = $fileHelper;
         $this->odeService = $odeService;
@@ -70,6 +75,7 @@ class OdeApiController extends DefaultApiController
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->currentOdeUsersSyncChangesService = $currentOdeUsersSyncChangesService;
         $this->translator = $translator;
+        $this->security = $security;
 
         parent::__construct($entityManager, $logger, $serializer, $hub);
     }
@@ -670,6 +676,15 @@ class OdeApiController extends DefaultApiController
     #[Route('/check/before/leave/ode/session', methods: ['POST'], name: 'api_odes_check_before_leave_ode_session')]
     public function checkBeforeLeaveOdeSessionAction(Request $request): JsonResponse
     {
+        // Parse JSON body if Content-Type is application/json
+        $contentType = strtolower((string) $request->headers->get('Content-Type'));
+        if (str_contains($contentType, 'application/json') && $request->getContent()) {
+            $decoded = json_decode($request->getContent(), true);
+            if (is_array($decoded)) {
+                $request->request->add($decoded);
+            }
+        }
+
         $odeSessionId = (string) $request->get('odeSessionId');
         $odeVersionId = $request->get('odeVersionId');
         $odeId = $request->get('odeId');
@@ -708,6 +723,15 @@ class OdeApiController extends DefaultApiController
     #[Route('/ode/session/close', methods: ['POST'], name: 'api_odes_ode_session_close')]
     public function closeOdeSessionAction(Request $request)
     {
+        // Parse JSON body if Content-Type is application/json
+        $contentType = strtolower((string) $request->headers->get('Content-Type'));
+        if (str_contains($contentType, 'application/json') && $request->getContent()) {
+            $decoded = json_decode($request->getContent(), true);
+            if (is_array($decoded)) {
+                $request->request->add($decoded);
+            }
+        }
+
         $responseData = [];
 
         // collect parameters
@@ -775,7 +799,65 @@ class OdeApiController extends DefaultApiController
             FILTER_VALIDATE_BOOL
         );
 
-        if (empty($elpFileName) && (!empty($projectId) || !empty($odeFilesId))) {
+        // Debug logging to diagnose join session issues
+        $this->logger->info(
+            'openElpAction called with parameters',
+            [
+                'elpFileName' => $elpFileName,
+                'projectId' => $projectId,
+                'odeFilesId' => $odeFilesId,
+                'odeSessionId' => $odeSessionId,
+                'allowParallelSessions' => $allowParallelSessions,
+                'elpFileName_type' => gettype($elpFileName),
+                'projectId_type' => gettype($projectId),
+                'odeSessionId_type' => gettype($odeSessionId),
+                'elpFileName_empty' => empty($elpFileName),
+                'projectId_empty' => empty($projectId),
+                'odeSessionId_empty' => empty($odeSessionId),
+            ]
+        );
+
+        // Priority 1: Check if this is a join existing session scenario (no elpFileName but has odeSessionId + projectId)
+        if (empty($elpFileName) && $odeSessionId && $projectId) {
+            $this->logger->info(
+                'Detected join existing session scenario - no elpFileName but has odeSessionId and projectId',
+                ['odeSessionId' => $odeSessionId, 'projectId' => $projectId]
+            );
+
+            // Try to find if there's an OdeFile first
+            $odeFilesRepo = $this->entityManager->getRepository(OdeFiles::class);
+            $odeFile = null;
+            if (!empty($odeFilesId)) {
+                $odeFile = $odeFilesRepo->find($odeFilesId);
+            } else {
+                $odeFile = $odeFilesRepo->getLastFileForOde($projectId);
+            }
+
+            // If no OdeFile exists, this is definitely a join session scenario
+            if (!$odeFile) {
+                $this->logger->info(
+                    'No OdeFile found - proceeding to join existing session',
+                    ['odeSessionId' => $odeSessionId, 'projectId' => $projectId]
+                );
+                $clientIp = $request->getClientIp();
+
+                return $this->joinExistingSession(
+                    $odeSessionId,
+                    $projectId,
+                    $allowParallelSessions,
+                    $clientIp
+                );
+            } else {
+                // OdeFile exists, use normal flow
+                $elpFileName = $odeFile->getFileName();
+                $this->logger->info(
+                    'OdeFile found, using normal flow',
+                    ['elpFileName' => $elpFileName, 'projectId' => $projectId]
+                );
+            }
+        } elseif (empty($elpFileName) && (!empty($projectId) || !empty($odeFilesId))) {
+            // This handles the case where we have projectId/odeFilesId but no odeSessionId
+            // (i.e., opening a saved project from the project list)
             $odeFilesRepo = $this->entityManager->getRepository(OdeFiles::class);
             if (!empty($odeFilesId)) {
                 $odeFile = $odeFilesRepo->find($odeFilesId);
@@ -1936,5 +2018,225 @@ class OdeApiController extends DefaultApiController
         }
 
         return $responseData;
+    }
+
+    /**
+     * Allows a user to join an existing collaborative session without requiring an ELP file.
+     * This method handles the case where a user receives a shared project link.
+     *
+     * @param string $odeSessionId          The existing session ID to join
+     * @param string $projectId             The project ID
+     * @param bool   $allowParallelSessions Whether to allow parallel sessions
+     */
+    private function joinExistingSession(
+        string $odeSessionId,
+        string $projectId,
+        bool $allowParallelSessions,
+        string $clientIp,
+    ): JsonResponse {
+        $responseData = [];
+
+        try {
+            // 1. Find existing session by odeSessionId
+            $currentOdeUsersRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
+            $existingSessions = $currentOdeUsersRepo->getCurrentUsers(null, null, $odeSessionId);
+
+            if (empty($existingSessions)) {
+                $this->logger->error(
+                    'Cannot join session: session not found',
+                    ['odeSessionId' => $odeSessionId, 'projectId' => $projectId, 'file:' => $this, 'line' => __LINE__]
+                );
+                $responseData['responseMessage'] = 'error: session not found';
+
+                return new JsonResponse($responseData, JsonResponse::HTTP_NOT_FOUND);
+            }
+
+            // Get the first session to extract odeId and odeVersionId
+            $existingSession = $existingSessions[0];
+            $odeId = $existingSession->getOdeId();
+            $odeVersionId = $existingSession->getOdeVersionId();
+
+            // 2. Find and verify project access
+            $projectRepo = $this->entityManager->getRepository(Project::class);
+            $project = $projectRepo->find($odeId);
+
+            if (!$project) {
+                $this->logger->error(
+                    'Cannot join session: project not found',
+                    ['odeId' => $odeId, 'projectId' => $projectId, 'file:' => $this, 'line' => __LINE__]
+                );
+                $responseData['responseMessage'] = 'error: project not found';
+
+                return new JsonResponse($responseData, JsonResponse::HTTP_NOT_FOUND);
+            }
+
+            // 3. Check permissions using ProjectVoter
+            if (!$this->security->isGranted(ProjectVoter::EDIT, $project)) {
+                $this->logger->warning(
+                    'User attempted to join session without permission',
+                    ['odeId' => $odeId, 'projectId' => $projectId, 'file:' => $this, 'line' => __LINE__]
+                );
+                $responseData['responseMessage'] = 'error: access denied';
+
+                return new JsonResponse($responseData, JsonResponse::HTTP_FORBIDDEN);
+            }
+
+            // 4. Get current user
+            $user = $this->getUser();
+            $databaseUser = $this->userHelper->getDatabaseUser($user);
+
+            // 5. Check if user already has a session
+            if (!$allowParallelSessions) {
+                $userCurrentSession = $currentOdeUsersRepo->getCurrentSessionForUser(
+                    $databaseUser->getUserIdentifier()
+                );
+                if ($userCurrentSession) {
+                    throw new UserAlreadyOpenSessionException();
+                }
+            }
+
+            // 6. Check if user is already in this specific session
+            $userSessionExists = $currentOdeUsersRepo->getCurrentSessionForUser(
+                $databaseUser->getUserIdentifier(),
+                $odeSessionId
+            );
+
+            if ($userSessionExists) {
+                // User is already in this session, just return the session data
+                $responseData['responseMessage'] = 'OK';
+                $responseData['odeId'] = $odeId;
+                $responseData['odeVersionId'] = $odeVersionId;
+                $responseData['odeSessionId'] = $odeSessionId;
+
+                // Add theme and version info even for existing sessions
+                $odeFilesRepo = $this->entityManager->getRepository(OdeFiles::class);
+                $odeFile = $odeFilesRepo->getLastFileForOde($odeId);
+                $responseData['odeVersionName'] = ($odeFile && $odeFile->getVersionName()) ? $odeFile->getVersionName() : 'v1';
+
+                $propertiesRepo = $this->entityManager->getRepository(OdePropertiesSync::class);
+                $themeProperty = $propertiesRepo->findOneBy(['odeSessionId' => $odeSessionId, 'key' => 'theme']);
+                $responseData['theme'] = ($themeProperty && $themeProperty->getValue()) ? $themeProperty->getValue() : Constants::THEME_DEFAULT;
+
+                $odeSessionDistDirPath = $this->fileHelper->getOdeSessionDistDirForUser($odeSessionId, $user);
+                $responseData['themeDir'] = false;
+                if ($odeSessionDistDirPath) {
+                    $themeDirPath = $odeSessionDistDirPath.Constants::EXPORT_DIR_THEME;
+                    $responseData['themeDir'] = is_dir($themeDirPath);
+                }
+
+                $jsonData = $this->getJsonSerialized($responseData);
+
+                return new JsonResponse($jsonData, $this->status, [], true);
+            }
+
+            // 7. Create CurrentOdeUsers entry for the new user joining the session
+            $currentOdeUser = $this->currentOdeUsersService->createCurrentOdeUsers(
+                $odeId,
+                $odeVersionId,
+                $odeSessionId,
+                $databaseUser,
+                $clientIp
+            );
+
+            if (!$currentOdeUser) {
+                $this->logger->error(
+                    'Failed to create CurrentOdeUsers entry',
+                    ['odeId' => $odeId, 'odeSessionId' => $odeSessionId, 'file:' => $this, 'line' => __LINE__]
+                );
+                $responseData['responseMessage'] = 'error: failed to join session';
+
+                return new JsonResponse($responseData, JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+            }
+
+            // 8. Get additional data needed by the client (theme, themeDir, odeVersionName)
+
+            // Try to get odeVersionName from OdeFiles if it exists
+            $odeFilesRepo = $this->entityManager->getRepository(OdeFiles::class);
+            $odeFile = $odeFilesRepo->getLastFileForOde($odeId);
+            if ($odeFile && $odeFile->getVersionName()) {
+                $responseData['odeVersionName'] = $odeFile->getVersionName();
+            } else {
+                // Use a default version name if no file exists yet
+                $responseData['odeVersionName'] = 'v1';
+            }
+
+            // Try to get theme from OdePropertiesSync
+            $propertiesRepo = $this->entityManager->getRepository(OdePropertiesSync::class);
+            $themeProperty = $propertiesRepo->findOneBy([
+                'odeSessionId' => $odeSessionId,
+                'key' => 'theme',
+            ]);
+
+            if ($themeProperty && $themeProperty->getValue()) {
+                $responseData['theme'] = $themeProperty->getValue();
+            } else {
+                // Use default theme if not set
+                $responseData['theme'] = Constants::THEME_DEFAULT;
+            }
+
+            // Check if theme directory exists in the session dist folder
+            $odeSessionDistDirPath = $this->fileHelper->getOdeSessionDistDirForUser($odeSessionId, $user);
+            if ($odeSessionDistDirPath) {
+                $themeDirPath = $odeSessionDistDirPath.Constants::EXPORT_DIR_THEME;
+                $responseData['themeDir'] = is_dir($themeDirPath);
+            } else {
+                $responseData['themeDir'] = false;
+            }
+
+            // 9. Verify that essential session data structures exist
+            $navStructureRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+            $navStructures = $navStructureRepo->findBy(['odeSessionId' => $odeSessionId], null, 1);
+
+            if (empty($navStructures)) {
+                $this->logger->warning(
+                    'Session has no navigation structure - project may not have been saved yet',
+                    ['odeSessionId' => $odeSessionId, 'odeId' => $odeId]
+                );
+                // Continue anyway - the structure might be created on first save
+            }
+
+            // 10. Return success with complete session data
+            $responseData['responseMessage'] = 'OK';
+            $responseData['odeId'] = $odeId;
+            $responseData['odeVersionId'] = $odeVersionId;
+            $responseData['odeSessionId'] = $odeSessionId;
+
+            $this->logger->info(
+                'User successfully joined existing session',
+                [
+                    'user' => $databaseUser->getUserIdentifier(),
+                    'odeSessionId' => $odeSessionId,
+                    'odeId' => $odeId,
+                    'theme' => $responseData['theme'],
+                    'themeDir' => $responseData['themeDir'],
+                    'odeVersionName' => $responseData['odeVersionName'],
+                ]
+            );
+
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, $this->status, [], true);
+        } catch (UserAlreadyOpenSessionException $e) {
+            $responseData['responseMessage'] = 'error: '.$e->getMessage();
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, $this->status, [], true);
+        } catch (\Exception $e) {
+            $this->logger->error(
+                'Error joining existing session: '.$e->getMessage(),
+                [
+                    'exception' => $e,
+                    'odeSessionId' => $odeSessionId,
+                    'projectId' => $projectId,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                ]
+            );
+            $responseData['responseMessage'] = 'error: failed to join session';
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, JsonResponse::HTTP_INTERNAL_SERVER_ERROR, [], true);
+        }
     }
 }
