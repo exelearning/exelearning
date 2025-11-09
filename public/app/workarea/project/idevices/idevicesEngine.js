@@ -1529,7 +1529,15 @@ export default class IdevicesEngine {
             '#page-title-node-content'
         );
         if (pageTitleElement) {
-            if (
+            let hidePageTitle =
+                properties &&
+                properties.hidePageTitle &&
+                (properties.hidePageTitle.value === 'true' ||
+                    properties.hidePageTitle.value === true);
+
+            if (hidePageTitle) {
+                pageTitleElement.classList.add('hidden');
+            } else if (
                 properties &&
                 properties.titlePage &&
                 properties.titlePage.value != ''
@@ -1538,7 +1546,7 @@ export default class IdevicesEngine {
                 pageTitleElement.classList.remove('hidden');
             }
             // Add case for empty value
-            if (
+            else if (
                 properties &&
                 properties.titlePage &&
                 properties.titlePage.value == ''
@@ -1558,7 +1566,7 @@ export default class IdevicesEngine {
             '#header-node-content'
         );
         headerElement.innerHTML = '';
-        headerElement.classList.add('hidden');
+        headerElement.classList.add('sr-av');
     }
 
     /**
