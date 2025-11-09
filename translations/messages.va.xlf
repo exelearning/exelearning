@@ -1225,10 +1225,7 @@
         <source>Lowercase Greek letter pi</source>
         <target>Lletra grega pi minúscula</target>
       </trans-unit>
-      <trans-unit id="gOAT7NB" resname="\\text{Display}">
-        <source>\\text{Display}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="npAv28I" resname="Display mode">
         <source>Display mode</source>
         <target>Mode display</target>
@@ -1253,10 +1250,7 @@
         <source>Text</source>
         <target>Text</target>
       </trans-unit>
-      <trans-unit id="hB_.jxS" resname="\\text{text}">
-        <source>\\text{text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="TEJoYtI" resname="Delimiters">
         <source>Delimiters</source>
         <target>Delimitadors</target>
@@ -1813,26 +1807,17 @@
         <source>Arrow with text below</source>
         <target>Fletxa amb text a sota</target>
       </trans-unit>
-      <trans-unit id="5XjCsBj" resname="\\underset{\\text{text}}{\\xrightarrow{}}">
-        <source>\\underset{\\text{text}}{\\xrightarrow{}}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="rtCVSEI" resname="Arrow with text above">
         <source>Arrow with text above</source>
         <target>Fletxa amb text a sobre</target>
       </trans-unit>
-      <trans-unit id="ddEOSq2" resname="\\xrightarrow{\\text{text}}">
-        <source>\\xrightarrow{\\text{text}}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="2xsg9dy" resname="Arrow with text above and below">
         <source>Arrow with text above and below</source>
         <target>Fletxa amb text a sobre i a sota</target>
       </trans-unit>
-      <trans-unit id="Cv1DNLs" resname="\\xrightarrow[\\text{below}]{\\text{above}}">
-        <source>\\xrightarrow[\\text{below}]{\\text{above}}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="fkj1H3d" resname="Right curve arrow">
         <source>Right curve arrow</source>
         <target>Fletxa corba dreta</target>
@@ -2053,74 +2038,47 @@
         <source>Tiny text</source>
         <target>Text molt petit</target>
       </trans-unit>
-      <trans-unit id="VtzckdX" resname="\\tiny{Text}">
-        <source>\\tiny{Text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="u4Mz8gs" resname="Script size text">
         <source>Script size text</source>
         <target>Text de mida script</target>
       </trans-unit>
-      <trans-unit id="xb1J0Me" resname="\\scriptsize{Text}">
-        <source>\\scriptsize{Text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="KPMHiIf" resname="Small text">
         <source>Small text</source>
         <target>Text petit</target>
       </trans-unit>
-      <trans-unit id="EemY5ul" resname="\\small{Text}">
-        <source>\\small{Text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="6WOADdb" resname="Normal size text">
         <source>Normal size text</source>
         <target>Text de mida normal</target>
       </trans-unit>
-      <trans-unit id="l9LlduX" resname="\\normalsize{Text}">
-        <source>\\normalsize{Text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="A4PW2eq" resname="Large text">
         <source>Large text</source>
         <target>Text gran</target>
       </trans-unit>
-      <trans-unit id="uwXAnP1" resname="\\large{Text}">
-        <source>\\large{Text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="B3vnaJp" resname="Larger text">
         <source>Larger text</source>
         <target>Text més gran</target>
       </trans-unit>
-      <trans-unit id="CzZRl0W" resname="\\Large{Text}">
-        <source>\\Large{Text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="f5RgnTP" resname="Very large text">
         <source>Very large text</source>
         <target>Text molt gran</target>
       </trans-unit>
-      <trans-unit id="83uOJQ2" resname="\\LARGE{Text}">
-        <source>\\LARGE{Text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
         <target>Text enorme</target>
       </trans-unit>
-      <trans-unit id="90C0T3C" resname="\\huge{Text}">
-        <source>\\huge{Text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="TRj6FQx" resname="Huger text">
         <source>Huger text</source>
         <target>Text més enorme</target>
       </trans-unit>
-      <trans-unit id="tBdFWTt" resname="\\Huge{Text}">
-        <source>\\Huge{Text}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
         <target>Blackboard bold</target>
@@ -2129,10 +2087,7 @@
         <source>Math bold</source>
         <target>Negreta matemàtica</target>
       </trans-unit>
-      <trans-unit id="Zp97vqw" resname="\\mathbf{\\text{bold m}}">
-        <source>\\mathbf{\\text{bold m}}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="D3SztgJ" resname="Calligraphic">
         <source>Calligraphic</source>
         <target>Cal·ligràfic</target>
@@ -2145,42 +2100,27 @@
         <source>Math italic</source>
         <target>Cursiva matemàtica</target>
       </trans-unit>
-      <trans-unit id="ARjgnqD" resname="\\mathit{italic}">
-        <source>\\mathit{italic}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="fXrbOjv" resname="Upright (math roman)">
         <source>Upright (math roman)</source>
         <target>Recte (math roman)</target>
       </trans-unit>
-      <trans-unit id="NVWvY_o" resname="\\mathrm{upright}">
-        <source>\\mathrm{upright}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="O_wl2LD" resname="Typographic bold">
         <source>Typographic bold</source>
         <target>Negreta tipogràfica</target>
       </trans-unit>
-      <trans-unit id="6.07ZqG" resname="\\textbf{bold t}">
-        <source>\\textbf{bold t}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="UZGwG.U" resname="Italic">
         <source>Italic</source>
         <target>Cursiva</target>
       </trans-unit>
-      <trans-unit id="KbnSS0Y" resname="\\textit{italic}">
-        <source>\\textit{italic}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="tPzgyNe" resname="Monospace">
         <source>Monospace</source>
         <target>Monoespaiat</target>
       </trans-unit>
-      <trans-unit id="euV4Ueq" resname="\\texttt{monospace}">
-        <source>\\texttt{monospace}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="anN2Yt5" resname="Plain text">
         <source>Plain text</source>
         <target>Text pla</target>
@@ -2349,14 +2289,8 @@
         <source>Epsilon variant</source>
         <target>Èpsilon variant</target>
       </trans-unit>
-      <trans-unit id="EotzUE." resname="\\underbrace{a+b+c}_{&#9;ext{group}}">
-        <source>\\underbrace{a+b+c}_{	ext{group}}</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="4k9xpph" resname="\\overbrace{a+b+c}^{&#9;ext{group}}">
-        <source>\\overbrace{a+b+c}^{	ext{group}}</source>
-        <target></target>
-      </trans-unit>
+      
+      
       <trans-unit id="Olp1Qyu" resname="pH and acid-base balance">
         <source>pH and acid-base balance</source>
         <target>pH i equilibri àcid-base</target>
@@ -2445,10 +2379,7 @@
         <source>Quadratic mean</source>
         <target>Mitjana quadràtica</target>
       </trans-unit>
-      <trans-unit id="wypXydW" resname="\\overline{x}_{\\text{quad}} = \\sqrt{\\frac{\\sum x_i^2}{n}}">
-        <source>\\overline{x}_{\\text{quad}} = \\sqrt{\\frac{\\sum x_i^2}{n}}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="GS4nryp" resname="Median">
         <source>Median</source>
         <target>Mediana</target>
@@ -2509,18 +2440,12 @@
         <source>Population kurtosis</source>
         <target>Curtosi poblacional</target>
       </trans-unit>
-      <trans-unit id="0BCa34H" resname="\\text{Kurtosis}_{\\text{pop}} = \\frac{\\sum (x_i - \\overline{x})^4}{n\\sigma^4}">
-        <source>\\text{Kurtosis}_{\\text{pop}} = \\frac{\\sum (x_i - \\overline{x})^4}{n\\sigma^4}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="KVdJyzv" resname="Sample kurtosis">
         <source>Sample kurtosis</source>
         <target>Curtosi mostral</target>
       </trans-unit>
-      <trans-unit id="6R4_Jnn" resname="\\text{Kurtosis}_{\\text{samp}} = \\frac{\\sum (x_i - \\overline{x})^4}{(n - 1)s^4}">
-        <source>\\text{Kurtosis}_{\\text{samp}} = \\frac{\\sum (x_i - \\overline{x})^4}{(n - 1)s^4}</source>
-        <target></target>
-      </trans-unit>
+      
       <trans-unit id="M2qx70T" resname="Frequencies">
         <source>Frequencies</source>
         <target>Freqüències</target>
