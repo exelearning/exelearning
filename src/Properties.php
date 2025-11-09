@@ -331,7 +331,7 @@ class Properties
             'heritable' => true,
         ],
         'highlight' => [
-            'title' => self::TRANS_PREFIX.'Highlight page',
+            'title' => self::TRANS_PREFIX.'Highlight this page in the website navigation menu',
             'value' => 'false',
             'type' => 'checkbox',
             'category' => self::TRANS_PREFIX.'General',
@@ -435,7 +435,7 @@ class Properties
         ],
         'pp_subtitle' => [
             'title' => self::TRANS_PREFIX.'Subtitle',
-            'help' => self::TRANS_PREFIX.'Subtitle for the package',
+            'help' => self::TRANS_PREFIX.'Adds additional information to the main title.',
             'alwaysVisible' => true,
             'type' => 'text',
             'category' => 'properties',

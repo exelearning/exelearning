@@ -2009,7 +2009,7 @@ class ExportXmlUtil
         }
 
         // Package subtitle (immediately after package title)
-        $packageSubtitleTag = 'h2';
+        $packageSubtitleTag = 'p';
         if ('' != $subtitle) {
             $headerEmpty = false;
             $packageSubtitle = $pageHeader->addChild($packageSubtitleTag, htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));

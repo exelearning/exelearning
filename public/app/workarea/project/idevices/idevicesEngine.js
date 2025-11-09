@@ -1408,8 +1408,6 @@ export default class IdevicesEngine {
     async loadApiComponentsInContentByPage(idPage) {
         // Remove node content title
         this.removeNodeContentPageTitle();
-        // Remove node content subtitle
-        this.removeNodeContentPageSubtitle();
         // Remove node content attribute lang
         this.removeNodeContentLangAttribute();
         // In case it is the root node
@@ -1581,20 +1579,6 @@ export default class IdevicesEngine {
         );
         pageTitleElement.innerHTML = '';
         pageTitleElement.classList.add('hidden');
-    }
-
-    /**
-     * Remove page subtitle in node content
-     *
-     */
-    removeNodeContentPageSubtitle() {
-        let pageSubtitleElement = this.nodeContainerElement.querySelector(
-            '#page-subtitle-node-content'
-        );
-        if (pageSubtitleElement) {
-            pageSubtitleElement.innerHTML = '';
-            pageSubtitleElement.classList.add('hidden');
-        }
     }
 
     /**
