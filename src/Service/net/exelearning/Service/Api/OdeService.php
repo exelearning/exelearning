@@ -1302,10 +1302,11 @@ class OdeService implements OdeServiceInterface
      * @param string $newOdeSessionId
      * @param string $elpFileName
      * @param array  $checkElpFile
+     * @param bool   $isImportIdevices
      *
      * @return array
      */
-    private function openElp($newOdeSessionId, $elpFileName, $odeSessionDistDirPath, $checkElpFile)
+    private function openElp($newOdeSessionId, $elpFileName, $odeSessionDistDirPath, $checkElpFile, $isImportIdevices = false)
     {
         $destinationFilePathName = $odeSessionDistDirPath.$elpFileName;
         $elpCopied = FileUtil::copyFile($checkElpFile['elpFilePathName'], $destinationFilePathName);

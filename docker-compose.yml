@@ -47,6 +47,8 @@ services:
     environment:
       MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
       MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_JWT_SECRET_KEY}
+      # Force OPcache to check for updated script (for developent)
+      opcache_validate_timestamps: 1
       PRE_CONFIGURE_COMMANDS:
       POST_CONFIGURE_COMMANDS: |
         echo "this is a test line 1"
