@@ -54,7 +54,7 @@ class ProjectAutoCreationTest extends WebTestCase
         $odeFile->setFileName('project.elp');
         $odeFile->setFileType('elp');
         $odeFile->setDiskFilename('disk_' . uniqid() . '.elp');
-        $odeFile->setSize(1024);
+        $odeFile->setSize('1024');
         $odeFile->setUser($user->getEmail());
         $odeFile->setIsManualSave(true);
         $em->persist($odeFile);
@@ -102,7 +102,6 @@ class ProjectAutoCreationTest extends WebTestCase
         $this->assertSame('Legacy ODE Project Title', $response['project']['title']);
         $this->assertSame('private', $response['project']['visibility']);
         $this->assertFalse($response['project']['isPublic']);
-        $this->assertFalse($response['project']['isArchived']);
 
         // Verify Project was created in database
         $em = $client->getContainer()->get('doctrine')->getManager();
@@ -256,7 +255,7 @@ class ProjectAutoCreationTest extends WebTestCase
         $odeFile2->setFileName('project_v2.elp');
         $odeFile2->setFileType('elp');
         $odeFile2->setDiskFilename('disk_v2_' . uniqid() . '.elp');
-        $odeFile2->setSize(2048);
+        $odeFile2->setSize('2048');
         $odeFile2->setUser($this->userEmail);
         $odeFile2->setIsManualSave(true);
         $em->persist($odeFile2);

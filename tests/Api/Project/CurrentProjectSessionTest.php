@@ -129,7 +129,7 @@ class CurrentProjectSessionTest extends WebTestCase
         $this->assertNotNull($project);
         $this->assertSame('New Project', $project->getTitle());
         $this->assertSame('private', $project->getVisibility());
-        $this->assertFalse($project->getIsArchived());
+        $this->assertFalse($project->isArchived());
 
         // Verify owner is the current user
         $user = $em->getRepository(User::class)->findOneBy(['email' => $this->userEmail]);
