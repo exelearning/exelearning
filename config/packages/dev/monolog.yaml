@@ -1,3 +1,5 @@
+# config/packages/dev/monolog.yaml
+
 monolog:
     handlers:
         main:

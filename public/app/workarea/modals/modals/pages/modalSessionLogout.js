@@ -121,10 +121,23 @@ export default class ModalSessionLogout extends Modal {
 
             if (data.openOdeFile) {
                 if (data.localOdeFile) {
-                    eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
-                        data.odeFileName,
-                        data.odeFilePath
-                    );
+                    // Check if this is a large file upload
+                    if (data.isLargeFile && data.odeFile) {
+                        // For large files, resume the upload process
+                        eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
+                            data.odeFile,
+                            false,
+                            false,
+                            true, // skipSessionCheck
+                            true // forceCloseSession
+                        );
+                    } else {
+                        // For regular files, use the normal flow
+                        eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
+                            data.odeFileName,
+                            data.odeFilePath
+                        );
+                    }
                 } else {
                     eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
                         data.id
@@ -156,10 +169,23 @@ export default class ModalSessionLogout extends Modal {
                     this.closeSession(odeParams['odeSessionId'], data);
                 } else if (data.openOdeFile) {
                     if (data.localOdeFile) {
-                        eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
-                            data.odeFileName,
-                            data.odeFilePath
-                        );
+                        // Check if this is a large file upload
+                        if (data.isLargeFile && data.odeFile) {
+                            // For large files, resume the upload process
+                            eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
+                                data.odeFile,
+                                false,
+                                false,
+                                true, // skipSessionCheck
+                                true // forceCloseSession
+                            );
+                        } else {
+                            // For regular files, use the normal flow
+                            eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
+                                data.odeFileName,
+                                data.odeFilePath
+                            );
+                        }
                     } else {
                         eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
                             data.id
@@ -191,7 +217,6 @@ export default class ModalSessionLogout extends Modal {
      * @param {*} odeSessionId
      */
     async closeSession(odeSessionId, data) {
-        console.log('asdjhjkaslhdkjashkjda');
         let params = { odeSessionId: odeSessionId };
         if (data.newFile) {
             eXeLearning.app.menus.navbar.file.createSession(params);

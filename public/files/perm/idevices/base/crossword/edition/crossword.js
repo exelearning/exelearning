@@ -253,9 +253,13 @@ var $exeDevice = {
                             <img class="CCGM-EMedia1" src="" id="ccgmEImageBack" alt="${_('Image')}" />
                             <img class="CCGM-EMedia1" src="${path}ccgmbackground.jpg" id="ccgmEImageNoBack" alt="${_('No image')}" />
                         </div>
-                        <div id="ccgmAuthorBackDiv" class="CCGM-AuthorBack d-none align-items-center gap-2 flex-nowrap">
+                        <div id="ccgmAuthorBackDiv" class="CCGM-AuthorBack d-none align-items-center gap-2 flex-nowrap mb-3">
                             <label for="ccgmAuthorBack" class="mb-0">${_('Authorship')}: </label>
                             <input type="text" class="CCGM-EURLImage form-control" id="ccgmAuthorBack"/>
+                        </div>
+                        <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                            <span>${_('Quick edit')}</span>
+                            <button id="eXeQuickEditButton" class="btn btn-primary">${_('Show')}</button>
                         </div>
                         <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
                             <span class="toggle-item" role="switch" aria-checked="false">
@@ -915,7 +919,6 @@ var $exeDevice = {
     addEvents: function () {
         $('#ccgmEPaste').hide();
 
-        // Inicializar estados de toggles y manejar cambios (ARIA + targets)
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
             $input
@@ -1216,7 +1219,9 @@ var $exeDevice = {
             $exeDevice.updateQuestionsNumber();
         });
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents(
+            $exeDevice.insertWords
+        );
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertWords

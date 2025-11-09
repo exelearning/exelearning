@@ -567,6 +567,7 @@ class OdeExportService implements OdeExportServiceInterface
             'odeId' => $odeId,
             'odeVersionName' => $odeVersionName,
             'isDownload' => 'true',
+            'eXeVersion' => Constants::APP_VERSION,
         ];
 
         // Ode XML structure
@@ -726,7 +727,7 @@ class OdeExportService implements OdeExportServiceInterface
                 || ((('true' == $odeProperties['exportSource']->getValue()) || $isIntegration)
                    && (Constants::EXPORT_TYPE_HTML5 == $exportType || Constants::EXPORT_TYPE_SCORM12 == $exportType
                    || Constants::EXPORT_TYPE_SCORM2004 == $exportType || Constants::EXPORT_TYPE_HTML5_SP == $exportType
-                   || Constants::EXPORT_TYPE_IMS == $exportType)
+                   || Constants::EXPORT_TYPE_IMS == $exportType || Constants::EXPORT_TYPE_EPUB3 == $exportType)
                 )
         ) {
             $configFileName = Constants::PERMANENT_SAVE_CONTENT_FILENAME;
