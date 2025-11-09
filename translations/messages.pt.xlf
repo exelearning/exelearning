@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
-  <file source-language="en" target-language="en" datatype="plaintext" original="file.ext">
+  <file source-language="en" target-language="pt" datatype="plaintext" original="file.ext">
     <header>
       <tool tool-id="symfony" tool-name="Symfony"/>
     </header>
@@ -4615,14 +4615,6 @@
       </trans-unit>
       <trans-unit id="8g6a9xW" resname="File is too large">
         <source>File is too large</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="FileSizeExceedsLimit" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
-        <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="InsufficientStorageSpace" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
-        <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="LmWdpVc" resname="Error saving the iDevice">
