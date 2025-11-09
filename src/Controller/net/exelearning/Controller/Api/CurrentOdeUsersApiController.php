@@ -22,6 +22,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Route('/api/current-ode-users-management/current-ode-user')]
 class CurrentOdeUsersApiController extends DefaultApiController
@@ -30,6 +31,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
     public const URL_WORKAREA_ROUTE = 'workarea';
 
     private $userHelper;
+    private $translator;
     private $currentOdeUsersService;
     private $currentOdeUsersSyncChangesService;
 
@@ -37,12 +39,14 @@ class CurrentOdeUsersApiController extends DefaultApiController
         EntityManagerInterface $entityManager,
         LoggerInterface $logger,
         UserHelper $userHelper,
+        TranslatorInterface $translator,
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
         CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService,
         SerializerInterface $serializer,
         HubInterface $hub,
     ) {
         $this->userHelper = $userHelper;
+        $this->translator = $translator;
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->currentOdeUsersSyncChangesService = $currentOdeUsersSyncChangesService;
 
@@ -190,7 +194,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
                 $responseData['responseMessage'] = 'OK';
             } else {
-                $responseData['responseMessage'] = 'An user has an idevice open on this block';
+                $responseData['responseMessage'] = $this->translator->trans('Another user is editing an iDevice on this block.');
             }
         } catch (\Exception $e) {
             // Make sure to release the lock in case of error
@@ -227,7 +231,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
         if ($isIdeviceFree) {
             $responseData['responseMessage'] = 'OK';
         } else {
-            $responseData['responseMessage'] = 'An user has an idevice open on this block';
+            $responseData['responseMessage'] = $this->translator->trans('Another user is editing an iDevice on this block.');
         }
 
         $jsonData = $this->getJsonSerialized($responseData);
