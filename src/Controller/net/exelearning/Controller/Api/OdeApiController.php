@@ -713,18 +713,21 @@ class OdeApiController extends DefaultApiController
     #[Route('/ode/elp/open', methods: ['POST'], name: 'api_odes_ode_elp_open')]
     public function openElpAction(Request $request)
     {
-        $this->hydrateRequestBody($request);
-
         $responseData = [];
 
         // Collect parameters
         $elpFileName = $request->get('elpFileName');
         $odeSessionId = $request->get('odeSessionId');
-        $forceCloseOdeUserPreviousSession = filter_var(
-            $request->get('forceCloseOdeUserPreviousSession', false),
-            FILTER_VALIDATE_BOOLEAN,
-            FILTER_NULL_ON_FAILURE
-        ) ?? false;
+        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession');
+
+        if (
+            $request->request->has('forceCloseOdeUserPreviousSession')
+            && (('true' == $forceCloseOdeUserPreviousSession) || ('1' == $forceCloseOdeUserPreviousSession))
+        ) {
+            $forceCloseOdeUserPreviousSession = true;
+        } else {
+            $forceCloseOdeUserPreviousSession = false;
+        }
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
@@ -732,39 +735,13 @@ class OdeApiController extends DefaultApiController
         $clientIp = $request->getClientIp();
 
         try {
-            try {
-                // Check content in the xml and return values
-                $odeValues = $this->odeService->checkContentXmlAndCurrentUser(
-                    $odeSessionId,
-                    $elpFileName,
-                    $databaseUser,
-                    $forceCloseOdeUserPreviousSession
-                );
-            } catch (UserAlreadyOpenSessionException $e) {
-                $responseData['responseMessage'] = 'error: '.$e->getMessage();
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
-            } catch (\Throwable $e) {
-                $this->logger->error(
-                    'Error checking remote ODE file: '.$e->getMessage(),
-                    [
-                        'exception' => $e,
-                        'elpFileName' => $elpFileName,
-                        'odeSessionId' => $odeSessionId,
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString(),
-                        'file:' => $this,
-                        'line:' => __LINE__,
-                    ]
-                );
-
-                $responseData['responseMessage'] = $this->translator->trans('The file content is wrong');
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
-            }
+            // Check content in the xml and return values
+            $odeValues = $this->odeService->checkContentXmlAndCurrentUser(
+                $odeSessionId,
+                $elpFileName,
+                $databaseUser,
+                $forceCloseOdeUserPreviousSession
+            );
 
             if ('OK' !== $odeValues['responseMessage']) {
                 $responseData['responseMessage'] = $odeValues['responseMessage'];
@@ -783,7 +760,8 @@ class OdeApiController extends DefaultApiController
                 $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
-            $responseData['responseMessage'] = 'error: '.$e->getMessage();
+            $result['responseMessage'] = 'error: '.$e->getMessage();
+            $responseData['responseMessage'] = $result['responseMessage'];
             $jsonData = $this->getJsonSerialized($responseData);
 
             return new JsonResponse($jsonData, $this->status, [], true);
@@ -819,21 +797,28 @@ class OdeApiController extends DefaultApiController
     #[Route('/ode/local/elp/open', methods: ['POST'], name: 'api_odes_ode_local_elp_open')]
     public function openLocalElpAction(Request $request)
     {
-        $this->hydrateRequestBody($request);
-
         $responseData = [];
 
-        // Collect parameters
-        $elpFileName = $request->get('odeFileName');
-        $elpFilePath = $request->get('odeFilePath');
-        $forceCloseOdeUserPreviousSession = filter_var(
-            $request->get('forceCloseOdeUserPreviousSession', false),
-            FILTER_VALIDATE_BOOLEAN,
-            FILTER_NULL_ON_FAILURE
-        ) ?? false;
+        // Collect parameters from both form data and JSON body
+        $elpFileName = $request->get('odeFileName') ?? $request->getPayload()->get('odeFileName');
+        $elpFilePath = $request->get('odeFilePath') ?? $request->getPayload()->get('odeFilePath');
+        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession') ?? $request->getPayload()->get('forceCloseOdeUserPreviousSession');
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
+
+        // Convert forceCloseOdeUserPreviousSession to boolean
+        // Accept: true (bool), 'true' (string), '1' (string), 1 (int)
+        // Reject: false (bool), 'false' (string), '0' (string), 0 (int), null, anything else
+        if ((true === $forceCloseOdeUserPreviousSession)
+            || ('true' === $forceCloseOdeUserPreviousSession)
+            || ('1' === $forceCloseOdeUserPreviousSession)
+            || (1 === $forceCloseOdeUserPreviousSession)
+        ) {
+            $forceCloseOdeUserPreviousSession = true;
+        } else {
+            $forceCloseOdeUserPreviousSession = false;
+        }
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
@@ -841,6 +826,14 @@ class OdeApiController extends DefaultApiController
         $clientIp = $request->getClientIp();
 
         try {
+            // Validate required parameters
+            if (empty($elpFileName) || empty($elpFilePath)) {
+                $responseData['responseMessage'] = $this->translator->trans('Missing file name or path');
+                $jsonData = $this->getJsonSerialized($responseData);
+
+                return new JsonResponse($jsonData, $this->status, [], true);
+            }
+
             // Set locale (TODO: error translator returns to default locale)
             // Get properties of user
             $databaseUserPreferences = $this->userHelper->getUserPreferencesFromDatabase($user);
@@ -875,26 +868,11 @@ class OdeApiController extends DefaultApiController
                     $forceCloseOdeUserPreviousSession
                 );
             } catch (UserAlreadyOpenSessionException $e) {
-                $responseData['responseMessage'] = 'error: '.$e->getMessage();
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
-            } catch (\Throwable $e) {
-                $this->logger->error(
-                    'Error checking local ODE file: '.$e->getMessage(),
-                    [
-                        'exception' => $e,
-                        'elpFileName' => $elpFileName,
-                        'elpFilePath' => $elpFilePath,
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString(),
-                        'file:' => $this,
-                        'line:' => __LINE__,
-                    ]
-                );
-
-                $responseData['responseMessage'] = $this->translator->trans('The file content is wrong');
+                // Re-throw session exceptions to be handled by outer catch
+                throw $e;
+            } catch (\Exception $e) {
+                $result['responseMessage'] = $this->translator->trans('The file content is wrong');
+                $responseData['responseMessage'] = $result['responseMessage'];
 
                 $jsonData = $this->getJsonSerialized($responseData);
 
@@ -918,7 +896,8 @@ class OdeApiController extends DefaultApiController
                 $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
-            $responseData['responseMessage'] = 'error: '.$e->getMessage();
+            $result['responseMessage'] = 'error: '.$e->getMessage();
+            $responseData['responseMessage'] = $result['responseMessage'];
 
             $jsonData = $this->getJsonSerialized($responseData);
 
@@ -1021,6 +1000,85 @@ class OdeApiController extends DefaultApiController
             if (!empty($tempFilePath) && file_exists($tempFilePath)) {
                 FileUtil::removeFile($tempFilePath);
             }
+        }
+
+        $jsonData = $this->getJsonSerialized($responseData);
+
+        return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
+    /**
+     * Import a previously uploaded file into the root by server local path.
+     * Accepts JSON: { odeSessionId, odeFileName, odeFilePath }.
+     */
+    #[Route('/ode/import/local/root', methods: ['POST'], name: 'api_odes_ode_local_elp_import_root_from_local')]
+    public function importElpToRootFromLocalAction(Request $request): JsonResponse
+    {
+        $responseData = [];
+
+        // Parse JSON body (relies on DefaultApiController::hydrateRequestBody supporting POST)
+        $this->hydrateRequestBody($request);
+
+        $odeSessionId = $request->get('odeSessionId');
+        $odeFileName = $request->get('odeFileName');
+        $odeFilePath = $request->get('odeFilePath');
+
+        if (empty($odeSessionId) || empty($odeFileName) || empty($odeFilePath)) {
+            $responseData['responseMessage'] = $this->translator->trans('Invalid request data');
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+
+        try {
+            // Validate that the file exists and is in the correct temporary directory
+            if (!file_exists($odeFilePath)) {
+                throw new \RuntimeException($this->translator->trans('Uploaded file not found'));
+            }
+
+            // Validate file extension
+            $extension = strtolower(pathinfo($odeFileName, PATHINFO_EXTENSION));
+            $allowedExtensions = ['elpx', 'elp', 'zip'];
+            if (!in_array($extension, $allowedExtensions, true)) {
+                throw new \RuntimeException($this->translator->trans('Invalid file type'));
+            }
+
+            // Get existing root nodes to calculate max order
+            $odeNavStructureRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+            $existingRootNodes = $odeNavStructureRepo->findBy(
+                [
+                    'odeSessionId' => $odeSessionId,
+                    'odeNavStructureSync' => null,
+                ]
+            );
+
+            $maxRootOrder = 0;
+            foreach ($existingRootNodes as $rootNode) {
+                $maxRootOrder = max($maxRootOrder, (int) $rootNode->getOdeNavStructureSyncOrder());
+            }
+
+            // Import the ELP pages
+            $this->odeService->importElpPages($odeFilePath, $odeSessionId, null, $maxRootOrder);
+
+            $responseData['responseMessage'] = 'OK';
+            $responseData['structure'] = $this->buildNavStructureListDto($odeSessionId);
+
+            $this->publish($odeSessionId, 'structure-changed');
+        } catch (\Throwable $throwable) {
+            $this->logger->error(
+                'Error importing ELP from local path: '.$throwable->getMessage(),
+                [
+                    'file' => $throwable->getFile(),
+                    'line' => $throwable->getLine(),
+                    'odeSessionId' => $odeSessionId,
+                    'odeFileName' => $odeFileName,
+                    'odeFilePath' => $odeFilePath,
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+            $message = $throwable->getMessage();
+            $responseData['responseMessage'] = $this->translator->trans('Import error').': '.$message;
         }
 
         $jsonData = $this->getJsonSerialized($responseData);
