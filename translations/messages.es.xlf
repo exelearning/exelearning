@@ -12875,119 +12875,119 @@
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
-        <target></target>
+        <target>Error al subir el archivo.</target>
       </trans-unit>
       <trans-unit id="ZVCy6PA" resname="Completed successfully">
         <source>Completed successfully</source>
-        <target></target>
+        <target>Completado con éxito</target>
       </trans-unit>
       <trans-unit id="CEZIpnQ" resname="An unexpected error occurred while processing the file.">
         <source>An unexpected error occurred while processing the file.</source>
-        <target></target>
+        <target>Ocurrió un error inesperado al procesar el archivo.</target>
       </trans-unit>
       <trans-unit id="vGlqvyV" resname="Unexpected error during upload">
         <source>Unexpected error during upload</source>
-        <target></target>
+        <target>Error inesperado durante la subida</target>
       </trans-unit>
       <trans-unit id="DlutuO4" resname="New from Template">
         <source>New from Template</source>
-        <target></target>
+        <target>Nuevo desde plantilla</target>
       </trans-unit>
       <trans-unit id="M_Llf6E" resname="Failed to load template. Please try again.">
         <source>Failed to load template. Please try again.</source>
-        <target></target>
+        <target>No se pudo cargar la plantilla. Por favor, inténtalo de nuevo.</target>
       </trans-unit>
       <trans-unit id="xCsb28x" resname="Processing file">
         <source>Processing file</source>
-        <target></target>
+        <target>Procesando archivo</target>
       </trans-unit>
       <trans-unit id="ywaQ_Vp" resname="Preparing upload...">
         <source>Preparing upload...</source>
-        <target></target>
+        <target>Preparando subida...</target>
       </trans-unit>
       <trans-unit id="AVv4iei" resname="This may take a few moments for large files...">
         <source>This may take a few moments for large files...</source>
-        <target></target>
+        <target>Puede tardar un poco si el archivo es grande...</target>
       </trans-unit>
       <trans-unit id="oPy4NMk" resname="Uploading">
         <source>Uploading</source>
-        <target></target>
+        <target>Subiendo</target>
       </trans-unit>
       <trans-unit id="uSZfo5R" resname="Uploading file...">
         <source>Uploading file...</source>
-        <target></target>
+        <target>Subiendo archivo...</target>
       </trans-unit>
       <trans-unit id="Pjnplq6" resname="Extracting files...">
         <source>Extracting files...</source>
-        <target></target>
+        <target>Extrayendo archivos...</target>
       </trans-unit>
       <trans-unit id="UU1fb0X" resname="Extracting ZIP file contents. This may take several minutes for large files.">
         <source>Extracting ZIP file contents. This may take several minutes for large files.</source>
-        <target></target>
+        <target>Extrayendo el contenido del archivo ZIP. Puede tardar varios minutos si el archivo es grande.</target>
       </trans-unit>
       <trans-unit id="qmGls_W" resname="Processing content...">
         <source>Processing content...</source>
-        <target></target>
+        <target>Procesando contenido...</target>
       </trans-unit>
       <trans-unit id="a0ZvaE4" resname="Reading and validating file structure. Almost done!">
         <source>Reading and validating file structure. Almost done!</source>
-        <target></target>
+        <target>Leyendo y validando la estructura del archivo. ¡Casi hemos terminado!</target>
       </trans-unit>
       <trans-unit id="msb5FOD" resname="Finalizing...">
         <source>Finalizing...</source>
-        <target></target>
+        <target>Finalizando...</target>
       </trans-unit>
       <trans-unit id="z9fMpq3" resname="Completing the process...">
         <source>Completing the process...</source>
-        <target></target>
+        <target>Completando el proceso...</target>
       </trans-unit>
       <trans-unit id="641t3eO" resname="Processing...">
         <source>Processing...</source>
-        <target></target>
+        <target>Procesando...</target>
       </trans-unit>
       <trans-unit id="WrPqN4D" resname="Please wait...">
         <source>Please wait...</source>
-        <target></target>
+        <target>Por favor, espera...</target>
       </trans-unit>
       <trans-unit id="4.iC7Dw" resname="Error processing file">
         <source>Error processing file</source>
-        <target></target>
+        <target>Error al procesar el archivo</target>
       </trans-unit>
       <trans-unit id="SDFoFKb" resname="Quick edit">
         <source>Quick edit</source>
-        <target></target>
+        <target>Edición rápida</target>
       </trans-unit>
       <trans-unit id="VLYpTCb" resname="Another user is editing an iDevice on this block.">
         <source>Another user is editing an iDevice on this block.</source>
-        <target></target>
+        <target>Otro usuario está editando un iDevice en esta caja.</target>
       </trans-unit>
       <trans-unit id="qSRqFDl" resname="Missing file name or path">
         <source>Missing file name or path</source>
-        <target></target>
+        <target>Falta el nombre o la ruta del archivo</target>
       </trans-unit>
       <trans-unit id="T7Qvhcc" resname="Invalid request data">
         <source>Invalid request data</source>
-        <target></target>
+        <target>Datos de solicitud no válidos</target>
       </trans-unit>
       <trans-unit id="dsSqvHh" resname="Uploaded file not found">
         <source>Uploaded file not found</source>
-        <target></target>
+        <target>No se ha encontrado el archivo subido</target>
       </trans-unit>
       <trans-unit id="ORp5XHR" resname="Invalid file type">
         <source>Invalid file type</source>
-        <target></target>
+        <target>Tipo de archivo no permitido</target>
       </trans-unit>
       <trans-unit id="Jyiz9H6" resname="Highlight this page in the website navigation menu">
         <source>Highlight this page in the website navigation menu</source>
-        <target></target>
+        <target>Resaltar esta página en el menú de navegación del sitio web</target>
       </trans-unit>
       <trans-unit id="dBXXN24" resname="Subtitle">
         <source>Subtitle</source>
-        <target></target>
+        <target>Subtítulo</target>
       </trans-unit>
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
-        <target></target>
+        <target>Añade información adicional al título principal.</target>
       </trans-unit>
     </body>
   </file>
