@@ -190,6 +190,14 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
         $databaseUser = $this->userHelper->getDatabaseUser($user);
 
+        // Validate odeNavStructureSyncId is not empty
+        if (empty($odeNavStructureSyncId)) {
+            $responseData['responseMessage'] = 'Missing navigation node identifier';
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+
         // Get odeNav
         $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
         $odeNavStructureSync = $odeNavStructureSyncRepo->find($odeNavStructureSyncId);
@@ -364,10 +372,9 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
 
-        // If no active session exists, return early
+        // If no active session exists, return early with "No changes" to avoid triggering logout modal
         if (null === $currentSessionForUser) {
-            $responseData['responseMessage'] = 'no_active_session';
-            $responseData['hasUpdate'] = false;
+            $responseData['responseMessage'] = 'No changes';
             $jsonData = $this->getJsonSerialized($responseData);
 
             return new JsonResponse($jsonData, $this->status, [], true);

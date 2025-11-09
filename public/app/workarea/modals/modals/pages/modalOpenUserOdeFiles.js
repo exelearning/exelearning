@@ -551,9 +551,11 @@ export default class modalOpenUserOdeFiles extends Modal {
             eXeLearning.app.api
                 .postCheckCurrentOdeUsers(odeParams)
                 .then((response) => {
-                    if (response['leaveSession'] || response['askSave']) {
+                    // Only show modal if there are unsaved changes
+                    if (response['askSave']) {
                         eXeLearning.app.modals.sessionlogout.show(data);
-                    } else if (response['leaveEmptySession']) {
+                    } else {
+                        // For empty or saved session, just open the file
                         this.openUserOdeFilesWithOpenSession(id);
                     }
                 });
@@ -778,11 +780,8 @@ export default class modalOpenUserOdeFiles extends Modal {
                         odeParams
                     );
 
-                if (
-                    sessionCheck['leaveSession'] ||
-                    sessionCheck['askSave'] ||
-                    sessionCheck['leaveEmptySession']
-                ) {
+                // Only show modal if there are actual unsaved changes
+                if (sessionCheck['askSave']) {
                     // There are unsaved changes - show confirmation modal
                     const data = {
                         title: _('Open project'),
@@ -802,7 +801,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                     eXeLearning.app.modals.sessionlogout.show(data);
                     return;
                 }
-                // If leaveEmptySession or no issues, continue with upload
+                // For leaveSession or leaveEmptySession, continue with upload without showing modal
             } catch (error) {
                 console.error('Error checking session:', error);
                 // Continue with upload even if check fails
@@ -1107,12 +1106,11 @@ export default class modalOpenUserOdeFiles extends Modal {
                     eXeLearning.app.api
                         .postCheckCurrentOdeUsers(odeParams)
                         .then((response2) => {
-                            if (
-                                response2['leaveSession'] ||
-                                response2['askSave']
-                            ) {
+                            // Only show modal if there are unsaved changes
+                            if (response2['askSave']) {
                                 eXeLearning.app.modals.sessionlogout.show(data);
-                            } else if (response2['leaveEmptySession']) {
+                            } else {
+                                // For empty or saved session, just open the file
                                 this.openUserLocalOdeFilesWithOpenSession(
                                     odeFileName,
                                     odeFilePath

@@ -123,7 +123,7 @@ class OdePagStructureSync extends BaseEntity
         return $this->iconName;
     }
 
-    public function setIconName(string $iconName): self
+    public function setIconName(?string $iconName): self
     {
         $this->iconName = $iconName;
 

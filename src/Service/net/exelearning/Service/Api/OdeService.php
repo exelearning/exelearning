@@ -12,7 +12,6 @@ use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Entity\net\exelearning\Entity\OdePropertiesSync;
 use App\Entity\net\exelearning\Entity\User;
 use App\Exception\net\exelearning\Exception\Logical\PhpZipExtensionException;
-use App\Exception\net\exelearning\Exception\Logical\UserAlreadyOpenSessionException;
 use App\Exception\net\exelearning\Exception\Logical\UserInsufficientSpaceException;
 use App\Helper\net\exelearning\Helper\FileHelper;
 use App\Helper\net\exelearning\Helper\UserHelper;
@@ -2000,7 +1999,7 @@ class OdeService implements OdeServiceInterface
         $user,
         $forceCloseOdeUserPreviousSession,
         $isImportIdevices = false,
-        $odeNavStructureSync = null
+        $odeNavStructureSync = null,
     ) {
         $result = [];
 
@@ -2271,7 +2270,7 @@ class OdeService implements OdeServiceInterface
         $odeSessionId,
         $elpFileName,
         $user,
-        $forceCloseOdeUserPreviousSession
+        $forceCloseOdeUserPreviousSession,
     ) {
         $result = [];
 
@@ -2328,7 +2327,7 @@ class OdeService implements OdeServiceInterface
         $dbUser,
         $clientIp,
         $forceCloseOdeUserPreviousSession,
-        $odeValues
+        $odeValues,
     ) {
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
 

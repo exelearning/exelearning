@@ -861,10 +861,12 @@ export default class NavbarFile {
         eXeLearning.app.api
             .postCheckCurrentOdeUsers(params)
             .then((response) => {
-                if (response['leaveEmptySession']) {
-                    this.createSession(params);
-                } else {
+                // Only show modal if there are unsaved changes
+                if (response['askSave']) {
                     eXeLearning.app.modals.sessionlogout.show(data);
+                } else {
+                    // For empty session or saved session, just create new session
+                    this.createSession(params);
                 }
             });
     }
@@ -1302,11 +1304,8 @@ export default class NavbarFile {
                     eXeLearning.app.api
                         .postCheckCurrentOdeUsers(params)
                         .then((response) => {
-                            if (response['leaveEmptySession']) {
-                                eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
-                                    odeFile.fileName
-                                );
-                            } else {
+                            // Only show modal if there are unsaved changes
+                            if (response['askSave']) {
                                 let data = {
                                     title: _('Open project'),
                                     forceOpen: _('Open without saving'),
@@ -1314,6 +1313,11 @@ export default class NavbarFile {
                                     id: odeFile.fileName,
                                 };
                                 eXeLearning.app.modals.sessionlogout.show(data);
+                            } else {
+                                // For empty or saved session, just open the file
+                                eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
+                                    odeFile.fileName
+                                );
                             }
                         });
                 });

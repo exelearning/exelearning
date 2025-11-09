@@ -946,6 +946,12 @@ class OdeApiController extends DefaultApiController
                 $forceCloseOdeUserPreviousSession,
                 $odeValues
             );
+
+            // Ensure all entities are flushed to database to prevent race conditions
+            $this->entityManager->flush();
+
+            // Clear Doctrine cache to force fresh reads from database
+            $this->entityManager->clear();
         } catch (UserAlreadyOpenSessionException $e) {
             $result['responseMessage'] = 'error: '.$e->getMessage();
             $responseData['responseMessage'] = $result['responseMessage'];
@@ -1147,6 +1153,12 @@ class OdeApiController extends DefaultApiController
                 $forceCloseOdeUserPreviousSession,
                 $odeValues
             );
+
+            // Ensure all entities are flushed to database to prevent race conditions
+            $this->entityManager->flush();
+
+            // Clear Doctrine cache to force fresh reads from database
+            $this->entityManager->clear();
         } catch (UserAlreadyOpenSessionException $e) {
             $result['responseMessage'] = 'error: '.$e->getMessage();
             $responseData['responseMessage'] = $result['responseMessage'];
@@ -2115,8 +2127,8 @@ class OdeApiController extends DefaultApiController
      * Allows a user to join an existing collaborative session without requiring an ELP file.
      * This method handles the case where a user receives a shared project link.
      *
-     * @param string $odeSessionId          The existing session ID to join
-     * @param string $projectId             The project ID
+     * @param string $odeSessionId The existing session ID to join
+     * @param string $projectId    The project ID
      */
     private function joinExistingSession(
         string $odeSessionId,

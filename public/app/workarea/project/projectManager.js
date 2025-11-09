@@ -110,6 +110,8 @@ export default class projectManager {
         this.app.interface.loadingScreen.show();
         // Load project properties
         await this.loadProjectProperties();
+        // Wait for structure to be ready in database (prevents race conditions)
+        await this.waitForStructureReady();
         // Load structure data
         await this.loadStructureData();
         // Load title
@@ -132,6 +134,49 @@ export default class projectManager {
         if (!this.offlineInstallation) {
             await this.subscribeToSessionAndNotify();
         }
+    }
+
+    /**
+     * Wait for project structure to be ready in the database before loading.
+     * This prevents race conditions when opening existing projects where
+     * the backend may still be committing data when the frontend tries to load it.
+     *
+     * @param {number} maxRetries - Maximum number of retry attempts (default: 10)
+     * @param {number} delay - Delay in milliseconds between retries (default: 100ms)
+     * @returns {Promise<boolean>} - Returns true if structure is ready, false if max retries reached
+     */
+    async waitForStructureReady(maxRetries = 10, delay = 100) {
+        console.log('Waiting for structure to be ready in database...');
+
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const structure = await this.app.api.getOdeStructure(
+                    this.odeVersion,
+                    this.odeSession
+                );
+
+                // Check if structure exists and has content
+                if (structure && structure.length > 0) {
+                    console.log(`Structure ready after ${i + 1} attempt(s)`);
+                    return true;
+                }
+            } catch (e) {
+                // Silently retry on error - structure might not exist yet
+                console.debug(
+                    `Structure check attempt ${i + 1} failed:`,
+                    e.message
+                );
+            }
+
+            // Wait before next retry
+            await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        // Max retries reached - log warning but continue anyway for graceful degradation
+        console.warn(
+            `Structure not ready after ${maxRetries} retries, proceeding anyway`
+        );
+        return false;
     }
 
     /**

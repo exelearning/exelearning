@@ -125,7 +125,7 @@ interface OdeServiceInterface
         $odeSessionId,
         $elpFileName,
         $user,
-        $forceCloseOdeUserPreviousSession
+        $forceCloseOdeUserPreviousSession,
     );
 
     /**
@@ -145,7 +145,7 @@ interface OdeServiceInterface
         $user,
         $forceCloseOdeUserPreviousSession,
         $isImportIdevices = false,
-        $odeNavStructureSync = null
+        $odeNavStructureSync = null,
     );
 
     /**
@@ -229,7 +229,7 @@ interface OdeServiceInterface
         $dbUser,
         $clientIp,
         $forceCloseOdeUserPreviousSession,
-        $odeValues
+        $odeValues,
     );
 
     /**
