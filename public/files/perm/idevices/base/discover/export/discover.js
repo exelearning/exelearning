@@ -37,7 +37,12 @@ var $eXeDescubre = {
     mScorm: null,
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Discover', 'discover', 'descubre-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Discover',
+            'discover',
+            'descubre-IDevice'
+        );
     },
 
     enable: function () {
@@ -66,7 +71,7 @@ var $eXeDescubre = {
                     $imagesLink2,
                     $audiosLink2,
                     $imagesLink3,
-                    $audiosLink3,
+                    $audiosLink3
                 ),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -94,14 +99,13 @@ var $eXeDescubre = {
 
             if (mOption.showMinimize) {
                 $('#descubreGameContainer-' + i).hide();
-
             } else {
                 $('#descubreGameMinimize-' + i).hide();
             }
 
             $('#descubreMessageMaximize-' + i).text(msg);
             $('#descubreDivFeedBack-' + i).prepend(
-                $('.descubre-feedback-game', this),
+                $('.descubre-feedback-game', this)
             );
 
             $eXeDescubre.addCards(i, mOption.cardsGame);
@@ -118,12 +122,10 @@ var $eXeDescubre = {
         if (node)
             $exeDevices.iDevice.gamification.observers.observeResize(
                 $eXeDescubre,
-                node,
+                node
             );
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.descubre-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.descubre-IDevice');
     },
 
     getQuestionDefault() {
@@ -158,10 +160,10 @@ var $eXeDescubre = {
         imgsLink2,
         audioLink2,
         imgsLink3,
-        audioLink3,
+        audioLink3
     ) {
         const json = $exeDevices.iDevice.gamification.helpers.decrypt(
-            data.text(),
+            data.text()
         );
         const linkImages = [imgsLink0, imgsLink1, imgsLink2, imgsLink3],
             linkAudios = [audioLink0, audioLink1, audioLink2, audioLink3],
@@ -208,9 +210,7 @@ var $eXeDescubre = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < mOptions.wordsGame.length) {
                     mOptions.wordsGame[iq].url0 = $(this).attr('href');
-                    if (
-                        mOptions.wordsGame[iq].url0.length < 4
-                    ) {
+                    if (mOptions.wordsGame[iq].url0.length < 4) {
                         mOptions.wordsGame[iq].url0 = '';
                     }
                 }
@@ -230,9 +230,7 @@ var $eXeDescubre = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < mOptions.wordsGame.length) {
                     mOptions.wordsGame[iq].url1 = $(this).attr('href');
-                    if (
-                        mOptions.wordsGame[iq].url1.length < 4
-                    ) {
+                    if (mOptions.wordsGame[iq].url1.length < 4) {
                         mOptions.wordsGame[iq].url1 = '';
                     }
                 }
@@ -253,9 +251,7 @@ var $eXeDescubre = {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < mOptions.wordsGame.length) {
                         mOptions.wordsGame[iq].url2 = $(this).attr('href');
-                        if (
-                            mOptions.wordsGame[iq].url2.length < 4
-                        ) {
+                        if (mOptions.wordsGame[iq].url2.length < 4) {
                             mOptions.wordsGame[iq].url2 = '';
                         }
                     }
@@ -346,13 +342,13 @@ var $eXeDescubre = {
         mOptions.wordsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.wordsGame,
-                mOptions.percentajeQuestions,
+                mOptions.percentajeQuestions
             );
         mOptions.numberQuestions = mOptions.wordsGame.length;
         mOptions.wordsGameFix = mOptions.wordsGame;
         mOptions.cardsGame = $eXeDescubre.createCardsData(
             mOptions.wordsGame,
-            mOptions.gameMode,
+            mOptions.gameMode
         );
         mOptions.fullscreen = false;
         mOptions.evaluation =
@@ -502,7 +498,7 @@ var $eXeDescubre = {
         const mOptions = $eXeDescubre.options[instance];
         if (!mOptions) return;
         const $discovers = $('#descubreMultimedia-' + instance).find(
-            '.DescubreQP-CardContainer',
+            '.DescubreQP-CardContainer'
         );
         if (mOptions.refrescards) return;
         mOptions.refrescards = true;
@@ -512,7 +508,7 @@ var $eXeDescubre = {
                 latex =
                     $textcontainer.find('mjx-container').length > 0 ||
                     /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(
-                        $textcontainer.text(),
+                        $textcontainer.text()
                     );
 
             if (!latex) {
@@ -520,7 +516,7 @@ var $eXeDescubre = {
             } else {
                 $eXeFlipeXeDescubreCards.setFontSizeMath(
                     $textcontainer,
-                    instance,
+                    instance
                 );
             }
         });
@@ -697,7 +693,7 @@ var $eXeDescubre = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.wordsGame.length;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeDescubre.isInExe,
+            $eXeDescubre.isInExe
         );
     },
 
@@ -732,27 +728,40 @@ var $eXeDescubre = {
                 alt: cardsGame[i].alt,
                 color: cardsGame[i].color,
                 backcolor: cardsGame[i].backcolor,
-                instance
+                instance,
             });
             cards += card;
         }
         $('#descubreMultimedia-' + instance).append(cards);
         if (mOptions.imgCard.length > 4) {
             $('#descubreMultimedia-' + instance)
-                .find('.DescubreQP-CardContainer').each(function () {
-                    $(this).find('.DescubreQP-CardFront').css({
-                        'background-image': 'url(' + mOptions.imgCard + ')',
-                        'background-size': 'cover'
-                    });
+                .find('.DescubreQP-CardContainer')
+                .each(function () {
+                    $(this)
+                        .find('.DescubreQP-CardFront')
+                        .css({
+                            'background-image': 'url(' + mOptions.imgCard + ')',
+                            'background-size': 'cover',
+                        });
                 });
         }
         $eXeDescubre.refreshGame(instance);
     },
 
-    createCard({ index = 0, url = '', text = '', audio = '', x = 0, y = 0, alt = '', color = '#000', backcolor = '#fff', instance = 0 }) {
+    createCard({
+        index = 0,
+        url = '',
+        text = '',
+        audio = '',
+        x = 0,
+        y = 0,
+        alt = '',
+        color = '#000',
+        backcolor = '#fff',
+        instance = 0,
+    }) {
         const opts = $eXeDescubre.options[instance] || {};
         const msgs = opts.msgs || {};
-
 
         const fullImageLink = () => {
             if (!url) return '';
@@ -766,7 +775,9 @@ var $eXeDescubre = {
 
         const audioLink = () => {
             const hasContent = url.trim() || text.trim();
-            const cls = hasContent ? 'DescubreQP-LinkAudio' : 'DescubreQP-LinkAudioBig';
+            const cls = hasContent
+                ? 'DescubreQP-LinkAudio'
+                : 'DescubreQP-LinkAudioBig';
             return `
             <a href="#" data-audio="${audio}" class="${cls}" title="${msgs.msgAudio || 'Audio'}">
               <img src="${$eXeDescubre.idevicePath}exequextplayaudio.svg"
@@ -809,13 +820,17 @@ var $eXeDescubre = {
     },
 
     hexToRgba: function (hex) {
-        hex = hex.replace(/^#/, '')
-        if (!/^[\da-f]{3}([\da-f]{3})?$/i.test(hex)) throw new Error('Color hexadecimal inválido')
-        if (hex.length === 3) hex = [...hex].map(c => c + c).join('')
-        const [r, g, b] = [hex.slice(0, 2), hex.slice(2, 4), hex.slice(4, 6)].map(v => parseInt(v, 16))
-        return `rgba(${r}, ${g}, ${b}, 0.7)`
+        hex = hex.replace(/^#/, '');
+        if (!/^[\da-f]{3}([\da-f]{3})?$/i.test(hex))
+            throw new Error('Color hexadecimal inválido');
+        if (hex.length === 3) hex = [...hex].map((c) => c + c).join('');
+        const [r, g, b] = [
+            hex.slice(0, 2),
+            hex.slice(2, 4),
+            hex.slice(4, 6),
+        ].map((v) => parseInt(v, 16));
+        return `rgba(${r}, ${g}, ${b}, 0.7)`;
     },
-
 
     isFullScreen: function () {
         return (
@@ -827,13 +842,23 @@ var $eXeDescubre = {
     },
     removeEvents: function (instance) {
         const $descubreGameContainer = $('#descubreGameContainer-' + instance);
-        const $mainContainer = $('#descubreMainContainer-' + instance).closest('.idevice_node');
+        const $mainContainer = $('#descubreMainContainer-' + instance).closest(
+            '.idevice_node'
+        );
         const $container = $('#descubreMultimedia-' + instance);
-        $('#descubreLinkMaximize-' + instance).off('click.eXeDescubre touchstart.eXeDescubre');
-        $('#descubreLinkMinimize-' + instance).off('click.eXeDescubre touchstart.eXeDescubre');
-        $('#descubreLinkFullScreen-' + instance).off('click.eXeDescubre touchstart.eXeDescubre');
+        $('#descubreLinkMaximize-' + instance).off(
+            'click.eXeDescubre touchstart.eXeDescubre'
+        );
+        $('#descubreLinkMinimize-' + instance).off(
+            'click.eXeDescubre touchstart.eXeDescubre'
+        );
+        $('#descubreLinkFullScreen-' + instance).off(
+            'click.eXeDescubre touchstart.eXeDescubre'
+        );
         $('#descubreFeedBackClose-' + instance).off('click.eXeDescubre');
-        $('#descubreCodeAccessButton-' + instance).off('click.eXeDescubre touchstart.eXeDescubre');
+        $('#descubreCodeAccessButton-' + instance).off(
+            'click.eXeDescubre touchstart.eXeDescubre'
+        );
         $('#descubreCodeAccessE-' + instance).off('keydown.eXeDescubre');
         $(window).off('unload.eXeDescubre beforeunload.eXeDescubre');
         $mainContainer.off('click.eXeDescubre', '.Games-SendScore');
@@ -844,15 +869,20 @@ var $eXeDescubre = {
         $('#descubreReboot-' + instance).off('click.eXeDescubre');
         $('#descubreShowSolution-' + instance).off('click.eXeDescubre');
         $('#descubreClueButton-' + instance).off('click.eXeDescubre');
-        $('#descubreMultimedia-' + instance).off('click.eXeDescubre', '.DescubreQP-CardContainer');
+        $('#descubreMultimedia-' + instance).off(
+            'click.eXeDescubre',
+            '.DescubreQP-CardContainer'
+        );
         $container.off('click.eXeDescubre', 'a[data-audio]');
-        $descubreGameContainer.off('click.eXeDescubre', '.DescubreQP-FullLinkImage');
-
+        $descubreGameContainer.off(
+            'click.eXeDescubre',
+            '.DescubreQP-FullLinkImage'
+        );
     },
 
     addEvents: function (instance) {
         const mOptions = $eXeDescubre.options[instance];
-        $eXeDescubre.removeEvents(instance)
+        $eXeDescubre.removeEvents(instance);
         const $descubreGameContainer = $('#descubreGameContainer-' + instance);
 
         $('#descubreLinkMaximize-' + instance).on(
@@ -861,7 +891,7 @@ var $eXeDescubre = {
                 e.preventDefault();
                 $descubreGameContainer.show();
                 $('#descubreGameMinimize-' + instance).hide();
-            },
+            }
         );
 
         $('#descubreLinkMinimize-' + instance).on(
@@ -872,7 +902,7 @@ var $eXeDescubre = {
                 $('#descubreGameMinimize-' + instance)
                     .css('visibility', 'visible')
                     .show();
-            },
+            }
         );
 
         $('#descubreCubierta-' + instance).hide();
@@ -892,16 +922,15 @@ var $eXeDescubre = {
             function (e) {
                 e.preventDefault();
                 const element = document.getElementById(
-                    'descubreGameContainer-' + instance,
+                    'descubreGameContainer-' + instance
                 );
                 $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
-                    element,
+                    element
                 );
                 setTimeout(function () {
-                    $eXeDescubre.refreshGame(instance)
+                    $eXeDescubre.refreshGame(instance);
                 }, 100);
-
-            },
+            }
         );
 
         $('#descubreFeedBackClose-' + instance).on('click', function () {
@@ -911,7 +940,7 @@ var $eXeDescubre = {
 
         if (mOptions.itinerary.showCodeAccess) {
             $('#descubreMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $('#descubreCodeAccessDiv-' + instance).show();
             $('#descubreStartLevels-' + instance).hide();
@@ -923,7 +952,7 @@ var $eXeDescubre = {
             function (e) {
                 e.preventDefault();
                 $eXeDescubre.enterCodeAccess(instance);
-            },
+            }
         );
 
         $('#descubreCodeAccessE-' + instance).on('keydown', function (event) {
@@ -935,13 +964,16 @@ var $eXeDescubre = {
         });
 
         $('#descubrePNumber-' + instance).text(mOptions.numberQuestions);
-        $(window).on('unload.eXeDescubre beforeunload.eXeDescubre', function () {
-            if (typeof $eXeDescubre.mScorm != 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeDescubre.mScorm
-                );
+        $(window).on(
+            'unload.eXeDescubre beforeunload.eXeDescubre',
+            function () {
+                if (typeof $eXeDescubre.mScorm != 'undefined') {
+                    $exeDevices.iDevice.gamification.scorm.endScorm(
+                        $eXeDescubre.mScorm
+                    );
+                }
             }
-        });
+        );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -1005,9 +1037,8 @@ var $eXeDescubre = {
             '.DescubreQP-CardContainer',
             function () {
                 $eXeDescubre.cardClick(this, instance);
-            },
+            }
         );
-
 
         const $container = $('#descubreMultimedia-' + instance);
 
@@ -1018,13 +1049,14 @@ var $eXeDescubre = {
             e.preventDefault();
             const audioId = this.dataset.audio;
             if (audioId && audioId.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(audioId, mOptions);
+                $exeDevices.iDevice.gamification.media.playSound(
+                    audioId,
+                    mOptions
+                );
             } else {
                 console.warn('Audio inválido en el enlace:', this);
             }
         });
-
-
 
         $('#descubrePErrors-' + instance).text(mOptions.attempts);
         if (mOptions.time == 0) {
@@ -1037,7 +1069,7 @@ var $eXeDescubre = {
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
             $('#descubreAuthorGame-' + instance).html(
-                mOptions.msgs.msgAuthor + '; ' + mOptions.author,
+                mOptions.msgs.msgAuthor + '; ' + mOptions.author
             );
             $('#descubreAuthorGame-' + instance).show();
         }
@@ -1055,16 +1087,16 @@ var $eXeDescubre = {
                 if (largeImageSrc && largeImageSrc.length > 3) {
                     $exeDevices.iDevice.gamification.helpers.showFullscreenImage(
                         largeImageSrc,
-                        $descubreGameContainer,
+                        $descubreGameContainer
                     );
                 }
-            },
+            }
         );
 
         setTimeout(function () {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -1080,7 +1112,7 @@ var $eXeDescubre = {
             if (mOptions.gameLevels == 1) {
                 $('#descubreStartGame2-' + instance).show();
                 $('#descubreStartGame2-' + instance).text(
-                    mOptions.msgs.msgPlayStart,
+                    mOptions.msgs.msgPlayStart
                 );
                 $('#descubreInfo-' + instance).hide();
             } else if (mOptions.gameLevels == 2) {
@@ -1130,7 +1162,10 @@ var $eXeDescubre = {
             const message = mOptions.msgs.msgSelectCard;
             $eXeDescubre.showMessage(3, message, instance, false);
         }
-        const sound = $cc.find('.DescubreQP-LinkAudio').data('audio') || $cc.find('.DescubreQP-LinkAudioBig').data('audio') || '';
+        const sound =
+            $cc.find('.DescubreQP-LinkAudio').data('audio') ||
+            $cc.find('.DescubreQP-LinkAudioBig').data('audio') ||
+            '';
 
         if (sound.length > 3) {
             $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
@@ -1138,7 +1173,7 @@ var $eXeDescubre = {
 
         $card.addClass('DescubreQP-CardActive');
         const $marcados = $('#descubreMultimedia-' + instance).find(
-            '.DescubreQP-Card1',
+            '.DescubreQP-Card1'
         );
 
         mOptions.gameActived = true;
@@ -1207,7 +1242,7 @@ var $eXeDescubre = {
         $('#descubreGameOver-' + instance).hide();
 
         const $cards = $('#descubreMultimedia-' + instance).find(
-            '.DescubreQP-CardContainer',
+            '.DescubreQP-CardContainer'
         );
         $cards.each(function () {
             const $card = $(this).find('.DescubreQP-Card1').eq(0),
@@ -1259,15 +1294,18 @@ var $eXeDescubre = {
         const mOptions = $eXeDescubre.options[instance];
         $eXeDescubre.updateScore(false, instance);
 
-        const $marcados = $('#descubreMultimedia-' + instance)
-            .find('.DescubreQP-CardActive');
+        const $marcados = $('#descubreMultimedia-' + instance).find(
+            '.DescubreQP-CardActive'
+        );
 
         $marcados.each(function () {
             $(this).data('valid', '1');
             var $el = $(this).css('position', 'relative');
             for (var i = 0; i < 2; i++) {
-                $el.animate({ left: '-2px' }, 'fast')
-                    .animate({ left: '2px' }, 'fast');
+                $el.animate({ left: '-2px' }, 'fast').animate(
+                    { left: '2px' },
+                    'fast'
+                );
             }
             $el.animate({ left: '0' }, 'fast');
         });
@@ -1279,7 +1317,7 @@ var $eXeDescubre = {
             $eXeDescubre.showMessage(
                 3,
                 mOptions.msgs.msgSelectCardOne,
-                instance,
+                instance
             );
         }, mOptions.timeShowSolution);
     },
@@ -1299,7 +1337,7 @@ var $eXeDescubre = {
             if (!mOptions.obtainedClue) {
                 mOptions.obtainedClue = true;
                 $('#descubrePShowClue-' + instance).text(
-                    mOptions.itinerary.clueGame,
+                    mOptions.itinerary.clueGame
                 );
                 $('#descubreCubierta-' + instance).show();
                 $('#descubreShowClue-' + instance).fadeIn();
@@ -1324,8 +1362,10 @@ var $eXeDescubre = {
             $(this).data('valid', '1');
             var $el = $(this).css('position', 'relative');
             for (var i = 0; i < 2; i++) {
-                $el.animate({ top: '-2px' }, 'fast')
-                    .animate({ top: '2px' }, 'fast');
+                $el.animate({ top: '-2px' }, 'fast').animate(
+                    { top: '2px' },
+                    'fast'
+                );
             }
             $el.animate({ top: '0' }, 'fast');
         });
@@ -1359,7 +1399,7 @@ var $eXeDescubre = {
     updateCovers: function (instance, answers) {
         const mOptions = $eXeDescubre.options[instance],
             $cardContainers = $('#descubreMultimedia-' + instance).find(
-                '.DescubreQP-CardContainer',
+                '.DescubreQP-CardContainer'
             );
 
         $cardContainers.each(function () {
@@ -1436,15 +1476,15 @@ var $eXeDescubre = {
                 });
         }
         if (stxt.length > 0) {
-
             $text.show();
-            const bk = url.length > 5 ? $eXeDescubre.hexToRgba(backcolor) : backcolor;
+            const bk =
+                url.length > 5 ? $eXeDescubre.hexToRgba(backcolor) : backcolor;
             $text.css({
-                'color': color,
+                color: color,
                 'background-color': bk,
             });
             $textdinamic.css({
-                'color': color,
+                color: color,
             });
         }
 
@@ -1458,7 +1498,6 @@ var $eXeDescubre = {
                 $audio.addClass('DescubreQP-LinkAudio');
             }
             $audio.show();
-
         }
         if (state > 0) {
             $noImage.hide();
@@ -1486,7 +1525,7 @@ var $eXeDescubre = {
     refreshGame: function (instance) {
         const mOptions = $eXeDescubre.options[instance],
             $discovers = $('#descubreMultimedia-' + instance).find(
-                '.DescubreQP-CardContainer',
+                '.DescubreQP-CardContainer'
             );
 
         if (!mOptions || mOptions.refreshCard) return;
@@ -1522,7 +1561,7 @@ var $eXeDescubre = {
             $scoreBoard = $(`#descubreGameScoreBoard-${instance}`),
             $startGame0 = $(`#descubreStartGame0-${instance}`),
             $cardContainers = $(`#descubreMultimedia-${instance}`).find(
-                '.DescubreQP-CardContainer',
+                '.DescubreQP-CardContainer'
             ),
             h = screen.height - $scoreBoard.height() - 2 * $startGame0.height();
         let size = '12%',
@@ -1575,7 +1614,7 @@ var $eXeDescubre = {
             $('#descubreCodeAccessDiv-' + instance).hide();
             $('#descubreCubierta-' + instance).hide();
             $('#descubreStartLevels-' + instance).show();
-            $('#descubreLinkMaximize-' + instance).trigger('click')
+            $('#descubreLinkMaximize-' + instance).trigger('click');
         } else {
             $('#descubreMesajeAccesCodeE-' + instance)
                 .fadeOut(300)
@@ -1604,14 +1643,14 @@ var $eXeDescubre = {
                 },
                 function () {
                     $card.removeClass('DescubreQP-Hover');
-                },
+                }
             );
         }
     },
 
     initCards: function (instance) {
         const $cards = $('#descubreMultimedia-' + instance).find(
-            '.DescubreQP-CardContainer',
+            '.DescubreQP-CardContainer'
         );
         $cards.each(function () {
             $(this).data('state', '0');
@@ -1619,7 +1658,7 @@ var $eXeDescubre = {
             $eXeDescubre.showCard($(this), instance);
         });
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '#descubreMultimedia-' + instance,
+            '#descubreMultimedia-' + instance
         );
     },
 
@@ -1650,11 +1689,11 @@ var $eXeDescubre = {
         }
 
         $('#descubreInfo-' + instance).text(
-            mOptions.msgs.msgLevel + ': ' + snivel,
+            mOptions.msgs.msgLevel + ': ' + snivel
         );
         const cardsGame = $eXeDescubre.createCardsData(
             mOptions.wordsGame,
-            mOptions.gameMode,
+            mOptions.gameMode
         );
         return cardsGame;
     },
@@ -1706,7 +1745,10 @@ var $eXeDescubre = {
             mOptions.counterClock = setInterval(function () {
                 let $node = $('#descubreMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -1796,7 +1838,6 @@ var $eXeDescubre = {
         $('#descubreStartLevels-' + instance).show();
         $('#descubreCubierta-' + instance).hide();
         $('#descubreInfo-' + instance).text(mOptions.msgs.msgSelectLevel);
-
     },
 
     showFeedBack: function (instance) {
@@ -1814,10 +1855,10 @@ var $eXeDescubre = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     ),
                     instance,
-                    false,
+                    false
                 );
             }
         }
@@ -1874,7 +1915,7 @@ var $eXeDescubre = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1889,7 +1930,7 @@ var $eXeDescubre = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1905,7 +1946,7 @@ var $eXeDescubre = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -1921,7 +1962,7 @@ var $eXeDescubre = {
                     } else {
                         mclue = msgs.msgTryAgain.replace(
                             '%s',
-                            mOptions.itinerary.percentageClue,
+                            mOptions.itinerary.percentageClue
                         );
                     }
                 }
@@ -2044,12 +2085,12 @@ var $eXeDescubre = {
 
     showMessage: function (type, message, instance, end) {
         const colors = [
-            '#555555',
-            $eXeDescubre.borderColors.red,
-            $eXeDescubre.borderColors.green,
-            $eXeDescubre.borderColors.blue,
-            $eXeDescubre.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeDescubre.borderColors.red,
+                $eXeDescubre.borderColors.green,
+                $eXeDescubre.borderColors.blue,
+                $eXeDescubre.borderColors.yellow,
+            ],
             color = colors[type];
         $('#descubreMessage-' + instance).text(message);
         $('#descubreMessage-' + instance).css({

@@ -49,7 +49,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
 
         this.setMessagesInfo();
@@ -63,7 +63,6 @@ var $exeDevice = {
         $exeDevice.addEvents();
     },
 
-
     refreshTranslations: function () {
         this.ci18n = {
             msgStartGame: c_('Click here to start'),
@@ -71,7 +70,9 @@ var $exeDevice = {
             msgClue: c_('Cool! The clue is:'),
             msgNewGame: c_('Click here for a new game'),
             msgCodeAccess: c_('Access code'),
-            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgInformationLooking: c_(
+                'Cool! The information you were looking for'
+            ),
             msgPlayStart: c_('Click here to play'),
             msgErrors: c_('Errors'),
             msgHits: c_('Hits'),
@@ -90,26 +91,44 @@ var $exeDevice = {
             msgLoseLive: c_('You lost one life'),
             msgLostLives: c_('You lost all your lives!'),
             msgAllQuestions: c_('Questions completed!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgQuestion: c_('Question'),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
             msgYouScore: c_('Your score'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
             msgVideoIntro: c_('Video Intro'),
             msgClose: c_('Close'),
             msgOption: c_('Option'),
-            msgUseFulInformation: c_('and information that will be very useful'),
+            msgUseFulInformation: c_(
+                'and information that will be very useful'
+            ),
             msgLoading: c_('Loading. Please wait...'),
             msgPoints: c_('points'),
             msgAudio: c_('Audio'),
@@ -118,50 +137,50 @@ var $exeDevice = {
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Quick questions'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgEProvideDefinition = _(
-            'Please provide the word definition or the valid URL of an image',
+            'Please provide the word definition or the valid URL of an image'
         );
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image',
+            'You must upload or indicate the valid URL of an image'
         );
         msgs.msgEProvideWord = _('Please provide one word or phrase');
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgEUnavailableVideo = _('This video is not currently available');
         msgs.msgECompleteQuestion = _('You have to complete the question');
         msgs.msgECompleteAllOptions = _(
-            'You have to complete all the selected options',
+            'You have to complete all the selected options'
         );
         msgs.msgESelectSolution = _('Choose the right answer');
         msgs.msgECompleteURLYoutube = _('Please type or paste a valid URL.');
         msgs.msgEStartEndVideo = _(
-            'You have to indicate the start and the end of the video that you want to show',
+            'You have to indicate the start and the end of the video that you want to show'
         );
         msgs.msgEStartEndIncorrect = _(
-            'The video end value must be higher than the start one',
+            'The video end value must be higher than the start one'
         );
         msgs.msgWriteText = _('You have to type a text in the editor');
         msgs.msgSilentPoint = _(
-            'The silence time is wrong. Check the video duration.',
+            'The silence time is wrong. Check the video duration.'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
-            'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'Are you sure you want to continue without including an image description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
     },
 
@@ -238,10 +257,10 @@ var $exeDevice = {
         if (urlvideo.length === 0 || urlvideo.val().trim().length < 3) return;
         if (
             $exeDevices.iDevice.gamification.media.getIDYoutube(
-                $('#quextEURLYoutube').val().trim(),
+                $('#quextEURLYoutube').val().trim()
             ) ||
             $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                $('#quextEURLYoutube').val().trim(),
+                $('#quextEURLYoutube').val().trim()
             )
         ) {
             $exeDevice.showVideoQuestion();
@@ -257,7 +276,7 @@ var $exeDevice = {
             $exeDevice.showVideoQuestion();
         } else if (
             $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                urlvideo.trim(),
+                urlvideo.trim()
             )
         ) {
             $exeDevice.showVideoQuestion();
@@ -278,7 +297,7 @@ var $exeDevice = {
             if (currentTime) {
                 const time =
                     $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                        Math.floor(currentTime),
+                        Math.floor(currentTime)
                     );
                 $('#quextEVITime').text(time);
                 if (
@@ -298,7 +317,7 @@ var $exeDevice = {
             if (currentTime) {
                 const time =
                     $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                        Math.floor(currentTime),
+                        Math.floor(currentTime)
                     );
                 $('#quextEVideoTime').text(time);
                 $exeDevice.updateSoundVideoLocal();
@@ -319,7 +338,7 @@ var $exeDevice = {
             typeof $exeDevice.player.getCurrentTime === 'function'
         ) {
             const time = $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                $exeDevice.player.getCurrentTime(),
+                $exeDevice.player.getCurrentTime()
             );
             $('#quextEVideoTime').text(time);
             $exeDevice.updateSoundVideo();
@@ -332,7 +351,7 @@ var $exeDevice = {
             typeof $exeDevice.playerIntro.getCurrentTime === 'function'
         ) {
             const time = $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                $exeDevice.playerIntro.getCurrentTime(),
+                $exeDevice.playerIntro.getCurrentTime()
             );
             $('#quextEVITime').text(time);
         }
@@ -370,7 +389,7 @@ var $exeDevice = {
 
     updateProgressBar: function () {
         $('#progress-bar').val(
-            (player.getCurrentTime() / player.getDuration()) * 100,
+            (player.getCurrentTime() / player.getDuration()) * 100
         );
     },
 
@@ -540,7 +559,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.questionsGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.questionsGame[$exeDevice.active])
             );
             $('#quextEPaste').show();
         }
@@ -560,7 +579,7 @@ var $exeDevice = {
             $exeDevice.questionsGame.splice(
                 $exeDevice.active,
                 0,
-                $exeDevice.clipBoard,
+                $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
         } else if ($exeDevice.typeEdit === 1) {
@@ -569,7 +588,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.questionsGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showQuestion($exeDevice.active);
             $('#quextENumQuestions').text($exeDevice.questionsGame.length);
@@ -613,7 +632,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentage = parseInt(
-            $exeDevice.removeTags($('#quextEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#quextEPercentajeQuestions').val())
         );
         if (isNaN(percentage)) return;
 
@@ -659,19 +678,15 @@ var $exeDevice = {
             $('#quextECheckImageVideo').prop('checked', p.imageVideo === 1);
             $('#quextEURLYoutube').val(p.url);
             $('#quextEInitVideo').val(
-                $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                    p.iVideo,
-                ),
+                $exeDevices.iDevice.gamification.helpers.secondsToHour(p.iVideo)
             );
             $('#quextEEndVideo').val(
-                $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                    p.fVideo,
-                ),
+                $exeDevices.iDevice.gamification.helpers.secondsToHour(p.fVideo)
             );
             $('#quextESilenceVideo').val(
                 $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                    p.silentVideo,
-                ),
+                    p.silentVideo
+                )
             );
             $('#quextETimeSilence').val(p.tSilentVideo);
             $exeDevice.silentVideo = p.silentVideo;
@@ -707,18 +722,18 @@ var $exeDevice = {
         $('#quextEMessageKO').val(p.msgError);
         $('#quextEMessageOK').val(p.msgHit);
         $(
-            `input.QXTE-Number[name='qxtnumber'][value='${p.numberOptions}']`,
+            `input.QXTE-Number[name='qxtnumber'][value='${p.numberOptions}']`
         ).prop('checked', true);
         $(`input.QXTE-Type[name='qxtype'][value='${p.type}']`).prop(
             'checked',
-            true,
+            true
         );
         $(
-            `input.QXTE-ESolution[name='qxsolution'][value='${p.solution}']`,
+            `input.QXTE-ESolution[name='qxsolution'][value='${p.solution}']`
         ).prop('checked', true);
         $(`input.QXTE-Times[name='qxttime'][value='${p.time}']`).prop(
             'checked',
-            true,
+            true
         );
     },
 
@@ -726,17 +741,17 @@ var $exeDevice = {
         const soundVideo = $('#quextECheckSoundVideo').is(':checked') ? 1 : 0,
             imageVideo = $('#quextECheckImageVideo').is(':checked') ? 1 : 0,
             iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                $('#quextEInitVideo').val(),
+                $('#quextEInitVideo').val()
             ),
             fVideoInput =
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                    $('#quextEEndVideo').val(),
+                    $('#quextEEndVideo').val()
                 ),
             url = $('#quextEURLYoutube').val().trim(),
             id = $exeDevices.iDevice.gamification.media.getIDYoutube(url),
             idLocal =
                 $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                    url,
+                    url
                 ),
             type = id ? 0 : 1;
 
@@ -744,7 +759,7 @@ var $exeDevice = {
 
         $exeDevice.silentVideo =
             $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                $('#quextESilenceVideo').val().trim(),
+                $('#quextESilenceVideo').val().trim()
             );
         $exeDevice.tSilentVideo = parseInt($('#quextETimeSilence').val());
         $exeDevice.activeSilent =
@@ -811,7 +826,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
@@ -906,7 +921,7 @@ var $exeDevice = {
                     $('#quextEXImage').val(),
                     $('#quextEYImage').val(),
                     $('#quextEAlt').val(),
-                    0,
+                    0
                 );
                 break;
             case 2:
@@ -1080,7 +1095,7 @@ var $exeDevice = {
                                     <option value="4">5m</option>
                                     <option value="5">10m</option>
                                 </select>
-                                <button id="quextGlobalTimeButton" class="btn btn-primary" type="button">${_("Accept")}</button> 
+                                <button id="quextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">                                
                                 <div class="toggle-item">
@@ -1374,8 +1389,12 @@ var $exeDevice = {
     },
 
     initQuestions: function () {
-        $('#quextEInputVideo, #quextEInputImage').removeClass('d-flex').addClass('d-none');
-        $('#quextMediaNormal, #quextMediaImage, #quextMediaText, #quextMediaVideo', ).prop('disabled', false);
+        $('#quextEInputVideo, #quextEInputImage')
+            .removeClass('d-flex')
+            .addClass('d-none');
+        $(
+            '#quextMediaNormal, #quextMediaImage, #quextMediaText, #quextMediaVideo'
+        ).prop('disabled', false);
 
         if ($exeDevice.questionsGame.length === 0) {
             const question = $exeDevice.getCuestionDefault();
@@ -1438,7 +1457,7 @@ var $exeDevice = {
             }
 
             const dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $imagesLink = $('.quext-LinkImages', wrapper),
                 $audiosLink = $('.quext-LinkAudios', wrapper);
 
@@ -1493,7 +1512,7 @@ var $exeDevice = {
             }
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
         }
@@ -1518,7 +1537,9 @@ var $exeDevice = {
     },
 
     updateFieldGame: function (game) {
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.answersRamdon = game.answersRamdon || false;
         game.percentajeFB =
             typeof game.percentajeFB !== 'undefined' ? game.percentajeFB : 100;
@@ -1555,25 +1576,25 @@ var $exeDevice = {
         $('#quextEVIURL').val(game.idVideo);
         $('#quextEVIEnd').val(
             $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                game.endVideo,
-            ),
+                game.endVideo
+            )
         );
         $('#quextEVIStart').val(
             $exeDevices.iDevice.gamification.helpers.secondsToHour(
-                game.startVideo,
-            ),
+                game.startVideo
+            )
         );
         $('#quextECustomScore').prop('checked', game.customScore);
         $('#quextEScoreQuestionDiv').removeClass('d-flex').addClass('d-none');
         $('#quextEHasFeedBack').prop('checked', game.feedBack);
         $('#quextEPercentajeFB').val(game.percentajeFB);
         $(
-            `input.QXTE-TypeGame[name='qxtgamemode'][value='${game.gameMode}']`,
+            `input.QXTE-TypeGame[name='qxtgamemode'][value='${game.gameMode}']`
         ).prop('checked', true);
         $('#quextEUseLives').prop('disabled', game.gameMode === 0);
         $('#quextENumberLives').prop(
             'disabled',
-            game.gameMode === 0 && game.useLives,
+            game.gameMode === 0 && game.useLives
         );
         $('#quextECustomMessages').prop('checked', game.customMessages);
         $('#quextEPercentajeQuestions').val(game.percentajeQuestions);
@@ -1597,14 +1618,16 @@ var $exeDevice = {
         });
 
         if (game.customScore) {
-            $('#quextEScoreQuestionDiv').removeClass('d-none').addClass('d-flex');
+            $('#quextEScoreQuestionDiv')
+                .removeClass('d-none')
+                .addClass('d-flex');
         }
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
 
         if (game.feedBack || game.gameMode === 2) {
@@ -1666,7 +1689,6 @@ var $exeDevice = {
         const json = JSON.stringify(dataGame);
         let divContent = '';
 
-
         const instructions = tinyMCE.get('eXeGameInstructions').getContent();
 
         if (instructions !== '') {
@@ -1709,10 +1731,10 @@ var $exeDevice = {
             function () {
                 $exeDevice.checkAltImage = false;
                 const saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
         return false;
     },
@@ -1740,14 +1762,14 @@ var $exeDevice = {
         if (p.type === 2) {
             const youtubeUrl = $('#quextEURLYoutube').val().trim();
             p.url = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                youtubeUrl,
+                youtubeUrl
             )
                 ? youtubeUrl
                 : '';
             if (p.url === '') {
                 p.url =
                     $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                        youtubeUrl,
+                        youtubeUrl
                     )
                         ? youtubeUrl
                         : '';
@@ -1757,13 +1779,13 @@ var $exeDevice = {
         p.soundVideo = $('#quextECheckSoundVideo').is(':checked') ? 1 : 0;
         p.imageVideo = $('#quextECheckImageVideo').is(':checked') ? 1 : 0;
         p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-            $('#quextEInitVideo').val().trim(),
+            $('#quextEInitVideo').val().trim()
         );
         p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-            $('#quextEEndVideo').val().trim(),
+            $('#quextEEndVideo').val().trim()
         );
         p.silentVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-            $('#quextESilenceVideo').val().trim(),
+            $('#quextESilenceVideo').val().trim()
         );
         p.tSilentVideo = parseInt($('#quextETimeSilence').val());
         p.eText = tinyMCE.get('quextEText').getContent();
@@ -1929,7 +1951,7 @@ var $exeDevice = {
     addQuestions: function (questions) {
         if (!questions || questions.length == 0) {
             eXe.app.alert(
-                _('Sorry, there are no questions for this type of activity.'),
+                _('Sorry, there are no questions for this type of activity.')
             );
             return;
         }
@@ -2057,7 +2079,7 @@ var $exeDevice = {
             for (let i = 0; i < $exeDevice.questionsGame.length; i++) {
                 if (game.questionsGame[i].type === 3) {
                     game.questionsGame[i].eText = unescape(
-                        game.questionsGame[i].eText,
+                        game.questionsGame[i].eText
                     );
                 }
                 let numOpt = 0;
@@ -2105,36 +2127,37 @@ var $exeDevice = {
         const clear = $exeDevice.removeTags,
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
-                tinyMCE.get('eXeGameInstructions').getContent(),
+                tinyMCE.get('eXeGameInstructions').getContent()
             ),
             textAfter = escape(tinyMCE.get('eXeIdeviceTextAfter').getContent()),
             textFeedBack = escape(
-                tinyMCE.get('quextEFeedBackEditor').getContent(),
+                tinyMCE.get('quextEFeedBackEditor').getContent()
             ),
             showMinimize = $('#quextEShowMinimize').is(':checked'),
             optionsRamdon = $('#quextEQuestionsRamdon').is(':checked'),
             answersRamdon = $('#quextEAnswersRamdon').is(':checked'),
             showSolution = $('#quextEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
-                clear($('#quextETimeShowSolution').val()),
+                clear($('#quextETimeShowSolution').val())
             ),
             useLives = $('#quextEUseLives').is(':checked'),
             numberLives = parseInt(clear($('#quextENumberLives').val())),
             idVideo = $('#quextEVideoIntro').val(),
             endVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                $('#quextEVIEnd').val(),
+                $('#quextEVIEnd').val()
             ),
             startVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                $('#quextEVIStart').val(),
+                $('#quextEVIStart').val()
             ),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#quextECustomScore').is(':checked'),
             feedBack = $('#quextEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#quextEPercentajeFB').val())),
             gameMode = parseInt($('input[name=qxtgamemode]:checked').val()),
             customMessages = $('#quextECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
-                clear($('#quextEPercentajeQuestions').val()),
+                clear($('#quextEPercentajeQuestions').val())
             ),
             evaluation = $('#quextEEvaluation').is(':checked'),
             evaluationID = $('#quextEEvaluationID').val(),
@@ -2172,10 +2195,10 @@ var $exeDevice = {
             } else if (
                 mquestion.type === 2 &&
                 !$exeDevices.iDevice.gamification.media.getIDYoutube(
-                    mquestion.url,
+                    mquestion.url
                 ) &&
                 !$exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                    mquestion.url,
+                    mquestion.url
                 )
             ) {
                 $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
@@ -2282,7 +2305,7 @@ var $exeDevice = {
                         color: 'white',
                     });
                 }
-            },
+            }
         );
 
         $('#quextEInitVideo, #quextEEndVideo, #quextESilenceVideo').on(
@@ -2292,14 +2315,14 @@ var $exeDevice = {
                     'background-color': 'white',
                     color: '#2c6d2c',
                 });
-            },
+            }
         );
 
         $('#quextShowCodeAccess').on('change', function () {
             const marcado = $(this).is(':checked');
             $('#quextCodeAccess, #quextMessageCodeAccess').prop(
                 'disabled',
-                !marcado,
+                !marcado
             );
         });
 
@@ -2381,7 +2404,7 @@ var $exeDevice = {
                 }
             } else if (
                 $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                    youtubeUrl,
+                    youtubeUrl
                 )
             ) {
                 $exeDevice.showVideoQuestion();
@@ -2443,18 +2466,18 @@ var $exeDevice = {
                 const file = e.target.files[0];
                 if (!file) {
                     $exeDevice.showMessage(
-                        `${_('Please select a text file (.txt) or a Moodle XML file (.xml)')}`,
+                        `${_('Please select a text file (.txt) or a Moodle XML file (.xml)')}`
                     );
                     return;
                 }
                 if (
                     !file.type ||
                     !file.type.match(
-                        /text\/plain|application\/json|application\/xml|text\/xml/,
+                        /text\/plain|application\/json|application\/xml|text\/xml/
                     )
                 ) {
                     $exeDevice.showMessage(
-                        `${_('Please select a text file (.txt) or a Moodle XML file (.xml)')}`,
+                        `${_('Please select a text file (.txt) or a Moodle XML file (.xml)')}`
                     );
                     return;
                 }
@@ -2480,7 +2503,7 @@ var $exeDevice = {
                 $('#quextEInitVideo').css('color', '#2c6d2c');
                 $('#quextEEndVideo, #quextESilenceVideo').css(
                     'color',
-                    '#000000',
+                    '#000000'
                 );
             });
 
@@ -2559,22 +2582,19 @@ var $exeDevice = {
         });
 
         $('#quextECustomScore').on('change', function () {
-            const $div = $('#quextEScoreQuestionDiv')
+            const $div = $('#quextEScoreQuestionDiv');
             if ($(this).is(':checked'))
-                $div.removeClass('d-none').addClass('d-flex')
-            else
-                $div.removeClass('d-flex').addClass('d-none')
-        })
+                $div.removeClass('d-none').addClass('d-flex');
+            else $div.removeClass('d-flex').addClass('d-none');
+        });
 
         $('#quextEURLImage').on('change', function () {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.startsWith('files') && !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp `,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp `
                 );
                 return false;
             }
@@ -2590,11 +2610,9 @@ var $exeDevice = {
             const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
                 selectedFile = $('#quextEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.startsWith('files') && !validExt.includes(ext)
-            ) {
+            if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -2645,7 +2663,7 @@ var $exeDevice = {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: mp3, ogg, wav`,
+                    `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
                 $exeDevice.stopSound();
@@ -2727,7 +2745,7 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             2,
-            $exeDevice.insertQuestions,
+            $exeDevice.insertQuestions
         );
 
         $exeDevice.loadYoutubeApi();
@@ -2741,16 +2759,16 @@ var $exeDevice = {
 
     playVideoIntro1: function () {
         const idv = $exeDevices.iDevice.gamification.media.getIDYoutube(
-            $('#quextEVideoIntro').val(),
-        ),
+                $('#quextEVideoIntro').val()
+            ),
             idmt = $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                $('#quextEVideoIntro').val(),
+                $('#quextEVideoIntro').val()
             ),
             iVI = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                $('#quextEVIStart').val(),
+                $('#quextEVIStart').val()
             ),
             endVI = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                $('#quextEVIEnd').val(),
+                $('#quextEVIEnd').val()
             ),
             fVI = endVI > 0 ? endVI : 9000;
 
@@ -2784,16 +2802,16 @@ var $exeDevice = {
 
     playVideoIntro2: function () {
         const idv = $exeDevices.iDevice.gamification.media.getIDYoutube(
-            $('#quextEVIURL').val(),
-        ),
+                $('#quextEVIURL').val()
+            ),
             idmt = $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                $('#quextEVIURL').val(),
+                $('#quextEVIURL').val()
             ),
             iVI = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                $('#quextEVIStart').val(),
+                $('#quextEVIStart').val()
             ),
             endVI = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-                $('#quextEVIEnd').val(),
+                $('#quextEVIEnd').val()
             ),
             fVI = endVI > 0 ? endVI : 9000;
 

@@ -42,7 +42,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         ); // Avoid invalid HTML
         this.setMessagesInfo();
         this.createForm();
@@ -66,28 +66,48 @@ var $exeDevice = {
             msgNumQuestions: c_('Number of questions'),
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
             msgAuthor: c_('Authorship'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgAudio: c_('Audio'),
             msgYes: c_('Yes'),
             msgNo: c_('No'),
             msgTimeOver: c_('Time is up. Please try again'),
-            mgsGameStart: c_('The game has started! Drag each card to its container'),
+            mgsGameStart: c_(
+                'The game has started! Drag each card to its container'
+            ),
             msgSelectCard: c_('Choose another card'),
             msgSelectCardOne: c_('Choose a card'),
             msgReboot: c_('Restart'),
@@ -96,51 +116,67 @@ var $exeDevice = {
             msgRebootGame: c_('Do you want to restart this game?'),
             msgContinue: c_('Continue'),
             msgShowAnswers: c_('Check results'),
-            msgUnansweredQuestions: c_('There were %s cards to be placed correctly. Do you want to try again?'),
+            msgUnansweredQuestions: c_(
+                'There were %s cards to be placed correctly. Do you want to try again?'
+            ),
             msgAllCorrect: c_('Brilliant! All perfect!'),
-            msgTooManyTries: c_('Great job! You have solved this activity in %s attempts. Surely you can do it faster!'),
-            msgQ5: c_('You placed %s cards in the wrong place. Please try again!'),
-            msgQ7: c_('Great job! You have correctly classified most cards, %s, but you can do even better'),
-            msgQ9: c_('Great job! Only %s cards left to be placed correctly. Strive for perfection!'),
-            msgSaveGameAuto: c_('Your score will be automatically saved at the end of the game.'),
-            msgOnlySaveGameAuto: c_('Your score will be automatically saved at the end of the game. You can only play once.'),
-            msgEndGamerScore: c_('You can only save your score after finishing the game.'),
+            msgTooManyTries: c_(
+                'Great job! You have solved this activity in %s attempts. Surely you can do it faster!'
+            ),
+            msgQ5: c_(
+                'You placed %s cards in the wrong place. Please try again!'
+            ),
+            msgQ7: c_(
+                'Great job! You have correctly classified most cards, %s, but you can do even better'
+            ),
+            msgQ9: c_(
+                'Great job! Only %s cards left to be placed correctly. Strive for perfection!'
+            ),
+            msgSaveGameAuto: c_(
+                'Your score will be automatically saved at the end of the game.'
+            ),
+            msgOnlySaveGameAuto: c_(
+                'Your score will be automatically saved at the end of the game. You can only play once.'
+            ),
+            msgEndGamerScore: c_(
+                'You can only save your score after finishing the game.'
+            ),
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Classify'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgCompleteData = _(
-            'You must indicate an image, a text or/and an audio for each card',
+            'You must indicate an image, a text or/and an audio for each card'
         );
         msgs.msgPairsMax = _('Maximum cards to classify: 25');
         msgs.msgCompleteBoth = _(
-            'You must select an image and text for this card',
+            'You must select an image and text for this card'
         );
         msgs.msgCompleteText = _(
-            'You must indicate a text or sound for this card',
+            'You must indicate a text or sound for this card'
         );
         msgs.msgCompleteImage = _(
-            'You must link an image or sound to this card',
+            'You must link an image or sound to this card'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         );
     },
 
@@ -430,7 +466,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#clasificaEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#clasificaEPercentajeQuestions').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -468,7 +504,7 @@ var $exeDevice = {
         } else if (p.type === 2) {
             $('#clasificaETextDiv').css({
                 color: p.color,
-                'background-color': $exeDevice.hexToRgba(p.backcolor, 0.7)
+                'background-color': $exeDevice.hexToRgba(p.backcolor, 0.7),
             });
         }
         $('#clasificaEGroupSelect').val(p.group);
@@ -481,18 +517,22 @@ var $exeDevice = {
     },
 
     hexToRgba: function (hex, alpha = 1) {
-
         if (typeof hex !== 'string' || hex.trim() === '') {
             return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
         }
         const raw = hex.trim();
         if (/^rgba?\(/i.test(raw)) {
-
-            if (/^rgba\(/i.test(raw) && (alpha === 1 || alpha === undefined)) return raw;
+            if (/^rgba\(/i.test(raw) && (alpha === 1 || alpha === undefined))
+                return raw;
             try {
-                const nums = raw.replace(/rgba?\(|\)|\s/g, '').split(',').map(v => parseFloat(v));
+                const nums = raw
+                    .replace(/rgba?\(|\)|\s/g, '')
+                    .split(',')
+                    .map((v) => parseFloat(v));
                 const [r = 255, g = 255, b = 255] = nums;
-                const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : (nums[3] ?? 1);
+                const a = Number.isFinite(alpha)
+                    ? Math.min(1, Math.max(0, alpha))
+                    : (nums[3] ?? 1);
                 return `rgba(${r | 0}, ${g | 0}, ${b | 0}, ${a})`;
             } catch (e) {
                 return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
@@ -502,11 +542,17 @@ var $exeDevice = {
         if (![3, 6].includes(h.length) || /[^0-9a-f]/i.test(h)) {
             return `rgba(255,255,255,${Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1})`;
         }
-        if (h.length === 3) h = h.split('').map(c => c + c).join('');
+        if (h.length === 3)
+            h = h
+                .split('')
+                .map((c) => c + c)
+                .join('');
         const r = parseInt(h.slice(0, 2), 16);
         const g = parseInt(h.slice(2, 4), 16);
         const b = parseInt(h.slice(4, 6), 16);
-        const a = Number.isFinite(alpha) ? Math.min(1, Math.max(0, Number(alpha))) : 1;
+        const a = Number.isFinite(alpha)
+            ? Math.min(1, Math.max(0, Number(alpha)))
+            : 1;
         return `rgba(${r}, ${g}, ${b}, ${a})`;
     },
 
@@ -524,21 +570,39 @@ var $exeDevice = {
     },
 
     changeTypeQuestion: function (type) {
-        const elementsToHide = '#clasificaETitleAltImage, #clasificaETitleImage, #clasificaEInputImage, #clasificaEImage, #clasificaECover, #clasificaECursor, #clasificaENoImage, #clasificaETextDiv, #clasificaETitleText, #clasificaEInputText',
-            $textElements = $('#clasificaETextDiv, #clasificaETitleText, #clasificaEInputText, #clasificaEColor, #clasificaEBackColor'),
-            $labelsColor = $('label[for=clasificaEBackColor], label[for=clasificaEColor]'),
+        const elementsToHide =
+                '#clasificaETitleAltImage, #clasificaETitleImage, #clasificaEInputImage, #clasificaEImage, #clasificaECover, #clasificaECursor, #clasificaENoImage, #clasificaETextDiv, #clasificaETitleText, #clasificaEInputText',
+            $textElements = $(
+                '#clasificaETextDiv, #clasificaETitleText, #clasificaEInputText, #clasificaEColor, #clasificaEBackColor'
+            ),
+            $labelsColor = $(
+                'label[for=clasificaEBackColor], label[for=clasificaEColor]'
+            ),
             $colorInputs = $('#clasificaEColor, #clasificaEBackColor');
 
         $(elementsToHide).hide();
-        $("input[name='qxtmediatype'][value='" + type + "']").prop('checked', true);
+        $("input[name='qxtmediatype'][value='" + type + "']").prop(
+            'checked',
+            true
+        );
 
         const p = $exeDevice.wordsGame[$exeDevice.active] || {};
-        const currentColor = (p.color || $('#clasificaEColor').val() || '#000000').trim();
-        const currentBg = (p.backcolor || $('#clasificaEBackColor').val() || '#ffffff').trim();
+        const currentColor = (
+            p.color ||
+            $('#clasificaEColor').val() ||
+            '#000000'
+        ).trim();
+        const currentBg = (
+            p.backcolor ||
+            $('#clasificaEBackColor').val() ||
+            '#ffffff'
+        ).trim();
 
         switch (type) {
             case 0:
-                $('#clasificaEImage, #clasificaETitleImage, #clasificaEInputImage').show();
+                $(
+                    '#clasificaEImage, #clasificaETitleImage, #clasificaEInputImage'
+                ).show();
                 $exeDevice.showImage(
                     $('#clasificaEURLImage').val(),
                     $('#clasificaEXImage').val(),
@@ -549,12 +613,14 @@ var $exeDevice = {
             case 1:
                 $textElements.show();
                 $labelsColor.show();
-                $('#clasificaEAuthorAlt').removeClass('d-flex').addClass('d-none');
+                $('#clasificaEAuthorAlt')
+                    .removeClass('d-flex')
+                    .addClass('d-none');
                 $('#clasificaEColor').val(currentColor).trigger('input');
                 $('#clasificaEBackColor').val(currentBg).trigger('input');
                 $('#clasificaETextDiv').css({
                     color: currentColor,
-                    'background-color': currentBg
+                    'background-color': currentBg,
                 });
                 break;
             case 2:
@@ -571,7 +637,7 @@ var $exeDevice = {
                 $('#clasificaEBackColor').val(currentBg).trigger('input');
                 $('#clasificaETextDiv').css({
                     color: currentColor,
-                    'background-color': $exeDevice.hexToRgba(currentBg, 0.7)
+                    'background-color': $exeDevice.hexToRgba(currentBg, 0.7),
                 });
                 break;
         }
@@ -650,11 +716,10 @@ var $exeDevice = {
             $exeDevice.updateFieldGame(dataGame);
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.showQuestion(0);
         }
-
     },
 
     escapeHtml: function (string) {
@@ -823,12 +888,13 @@ var $exeDevice = {
             textFeedBack = tinyMCE.get('clasificaEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#clasificaEShowMinimize').is(':checked'),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#clasificaEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#clasificaEPercentajeFB').val())),
             customMessages = $('#clasificaECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
-                clear($('#clasificaEPercentajeQuestions').val()),
+                clear($('#clasificaEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#clasificaETime').val())),
             author = $('#clasificaEAuthor').val(),
@@ -863,7 +929,7 @@ var $exeDevice = {
 
         if (nogroups) {
             $exeDevice.showMessage(
-                'Debes indicar un nombre para todos los grupos seleccionados',
+                'Debes indicar un nombre para todos los grupos seleccionados'
             );
             return false;
         }
@@ -924,10 +990,10 @@ var $exeDevice = {
             () => {
                 $exeDevice.checkAltImage = false;
                 const saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
         return false;
     },
@@ -955,7 +1021,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
@@ -1086,7 +1152,7 @@ var $exeDevice = {
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1111,7 +1177,7 @@ var $exeDevice = {
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
                 $exeDevice.showMessage(
-                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`,
+                    `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
             }
@@ -1131,12 +1197,11 @@ var $exeDevice = {
             e.preventDefault();
             const $panel = $('#clasificaEAuthorAlt');
             if ($panel.hasClass('d-none')) {
-                $panel.removeClass('d-none').addClass('d-flex')
+                $panel.removeClass('d-none').addClass('d-flex');
             } else {
-                $panel.removeClass('d-flex').addClass('d-none')
+                $panel.removeClass('d-flex').addClass('d-none');
             }
         });
-
 
         $form.on('change', '#clasificaEGroupSelect', function () {
             const val = parseInt(this.value, 10);
@@ -1255,7 +1320,7 @@ var $exeDevice = {
             const num = parseInt(id[id.length - 1]);
             $exeDevice.groups[num] = this.value;
             $('#clasificaEGroupSelect option[value=' + num + ']').text(
-                this.value,
+                this.value
             );
         });
 
@@ -1264,7 +1329,7 @@ var $exeDevice = {
             const num = parseInt(id[id.length - 1]);
             $exeDevice.groups[num] = this.value;
             $('#clasificaEGroupSelect option[value=' + num + ']').text(
-                this.value,
+                this.value
             );
         });
 
@@ -1335,11 +1400,11 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             5,
-            $exeDevice.insertWords,
+            $exeDevice.insertWords
         );
 
         $('#clasificaEURLImgCard').on('change', () =>
-            $exeDevice.loadImageCard(),
+            $exeDevice.loadImageCard()
         );
 
         $('#clasificaEPlayCard').on('click', (e) => {
@@ -1358,12 +1423,9 @@ var $exeDevice = {
             url = $('#clasificaEURLImgCard').val(),
             ext = url.split('.').pop().toLowerCase();
 
-        if (
-            (url.indexOf('files') == 0) &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
         }
@@ -1386,7 +1448,6 @@ var $exeDevice = {
                 ) {
                     return false;
                 } else {
-
                     $image.show();
                     $nimage.hide();
                     return true;
@@ -1396,7 +1457,6 @@ var $exeDevice = {
                 return false;
             });
     },
-
 
     showGroups: function (number) {
         $('.CQE-EGroup').closest('div').hide();
@@ -1431,12 +1491,11 @@ var $exeDevice = {
     clearQuestion: function () {
         $('.CQE-Type')[0].checked = true;
         $(
-            '#clasificaEURLImage, #clasificaEXImage, #clasificaEYImage, #clasificaEAuthor, #clasificaEAlt, #clasificaEText, #clasificaEURLAudio',
+            '#clasificaEURLImage, #clasificaEXImage, #clasificaEYImage, #clasificaEAuthor, #clasificaEAlt, #clasificaEText, #clasificaEURLAudio'
         ).val('');
         $('#clasificaETextDiv').text('');
         $('#clasificaEColor').val('#000000');
         $('#clasificaEBackColor').val('#ffffff');
-        
     },
 
     addQuestion: function () {
@@ -1466,7 +1525,7 @@ var $exeDevice = {
             $exeDevice.wordsGame.splice($exeDevice.active, 1);
             $exeDevice.active = Math.min(
                 $exeDevice.active,
-                $exeDevice.wordsGame.length - 1,
+                $exeDevice.wordsGame.length - 1
             );
             $exeDevice.showQuestion($exeDevice.active);
             $exeDevice.typeEdit = -1;
@@ -1481,7 +1540,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.wordsGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.wordsGame[$exeDevice.active])
             );
             $('#clasificaEPaste').show();
         }
@@ -1512,7 +1571,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.wordsGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showQuestion($exeDevice.active);
             $('#clasificaENumQuestions').text($exeDevice.wordsGame.length);
@@ -1556,7 +1615,9 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
 
         game.percentajeFB =
             game.percentajeFB !== undefined ? game.percentajeFB : 100;
@@ -1585,7 +1646,7 @@ var $exeDevice = {
         $('#clasificaEAuthor').val(game.author);
 
         $(
-            `input.CQE-Number[name='qxtnumber'][value='${game.numberGroups}']`,
+            `input.CQE-Number[name='qxtnumber'][value='${game.numberGroups}']`
         ).prop('checked', true);
         $('#clasificaECustomMessages').prop('checked', game.customMessages);
         $('#clasificaEEvaluation').prop('checked', game.evaluation);
@@ -1599,11 +1660,11 @@ var $exeDevice = {
         $('#clasificaEPercentajeFB').prop('disabled', !game.feedBack);
 
         $(
-            `input.CQE-ELevel[name='qtxgamelevel'][value='${game.gameLevel}']`,
+            `input.CQE-ELevel[name='qtxgamelevel'][value='${game.gameLevel}']`
         ).prop('checked', true);
 
-        $('#clasificaEURLImgCard').val(game.imgCard)
-        $exeDevice.showImageCard(game.imgCard)
+        $('#clasificaEURLImgCard').val(game.imgCard);
+        $exeDevice.showImageCard(game.imgCard);
 
         $exeDevice.showSelectOrder(game.customMessages && game.gameLevel !== 1);
         $exeDevice.updateQuestionsNumber();
@@ -1617,7 +1678,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
     },
 
@@ -1650,7 +1711,7 @@ var $exeDevice = {
             $exeDevice.numberGroups = numgroups;
             $(`input.CQE-Number[name='qxtnumber'][value='${numgroups}']`).prop(
                 'checked',
-                true,
+                true
             );
             $exeDevice.showGroups(numgroups);
         } else {
@@ -1663,7 +1724,7 @@ var $exeDevice = {
     addWords: function (words) {
         if (!words || words.length == 0) {
             eXe.app.alert(
-                _('Sorry, there are no questions for this type of activity.'),
+                _('Sorry, there are no questions for this type of activity.')
             );
             return;
         }
@@ -1702,7 +1763,7 @@ var $exeDevice = {
         const allGroupsPresent = [0, 1, 2, 3]
             .slice(0, numGroups)
             .every((group) =>
-                Object.prototype.hasOwnProperty.call(groups, group),
+                Object.prototype.hasOwnProperty.call(groups, group)
             );
 
         return numGroups >= 2 && numGroups <= 4 && allGroupsPresent
@@ -1732,7 +1793,7 @@ var $exeDevice = {
             tinyMCE
                 .get('eXeGameInstructions')
                 .setContent(
-                    unescape(game.instructionsExe || game.instructions),
+                    unescape(game.instructionsExe || game.instructions)
                 );
             tinyMCE
                 .get('eXeIdeviceTextAfter')
@@ -1767,7 +1828,7 @@ var $exeDevice = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,
