@@ -1,0 +1,22 @@
+<div class="modal exe-modal-fade" tabindex="-1" id="modalTemplateSelection" role="dialog" aria-hidden="true" data-testid="modal-template-selection" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content" id="modalTemplateSelectionContent">
+            <div class="modal-header">
+                <div class="modal-title">{{ "New from Template" | trans }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ "Close" | trans }}">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-body-content">
+                    <p>{{ "Select a template to create a new project:" | trans }}</p>
+                    <div id="template-list" class="list-group"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="confirm btn btn-primary" disabled>{{ "Create" | trans }}</button>
+                <button type="button" class="close btn btn-secondary" data-dismiss="modal">{{ "Cancel" | trans }}</button>
+            </div>
+        </div>
+    </div>
+</div>

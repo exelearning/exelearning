@@ -86,6 +86,8 @@ class Settings
         'eu' => 'Euskara',
         'gl' => 'Galego',
         'va' => 'Valencià',
+        'pt' => 'Português',
+        'ro' => 'Română',
         'eo' => 'Esperanto',
     ];
     public const DEFAULT_LOCALE = 'en';

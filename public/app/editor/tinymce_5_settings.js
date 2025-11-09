@@ -119,7 +119,7 @@ var $exeTinyMCE = {
         return basePath + url;
     },
 
-    // Get classes from base.css and content.css
+    // Get classes from base.css and style.css
     getAvailableClasses: function () {
         var sheets = document.styleSheets;
         var sheet, rule, rules, item, name, tmp;
@@ -130,7 +130,7 @@ var $exeTinyMCE = {
             if (
                 sheet.href &&
                 (sheet.href.indexOf('./base.css') != -1 ||
-                    sheet.href.indexOf('./content.css') != -1)
+                    sheet.href.indexOf('./style.css') != -1)
             ) {
                 rules = sheet.rules || sheet.cssRules;
                 for (var j = 0, jLen = rules.length; j < jLen; j++) {
@@ -434,7 +434,7 @@ var $exeTinyMCE = {
     getContentCSS: function () {
         return (
             eXeLearning.app.themes.selected.path +
-            'content.css,' +
+            'style.css,' +
             eXeLearning.app.api.apiUrlBase +
             '/app/editor/tinymce_5_extra.css,' +
             eXeLearning.app.api.apiUrlBase +

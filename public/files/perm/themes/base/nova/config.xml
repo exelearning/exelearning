@@ -1,16 +1,16 @@
 <?xml version="1.0"?>
 <theme>
-  <name>nova</name>
-  <title>Nova</title>
-  <version>2025</version>
-  <compatibility>3.0</compatibility>
-  <author>3ipunt Consejería de Educación Canarias</author>
-  <license>Creative Commons by-sa</license>
-  <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
-  <description>Aprender, crecer, avanzar.
+    <name>nova</name>
+    <title>Nova</title>
+    <version>2025</version>
+    <compatibility>3.0</compatibility>
+    <author>3ipunt Consejería de Educación Canarias</author>
+    <license>Creative Commons by-sa</license>
+    <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
+    <description>Aprender, crecer, avanzar.
 
 iDevice icons by Google (https://fonts.google.com/icons), under the 2.0 version of the Apache License (https://www.apache.org/licenses/LICENSE-2.0.html).
 
 Open Sans Font, by The Open Sans Project Authors, under the SIL Open Font License, Version 1.1. Copyright 2020 The Open Sans Project Authors (https://github.com/googlefonts/opensans).</description>
-  <downloadable>0</downloadable>
+    <downloadable>1</downloadable>
 </theme>

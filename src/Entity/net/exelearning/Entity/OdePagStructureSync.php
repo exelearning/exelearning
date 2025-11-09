@@ -186,6 +186,25 @@ class OdePagStructureSync extends BaseEntity
         return $this->odeComponentsSyncs;
     }
 
+    /**
+     * Get OdeComponentsSyncs filtered by current session ID.
+     * This prevents exporting components from old/stale sessions.
+     *
+     * CRITICAL: Always use this method when exporting to avoid duplicate components bug.
+     *
+     * @return Collection Collection of OdeComponentsSync objects that match the current session
+     */
+    public function getOdeComponentsSyncsBySessionId(): Collection
+    {
+        $currentSessionId = $this->getOdeSessionId();
+
+        return $this->odeComponentsSyncs->filter(
+            function (OdeComponentsSync $component) use ($currentSessionId) {
+                return $component->getOdeSessionId() === $currentSessionId;
+            }
+        );
+    }
+
     public function setOdeComponentsSyncs(?Collection $odeComponentsSyncs): self
     {
         if (!empty($odeComponentsSyncs)) {

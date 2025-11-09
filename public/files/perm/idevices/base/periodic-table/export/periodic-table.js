@@ -42,7 +42,12 @@ var $periodicTable = {
     colorsClass: {},
 
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Periodic table', 'periodic-table', 'periodic-table-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Periodic table',
+            'periodic-table',
+            'periodic-table-IDevice'
+        );
     },
 
     repeatActivity: function () {
@@ -108,7 +113,7 @@ var $periodicTable = {
 
             $('#ptMessageMaximize-' + i).text(msg);
             $('#ptDivFeedBack-' + i).prepend(
-                $('.periodic-table-feedback-game', this),
+                $('.periodic-table-feedback-game', this)
             );
             $('#ptDivFeedBack-' + i).hide();
             $periodicTable.setTableData(i);
@@ -127,7 +132,7 @@ var $periodicTable = {
         });
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.periodic-table-IDevice',
+            '.periodic-table-IDevice'
         );
     },
 
@@ -254,15 +259,14 @@ var $periodicTable = {
         $(`#ptHits-${instance}`).text(mOptions.hits);
         $(`#ptErrors-${instance}`).text(mOptions.errors);
         $(`#ptNumber-${instance}`).text(
-            mOptions.number - mOptions.hits - mOptions.errors,
+            mOptions.number - mOptions.hits - mOptions.errors
         );
         $(`#ptScore-${instance}`).text(score.toFixed(2));
         $(`#ptAttempts-${instance}`).text(mOptions.attemptsGame);
         if (mOptions.gameStarted) {
-            $periodicTable.saveEvaluation(instance)
+            $periodicTable.saveEvaluation(instance);
             if (mOptions.isScorm == 1) {
                 $periodicTable.sendScore(true, instance);
-
             }
         }
     },
@@ -305,7 +309,7 @@ var $periodicTable = {
                         let newSize = (minDimension * sizeFactor) / 16;
                         newSize = Math.max(
                             limits.min,
-                            Math.min(newSize, limits.max),
+                            Math.min(newSize, limits.max)
                         );
                         $span.css('font-size', `${newSize}em`);
                     }
@@ -318,7 +322,7 @@ var $periodicTable = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.number;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $periodicTable.isInExe,
+            $periodicTable.isInExe
         );
     },
 
@@ -384,7 +388,7 @@ var $periodicTable = {
         $('#ptLinkFullScreen-' + instance).on('click touchstart', function (e) {
             e.preventDefault();
             const element = document.getElementById(
-                'ptGameContainer-' + instance,
+                'ptGameContainer-' + instance
             );
             $exeDevices.iDevice.gamification.helpers.toggleFullscreen(element);
         });
@@ -397,7 +401,7 @@ var $periodicTable = {
         $('#ptShowClue-' + instance).hide();
         if (mOptions.itinerary.showCodeAccess) {
             $('#ptMesajeAccesCodeE-' + instance).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $('#ptCodeAccessDiv-' + instance).show();
             $periodicTable.showCubiertaOptions(instance, 0);
@@ -408,7 +412,7 @@ var $periodicTable = {
             function (e) {
                 e.preventDefault();
                 $periodicTable.enterCodeAccess(instance);
-            },
+            }
         );
 
         $('#ptCodeAccessE-' + instance).on('keydown', function (event) {
@@ -421,13 +425,16 @@ var $periodicTable = {
 
         $('#ptPNumber-' + instance).text(mOptions.number);
 
-        $(window).on('unload.PeriodicTable beforeunload.PeriodicTable', function () {
-            if ($periodicTable.mScorm) {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $periodicTable.mScorm,
-                );
+        $(window).on(
+            'unload.PeriodicTable beforeunload.PeriodicTable',
+            function () {
+                if ($periodicTable.mScorm) {
+                    $exeDevices.iDevice.gamification.scorm.endScorm(
+                        $periodicTable.mScorm
+                    );
+                }
             }
-        });
+        );
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -462,14 +469,13 @@ var $periodicTable = {
         $(`#ptNumberInput-${instance}`).on('input', function () {
             this.value = this.value.replace(/[^0-9]/g, '');
             $(`#ptNumberBig-${instance}`).text(this.value);
-            $(`#ptNumberBig-${instance}`).css({ 'color': '' });
-
+            $(`#ptNumberBig-${instance}`).css({ color: '' });
         });
 
         $(`#ptNameInput-${instance}`).on('input', function () {
             this.value = this.value.replace(/[^A-Za-záéíóúÁÉÍÓÚñÑ\s]/g, '');
             $(`#ptNameBig-${instance}`).text(this.value);
-            $(`#ptNameBig-${instance}`).css({ 'color': '' });
+            $(`#ptNameBig-${instance}`).css({ color: '' });
         });
 
         $(`#ptSymbolInput-${instance}`).on('input', function () {
@@ -479,7 +485,7 @@ var $periodicTable = {
                     this.value[0].toUpperCase() +
                     this.value.slice(1).toLowerCase();
             $(`#ptSymbolBig-${instance}`).text(this.value);
-            $(`#ptSymbolBig-${instance}`).css({ 'color': '' });
+            $(`#ptSymbolBig-${instance}`).css({ color: '' });
         });
         $(`#ptConfigurationInput-${instance}`).on('input', function () {
             this.value = this.value.replace(/[^0-9spdf\s]/gi, '');
@@ -507,14 +513,13 @@ var $periodicTable = {
                 $periodicTable.setMobileScore(instance);
             });
 
-
         $(`#ptCancelButton-${instance}`)
             .off('click')
             .on('click', function () {
                 $periodicTable.showMessage(
                     4,
                     mOptions.msgs.msgOneElement,
-                    instance,
+                    instance
                 );
                 $(`#ptlLightbox-${instance}`).fadeOut();
             });
@@ -530,7 +535,7 @@ var $periodicTable = {
                 )
                     return;
                 $periodicTable.setScore(instance, $(this));
-            },
+            }
         );
 
         $('#ptMainContainer-' + instance).on(
@@ -544,7 +549,7 @@ var $periodicTable = {
                 )
                     return;
                 $periodicTable.showElementBigComplete(instance, $(this));
-            },
+            }
         );
 
         if (mOptions.attempts < 2) {
@@ -553,14 +558,14 @@ var $periodicTable = {
                 .find('.exeQuextIcons-Life')
                 .hide();
         }
-        mOptions.colorsClass = $periodicTable.getClassColor(instance)
+        mOptions.colorsClass = $periodicTable.getClassColor(instance);
         $periodicTable.updateTime(mOptions.time * 60, instance);
         $periodicTable.updateGameBoard(instance);
 
         setTimeout(function () {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
     },
@@ -578,35 +583,33 @@ var $periodicTable = {
         const dataelement = elements_data[parseInt(number) - 1];
 
         $(`#ptGroupBig-${instance}`).text(dataelement.group);
-        let $elment = $(`#ptNumberBig-${instance}`)
+        let $elment = $(`#ptNumberBig-${instance}`);
         if (mOptions.gameType === 1) {
-            $elment = $(`#ptNameBig-${instance}`)
+            $elment = $(`#ptNameBig-${instance}`);
         } else if (mOptions.gameType === 2) {
-            $elment = $(`#ptSymbolBig-${instance}`)
+            $elment = $(`#ptSymbolBig-${instance}`);
         }
 
-
-        $elment.css({ 'color': '' })
+        $elment.css({ color: '' });
 
         $(`#ptNumberBig-${instance}`).text(
-            mOptions.gameType !== 0 ? dataelement.number : '',
+            mOptions.gameType !== 0 ? dataelement.number : ''
         );
         $(`#ptNameBig-${instance}`).text(
-            mOptions.gameType !== 1 ? dataelement.name : '',
+            mOptions.gameType !== 1 ? dataelement.name : ''
         );
         $(`#ptSymbolBig-${instance}`).text(
-            mOptions.gameType !== 2 ? dataelement.symbol : '',
+            mOptions.gameType !== 2 ? dataelement.symbol : ''
         );
         $(`#ptConfigurationBig-${instance}`).text(dataelement.configuration);
         $(`#ptMassBig-${instance}`).text(dataelement.mass);
         $(`#ptEletroNegatyvityBig-${instance}`).text(
-            dataelement.electronegativity,
+            dataelement.electronegativity
         );
         $(`#ptNumberInputDiv-${instance}`).hide();
         $(`#ptSymbolInputDiv-${instance}`).hide();
         $(`#ptNameInputDiv-${instance}`).hide();
         $(`#ptGroupSelectDiv-${instance}`).hide();
-
 
         if (mOptions.gameType === 0) {
             $(`#ptNumberInput-${instance}`).val('');
@@ -628,9 +631,10 @@ var $periodicTable = {
             $(`#ptOxitationBig-${instance}`).append(span);
         }
         const bkcolor = mOptions.colorsClass[dataelement.group];
-        $(`#ptElementBoxBix-${instance}`).removeClass().addClass('PTP-element-box-big ' + bkcolor);
+        $(`#ptElementBoxBix-${instance}`)
+            .removeClass()
+            .addClass('PTP-element-box-big ' + bkcolor);
         $(`#ptlLightboxMobile-${instance}`).css('display', 'flex');
-
     },
 
     showElementBigComplete: function (instance, $element) {
@@ -649,26 +653,24 @@ var $periodicTable = {
         mOptions.dataSearchElement = dataelement;
         mOptions.clickedElement = $element;
 
-
-
         $(`#ptGroupBig-${instance}`).text(
-            !mOptions.types[3] ? dataelement.group : '',
+            !mOptions.types[3] ? dataelement.group : ''
         );
         $(`#ptNumberBig-${instance}`).text(
-            !mOptions.types[0] ? dataelement.number : '',
+            !mOptions.types[0] ? dataelement.number : ''
         );
         $(`#ptNameBig-${instance}`).text(
-            !mOptions.types[1] ? dataelement.name : '',
+            !mOptions.types[1] ? dataelement.name : ''
         );
         $(`#ptSymbolBig-${instance}`).text(
-            !mOptions.types[2] ? dataelement.symbol : '',
+            !mOptions.types[2] ? dataelement.symbol : ''
         );
         $(`#ptConfigurationBig-${instance}`).text(
-            !mOptions.types[4] ? dataelement.configuration : '',
+            !mOptions.types[4] ? dataelement.configuration : ''
         );
         $(`#ptMassBig-${instance}`).text(dataelement.mass);
         $(`#ptEletroNegatyvityBig-${instance}`).text(
-            dataelement.electronegativity,
+            dataelement.electronegativity
         );
         $(`#ptNumberInputDiv-${instance}`).hide();
         $(`#ptSymbolInputDiv-${instance}`).hide();
@@ -704,7 +706,7 @@ var $periodicTable = {
         }
 
         let bkcolor = window.getComputedStyle(
-            mOptions.clickedElement.closest('td')[0],
+            mOptions.clickedElement.closest('td')[0]
         ).backgroundColor;
         $(`#ptElementBoxBix-${instance}`).css({ 'background-color': bkcolor });
         $(`#ptlLightbox-${instance}`).css('display', 'flex');
@@ -713,7 +715,7 @@ var $periodicTable = {
             $periodicTable.showMessage(
                 3,
                 'Ya has completado los datos de elemento',
-                instance,
+                instance
             );
             $periodicTable.desactivateBigElement(instance, number);
         }
@@ -731,16 +733,16 @@ var $periodicTable = {
         $(`#ptGroupsSelect-${instance}`).val(completedData.group);
 
         $(`#ptNumberBig-${instance}`).text(
-            !mOptions.types[0] ? dataelement.number : completedData.number,
+            !mOptions.types[0] ? dataelement.number : completedData.number
         );
         $(`#ptNameBig-${instance}`).text(
-            !mOptions.types[1] ? dataelement.name : completedData.name,
+            !mOptions.types[1] ? dataelement.name : completedData.name
         );
         $(`#ptSymbolBig-${instance}`).text(
-            !mOptions.types[2] ? dataelement.symbol : completedData.symbol,
+            !mOptions.types[2] ? dataelement.symbol : completedData.symbol
         );
         $(`#ptGroupBig-${instance}`).text(
-            !mOptions.types[3] ? dataelement.group : '',
+            !mOptions.types[3] ? dataelement.group : ''
         );
 
         let scolor = '';
@@ -780,7 +782,7 @@ var $periodicTable = {
 
         if (mOptions.types[3]) {
             tgroupt = $(
-                `#ptGroupsSelect-${instance} option[value="${completedData.group}"]`,
+                `#ptGroupsSelect-${instance} option[value="${completedData.group}"]`
             ).text();
             scolor =
                 tgroupt == dataelement.group
@@ -797,16 +799,16 @@ var $periodicTable = {
         $(`#ptGroupsSelect-${instance}`).val(completedData.group);
 
         $(`#ptNumberBig-${instance}`).text(
-            !mOptions.types[0] ? dataelement.number : completedData.number,
+            !mOptions.types[0] ? dataelement.number : completedData.number
         );
         $(`#ptNameBig-${instance}`).text(
-            !mOptions.types[1] ? dataelement.name : completedData.name,
+            !mOptions.types[1] ? dataelement.name : completedData.name
         );
         $(`#ptSymbolBig-${instance}`).text(
-            !mOptions.types[2] ? dataelement.symbol : completedData.symbol,
+            !mOptions.types[2] ? dataelement.symbol : completedData.symbol
         );
         $(`#ptGroupBig-${instance}`).text(
-            !mOptions.types[3] ? dataelement.group : tgroupt,
+            !mOptions.types[3] ? dataelement.group : tgroupt
         );
     },
 
@@ -818,7 +820,7 @@ var $periodicTable = {
         const symbolValue = $(`#ptSymbolInput-${instance}`).val().trim();
         const groupValue = $(`#ptGroupsSelect-${instance}`).val();
         const groupText = $(
-            `#ptGroupsSelect-${instance} option:selected`,
+            `#ptGroupsSelect-${instance} option:selected`
         ).text();
         let attempts = mOptions.attempts
             ? parseInt(mOptions.clickedElement.data('attempts'))
@@ -854,7 +856,6 @@ var $periodicTable = {
             correct[3] = groupText == mOptions.dataSearchElement.group;
         }
 
-
         if (correct.every((elemento) => elemento === true)) {
             mOptions.hits++;
             mOptions.clickedElement.data('state', 1);
@@ -862,7 +863,7 @@ var $periodicTable = {
             $periodicTable.showMessage(
                 2,
                 mOptions.msgs.msgOtherElement,
-                instance,
+                instance
             );
             if (mOptions.active >= mOptions.number) {
                 $periodicTable.gameOver(instance);
@@ -872,9 +873,7 @@ var $periodicTable = {
             mOptions.clickedElement.data('attempts', attempts);
             if (attempts > 0) {
                 let msgattemps =
-                    mOptions.attempts > 1
-                        ? mOptions.msgs.msgNotOK
-                        : '';
+                    mOptions.attempts > 1 ? mOptions.msgs.msgNotOK : '';
                 $periodicTable.showMessage(1, msgattemps, instance);
                 return;
             }
@@ -919,11 +918,11 @@ var $periodicTable = {
             numberValue,
             nameValue,
             symbolValue,
-            groupValue,
+            groupValue
         );
         $periodicTable.desactivateBigElement(
             instance,
-            mOptions.dataSearchElement.number,
+            mOptions.dataSearchElement.number
         );
         $(`#ptCancelButton-${instance}`).prop('disabled', true);
         setTimeout(function () {
@@ -945,11 +944,11 @@ var $periodicTable = {
         const symbolValue = $symbol.val().trim();
 
         let correct = false;
-        let $elment = $(`#ptNumberBig-${instance}`)
+        let $elment = $(`#ptNumberBig-${instance}`);
         if (mOptions.gameType === 1) {
-            $elment = $(`#ptNameBig-${instance}`)
+            $elment = $(`#ptNameBig-${instance}`);
         } else if (mOptions.gameType === 2) {
-            $elment = $(`#ptSymbolBig-${instance}`)
+            $elment = $(`#ptSymbolBig-${instance}`);
         }
         if (mOptions.gameType == 0) {
             if (!/^(1[0-1][0-8]|[1-9][0-9]?|0)$/.test(numberValue)) {
@@ -974,13 +973,9 @@ var $periodicTable = {
         if (correct) {
             mOptions.hits++;
             mOptions.active++;
-            $elment.css({ 'color': '#157347' });
-            let msg = $periodicTable.getRetroFeedMessages(true, instance)
-            $periodicTable.showMessage(
-                2,
-                msg,
-                instance,
-            );
+            $elment.css({ color: '#157347' });
+            let msg = $periodicTable.getRetroFeedMessages(true, instance);
+            $periodicTable.showMessage(2, msg, instance);
             $accept.prop('disabled', true);
             $number.prop('disabled', true);
             $name.prop('disabled', true);
@@ -989,13 +984,12 @@ var $periodicTable = {
                 if (mOptions.active >= mOptions.number) {
                     $periodicTable.gameMobileOver(instance);
                 } else {
-                    $periodicTable.showMobileQuestion(instance)
+                    $periodicTable.showMobileQuestion(instance);
                 }
-            }, 5000)
-
+            }, 5000);
         } else {
             mOptions.attemptsGame--;
-            $elment.css({ 'color': '#ff0000' })
+            $elment.css({ color: '#ff0000' });
             if (mOptions.attemptsGame > 0) {
                 let msg = `${$periodicTable.getRetroFeedMessages(false, instance)} ${mOptions.msgs.msgNewTry}`;
                 $periodicTable.showMessage(1, msg, instance);
@@ -1016,20 +1010,17 @@ var $periodicTable = {
                 $name.prop('disabled', true);
                 $symbol.prop('disabled', true);
                 setTimeout(function () {
-
                     if (mOptions.active >= mOptions.number) {
                         $periodicTable.gameMobileOver(instance);
                     } else {
-                        $periodicTable.showMobileQuestion(instance)
+                        $periodicTable.showMobileQuestion(instance);
                     }
                 }, 5000);
-
             }
         }
 
         $periodicTable.updateGameBoard(instance);
     },
-
 
     completed: function (instance, id, number, name, symbol, group) {
         const mOptions = $periodicTable.options[instance];
@@ -1087,11 +1078,7 @@ var $periodicTable = {
                 $periodicTable.showElement($symbol, element_data.symbol, true);
             }
             mOptions.active++;
-            $periodicTable.showMessage(
-                2,
-                mOptions.msgs.msgIsOKEQ,
-                instance,
-            );
+            $periodicTable.showMessage(2, mOptions.msgs.msgIsOKEQ, instance);
             if (mOptions.active >= mOptions.number) {
                 setTimeout(function () {
                     $periodicTable.gameOver(instance);
@@ -1112,7 +1099,9 @@ var $periodicTable = {
                 dataclicked = clicked_element.symbol;
             }
             mOptions.attemptsGame--;
-            let msAtp = mOptions.msgs.msgIsErrorAt.replace('%s', dataclicked).replace('%d', mOptions.attemptsGame);
+            let msAtp = mOptions.msgs.msgIsErrorAt
+                .replace('%s', dataclicked)
+                .replace('%d', mOptions.attemptsGame);
 
             let msgattemps = mOptions.attempts > 1 ? msAtp : '';
 
@@ -1127,19 +1116,19 @@ var $periodicTable = {
                     $periodicTable.showElement(
                         $numbers,
                         element_data.number,
-                        false,
+                        false
                     );
                 } else if (mOptions.gameType == 1) {
                     $periodicTable.showElement(
                         $names,
                         element_data.name,
-                        false,
+                        false
                     );
                 } else if (mOptions.gameType == 2) {
                     $periodicTable.showElement(
                         $symbols,
                         element_data.symbol,
-                        false,
+                        false
                     );
                 }
                 if (mOptions.active < mOptions.number) {
@@ -1147,14 +1136,20 @@ var $periodicTable = {
                         mOptions.attempts > 1
                             ? mOptions.msgs.msgIsEndAttempts
                             : '';
-                    let msgattemps2 = mOptions.msgs.mgsNotOkClick.replace('%s', dataclicked);
+                    let msgattemps2 = mOptions.msgs.mgsNotOkClick.replace(
+                        '%s',
+                        dataclicked
+                    );
                     let msg2 = msgattemps2 + ' ' + msgattemps1;
-                    $periodicTable.showMessage(1, msg2, instance,);
+                    $periodicTable.showMessage(1, msg2, instance);
                     setTimeout(function () {
                         $periodicTable.showQuestion(instance);
                     }, 3000);
                 } else {
-                    let msg3 = mOptions.msgs.mgsNotOkClick.replace('%s', dataclicked);
+                    let msg3 = mOptions.msgs.mgsNotOkClick.replace(
+                        '%s',
+                        dataclicked
+                    );
                     $periodicTable.showMessage(1, msg3);
                     setTimeout(function () {
                         $periodicTable.gameOver(instance);
@@ -1182,10 +1177,9 @@ var $periodicTable = {
             mOptions.attempts === 0 ? 100000 : mOptions.attempts;
 
         mOptions.activateGame = false;
-        $periodicTable.showElementBigMobile(instance)
+        $periodicTable.showElementBigMobile(instance);
         $periodicTable.updateGameBoard(instance);
-        $periodicTable.showMessage(3, mOptions.msgs.mgsCompleteEQ, instance)
-
+        $periodicTable.showMessage(3, mOptions.msgs.mgsCompleteEQ, instance);
     },
     getRetroFeedMessages: function (iHit, instance) {
         const mOptions = $periodicTable.options[instance],
@@ -1420,8 +1414,6 @@ var $periodicTable = {
         return activeNumbers;
     },
 
-
-
     getGroupName: function (number) {
         const elementGroups = $periodicTable.getGroupsElements();
         for (const group of elementGroups) {
@@ -1435,7 +1427,7 @@ var $periodicTable = {
     completeMode: function (instance) {
         const mOptions = $periodicTable.options[instance];
         const $allElements = $('#ptMainContainer-' + instance).find(
-            '.PTP-element',
+            '.PTP-element'
         );
         mOptions.elementsRandow.forEach((number) => {
             const $element = $allElements.filter(`[data-number="${number}"]`);
@@ -1459,11 +1451,7 @@ var $periodicTable = {
         if (mOptions.types[3]) {
             $(`#ptGroupBig-${instance}`).text('');
         }
-        $periodicTable.showMessage(
-            3,
-            mOptions.msgs.mgsSelectEQ,
-            instance,
-        );
+        $periodicTable.showMessage(3, mOptions.msgs.mgsSelectEQ, instance);
     },
 
     MobileMode: function (instance) {
@@ -1476,12 +1464,11 @@ var $periodicTable = {
             mOptions.gameElements.push(element);
         }
         $periodicTable.showMobileQuestion(instance);
-
     },
     gameMode: function (instance) {
         const mOptions = $periodicTable.options[instance];
         const $allElements = $('#ptMainContainer-' + instance).find(
-            '.PTP-element',
+            '.PTP-element'
         );
 
         mOptions.selectedIndexes = new Set();
@@ -1521,7 +1508,7 @@ var $periodicTable = {
 
     isMobile: function () {
         const userAgent =
-            navigator.userAgent || navigator.vendor || window.opera,
+                navigator.userAgent || navigator.vendor || window.opera,
             mobileDeviceRegex =
                 /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Windows Phone|Kindle|Silk|PlayBook|BB10|Mobile|Tablet|Nintendo|Switch|PSP|PlayStation/i,
             isTouchDevice =
@@ -1556,7 +1543,7 @@ var $periodicTable = {
         mOptions.completedElements = [];
         mOptions.elementsRandow = $periodicTable.getRandomElements(
             mOptions.elements,
-            mOptions.number,
+            mOptions.number
         );
         mOptions.number =
             mOptions.number < mOptions.elementsRandow.length
@@ -1574,7 +1561,10 @@ var $periodicTable = {
             mOptions.counterClock = setInterval(function () {
                 let $node = $('#ptMainContainer-' + instance);
                 let $content = $('#node-content');
-                if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+                if (
+                    !$node.length ||
+                    ($content.length && $content.attr('mode') === 'edition')
+                ) {
                     clearInterval(mOptions.counterClock);
                     return;
                 }
@@ -1651,7 +1641,7 @@ var $periodicTable = {
         if (mOptions.isScorm == 1) {
             $periodicTable.sendScore(true, instance);
             $('#ptRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+                mOptions.msgs.msgYouScore + ': ' + score
             );
             $periodicTable.initialScore = score;
         }
@@ -1663,15 +1653,15 @@ var $periodicTable = {
             ) {
                 $('#ptPShowClue-' + instance).text(
                     mOptions.msgs.msgInformation +
-                    ': ' +
-                    mOptions.itinerary.clueGame,
+                        ': ' +
+                        mOptions.itinerary.clueGame
                 );
             } else {
                 $('#ptPShowClue-' + instance).text(
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.itinerary.percentageClue,
-                    ),
+                        mOptions.itinerary.percentageClue
+                    )
                 );
             }
             $('#ptShowClue-' + instance).show();
@@ -1698,7 +1688,7 @@ var $periodicTable = {
         if (mOptions.isScorm == 1) {
             $periodicTable.sendScore(true, instance);
             $('#ptRepeatActivity-' + instance).text(
-                mOptions.msgs.msgYouScore + ': ' + score,
+                mOptions.msgs.msgYouScore + ': ' + score
             );
             $periodicTable.initialScore = score;
         }
@@ -1713,15 +1703,15 @@ var $periodicTable = {
             ) {
                 $('#ptPShowClue-' + instance).text(
                     mOptions.msgs.msgInformation +
-                    ': ' +
-                    mOptions.itinerary.clueGame,
+                        ': ' +
+                        mOptions.itinerary.clueGame
                 );
             } else {
                 $('#ptPShowClue-' + instance).text(
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.itinerary.percentageClue,
-                    ),
+                        mOptions.itinerary.percentageClue
+                    )
                 );
             }
             $('#ptShowClue-' + instance).show();
@@ -1744,7 +1734,7 @@ var $periodicTable = {
                     ' ' +
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
+                        mOptions.percentajeFB
                     );
                 $periodicTable.showMessage(1, message, instance);
             }
@@ -1784,12 +1774,12 @@ var $periodicTable = {
 
     showMessage: function (type, message, instance) {
         let colors = [
-            '#555555',
-            $periodicTable.borderColors.red,
-            $periodicTable.borderColors.green,
-            $periodicTable.borderColors.blue,
-            $periodicTable.borderColors.deepblue,
-        ],
+                '#555555',
+                $periodicTable.borderColors.red,
+                $periodicTable.borderColors.green,
+                $periodicTable.borderColors.blue,
+                $periodicTable.borderColors.deepblue,
+            ],
             color = colors[type];
         $('#ptMessage-' + instance).text(message);
         $('#ptMessage-' + instance).css('color', color);
@@ -1865,10 +1855,9 @@ var $periodicTable = {
             [mOptions.msgs.msgHalogen]: 'PTP-halogen',
             [mOptions.msgs.msgNobleGas]: 'PTP-noble-gas',
             [mOptions.msgs.msgLanthanide]: 'PTP-lanthanoid',
-            [mOptions.msgs.msgActinide]: 'PTP-actinoid'
+            [mOptions.msgs.msgActinide]: 'PTP-actinoid',
         };
         return elementClassMapping;
-
     },
     getMobileActive: function (instance) {
         const msgs = $periodicTable.options[instance].msgs;
@@ -1937,14 +1926,17 @@ var $periodicTable = {
             'PTP-halogen',
             'PTP-noble-gas',
             'PTP-lanthanoid',
-            'PTP-actinoid'
+            'PTP-actinoid',
         ];
 
-        return 'PTP-element-box-big ' + groupClasses[groupNumber] || 'PTP-element-box-big';
+        return (
+            'PTP-element-box-big ' + groupClasses[groupNumber] ||
+            'PTP-element-box-big'
+        );
     },
     isMobileDevice: function () {
         if (window.matchMedia) {
-            return window.matchMedia("(max-width: 900px)").matches;
+            return window.matchMedia('(max-width: 900px)').matches;
         } else {
             return window.innerWidth < 900;
         }
@@ -1955,7 +1947,6 @@ var $periodicTable = {
             return $periodicTable.getPeriodicTableMobile(instance);
         }
         return $periodicTable.getPeriodicTableDesktop(instance);
-
     },
     getPeriodicTableMobile: function (instance) {
         let msgs = $periodicTable.options[instance].msgs;

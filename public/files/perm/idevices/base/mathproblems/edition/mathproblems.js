@@ -46,16 +46,16 @@ var $exeDevice = {
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgWriteText = _('You have to type a text in the editor');
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
     },
 
@@ -71,7 +71,9 @@ var $exeDevice = {
             msgCodeAccess: c_('Access code'),
             msgPlayAgain: c_('Play Again'),
             msgRequiredAccessKey: c_('Access code required'),
-            msgInformationLooking: c_('Cool! The information you were looking for'),
+            msgInformationLooking: c_(
+                'Cool! The information you were looking for'
+            ),
             msgPlayStart: c_('Click here to play'),
             msgErrors: c_('Errors'),
             msgHits: c_('Hits'),
@@ -84,28 +86,48 @@ var $exeDevice = {
             msgExitFullScreen: c_('Exit Full Screen'),
             msgNumQuestions: c_('Number of questions'),
             mgsAllQuestions: c_('Questions completed!'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgAnswer: c_('Answer'),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgPrevious: c_('Previous'),
             msgNext: c_('Next'),
             msgQuestion: c_('Question'),
             msgCorrect: c_('Right!'),
             msgClose: c_('Close'),
-            msgNotCorrect: c_('Sorry, that’s incorrect... The right answer is:'),
+            msgNotCorrect: c_(
+                'Sorry, that’s incorrect... The right answer is:'
+            ),
             msgSolution: c_('Solution'),
             msgCheck: c_('Check'),
             msgEndGameM: c_('You finished the game. Your score is %s.'),
@@ -117,7 +139,7 @@ var $exeDevice = {
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Math problems'),
-        }
+        };
     },
 
     createForm: function () {
@@ -399,10 +421,10 @@ var $exeDevice = {
             if (!addedVariables[variable]) {
                 let variableDiv = $("<div class='MTOE-VariableDiv' />"),
                     label = $("<label class='MTOE-VariableName' />").text(
-                        variable,
+                        variable
                     ),
                     valuesInput = $(
-                        "<input type='text' class='MTOE-ValuesInput' placeholder='-9 - 9, !0, 12' />",
+                        "<input type='text' class='MTOE-ValuesInput' placeholder='-9 - 9, !0, 12' />"
                     );
                 variableDiv.append(label).append(valuesInput);
                 $('#eQCVariablesContainer').append(variableDiv);
@@ -426,7 +448,8 @@ var $exeDevice = {
     },
 
     validateIntervalsWithHash: function (domain) {
-        const regex = /^-?\d+(?:\.\d+)?\s+-\s*-?\d+(?:\.\d+)?\s*#\s*\d+(?:\.\d+)?$/;
+        const regex =
+            /^-?\d+(?:\.\d+)?\s+-\s*-?\d+(?:\.\d+)?\s*#\s*\d+(?:\.\d+)?$/;
         let dm = domain.replace(/\s+/g, ' ').trim();
         if (!regex.test(dm)) {
             return false;
@@ -498,7 +521,6 @@ var $exeDevice = {
         }
     },
 
-
     addQuestion: function () {
         if ($exeDevice.validateQuestion() != false) {
             $exeDevice.clearQuestion();
@@ -535,7 +557,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.questions[$exeDevice.active]),
+                JSON.stringify($exeDevice.questions[$exeDevice.active])
             );
             $('#eCQPaste').show();
         }
@@ -555,7 +577,7 @@ var $exeDevice = {
             $exeDevice.questions.splice(
                 $exeDevice.active,
                 0,
-                $exeDevice.clipBoard,
+                $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
         } else if ($exeDevice.typeEdit == 1) {
@@ -564,7 +586,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.exe.games.helpers(
                 $exeDevice.questions,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showQuestion($exeDevice.active);
             $('#eCQNumQuestions').text($exeDevice.questions.length);
@@ -618,7 +640,7 @@ var $exeDevice = {
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
             $exeDevice.removeTags($('#eCQPercentajeQuestions').val()),
-            10,
+            10
         );
         if (isNaN(percentaje)) return;
 
@@ -684,12 +706,12 @@ var $exeDevice = {
                     }
                     if (vf.length != vw.length) {
                         message = _(
-                            'The question text and the formula should have the same variables',
+                            'The question text and the formula should have the same variables'
                         );
                     }
                 } else {
                     message = _(
-                        'The question text and the formula should have the same variables',
+                        'The question text and the formula should have the same variables'
                     );
                 }
             }
@@ -729,17 +751,18 @@ var $exeDevice = {
             showSolution = $('#eCQShowSolution').is(':checked'),
             modeBoard = $('#eCQModeBoard').is(':checked'),
             timeShowSolution = parseInt(clear($('#eCQTimeShowSolution').val())),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             feedBack = $('#eCQHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#eCQPercentajeFB').val())),
             percentajeQuestions = parseInt(
-                clear($('#eCQPercentajeQuestions').val()),
+                clear($('#eCQPercentajeQuestions').val())
             ),
             errorAbsolute = parseFloat(
-                clear($('#eCQPercentajeAbsolute').val()),
+                clear($('#eCQPercentajeAbsolute').val())
             ),
             errorRelative = parseFloat(
-                clear($('#eCQPercentajeRelative').val()),
+                clear($('#eCQPercentajeRelative').val())
             ),
             evaluation = $('#eCQEEvaluation').is(':checked'),
             evaluationID = $('#eCQEEvaluationID').val(),
@@ -862,7 +885,7 @@ var $exeDevice = {
                 djson = $exeDevices.iDevice.gamification.helpers.decrypt(json),
                 dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(
-                        djson,
+                        djson
                     );
 
             $exeDevice.questions = dataGame.questions;
@@ -978,8 +1001,6 @@ var $exeDevice = {
             textFeedBack = tinyMCE.get('eCQFeedBackEditor').getContent(),
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
-
-
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
@@ -1212,11 +1233,14 @@ var $exeDevice = {
             '.MTOE-ValuesInput',
             function () {
                 const valorInicial = $(this).val();
-                const valorFiltrado = valorInicial.replace(/[^0-9,#!\-. ]/g, '');
+                const valorFiltrado = valorInicial.replace(
+                    /[^0-9,#!\-. ]/g,
+                    ''
+                );
                 if (valorFiltrado !== valorInicial) {
                     $(this).val(valorFiltrado);
                 }
-            },
+            }
         );
 
         $('#eCQDefinidedVariables').change(function () {
@@ -1276,14 +1300,14 @@ var $exeDevice = {
             typeof game.errorAbsolute == 'undefined' ? 0.0 : game.errorAbsolute;
         game.errorRelative =
             game.version == 1 &&
-                typeof game.percentajeError != 'undefined' &&
-                game.percentajeError > 0
+            typeof game.percentajeError != 'undefined' &&
+            game.percentajeError > 0
                 ? game.percentajeError / 100
                 : game.errorRelative;
         game.errorType =
             game.version == 1 &&
-                typeof game.percentajeError != 'undefined' &&
-                game.percentajeError > 0
+            typeof game.percentajeError != 'undefined' &&
+            game.percentajeError > 0
                 ? 1
                 : game.errorType;
         game.evaluation =
@@ -1319,13 +1343,15 @@ var $exeDevice = {
         }
 
         $exeDevice.questions = game.questions;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         $exeDevice.updateQuestionsNumber();
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.scorm.isScorm,
             game.scorm.textButtonScorm,
             game.scorm.repeatActivity,
-            game.weighted,
+            game.weighted
         );
     },
 

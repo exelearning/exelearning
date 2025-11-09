@@ -799,17 +799,21 @@ class OdeApiController extends DefaultApiController
     {
         $responseData = [];
 
-        // Collect parameters
-        $elpFileName = $request->get('odeFileName');
-        $elpFilePath = $request->get('odeFilePath');
-        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession');
+        // Collect parameters from both form data and JSON body
+        $elpFileName = $request->get('odeFileName') ?? $request->getPayload()->get('odeFileName');
+        $elpFilePath = $request->get('odeFilePath') ?? $request->getPayload()->get('odeFilePath');
+        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession') ?? $request->getPayload()->get('forceCloseOdeUserPreviousSession');
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
 
-        if (
-            $request->request->has('forceCloseOdeUserPreviousSession')
-            && (('true' == $forceCloseOdeUserPreviousSession) || ('1' == $forceCloseOdeUserPreviousSession))
+        // Convert forceCloseOdeUserPreviousSession to boolean
+        // Accept: true (bool), 'true' (string), '1' (string), 1 (int)
+        // Reject: false (bool), 'false' (string), '0' (string), 0 (int), null, anything else
+        if ((true === $forceCloseOdeUserPreviousSession)
+            || ('true' === $forceCloseOdeUserPreviousSession)
+            || ('1' === $forceCloseOdeUserPreviousSession)
+            || (1 === $forceCloseOdeUserPreviousSession)
         ) {
             $forceCloseOdeUserPreviousSession = true;
         } else {
@@ -822,6 +826,14 @@ class OdeApiController extends DefaultApiController
         $clientIp = $request->getClientIp();
 
         try {
+            // Validate required parameters
+            if (empty($elpFileName) || empty($elpFilePath)) {
+                $responseData['responseMessage'] = $this->translator->trans('Missing file name or path');
+                $jsonData = $this->getJsonSerialized($responseData);
+
+                return new JsonResponse($jsonData, $this->status, [], true);
+            }
+
             // Set locale (TODO: error translator returns to default locale)
             // Get properties of user
             $databaseUserPreferences = $this->userHelper->getUserPreferencesFromDatabase($user);
@@ -830,7 +842,7 @@ class OdeApiController extends DefaultApiController
 
             // Check if it's a zip by filename of archive
             $ext = pathinfo($elpFileName, PATHINFO_EXTENSION);
-            $zipArchive = str_contains($ext, Constants::FILE_EXTENSION_ZIP);
+            $zipArchive = str_contains($ext, Constants::FILE_EXTENSION_ZIP) || str_contains($ext, Constants::FILE_EXTENSION_EPUB);
 
             // Check if is a zip and have an elp inside or have a content.xml
             if ($zipArchive) {
@@ -855,6 +867,9 @@ class OdeApiController extends DefaultApiController
                     $databaseUser,
                     $forceCloseOdeUserPreviousSession
                 );
+            } catch (UserAlreadyOpenSessionException $e) {
+                // Re-throw session exceptions to be handled by outer catch
+                throw $e;
             } catch (\Exception $e) {
                 $result['responseMessage'] = $this->translator->trans('The file content is wrong');
                 $responseData['responseMessage'] = $result['responseMessage'];
@@ -985,6 +1000,85 @@ class OdeApiController extends DefaultApiController
             if (!empty($tempFilePath) && file_exists($tempFilePath)) {
                 FileUtil::removeFile($tempFilePath);
             }
+        }
+
+        $jsonData = $this->getJsonSerialized($responseData);
+
+        return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
+    /**
+     * Import a previously uploaded file into the root by server local path.
+     * Accepts JSON: { odeSessionId, odeFileName, odeFilePath }.
+     */
+    #[Route('/ode/import/local/root', methods: ['POST'], name: 'api_odes_ode_local_elp_import_root_from_local')]
+    public function importElpToRootFromLocalAction(Request $request): JsonResponse
+    {
+        $responseData = [];
+
+        // Parse JSON body (relies on DefaultApiController::hydrateRequestBody supporting POST)
+        $this->hydrateRequestBody($request);
+
+        $odeSessionId = $request->get('odeSessionId');
+        $odeFileName = $request->get('odeFileName');
+        $odeFilePath = $request->get('odeFilePath');
+
+        if (empty($odeSessionId) || empty($odeFileName) || empty($odeFilePath)) {
+            $responseData['responseMessage'] = $this->translator->trans('Invalid request data');
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+
+        try {
+            // Validate that the file exists and is in the correct temporary directory
+            if (!file_exists($odeFilePath)) {
+                throw new \RuntimeException($this->translator->trans('Uploaded file not found'));
+            }
+
+            // Validate file extension
+            $extension = strtolower(pathinfo($odeFileName, PATHINFO_EXTENSION));
+            $allowedExtensions = ['elpx', 'elp', 'zip'];
+            if (!in_array($extension, $allowedExtensions, true)) {
+                throw new \RuntimeException($this->translator->trans('Invalid file type'));
+            }
+
+            // Get existing root nodes to calculate max order
+            $odeNavStructureRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+            $existingRootNodes = $odeNavStructureRepo->findBy(
+                [
+                    'odeSessionId' => $odeSessionId,
+                    'odeNavStructureSync' => null,
+                ]
+            );
+
+            $maxRootOrder = 0;
+            foreach ($existingRootNodes as $rootNode) {
+                $maxRootOrder = max($maxRootOrder, (int) $rootNode->getOdeNavStructureSyncOrder());
+            }
+
+            // Import the ELP pages
+            $this->odeService->importElpPages($odeFilePath, $odeSessionId, null, $maxRootOrder);
+
+            $responseData['responseMessage'] = 'OK';
+            $responseData['structure'] = $this->buildNavStructureListDto($odeSessionId);
+
+            $this->publish($odeSessionId, 'structure-changed');
+        } catch (\Throwable $throwable) {
+            $this->logger->error(
+                'Error importing ELP from local path: '.$throwable->getMessage(),
+                [
+                    'file' => $throwable->getFile(),
+                    'line' => $throwable->getLine(),
+                    'odeSessionId' => $odeSessionId,
+                    'odeFileName' => $odeFileName,
+                    'odeFilePath' => $odeFilePath,
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+            $message = $throwable->getMessage();
+            $responseData['responseMessage'] = $this->translator->trans('Import error').': '.$message;
         }
 
         $jsonData = $this->getJsonSerialized($responseData);

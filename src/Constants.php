@@ -60,7 +60,6 @@ class Constants
 
     // Themes
     public const THEME_DEFAULT = 'base';
-    public const THEME_DEFAULT_CSS_FILE = 'content.css';
     public const THEME_GENERATED_CSS_FILE = 'generated.css';
     public const THEME_CONFIG_FILENAME = 'config.xml';
     public const THEME_ICONS_DIR = 'icons';
@@ -243,11 +242,13 @@ class Constants
     // ELP files extension
     public const ELP_FILES_AVAILABLE_EXTS = [
         self::FILE_EXTENSION_ELP,
+        self::FILE_EXTENSION_EPUB,
         self::FILE_EXTENSION_ZIP,
         'elp',
     ];
     public const ELP_LOCAL_FILES_AVAILABLE_EXTS = [
         self::FILE_EXTENSION_ELP,
+        self::FILE_EXTENSION_EPUB,
         self::FILE_EXTENSION_ZIP,
         self::FILE_EXTENSION_XML,
         self::IDEVICE_ELP_NAME,

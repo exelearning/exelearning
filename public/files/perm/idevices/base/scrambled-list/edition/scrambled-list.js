@@ -38,17 +38,27 @@ var $exeDevice = {
     },
     refreshTranslations: function () {
         this.ci18n = {
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgYouScore: c_('Your score'),
             msgScore: c_('Score'),
             msgWeight: c_('Weight'),
             msgYouLastScore: c_('The last score saved is'),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgActityComply: c_('You have already done this activity.'),
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
@@ -60,8 +70,8 @@ var $exeDevice = {
             msgTime: c_('Time per question'),
             msgCheck: c_('Check'),
             msgSaveScore: c_('Save score'),
-            msgTestFailed: c_("You didn't pass the test. Please try again")
-        }
+            msgTestFailed: c_("You didn't pass the test. Please try again"),
+        };
     },
 
     /**
@@ -73,31 +83,46 @@ var $exeDevice = {
      * @return {String}
      */
     save: function () {
-
         this.instructions = '';
         const inst = tinyMCE.get('eXeGameInstructions');
         if (inst) {
             this.instructions = inst.getContent();
-            inst.getContainer().classList.toggle('empty', this.instructions === '');
+            inst.getContainer().classList.toggle(
+                'empty',
+                this.instructions === ''
+            );
         }
 
         this.options = [];
         this.counter = 0;
-        this.ideviceBody.querySelectorAll('#sortableListFormList input').forEach((el) => {
-            const val = (el.value || '').trim();
-            if (val !== '') {
-                this.options.push(val);
-                this.counter++;
-            }
-        });
+        this.ideviceBody
+            .querySelectorAll('#sortableListFormList input')
+            .forEach((el) => {
+                const val = (el.value || '').trim();
+                if (val !== '') {
+                    this.options.push(val);
+                    this.counter++;
+                }
+            });
 
-
-        this.buttonText = (this.ideviceBody.querySelector('#sortableListButtonText') || {}).value || '';
-        this.rightText = (this.ideviceBody.querySelector('#sortableListRightText') || {}).value || '';
-        this.wrongText = (this.ideviceBody.querySelector('#sortableListWrongText') || {}).value || '';
-        this.evaluationID = (this.ideviceBody.querySelector('#sortableEvaluationID') || {}).value || '';
-        this.evaluation = !!(this.ideviceBody.querySelector('#sortableEvaluation') || {}).checked;
-        this.showSolutions = !!(this.ideviceBody.querySelector('#sortableShowSolutions') || {}).checked;
+        this.buttonText =
+            (this.ideviceBody.querySelector('#sortableListButtonText') || {})
+                .value || '';
+        this.rightText =
+            (this.ideviceBody.querySelector('#sortableListRightText') || {})
+                .value || '';
+        this.wrongText =
+            (this.ideviceBody.querySelector('#sortableListWrongText') || {})
+                .value || '';
+        this.evaluationID =
+            (this.ideviceBody.querySelector('#sortableEvaluationID') || {})
+                .value || '';
+        this.evaluation = !!(
+            this.ideviceBody.querySelector('#sortableEvaluation') || {}
+        ).checked;
+        this.showSolutions = !!(
+            this.ideviceBody.querySelector('#sortableShowSolutions') || {}
+        ).checked;
 
         this.textAfter = '';
         const ta = tinyMCE.get('eXeIdeviceTextAfter');
@@ -108,7 +133,6 @@ var $exeDevice = {
         this.afterElement = this.textAfter
             ? `<div class="exe-sortableList-textAfter">${this.textAfter}</div>`
             : '';
-
 
         const base = this.ci18n || {};
         const i18n = { ...base };
@@ -121,7 +145,6 @@ var $exeDevice = {
 
         return this.checkValues() ? this.dataJson() : false;
     },
-
 
     /**
      * Get a JSON with the idevice data
@@ -188,8 +211,14 @@ var $exeDevice = {
             return false;
         }
 
-        if (this.evaluation && this.evaluationID && this.evaluationID.length < 5) {
-            eXe.app.alert(_('The report identifier must have at least 5 characters'));
+        if (
+            this.evaluation &&
+            this.evaluationID &&
+            this.evaluationID.length < 5
+        ) {
+            eXe.app.alert(
+                _('The report identifier must have at least 5 characters')
+            );
             return false;
         }
 
@@ -213,7 +242,9 @@ var $exeDevice = {
         const textButtonText = _('Button text');
         const textCorrectAnswer = _('Correct Answer Feedback Overlay');
         const textWrongAnswer_1 = _('Wrong Answer Feedback Overlay');
-        const textWrongAnswer_2 = _('The right answer will be shown after this text.');
+        const textWrongAnswer_2 = _(
+            'The right answer will be shown after this text.'
+        );
         const textContentAfter_1 = _('after');
         const textContentAfter_2 = _('optional');
         const hiddenClass = '';
@@ -288,7 +319,8 @@ var $exeDevice = {
                     !select;
             });
 
-        document.getElementById('sortableEvaluationHelpLnk')
+        document
+            .getElementById('sortableEvaluationHelpLnk')
             .addEventListener('click', function (event) {
                 event.preventDefault();
                 const help = document.getElementById('sortableEvaluationHelp');
@@ -297,10 +329,17 @@ var $exeDevice = {
                 help.classList.toggle('d-block', isHidden);
             });
 
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+            8,
+            $exeDevice.insertWords
+        );
 
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(8, $exeDevice.insertWords);
-
-        if (window.File && window.FileReader && window.FileList && window.Blob) {
+        if (
+            window.File &&
+            window.FileReader &&
+            window.FileList &&
+            window.Blob
+        ) {
             $('#eXeGameExportImport .exe-field-instructions')
                 .eq(0)
                 .text(`${_('Supported formats')}: txt`);
@@ -375,7 +414,6 @@ var $exeDevice = {
         $('.exe-form-tabs li:first-child a').trigger('click');
     },
 
-
     /**
      * Function to create HTML textfield textarea
      *
@@ -446,9 +484,12 @@ var $exeDevice = {
         var buttonText = c_('Check');
         var rightText = c_('Right!');
         var wrongText = c_('Sorry, that’s incorrect... The right answer is:');
-        this.ideviceBody.querySelector('#sortableListButtonText').value = buttonText;
-        this.ideviceBody.querySelector('#sortableListRightText').value = rightText;
-        this.ideviceBody.querySelector('#sortableListWrongText').value = wrongText;
+        this.ideviceBody.querySelector('#sortableListButtonText').value =
+            buttonText;
+        this.ideviceBody.querySelector('#sortableListRightText').value =
+            rightText;
+        this.ideviceBody.querySelector('#sortableListWrongText').value =
+            wrongText;
 
         // Set form values
         let data = this.idevicePreviousData;
@@ -456,27 +497,45 @@ var $exeDevice = {
         if (data.options) {
             for (let i = 0; i < data.options.length; i++) {
                 this.ideviceBody.querySelector(
-                    '#sortableListFormList' + i,
+                    '#sortableListFormList' + i
                 ).value = data.options[i];
             }
         }
 
-        this.ideviceBody.querySelector('#sortableListButtonText').value = data.buttonText || buttonText;
-        this.ideviceBody.querySelector('#sortableListRightText').value = data.rightText || rightText;
-        this.ideviceBody.querySelector('#sortableListWrongText').value = data.wrongText || wrongText;
-        const evalCheckbox = this.ideviceBody.querySelector('#sortableEvaluation');
-        const evalInput = this.ideviceBody.querySelector('#sortableEvaluationID');
+        this.ideviceBody.querySelector('#sortableListButtonText').value =
+            data.buttonText || buttonText;
+        this.ideviceBody.querySelector('#sortableListRightText').value =
+            data.rightText || rightText;
+        this.ideviceBody.querySelector('#sortableListWrongText').value =
+            data.wrongText || wrongText;
+        const evalCheckbox = this.ideviceBody.querySelector(
+            '#sortableEvaluation'
+        );
+        const evalInput = this.ideviceBody.querySelector(
+            '#sortableEvaluationID'
+        );
         const evalChecked = !!data.evaluation;
         evalCheckbox.checked = evalChecked;
 
-        if (typeof data.evaluationID === 'string' && data.evaluationID.trim() !== '') {
+        if (
+            typeof data.evaluationID === 'string' &&
+            data.evaluationID.trim() !== ''
+        ) {
             evalInput.value = data.evaluationID;
         }
         evalInput.disabled = !evalChecked;
 
-        this.ideviceBody.querySelector('#eXeGameInstructions').value = data.instructions || _('Arrange the following texts in the correct order to complete the activity.');
-        this.ideviceBody.querySelector('#eXeIdeviceTextAfter').value = data.textAfter || '';
-        this.ideviceBody.querySelector('#sortableShowSolutions').checked = typeof data.showSolutions !== "undefined" ? data.showSolutions : true;
+        this.ideviceBody.querySelector('#eXeGameInstructions').value =
+            data.instructions ||
+            _(
+                'Arrange the following texts in the correct order to complete the activity.'
+            );
+        this.ideviceBody.querySelector('#eXeIdeviceTextAfter').value =
+            data.textAfter || '';
+        this.ideviceBody.querySelector('#sortableShowSolutions').checked =
+            typeof data.showSolutions !== 'undefined'
+                ? data.showSolutions
+                : true;
 
         data.weighted = data.weighted || 100;
         data.repeatActivity = data.repeatActivity || false;
@@ -489,7 +548,9 @@ var $exeDevice = {
             data.repeatActivity,
             data.weighted
         );
-        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(data.msgs);
+        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            data.msgs
+        );
     },
 
     /**
