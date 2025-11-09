@@ -82,9 +82,7 @@ class ProjectCollaborator
     public function setRole(string $role): self
     {
         if (!in_array($role, [self::ROLE_OWNER, self::ROLE_EDITOR])) {
-            throw new \InvalidArgumentException(
-                sprintf('Role must be either "%s" or "%s"', self::ROLE_OWNER, self::ROLE_EDITOR)
-            );
+            throw new \InvalidArgumentException(sprintf('Role must be either "%s" or "%s"', self::ROLE_OWNER, self::ROLE_EDITOR));
         }
 
         $this->role = $role;
@@ -94,12 +92,12 @@ class ProjectCollaborator
 
     public function isOwner(): bool
     {
-        return $this->role === self::ROLE_OWNER;
+        return self::ROLE_OWNER === $this->role;
     }
 
     public function isEditor(): bool
     {
-        return $this->role === self::ROLE_EDITOR;
+        return self::ROLE_EDITOR === $this->role;
     }
 
     public function getGrantedAt(): \DateTime

@@ -7,6 +7,7 @@
     <link class="exe" rel="stylesheet" href="{{ asset('libs/bootstrap/bootstrap.min.css') }}">
     <link class="exe" rel="stylesheet" href="{{ asset('style/workarea/main.css') }}">
     <link class="exe" rel="stylesheet" href="{{ asset('style/workarea/base.css') }}">
+    <link class="exe" rel="stylesheet" href="{{ asset('style/workarea/share.css') }}">
     {# Legacy/Common styles #}
     <link class="exe" rel="stylesheet" href="{{ asset('app/common/exe_effects/exe_effects.css') }}">
     <link class="exe" rel="stylesheet" href="{{ asset('app/common/exe_games/exe_games.css') }}">
@@ -43,10 +44,10 @@
             version: "{{ constant('App\\Constants::APP_VERSION' ) }}",
             expires: "{{ constant('App\\Constants::DEMO_EXPIRATION_DATE' ) }}",
             extension: "{{ constant('App\\Constants::FILE_EXTENSION_ELP' ) }}",
-            user: "{{ user | json_encode }}",
-            config: "{{ config | json_encode }}",
-            symfony: "{{ symfony | json_encode }}",
-            mercure: "{{ mercure | json_encode }}",
+            user: {{ user | json_encode | raw }},
+            config: {{ config | json_encode | raw }},
+            symfony: {{ symfony | json_encode | raw }},
+            mercure: {{ mercure | json_encode | raw }},
         }
     </script>
     {# TinyMCE #}
@@ -158,6 +159,7 @@
         {% include 'workarea/modals/pages/about.html.twig' %}
         {% include 'workarea/modals/pages/properties.html.twig' %}
         {% include 'workarea/modals/pages/openuserodefiles.html.twig' %}
+        {% include 'workarea/modals/pages/modalShare.html.twig' %}
     </div>
 
     {# Toasts #}

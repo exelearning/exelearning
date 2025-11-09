@@ -2,9 +2,9 @@
 
 namespace App\Command\Project;
 
+use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\OdeFiles;
 use App\Entity\net\exelearning\Entity\OdePropertiesSync;
-use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\User;
 use App\Entity\Project\Project;
 use App\Entity\Project\ProjectCollaborator;
@@ -73,6 +73,7 @@ class MigrateSessionsToProjectsCommand extends Command
                 'Found %d existing projects. Use --force to re-run migration.',
                 count($existingProjects)
             ));
+
             return Command::FAILURE;
         }
 
@@ -103,7 +104,7 @@ class MigrateSessionsToProjectsCommand extends Command
             // Check if project already exists
             $existingProject = $projectRepo->find($odeId);
             if ($existingProject) {
-                $projectsSkipped++;
+                ++$projectsSkipped;
                 $io->progressAdvance();
                 continue;
             }
@@ -112,7 +113,7 @@ class MigrateSessionsToProjectsCommand extends Command
             $latestFile = $odeFilesRepo->getLastFileForOde($odeId);
             if (!$latestFile) {
                 $io->warning("No file found for odeId: $odeId, skipping");
-                $projectsSkipped++;
+                ++$projectsSkipped;
                 $io->progressAdvance();
                 continue;
             }
@@ -123,7 +124,7 @@ class MigrateSessionsToProjectsCommand extends Command
 
             if (!$owner) {
                 $io->warning("Owner not found for email: $ownerEmail (odeId: $odeId), skipping");
-                $projectsSkipped++;
+                ++$projectsSkipped;
                 $io->progressAdvance();
                 continue;
             }
@@ -141,7 +142,7 @@ class MigrateSessionsToProjectsCommand extends Command
             if (!$dryRun) {
                 $this->entityManager->persist($project);
             }
-            $projectsCreated++;
+            ++$projectsCreated;
 
             // Create owner collaborator record
             $collaborator = new ProjectCollaborator();
@@ -153,7 +154,7 @@ class MigrateSessionsToProjectsCommand extends Command
             if (!$dryRun) {
                 $this->entityManager->persist($collaborator);
             }
-            $collaboratorsCreated++;
+            ++$collaboratorsCreated;
 
             // Migrate properties from session to project scope
             // Find any session for this project
@@ -169,7 +170,7 @@ class MigrateSessionsToProjectsCommand extends Command
                     // Check if property already exists in project scope
                     $existingProp = $projectPropertyRepo->findOneBy([
                         'odeId' => $odeId,
-                        'key' => $prop->getKey()
+                        'key' => $prop->getKey(),
                     ]);
 
                     if (!$existingProp) {
@@ -182,7 +183,7 @@ class MigrateSessionsToProjectsCommand extends Command
                         if (!$dryRun) {
                             $this->entityManager->persist($projectProp);
                         }
-                        $propertiesMigrated++;
+                        ++$propertiesMigrated;
                     }
                 }
             }

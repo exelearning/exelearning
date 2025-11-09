@@ -1181,4 +1181,82 @@ export default class ApiCallManager {
         let url = this.endpoints.api_resource_lock_timeout.path;
         return await this.func.get(url);
     }
+
+    // =========================================================================
+    // Project Sharing API Methods
+    // =========================================================================
+
+    /**
+     * Get project details by ID
+     *
+     * @param {string} projectId - The project ID
+     * @returns {Promise<object>} Project data including owner and collaborators
+     */
+    async getProject(projectId) {
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/${projectId}`;
+        return await this.func.get(url);
+    }
+
+    /**
+     * Get all collaborators for a project
+     *
+     * @param {string} projectId - The project ID
+     * @returns {Promise<object>} List of collaborators
+     */
+    async getProjectCollaborators(projectId) {
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/${projectId}/collaborators`;
+        return await this.func.get(url);
+    }
+
+    /**
+     * Add a collaborator to a project
+     *
+     * @param {string} projectId - The project ID
+     * @param {string} email - The collaborator's email
+     * @param {string} role - The role (default: 'editor')
+     * @returns {Promise<object>} Created collaborator data
+     */
+    async addProjectCollaborator(projectId, email, role = 'editor') {
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/${projectId}/collaborators`;
+        let data = { email, role };
+        return await this.func.post(url, data);
+    }
+
+    /**
+     * Remove a collaborator from a project
+     *
+     * @param {string} projectId - The project ID
+     * @param {number} userId - The user ID to remove
+     * @returns {Promise<object>} Success message
+     */
+    async removeProjectCollaborator(projectId, userId) {
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/${projectId}/collaborators/${userId}`;
+        return await this.func.delete(url);
+    }
+
+    /**
+     * Update project visibility (public/private)
+     *
+     * @param {string} projectId - The project ID
+     * @param {string} visibility - 'public' or 'private'
+     * @returns {Promise<object>} Updated project data
+     */
+    async updateProjectVisibility(projectId, visibility) {
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/${projectId}/visibility`;
+        let data = { visibility };
+        return await this.func.patch(url, data);
+    }
+
+    /**
+     * Transfer project ownership to another user
+     *
+     * @param {string} projectId - The project ID
+     * @param {number} newOwnerId - The new owner's user ID
+     * @returns {Promise<object>} Updated project data
+     */
+    async transferProjectOwnership(projectId, newOwnerId) {
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/${projectId}/owner`;
+        let data = { newOwnerId };
+        return await this.func.patch(url, data);
+    }
 }

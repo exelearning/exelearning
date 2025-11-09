@@ -5,6 +5,8 @@ namespace App\Controller\Api\Project;
 use App\Constants;
 use App\Entity\net\exelearning\Dto\CurrentOdeUsersDto;
 use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
+use App\Entity\Project\Project;
+use App\Entity\Project\ProjectCollaborator;
 use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Util\net\exelearning\Util\Util;
@@ -12,8 +14,10 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\Routing\Annotation\Route;
 
 #[AsController]
+#[Route('/api/ode-management/odes/current/project/get', name: 'api_get_current_project', methods: ['GET'])]
 class GetCurrentProjectAction extends AbstractController
 {
     public function __construct(
@@ -69,6 +73,32 @@ class GetCurrentProjectAction extends AbstractController
                 $databaseUser,
                 $clientIp
             );
+
+            // Create corresponding Project entity for the new session
+            $projectRepo = $this->entityManager->getRepository(Project::class);
+            $existingProject = $projectRepo->find($odeId);
+
+            if (!$existingProject) {
+                $project = new Project();
+                $project->setId($odeId);
+                $project->setTitle('New Project'); // Default title, will be updated on first save
+                $project->setOwner($databaseUser);
+                $project->setVisibility('private');
+                $project->setArchived(false);
+
+                $this->entityManager->persist($project);
+
+                // Create ProjectCollaborator entry for the owner
+                $collaborator = new ProjectCollaborator();
+                $collaborator->setProject($project);
+                $collaborator->setUser($databaseUser);
+                $collaborator->setRole(ProjectCollaborator::ROLE_OWNER);
+                $collaborator->setGrantedBy($databaseUser);
+
+                $this->entityManager->persist($collaborator);
+                $this->entityManager->flush();
+            }
+
             $isNewSession = true;
         } else {
             $isLastUser = $this->currentOdeUsersService->isLastUser(

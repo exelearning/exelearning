@@ -36,7 +36,7 @@ class ProactiveCleanupService
         LoggerInterface $logger,
         int $sessionMaxInactiveHours = 24,
         int $autosaveVersionsToKeep = 5,
-        int $manualSaveVersionsToKeep = 20
+        int $manualSaveVersionsToKeep = 20,
     ) {
         $this->entityManager = $entityManager;
         $this->fileHelper = $fileHelper;
@@ -109,28 +109,28 @@ class ProactiveCleanupService
                 try {
                     // Eliminar directorio temporal
                     $this->filesystem->remove($tmpDir);
-                    $stats['directoriesRemoved']++;
+                    ++$stats['directoriesRemoved'];
                     $stats['bytesFreed'] += $sizeBeforeDelete;
 
                     $this->logger->info('Removed abandoned session directory', [
                         'odeId' => $odeId,
                         'sessionId' => $sessionId,
                         'path' => $tmpDir,
-                        'bytesFreed' => $sizeBeforeDelete
+                        'bytesFreed' => $sizeBeforeDelete,
                     ]);
                 } catch (\Exception $e) {
                     $this->logger->error('Failed to remove session directory', [
                         'odeId' => $odeId,
                         'sessionId' => $sessionId,
                         'path' => $tmpDir,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
 
             // Eliminar registro de la base de datos
             $this->entityManager->remove($session);
-            $stats['sessionsDeleted']++;
+            ++$stats['sessionsDeleted'];
         }
 
         $this->entityManager->flush();
@@ -176,7 +176,7 @@ class ProactiveCleanupService
             $stats['autosavesDeleted'] += $deletedAutosaves['filesDeleted'];
             $stats['bytesFreed'] += $deletedAutosaves['bytesFreed'];
 
-            $stats['projectsProcessed']++;
+            ++$stats['projectsProcessed'];
         }
 
         return $stats;
@@ -185,9 +185,10 @@ class ProactiveCleanupService
     /**
      * Limpia versiones antiguas de un proyecto específico.
      *
-     * @param string $projectId ID del proyecto
-     * @param bool $isManualSave true para guardados manuales, false para autosaves
-     * @param int $versionsToKeep Cantidad de versiones a mantener
+     * @param string $projectId      ID del proyecto
+     * @param bool   $isManualSave   true para guardados manuales, false para autosaves
+     * @param int    $versionsToKeep Cantidad de versiones a mantener
+     *
      * @return array Estadísticas de limpieza
      */
     private function cleanOldVersionsForProject(string $projectId, bool $isManualSave, int $versionsToKeep): array
@@ -198,7 +199,7 @@ class ProactiveCleanupService
         $allVersions = $odeFilesRepo->findBy(
             [
                 'odeId' => $projectId,
-                'isManualSave' => $isManualSave
+                'isManualSave' => $isManualSave,
             ],
             ['updatedAt' => 'DESC']
         );
@@ -223,9 +224,9 @@ class ProactiveCleanupService
                 $year = $matches[1];
                 $month = $matches[2];
                 $day = $matches[3];
-                $filePath = $permDir . $year . DIRECTORY_SEPARATOR .
-                           $month . DIRECTORY_SEPARATOR .
-                           $day . DIRECTORY_SEPARATOR . $fileName;
+                $filePath = $permDir.$year.DIRECTORY_SEPARATOR.
+                           $month.DIRECTORY_SEPARATOR.
+                           $day.DIRECTORY_SEPARATOR.$fileName;
             } else {
                 // Si no coincide el patrón, skip este archivo
                 continue;
@@ -243,14 +244,14 @@ class ProactiveCleanupService
                         'versionId' => $version->getOdeVersionId(),
                         'isManualSave' => $isManualSave,
                         'path' => $filePath,
-                        'bytesFreed' => $fileSize
+                        'bytesFreed' => $fileSize,
                     ]);
                 } catch (\Exception $e) {
                     $this->logger->error('Failed to remove version file', [
                         'projectId' => $projectId,
                         'versionId' => $version->getOdeVersionId(),
                         'path' => $filePath,
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                     continue;
                 }
@@ -258,7 +259,7 @@ class ProactiveCleanupService
 
             // Eliminar registro de la base de datos
             $this->entityManager->remove($version);
-            $stats['filesDeleted']++;
+            ++$stats['filesDeleted'];
         }
 
         $this->entityManager->flush();
@@ -288,7 +289,7 @@ class ProactiveCleanupService
         // Obtener todos los sessionIds activos de la base de datos
         $repo = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $activeSessions = $repo->findAll();
-        $activeSessionIds = array_map(fn($s) => $s->getOdeSessionId(), $activeSessions);
+        $activeSessionIds = array_map(fn ($s) => $s->getOdeSessionId(), $activeSessions);
 
         // Escanear directorios en /tmp
         $this->scanTmpDirectoriesRecursive($tmpBaseDir, $activeSessionIds, $stats);
@@ -299,9 +300,9 @@ class ProactiveCleanupService
     /**
      * Escanea recursivamente directorios temporales buscando huérfanos.
      *
-     * @param string $directory Directorio a escanear
-     * @param array $activeSessionIds IDs de sesiones activas
-     * @param array &$stats Estadísticas de limpieza (por referencia)
+     * @param string $directory        Directorio a escanear
+     * @param array  $activeSessionIds IDs de sesiones activas
+     * @param array  &$stats           Estadísticas de limpieza (por referencia)
      */
     private function scanTmpDirectoriesRecursive(string $directory, array $activeSessionIds, array &$stats): void
     {
@@ -321,14 +322,14 @@ class ProactiveCleanupService
                 if (preg_match('/^\d{14}[A-Za-z0-9]{6}$/', $dirname)) {
                     $dirsToCheck[] = [
                         'sessionId' => $dirname,
-                        'path' => $dirPath
+                        'path' => $dirPath,
                     ];
                 }
             }
         }
 
         foreach ($dirsToCheck as $dirInfo) {
-            $stats['directoriesScanned']++;
+            ++$stats['directoriesScanned'];
 
             if (!in_array($dirInfo['sessionId'], $activeSessionIds)) {
                 // Directorio huérfano
@@ -336,19 +337,19 @@ class ProactiveCleanupService
 
                 try {
                     $this->filesystem->remove($dirInfo['path']);
-                    $stats['orphanedDirectories']++;
+                    ++$stats['orphanedDirectories'];
                     $stats['bytesFreed'] += $sizeBeforeDelete;
 
                     $this->logger->info('Removed orphaned tmp directory', [
                         'sessionId' => $dirInfo['sessionId'],
                         'path' => $dirInfo['path'],
-                        'bytesFreed' => $sizeBeforeDelete
+                        'bytesFreed' => $sizeBeforeDelete,
                     ]);
                 } catch (\Exception $e) {
                     $this->logger->error('Failed to remove orphaned directory', [
                         'sessionId' => $dirInfo['sessionId'],
                         'path' => $dirInfo['path'],
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                 }
             }
@@ -359,6 +360,7 @@ class ProactiveCleanupService
      * Calcula el tamaño total de un directorio recursivamente.
      *
      * @param string $directory Ruta del directorio
+     *
      * @return int Tamaño en bytes
      */
     private function getDirectorySize(string $directory): int
@@ -419,18 +421,19 @@ class ProactiveCleanupService
     /**
      * Formatea bytes a formato legible (KB, MB, GB).
      *
-     * @param int $bytes Cantidad de bytes
+     * @param int $bytes     Cantidad de bytes
      * @param int $precision Decimales a mostrar
+     *
      * @return string Tamaño formateado
      */
     private function formatBytes(int $bytes, int $precision = 2): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
 
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; ++$i) {
             $bytes /= 1024;
         }
 
-        return round($bytes, $precision) . ' ' . $units[$i];
+        return round($bytes, $precision).' '.$units[$i];
     }
 }

@@ -1,136 +1,132 @@
+/**
+ * Share Project Button - Integrated visibility pill and share modal
+ */
 export default class ShareProjectButton {
     constructor() {
-        this.shareMenuHeadButton = document.querySelector(
-            '#head-top-share-button'
+        this.shareButton = document.querySelector('#head-top-share-button');
+        this.visibilityIcon = this.shareButton?.querySelector(
+            '.share-visibility-icon'
+        );
+        this.visibilityText = this.shareButton?.querySelector(
+            '.share-visibility-text'
+        );
+        this.currentVisibility = 'private'; // Default
+    }
+
+    /**
+     * Initialize the share button
+     */
+    init() {
+        this.addEventClick();
+        this.loadInitialState();
+    }
+
+    /**
+     * Add click event to open share modal
+     */
+    addEventClick() {
+        if (!this.shareButton) return;
+
+        this.shareButton.addEventListener('click', async (event) => {
+            // Check if there's an open iDevice
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+
+            // Save project first
+            await eXeLearning.app.project.save();
+
+            // Open share modal
+            this.openShareModal();
+        });
+    }
+
+    /**
+     * Open the share modal
+     */
+    openShareModal() {
+        const projectId = this.getProjectId();
+
+        if (!projectId) {
+            console.error('ShareProjectButton: No project ID available');
+            eXeLearning.app.modals.alert.show({
+                title: _('Error'),
+                body: _('No project available to share'),
+                contentId: 'error',
+            });
+            return;
+        }
+
+        // Open the new share modal
+        if (eXeLearning.app.modals?.share) {
+            eXeLearning.app.modals.share.show(projectId);
+        } else {
+            console.error('ShareProjectButton: Share modal not available');
+        }
+    }
+
+    /**
+     * Load initial project state to set visibility pill
+     */
+    async loadInitialState() {
+        const projectId = this.getProjectId();
+
+        if (!projectId) {
+            // No project loaded yet, use default
+            this.updateVisibilityPill('private');
+            return;
+        }
+
+        try {
+            const response = await eXeLearning.app.api.getProject(projectId);
+
+            if (response.responseMessage === 'OK' && response.project) {
+                this.updateVisibilityPill(response.project.visibility);
+            }
+        } catch (error) {
+            console.error(
+                'ShareProjectButton: Failed to load initial state:',
+                error
+            );
+            // Use default on error
+            this.updateVisibilityPill('private');
+        }
+    }
+
+    /**
+     * Update the visibility pill appearance
+     * @param {string} visibility - 'public' or 'private'
+     */
+    updateVisibilityPill(visibility) {
+        if (!this.visibilityIcon || !this.visibilityText) return;
+
+        this.currentVisibility = visibility;
+
+        if (visibility === 'public') {
+            this.visibilityIcon.textContent = 'link';
+            this.visibilityText.textContent = _('Public');
+        } else {
+            this.visibilityIcon.textContent = 'lock';
+            this.visibilityText.textContent = _('Private');
+        }
+    }
+
+    /**
+     * Get current project ID
+     * @returns {string|null}
+     */
+    getProjectId() {
+        return (
+            eXeLearning.app.project?.odeId ||
+            eXeLearning.app.project?.requestedProjectId ||
+            new URL(window.location.href).searchParams.get('projectId') ||
+            null
         );
     }
 
     /**
-     * Init element
-     *
+     * Get current document URL for sharing
+     * @param {string} fallbackUrl - Fallback URL if no session/project ID
+     * @returns {string}
      */
-    init() {
-        this.addEventClick();
-    }
-
-    /**
-     * Add event click to button
-     *
-     */
-    addEventClick() {
-        this.shareMenuHeadButton.addEventListener('click', (event) => {
-            // First save content (make propietary of the content)
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            eXeLearning.app.project.save().then(() => {
-                this.copyUserSessionId();
-            });
-        });
-    }
-
-    /**
-     * Modal to show the share link and copy
-     *
-     */
-    async copyUserSessionId() {
-        let result = await eXeLearning.app.api.getCurrentUserOdeSessionId();
-        let body = this.makeBodyElementShareUrl(result);
-        await eXeLearning.app.modals.alert.show({
-            title: _('Share link'),
-            body: body.innerHTML,
-            contentId: 'Ok',
-        });
-
-        // Set event copy button (due to innerHtml)
-        setTimeout(() => {
-            this.addEventButtonCopy();
-        }, 1000);
-    }
-
-    /**
-     * Event to copy to the clipboard
-     *
-     */
-    addEventButtonCopy() {
-        let shareButton = document.getElementById('shareUrlButton');
-        shareButton.addEventListener('click', () => {
-            // Get the text field
-            let copyText = document.getElementById('shareLinkCode');
-            let copyTextValue = copyText.innerText;
-
-            if (!navigator.clipboard) {
-                let textArea = document.createElement('textarea');
-
-                textArea.value = copyTextValue;
-
-                document.body.appendChild(textArea);
-
-                textArea.select();
-                textArea.focus();
-
-                document.execCommand('copy');
-                textArea.remove();
-            } else {
-                navigator.clipboard.writeText(copyTextValue);
-            }
-        });
-    }
-
-    /**
-     * Get element to append
-     *
-     * @param {*} result
-     * @returns
-     */
-    makeBodyElementShareUrl(result) {
-        let element = document.createElement('div');
-        element.classList.add('element-share-url');
-        element.append(this.makeUrlBody(result));
-        return element;
-    }
-
-    /**
-     * Make body content to show the share url
-     *
-     * @param {*} result
-     * @returns
-     */
-    makeUrlBody(result) {
-        let element = document.createElement('div');
-        let p = document.createElement('p');
-        let urlDiv = document.createElement('div');
-        let urlString = document.createElement('div');
-        let urlButton = document.createElement('button');
-
-        element.classList.add('share-link-div');
-
-        p.classList.add('share-link-text');
-        p.innerHTML = _('The share link is:');
-
-        urlDiv.classList.add('share-link-div-content');
-
-        const shareUrl = this.getCurrentDocumentUrl(result?.shareSessionUrl);
-        urlString.classList.add('share-link-code-string');
-        urlString.id = 'shareLinkCode';
-        urlString.innerHTML = `<strong>${shareUrl}</strong>`;
-
-        urlButton.id = 'shareUrlButton';
-        urlButton.title = _('Copy to clipboard');
-        // urlButton.classList.add('exe-icon');
-        // urlButton.classList.add('share-url-button');
-        urlButton.innerHTML =
-            '<i class="auto-icon" aria-hidden="true">content_paste</i><span class="visually-hidden">' +
-            _('Copy to clipboard') +
-            '</span>';
-
-        urlDiv.append(urlString);
-        urlDiv.append(urlButton);
-
-        element.append(p);
-        element.append(urlDiv);
-
-        return element;
-    }
-
     getCurrentDocumentUrl(fallbackUrl) {
         const url = new URL(window.location.href);
         const sessionId =

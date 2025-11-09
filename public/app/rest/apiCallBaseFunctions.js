@@ -76,6 +76,20 @@ export default class ApiCallBaseFunctions {
 
     /**
      *
+     * @param {String} url
+     * @param {Object} data
+     * @returns
+     */
+    async patch(url, data, waiting = true) {
+        try {
+            return await this.doAjax(url, 'PATCH', data, waiting);
+        } catch (err) {
+            return {};
+        }
+    }
+
+    /**
+     *
      * @param {String} method
      * @param {String} url
      * @param {Object} data
@@ -101,11 +115,19 @@ export default class ApiCallBaseFunctions {
             this.addWaitingPetition();
         }
 
+        // For POST, PUT, PATCH methods with data, send as JSON
+        const shouldSendJson =
+            (method === 'POST' || method === 'PUT' || method === 'PATCH') &&
+            data;
+        const ajaxData = shouldSendJson ? JSON.stringify(data) : data;
+        const contentType = shouldSendJson ? 'application/json' : undefined;
+
         try {
             return await $.ajax({
                 url: url,
                 method: method,
-                data: data,
+                data: ajaxData,
+                contentType: contentType,
                 timeout: eXeLearning.config.clientCallWaitingTime,
                 dataType: 'json',
             });

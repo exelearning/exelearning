@@ -1,0 +1,507 @@
+/**
+ * Share UI Styles
+ * Google Docs-style sharing interface for eXeLearning
+ */
+
+/* ========================================================================
+   Share Button Pill (Integrated visibility indicator)
+   ======================================================================== */
+
+.btn-share-pill {
+    background: var(--bs-white, #fff);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 9999px;
+    padding: 6px 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    gap: 8px;
+    height: auto;
+    min-height: 36px;
+}
+
+.btn-share-pill:hover {
+    background: var(--bs-gray-100, #f8f9fa);
+    border-color: var(--bs-gray-400, #ced4da);
+}
+
+.btn-share-pill:focus {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+.btn-share-pill .share-visibility-indicator {
+    gap: 4px;
+    color: var(--bs-gray-700, #495057);
+}
+
+.btn-share-pill .share-visibility-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.btn-share-pill .share-visibility-text {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.btn-share-pill .share-button-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--bs-border-color, #dee2e6);
+}
+
+.btn-share-pill .share-button-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--bs-primary, #0d6efd);
+}
+
+/* ========================================================================
+   Share Modal
+   ======================================================================== */
+
+#modalShare .modal-lg {
+    max-width: 600px;
+}
+
+#modalShare .modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 500px;
+}
+
+#modalShare .modal-body {
+    padding: 24px;
+}
+
+#modalShare h6 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--bs-gray-700, #495057);
+}
+
+/* ========================================================================
+   Invite Section
+   ======================================================================== */
+
+#share-invite-section {
+    margin-bottom: 24px;
+}
+
+#share-invite-section .input-group {
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+#share-invite-email {
+    border-radius: 8px;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    padding: 8px 12px;
+    font-size: 14px;
+    flex: 1;
+}
+
+#share-invite-email:focus {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: -1px;
+    border-color: var(--bs-primary, #0d6efd);
+    box-shadow: none;
+}
+
+#share-invite-email.is-invalid {
+    border-color: var(--bs-danger, #dc3545);
+}
+
+#share-invite-button {
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+#share-invite-error {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--bs-danger, #dc3545);
+}
+
+/* ========================================================================
+   People List
+   ======================================================================== */
+
+#share-people-section {
+    margin-bottom: 24px;
+}
+
+#share-people-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.share-person-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.075));
+    gap: 12px;
+}
+
+.share-person-row:last-child {
+    border-bottom: none;
+}
+
+.share-person-row:hover {
+    background: var(--bs-gray-50, #f8f9fa);
+    margin-left: -8px;
+    margin-right: -8px;
+    padding-left: 8px;
+    padding-right: 8px;
+    border-radius: 8px;
+}
+
+/* Avatar */
+
+.share-person-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bs-primary, #0d6efd);
+    color: white;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+.share-person-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* Person Info */
+
+.share-person-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.share-person-email {
+    font-size: 14px;
+    color: var(--bs-body-color, #212529);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.share-person-role-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    background: var(--bs-gray-100, #f8f9fa);
+    color: var(--bs-gray-700, #495057);
+    flex-shrink: 0;
+}
+
+/* Person Actions */
+
+.share-person-actions {
+    flex-shrink: 0;
+}
+
+.share-person-owner-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--bs-gray-600, #6c757d);
+}
+
+.share-person-menu-btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.2s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.share-person-menu-btn:hover {
+    background: var(--bs-gray-100, #f8f9fa);
+}
+
+.share-person-menu-btn:focus {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: 2px;
+}
+
+.share-person-menu-btn .auto-icon {
+    font-size: 20px;
+    color: var(--bs-gray-700, #495057);
+}
+
+/* Dropdown menu for person actions */
+
+.share-person-row .dropdown-menu {
+    min-width: 180px;
+    z-index: 1060; /* Higher than modal backdrop (1050) */
+}
+
+.share-person-row .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.share-person-row .dropdown-item .auto-icon {
+    font-size: 18px;
+}
+
+/* ========================================================================
+   General Access Section
+   ======================================================================== */
+
+#share-general-access-section {
+    margin-bottom: 24px;
+}
+
+#share-visibility-select {
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    background-color: var(--bs-white, #fff);
+}
+
+#share-visibility-select:focus {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: -1px;
+    border-color: var(--bs-primary, #0d6efd);
+    box-shadow: none;
+}
+
+#share-visibility-help {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--bs-secondary, #6c757d);
+}
+
+/* ========================================================================
+   Link Section
+   ======================================================================== */
+
+#share-link-section h6 {
+    margin-bottom: 8px;
+}
+
+#share-link-section .input-group {
+    gap: 0;
+}
+
+#share-link-input {
+    border-radius: 8px 0 0 8px;
+    background: var(--bs-gray-50, #f8f9fa);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: monospace;
+    color: var(--bs-gray-700, #495057);
+}
+
+#share-copy-button {
+    border-radius: 0 8px 8px 0;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    white-space: nowrap;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-left: none;
+    background: var(--bs-white, #fff);
+    color: var(--bs-gray-700, #495057);
+}
+
+#share-copy-button:hover {
+    background: var(--bs-gray-100, #f8f9fa);
+}
+
+#share-copy-button:focus {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+#share-copy-button .auto-icon {
+    font-size: 18px;
+}
+
+#share-copy-button.copied {
+    background: var(--bs-success, #198754);
+    color: white;
+    border-color: var(--bs-success, #198754);
+}
+
+#share-copy-button.copied .auto-icon {
+    color: white;
+}
+
+/* ========================================================================
+   Modal Footer
+   ======================================================================== */
+
+#modalShare .modal-footer {
+    border-top: 1px solid var(--bs-border-color, #dee2e6);
+    padding: 16px 24px;
+}
+
+#modalShare .modal-footer .btn {
+    padding: 8px 24px;
+    font-weight: 500;
+}
+
+/* ========================================================================
+   Responsive Adjustments
+   ======================================================================== */
+
+@media (max-width: 768px) {
+    #modalShare .modal-lg {
+        max-width: 95%;
+    }
+
+    #modalShare .modal-body {
+        padding: 16px;
+    }
+
+    .btn-share-pill {
+        padding: 4px 12px;
+    }
+
+    .btn-share-pill .share-visibility-text {
+        display: none;
+    }
+
+    .btn-share-pill .share-button-divider {
+        display: none;
+    }
+
+    #share-invite-section .input-group {
+        flex-wrap: wrap;
+    }
+
+    #share-invite-email {
+        width: 100%;
+    }
+
+    #share-invite-button {
+        width: 100%;
+    }
+}
+
+/* ========================================================================
+   Accessibility
+   ======================================================================== */
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Focus visible for keyboard navigation */
+
+.btn-share-pill:focus-visible,
+#share-invite-email:focus-visible,
+#share-invite-button:focus-visible,
+#share-visibility-select:focus-visible,
+#share-copy-button:focus-visible,
+.share-person-menu-btn:focus-visible {
+    outline: 2px solid var(--bs-primary, #0d6efd);
+    outline-offset: 2px;
+}
+
+/* ========================================================================
+   Dark Mode Support (if applicable)
+   ======================================================================== */
+
+@media (prefers-color-scheme: dark) {
+    .btn-share-pill {
+        background: #343a40;
+        border-color: #495057;
+        color: #f8f9fa;
+    }
+
+    .btn-share-pill:hover {
+        background: #495057;
+        border-color: #6c757d;
+    }
+
+    .btn-share-pill .share-visibility-indicator {
+        color: #dee2e6;
+    }
+
+    .btn-share-pill .share-button-text {
+        color: #0dcaf0;
+    }
+
+    #modalShare .modal-content {
+        background: #212529;
+        color: #f8f9fa;
+    }
+
+    #share-invite-email,
+    #share-visibility-select,
+    #share-link-input {
+        background: #343a40;
+        border-color: #495057;
+        color: #f8f9fa;
+    }
+
+    #share-copy-button {
+        background: #343a40;
+        border-color: #495057;
+        color: #f8f9fa;
+    }
+
+    #share-copy-button:hover {
+        background: #495057;
+    }
+
+    .share-person-row:hover {
+        background: #343a40;
+    }
+
+    .share-person-menu-btn:hover {
+        background: #495057;
+    }
+
+    .share-person-role-badge {
+        background: #495057;
+        color: #dee2e6;
+    }
+}

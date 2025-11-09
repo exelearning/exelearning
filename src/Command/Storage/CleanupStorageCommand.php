@@ -86,6 +86,7 @@ HELP
 
         if ($input->getOption('metrics')) {
             $this->displayMetrics($io, $metricsBefore);
+
             return Command::SUCCESS;
         }
 
@@ -116,7 +117,7 @@ HELP
                 "Sesiones encontradas: {$stats['sessionsFound']}",
                 "Sesiones eliminadas: {$stats['sessionsDeleted']}",
                 "Directorios eliminados: {$stats['directoriesRemoved']}",
-                "Espacio liberado: " . $this->formatBytes($stats['bytesFreed']),
+                'Espacio liberado: '.$this->formatBytes($stats['bytesFreed']),
             ]);
 
             $totalStats['sessionsDeleted'] = $stats['sessionsDeleted'];
@@ -131,7 +132,7 @@ HELP
             $io->text([
                 "Proyectos procesados: {$stats['projectsProcessed']}",
                 "Autosaves eliminados: {$stats['autosavesDeleted']}",
-                "Espacio liberado: " . $this->formatBytes($stats['bytesFreed']),
+                'Espacio liberado: '.$this->formatBytes($stats['bytesFreed']),
             ]);
 
             $totalStats['autosavesDeleted'] = $stats['autosavesDeleted'];
@@ -146,7 +147,7 @@ HELP
             $io->text([
                 "Directorios escaneados: {$stats['directoriesScanned']}",
                 "Directorios huérfanos eliminados: {$stats['orphanedDirectories']}",
-                "Espacio liberado: " . $this->formatBytes($stats['bytesFreed']),
+                'Espacio liberado: '.$this->formatBytes($stats['bytesFreed']),
             ]);
 
             $totalStats['orphanedDirectories'] = $stats['orphanedDirectories'];
@@ -172,7 +173,7 @@ HELP
 
         $io->success([
             'Limpieza completada exitosamente',
-            'Espacio total liberado: ' . $this->formatBytes($totalStats['totalBytesFreed'])
+            'Espacio total liberado: '.$this->formatBytes($totalStats['totalBytesFreed']),
         ]);
 
         return Command::SUCCESS;
@@ -202,10 +203,10 @@ HELP
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
 
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; ++$i) {
             $bytes /= 1024;
         }
 
-        return round($bytes, $precision) . ' ' . $units[$i];
+        return round($bytes, $precision).' '.$units[$i];
     }
 }

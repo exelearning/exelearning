@@ -132,6 +132,15 @@ class OdeApiController extends DefaultApiController
     {
         $responseData = [];
 
+        // Parse JSON body if Content-Type is application/json
+        $contentType = strtolower((string) $request->headers->get('Content-Type'));
+        if (str_contains($contentType, 'application/json') && $request->getContent()) {
+            $decoded = json_decode($request->getContent(), true);
+            if (is_array($decoded)) {
+                $request->request->add($decoded);
+            }
+        }
+
         // collect parameters
         $odeSessionId = $request->get('odeSessionId');
 
@@ -242,9 +251,18 @@ class OdeApiController extends DefaultApiController
                     $this->currentOdeUsersService->removeActiveSyncSaveFlag($user);
                 }
             } else {
-                $this->logger->error('invalid data', ['odeSessionId' => $odeSessionId, 'file:' => $this, 'line' => __LINE__]);
+                $this->logger->error('Save failed: odeSessionId is required', [
+                    'odeSessionId' => $odeSessionId,
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]);
 
-                $responseData['responseMessage'] = 'error: invalid data';
+                $responseData['responseMessage'] = 'error: odeSessionId is required for saving';
+                $responseData['detail'] = 'The save operation requires a valid session identifier. Please ensure you have an active session.';
+
+                $jsonData = $this->getJsonSerialized($responseData);
+
+                return new JsonResponse($jsonData, 400, [], true);
             }
         } else {
             $this->logger->error('version control desactivated', ['odeSessionId' => $odeSessionId, 'file:' => $this, 'line' => __LINE__]);
@@ -254,10 +272,13 @@ class OdeApiController extends DefaultApiController
 
         $jsonData = $this->getJsonSerialized($responseData);
 
-        $this->publish(
-            $odeSessionId,
-            'save-menu-head-button'
-        );
+        // Only publish if we have a valid odeSessionId
+        if ($odeSessionId) {
+            $this->publish(
+                $odeSessionId,
+                'save-menu-head-button'
+            );
+        }
 
         return new JsonResponse($jsonData, $this->status, [], true);
     }

@@ -3,12 +3,13 @@
 namespace App\Controller\Project;
 
 use App\Controller\net\exelearning\Controller\Api\DefaultApiController;
+use App\Entity\net\exelearning\Entity\User;
 use App\Entity\Project\Project;
 use App\Entity\Project\ProjectCollaborator;
-use App\Entity\net\exelearning\Entity\User;
+use App\Repository\net\exelearning\Repository\OdeFilesRepository;
+use App\Repository\net\exelearning\Repository\UserRepository;
 use App\Repository\Project\ProjectCollaboratorRepository;
 use App\Repository\Project\ProjectRepository;
-use App\Repository\net\exelearning\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -23,6 +24,7 @@ class ProjectApiController extends DefaultApiController
     private ProjectRepository $projectRepo;
     private ProjectCollaboratorRepository $collaboratorRepo;
     private UserRepository $userRepo;
+    private OdeFilesRepository $odeFilesRepo;
 
     public function __construct(
         EntityManagerInterface $entityManager,
@@ -31,12 +33,14 @@ class ProjectApiController extends DefaultApiController
         HubInterface $hub,
         ProjectRepository $projectRepo,
         ProjectCollaboratorRepository $collaboratorRepo,
-        UserRepository $userRepo
+        UserRepository $userRepo,
+        OdeFilesRepository $odeFilesRepo,
     ) {
         parent::__construct($entityManager, $logger, $serializer, $hub);
         $this->projectRepo = $projectRepo;
         $this->collaboratorRepo = $collaboratorRepo;
         $this->userRepo = $userRepo;
+        $this->odeFilesRepo = $odeFilesRepo;
     }
 
     /**
@@ -98,22 +102,28 @@ class ProjectApiController extends DefaultApiController
         return new JsonResponse([
             'responseMessage' => 'OK',
             'projects' => $projects,
-            'count' => count($projects)
+            'count' => count($projects),
         ], 200);
     }
 
     /**
      * Get a single project by ID.
+     * Automatically creates Project from OdeFiles if not exists (backwards compatibility).
      */
     #[Route('/{id}', methods: ['GET'], name: 'api_projects_get')]
     public function getProject(string $id): JsonResponse
     {
         $project = $this->projectRepo->find($id);
 
+        // If project doesn't exist, try to create it from OdeFiles (backwards compatibility)
+        if (!$project) {
+            $project = $this->createProjectFromOdeFile($id);
+        }
+
         if (!$project) {
             return new JsonResponse([
                 'responseMessage' => 'PROJECT_NOT_FOUND',
-                'detail' => 'Project not found'
+                'detail' => 'Project not found',
             ], 404);
         }
 
@@ -121,7 +131,7 @@ class ProjectApiController extends DefaultApiController
         if (!$this->isGranted('PROJECT_VIEW', $project)) {
             return new JsonResponse([
                 'responseMessage' => 'ACCESS_DENIED',
-                'detail' => 'You do not have permission to view this project'
+                'detail' => 'You do not have permission to view this project',
             ], 403);
         }
 
@@ -131,7 +141,7 @@ class ProjectApiController extends DefaultApiController
 
         return new JsonResponse([
             'responseMessage' => 'OK',
-            'project' => $this->formatProjectResponse($project, true)
+            'project' => $this->formatProjectResponse($project, true),
         ], 200);
     }
 
@@ -143,18 +153,24 @@ class ProjectApiController extends DefaultApiController
     {
         $project = $this->projectRepo->find($id);
 
+        // Auto-create from OdeFiles if not exists (backwards compatibility)
+        if (!$project) {
+            $project = $this->createProjectFromOdeFile($id);
+        }
+
         if (!$project) {
             return new JsonResponse([
                 'responseMessage' => 'PROJECT_NOT_FOUND',
-                'detail' => 'Project not found'
+                'detail' => 'Project not found',
             ], 404);
         }
 
-        // Check access
-        if (!$this->isGranted('PROJECT_EDIT', $project)) {
+        // Only project owner can change visibility
+        $currentUser = $this->getUser();
+        if ($project->getOwner()->getId() !== $currentUser->getId()) {
             return new JsonResponse([
                 'responseMessage' => 'ACCESS_DENIED',
-                'detail' => 'You do not have permission to modify this project'
+                'detail' => 'Only the project owner can change visibility',
             ], 403);
         }
 
@@ -164,7 +180,7 @@ class ProjectApiController extends DefaultApiController
         if (!in_array($visibility, ['public', 'private'])) {
             return new JsonResponse([
                 'responseMessage' => 'INVALID_VISIBILITY',
-                'detail' => 'Visibility must be either "public" or "private"'
+                'detail' => 'Visibility must be either "public" or "private"',
             ], 400);
         }
 
@@ -173,7 +189,7 @@ class ProjectApiController extends DefaultApiController
 
         return new JsonResponse([
             'responseMessage' => 'OK',
-            'project' => $this->formatProjectResponse($project, true)
+            'project' => $this->formatProjectResponse($project, true),
         ], 200);
     }
 
@@ -185,10 +201,15 @@ class ProjectApiController extends DefaultApiController
     {
         $project = $this->projectRepo->find($id);
 
+        // Auto-create from OdeFiles if not exists (backwards compatibility)
+        if (!$project) {
+            $project = $this->createProjectFromOdeFile($id);
+        }
+
         if (!$project) {
             return new JsonResponse([
                 'responseMessage' => 'PROJECT_NOT_FOUND',
-                'detail' => 'Project not found'
+                'detail' => 'Project not found',
             ], 404);
         }
 
@@ -196,7 +217,7 @@ class ProjectApiController extends DefaultApiController
         if (!$this->isGranted('PROJECT_VIEW', $project)) {
             return new JsonResponse([
                 'responseMessage' => 'ACCESS_DENIED',
-                'detail' => 'You do not have permission to view this project'
+                'detail' => 'You do not have permission to view this project',
             ], 403);
         }
 
@@ -210,7 +231,7 @@ class ProjectApiController extends DefaultApiController
         return new JsonResponse([
             'responseMessage' => 'OK',
             'collaborators' => $collaboratorsData,
-            'count' => count($collaboratorsData)
+            'count' => count($collaboratorsData),
         ], 200);
     }
 
@@ -222,18 +243,24 @@ class ProjectApiController extends DefaultApiController
     {
         $project = $this->projectRepo->find($id);
 
+        // Auto-create from OdeFiles if not exists (backwards compatibility)
+        if (!$project) {
+            $project = $this->createProjectFromOdeFile($id);
+        }
+
         if (!$project) {
             return new JsonResponse([
                 'responseMessage' => 'PROJECT_NOT_FOUND',
-                'detail' => 'Project not found'
+                'detail' => 'Project not found',
             ], 404);
         }
 
-        // Check access
-        if (!$this->isGranted('PROJECT_SHARE', $project)) {
+        // Only project owner can add collaborators
+        $currentUser = $this->getUser();
+        if ($project->getOwner()->getId() !== $currentUser->getId()) {
             return new JsonResponse([
                 'responseMessage' => 'ACCESS_DENIED',
-                'detail' => 'You do not have permission to share this project'
+                'detail' => 'Only the project owner can add collaborators',
             ], 403);
         }
 
@@ -244,14 +271,14 @@ class ProjectApiController extends DefaultApiController
         if (!$email) {
             return new JsonResponse([
                 'responseMessage' => 'EMAIL_REQUIRED',
-                'detail' => 'Email is required'
+                'detail' => 'Email is required',
             ], 400);
         }
 
         if (!in_array($role, [ProjectCollaborator::ROLE_OWNER, ProjectCollaborator::ROLE_EDITOR])) {
             return new JsonResponse([
                 'responseMessage' => 'INVALID_ROLE',
-                'detail' => 'Role must be either "owner" or "editor"'
+                'detail' => 'Role must be either "owner" or "editor"',
             ], 400);
         }
 
@@ -260,7 +287,7 @@ class ProjectApiController extends DefaultApiController
         if (!$collaboratorUser) {
             return new JsonResponse([
                 'responseMessage' => 'USER_NOT_FOUND',
-                'detail' => 'No user found with this email'
+                'detail' => 'No user found with this email',
             ], 404);
         }
 
@@ -269,7 +296,7 @@ class ProjectApiController extends DefaultApiController
         if ($existingCollab) {
             return new JsonResponse([
                 'responseMessage' => 'ALREADY_COLLABORATOR',
-                'detail' => 'User is already a collaborator on this project'
+                'detail' => 'User is already a collaborator on this project',
             ], 409);
         }
 
@@ -285,7 +312,7 @@ class ProjectApiController extends DefaultApiController
 
         return new JsonResponse([
             'responseMessage' => 'OK',
-            'collaborator' => $this->formatCollaboratorResponse($collaborator)
+            'collaborator' => $this->formatCollaboratorResponse($collaborator),
         ], 201);
     }
 
@@ -300,15 +327,16 @@ class ProjectApiController extends DefaultApiController
         if (!$project) {
             return new JsonResponse([
                 'responseMessage' => 'PROJECT_NOT_FOUND',
-                'detail' => 'Project not found'
+                'detail' => 'Project not found',
             ], 404);
         }
 
-        // Check access
-        if (!$this->isGranted('PROJECT_SHARE', $project)) {
+        // Only project owner can remove collaborators
+        $currentUser = $this->getUser();
+        if ($project->getOwner()->getId() !== $currentUser->getId()) {
             return new JsonResponse([
                 'responseMessage' => 'ACCESS_DENIED',
-                'detail' => 'You do not have permission to manage collaborators for this project'
+                'detail' => 'Only the project owner can remove collaborators',
             ], 403);
         }
 
@@ -316,7 +344,7 @@ class ProjectApiController extends DefaultApiController
         if (!$collaboratorUser) {
             return new JsonResponse([
                 'responseMessage' => 'USER_NOT_FOUND',
-                'detail' => 'User not found'
+                'detail' => 'User not found',
             ], 404);
         }
 
@@ -324,17 +352,17 @@ class ProjectApiController extends DefaultApiController
         if (!$collaborator) {
             return new JsonResponse([
                 'responseMessage' => 'NOT_A_COLLABORATOR',
-                'detail' => 'User is not a collaborator on this project'
+                'detail' => 'User is not a collaborator on this project',
             ], 404);
         }
 
         // Prevent removing the last owner
-        if ($collaborator->getRole() === ProjectCollaborator::ROLE_OWNER) {
+        if (ProjectCollaborator::ROLE_OWNER === $collaborator->getRole()) {
             $owners = $this->collaboratorRepo->findOwners($project);
             if (count($owners) <= 1) {
                 return new JsonResponse([
                     'responseMessage' => 'CANNOT_REMOVE_LAST_OWNER',
-                    'detail' => 'Cannot remove the last owner from a project'
+                    'detail' => 'Cannot remove the last owner from a project',
                 ], 400);
             }
         }
@@ -344,8 +372,183 @@ class ProjectApiController extends DefaultApiController
 
         return new JsonResponse([
             'responseMessage' => 'OK',
-            'message' => 'Collaborator removed successfully'
+            'message' => 'Collaborator removed successfully',
         ], 200);
+    }
+
+    /**
+     * Transfer project ownership to another user.
+     */
+    #[Route('/{id}/owner', methods: ['PATCH'], name: 'api_projects_transfer_ownership')]
+    public function transferOwnership(string $id, Request $request): JsonResponse
+    {
+        $project = $this->projectRepo->find($id);
+
+        // Auto-create from OdeFiles if not exists (backwards compatibility)
+        if (!$project) {
+            $project = $this->createProjectFromOdeFile($id);
+        }
+
+        if (!$project) {
+            return new JsonResponse([
+                'responseMessage' => 'PROJECT_NOT_FOUND',
+                'detail' => 'Project not found',
+            ], 404);
+        }
+
+        $currentUser = $this->getUser();
+
+        // Only the current owner can transfer ownership
+        if ($project->getOwner()->getId() !== $currentUser->getId()) {
+            return new JsonResponse([
+                'responseMessage' => 'ACCESS_DENIED',
+                'detail' => 'Only the project owner can transfer ownership',
+            ], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $newOwnerId = $data['newOwnerId'] ?? null;
+        $email = $data['email'] ?? null;
+
+        // Find new owner by ID or email
+        $newOwnerUser = null;
+        if ($newOwnerId) {
+            $newOwnerUser = $this->userRepo->find($newOwnerId);
+        } elseif ($email) {
+            $newOwnerUser = $this->userRepo->findOneBy(['email' => $email]);
+        }
+
+        if (!$newOwnerUser) {
+            return new JsonResponse([
+                'responseMessage' => 'USER_NOT_FOUND',
+                'detail' => 'New owner user not found',
+            ], 404);
+        }
+
+        // Cannot transfer to yourself
+        if ($newOwnerUser->getId() === $currentUser->getId()) {
+            return new JsonResponse([
+                'responseMessage' => 'INVALID_TRANSFER',
+                'detail' => 'Cannot transfer ownership to yourself',
+            ], 400);
+        }
+
+        $oldOwner = $project->getOwner();
+
+        // Update Project.owner
+        $project->setOwner($newOwnerUser);
+
+        // Ensure new owner has a ProjectCollaborator entry with role='owner'
+        $newOwnerCollab = $this->collaboratorRepo->findCollaborator($project, $newOwnerUser);
+        if ($newOwnerCollab) {
+            // Update existing collaborator to owner role
+            $newOwnerCollab->setRole(ProjectCollaborator::ROLE_OWNER);
+        } else {
+            // Create new collaborator entry
+            $newOwnerCollab = new ProjectCollaborator();
+            $newOwnerCollab->setProject($project);
+            $newOwnerCollab->setUser($newOwnerUser);
+            $newOwnerCollab->setRole(ProjectCollaborator::ROLE_OWNER);
+            $newOwnerCollab->setGrantedBy($currentUser);
+            $this->entityManager->persist($newOwnerCollab);
+        }
+
+        // Update old owner's ProjectCollaborator entry to editor role
+        $oldOwnerCollab = $this->collaboratorRepo->findCollaborator($project, $oldOwner);
+        if ($oldOwnerCollab) {
+            // Update to editor role
+            $oldOwnerCollab->setRole(ProjectCollaborator::ROLE_EDITOR);
+        } else {
+            // Create new collaborator entry for old owner as editor
+            $oldOwnerCollab = new ProjectCollaborator();
+            $oldOwnerCollab->setProject($project);
+            $oldOwnerCollab->setUser($oldOwner);
+            $oldOwnerCollab->setRole(ProjectCollaborator::ROLE_EDITOR);
+            $oldOwnerCollab->setGrantedBy($currentUser);
+            $this->entityManager->persist($oldOwnerCollab);
+        }
+
+        $this->entityManager->flush();
+
+        $this->logger->info('Project ownership transferred', [
+            'projectId' => $project->getId(),
+            'oldOwnerId' => $oldOwner->getId(),
+            'newOwnerId' => $newOwnerUser->getId(),
+        ]);
+
+        return new JsonResponse([
+            'responseMessage' => 'OK',
+            'message' => 'Ownership transferred successfully',
+            'project' => $this->formatProjectResponse($project, true),
+        ], 200);
+    }
+
+    /**
+     * Create a Project entity from an existing OdeFile (backwards compatibility).
+     * This allows existing ode projects to work with the new sharing system.
+     *
+     * @param string $odeId The ode ID to look for
+     *
+     * @return Project|null The created project or null if odeFile not found
+     */
+    private function createProjectFromOdeFile(string $odeId): ?Project
+    {
+        // Find the most recent OdeFile for this odeId
+        $odeFile = $this->odeFilesRepo->getLastFileForOde($odeId);
+
+        if (!$odeFile) {
+            return null;
+        }
+
+        // Find or create the User entity for the owner
+        $ownerUser = $this->userRepo->findOneBy(['email' => $odeFile->getUser()]);
+
+        if (!$ownerUser) {
+            // If user doesn't exist in users table, we can't create the project
+            $this->logger->warning('Cannot create Project from OdeFile: user not found', [
+                'odeId' => $odeId,
+                'ownerEmail' => $odeFile->getUser(),
+            ]);
+
+            return null;
+        }
+
+        // Create new Project entity
+        $project = new Project();
+        $project->setId($odeId);
+        $project->setTitle($odeFile->getTitle());
+        $project->setOwner($ownerUser);
+        $project->setVisibility('private'); // Default to private
+        $project->setArchived(false);
+
+        // Set timestamps from OdeFile
+        if ($odeFile->getCreatedAt()) {
+            $project->setCreatedAt($odeFile->getCreatedAt());
+        }
+        if ($odeFile->getUpdatedAt()) {
+            $project->setLastAccessedAt($odeFile->getUpdatedAt());
+        }
+
+        // Persist the new project
+        $this->entityManager->persist($project);
+
+        // Create a ProjectCollaborator entry for the owner
+        $ownerCollab = new ProjectCollaborator();
+        $ownerCollab->setProject($project);
+        $ownerCollab->setUser($ownerUser);
+        $ownerCollab->setRole(ProjectCollaborator::ROLE_OWNER);
+        $ownerCollab->setGrantedBy($ownerUser); // Owner granted themselves
+
+        $this->entityManager->persist($ownerCollab);
+        $this->entityManager->flush();
+
+        $this->logger->info('Created Project from OdeFile', [
+            'projectId' => $odeId,
+            'title' => $odeFile->getTitle(),
+            'owner' => $ownerUser->getEmail(),
+        ]);
+
+        return $project;
     }
 
     /**
@@ -361,7 +564,7 @@ class ProjectApiController extends DefaultApiController
             'owner' => [
                 'id' => $project->getOwner()->getId(),
                 'email' => $project->getOwner()->getEmail(),
-                'userId' => $project->getOwner()->getUserId()
+                'userId' => $project->getOwner()->getUserId(),
             ],
             'createdAt' => $project->getCreatedAt()->format('c'),
             'lastAccessedAt' => $project->getLastAccessedAt()?->format('c'),
@@ -370,7 +573,7 @@ class ProjectApiController extends DefaultApiController
         if ($includeDetails) {
             $collaborators = $this->collaboratorRepo->findByProject($project);
             $data['collaborators'] = array_map(
-                fn($c) => $this->formatCollaboratorResponse($c),
+                fn ($c) => $this->formatCollaboratorResponse($c),
                 $collaborators
             );
             $data['collaboratorsCount'] = count($collaborators);
@@ -389,14 +592,14 @@ class ProjectApiController extends DefaultApiController
             'user' => [
                 'id' => $collaborator->getUser()->getId(),
                 'email' => $collaborator->getUser()->getEmail(),
-                'userId' => $collaborator->getUser()->getUserId()
+                'userId' => $collaborator->getUser()->getUserId(),
             ],
             'role' => $collaborator->getRole(),
             'grantedAt' => $collaborator->getGrantedAt()->format('c'),
             'grantedBy' => $collaborator->getGrantedBy() ? [
                 'id' => $collaborator->getGrantedBy()->getId(),
-                'email' => $collaborator->getGrantedBy()->getEmail()
-            ] : null
+                'email' => $collaborator->getGrantedBy()->getEmail(),
+            ] : null,
         ];
     }
 }

@@ -720,6 +720,7 @@ class FileHelper
         }
 
         $filesDir = $this->getFilesDir();
+
         return $filesDir.'projects'.DIRECTORY_SEPARATOR.$projectId.DIRECTORY_SEPARATOR;
     }
 

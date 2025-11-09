@@ -2,9 +2,9 @@
 
 namespace App\Security;
 
+use App\Entity\net\exelearning\Entity\User;
 use App\Entity\Project\Project;
 use App\Entity\Project\ProjectCollaborator;
-use App\Entity\net\exelearning\Entity\User;
 use App\Repository\Project\ProjectCollaboratorRepository;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
@@ -85,12 +85,12 @@ class ProjectVoter extends Voter
             self::VIEW => true, // All collaborators can view
             self::EDIT => in_array($collaborator->getRole(), [
                 ProjectCollaborator::ROLE_OWNER,
-                ProjectCollaborator::ROLE_EDITOR
+                ProjectCollaborator::ROLE_EDITOR,
             ]),
-            self::DELETE => $collaborator->getRole() === ProjectCollaborator::ROLE_OWNER,
+            self::DELETE => ProjectCollaborator::ROLE_OWNER === $collaborator->getRole(),
             self::SHARE => in_array($collaborator->getRole(), [
                 ProjectCollaborator::ROLE_OWNER,
-                ProjectCollaborator::ROLE_EDITOR
+                ProjectCollaborator::ROLE_EDITOR,
             ]),
             default => false,
         };

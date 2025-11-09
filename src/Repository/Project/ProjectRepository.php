@@ -2,8 +2,8 @@
 
 namespace App\Repository\Project;
 
-use App\Entity\Project\Project;
 use App\Entity\net\exelearning\Entity\User;
+use App\Entity\Project\Project;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 

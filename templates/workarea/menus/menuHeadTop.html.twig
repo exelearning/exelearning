@@ -29,8 +29,16 @@
             <button id="head-top-settings-button" class="btn button-tertiary button-square d-flex justify-content-center align-items-center" title="{{ "Settings" | trans }}" data-testid="settings-button">
                 <span class="medium-icon settings-icon"></span>
             </button>
-            <button id="head-top-share-button" class="btn button-tertiary button-square d-flex justify-content-center align-items-center exe-online" title="{{ "Share" | trans }}">
-                <span class="medium-icon share-icon"></span>
+            <button id="head-top-share-button"
+                    class="btn btn-share-pill exe-online d-flex align-items-center"
+                    title="{{ "Share" | trans }}"
+                    aria-label="{{ "Share" | trans }}">
+                <span class="share-visibility-indicator d-flex align-items-center">
+                    <i class="auto-icon share-visibility-icon" aria-hidden="true">lock</i>
+                    <span class="share-visibility-text">{{ "Private" | trans }}</span>
+                </span>
+                <span class="share-button-divider"></span>
+                <span class="share-button-text">{{ "Share" | trans }}</span>
             </button>
             <div id="exe-last-edition" class="btn">
                 <span class="content"></span>

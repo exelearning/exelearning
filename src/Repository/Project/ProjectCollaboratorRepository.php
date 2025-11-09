@@ -2,9 +2,9 @@
 
 namespace App\Repository\Project;
 
+use App\Entity\net\exelearning\Entity\User;
 use App\Entity\Project\Project;
 use App\Entity\Project\ProjectCollaborator;
-use App\Entity\net\exelearning\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -67,7 +67,7 @@ class ProjectCollaboratorRepository extends ServiceEntityRepository
      */
     public function isCollaborator(Project $project, User $user): bool
     {
-        return $this->findCollaborator($project, $user) !== null;
+        return null !== $this->findCollaborator($project, $user);
     }
 
     /**
@@ -87,7 +87,7 @@ class ProjectCollaboratorRepository extends ServiceEntityRepository
     {
         $role = $this->getUserRole($project, $user);
 
-        return $role === ProjectCollaborator::ROLE_OWNER;
+        return ProjectCollaborator::ROLE_OWNER === $role;
     }
 
     /**

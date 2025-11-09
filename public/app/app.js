@@ -82,21 +82,24 @@ class App {
     }
 
     /**
-     *
+     * Parse eXeLearning Symfony data
+     * Handles both string JSON (legacy) and direct objects (new with | raw)
      */
     parseExelearningSymfonyData() {
-        window.eXeLearning.user = JSON.parse(
-            window.eXeLearning.user.replace(/&quot;/g, '"')
-        );
-        window.eXeLearning.config = JSON.parse(
-            window.eXeLearning.config.replace(/&quot;/g, '"')
-        );
-        window.eXeLearning.symfony = JSON.parse(
-            window.eXeLearning.symfony.replace(/&quot;/g, '"')
-        );
-        window.eXeLearning.mercure = JSON.parse(
-            window.eXeLearning.mercure.replace(/&quot;/g, '"')
-        );
+        // Helper function to parse or return as-is if already an object
+        const parseIfNeeded = (data) => {
+            if (typeof data === 'string') {
+                // Legacy format: string with HTML entities
+                return JSON.parse(data.replace(/&quot;/g, '"'));
+            }
+            // New format: already an object from | raw
+            return data;
+        };
+
+        window.eXeLearning.user = parseIfNeeded(window.eXeLearning.user);
+        window.eXeLearning.config = parseIfNeeded(window.eXeLearning.config);
+        window.eXeLearning.symfony = parseIfNeeded(window.eXeLearning.symfony);
+        window.eXeLearning.mercure = parseIfNeeded(window.eXeLearning.mercure);
 
         const urlRequest = new URL(window.location.href);
         const protocol = urlRequest.protocol; // "https:"

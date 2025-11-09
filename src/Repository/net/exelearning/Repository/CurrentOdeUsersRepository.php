@@ -154,10 +154,8 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
     /**
      * Find sessions by odeSessionId and user.
-     * Uses composite index: idx_current_ode_session_user (ode_session_id, user)
+     * Uses composite index: idx_current_ode_session_user (ode_session_id, user).
      *
-     * @param string $odeSessionId
-     * @param string $user
      * @return CurrentOdeUsers[]
      */
     public function findBySessionAndUser(string $odeSessionId, string $user): array
@@ -173,9 +171,10 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
     /**
      * Find inactive sessions (no activity in last N minutes).
-     * Uses index: idx_current_ode_last_action (last_action)
+     * Uses index: idx_current_ode_last_action (last_action).
      *
      * @param int $inactiveMinutes Minutes of inactivity
+     *
      * @return CurrentOdeUsers[]
      */
     public function findInactiveSessions(int $inactiveMinutes = 60): array
@@ -193,9 +192,8 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
     /**
      * Find all sessions for a specific project/ode.
-     * Uses index: idx_current_ode_id (ode_id)
+     * Uses index: idx_current_ode_id (ode_id).
      *
-     * @param string $odeId
      * @return CurrentOdeUsers[]
      */
     public function findByOdeId(string $odeId): array
@@ -210,9 +208,8 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
     /**
      * Find all sessions for a project.
-     * Uses index: idx_current_ode_project (project_id)
+     * Uses index: idx_current_ode_project (project_id).
      *
-     * @param string $projectId
      * @return CurrentOdeUsers[]
      */
     public function findByProjectId(string $projectId): array
@@ -227,11 +224,9 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
     /**
      * Count active sessions for a project.
-     * Uses index: idx_current_ode_project (project_id)
+     * Uses index: idx_current_ode_project (project_id).
      *
-     * @param string $projectId
      * @param int $activeWithinMinutes Consider active if action within N minutes
-     * @return int
      */
     public function countActiveProjectSessions(string $projectId, int $activeWithinMinutes = 30): int
     {
@@ -250,9 +245,8 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
     /**
      * Get most recently active sessions.
-     * Uses index: idx_current_ode_last_action (last_action)
+     * Uses index: idx_current_ode_last_action (last_action).
      *
-     * @param int $limit
      * @return CurrentOdeUsers[]
      */
     public function getRecentSessions(int $limit = 10): array
@@ -266,9 +260,10 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
     /**
      * Find abandoned sessions for cleanup (old and inactive).
-     * Uses index: idx_current_ode_last_action (last_action)
+     * Uses index: idx_current_ode_last_action (last_action).
      *
      * @param int $hoursInactive Hours without activity to consider abandoned
+     *
      * @return CurrentOdeUsers[]
      */
     public function findAbandonedSessions(int $hoursInactive = 24): array
@@ -286,9 +281,8 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
     /**
      * Get distinct user emails for a project.
-     * Uses index: idx_current_ode_project (project_id)
+     * Uses index: idx_current_ode_project (project_id).
      *
-     * @param string $projectId
      * @return array Array of user emails
      */
     public function getProjectActiveUsers(string $projectId): array

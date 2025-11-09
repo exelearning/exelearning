@@ -10,6 +10,8 @@ use App\Entity\net\exelearning\Entity\CurrentOdeUsersSyncChanges;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
+use App\Entity\Project\Project;
+use App\Entity\Project\ProjectCollaborator;
 use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersSyncChangesServiceInterface;
@@ -93,6 +95,32 @@ class CurrentOdeUsersApiController extends DefaultApiController
             $clientIp = $request->getClientIp();
 
             $currentOdeUserForUser = $this->currentOdeUsersService->createCurrentOdeUsers($odeId, $odeVersionId, $odeSessionId, $databaseUser, $clientIp);
+
+            // Create corresponding Project entity for the new session
+            $projectRepo = $this->entityManager->getRepository(Project::class);
+            $existingProject = $projectRepo->find($odeId);
+
+            if (!$existingProject) {
+                $project = new Project();
+                $project->setId($odeId);
+                $project->setTitle('New Project'); // Default title, will be updated on first save
+                $project->setOwner($databaseUser);
+                $project->setVisibility('private');
+                $project->setArchived(false);
+
+                $this->entityManager->persist($project);
+
+                // Create ProjectCollaborator entry for the owner
+                $collaborator = new ProjectCollaborator();
+                $collaborator->setProject($project);
+                $collaborator->setUser($databaseUser);
+                $collaborator->setRole(ProjectCollaborator::ROLE_OWNER);
+                $collaborator->setGrantedBy($databaseUser);
+
+                $this->entityManager->persist($collaborator);
+                $this->entityManager->flush();
+            }
+
             $isNewSession = true;
         } else {
             // Check if it's last user to show modal to the already logged user
@@ -293,13 +321,16 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $timeIdeviceEditing = $request->get('timeIdeviceEditing');
         $pageId = $request->get('pageId'); // Collaborative
 
-        // If not empty odPagId synchronize changes even if you're not on the same page
-        if (!empty($odePagId)) {
-            // Cases: reloadNav, theme or properties
-            $userThemeValue = $this->userHelper->getUserPreferencesFromDatabase($user)['theme']->getValue();
-            $this->currentOdeUsersSyncChangesService->activatePageSyncUpdateFlag($odeSessionId, $odePagId, $user, $actionType, $userThemeValue);
-        } else {
-            $this->currentOdeUsersSyncChangesService->activateSyncUpdateFlag($odeSessionId, $odeIdeviceId, $odeBlockId, $odePagId, $user, $actionType, $destinationPageId);
+        // Only process sync flags if we have a valid odeSessionId
+        if ($odeSessionId) {
+            // If not empty odPagId synchronize changes even if you're not on the same page
+            if (!empty($odePagId)) {
+                // Cases: reloadNav, theme or properties
+                $userThemeValue = $this->userHelper->getUserPreferencesFromDatabase($user)['theme']->getValue();
+                $this->currentOdeUsersSyncChangesService->activatePageSyncUpdateFlag($odeSessionId, $odePagId, $user, $actionType, $userThemeValue);
+            } else {
+                $this->currentOdeUsersSyncChangesService->activateSyncUpdateFlag($odeSessionId, $odeIdeviceId, $odeBlockId, $odePagId, $user, $actionType, $destinationPageId);
+            }
         }
 
         $this->publishOdeBlockStatusEvent(
@@ -467,24 +498,27 @@ class CurrentOdeUsersApiController extends DefaultApiController
     }
 
     private function publishOdeBlockStatusEvent(
-        string $odeSessionId,
-        string $odeBlockId,
-        string $odeIdeviceId,
+        ?string $odeSessionId,
+        ?string $odeBlockId,
+        ?string $odeIdeviceId,
         ?string $actionType,
         string $userEmail,
         ?string $odeComponentFlag = null,
         ?string $timeIdeviceEditing = null,
         ?string $pageId = null, // Collaborative
     ): void {
-        $this->publish(
-            $odeSessionId,
-            'blockId:'.$odeBlockId.
-            ',odeIdeviceId:'.$odeIdeviceId.
-            ',actionType:'.$actionType.
-            ',user:'.$userEmail.
-            ',odeComponentFlag:'.$odeComponentFlag.
-            ',timeIdeviceEditing:'.$timeIdeviceEditing.
-            ',pageId:'.$pageId // Collaborative
-        );
+        // Only publish if we have a valid odeSessionId
+        if ($odeSessionId) {
+            $this->publish(
+                $odeSessionId,
+                'blockId:'.$odeBlockId.
+                ',odeIdeviceId:'.$odeIdeviceId.
+                ',actionType:'.$actionType.
+                ',user:'.$userEmail.
+                ',odeComponentFlag:'.$odeComponentFlag.
+                ',timeIdeviceEditing:'.$timeIdeviceEditing.
+                ',pageId:'.$pageId // Collaborative
+            );
+        }
     }
 }

@@ -83,12 +83,12 @@ class Project
 
     public function isPublic(): bool
     {
-        return $this->visibility === 'public';
+        return 'public' === $this->visibility;
     }
 
     public function isPrivate(): bool
     {
-        return $this->visibility === 'private';
+        return 'private' === $this->visibility;
     }
 
     public function getOwner(): User

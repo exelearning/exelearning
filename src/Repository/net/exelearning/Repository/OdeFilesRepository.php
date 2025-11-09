@@ -240,11 +240,11 @@ class OdeFilesRepository extends ServiceEntityRepository
 
     /**
      * Find all files by project_id.
-     * Uses index: idx_ode_files_project
+     * Uses index: idx_ode_files_project.
      *
-     * @param string $projectId
      * @param string|null $orderBy Field to order by (updatedAt, createdAt)
-     * @param string $order ASC or DESC
+     * @param string      $order   ASC or DESC
+     *
      * @return OdeFiles[]
      */
     public function findByProjectId(string $projectId, ?string $orderBy = 'updatedAt', string $order = 'DESC'): array
@@ -262,11 +262,9 @@ class OdeFilesRepository extends ServiceEntityRepository
 
     /**
      * Get the latest version of a project.
-     * Uses index: idx_ode_files_ode_updated (ode_id, updated_at)
+     * Uses index: idx_ode_files_ode_updated (ode_id, updated_at).
      *
-     * @param string $projectId
      * @param bool|null $onlyManualSave true=only manual saves, false=only autosaves, null=all
-     * @return OdeFiles|null
      */
     public function getLatestProjectVersion(string $projectId, ?bool $onlyManualSave = null): ?OdeFiles
     {
@@ -276,7 +274,7 @@ class OdeFilesRepository extends ServiceEntityRepository
             ->orderBy('of.updatedAt', 'DESC')
             ->setMaxResults(1);
 
-        if ($onlyManualSave !== null) {
+        if (null !== $onlyManualSave) {
             $qb->andWhere('of.isManualSave = :isManualSave')
                 ->setParameter('isManualSave', $onlyManualSave);
         }
@@ -286,11 +284,8 @@ class OdeFilesRepository extends ServiceEntityRepository
 
     /**
      * Get recent files by user with efficient ordering.
-     * Uses index: idx_ode_files_user_updated (user, updated_at)
+     * Uses index: idx_ode_files_user_updated (user, updated_at).
      *
-     * @param string $userName
-     * @param int $limit
-     * @param bool|null $onlyManualSave
      * @return OdeFiles[]
      */
     public function getRecentFilesByUser(string $userName, int $limit = 10, ?bool $onlyManualSave = true): array
@@ -301,7 +296,7 @@ class OdeFilesRepository extends ServiceEntityRepository
             ->orderBy('of.updatedAt', 'DESC')
             ->setMaxResults($limit);
 
-        if ($onlyManualSave !== null) {
+        if (null !== $onlyManualSave) {
             $qb->andWhere('of.isManualSave = :isManualSave')
                 ->setParameter('isManualSave', $onlyManualSave);
         }
@@ -311,11 +306,8 @@ class OdeFilesRepository extends ServiceEntityRepository
 
     /**
      * Get files by ode_id, user, and manual save status.
-     * Uses composite index: idx_ode_files_user_manual (ode_id, user, is_manual_save)
+     * Uses composite index: idx_ode_files_user_manual (ode_id, user, is_manual_save).
      *
-     * @param string $odeId
-     * @param string $userName
-     * @param bool $isManualSave
      * @return OdeFiles[]
      */
     public function findByOdeUserAndType(string $odeId, string $userName, bool $isManualSave): array
@@ -334,11 +326,7 @@ class OdeFilesRepository extends ServiceEntityRepository
 
     /**
      * Count total files by project.
-     * Uses index: idx_ode_files_project
-     *
-     * @param string $projectId
-     * @param bool|null $onlyManualSave
-     * @return int
+     * Uses index: idx_ode_files_project.
      */
     public function countProjectFiles(string $projectId, ?bool $onlyManualSave = null): int
     {
@@ -347,7 +335,7 @@ class OdeFilesRepository extends ServiceEntityRepository
             ->where('of.projectId = :projectId')
             ->setParameter('projectId', $projectId);
 
-        if ($onlyManualSave !== null) {
+        if (null !== $onlyManualSave) {
             $qb->andWhere('of.isManualSave = :isManualSave')
                 ->setParameter('isManualSave', $onlyManualSave);
         }
@@ -357,10 +345,8 @@ class OdeFilesRepository extends ServiceEntityRepository
 
     /**
      * Get distinct project IDs for a user ordered by most recent activity.
-     * Uses index: idx_ode_files_user_updated (user, updated_at)
+     * Uses index: idx_ode_files_user_updated (user, updated_at).
      *
-     * @param string $userName
-     * @param int|null $limit
      * @return array Array of project IDs
      */
     public function getUserProjectIds(string $userName, ?int $limit = null): array
@@ -386,8 +372,8 @@ class OdeFilesRepository extends ServiceEntityRepository
      * Get old autosave versions for cleanup.
      * Optimized version using indexes.
      *
-     * @param string $odeId
      * @param int $keepVersions Number of recent versions to keep
+     *
      * @return OdeFiles[]
      */
     public function getOldAutosavesForCleanup(string $odeId, int $keepVersions = 5): array
@@ -405,11 +391,8 @@ class OdeFilesRepository extends ServiceEntityRepository
 
     /**
      * Get files updated within a date range for a user.
-     * Uses index: idx_ode_files_user_updated (user, updated_at)
+     * Uses index: idx_ode_files_user_updated (user, updated_at).
      *
-     * @param string $userName
-     * @param \DateTime $startDate
-     * @param \DateTime $endDate
      * @return OdeFiles[]
      */
     public function findByUserAndDateRange(string $userName, \DateTime $startDate, \DateTime $endDate): array

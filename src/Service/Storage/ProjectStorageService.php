@@ -2,8 +2,8 @@
 
 namespace App\Service\Storage;
 
-use App\Entity\net\exelearning\Entity\OdeFiles;
 use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
+use App\Entity\net\exelearning\Entity\OdeFiles;
 use App\Entity\Project\Project;
 use App\Helper\net\exelearning\Helper\FileHelper;
 use Doctrine\ORM\EntityManagerInterface;
@@ -29,7 +29,7 @@ class ProjectStorageService
     public function __construct(
         EntityManagerInterface $entityManager,
         FileHelper $fileHelper,
-        LoggerInterface $logger
+        LoggerInterface $logger,
     ) {
         $this->entityManager = $entityManager;
         $this->fileHelper = $fileHelper;
@@ -41,6 +41,7 @@ class ProjectStorageService
      * Obtiene información completa de almacenamiento de un proyecto.
      *
      * @param Project|string $project Entidad Project o ID del proyecto
+     *
      * @return array Información de almacenamiento
      */
     public function getProjectStorageInfo($project): array
@@ -56,8 +57,8 @@ class ProjectStorageService
         );
 
         // Separar autosaves de guardados manuales
-        $manualSaves = array_filter($allVersions, fn($v) => $v->getIsManualSave());
-        $autoSaves = array_filter($allVersions, fn($v) => !$v->getIsManualSave());
+        $manualSaves = array_filter($allVersions, fn ($v) => $v->getIsManualSave());
+        $autoSaves = array_filter($allVersions, fn ($v) => !$v->getIsManualSave());
 
         // Calcular tamaños
         $totalSize = 0;
@@ -127,8 +128,9 @@ class ProjectStorageService
     /**
      * Obtiene el historial completo de versiones de un proyecto.
      *
-     * @param Project|string $project Entidad Project o ID del proyecto
-     * @param bool $includeFileInfo Incluir información del archivo físico
+     * @param Project|string $project         Entidad Project o ID del proyecto
+     * @param bool           $includeFileInfo Incluir información del archivo físico
+     *
      * @return array Historial de versiones
      */
     public function getProjectVersionHistory($project, bool $includeFileInfo = false): array
@@ -180,7 +182,8 @@ class ProjectStorageService
      * Limpia archivos temporales de un proyecto específico.
      *
      * @param Project|string $project Entidad Project o ID del proyecto
-     * @param bool $force Forzar limpieza incluso con sesiones activas
+     * @param bool           $force   Forzar limpieza incluso con sesiones activas
+     *
      * @return array Estadísticas de limpieza
      */
     public function cleanupProjectTmpFiles($project, bool $force = false): array
@@ -220,27 +223,27 @@ class ProjectStorageService
 
                 try {
                     $this->filesystem->remove($tmpDir);
-                    $stats['directoriesRemoved']++;
+                    ++$stats['directoriesRemoved'];
                     $stats['bytesFreed'] += $sizeBeforeDelete;
 
                     $this->logger->info('Cleaned project tmp directory', [
                         'projectId' => $projectId,
                         'sessionId' => $session->getOdeSessionId(),
                         'path' => $tmpDir,
-                        'bytesFreed' => $sizeBeforeDelete
+                        'bytesFreed' => $sizeBeforeDelete,
                     ]);
                 } catch (\Exception $e) {
                     $this->logger->error('Failed to clean project tmp directory', [
                         'projectId' => $projectId,
                         'sessionId' => $session->getOdeSessionId(),
-                        'error' => $e->getMessage()
+                        'error' => $e->getMessage(),
                     ]);
                     continue;
                 }
             }
 
             $this->entityManager->remove($session);
-            $stats['sessionsDeleted']++;
+            ++$stats['sessionsDeleted'];
         }
 
         $this->entityManager->flush();
@@ -252,6 +255,7 @@ class ProjectStorageService
      * Obtiene estadísticas de uso de almacenamiento por usuario.
      *
      * @param string $userEmail Email del usuario
+     *
      * @return array Estadísticas de almacenamiento
      */
     public function getUserStorageStats(string $userEmail): array
@@ -284,7 +288,7 @@ class ProjectStorageService
                 $projectsMap[$projectId]['size'] += filesize($filePath);
             }
 
-            $projectsMap[$projectId]['versions']++;
+            ++$projectsMap[$projectId]['versions'];
         }
 
         // Calcular totales
@@ -304,8 +308,9 @@ class ProjectStorageService
     /**
      * Verifica si un proyecto excede el límite de almacenamiento.
      *
-     * @param Project|string $project Entidad Project o ID del proyecto
-     * @param int $maxBytes Límite máximo en bytes
+     * @param Project|string $project  Entidad Project o ID del proyecto
+     * @param int            $maxBytes Límite máximo en bytes
+     *
      * @return array Información de límite
      */
     public function checkProjectStorageLimit($project, int $maxBytes): array
@@ -333,6 +338,7 @@ class ProjectStorageService
      * Calcula cuántos minutos lleva inactiva una sesión.
      *
      * @param CurrentOdeUsers $session Sesión
+     *
      * @return int Minutos de inactividad
      */
     private function getSessionInactiveMinutes(CurrentOdeUsers $session): int
@@ -352,6 +358,7 @@ class ProjectStorageService
      * Calcula el tamaño total de un directorio recursivamente.
      *
      * @param string $directory Ruta del directorio
+     *
      * @return int Tamaño en bytes
      */
     private function getDirectorySize(string $directory): int
@@ -378,18 +385,19 @@ class ProjectStorageService
     /**
      * Formatea bytes a formato legible (KB, MB, GB).
      *
-     * @param int $bytes Cantidad de bytes
+     * @param int $bytes     Cantidad de bytes
      * @param int $precision Decimales a mostrar
+     *
      * @return string Tamaño formateado
      */
     private function formatBytes(int $bytes, int $precision = 2): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
 
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; ++$i) {
             $bytes /= 1024;
         }
 
-        return round($bytes, $precision) . ' ' . $units[$i];
+        return round($bytes, $precision).' '.$units[$i];
     }
 }

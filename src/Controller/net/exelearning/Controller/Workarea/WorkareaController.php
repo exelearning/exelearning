@@ -3,18 +3,22 @@
 namespace App\Controller\net\exelearning\Controller\Workarea;
 
 use App\Constants;
-use App\Entity\net\exelearning\Entity\User;
 use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
+use App\Entity\net\exelearning\Entity\User;
 use App\Entity\Project\Project;
+use App\Entity\Project\ProjectCollaborator;
 use App\Helper\net\exelearning\Helper\FileHelper;
 use App\Helper\net\exelearning\Helper\UserHelper;
+use App\Repository\net\exelearning\Repository\OdeFilesRepository;
+use App\Repository\net\exelearning\Repository\UserRepository;
+use App\Repository\Project\ProjectCollaboratorRepository;
 use App\Repository\Project\ProjectRepository;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersSyncChangesServiceInterface;
 use App\Service\net\exelearning\Service\FilesDir\FilesDirServiceInterface;
-use App\Settings;
 use App\Translation\net\exelearning\Translation\Translator;
 use App\Util\net\exelearning\Util\SettingsUtil;
+use App\Util\net\exelearning\Util\Util;
 use Doctrine\ORM\EntityManagerInterface;
 use Firebase\JWT\JWT;
 use Psr\Log\LoggerInterface;
@@ -36,6 +40,9 @@ class WorkareaController extends DefaultWorkareaController
     private $logger;
     private $currentOdeUsersSyncChangesService;
     private ProjectRepository $projectRepo;
+    private ProjectCollaboratorRepository $collaboratorRepo;
+    private OdeFilesRepository $odeFilesRepo;
+    private UserRepository $userRepo;
     private readonly bool $countUserAutosaveSpace;
     private readonly int $userRecentOdeFilesAmount;
 
@@ -54,6 +61,9 @@ class WorkareaController extends DefaultWorkareaController
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
         CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService,
         ProjectRepository $projectRepo,
+        ProjectCollaboratorRepository $collaboratorRepo,
+        OdeFilesRepository $odeFilesRepo,
+        UserRepository $userRepo,
         HubInterface $hubInterface,
         bool $countUserAutosaveSpace,
         int $userRecentOdeFilesAmount,
@@ -68,6 +78,9 @@ class WorkareaController extends DefaultWorkareaController
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->currentOdeUsersSyncChangesService = $currentOdeUsersSyncChangesService;
         $this->projectRepo = $projectRepo;
+        $this->collaboratorRepo = $collaboratorRepo;
+        $this->odeFilesRepo = $odeFilesRepo;
+        $this->userRepo = $userRepo;
         $this->countUserAutosaveSpace = $countUserAutosaveSpace;
         $this->userRecentOdeFilesAmount = $userRecentOdeFilesAmount;
     }
@@ -90,7 +103,7 @@ class WorkareaController extends DefaultWorkareaController
             if ($session) {
                 // Redirect to project-based URL
                 return $this->redirectToRoute('workarea', [
-                    'projectId' => $session->getOdeId()
+                    'projectId' => $session->getOdeId(),
                 ], 301);
             }
         }
@@ -99,6 +112,49 @@ class WorkareaController extends DefaultWorkareaController
         $project = null;
         if ($requestedProjectId) {
             $project = $this->projectRepo->find($requestedProjectId);
+
+            // Backwards compatibility: auto-create from OdeFiles if not exists
+            if (!$project) {
+                $project = $this->createProjectFromOdeFile($requestedProjectId);
+            }
+
+            // If still no project, check if we have a CurrentOdeUsers session for it
+            // This handles the case where the project was created but not yet persisted
+            if (!$project) {
+                $currentOdeUsersRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
+                $user = $this->getUser();
+                $currentSession = $currentOdeUsersRepo->findOneBy([
+                    'odeId' => $requestedProjectId,
+                    'user' => $user->getUserIdentifier(),
+                ]);
+
+                // If user has a session for this project, create the Project entity
+                if ($currentSession) {
+                    $project = new Project();
+                    $project->setId($requestedProjectId);
+                    $project->setTitle('New Project'); // Will be updated on first save
+                    $project->setOwner($user);
+                    $project->setVisibility('private');
+                    $project->setArchived(false);
+
+                    $this->entityManager->persist($project);
+
+                    // Create ProjectCollaborator entry for the owner
+                    $collaborator = new ProjectCollaborator();
+                    $collaborator->setProject($project);
+                    $collaborator->setUser($user);
+                    $collaborator->setRole(ProjectCollaborator::ROLE_OWNER);
+                    $collaborator->setGrantedBy($user);
+
+                    $this->entityManager->persist($collaborator);
+                    $this->entityManager->flush();
+
+                    $this->logger->info('Created Project entity for existing CurrentOdeUsers session', [
+                        'projectId' => $requestedProjectId,
+                        'userId' => $user->getUserIdentifier(),
+                    ]);
+                }
+            }
 
             if (!$project) {
                 throw $this->createNotFoundException('Project not found');
@@ -112,6 +168,34 @@ class WorkareaController extends DefaultWorkareaController
             // Update last accessed timestamp
             $project->updateLastAccessedAt();
             $this->entityManager->flush();
+
+            // Ensure we have an odeSessionId for this project
+            // This is needed for backwards compatibility with save/load operations
+            if (!$odeSessionId) {
+                $currentOdeUsersRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
+                $user = $this->getUser();
+
+                // Try to find existing session for this user and project
+                $currentSession = $currentOdeUsersRepo->getCurrentSessionForUser($user->getUserIdentifier());
+
+                if ($currentSession && $currentSession->getOdeId() === $requestedProjectId) {
+                    // Use existing session
+                    $odeSessionId = $currentSession->getOdeSessionId();
+                } else {
+                    // Create new session for this project
+                    $odeVersionId = Util::generateId();
+                    $odeSessionId = Util::generateId();
+                    $clientIp = $request->getClientIp() ?? '127.0.0.1';
+
+                    $this->currentOdeUsersService->createCurrentOdeUsers(
+                        $requestedProjectId,  // odeId = projectId
+                        $odeVersionId,
+                        $odeSessionId,
+                        $user,
+                        $clientIp
+                    );
+                }
+            }
         }
 
         // Get elpFileName
@@ -368,5 +452,76 @@ class WorkareaController extends DefaultWorkareaController
     public function generateFilesDirStructure()
     {
         return $this->filesDirService->checkFilesDir();
+    }
+
+    /**
+     * Backwards compatibility: Create a Project entity from an existing OdeFile.
+     * This allows seamless migration from the old ode_files system to the new projects system.
+     *
+     * @param string $odeId The ODE ID to search for
+     *
+     * @return Project|null The created Project or null if OdeFile not found
+     */
+    private function createProjectFromOdeFile(string $odeId): ?Project
+    {
+        // Find the most recent OdeFile for this odeId
+        $odeFile = $this->odeFilesRepo->getLastFileForOde($odeId);
+
+        if (!$odeFile) {
+            $this->logger->info('Cannot create Project from OdeFile: OdeFile not found', [
+                'odeId' => $odeId,
+            ]);
+
+            return null;
+        }
+
+        // Find the User entity for the owner
+        $ownerUser = $this->userRepo->findOneBy(['email' => $odeFile->getUser()]);
+
+        if (!$ownerUser) {
+            $this->logger->warning('Cannot create Project from OdeFile: user not found', [
+                'odeId' => $odeId,
+                'ownerEmail' => $odeFile->getUser(),
+            ]);
+
+            return null;
+        }
+
+        // Create new Project entity
+        $project = new Project();
+        $project->setId($odeId);
+        $project->setTitle($odeFile->getTitle());
+        $project->setOwner($ownerUser);
+        $project->setVisibility('private'); // Default to private for security
+        $project->setArchived(false);
+
+        // Set timestamps from OdeFile if available
+        if ($odeFile->getCreatedAt()) {
+            $project->setCreatedAt($odeFile->getCreatedAt());
+        }
+        if ($odeFile->getUpdatedAt()) {
+            $project->setLastAccessedAt($odeFile->getUpdatedAt());
+        }
+
+        $this->entityManager->persist($project);
+
+        // Create a ProjectCollaborator entry for the owner
+        $ownerCollab = new ProjectCollaborator();
+        $ownerCollab->setProject($project);
+        $ownerCollab->setUser($ownerUser);
+        $ownerCollab->setRole(ProjectCollaborator::ROLE_OWNER);
+        $ownerCollab->setGrantedBy($ownerUser);
+
+        $this->entityManager->persist($ownerCollab);
+        $this->entityManager->flush();
+
+        $this->logger->info('Auto-created Project from OdeFile for backwards compatibility', [
+            'odeId' => $odeId,
+            'projectId' => $project->getId(),
+            'ownerId' => $ownerUser->getId(),
+            'title' => $project->getTitle(),
+        ]);
+
+        return $project;
     }
 }

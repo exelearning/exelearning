@@ -1,0 +1,84 @@
+{# Share Modal - Google Docs-style project sharing interface #}
+<div class="modal exe-modal-fade" tabindex="-1" id="modalShare" role="dialog" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalShareTitle"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ "Close" | trans }}">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                {# Invite Section #}
+                <div id="share-invite-section" class="mb-4">
+                    <div class="input-group">
+                        <input type="email"
+                               id="share-invite-email"
+                               class="form-control"
+                               placeholder="{{ "Add people by email" | trans }}"
+                               aria-label="{{ "Add people by email" | trans }}"
+                               autocomplete="off">
+                        <button id="share-invite-button"
+                                class="btn btn-primary"
+                                type="button">
+                            {{ "Invite" | trans }}
+                        </button>
+                    </div>
+                    <div id="share-invite-error" class="invalid-feedback d-none"></div>
+                </div>
+
+                {# People with Access Section #}
+                <div id="share-people-section" class="mb-4">
+                    <h6>{{ "People with access" | trans }}</h6>
+                    <div id="share-people-list"></div>
+                </div>
+
+                {# General Access Section #}
+                <div id="share-general-access-section" class="mb-4">
+                    <h6>{{ "General access" | trans }}</h6>
+                    <select id="share-visibility-select"
+                            class="form-select"
+                            aria-label="{{ "General access" | trans }}">
+                        <option value="private">{{ "Restricted (Private)" | trans }}</option>
+                        <option value="public">{{ "Anyone with the link (Public)" | trans }}</option>
+                    </select>
+                    <small id="share-visibility-help" class="form-text text-muted d-none">
+                        {{ "Anyone who has the link can view and edit in real time" | trans }}
+                    </small>
+                </div>
+
+                {# Link Section #}
+                <div id="share-link-section">
+                    <h6>{{ "Link" | trans }}</h6>
+                    <div class="input-group">
+                        <input type="text"
+                               id="share-link-input"
+                               class="form-control"
+                               readonly
+                               aria-label="{{ "Share link" | trans }}">
+                        <button id="share-copy-button"
+                                class="btn btn-outline-secondary"
+                                type="button"
+                                aria-label="{{ "Copy link" | trans }}">
+                            <i class="auto-icon" aria-hidden="true">content_copy</i>
+                            <span>{{ "Copy link" | trans }}</span>
+                        </button>
+                    </div>
+                </div>
+
+                {# ARIA Live Region for announcements #}
+                <div id="share-aria-live"
+                     class="visually-hidden"
+                     aria-live="polite"
+                     aria-atomic="true"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button"
+                        class="btn btn-primary"
+                        data-dismiss="modal">
+                    {{ "Done" | trans }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
