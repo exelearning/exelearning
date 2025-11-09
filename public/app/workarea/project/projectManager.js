@@ -813,7 +813,6 @@ export default class projectManager {
         if (!response && this.requestedProjectId) {
             const openParams = {
                 projectId: this.requestedProjectId,
-                allowParallelSessions: true,
             };
             if (targetSessionId) {
                 openParams.odeSessionId = targetSessionId;

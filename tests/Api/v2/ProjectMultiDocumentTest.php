@@ -100,7 +100,6 @@ class ProjectMultiDocumentTest extends WebTestCase
             [
                 'projectId' => $projectId,
                 'odeSessionId' => $seed,
-                'allowParallelSessions' => '1',
             ],
             server: ['HTTP_ACCEPT' => 'application/json']
         );

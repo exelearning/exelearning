@@ -86,50 +86,6 @@ export default class modalOpenUserOdeFiles extends Modal {
     }
 
     /**
-     * Build a workarea URL that preserves contextual params.
-     *
-     * @param {{ odeSessionId?: string|null, odeId?: string|number|null }} params
-     * @returns {string}
-     */
-    buildWorkareaUrl(params = {}) {
-        const { odeSessionId = null, odeId = null } = params;
-        const basePath = eXeLearning.symfony.basePath || '';
-        let workareaPath = 'workarea';
-        if (basePath) {
-            const trimmed = basePath.endsWith('/')
-                ? basePath.slice(0, -1)
-                : basePath;
-            workareaPath = `${trimmed}/workarea`;
-        }
-
-        const searchParams = new URLSearchParams(window.location.search);
-        if (odeSessionId) {
-            searchParams.set('odeSessionId', odeSessionId);
-        } else {
-            searchParams.delete('odeSessionId');
-        }
-        if (odeId) {
-            searchParams.set('projectId', odeId);
-        } else {
-            searchParams.delete('projectId');
-            searchParams.delete('project');
-        }
-
-        const query = searchParams.toString();
-        return query ? `${workareaPath}?${query}` : workareaPath;
-    }
-
-    /**
-     * Open workarea with the provided params in a new browser tab.
-     *
-     * @param {{ odeSessionId?: string|null, odeId?: string|number|null }} params
-     */
-    openProjectInNewTab(params = {}) {
-        const targetUrl = this.buildWorkareaUrl(params);
-        window.open(targetUrl, '_blank', 'noopener');
-    }
-
-    /**
      *
      * @param {*} data
      */
@@ -571,7 +527,6 @@ export default class modalOpenUserOdeFiles extends Modal {
             elpFileName: id,
             odeSessionId: eXeLearning.app.project.odeSession,
             projectId: eXeLearning.app.project.odeId,
-            allowParallelSessions: true,
         };
         const odeParams = {
             odeSessionId: eXeLearning.app.project.odeSession,
@@ -587,10 +542,10 @@ export default class modalOpenUserOdeFiles extends Modal {
         let response = await eXeLearning.app.api.postSelectedOdeFile(params);
         if (response.responseMessage == 'OK') {
             eXeLearning.app.modals.openuserodefiles.close();
-            this.openProjectInNewTab({
-                odeSessionId: response.odeSessionId,
-                odeId: response.odeId,
-            });
+            eXeLearning.app.project.odeSession = response.odeSessionId;
+            eXeLearning.app.project.odeVersion = response.odeVersionId;
+            eXeLearning.app.project.odeId = response.odeId;
+            await eXeLearning.app.project.openLoad();
             return;
         } else {
             eXeLearning.app.api
@@ -632,15 +587,14 @@ export default class modalOpenUserOdeFiles extends Modal {
             elpFileName: id,
             odeSessionId: eXeLearning.app.project.odeSession,
             projectId: eXeLearning.app.project.odeId,
-            allowParallelSessions: true,
         };
         const response = await eXeLearning.app.api.postSelectedOdeFile(params);
         if (response.responseMessage == 'OK') {
             eXeLearning.app.modals.openuserodefiles.close();
-            this.openProjectInNewTab({
-                odeSessionId: response.odeSessionId,
-                odeId: response.odeId,
-            });
+            eXeLearning.app.project.odeSession = response.odeSessionId;
+            eXeLearning.app.project.odeVersion = response.odeVersionId;
+            eXeLearning.app.project.odeId = response.odeId;
+            await eXeLearning.app.project.openLoad();
             return;
         } else {
             setTimeout(() => {
@@ -988,7 +942,6 @@ export default class modalOpenUserOdeFiles extends Modal {
             odeFileName,
             odeFilePath,
             odeNavStructureSyncId: selectedNavId,
-            allowParallelSessions: true,
         };
         const response =
             await eXeLearning.app.api.postLocalXmlPropertiesFile(data);
@@ -1041,7 +994,6 @@ export default class modalOpenUserOdeFiles extends Modal {
             odeFileName,
             odeFilePath,
             odeNavStructureSyncId: selectedNavId,
-            allowParallelSessions: true,
         };
         const clearPreUploadedData = () => {
             if (originalFile && originalFile._preUploadedOdeData) {
@@ -1077,10 +1029,10 @@ export default class modalOpenUserOdeFiles extends Modal {
                     }
                 } catch (_e) {}
                 eXeLearning.app.modals.openuserodefiles.close();
-                this.openProjectInNewTab({
-                    odeSessionId: response.odeSessionId,
-                    odeId: response.odeId,
-                });
+                eXeLearning.app.project.odeSession = response.odeSessionId;
+                eXeLearning.app.project.odeVersion = response.odeVersionId;
+                eXeLearning.app.project.odeId = response.odeId;
+                await eXeLearning.app.project.openLoad();
                 clearPreUploadedData();
                 return;
             } else {
@@ -1176,7 +1128,6 @@ export default class modalOpenUserOdeFiles extends Modal {
         const params = {
             odeFileName,
             odeFilePath,
-            allowParallelSessions: true,
         };
         const response = await eXeLearning.app.api.postLocalOdeFile(params);
         if (response.responseMessage == 'OK') {
@@ -1195,10 +1146,10 @@ export default class modalOpenUserOdeFiles extends Modal {
                 }
             } catch (_e) {}
             eXeLearning.app.modals.openuserodefiles.close();
-            this.openProjectInNewTab({
-                odeSessionId: response.odeSessionId,
-                odeId: response.odeId,
-            });
+            eXeLearning.app.project.odeSession = response.odeSessionId;
+            eXeLearning.app.project.odeVersion = response.odeVersionId;
+            eXeLearning.app.project.odeId = response.odeId;
+            await eXeLearning.app.project.openLoad();
             return;
         } else {
             setTimeout(() => {

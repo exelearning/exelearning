@@ -834,16 +834,7 @@ export default class NavbarFile {
      *
      */
     newProjectEvent() {
-        const basePath = eXeLearning.symfony.basePath || '';
-        let workareaPath = 'workarea';
-        if (basePath) {
-            const normalizedBase = basePath.endsWith('/')
-                ? basePath.slice(0, -1)
-                : basePath;
-            workareaPath = `${normalizedBase}/workarea`;
-        }
-
-        window.open(workareaPath, '', 'noopener');
+        this.newSession(eXeLearning.app.project.odeSession);
     }
 
     /**

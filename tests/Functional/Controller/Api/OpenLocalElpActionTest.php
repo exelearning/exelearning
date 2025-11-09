@@ -89,12 +89,20 @@ final class OpenLocalElpActionTest extends WebTestCase
             JSON_THROW_ON_ERROR
         );
 
+        // Parallel sessions are now always allowed, so this should succeed
         self::assertSame(
-            'error: user already has an open session',
+            'OK',
             $payload['responseMessage'] ?? null
         );
 
+        // Verify a new session was created (different from the previous one)
+        $newSessionId = $payload['odeSessionId'] ?? null;
+        self::assertIsString($newSessionId);
+        self::assertNotSame($previousSessionId, $newSessionId, 'Should create a new parallel session');
+
+        // Clean up both sessions
         $this->odeService->closeOdeSession($previousSessionId, 0, $user);
+        $this->odeService->closeOdeSession($newSessionId, 0, $user);
     }
 
     public function testOpenLocalElpActionClosesPreviousSessionWhenForcedViaJson(): void

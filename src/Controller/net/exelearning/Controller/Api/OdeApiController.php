@@ -167,6 +167,15 @@ class OdeApiController extends DefaultApiController
                 $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
                 $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
 
+                // If no active session exists, return error
+                if (null === $currentSessionForUser) {
+                    $error = $this->translator->trans('No active session found');
+                    $responseData['responseMessage'] = $error;
+                    $jsonData = $this->getJsonSerialized($responseData);
+
+                    return new JsonResponse($jsonData, $this->status, [], true);
+                }
+
                 // Obtain odeId and odeVersionId from currentOdeUsers
                 $odeId = $this->currentOdeUsersService->getOdeIdByOdeSessionId($user, $odeSessionId);
                 $odeVersion = $this->currentOdeUsersService->getOdeVersionIdByOdeSessionId($user, $odeSessionId);
@@ -315,6 +324,15 @@ class OdeApiController extends DefaultApiController
                 // Get currentOdeUser
                 $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
                 $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
+
+                // If no active session exists, return error
+                if (null === $currentSessionForUser) {
+                    $error = $this->translator->trans('No active session found');
+                    $responseData['responseMessage'] = $error;
+                    $jsonData = $this->getJsonSerialized($responseData);
+
+                    return new JsonResponse($jsonData, $this->status, [], true);
+                }
 
                 $isManualSave = false;
 
@@ -469,6 +487,15 @@ class OdeApiController extends DefaultApiController
                 // Get currentOdeUser
                 $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
                 $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
+
+                // If no active session exists, return error
+                if (null === $currentSessionForUser) {
+                    $error = $this->translator->trans('No active session found');
+                    $responseData['responseMessage'] = $error;
+                    $jsonData = $this->getJsonSerialized($responseData);
+
+                    return new JsonResponse($jsonData, $this->status, [], true);
+                }
 
                 // Get odeComponentFlag
                 $isEditingIdevice = $currentSessionForUser->getSyncComponentsFlag();
@@ -794,11 +821,6 @@ class OdeApiController extends DefaultApiController
             $forceCloseOdeUserPreviousSession = false;
         }
 
-        $allowParallelSessions = filter_var(
-            $request->get('allowParallelSessions'),
-            FILTER_VALIDATE_BOOL
-        );
-
         // Debug logging to diagnose join session issues
         $this->logger->info(
             'openElpAction called with parameters',
@@ -807,7 +829,6 @@ class OdeApiController extends DefaultApiController
                 'projectId' => $projectId,
                 'odeFilesId' => $odeFilesId,
                 'odeSessionId' => $odeSessionId,
-                'allowParallelSessions' => $allowParallelSessions,
                 'elpFileName_type' => gettype($elpFileName),
                 'projectId_type' => gettype($projectId),
                 'odeSessionId_type' => gettype($odeSessionId),
@@ -844,7 +865,6 @@ class OdeApiController extends DefaultApiController
                 return $this->joinExistingSession(
                     $odeSessionId,
                     $projectId,
-                    $allowParallelSessions,
                     $clientIp
                 );
             } else {
@@ -882,8 +902,7 @@ class OdeApiController extends DefaultApiController
                     $odeSessionId,
                     $elpFileName,
                     $databaseUser,
-                    $forceCloseOdeUserPreviousSession,
-                    $allowParallelSessions
+                    $forceCloseOdeUserPreviousSession
                 );
             } catch (UserAlreadyOpenSessionException $e) {
                 $responseData['responseMessage'] = 'error: '.$e->getMessage();
@@ -925,8 +944,7 @@ class OdeApiController extends DefaultApiController
                 $databaseUser,
                 $clientIp,
                 $forceCloseOdeUserPreviousSession,
-                $odeValues,
-                $allowParallelSessions
+                $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
             $result['responseMessage'] = 'error: '.$e->getMessage();
@@ -972,10 +990,6 @@ class OdeApiController extends DefaultApiController
         $elpFileName = $request->get('odeFileName') ?? $request->getPayload()->get('odeFileName');
         $elpFilePath = $request->get('odeFilePath') ?? $request->getPayload()->get('odeFilePath');
         $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession') ?? $request->getPayload()->get('forceCloseOdeUserPreviousSession');
-        $allowParallelSessions = filter_var(
-            $request->get('allowParallelSessions'),
-            FILTER_VALIDATE_BOOL
-        );
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
@@ -1072,8 +1086,7 @@ class OdeApiController extends DefaultApiController
                     $databaseUser,
                     $forceCloseOdeUserPreviousSession,
                     false,
-                    null,
-                    $allowParallelSessions
+                    null
                 );
             } catch (UserAlreadyOpenSessionException $e) {
                 // Re-throw session exceptions to be handled by outer catch
@@ -1132,8 +1145,7 @@ class OdeApiController extends DefaultApiController
                 $databaseUser,
                 $clientIp,
                 $forceCloseOdeUserPreviousSession,
-                $odeValues,
-                $allowParallelSessions
+                $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
             $result['responseMessage'] = 'error: '.$e->getMessage();
@@ -2105,12 +2117,10 @@ class OdeApiController extends DefaultApiController
      *
      * @param string $odeSessionId          The existing session ID to join
      * @param string $projectId             The project ID
-     * @param bool   $allowParallelSessions Whether to allow parallel sessions
      */
     private function joinExistingSession(
         string $odeSessionId,
         string $projectId,
-        bool $allowParallelSessions,
         string $clientIp,
     ): JsonResponse {
         $responseData = [];
@@ -2164,17 +2174,7 @@ class OdeApiController extends DefaultApiController
             $user = $this->getUser();
             $databaseUser = $this->userHelper->getDatabaseUser($user);
 
-            // 5. Check if user already has a session
-            if (!$allowParallelSessions) {
-                $userCurrentSession = $currentOdeUsersRepo->getCurrentSessionForUser(
-                    $databaseUser->getUserIdentifier()
-                );
-                if ($userCurrentSession) {
-                    throw new UserAlreadyOpenSessionException();
-                }
-            }
-
-            // 6. Check if user is already in this specific session
+            // 5. Check if user is already in this specific session
             $userSessionExists = $currentOdeUsersRepo->getCurrentSessionForUser(
                 $databaseUser->getUserIdentifier(),
                 $odeSessionId

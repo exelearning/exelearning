@@ -125,8 +125,7 @@ interface OdeServiceInterface
         $odeSessionId,
         $elpFileName,
         $user,
-        $forceCloseOdeUserPreviousSession,
-        bool $allowParallelSessions = false,
+        $forceCloseOdeUserPreviousSession
     );
 
     /**
@@ -146,8 +145,7 @@ interface OdeServiceInterface
         $user,
         $forceCloseOdeUserPreviousSession,
         $isImportIdevices = false,
-        $odeNavStructureSync = null,
-        bool $allowParallelSessions = false,
+        $odeNavStructureSync = null
     );
 
     /**
@@ -231,8 +229,7 @@ interface OdeServiceInterface
         $dbUser,
         $clientIp,
         $forceCloseOdeUserPreviousSession,
-        $odeValues,
-        bool $allowParallelSessions = false,
+        $odeValues
     );
 
     /**

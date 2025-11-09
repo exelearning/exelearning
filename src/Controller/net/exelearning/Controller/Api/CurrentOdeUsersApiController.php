@@ -364,6 +364,15 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUsername());
 
+        // If no active session exists, return early
+        if (null === $currentSessionForUser) {
+            $responseData['responseMessage'] = 'no_active_session';
+            $responseData['hasUpdate'] = false;
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, $this->status, [], true);
+        }
+
         $isOdeUpdate = $currentSessionForUser->getSyncUpdateFlag();
 
         if ($isOdeUpdate) {
@@ -431,6 +440,14 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentOdeSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUserIdentifier());
 
+        // If no active session exists, return error
+        if (null === $currentOdeSessionForUser) {
+            $responseData['responseMessage'] = 'no_active_session';
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, $this->status, [], true);
+        }
+
         // Collect parameters
         $odeBlockId = $request->get('odeBlockId');
 
@@ -455,6 +472,15 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
         $currentOdeSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUserIdentifier());
+
+        // If no active session exists, return error
+        if (null === $currentOdeSessionForUser) {
+            $response['responseMessage'] = 'no_active_session';
+            $jsonData = $this->getJsonSerialized($response);
+
+            return new JsonResponse($jsonData, $this->status, [], true);
+        }
+
         // Get the user odeSessionId
         $currentOdeSessionId = $currentOdeSessionForUser->getOdeSessionId();
 
