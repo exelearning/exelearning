@@ -12013,10 +12013,6 @@
         <source>Point</source>
         <target>~Punto</target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target><![CDATA[~Debes revisar el %s&percnt;  de los contenidos de la actividad antes de completar el cuestionario.]]></target>
-      </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
         <target>~No has superado esta prueba. Debes revisar sus contenidos e intentarlo de nuevo. ¿Quieres repetir esta actividad?</target>
@@ -12872,6 +12868,10 @@
       <trans-unit id="TZosZdP" resname="Line highlight">
         <source>Line highlight</source>
         <target>~Resaltado de línea</target>
+      </trans-unit>
+      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+        <target><![CDATA[~Debes revisar el %s&percnt;  de los contenidos de la actividad antes de completar el cuestionario.]]></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>

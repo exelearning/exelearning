@@ -3673,6 +3673,18 @@
         <source>New</source>
         <target>Novo</target>
       </trans-unit>
+      <trans-unit id="Csyf_Vj" resname="New from Template...">
+        <source>New from Template...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="GbRjAbR" resname="Select a template to create a new project:">
+        <source>Select a template to create a new project:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="DchL58D" resname="No templates available for your language.">
+        <source>No templates available for your language.</source>
+        <target></target>
+      </trans-unit>
       <trans-unit id="_SqArFZ" resname="Open">
         <source>Open</source>
         <target>Abrir</target>
@@ -12261,10 +12273,6 @@
         <source>Select the correct options and click on the 'Reply' button.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target><![CDATA[__You must review %s&percnt; of the contents of the activity before completing the questionnaire.]]></target>
-      </trans-unit>
       <trans-unit id="GySH111" resname="Show when the mouse is over the icon or active area">
         <source>Show when the mouse is over the icon or active area</source>
         <target></target>
@@ -12861,6 +12869,10 @@
         <source>Line highlight</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
+        <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
+        <target><![CDATA[__You must review %s&percnt; of the contents of the activity before completing the questionnaire.]]></target>
+      </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
         <target></target>
@@ -12879,10 +12891,6 @@
       </trans-unit>
       <trans-unit id="DlutuO4" resname="New from Template">
         <source>New from Template</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="DchL58D" resname="No templates available for your language.">
-        <source>No templates available for your language.</source>
         <target></target>
       </trans-unit>
       <trans-unit id="M_Llf6E" resname="Failed to load template. Please try again.">
@@ -12979,14 +12987,6 @@
       </trans-unit>
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="Csyf_Vj" resname="New from Template...">
-        <source>New from Template...</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="GbRjAbR" resname="Select a template to create a new project:">
-        <source>Select a template to create a new project:</source>
         <target></target>
       </trans-unit>
     </body>

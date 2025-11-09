@@ -3673,6 +3673,18 @@
         <source>New</source>
         <target>Nou</target>
       </trans-unit>
+      <trans-unit id="Csyf_Vj" resname="New from Template...">
+        <source>New from Template...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="GbRjAbR" resname="Select a template to create a new project:">
+        <source>Select a template to create a new project:</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="DchL58D" resname="No templates available for your language.">
+        <source>No templates available for your language.</source>
+        <target></target>
+      </trans-unit>
       <trans-unit id="_SqArFZ" resname="Open">
         <source>Open</source>
         <target>Obri</target>
@@ -12885,10 +12897,6 @@
         <source>New from Template</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="DchL58D" resname="No templates available for your language.">
-        <source>No templates available for your language.</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="M_Llf6E" resname="Failed to load template. Please try again.">
         <source>Failed to load template. Please try again.</source>
         <target></target>
@@ -12983,14 +12991,6 @@
       </trans-unit>
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="Csyf_Vj" resname="New from Template...">
-        <source>New from Template...</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="GbRjAbR" resname="Select a template to create a new project:">
-        <source>Select a template to create a new project:</source>
         <target></target>
       </trans-unit>
     </body>
