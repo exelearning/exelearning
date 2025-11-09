@@ -12321,8 +12321,8 @@
         <source>Import (.elpx…)</source>
         <target>~Importar (.elpx…)</target>
       </trans-unit>
-      <trans-unit id="TFDXxIf" resname="Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.">
-        <source>Import .elpx, .elp, or editable .zip files. The imported content will be added after the last page of the current project.</source>
+      <trans-unit id="TFDXxIf" resname="Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.">
+        <source>Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.</source>
         <target>~Importa ficheiros .elpx, .elp ou .zip editables. O contido importado engadirase despois da última páxina do proxecto actual.</target>
       </trans-unit>
       <trans-unit id="IOajJx_" resname="Unexpected error importing file.">
