@@ -713,18 +713,21 @@ class OdeApiController extends DefaultApiController
     #[Route('/ode/elp/open', methods: ['POST'], name: 'api_odes_ode_elp_open')]
     public function openElpAction(Request $request)
     {
-        $this->hydrateRequestBody($request);
-
         $responseData = [];
 
         // Collect parameters
         $elpFileName = $request->get('elpFileName');
         $odeSessionId = $request->get('odeSessionId');
-        $forceCloseOdeUserPreviousSession = filter_var(
-            $request->get('forceCloseOdeUserPreviousSession', false),
-            FILTER_VALIDATE_BOOLEAN,
-            FILTER_NULL_ON_FAILURE
-        ) ?? false;
+        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession');
+
+        if (
+            $request->request->has('forceCloseOdeUserPreviousSession')
+            && (('true' == $forceCloseOdeUserPreviousSession) || ('1' == $forceCloseOdeUserPreviousSession))
+        ) {
+            $forceCloseOdeUserPreviousSession = true;
+        } else {
+            $forceCloseOdeUserPreviousSession = false;
+        }
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
@@ -732,39 +735,13 @@ class OdeApiController extends DefaultApiController
         $clientIp = $request->getClientIp();
 
         try {
-            try {
-                // Check content in the xml and return values
-                $odeValues = $this->odeService->checkContentXmlAndCurrentUser(
-                    $odeSessionId,
-                    $elpFileName,
-                    $databaseUser,
-                    $forceCloseOdeUserPreviousSession
-                );
-            } catch (UserAlreadyOpenSessionException $e) {
-                $responseData['responseMessage'] = 'error: '.$e->getMessage();
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
-            } catch (\Throwable $e) {
-                $this->logger->error(
-                    'Error checking remote ODE file: '.$e->getMessage(),
-                    [
-                        'exception' => $e,
-                        'elpFileName' => $elpFileName,
-                        'odeSessionId' => $odeSessionId,
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString(),
-                        'file:' => $this,
-                        'line:' => __LINE__,
-                    ]
-                );
-
-                $responseData['responseMessage'] = $this->translator->trans('The file content is wrong');
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
-            }
+            // Check content in the xml and return values
+            $odeValues = $this->odeService->checkContentXmlAndCurrentUser(
+                $odeSessionId,
+                $elpFileName,
+                $databaseUser,
+                $forceCloseOdeUserPreviousSession
+            );
 
             if ('OK' !== $odeValues['responseMessage']) {
                 $responseData['responseMessage'] = $odeValues['responseMessage'];
@@ -783,7 +760,8 @@ class OdeApiController extends DefaultApiController
                 $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
-            $responseData['responseMessage'] = 'error: '.$e->getMessage();
+            $result['responseMessage'] = 'error: '.$e->getMessage();
+            $responseData['responseMessage'] = $result['responseMessage'];
             $jsonData = $this->getJsonSerialized($responseData);
 
             return new JsonResponse($jsonData, $this->status, [], true);
@@ -819,21 +797,28 @@ class OdeApiController extends DefaultApiController
     #[Route('/ode/local/elp/open', methods: ['POST'], name: 'api_odes_ode_local_elp_open')]
     public function openLocalElpAction(Request $request)
     {
-        $this->hydrateRequestBody($request);
-
         $responseData = [];
 
-        // Collect parameters
-        $elpFileName = $request->get('odeFileName');
-        $elpFilePath = $request->get('odeFilePath');
-        $forceCloseOdeUserPreviousSession = filter_var(
-            $request->get('forceCloseOdeUserPreviousSession', false),
-            FILTER_VALIDATE_BOOLEAN,
-            FILTER_NULL_ON_FAILURE
-        ) ?? false;
+        // Collect parameters from both form data and JSON body
+        $elpFileName = $request->get('odeFileName') ?? $request->getPayload()->get('odeFileName');
+        $elpFilePath = $request->get('odeFilePath') ?? $request->getPayload()->get('odeFilePath');
+        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession') ?? $request->getPayload()->get('forceCloseOdeUserPreviousSession');
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
+
+        // Convert forceCloseOdeUserPreviousSession to boolean
+        // Accept: true (bool), 'true' (string), '1' (string), 1 (int)
+        // Reject: false (bool), 'false' (string), '0' (string), 0 (int), null, anything else
+        if ((true === $forceCloseOdeUserPreviousSession)
+            || ('true' === $forceCloseOdeUserPreviousSession)
+            || ('1' === $forceCloseOdeUserPreviousSession)
+            || (1 === $forceCloseOdeUserPreviousSession)
+        ) {
+            $forceCloseOdeUserPreviousSession = true;
+        } else {
+            $forceCloseOdeUserPreviousSession = false;
+        }
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
@@ -841,6 +826,14 @@ class OdeApiController extends DefaultApiController
         $clientIp = $request->getClientIp();
 
         try {
+            // Validate required parameters
+            if (empty($elpFileName) || empty($elpFilePath)) {
+                $responseData['responseMessage'] = $this->translator->trans('Missing file name or path');
+                $jsonData = $this->getJsonSerialized($responseData);
+
+                return new JsonResponse($jsonData, $this->status, [], true);
+            }
+
             // Set locale (TODO: error translator returns to default locale)
             // Get properties of user
             $databaseUserPreferences = $this->userHelper->getUserPreferencesFromDatabase($user);
@@ -875,26 +868,11 @@ class OdeApiController extends DefaultApiController
                     $forceCloseOdeUserPreviousSession
                 );
             } catch (UserAlreadyOpenSessionException $e) {
-                $responseData['responseMessage'] = 'error: '.$e->getMessage();
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
-            } catch (\Throwable $e) {
-                $this->logger->error(
-                    'Error checking local ODE file: '.$e->getMessage(),
-                    [
-                        'exception' => $e,
-                        'elpFileName' => $elpFileName,
-                        'elpFilePath' => $elpFilePath,
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString(),
-                        'file:' => $this,
-                        'line:' => __LINE__,
-                    ]
-                );
-
-                $responseData['responseMessage'] = $this->translator->trans('The file content is wrong');
+                // Re-throw session exceptions to be handled by outer catch
+                throw $e;
+            } catch (\Exception $e) {
+                $result['responseMessage'] = $this->translator->trans('The file content is wrong');
+                $responseData['responseMessage'] = $result['responseMessage'];
 
                 $jsonData = $this->getJsonSerialized($responseData);
 
@@ -918,7 +896,8 @@ class OdeApiController extends DefaultApiController
                 $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
-            $responseData['responseMessage'] = 'error: '.$e->getMessage();
+            $result['responseMessage'] = 'error: '.$e->getMessage();
+            $responseData['responseMessage'] = $result['responseMessage'];
 
             $jsonData = $this->getJsonSerialized($responseData);
 
