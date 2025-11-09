@@ -127,6 +127,17 @@ export default class ApiCallManager {
     }
 
     /**
+     * Get available templates for a given locale
+     *
+     * @param {string} locale - The locale code (e.g., 'en', 'es')
+     * @returns {Promise<Array>} - Array of template objects
+     */
+    async getTemplates(locale) {
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/v2/templates?locale=${locale}`;
+        return await this.func.get(url);
+    }
+
+    /**
      * Post odeSessionId and check availability
      *
      * @param {*} params
