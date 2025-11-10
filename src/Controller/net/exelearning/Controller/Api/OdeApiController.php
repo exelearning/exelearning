@@ -138,15 +138,6 @@ class OdeApiController extends DefaultApiController
     {
         $responseData = [];
 
-        // Parse JSON body if Content-Type is application/json
-        $contentType = strtolower((string) $request->headers->get('Content-Type'));
-        if (str_contains($contentType, 'application/json') && $request->getContent()) {
-            $decoded = json_decode($request->getContent(), true);
-            if (is_array($decoded)) {
-                $request->request->add($decoded);
-            }
-        }
-
         // collect parameters
         $odeSessionId = $request->get('odeSessionId');
 
@@ -703,15 +694,6 @@ class OdeApiController extends DefaultApiController
     #[Route('/check/before/leave/ode/session', methods: ['POST'], name: 'api_odes_check_before_leave_ode_session')]
     public function checkBeforeLeaveOdeSessionAction(Request $request): JsonResponse
     {
-        // Parse JSON body if Content-Type is application/json
-        $contentType = strtolower((string) $request->headers->get('Content-Type'));
-        if (str_contains($contentType, 'application/json') && $request->getContent()) {
-            $decoded = json_decode($request->getContent(), true);
-            if (is_array($decoded)) {
-                $request->request->add($decoded);
-            }
-        }
-
         $odeSessionId = (string) $request->get('odeSessionId');
         $odeVersionId = $request->get('odeVersionId');
         $odeId = $request->get('odeId');
@@ -750,15 +732,6 @@ class OdeApiController extends DefaultApiController
     #[Route('/ode/session/close', methods: ['POST'], name: 'api_odes_ode_session_close')]
     public function closeOdeSessionAction(Request $request)
     {
-        // Parse JSON body if Content-Type is application/json
-        $contentType = strtolower((string) $request->headers->get('Content-Type'));
-        if (str_contains($contentType, 'application/json') && $request->getContent()) {
-            $decoded = json_decode($request->getContent(), true);
-            if (is_array($decoded)) {
-                $request->request->add($decoded);
-            }
-        }
-
         $responseData = [];
 
         // collect parameters
@@ -1305,16 +1278,6 @@ class OdeApiController extends DefaultApiController
     public function importElpToRootFromLocalAction(Request $request): JsonResponse
     {
         $responseData = [];
-
-        // Manually parse JSON body for this specific endpoint
-        // We don't use hydrateRequestBody() for POST to avoid session cleanup issues
-        $content = $request->getContent();
-        if ($content && str_contains((string) $request->headers->get('Content-Type'), 'application/json')) {
-            $decoded = json_decode($content, true);
-            if (is_array($decoded)) {
-                $request->request->add($decoded);
-            }
-        }
 
         $odeSessionId = $request->get('odeSessionId');
         $odeFileName = $request->get('odeFileName');

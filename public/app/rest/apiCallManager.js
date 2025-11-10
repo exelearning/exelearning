@@ -1276,7 +1276,7 @@ export default class ApiCallManager {
     async updateProjectVisibility(projectId, visibility) {
         let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/${projectId}/visibility`;
         let data = { visibility };
-        return await this.func.patch(url, data);
+        return await this.func.put(url, data);
     }
 
     /**
@@ -1289,6 +1289,6 @@ export default class ApiCallManager {
     async transferProjectOwnership(projectId, newOwnerId) {
         let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/${projectId}/owner`;
         let data = { newOwnerId };
-        return await this.func.patch(url, data);
+        return await this.func.put(url, data);
     }
 }

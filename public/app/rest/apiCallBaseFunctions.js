@@ -76,20 +76,6 @@ export default class ApiCallBaseFunctions {
 
     /**
      *
-     * @param {String} url
-     * @param {Object} data
-     * @returns
-     */
-    async patch(url, data, waiting = true) {
-        try {
-            return await this.doAjax(url, 'PATCH', data, waiting);
-        } catch (err) {
-            return {};
-        }
-    }
-
-    /**
-     *
      * @param {String} method
      * @param {String} url
      * @param {Object} data
@@ -111,72 +97,25 @@ export default class ApiCallBaseFunctions {
      * @returns
      */
     async doAjax(url, method, data, waiting = true) {
-        if (waiting) {
-            this.addWaitingPetition();
-        }
-
-        // For POST, PUT, PATCH methods with data, send as JSON
-        const shouldSendJson =
-            (method === 'POST' || method === 'PUT' || method === 'PATCH') &&
-            data;
-        const ajaxData = shouldSendJson ? JSON.stringify(data) : data;
-        const contentType = shouldSendJson ? 'application/json' : undefined;
-
-        try {
-            return await $.ajax({
-                url: url,
-                method: method,
-                data: ajaxData,
-                contentType: contentType,
-                timeout: eXeLearning.config.clientCallWaitingTime,
-                dataType: 'json',
-            });
-        } catch (xhr) {
-            const errorResponse =
-                xhr && typeof xhr === 'object' && xhr.responseJSON
-                    ? xhr.responseJSON
-                    : null;
-
-            // Log specific known errors to help with debugging
-            if (
-                errorResponse &&
-                errorResponse.responseMessage ===
-                    'Missing navigation node identifier'
-            ) {
-                console.warn(
-                    '[API] Request failed: Navigation node identifier is missing.',
-                    'This typically means the structure is not fully loaded yet.',
-                    'URL:',
-                    url,
-                    'Method:',
-                    method
-                );
-            }
-
-            return {
-                __error: true,
-                status: xhr && typeof xhr.status === 'number' ? xhr.status : 0,
-                statusText:
-                    xhr && typeof xhr.statusText === 'string'
-                        ? xhr.statusText
-                        : '',
-                responseMessage:
-                    errorResponse && errorResponse.responseMessage
-                        ? errorResponse.responseMessage
-                        : null,
-                detail:
-                    errorResponse && errorResponse.detail
-                        ? errorResponse.detail
-                        : null,
-                payload: errorResponse,
-            };
-        } finally {
-            if (waiting) {
-                setTimeout(() => {
-                    this.removeWaitingPetition();
-                }, 100);
-            }
-        }
+        if (waiting) this.addWaitingPetition();
+        let response = {};
+        response = await $.ajax({
+            url: url,
+            method: method,
+            data: data,
+            timeout: eXeLearning.config.clientCallWaitingTime,
+            dataType: 'json',
+            success: function (response) {
+                return response;
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                return { error: errorThrown };
+            },
+        });
+        setTimeout(() => {
+            this.removeWaitingPetition();
+        }, 100);
+        return response;
     }
 
     /**
