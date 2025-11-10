@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="es" datatype="plaintext" original="file.ext">
+    <header>
+      <tool tool-id="symfony" tool-name="Symfony"/>
+    </header>
+    <body>
+      <trans-unit id="msgScoreScorm" resname="The score can't be saved because this page is not part of a SCORM package.">
+        <source>The score can't be saved because this page is not part of a SCORM package.</source>
+        <target>La puntuación no se puede guardar porque esta página no forma parte  de un paquete SCORM.</target>
+      </trans-unit>
+      <trans-unit id="msgYouScore" resname="You scores is">
+        <source>You scores is</source>
+        <target>Su puntuación</target>
+      </trans-unit>
+      <trans-unit id="msgScore" resname="Score">
+        <source>Score</source>
+        <target>Puntuación</target>
+      </trans-unit>
+      <trans-unit id="msgWeight" resname="Weight">
+        <source>Weight</source>
+        <target>Peso</target>
+      </trans-unit>
+      <trans-unit id="msgYouLastScore" resname="The last score saved is">
+        <source>The last score saved is</source>
+        <target>La última puntuación guardada es</target>
+      </trans-unit>
+      <trans-unit id="msgOnlySaveScore" resname="You can only save the score once!">
+        <source>You can only save the score once!</source>
+        <target>¡Solo puede guardar la puntuación una vez!</target>
+      </trans-unit>
+      <trans-unit id="msgOnlySave" resname="You can only save once">
+        <source>You can only save once</source>
+        <target>Solo puede guardar una vez</target>
+      </trans-unit>
+      <trans-unit id="msgOnlySaveAuto" resname="Your score will be saved after each question. You can only play once.">
+        <source>Your score will be saved after each question. You can only play once.</source>
+        <target>Su puntuación se guardará después de cada pregunta. Solo puede jugar una vez.</target>
+      </trans-unit>
+      <trans-unit id="msgSaveAuto" resname="Your score will be automatically saved after each question.">
+        <source>Your score will be automatically saved after each question.</source>
+        <target>Su puntuación se guardará automáticamente después de cada pregunta.</target>
+      </trans-unit>
+      <trans-unit id="msgSeveralScore" resname="You can save the score as many times as you want">
+        <source>You can save the score as many times as you want</source>
+        <target>Puede guardar la puntuación tantas veces como quiera</target>
+      </trans-unit>
+      <trans-unit id="msgPlaySeveralTimes" resname="You can do this activity as many times as you want">
+        <source>You can do this activity as many times as you want</source>
+        <target>Puede realizar esta actividad cuantas veces quiera</target>
+      </trans-unit>
+      <trans-unit id="msgActityComply" resname="You have already done this activity.">
+        <source>You have already done this activity.</source>
+        <target>Ya ha realizado esta actividad.</target>
+      </trans-unit>
+      <trans-unit id="msgUncompletedActivity" resname="Incomplete activity">
+        <source>Incomplete activity</source>
+        <target>Actividad no completada</target>
+      </trans-unit>
+      <trans-unit id="msgSuccessfulActivity" resname="Activity: Passed. Score: %s">
+        <source>Activity: Passed. Score: %s</source>
+        <target>Actividad superada. Puntuación: %s</target>
+      </trans-unit>
+      <trans-unit id="msgUnsuccessfulActivity" resname="Activity: Not passed. Score: %s">
+        <source>Activity: Not passed. Score: %s</source>
+        <target>Actividad no superada. Puntuación: %s</target>
+      </trans-unit>
+      <trans-unit id="msgTypeGame" resname="Form">
+        <source>Form</source>
+        <target>Formulario</target>
+      </trans-unit>
+      <trans-unit id="msgStartGame" resname="Click here to start">
+        <source>Click here to start</source>
+        <target>Pulse aquí para empezar</target>
+      </trans-unit>
+      <trans-unit id="msgTime" resname="Time per question">
+        <source>Time per question</source>
+        <target>Tiempo por pregunta</target>
+      </trans-unit>
+      <trans-unit id="msgSaveScore" resname="Save score">
+        <source>Save score</source>
+        <target>Guardar la puntuación</target>
+      </trans-unit>
+      <trans-unit id="msgResult" resname="Result">
+        <source>Result</source>
+        <target>Resultado</target>
+      </trans-unit>
+      <trans-unit id="msgCheck" resname="Check">
+        <source>Check</source>
+        <target>Comprobar</target>
+      </trans-unit>
+      <trans-unit id="msgReset" resname="Reset">
+        <source>Reset</source>
+        <target>Reiniciar</target>
+      </trans-unit>
+      <trans-unit id="msgShowAnswers" resname="Show answers">
+        <source>Show answers</source>
+        <target>Mostrar respuestas</target>
+      </trans-unit>
+      <trans-unit id="msgTestResultPass" resname="Congratulations! You passed the test">
+        <source>Congratulations! You passed the test</source>
+        <target>¡Felicidades! Has pasado la prueba</target>
+      </trans-unit>
+      <trans-unit id="msgTestResultNotPass" resname="Sorry. You failed the test">
+        <source>Sorry. You failed the test</source>
+        <target>Lo siento. Has fallado la prueba</target>
+      </trans-unit>
+      <trans-unit id="msgTrueFalseHelp" resname="Select whether the statement is true or false">
+        <source>Select whether the statement is true or false</source>
+        <target>Di si la afirmación es verdadera o falsa</target>
+      </trans-unit>
+      <trans-unit id="msgDropdownHelp" resname="Choose the correct answer among the options proposed">
+        <source>Choose the correct answer among the options proposed</source>
+        <target>Elige la respuesta correcta entre las opciones propuestas</target>
+      </trans-unit>
+      <trans-unit id="msgFillHelp" resname="Fill in the blanks with the appropriate word">
+        <source>Fill in the blanks with the appropriate word</source>
+        <target>Rellena los espacios en blanco con la palabra apropiada</target>
+      </trans-unit>
+      <trans-unit id="msgSingleSelectionHelp" resname="Multiple choice with only one correct answer">
+        <source>Multiple choice with only one correct answer</source>
+        <target>Opción múltiple con solo una respuesta correcta</target>
+      </trans-unit>
+      <trans-unit id="msgMultipleSelectionHelp" resname="Multiple choice with multiple corrects answers">
+        <source>Multiple choice with multiple corrects answers</source>
+        <target>Opción múltiple con varias respuestas correctas</target>
+      </trans-unit>
+      <trans-unit id="msgPlayStart" resname="Click here to start">
+        <source>Click here to start</source>
+        <target>Pulse aquí para empezar</target>
+      </trans-unit>
+      <trans-unit id="msgTrue" resname="True">
+        <source>True</source>
+        <target>Verdadero</target>
+      </trans-unit>
+      <trans-unit id="msgFalse" resname="False">
+        <source>False</source>
+        <target>Falso</target>
+      </trans-unit>
+      <trans-unit id="msgNext" resname="Next">
+        <source>Next</source>
+        <target>Siguiente</target>
+      </trans-unit>
+      <trans-unit id="msgPrevious" resname="Previous">
+        <source>Previous</source>
+        <target>Anterior</target>
+      </trans-unit>
+      <trans-unit id="msgSuggestion" resname="Suggestion">
+        <source>Suggestion</source>
+        <target>Sugerencia</target>
+      </trans-unit>
+      <trans-unit id="msgOption" resname="Option">
+        <source>Option</source>
+        <target>Opción</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="eu" datatype="plaintext" original="file.ext">
+    <header>
+      <tool tool-id="symfony" tool-name="Symfony"/>
+    </header>
+    <body>
+      <trans-unit id="msgYouScore" resname="You scores is">
+        <source>You scores is</source>
+        <target>Zure puntuazioa da</target>
+      </trans-unit>
+      <trans-unit id="msgScore" resname="Score">
+        <source>Score</source>
+        <target>Puntuak</target>
+      </trans-unit>
+      <trans-unit id="msgWeight" resname="Weight">
+        <source>Weight</source>
+        <target>Pisua</target>
+      </trans-unit>
+      <trans-unit id="msgYouLastScore" resname="The last score saved is">
+        <source>The last score saved is</source>
+        <target>Gordetako azken puntuazioa hau da:</target>
+      </trans-unit>
+      <trans-unit id="msgOnlySaveScore" resname="You can only save the score once!">
+        <source>You can only save the score once!</source>
+        <target>Bakarrik behin gorde ditzakezu puntuak!</target>
+      </trans-unit>
+      <trans-unit id="msgOnlySave" resname="You can only save once">
+        <source>You can only save once</source>
+        <target>Bakarrik behin gorde dezakezu</target>
+      </trans-unit>
+      <trans-unit id="msgActityComply" resname="You have already done this activity.">
+        <source>You have already done this activity.</source>
+        <target>Dagoeneko jarduera egin duzu.</target>
+      </trans-unit>
+      <trans-unit id="msgUncompletedActivity" resname="Incomplete activity">
+        <source>Incomplete activity</source>
+        <target>Jarduera osatugabea</target>
+      </trans-unit>
+      <trans-unit id="msgSuccessfulActivity" resname="Activity: Passed. Score: %s">
+        <source>Activity: Passed. Score: %s</source>
+        <target>Jarduera: Gainditua. Puntuazioa: %s</target>
+      </trans-unit>
+      <trans-unit id="msgUnsuccessfulActivity" resname="Activity: Not passed. Score: %s">
+        <source>Activity: Not passed. Score: %s</source>
+        <target>Jarduera: Gainditu gabea. Puntuazioa: %s</target>
+      </trans-unit>
+      <trans-unit id="msgTypeGame" resname="Form">
+        <source>Form</source>
+        <target>Inprimakia</target>
+      </trans-unit>
+      <trans-unit id="msgStartGame" resname="Click here to start">
+        <source>Click here to start</source>
+        <target>Klik egin hasteko</target>
+      </trans-unit>
+      <trans-unit id="msgTime" resname="Time per question">
+        <source>Time per question</source>
+        <target>Galderako bakoitzerako denbora</target>
+      </trans-unit>
+      <trans-unit id="msgSaveScore" resname="Save score">
+        <source>Save score</source>
+        <target>Gorde puntuazioa</target>
+      </trans-unit>
+      <trans-unit id="msgResult" resname="Result">
+        <source>Result</source>
+        <target>Emaitza</target>
+      </trans-unit>
+      <trans-unit id="msgCheck" resname="Check">
+        <source>Check</source>
+        <target>Egiaztatu</target>
+      </trans-unit>
+      <trans-unit id="msgReset" resname="Reset">
+        <source>Reset</source>
+        <target>Berrezarri</target>
+      </trans-unit>
+      <trans-unit id="msgShowAnswers" resname="Show answers">
+        <source>Show answers</source>
+        <target>Erakutsi erantzunak</target>
+      </trans-unit>
+      <trans-unit id="msgTestResultPass" resname="Congratulations! You passed the test">
+        <source>Congratulations! You passed the test</source>
+        <target>Zorionak! Proba gainditu duzu</target>
+      </trans-unit>
+      <trans-unit id="msgTestResultNotPass" resname="Sorry. You failed the test">
+        <source>Sorry. You failed the test</source>
+        <target>Barkatu. Proba ez duzu gainditu</target>
+      </trans-unit>
+      <trans-unit id="msgFillHelp" resname="Fill in the blanks with the appropriate word">
+        <source>Fill in the blanks with the appropriate word</source>
+        <target>Bete hutsuneak dagokion hitz egoki batekin</target>
+      </trans-unit>
+      <trans-unit id="msgPlayStart" resname="Click here to start">
+        <source>Click here to start</source>
+        <target>Klik egin hasteko</target>
+      </trans-unit>
+      <trans-unit id="msgTrue" resname="True">
+        <source>True</source>
+        <target>Egia</target>
+      </trans-unit>
+      <trans-unit id="msgFalse" resname="False">
+        <source>False</source>
+        <target>Gezurra</target>
+      </trans-unit>
+      <trans-unit id="msgNext" resname="Next">
+        <source>Next</source>
+        <target>Hurrengoa</target>
+      </trans-unit>
+      <trans-unit id="msgPrevious" resname="Previous">
+        <source>Previous</source>
+        <target>Aurrekoa</target>
+      </trans-unit>
+      <trans-unit id="msgSuggestion" resname="Suggestion">
+        <source>Suggestion</source>
+        <target>Gomendioa</target>
+      </trans-unit>
+      <trans-unit id="msgOnlySaveAuto" resname="Your score will be saved after each question. You can only play once.">
+        <source>Your score will be saved after each question. You can only play once.</source>
+        <target>Zure puntuazioa galdera bakoitzaren ondoren gordeko da. Bakarrik behin saiatu zaitezke.</target>
+      </trans-unit>
+      <trans-unit id="msgSaveAuto" resname="Your score will be automatically saved after each question.">
+        <source>Your score will be automatically saved after each question.</source>
+        <target>Galdera bakoitzaren ondoren zure puntuazioa automatikoki gordeko da.</target>
+      </trans-unit>
+      <trans-unit id="msgSeveralScore" resname="You can save the score as many times as you want">
+        <source>You can save the score as many times as you want</source>
+        <target>Puntuak nahi haina aldiz gorde dezakezu</target>
+      </trans-unit>
+      <trans-unit id="msgPlaySeveralTimes" resname="You can do this activity as many times as you want">
+        <source>You can do this activity as many times as you want</source>
+        <target>Jarduera hau nahi haina aldiz egin dezakezu</target>
+      </trans-unit>
+      <trans-unit id="msgTrueFalseHelp" resname="Select whether the statement is true or false">
+        <source>Select whether the statement is true or false</source>
+        <target>Aukeratu adierazpena egia edo gezurra den</target>
+      </trans-unit>
+      <trans-unit id="msgDropdownHelp" resname="Choose the correct answer among the options proposed">
+        <source>Choose the correct answer among the options proposed</source>
+        <target>Proposatutako aukeren artean erantzun zuzena aukeratu</target>
+      </trans-unit>
+      <trans-unit id="msgSingleSelectionHelp" resname="Multiple choice with only one correct answer">
+        <source>Multiple choice with only one correct answer</source>
+        <target>Erantzun zuzen bakarrareko aukera anitzeko galdera</target>
+      </trans-unit>
+      <trans-unit id="msgMultipleSelectionHelp" resname="Multiple choice with multiple corrects answers">
+        <source>Multiple choice with multiple corrects answers</source>
+        <target>Erantzun zuzen anitzeko aukera anitzeko galdera</target>
+      </trans-unit>
+      <trans-unit id="msgOption" resname="Option">
+        <source>Option</source>
+        <target>Aukera</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

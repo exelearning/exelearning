@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="eo" datatype="plaintext" original="file.ext">
+    <header>
+      <tool tool-id="symfony" tool-name="Symfony"/>
+    </header>
+    <body>
+      <trans-unit id="msgYouScore" resname="You scores is">
+        <source>You scores is</source>
+        <target>~Via poentaro estas</target>
+      </trans-unit>
+      <trans-unit id="msgScore" resname="Score">
+        <source>Score</source>
+        <target>~Poentaro</target>
+      </trans-unit>
+      <trans-unit id="msgWeight" resname="Weight">
+        <source>Weight</source>
+        <target>~Pezo</target>
+      </trans-unit>
+      <trans-unit id="msgYouLastScore" resname="The last score saved is">
+        <source>The last score saved is</source>
+        <target>~La lasta konservita poentaro estas</target>
+      </trans-unit>
+      <trans-unit id="msgOnlySaveScore" resname="You can only save the score once!">
+        <source>You can only save the score once!</source>
+        <target>~Vi povas konservi la poentaron nur unu fojon!</target>
+      </trans-unit>
+      <trans-unit id="msgOnlySave" resname="You can only save once">
+        <source>You can only save once</source>
+        <target>~Vi povas konservi nur unu fojon</target>
+      </trans-unit>
+      <trans-unit id="msgActityComply" resname="You have already done this activity.">
+        <source>You have already done this activity.</source>
+        <target>~Vi jam faris ĉi tiun agadon.</target>
+      </trans-unit>
+      <trans-unit id="msgUncompletedActivity" resname="Incomplete activity">
+        <source>Incomplete activity</source>
+        <target>~Netaŭga agado</target>
+      </trans-unit>
+      <trans-unit id="msgSuccessfulActivity" resname="Activity: Passed. Score: %s">
+        <source>Activity: Passed. Score: %s</source>
+        <target>~Aktivado: Pasis. Poentaro: %s</target>
+      </trans-unit>
+      <trans-unit id="msgUnsuccessfulActivity" resname="Activity: Not passed. Score: %s">
+        <source>Activity: Not passed. Score: %s</source>
+        <target>~Aktivado: Ne pasis. Poentaro: %s</target>
+      </trans-unit>
+      <trans-unit id="msgTypeGame" resname="Form">
+        <source>Form</source>
+        <target>~Formo</target>
+      </trans-unit>
+      <trans-unit id="msgStartGame" resname="Click here to start">
+        <source>Click here to start</source>
+        <target>~Klaku ĉi tie por komenci</target>
+      </trans-unit>
+      <trans-unit id="msgTime" resname="Time per question">
+        <source>Time per question</source>
+        <target>~Tempo po ĉiu demando</target>
+      </trans-unit>
+      <trans-unit id="msgSaveScore" resname="Save score">
+        <source>Save score</source>
+        <target>~Konservi poentaron</target>
+      </trans-unit>
+      <trans-unit id="msgResult" resname="Result">
+        <source>Result</source>
+        <target>~Rezulto</target>
+      </trans-unit>
+      <trans-unit id="msgCheck" resname="Check">
+        <source>Check</source>
+        <target>~Kontrolu</target>
+      </trans-unit>
+      <trans-unit id="msgReset" resname="Reset">
+        <source>Reset</source>
+        <target>~Rekomenci</target>
+      </trans-unit>
+      <trans-unit id="msgShowAnswers" resname="Show answers">
+        <source>Show answers</source>
+        <target>~Montri respondojn</target>
+      </trans-unit>
+      <trans-unit id="msgTestResultPass" resname="Congratulations! You passed the test">
+        <source>Congratulations! You passed the test</source>
+        <target>~Gratulon! Vi trapasis la teston</target>
+      </trans-unit>
+      <trans-unit id="msgTestResultNotPass" resname="Sorry. You failed the test">
+        <source>Sorry. You failed the test</source>
+        <target>~Pardonu. Vi malsukcesis la teston</target>
+      </trans-unit>
+      <trans-unit id="msgFillHelp" resname="Fill in the blanks with the appropriate word">
+        <source>Fill in the blanks with the appropriate word</source>
+        <target>~Plenigu la blankojn per la taŭga vorto</target>
+      </trans-unit>
+      <trans-unit id="msgPlayStart" resname="Click here to start">
+        <source>Click here to start</source>
+        <target>~Klaku ĉi tie por komenci</target>
+      </trans-unit>
+      <trans-unit id="msgTrue" resname="True">
+        <source>True</source>
+        <target>~Vero</target>
+      </trans-unit>
+      <trans-unit id="msgFalse" resname="False">
+        <source>False</source>
+        <target>~Falsa</target>
+      </trans-unit>
+      <trans-unit id="msgNext" resname="Next">
+        <source>Next</source>
+        <target>~Sekva</target>
+      </trans-unit>
+      <trans-unit id="msgPrevious" resname="Previous">
+        <source>Previous</source>
+        <target>~Antaŭa</target>
+      </trans-unit>
+      <trans-unit id="msgSuggestion" resname="Suggestion">
+        <source>Suggestion</source>
+        <target>~Sugesto</target>
+      </trans-unit>
+      <trans-unit id="msgOnlySaveAuto" resname="Your score will be saved after each question. You can only play once.">
+        <source>Your score will be saved after each question. You can only play once.</source>
+        <target>~Via poentaro estos konservita post ĉiu demando. Vi povas ludi nur unu fojon.</target>
+      </trans-unit>
+      <trans-unit id="msgSaveAuto" resname="Your score will be automatically saved after each question.">
+        <source>Your score will be automatically saved after each question.</source>
+        <target>~Via poentaro estos aŭtomate konservita post ĉiu demando.</target>
+      </trans-unit>
+      <trans-unit id="msgSeveralScore" resname="You can save the score as many times as you want">
+        <source>You can save the score as many times as you want</source>
+        <target>~Vi povas konservi la poentaron tiel ofte kiom vi volas</target>
+      </trans-unit>
+      <trans-unit id="msgPlaySeveralTimes" resname="You can do this activity as many times as you want">
+        <source>You can do this activity as many times as you want</source>
+        <target>~Vi povas fari ĉi tiun agon tiom da fojoj kiom vi volas</target>
+      </trans-unit>
+      <trans-unit id="msgTrueFalseHelp" resname="Select whether the statement is true or false">
+        <source>Select whether the statement is true or false</source>
+        <target>~Elektu ĉu la deklaro estas vera aŭ falsa</target>
+      </trans-unit>
+      <trans-unit id="msgDropdownHelp" resname="Choose the correct answer among the options proposed">
+        <source>Choose the correct answer among the options proposed</source>
+        <target>~Elektu la ĝustan respondon inter la proponitaj opcioj</target>
+      </trans-unit>
+      <trans-unit id="msgSingleSelectionHelp" resname="Multiple choice with only one correct answer">
+        <source>Multiple choice with only one correct answer</source>
+        <target>~Multnombra elekto kun nur unu ĝusta respondo</target>
+      </trans-unit>
+      <trans-unit id="msgMultipleSelectionHelp" resname="Multiple choice with multiple corrects answers">
+        <source>Multiple choice with multiple corrects answers</source>
+        <target>~Multnombra elekto kun pluraj ĝustaj respondoj</target>
+      </trans-unit>
+      <trans-unit id="msgOption" resname="Option">
+        <source>Option</source>
+        <target>Opcio</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>
