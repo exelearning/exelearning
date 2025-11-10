@@ -265,20 +265,20 @@ export default class ModalShare extends Modal {
                         <div class="dropdown">
                             <button class="share-person-menu-btn" type="button"
                                     data-bs-toggle="dropdown" aria-label="${_('More actions')}">
-                                <i class="auto-icon">more_vert</i>
+                                <div class="auto-icon">more_vert</div>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>
                                     <a class="dropdown-item share-action-make-owner"
                                        href="#" data-user-id="${user.id}" data-email="${this.escapeHtml(user.email)}">
-                                        <i class="auto-icon">person</i>
+                                        <div class="auto-icon">person</div>
                                         ${_('Make owner')}
                                     </a>
                                 </li>
                                 <li>
                                     <a class="dropdown-item share-action-remove"
                                        href="#" data-user-id="${user.id}" data-email="${this.escapeHtml(user.email)}">
-                                        <i class="auto-icon">person_remove</i>
+                                        <div class="auto-icon">person_remove</div>
                                         ${_('Remove access')}
                                     </a>
                                 </li>
@@ -658,7 +658,7 @@ export default class ModalShare extends Modal {
         // Update button appearance
         this.copyButton.classList.add('copied');
         this.copyButton.innerHTML = `
-            <i class="auto-icon">check</i>
+            <div class="auto-icon">check</div>
             <span>${_('Copied!')}</span>
         `;
 
