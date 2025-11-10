@@ -65,6 +65,7 @@ class Settings
         'text/javascript',
         'text/plain',
         'text/vtt',
+        'text/xml',
         'video/3gpp',
         'video/mp4',
         'video/mpeg',
