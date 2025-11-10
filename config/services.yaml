@@ -91,6 +91,7 @@ parameters:
     app.autosave_versions_to_keep: '%env(int:AUTOSAVE_VERSIONS_TO_KEEP)%'
     app.manual_save_versions_to_keep: '%env(int:MANUAL_SAVE_VERSIONS_TO_KEEP)%'
 
+
 services:
     Symfony\Component\DependencyInjection\ContainerInterface: '@service_container'
     # default configuration for services in *this* file
@@ -236,6 +237,7 @@ services:
             $sessionMaxInactiveHours: '%app.session_max_inactive_hours%'
             $autosaveVersionsToKeep: '%app.autosave_versions_to_keep%'
             $manualSaveVersionsToKeep: '%app.manual_save_versions_to_keep%'
+
 
     # Register custom Doctrine repositories as services
     App\Entity\Project\ProjectPropertyRepository:
