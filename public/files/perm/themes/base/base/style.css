@@ -517,6 +517,10 @@ button.toggler:focus {
 }
 
 /* Teacher mode */
+.page-header .form-switch {
+    float: right;
+    margin-top: 0;
+}
 #teacher-mode-toggler.form-check-input:checked {
     background-color: #078e8e;
     border-color: #078e8e;
