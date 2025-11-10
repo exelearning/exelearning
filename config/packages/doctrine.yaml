@@ -15,7 +15,6 @@ doctrine:
         # Specific configuration for the database (distinguish between databases)
         mapping_types:
             enum: string
-        use_savepoints: true
     orm:
         enable_native_lazy_objects: true
         naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
@@ -28,6 +27,5 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
-        report_fields_where_declared: true
         controller_resolver:
             auto_mapping: false

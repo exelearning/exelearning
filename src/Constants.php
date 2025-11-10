@@ -16,7 +16,7 @@ namespace App;
 class Constants
 {
     public const APP_VERSION = 'v0.0.0-alpha';
-    public const DEMO_EXPIRATION_DATE = '20251030'; // Expiration date for the offline beta versions: YYYYMMDD (empty for no expiration date)
+    public const DEMO_EXPIRATION_DATE = ''; // Expiration date for the offline beta versions: YYYYMMDD (empty for no expiration date)
 
     // Directories
     public const PUBLIC_DIR_NAME = 'public';
@@ -68,7 +68,6 @@ class Constants
 
     // Themes
     public const THEME_DEFAULT = 'base';
-    public const THEME_DEFAULT_CSS_FILE = 'content.css';
     public const THEME_GENERATED_CSS_FILE = 'generated.css';
     public const THEME_CONFIG_FILENAME = 'config.xml';
     public const THEME_ICONS_DIR = 'icons';
@@ -251,11 +250,13 @@ class Constants
     // ELP files extension
     public const ELP_FILES_AVAILABLE_EXTS = [
         self::FILE_EXTENSION_ELP,
+        self::FILE_EXTENSION_EPUB,
         self::FILE_EXTENSION_ZIP,
         'elp',
     ];
     public const ELP_LOCAL_FILES_AVAILABLE_EXTS = [
         self::FILE_EXTENSION_ELP,
+        self::FILE_EXTENSION_EPUB,
         self::FILE_EXTENSION_ZIP,
         self::FILE_EXTENSION_XML,
         self::IDEVICE_ELP_NAME,
@@ -325,7 +326,7 @@ class Constants
     // Constant to show modal already logged user (seconds)
     public const MODAL_CLIENT_ALREADY_LOGGED_USER_TIME = 30;
     // Client timeout for server response (milliseconds)
-    public const CLIENT_CALL_WAITING_TIME = 20000;
+    public const CLIENT_CALL_WAITING_TIME = 600000; // 10 minutes for large file operations
 
     // Client interval get last edition (milliseconds)
     public const CLIENT_INTERVAL_GET_LAST_EDITION = 20000;

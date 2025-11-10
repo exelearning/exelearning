@@ -7,40 +7,39 @@
  * License: http://creativecommons.org/licenses/by-sa/4.0/
  */
 var $exeDevice = {
-
     // ::: i18n :::
     // We use eXe's _function
     // iDevice name
     name: _('Text'),
     // Text area
-    textareaTitle: _("Text"),
+    textareaTitle: _('Text'),
     // Fieldsets
-    infoTitle: _("Task information (optional)"),
-    feedbackTitle: _("Feedback"),
+    infoTitle: _('Task information (optional)'),
+    feedbackTitle: _('Feedback'),
     // Inputs
-    feedbakInputTitle: _("Button text"),
-    infoDurationInputTitle: _("Estimated duration"),
-    infoDurationTextInputTitle: _("Text to display"),
-    infoParticipantsInputTitle: _("Participants"),
-    infoParticipantsTextInputTitle: _("Text to display"),
+    feedbakInputTitle: _('Button text'),
+    infoDurationInputTitle: _('Estimated duration'),
+    infoDurationTextInputTitle: _('Text to display'),
+    infoParticipantsInputTitle: _('Participants'),
+    infoParticipantsTextInputTitle: _('Text to display'),
 
     // ::: Identifiers of the fields used in the idevice :::
-    textareaId: "textTextarea",
-    feedbackId: "textFeedback",
-    feedbakInputId: "textFeedbackInput",
-    feedbackTextareaId: "textFeedbackTextarea",
-    infoId: "textInfo",
-    infoInputDurationId: "textInfoDurationInput",
-    infoInputDurationTextId: "textInfoDurationTextInput",
-    infoInputParticipantsId: "textInfoParticipantsInput",
-    infoInputParticipantsTextId: "textInfoParticipantsTextInput",
-    editorGroupId: "textEditorGroup",
+    textareaId: 'textTextarea',
+    feedbackId: 'textFeedback',
+    feedbakInputId: 'textFeedbackInput',
+    feedbackTextareaId: 'textFeedbackTextarea',
+    infoId: 'textInfo',
+    infoInputDurationId: 'textInfoDurationInput',
+    infoInputDurationTextId: 'textInfoDurationTextInput',
+    infoInputParticipantsId: 'textInfoParticipantsInput',
+    infoInputParticipantsTextId: 'textInfoParticipantsTextInput',
+    editorGroupId: 'textEditorGroup',
 
     // ::: iDevice default data :::
-    // Feedback 
+    // Feedback
     feedbakInputValue: c_('Show Feedback'),
     feedbakInputInstructions: '',
-    // Task information 
+    // Task information
     infoDurationInputValue: '',
     infoDurationInputPlaceholder: _('00:00'),
     infoDurationTextInputValue: _('Duration'),
@@ -76,7 +75,6 @@ var $exeDevice = {
      * @return {String}
      */
     save: function () {
-
         // Avoid crash when ideviceBody is undefined (deleted or not yet loaded)
         if (!this.ideviceBody || typeof this.ideviceBody === 'undefined') {
             return;
@@ -84,18 +82,19 @@ var $exeDevice = {
 
         let dataElements = this.ideviceBody.querySelectorAll(`[id^="text"]`);
 
-        dataElements.forEach(e => {
+        dataElements.forEach((e) => {
             if (e.nodeName === 'TEXTAREA' || e.nodeName === 'INPUT') {
                 this.dataIds.push(e.id);
             }
         });
 
-        this.dataIds.forEach(element => {
+        this.dataIds.forEach((element) => {
             if (element.includes('Textarea')) {
                 this[element] = tinymce.editors[element].getContent();
-            }
-            else if (element.includes('Input')) {
-                this[element] = this.ideviceBody.querySelector(`#${element}`).value;
+            } else if (element.includes('Input')) {
+                this[element] = this.ideviceBody.querySelector(
+                    `#${element}`
+                ).value;
             }
         });
 
@@ -112,7 +111,6 @@ var $exeDevice = {
      *
      */
     createForm: function () {
-
         let html = `<div id="textForm">`;
         html += this.createEditorGroup();
         html += `</div>`;
@@ -130,8 +128,8 @@ var $exeDevice = {
      * @returns {Boolean}
      */
     checkFormValues: function () {
-        if (this.text == "") {
-            eXe.app.alert(_("Please write some text."));
+        if (this.text == '') {
+            eXe.app.alert(_('Please write some text.'));
             return false;
         }
         return true;
@@ -145,20 +143,25 @@ var $exeDevice = {
     getDataJson: function () {
         let data = {};
 
-        data.ideviceId = this.ideviceBody.getAttribute("idevice-id");
+        data.ideviceId = this.ideviceBody.getAttribute('idevice-id');
 
-        this.dataIds.forEach(key => data[key] = this[key]);
+        this.dataIds.forEach((key) => (data[key] = this[key]));
 
         return data;
     },
 
     loadPreviousValues: function () {
         function isValid(val) {
-            return val != null && !(typeof val === 'string' && val.trim() === '');
+            return (
+                val != null && !(typeof val === 'string' && val.trim() === '')
+            );
         }
-        
+
         // Avoid crash when idevicePreviousData is undefined (deleted or not yet loaded)
-        if (!this.idevicePreviousData || typeof this.idevicePreviousData === 'undefined') {
+        if (
+            !this.idevicePreviousData ||
+            typeof this.idevicePreviousData === 'undefined'
+        ) {
             return;
         }
 
@@ -167,19 +170,20 @@ var $exeDevice = {
             [this.infoInputDurationId]: this.infoDurationInputValue,
             [this.infoInputDurationTextId]: this.infoDurationTextInputValue,
             [this.infoInputParticipantsId]: this.infoParticipantsInputValue,
-            [this.infoInputParticipantsTextId]: this.infoParticipantsTextInputValue,
+            [this.infoInputParticipantsTextId]:
+                this.infoParticipantsTextInputValue,
             [this.feedbakInputId]: this.feedbakInputValue,
-            [this.feedbackTextareaId]: this.feedbakInputInstructions
+            [this.feedbackTextareaId]: this.feedbakInputInstructions,
         };
 
         const unionKeys = new Set([
             ...Object.keys(defaults),
-            ...Object.keys(data)
+            ...Object.keys(data),
         ]);
 
         const finalValues = {};
-        unionKeys.forEach(key => {
-            if (!key || key === "ideviceId") return;   // descartamos si no es relevante
+        unionKeys.forEach((key) => {
+            if (!key || key === 'ideviceId') return; // descartamos si no es relevante
 
             const orig = data[key];
             const hasDefault = defaults.hasOwnProperty(key);
@@ -197,29 +201,32 @@ var $exeDevice = {
             const el = this.ideviceBody.querySelector(`#${key}`);
             if (!el) continue;
 
-            if (el.tagName === "TEXTAREA" || key.toLowerCase().includes("textarea")) {
+            if (
+                el.tagName === 'TEXTAREA' ||
+                key.toLowerCase().includes('textarea')
+            ) {
                 $(el).val(val);
                 if (`${key}` == this.feedbackTextareaId && val != '') {
-                    $("#" + this.feedbackId).removeClass("exe-fieldset-closed").addClass("exe-fieldset-open")
+                    $('#' + this.feedbackId)
+                        .removeClass('exe-fieldset-closed')
+                        .addClass('exe-fieldset-open');
                 }
-            } else if (el.tagName === "INPUT") {
+            } else if (el.tagName === 'INPUT') {
                 const useTranslation = isValid(data[key]);
                 const displayValue = useTranslation ? c_(val) : val;
-                el.setAttribute("value", displayValue);
-
+                el.setAttribute('value', displayValue);
             } else {
                 el.textContent = val;
             }
         }
     },
 
-
     /**
      * Set events to form
      *
      */
     setBehaviour: function () {
-        $exeTinyMCE.init("multiple-visible", ".exe-html-editor");
+        $exeTinyMCE.init('multiple-visible', '.exe-html-editor');
     },
 
     /**
@@ -228,18 +235,57 @@ var $exeDevice = {
      */
     createEditorGroup: function () {
         let infoContent = `<div>`;
-        infoContent += this.createInputHTML(this.infoInputDurationId, this.infoDurationInputTitle, '', this.infoDurationInputValue, this.infoDurationInputPlaceholder);
-        infoContent += this.createInputHTML(this.infoInputDurationTextId, this.infoDurationTextInputTitle, '', this.infoDurationTextInputValue + ':', '');
+        infoContent += this.createInputHTML(
+            this.infoInputDurationId,
+            this.infoDurationInputTitle,
+            '',
+            this.infoDurationInputValue,
+            this.infoDurationInputPlaceholder
+        );
+        infoContent += this.createInputHTML(
+            this.infoInputDurationTextId,
+            this.infoDurationTextInputTitle,
+            '',
+            this.infoDurationTextInputValue + ':',
+            ''
+        );
         infoContent += `</div>`;
         infoContent += `<div>`;
-        infoContent += this.createInputHTML(this.infoInputParticipantsId, this.infoParticipantsInputTitle, '', this.infoParticipantsInputValue, this.infoParticipantsInputPlaceholder);
-        infoContent += this.createInputHTML(this.infoInputParticipantsTextId, this.infoParticipantsTextInputTitle, '', this.infoParticipantsTextInputValue + ':', '');
+        infoContent += this.createInputHTML(
+            this.infoInputParticipantsId,
+            this.infoParticipantsInputTitle,
+            '',
+            this.infoParticipantsInputValue,
+            this.infoParticipantsInputPlaceholder
+        );
+        infoContent += this.createInputHTML(
+            this.infoInputParticipantsTextId,
+            this.infoParticipantsTextInputTitle,
+            '',
+            this.infoParticipantsTextInputValue + ':',
+            ''
+        );
         infoContent += `</div>`;
-        let newInfo = this.createInformationFieldsetHTML(this.infoId, this.infoTitle, '', infoContent);
+        let newInfo = this.createInformationFieldsetHTML(
+            this.infoId,
+            this.infoTitle,
+            '',
+            infoContent
+        );
 
-        let feedbackContent = this.createInputHTML(this.feedbakInputId, this.feedbakInputTitle, this.feedbakInputInstructions, this.feedbakInputValue);
+        let feedbackContent = this.createInputHTML(
+            this.feedbakInputId,
+            this.feedbakInputTitle,
+            this.feedbakInputInstructions,
+            this.feedbakInputValue
+        );
         feedbackContent += this.createTextareaHTML(this.feedbackTextareaId);
-        let newFeedback = this.createFieldsetHTML(this.feedbackId, this.feedbackTitle, '', feedbackContent);
+        let newFeedback = this.createFieldsetHTML(
+            this.feedbackId,
+            this.feedbackTitle,
+            '',
+            feedbackContent
+        );
 
         let content = ``;
         content += `<div class="exe-parent">`;
@@ -275,10 +321,10 @@ var $exeDevice = {
      * @returns {String}
      */
     createTextareaHTML: function (id, title, icons, classExtra, value) {
-        let titleText = title ? title : "";
-        let iconsText = icons ? icons : "";
-        let classExtraText = classExtra ? classExtra : "";
-        let valueText = value ? value : "";
+        let titleText = title ? title : '';
+        let iconsText = icons ? icons : '';
+        let classExtraText = classExtra ? classExtra : '';
+        let valueText = value ? value : '';
         return `
       <div class="exe-field exe-text-field ${classExtraText}">
         <div>
@@ -301,7 +347,7 @@ var $exeDevice = {
      */
 
     createInformationFieldsetHTML: function (id, title, affix, content) {
-        let affixText = affix ? affix : "";
+        let affixText = affix ? affix : '';
         return `
       <fieldset id="${id}" class="exe-advanced exe-fieldset exe-fieldset-closed">
         <legend class="exe-text-legend">
@@ -325,7 +371,7 @@ var $exeDevice = {
      */
 
     createFieldsetHTML: function (id, title, affix, content) {
-        let affixText = affix ? affix : "";
+        let affixText = affix ? affix : '';
         return `
       <fieldset id="${id}" class="exe-advanced exe-fieldset exe-fieldset-closed">
         <legend class="exe-text-legend">
@@ -348,13 +394,17 @@ var $exeDevice = {
      */
 
     createInputHTML: function (id, title, instructions, value, placeholder) {
-        let instructionsSpan = instructions ? `<span class="exe-field-instructions">${instructions}</span>` : "";
-        let placeholderAttrib = placeholder ? `placeholder="${placeholder}"` : "";
+        let instructionsSpan = instructions
+            ? `<span class="exe-field-instructions">${instructions}</span>`
+            : '';
+        let placeholderAttrib = placeholder
+            ? `placeholder="${placeholder}"`
+            : '';
         return `
       <div class="exe-field exe-text-field">
         <label for="${id}">${title}:</label>
         <input type="text" value="${value}" ${placeholderAttrib} class="ideviceTextfield" name="${id}" id="${id}" onfocus="this.select()" />
         ${instructionsSpan}
       </div>`;
-    }
-}
+    },
+};

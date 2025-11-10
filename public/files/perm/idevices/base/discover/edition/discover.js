@@ -31,7 +31,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
@@ -61,27 +61,47 @@ var $exeDevice = {
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
             msgLoseT: c_('You lost 330 points'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
             msgYouScore: c_('Your score'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgAudio: c_('Audio'),
             msgAuthor: c_('Authorship'),
             msgReboot: c_('Restart'),
             msgTimeOver: c_('Time is up. Please try again'),
-            msgAllAttemps: c_('You finished all the attempts! Please try again'),
+            msgAllAttemps: c_(
+                'You finished all the attempts! Please try again'
+            ),
             mgsAllCards: c_('You found all the pairs!'),
             mgsAllTrios: c_('You found all the trios!'),
             mgsAllQuartets: c_('You found all the quartets!'),
@@ -107,40 +127,40 @@ var $exeDevice = {
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgTypeGame: c_('Discover'),
-        }
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
 
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image',
+            'You must upload or indicate the valid URL of an image'
         );
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgTypeChoose = _(
-            'Please check all the answers in the right order',
+            'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgFewAttempts = _(
-            'The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts',
+            'The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts'
         );
         msgs.msgCompleteData = _(
-            'You must indicate an image, a text or/and an audio for each card',
+            'You must indicate an image, a text or/and an audio for each card'
         );
         msgs.msgPairsMax = _('Maximum number of pairs: 20');
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
         msgs.msgTitleAltImageWarning = _('Accessibility warning'); //eXe 3.0
         msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.',
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
         ); //eXe 3.0
     },
 
@@ -442,7 +462,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#descubreEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#descubreEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -472,22 +492,26 @@ var $exeDevice = {
             $('#descubreEURLAudio-' + k).val(p.audio);
             $exeDevice.showImage(p.url, p.x, p.y, p.alt, k);
             $('#descubreETextDiv-' + k).css({
-                'color': p.color,
+                color: p.color,
                 'background-color': $exeDevice.hexToRgba(p.backcolor),
             });
         }
         $('#descubreEMessageOK').val(q.msgHit);
         $('#descubreEMessageKO').val(q.msgError);
         $('#descubreENumberQuestion').text(i + 1);
-
     },
 
     hexToRgba: function (hex) {
-        hex = hex.replace(/^#/, '')
-        if (!/^[\da-f]{3}([\da-f]{3})?$/i.test(hex)) throw new Error('Color hexadecimal inválido')
-        if (hex.length === 3) hex = [...hex].map(c => c + c).join('')
-        const [r, g, b] = [hex.slice(0, 2), hex.slice(2, 4), hex.slice(4, 6)].map(v => parseInt(v, 16))
-        return `rgba(${r}, ${g}, ${b}, 0.7)`
+        hex = hex.replace(/^#/, '');
+        if (!/^[\da-f]{3}([\da-f]{3})?$/i.test(hex))
+            throw new Error('Color hexadecimal inválido');
+        if (hex.length === 3) hex = [...hex].map((c) => c + c).join('');
+        const [r, g, b] = [
+            hex.slice(0, 2),
+            hex.slice(2, 4),
+            hex.slice(4, 6),
+        ].map((v) => parseInt(v, 16));
+        return `rgba(${r}, ${g}, ${b}, 0.7)`;
     },
 
     initQuestions: function () {
@@ -542,7 +566,7 @@ var $exeDevice = {
             json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
 
             const dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $imagesLink0 = $('.descubre-LinkImages-0', wrapper),
                 $audiosLink0 = $('.descubre-LinkAudios-0', wrapper),
                 $imagesLink1 = $('.descubre-LinkImages-1', wrapper),
@@ -552,7 +576,6 @@ var $exeDevice = {
                 $imagesLink3 = $('.descubre-LinkImages-3', wrapper),
                 $audiosLink3 = $('.descubre-LinkAudios-3', wrapper),
                 $imageBack = $('.descubre-ImageBack', wrapper),
-
                 linkImages = [
                     $imagesLink0,
                     $imagesLink1,
@@ -579,9 +602,7 @@ var $exeDevice = {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < dataGame.wordsGame.length) {
                         dataGame.wordsGame[iq].url0 = $(this).attr('href');
-                        if (
-                            dataGame.wordsGame[iq].url0.length < 4
-                        ) {
+                        if (dataGame.wordsGame[iq].url0.length < 4) {
                             dataGame.wordsGame[iq].url0 = '';
                         }
                     }
@@ -601,9 +622,7 @@ var $exeDevice = {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < dataGame.wordsGame.length) {
                         dataGame.wordsGame[iq].url1 = $(this).attr('href');
-                        if (
-                            dataGame.wordsGame[iq].url1.length < 4
-                        ) {
+                        if (dataGame.wordsGame[iq].url1.length < 4) {
                             dataGame.wordsGame[iq].url1 = '';
                         }
                     }
@@ -623,9 +642,7 @@ var $exeDevice = {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < dataGame.wordsGame.length) {
                         dataGame.wordsGame[iq].url2 = $(this).attr('href');
-                        if (
-                            dataGame.wordsGame[iq].url2.length < 4
-                        ) {
+                        if (dataGame.wordsGame[iq].url2.length < 4) {
                             dataGame.wordsGame[iq].url2 = '';
                         }
                     }
@@ -645,9 +662,7 @@ var $exeDevice = {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < dataGame.wordsGame.length) {
                         dataGame.wordsGame[iq].url3 = $(this).attr('href');
-                        if (
-                            dataGame.wordsGame[iq].url3.length < 4
-                        ) {
+                        if (dataGame.wordsGame[iq].url3.length < 4) {
                             dataGame.wordsGame[iq].url3 = '';
                         }
                     }
@@ -748,7 +763,7 @@ var $exeDevice = {
             if (textFeedBack.length == 1)
                 $('#descubreEFeedBackEditor').val(textFeedBack.html());
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.showQuestion(0);
         }
@@ -781,7 +796,6 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame),
             divContent = '';
-
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
@@ -820,7 +834,6 @@ var $exeDevice = {
                 '<div class="descubre-extra-content">' + textAfter + '</div>';
         }
 
-
         html +=
             '<div class="descubre-bns js-hidden">' +
             $exeDevice.msgs.msgNoSuportBrowser +
@@ -839,10 +852,10 @@ var $exeDevice = {
             function () {
                 $exeDevice.checkAltImage = false;
                 const saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
         return false;
     },
@@ -976,19 +989,20 @@ var $exeDevice = {
             textFeedBack = tinyMCE.get('descubreEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#descubreEShowMinimize').is(':checked'),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#descubreECaseSensitive').is(':checked'),
             feedBack = $('#descubreEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#descubreEPercentajeFB').val())),
             customMessages = $('#descubreECustomMessages').is(':checked'),
             showCards = $('#descubreEShowCards').is(':checked'),
             percentajeQuestions = parseInt(
-                clear($('#descubreEPercentajeQuestions').val()),
+                clear($('#descubreEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#descubreETime').val())),
             attempts = parseInt(clear($('#descubreEAttempts').val())),
             timeShowSolution = parseInt(
-                clear($('#descubreETimeShowSolution').val()),
+                clear($('#descubreETimeShowSolution').val())
             ),
             author = $('#descubreEAuthor').val(),
             showSolution = $('#descubreEShowSolution').is(':checked'),
@@ -1013,12 +1027,12 @@ var $exeDevice = {
 
         if (gameLevels == 3 && wordsGame.length < 3) {
             $exeDevice.showMessage(
-                'Para un juego con tres niveles de dificultad necesita al menos tres cuestiones',
+                'Para un juego con tres niveles de dificultad necesita al menos tres cuestiones'
             );
             return false;
         } else if (gameLevels == 2 && wordsGame.length < 2) {
             $exeDevice.showMessage(
-                'Para un juego con dos niveles de dificultad necesita al menos dos cuestiones',
+                'Para un juego con dos niveles de dificultad necesita al menos dos cuestiones'
             );
             return false;
         }
@@ -1116,7 +1130,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
@@ -1177,7 +1191,9 @@ var $exeDevice = {
         // Inicializar toggles (ARIA + data-target)
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            $input.closest('.toggle-item[role="switch"]').attr('aria-checked', checked);
+            $input
+                .closest('.toggle-item[role="switch"]')
+                .attr('aria-checked', checked);
             const targetSel = $input.data('target');
             if (targetSel) {
                 const $target = $(targetSel);
@@ -1188,8 +1204,12 @@ var $exeDevice = {
                 }
             }
         };
-        $('.toggle-input').each(function(){ initToggle($(this)); });
-        $(document).on('change', '.toggle-input', function(){ initToggle($(this)); });
+        $('.toggle-input').each(function () {
+            initToggle($(this));
+        });
+        $(document).on('change', '.toggle-input', function () {
+            initToggle($(this));
+        });
         $('#descubreEPaste').hide();
         $('input.Descubre-GameMode').on('click', function () {
             $('#descubreEDatosCarta-2').hide();
@@ -1202,8 +1222,6 @@ var $exeDevice = {
                 $('#descubreEDatosCarta-3').show();
             }
         });
-
-
 
         $('#descubreEAdd').on('click', function (e) {
             e.preventDefault();
@@ -1457,18 +1475,30 @@ var $exeDevice = {
         });
 
         $('#descubreEBackColor-0').on('change', function () {
-            $('#descubreETextDiv-0').css('background-color', $exeDevice.hexToRgba($(this).val()));
+            $('#descubreETextDiv-0').css(
+                'background-color',
+                $exeDevice.hexToRgba($(this).val())
+            );
         });
 
         $('#descubreEBackColor-1').on('change', function () {
-            $('#descubreETextDiv-1').css('background-color', $exeDevice.hexToRgba($(this).val()));
+            $('#descubreETextDiv-1').css(
+                'background-color',
+                $exeDevice.hexToRgba($(this).val())
+            );
         });
         $('#descubreEBackColor-2').on('change', function () {
-            $('#descubreETextDiv-2').css('background-color', $exeDevice.hexToRgba($(this).val()));
+            $('#descubreETextDiv-2').css(
+                'background-color',
+                $exeDevice.hexToRgba($(this).val())
+            );
         });
 
         $('#descubreEBackColor-3').on('change', function () {
-            $('#descubreETextDiv-3').css('background-color', $exeDevice.hexToRgba($(this).val()));
+            $('#descubreETextDiv-3').css(
+                'background-color',
+                $exeDevice.hexToRgba($(this).val())
+            );
         });
 
         $('#descubreEColor-0').on('change', function () {
@@ -1558,7 +1588,7 @@ var $exeDevice = {
         });
 
         $('#descubreEURLImgCard').on('change', () =>
-            $exeDevice.loadImageCard(),
+            $exeDevice.loadImageCard()
         );
 
         $('#descubreEPlayCard').on('click', (e) => {
@@ -1568,7 +1598,7 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
-            $exeDevice.insertCards,
+            $exeDevice.insertCards
         );
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
@@ -1583,7 +1613,6 @@ var $exeDevice = {
         const lines = content.split('\n');
         $exeDevice.insertCards(lines);
     },
-
 
     insertCards: function (lines) {
         const lineFormat = /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/,
@@ -1614,7 +1643,7 @@ var $exeDevice = {
         if (types[gameMode] > 0) {
             $("input[name='qtxgamemode'][value='" + gameMode + "']").prop(
                 'checked',
-                true,
+                true
             );
             $('#descubreEDatosCarta-2').hide();
             $('#descubreEDatosCarta-3').hide();
@@ -1669,7 +1698,7 @@ var $exeDevice = {
                 });
                 const bktext = {
                     eTextBk: $exeDevice.removeTags(
-                        $question.find('questiontext').first().text().trim(),
+                        $question.find('questiontext').first().text().trim()
                     ),
                     eText: $exeDevice.removeTags(eText),
                 };
@@ -1707,7 +1736,7 @@ var $exeDevice = {
     addCards: function (cards) {
         if (!cards || cards.length == 0) {
             eXe.app.alert(
-                _('Sorry, there are no questions for this type of activity.'),
+                _('Sorry, there are no questions for this type of activity.')
             );
             return;
         }
@@ -1719,18 +1748,14 @@ var $exeDevice = {
         $('.exe-form-tabs li:first-child a').click();
     },
 
-
     loadImageCard: function () {
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
             url = $('#descubreEURLImgCard').val(),
             ext = url.split('.').pop().toLowerCase();
 
-        if (
-            (url.indexOf('files') == 0) &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
         }
@@ -1753,7 +1778,6 @@ var $exeDevice = {
                 ) {
                     return false;
                 } else {
-
                     $image.show();
                     $nimage.hide();
                     return true;
@@ -1764,7 +1788,6 @@ var $exeDevice = {
             });
     },
 
-
     loadImage: function (number, url) {
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
             selectedFile = url,
@@ -1773,12 +1796,9 @@ var $exeDevice = {
             x = parseFloat($('#descubreEXImage-' + number).val()),
             y = parseFloat($('#descubreEYImage-' + number).val());
 
-        if (
-            (selectedFile.indexOf('files') == 0) &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (selectedFile.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg webp'
             );
             return false;
         }
@@ -1796,10 +1816,7 @@ var $exeDevice = {
         const validExt = ['mp3', 'ogg', 'waw'],
             ext = url.split('.').pop().toLowerCase();
 
-        if (
-            (url.indexOf('files') == 0) &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, waw');
             return false;
         } else {
@@ -1842,11 +1859,11 @@ var $exeDevice = {
             $('#descubreEColor-' + i).val('#000000');
             $('#descubreEBackColor-' + i).val('#ffffff');
             $('#descubreETextDiv-' + i).css({
-                'color': '#000000',
+                color: '#000000',
                 'background-color': $exeDevice.hexToRgba('#ffffff'),
             });
 
-            $exeDevice.showImage('', 0, 0, _('No image'), i)
+            $exeDevice.showImage('', 0, 0, _('No image'), i);
         }
         $exeDevice.stopSound();
     },
@@ -1890,7 +1907,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.wordsGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.wordsGame[$exeDevice.active])
             );
             $('#descubreEPaste').show();
         }
@@ -1922,7 +1939,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.wordsGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showQuestion($exeDevice.active);
             $('#descubreENumQuestions').text($exeDevice.wordsGame.length);
@@ -1966,7 +1983,9 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.percentajeFB =
             typeof game.percentajeFB != 'undefined' ? game.percentajeFB : 100;
         game.feedBack =
@@ -2013,11 +2032,11 @@ var $exeDevice = {
         $('#descubreEShowSolution').prop('checked', game.showSolution);
         $("input[name='qtxgamemode'][value='" + game.gameMode + "']").prop(
             'checked',
-            true,
+            true
         );
         $("input[name='qtxgamelevels'][value='" + game.gameLevels + "']").prop(
             'checked',
-            true,
+            true
         );
 
         if (game.gameMode == 1) {
@@ -2034,11 +2053,11 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
-        $('#descubreEURLImgCard').val(game.imgCard)
+        $('#descubreEURLImgCard').val(game.imgCard);
 
-        $exeDevice.showImageCard(game.imgCard)
+        $exeDevice.showImageCard(game.imgCard);
 
         $exeDevice.showSelectOrder(game.customMessages);
 
@@ -2142,7 +2161,7 @@ var $exeDevice = {
         if (types[gameMode] > 0) {
             $("input[name='qtxgamemode'][value='" + gameMode + "']").prop(
                 'checked',
-                true,
+                true
             );
             $('#descubreEDatosCarta-2').hide();
             $('#descubreEDatosCarta-3').hide();
@@ -2173,7 +2192,6 @@ var $exeDevice = {
             ) {
                 $exeDevice.importMoodle(content);
             }
-
         } else {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
         }
@@ -2195,7 +2213,7 @@ var $exeDevice = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,

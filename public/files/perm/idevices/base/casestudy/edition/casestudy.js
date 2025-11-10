@@ -29,18 +29,18 @@ var $exeDevice = {
             <div id="textEditorGroup_parent" class="exe-parent">
                 <fieldset id="textInfo" class="exe-advanced exe-fieldset exe-fieldset-closed mb-4 rounded">
                     <legend class="exe-text-legend h6 mb-3">
-                        <a href="#" class="text-decoration-none">${_("Task information (optional)")}</a>
+                        <a href="#" class="text-decoration-none">${_('Task information (optional)')}</a>
                     </legend>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="cseDurationValue" class="form-label">${_("Task information (optional)")}:</label>
+                                <label for="cseDurationValue" class="form-label">${_('Task information (optional)')}:</label>
                                 <input type="text" id="cseDurationValue" name="textInfoDurationInput"
                                     class="form-control" placeholder="${_('00:00')}" value=""
                                     onfocus="this.select()">
                             </div>
                             <div class="mb-3">
-                                <label for="cseDurationText" class="form-label">${_("Text to display")}:</label>
+                                <label for="cseDurationText" class="form-label">${_('Text to display')}:</label>
                                 <input type="text" id="cseDurationText" name="textInfoDurationTextInput"
                                     class="form-control" value="${_('Duration')}"
                                     onfocus="this.select()">
@@ -54,7 +54,7 @@ var $exeDevice = {
                                     onfocus="this.select()">
                             </div>
                             <div class="mb-3">
-                                <label for="cseParticipantsText" class="form-label">${_("Text to display")}:</label>
+                                <label for="cseParticipantsText" class="form-label">${_('Text to display')}:</label>
                                 <input type="text" id="cseParticipantsText" name="textInfoParticipantsTextInput"
                                     class="form-control" value="${_('Grouping')}"
                                     onfocus="this.select()">
@@ -65,7 +65,7 @@ var $exeDevice = {
 
                 <fieldset id="textStory" class="exe-advanced exe-fieldset exe-fieldset-open mb-4 rounded">
                     <legend class="exe-text-legend h6 mb-3">
-                        <a href="#" class="text-decoration-none">${_("History")}</a>
+                        <a href="#" class="text-decoration-none">${_('History')}</a>
                     </legend>
                     <div class="mb-3">
                         <textarea id="textStoryTextarea" class="form-control exe-html-editor" rows="5" aria-hidden="true"></textarea>
@@ -73,14 +73,14 @@ var $exeDevice = {
                 </fieldset>
                 <fieldset id="textActivities" class="exe-advanced exe-fieldset exe-fieldset-open mb-4 rounded">
                     <legend class="exe-text-legend h6 mb-3">
-                        <a href="#" class="text-decoration-none">${_("Activities")}</a>
+                        <a href="#" class="text-decoration-none">${_('Activities')}</a>
                     </legend>
                     <div id="cseActivities" class="CSE-Activities mb-3">
                         ${this.getActivity()}
                     </div>
                     <div>
                         <button type="button" id="cseAddActivity" class="btn btn-primary">
-                            ${_("Add activity")}
+                            ${_('Add activity')}
                         </button>
                     </div>
                 </fieldset>
@@ -93,7 +93,12 @@ var $exeDevice = {
         this.enable();
     },
 
-    createInfoHTML(durationText, durationValue, participantsText, participantsValue) {
+    createInfoHTML(
+        durationText,
+        durationValue,
+        participantsText,
+        participantsValue
+    ) {
         return `
             <dl>
                 <div class="inline"><dt><span title="${durationText}">${durationText}</span></dt><dd>${durationValue}</dd></div>
@@ -107,11 +112,11 @@ var $exeDevice = {
         <div class="CSE-Activity mb-4  rounded" data-activity-id="${id}">        
             <div class="mb-4">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <label for="activityTextarea-${id}" class="form-label mb-0">${_("Activity")}:</label>
+                    <label for="activityTextarea-${id}" class="form-label mb-0">${_('Activity')}:</label>
                     <button type="button"
                             class="btn btn-danger btn-sm text-white rounded-pill px-3 py-1 CSE-DeleteActivity"
-                            title="${_("Delete activity")}">
-                     ${_("Delete")}
+                            title="${_('Delete activity')}">
+                     ${_('Delete')}
                     </button>
                 </div>            
                 <textarea id="activityTextarea-${id}"
@@ -121,7 +126,7 @@ var $exeDevice = {
                 </textarea>
             </div>
             <div class="mb-4">
-                <label for="activityButtonTextInput-${id}" class="form-label">${_("Button text")}:</label>
+                <label for="activityButtonTextInput-${id}" class="form-label">${_('Button text')}:</label>
                 <input type="text"
                     id="activityButtonTextInput-${id}"
                     class="form-control ideviceTextfield"
@@ -130,7 +135,7 @@ var $exeDevice = {
                     style="max-width:250px">
             </div>
             <div class="mb-0">
-                <label for="activityFeedbackTextarea-${id}" class="form-label">${_("Feedback")}:</label>
+                <label for="activityFeedbackTextarea-${id}" class="form-label">${_('Feedback')}:</label>
                 <textarea id="activityFeedbackTextarea-${id}"
                           class="form-control exe-html-editor"
                           aria-hidden="true"
@@ -154,7 +159,7 @@ var $exeDevice = {
     })(),
 
     enable: function () {
-        this.loadPreviousValues()
+        this.loadPreviousValues();
         this.addEvents();
     },
 
@@ -162,20 +167,25 @@ var $exeDevice = {
         const self = this;
         $('#cseAddActivity').on('click', function () {
             $('#cseActivities').append(self.getActivity());
-            $exeTinyMCE.init("multiple-visible", ".exe-html-editor");
+            $exeTinyMCE.init('multiple-visible', '.exe-html-editor');
         });
 
         $('#cseActivities').on('click', '.CSE-DeleteActivity', function () {
             const $activities = $('#cseActivities .CSE-Activity');
             if ($activities.length > 1) {
-                eXe.app.confirm(_("Attention"), _('Do you want to delete this activity?'), () => {
-                    $(this).closest('.CSE-Activity').remove();
-                });
+                eXe.app.confirm(
+                    _('Attention'),
+                    _('Do you want to delete this activity?'),
+                    () => {
+                        $(this).closest('.CSE-Activity').remove();
+                    }
+                );
             } else {
-                eXe.app.alert(_('The case study must have at least one activity'));
+                eXe.app.alert(
+                    _('The case study must have at least one activity')
+                );
             }
         });
-
     },
     loadPreviousValues: function () {
         const data = this.idevicePreviousData;
@@ -188,25 +198,36 @@ var $exeDevice = {
 
         const $container = $('#cseActivities').empty();
 
-        data.activities.forEach(act => {
+        data.activities.forEach((act) => {
             const $activity = $(this.getActivity());
-            const txtId = $activity.find('textarea[id^="activityTextarea-"]').attr('id');
-            const fbId = $activity.find('textarea[id^="activityFeedbackTextarea-"]').attr('id');
-            const btnId = $activity.find('input[id^="activityButtonTextInput-"]').attr('id');
+            const txtId = $activity
+                .find('textarea[id^="activityTextarea-"]')
+                .attr('id');
+            const fbId = $activity
+                .find('textarea[id^="activityFeedbackTextarea-"]')
+                .attr('id');
+            const btnId = $activity
+                .find('input[id^="activityButtonTextInput-"]')
+                .attr('id');
             $activity.find(`#${txtId}`).val(act.activity);
             $activity.find(`#${fbId}`).val(act.feedback);
             $activity.find(`#${btnId}`).val(act.buttonCaption);
             $container.append($activity);
         });
 
-        const $title = $('#' + $exeDevice.id).closest('article').find('header h1.box-title');
-        if (data.title && data.title == 'Case Study' && $title.text() == 'Case Study') {
-            $title.text(_('Case study'))
+        const $title = $('#' + $exeDevice.id)
+            .closest('article')
+            .find('header h1.box-title');
+        if (
+            data.title &&
+            data.title == 'Case Study' &&
+            $title.text() == 'Case Study'
+        ) {
+            $title.text(_('Case study'));
         }
-        
-        $exeTinyMCE.init("multiple-visible", ".exe-html-editor");
-    },
 
+        $exeTinyMCE.init('multiple-visible', '.exe-html-editor');
+    },
 
     save: function () {
         const dataGame = this.validateData();
@@ -226,14 +247,20 @@ var $exeDevice = {
         const activities = [];
         $('#cseActivities .CSE-Activity').each(function () {
             const $act = $(this);
-            const textareaId = $act.find('textarea[id^="activityTextarea-"]').attr('id');
-            const fbareaId = $act.find('textarea[id^="activityFeedbackTextarea-"]').attr('id');
+            const textareaId = $act
+                .find('textarea[id^="activityTextarea-"]')
+                .attr('id');
+            const fbareaId = $act
+                .find('textarea[id^="activityFeedbackTextarea-"]')
+                .attr('id');
             const btnInput = $act.find('input[id^="activityButtonTextInput-"]');
 
             const activityEditor = tinymce.get(textareaId);
             const feedbackEditor = tinymce.get(fbareaId);
 
-            const actTextPlain = activityEditor.getContent({ format: 'text' }).trim();
+            const actTextPlain = activityEditor
+                .getContent({ format: 'text' })
+                .trim();
             if (!actTextPlain) {
                 eXe.app.alert(_('You must provide the text for each activity'));
                 valid = false;
@@ -255,8 +282,12 @@ var $exeDevice = {
 
         const textInfoDurationInput = $('#cseDurationValue').val().trim();
         const textInfoDurationTextInput = $('#cseDurationText').val().trim();
-        const textInfoParticipantsInput = $('#cseParticipantsvalue').val().trim();
-        const textInfoParticipantsTextInput = $('#cseParticipantsText').val().trim();
+        const textInfoParticipantsInput = $('#cseParticipantsvalue')
+            .val()
+            .trim();
+        const textInfoParticipantsTextInput = $('#cseParticipantsText')
+            .val()
+            .trim();
 
         return {
             id: this.id,
@@ -266,7 +297,7 @@ var $exeDevice = {
             textInfoDurationTextInput,
             textInfoParticipantsInput,
             textInfoParticipantsTextInput,
-            activities: activities
+            activities: activities,
         };
-    }
+    },
 };
