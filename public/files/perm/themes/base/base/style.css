@@ -61,9 +61,7 @@ body.exe-web-site {
 }
 
 .exe-single-page .package-subtitle {
-    position: relative;
-    clip: auto;
-    top: -3em;
+    top: -2.4em;
 }
 
 .exe-content .box {
@@ -276,18 +274,16 @@ button.toggler:focus {
 .nav-buttons .nav-button span,
 .box-toggle span,
 #exe-client-search-reset span,
-#packageLicense .license-label,
-.package-title, .package-subtitle {
+#packageLicense .license-label {
     position: absolute;
     clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
     clip: rect(1px, 1px, 1px, 1px);
+}
+.package-subtitle {
     font-size: .95em;
     color: #666;
-}
-.exe-web-site .package-title,
-.exe-web-site .package-subtitle {
     position: relative;
-    clip: auto;
+    top: -.15em;
 }
 .nav-buttons .nav-button-right {
     left: auto;
