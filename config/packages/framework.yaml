@@ -22,9 +22,10 @@ framework:
 
     error_controller: App\Controller\net\exelearning\Controller\ErrorController::show
 
-    # https://symfony.com/doc/5.4/deployment/proxies.html
+    # https://symfony.com/doc/7.3/deployment/proxies.html
     trusted_proxies: '%env(TRUSTED_PROXIES)%'
-    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto']
+    trusted_headers: '%env(TRUSTED_HEADERS)%'
+
 
     cache:
         # The path where the cache will be stored.
