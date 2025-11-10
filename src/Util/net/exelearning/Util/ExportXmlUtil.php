@@ -1854,7 +1854,7 @@ class ExportXmlUtil
 
                 // Add highlight class to anchor element if enabled
                 if ($isHighlighted) {
-                    $class .= $class ? ' package-link' : 'package-link';
+                    $class .= $class ? ' highlighted-link' : 'highlighted-link';
                 }
 
                 if (!empty($class)) {
@@ -1862,8 +1862,8 @@ class ExportXmlUtil
                 }
             }
             ++$indexNode;
-        }
 
+        }
         // Add class active to the current page except
         $navLiActive = $navUl->xpath('//li[@odePageId="'.$currentOdePageId.'"]');
         if (isset($navLiActive[0])) {

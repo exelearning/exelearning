@@ -337,33 +337,33 @@ body.siteNav-off #siteFooter {
     margin-bottom: 4px;
 }
 
-#siteNav a.package-link {
+#siteNav a.highlighted-link {
     color: #000;
     margin-top: 10px;
     background: #f1f1f1 url(img/book.svg) no-repeat 8px center;
     padding-left: 42px;
 }
 
-#siteNav a.package-link.active {
+#siteNav a.highlighted-link.active {
     background: #ffcc00 url(img/book_color.svg) no-repeat 8px center !important;
     color: #282573;
 }
 
-#siteNav a.package-link:hover {
+#siteNav a.highlighted-link:hover {
     background: #ffd940 url(img/book_color.svg) no-repeat 8px center !important;
     color: #282573;
 }
-#siteNav a.package-link:focus {
+#siteNav a.highlighted-link:focus {
     background: #ffcc00 url(img/book_color.svg) no-repeat 8px center !important;
     color: #282573;
 }
 
-#siteNav a.package-link {
+#siteNav a.highlighted-link {
     margin-top: 10px;
 }
 
-#siteNav a.package-link:hover,
-#siteNav a.package-link:focus {
+#siteNav a.highlighted-link:hover,
+#siteNav a.highlighted-link:focus {
     background: #ffd940;
 }
 

@@ -415,23 +415,23 @@ body.siteNav-off #siteFooter {
     margin-bottom: 6px;
 }
 
-#siteNav a.package-link {
+#siteNav a.highlighted-link {
     color: #fff;
     margin-top: 10px;
     background: #2e9132 url(img/book_white.svg) no-repeat 8px center;
     padding-left: 42px;
 }
 
-#siteNav a.package-link.active {
+#siteNav a.highlighted-link.active {
     background: #ffb74d url(img/book_white.svg) no-repeat 8px center !important;
     color: #002702;
 }
 
-#siteNav a.package-link:hover {
+#siteNav a.highlighted-link:hover {
     background: #1a7d1e url(img/book_white.svg) no-repeat 8px center !important;
     color: #fff;
 }
-#siteNav a.package-link:focus {
+#siteNav a.highlighted-link:focus {
     background: #1a7d1e url(img/book_white.svg) no-repeat 8px center !important;
     color: #fff;
 }

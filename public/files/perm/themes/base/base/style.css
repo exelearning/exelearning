@@ -187,14 +187,14 @@ body.siteNav-off #siteFooter {
     color: #d76b4a;
 }
 
-#siteNav a.package-link {
+#siteNav a.highlighted-link {
     color: #d76b4a;
     background: #ededed;
     margin-top: 10px;
 }
 
-#siteNav a.package-link:hover,
-#siteNav a.package-link:focus {
+#siteNav a.highlighted-link:hover,
+#siteNav a.highlighted-link:focus {
     background: #fff;
 }
 
