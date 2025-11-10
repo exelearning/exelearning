@@ -1306,8 +1306,15 @@ class OdeApiController extends DefaultApiController
     {
         $responseData = [];
 
-        // Parse JSON body (relies on DefaultApiController::hydrateRequestBody supporting POST)
-        $this->hydrateRequestBody($request);
+        // Manually parse JSON body for this specific endpoint
+        // We don't use hydrateRequestBody() for POST to avoid session cleanup issues
+        $content = $request->getContent();
+        if ($content && str_contains((string) $request->headers->get('Content-Type'), 'application/json')) {
+            $decoded = json_decode($content, true);
+            if (is_array($decoded)) {
+                $request->request->add($decoded);
+            }
+        }
 
         $odeSessionId = $request->get('odeSessionId');
         $odeFileName = $request->get('odeFileName');

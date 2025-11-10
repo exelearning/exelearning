@@ -155,6 +155,9 @@ export default class modalOpenUserOdeFiles extends Modal {
             return empty;
         }
 
+        // Store the odes list for later use in openSelectedOdeFile()
+        this.odesList = Object.values(data.odeFilesSync);
+
         const wrap = document.createElement('div');
         wrap.classList.add('ode-files-list-container');
 
