@@ -296,4 +296,105 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
 
         return array_column($results, 'user');
     }
+
+    // =========================================================================
+    // MULTI-USER COLLABORATION - Shared Session Support
+    // =========================================================================
+
+    /**
+     * Find an active session for a project (for joining/reusing sessions).
+     * Returns the most recently active session within the activity window.
+     * Uses index: idx_current_ode_id (ode_id).
+     *
+     * @param string $odeId The project/ode identifier
+     * @param int $activeWithinMinutes Consider active if action within N minutes (default 30)
+     *
+     * @return CurrentOdeUsers|null The most recent active session, or null if none found
+     */
+    public function findActiveSessionByOdeId(string $odeId, int $activeWithinMinutes = 30): ?CurrentOdeUsers
+    {
+        $cutoffTime = new \DateTime();
+        $cutoffTime->modify("-{$activeWithinMinutes} minutes");
+
+        return $this->createQueryBuilder('cou')
+            ->where('cou.odeId = :odeId')
+            ->andWhere('cou.lastAction >= :cutoffTime')
+            ->setParameter('odeId', $odeId)
+            ->setParameter('cutoffTime', $cutoffTime)
+            ->orderBy('cou.lastAction', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Count active users in a specific session.
+     * Uses index: idx_current_ode_session_id (ode_session_id).
+     *
+     * @param string $odeSessionId The session identifier
+     * @param int $activeWithinMinutes Consider active if action within N minutes (default 30)
+     *
+     * @return int Number of active users in the session
+     */
+    public function countActiveUsersInSession(string $odeSessionId, int $activeWithinMinutes = 30): int
+    {
+        $cutoffTime = new \DateTime();
+        $cutoffTime->modify("-{$activeWithinMinutes} minutes");
+
+        return (int) $this->createQueryBuilder('cou')
+            ->select('COUNT(DISTINCT cou.user)')
+            ->where('cou.odeSessionId = :odeSessionId')
+            ->andWhere('cou.lastAction >= :cutoffTime')
+            ->setParameter('odeSessionId', $odeSessionId)
+            ->setParameter('cutoffTime', $cutoffTime)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Get all users currently active in a session.
+     * Uses index: idx_current_ode_session_id (ode_session_id).
+     *
+     * @param string $odeSessionId The session identifier
+     * @param int $activeWithinMinutes Consider active if action within N minutes (default 30)
+     *
+     * @return CurrentOdeUsers[] Array of active users in the session
+     */
+    public function getUsersInSession(string $odeSessionId, int $activeWithinMinutes = 30): array
+    {
+        $cutoffTime = new \DateTime();
+        $cutoffTime->modify("-{$activeWithinMinutes} minutes");
+
+        return $this->createQueryBuilder('cou')
+            ->where('cou.odeSessionId = :odeSessionId')
+            ->andWhere('cou.lastAction >= :cutoffTime')
+            ->setParameter('odeSessionId', $odeSessionId)
+            ->setParameter('cutoffTime', $cutoffTime)
+            ->orderBy('cou.lastAction', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Check if a user is already in a session.
+     * Uses composite index: idx_current_ode_session_user (ode_session_id, user).
+     *
+     * @param string $odeSessionId The session identifier
+     * @param string $user The user email
+     *
+     * @return bool True if user is in session, false otherwise
+     */
+    public function isUserInSession(string $odeSessionId, string $user): bool
+    {
+        $count = (int) $this->createQueryBuilder('cou')
+            ->select('COUNT(cou.id)')
+            ->where('cou.odeSessionId = :odeSessionId')
+            ->andWhere('cou.user = :user')
+            ->setParameter('odeSessionId', $odeSessionId)
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $count > 0;
+    }
 }

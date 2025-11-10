@@ -795,6 +795,16 @@ export default class projectManager {
         window.addEventListener('save-menu-head-button', (e) => {
             this.saveMenuHeadButton(e.detail.user || false);
         });
+
+        // MULTI-USER COLLABORATION: Handle access revoked event
+        window.addEventListener('access-revoked', (e) => {
+            this.handleAccessRevoked(e.detail.user);
+        });
+
+        // MULTI-USER COLLABORATION: Handle visibility changed event
+        window.addEventListener('visibility-changed', (e) => {
+            this.handleVisibilityChanged(e.detail.user);
+        });
     }
 
     async saveMenuHeadButton(disableButton) {
@@ -805,6 +815,82 @@ export default class projectManager {
         if (!saveMenuHeadButton) return;
 
         saveMenuHeadButton.disabled = disableButton;
+    }
+
+    /**
+     * Handle access revoked event from Mercure.
+     * Called when the project owner removes this user as a collaborator.
+     */
+    handleAccessRevoked(payload) {
+        console.log('Access revoked event received:', payload);
+
+        const projectTitle = payload.projectTitle || 'this project';
+        const message = payload.message || `Your access to ${projectTitle} has been revoked by the owner.`;
+
+        // Show modal to inform user
+        this.app.modals.alert.show({
+            title: _('Access Revoked'),
+            body: _(message),
+            contentId: 'access-revoked'
+        });
+
+        // Disable all editing controls immediately
+        this.disableEditingControls();
+
+        // Redirect to projects list after 3 seconds
+        setTimeout(() => {
+            window.location.href = '/projects';
+        }, 3000);
+    }
+
+    /**
+     * Handle visibility changed event from Mercure.
+     * Called when a public project becomes private and the user is not a collaborator.
+     */
+    handleVisibilityChanged(payload) {
+        console.log('Visibility changed event received:', payload);
+
+        const projectTitle = payload.projectTitle || 'this project';
+        const message = payload.message || `${projectTitle} is now private. You no longer have access.`;
+
+        // Show modal to inform user
+        this.app.modals.alert.show({
+            title: _('Project Now Private'),
+            body: _(message),
+            contentId: 'visibility-changed'
+        });
+
+        // Disable all editing controls immediately
+        this.disableEditingControls();
+
+        // Redirect to projects list after 3 seconds
+        setTimeout(() => {
+            window.location.href = '/projects';
+        }, 3000);
+    }
+
+    /**
+     * Disable all editing controls when access is revoked.
+     */
+    disableEditingControls() {
+        // Disable all buttons
+        document.querySelectorAll('button:not([data-bs-dismiss])').forEach(btn => {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+        });
+
+        // Make all inputs and textareas readonly
+        document.querySelectorAll('input, textarea').forEach(input => {
+            input.readOnly = true;
+        });
+
+        // Disable contenteditable elements
+        document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+            el.contentEditable = 'false';
+            el.style.opacity = '0.7';
+        });
+
+        console.log('All editing controls have been disabled');
     }
 
     async reloadStructure() {

@@ -185,4 +185,37 @@ class DefaultApiController extends AbstractController
 
         return $result;
     }
+
+    /**
+     * Publish message with payload data to mercure hub. $odeSessionId is used as topic.
+     * Returns false if no hub available.
+     *
+     * @param string $odeSessionId The session ID (topic)
+     * @param string $eventName The event name
+     * @param array $payload Additional data to send with the event
+     */
+    protected function publishWithData(string $odeSessionId, string $eventName, array $payload = []): string|bool
+    {
+        if (null === $this->hub) {
+            return false;
+        }
+        $uuid = Uuid::v4();
+        $update = new Update(
+            $odeSessionId,
+            json_encode([
+                'name' => $eventName,
+                'payload' => $payload,
+            ]),
+            false,
+            $uuid,
+        );
+        try {
+            $result = $this->hub->publish($update);
+        } catch (\RuntimeException $exception) {
+            $result = false;
+            $this->logger->error("Failed to publish event '$eventName' with data on topic $odeSessionId.");
+        }
+
+        return $result;
+    }
 }

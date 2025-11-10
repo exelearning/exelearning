@@ -12,9 +12,11 @@ use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Entity\Project\Project;
 use App\Entity\Project\ProjectCollaborator;
+use App\Entity\Project\OdeEditLock;
 use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersSyncChangesServiceInterface;
+use App\Service\Project\OdeEditLockService;
 use App\Util\net\exelearning\Util\Util;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -35,6 +37,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
     private $translator;
     private $currentOdeUsersService;
     private $currentOdeUsersSyncChangesService;
+    private $lockService;
 
     public function __construct(
         EntityManagerInterface $entityManager,
@@ -45,11 +48,13 @@ class CurrentOdeUsersApiController extends DefaultApiController
         CurrentOdeUsersSyncChangesServiceInterface $currentOdeUsersSyncChangesService,
         SerializerInterface $serializer,
         HubInterface $hub,
+        OdeEditLockService $lockService,
     ) {
         $this->userHelper = $userHelper;
         $this->translator = $translator;
         $this->currentOdeUsersService = $currentOdeUsersService;
         $this->currentOdeUsersSyncChangesService = $currentOdeUsersSyncChangesService;
+        $this->lockService = $lockService;
 
         parent::__construct($entityManager, $logger, $serializer, $hub);
     }
@@ -70,6 +75,9 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
         $this->userHelper->saveUserTheme($user, Constants::THEME_DEFAULT);
 
+        // Get client IP for session tracking
+        $clientIp = $request->getClientIp();
+
         // Check if user has already an open session
         $requestedSessionId = $request->query->get('odeSessionId');
         $forceNewSession = filter_var(
@@ -78,25 +86,58 @@ class CurrentOdeUsersApiController extends DefaultApiController
         );
 
         $currentOdeUserForUser = null;
-        if (!$forceNewSession || $requestedSessionId) {
+
+        // MULTI-USER COLLABORATION: If specific sessionId is provided, try to join that session
+        if ($requestedSessionId && !$forceNewSession) {
+            // First check if this session exists (regardless of owner)
+            $existingSession = $currentOdeUsersRepository->findOneBy(['odeSessionId' => $requestedSessionId]);
+
+            if ($existingSession) {
+                // Check if user is already in this session
+                $userSessionInExisting = $currentOdeUsersRepository->isUserInSession(
+                    $requestedSessionId,
+                    $databaseUser->getUserIdentifier()
+                );
+
+                if ($userSessionInExisting) {
+                    // User already has a session entry - use it
+                    $currentOdeUserForUser = $currentOdeUsersRepository->getCurrentSessionForUser(
+                        $databaseUser->getUserIdentifier(),
+                        $requestedSessionId
+                    );
+                } else {
+                    // Session exists but user is not in it yet - join it
+                    $sessionData = $this->currentOdeUsersService->joinExistingSession(
+                        $requestedSessionId,
+                        $existingSession->getOdeId(),
+                        $existingSession->getOdeVersionId(),
+                        $databaseUser,
+                        $clientIp
+                    );
+
+                    $currentOdeUserForUser = $sessionData['session'];
+                    $isNewSession = false; // Joining existing session
+                }
+            } else {
+                // Session doesn't exist
+                return new JsonResponse([
+                    'responseMessage' => 'SESSION_NOT_FOUND',
+                ], JsonResponse::HTTP_NOT_FOUND);
+            }
+        }
+        // LEGACY: Check if user already has their own session
+        elseif (!$forceNewSession) {
             $currentOdeUserForUser = $currentOdeUsersRepository->getCurrentSessionForUser(
                 $databaseUser->getUserIdentifier(),
-                $requestedSessionId
+                null
             );
         }
 
         // If there isn't currentOdeUser for user create a new session
         if (empty($currentOdeUserForUser)) {
-            if ($requestedSessionId) {
-                return new JsonResponse([
-                    'responseMessage' => 'SESSION_NOT_FOUND',
-                ], JsonResponse::HTTP_NOT_FOUND);
-            }
             $odeId = Util::generateId();
             $odeVersionId = Util::generateId();
             $odeSessionId = Util::generateId();
-
-            $clientIp = $request->getClientIp();
 
             $currentOdeUserForUser = $this->currentOdeUsersService->createCurrentOdeUsers($odeId, $odeVersionId, $odeSessionId, $databaseUser, $clientIp);
 
@@ -214,7 +255,53 @@ class CurrentOdeUsersApiController extends DefaultApiController
         }
 
         try {
-            // Check current_idevice of concurrent users
+            $userEmail = $databaseUser->getUserIdentifier();
+
+            // PESSIMISTIC LOCKING: Check/acquire lock before allowing edit
+            if ('true' === $odeComponentFlag) {
+                // User wants to START editing - acquire lock
+                $lockResult = $this->lockService->acquireLock(
+                    $odeSessionId,
+                    OdeEditLock::RESOURCE_TYPE_IDEVICE,
+                    $odeIdeviceId,
+                    $userEmail
+                );
+
+                if (!$lockResult['success']) {
+                    $responseData['responseMessage'] = $this->translator->trans(
+                        'Another user is editing this iDevice: %user%',
+                        ['%user%' => $lockResult['lockedBy']]
+                    );
+                    $responseData['lockedBy'] = $lockResult['lockedBy'];
+                    $jsonData = $this->getJsonSerialized($responseData);
+
+                    return new JsonResponse($jsonData, JsonResponse::HTTP_LOCKED, [], true);
+                }
+
+                $this->logger->info('Lock acquired for iDevice editing', [
+                    'odeSessionId' => $odeSessionId,
+                    'odeIdeviceId' => $odeIdeviceId,
+                    'user' => $userEmail,
+                ]);
+            } else {
+                // User wants to STOP editing - release lock
+                if ($odeIdeviceId !== null) {
+                    $this->lockService->releaseLock(
+                        $odeSessionId,
+                        OdeEditLock::RESOURCE_TYPE_IDEVICE,
+                        $odeIdeviceId,
+                        $userEmail
+                    );
+
+                    $this->logger->info('Lock released for iDevice', [
+                        'odeSessionId' => $odeSessionId,
+                        'odeIdeviceId' => $odeIdeviceId,
+                        'user' => $userEmail,
+                    ]);
+                }
+            }
+
+            // LEGACY: Also check using old flag system (backward compatibility)
             $isIdeviceFree = $this->currentOdeUsersService->checkIdeviceCurrentOdeUsers(
                 $odeSessionId,
                 $odeIdeviceId,
@@ -223,9 +310,26 @@ class CurrentOdeUsersApiController extends DefaultApiController
             );
 
             if ($isIdeviceFree) {
-                // Update CurrentOdeUsers
-                $updated = $this->currentOdeUsersService->updateCurrentIdevice($odeNavStructureSync, $odeBlockId, $odeIdeviceId, $databaseUser, $odeCurrentUsersFlags);
+                // Update CurrentOdeUsers flags
+                $updated = $this->currentOdeUsersService->updateCurrentIdevice(
+                    $odeNavStructureSync,
+                    $odeBlockId,
+                    $odeIdeviceId,
+                    $databaseUser,
+                    $odeCurrentUsersFlags
+                );
+
                 if (null === $updated) {
+                    // Failed to update - release lock we just acquired
+                    if ('true' === $odeComponentFlag && $odeIdeviceId !== null) {
+                        $this->lockService->releaseLock(
+                            $odeSessionId,
+                            OdeEditLock::RESOURCE_TYPE_IDEVICE,
+                            $odeIdeviceId,
+                            $userEmail
+                        );
+                    }
+
                     $responseData['responseMessage'] = 'Unable to register the current edition session';
                     $jsonData = $this->getJsonSerialized($responseData);
 
@@ -252,11 +356,39 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
                 $responseData['responseMessage'] = 'OK';
             } else {
+                // Legacy check failed - release lock if we acquired it
+                if ('true' === $odeComponentFlag && $odeIdeviceId !== null) {
+                    $this->lockService->releaseLock(
+                        $odeSessionId,
+                        OdeEditLock::RESOURCE_TYPE_IDEVICE,
+                        $odeIdeviceId,
+                        $userEmail
+                    );
+                }
+
                 $responseData['responseMessage'] = $this->translator->trans('Another user is editing an iDevice on this block.');
             }
         } catch (\Exception $e) {
             // Make sure to release the lock in case of error
-            $this->logger->error('Error updating user flag: '.$e->getMessage());
+            $this->logger->error('Error updating user flag: '.$e->getMessage(), [
+                'exception' => $e,
+                'odeSessionId' => $odeSessionId ?? 'unknown',
+                'odeIdeviceId' => $odeIdeviceId ?? 'unknown',
+            ]);
+
+            // Try to release lock on error
+            if (isset($userEmail) && isset($odeSessionId) && isset($odeIdeviceId)) {
+                try {
+                    $this->lockService->releaseLock(
+                        $odeSessionId,
+                        OdeEditLock::RESOURCE_TYPE_IDEVICE,
+                        $odeIdeviceId,
+                        $userEmail
+                    );
+                } catch (\Exception $lockException) {
+                    $this->logger->error('Failed to release lock on error: '.$lockException->getMessage());
+                }
+            }
 
             return new JsonResponse(
                 ['responseMessage' => 'Internal server error'],
@@ -282,14 +414,48 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
+        $userEmail = $databaseUser->getUserIdentifier();
 
-        // Check current_idevice of concurrent users
-        $isIdeviceFree = $this->currentOdeUsersService->checkIdeviceCurrentOdeUsers($odeSessionId, $odeIdeviceId, $odeBlockId, $user);
+        // PESSIMISTIC LOCKING: Check if resource is locked
+        $lockStatus = $this->lockService->checkLock(
+            $odeSessionId,
+            OdeEditLock::RESOURCE_TYPE_IDEVICE,
+            $odeIdeviceId,
+            $userEmail
+        );
 
-        if ($isIdeviceFree) {
+        if (!$lockStatus['isLocked'] || $lockStatus['canEdit']) {
+            // Resource is free or locked by current user
             $responseData['responseMessage'] = 'OK';
+            $responseData['canEdit'] = true;
+
+            if ($lockStatus['isLocked']) {
+                $responseData['lockedBy'] = $userEmail;
+                $responseData['isOwnLock'] = true;
+            }
         } else {
+            // Resource is locked by another user
+            $responseData['responseMessage'] = $this->translator->trans(
+                'Another user is editing this iDevice: %user%',
+                ['%user%' => $lockStatus['lockedBy']]
+            );
+            $responseData['canEdit'] = false;
+            $responseData['lockedBy'] = $lockStatus['lockedBy'];
+            $responseData['isOwnLock'] = false;
+        }
+
+        // LEGACY: Also check using old flag system (for backward compatibility)
+        $isIdeviceFree = $this->currentOdeUsersService->checkIdeviceCurrentOdeUsers(
+            $odeSessionId,
+            $odeIdeviceId,
+            $odeBlockId,
+            $user
+        );
+
+        if (!$isIdeviceFree) {
+            // Legacy system says it's locked - override response
             $responseData['responseMessage'] = $this->translator->trans('Another user is editing an iDevice on this block.');
+            $responseData['canEdit'] = false;
         }
 
         $jsonData = $this->getJsonSerialized($responseData);

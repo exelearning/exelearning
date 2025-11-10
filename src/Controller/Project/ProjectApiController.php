@@ -3,9 +3,11 @@
 namespace App\Controller\Project;
 
 use App\Controller\net\exelearning\Controller\Api\DefaultApiController;
+use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\User;
 use App\Entity\Project\Project;
 use App\Entity\Project\ProjectCollaborator;
+use App\Repository\net\exelearning\Repository\CurrentOdeUsersRepository;
 use App\Repository\net\exelearning\Repository\OdeFilesRepository;
 use App\Repository\net\exelearning\Repository\UserRepository;
 use App\Repository\Project\ProjectCollaboratorRepository;
@@ -25,6 +27,7 @@ class ProjectApiController extends DefaultApiController
     private ProjectCollaboratorRepository $collaboratorRepo;
     private UserRepository $userRepo;
     private OdeFilesRepository $odeFilesRepo;
+    private CurrentOdeUsersRepository $currentOdeUsersRepo;
 
     public function __construct(
         EntityManagerInterface $entityManager,
@@ -35,12 +38,14 @@ class ProjectApiController extends DefaultApiController
         ProjectCollaboratorRepository $collaboratorRepo,
         UserRepository $userRepo,
         OdeFilesRepository $odeFilesRepo,
+        CurrentOdeUsersRepository $currentOdeUsersRepo,
     ) {
         parent::__construct($entityManager, $logger, $serializer, $hub);
         $this->projectRepo = $projectRepo;
         $this->collaboratorRepo = $collaboratorRepo;
         $this->userRepo = $userRepo;
         $this->odeFilesRepo = $odeFilesRepo;
+        $this->currentOdeUsersRepo = $currentOdeUsersRepo;
     }
 
     /**
@@ -184,8 +189,21 @@ class ProjectApiController extends DefaultApiController
             ], 400);
         }
 
+        $oldVisibility = $project->getVisibility();
         $project->setVisibility($visibility);
         $this->entityManager->flush();
+
+        // MULTI-USER COLLABORATION: If changing from public to private, notify non-collaborators
+        if ('public' === $oldVisibility && 'private' === $visibility) {
+            $this->notifyVisibilityChanged($project);
+        }
+
+        $this->logger->info('Project visibility changed', [
+            'projectId' => $project->getId(),
+            'oldVisibility' => $oldVisibility,
+            'newVisibility' => $visibility,
+            'changedBy' => $currentUser->getEmail(),
+        ]);
 
         return new JsonResponse([
             'responseMessage' => 'OK',
@@ -367,13 +385,131 @@ class ProjectApiController extends DefaultApiController
             }
         }
 
+        // MULTI-USER COLLABORATION: Notify user if they have active sessions
+        $this->notifyUserAccessRevoked($project, $collaboratorUser);
+
         $this->entityManager->remove($collaborator);
         $this->entityManager->flush();
+
+        $this->logger->info('Collaborator removed from project', [
+            'projectId' => $project->getId(),
+            'userId' => $collaboratorUser->getId(),
+            'userEmail' => $collaboratorUser->getEmail(),
+            'removedBy' => $currentUser->getEmail(),
+        ]);
 
         return new JsonResponse([
             'responseMessage' => 'OK',
             'message' => 'Collaborator removed successfully',
         ], 200);
+    }
+
+    /**
+     * Notify a user via Mercure that their access to a project has been revoked.
+     * If the user has active sessions for this project, send ACCESS_REVOKED event.
+     */
+    private function notifyUserAccessRevoked(Project $project, User $user): void
+    {
+        // Find all active sessions for this user on this project
+        $activeSessions = $this->currentOdeUsersRepo->createQueryBuilder('c')
+            ->where('c.odeId = :odeId')
+            ->andWhere('c.user = :userEmail')
+            ->setParameter('odeId', $project->getId())
+            ->setParameter('userEmail', $user->getEmail())
+            ->getQuery()
+            ->getResult();
+
+        if (empty($activeSessions)) {
+            return; // User has no active sessions, nothing to notify
+        }
+
+        // Send Mercure event to each active session
+        foreach ($activeSessions as $session) {
+            $odeSessionId = $session->getOdeSessionId();
+
+            $this->publishWithData($odeSessionId, 'access-revoked', [
+                'eventType' => 'ACCESS_REVOKED',
+                'projectId' => $project->getId(),
+                'projectTitle' => $project->getTitle(),
+                'user' => $user->getEmail(),
+                'odeSessionId' => $odeSessionId,
+                'timestamp' => (new \DateTime())->format('c'),
+                'message' => 'Your access to this project has been revoked by the owner',
+            ]);
+
+            $this->logger->info('ACCESS_REVOKED event sent via Mercure', [
+                'projectId' => $project->getId(),
+                'odeSessionId' => $odeSessionId,
+                'userEmail' => $user->getEmail(),
+            ]);
+        }
+    }
+
+    /**
+     * Notify non-collaborators via Mercure when a project changes from public to private.
+     * Users who had the project open because it was public need to be notified they lost access.
+     */
+    private function notifyVisibilityChanged(Project $project): void
+    {
+        // Find all active sessions for this project
+        $activeSessions = $this->currentOdeUsersRepo->createQueryBuilder('c')
+            ->where('c.odeId = :odeId')
+            ->setParameter('odeId', $project->getId())
+            ->getQuery()
+            ->getResult();
+
+        if (empty($activeSessions)) {
+            return; // No active sessions, nothing to notify
+        }
+
+        // Get list of collaborator emails for this project (including owner)
+        $collaborators = $this->collaboratorRepo->findByProject($project);
+        $collaboratorEmails = [];
+        foreach ($collaborators as $collab) {
+            $collaboratorEmails[] = $collab->getUser()->getEmail();
+        }
+        // Add owner email
+        $collaboratorEmails[] = $project->getOwner()->getEmail();
+
+        // Notify users who are NOT collaborators
+        $notifiedCount = 0;
+        foreach ($activeSessions as $session) {
+            $userEmail = $session->getUser();
+
+            // Skip if user is a collaborator or owner
+            if (in_array($userEmail, $collaboratorEmails, true)) {
+                continue;
+            }
+
+            $odeSessionId = $session->getOdeSessionId();
+
+            $this->publishWithData($odeSessionId, 'visibility-changed', [
+                'eventType' => 'VISIBILITY_CHANGED',
+                'projectId' => $project->getId(),
+                'projectTitle' => $project->getTitle(),
+                'user' => $userEmail,
+                'odeSessionId' => $odeSessionId,
+                'oldVisibility' => 'public',
+                'newVisibility' => 'private',
+                'timestamp' => (new \DateTime())->format('c'),
+                'message' => 'This project is now private. You no longer have access.',
+            ]);
+
+            $this->logger->info('VISIBILITY_CHANGED event sent via Mercure', [
+                'projectId' => $project->getId(),
+                'odeSessionId' => $odeSessionId,
+                'userEmail' => $userEmail,
+            ]);
+
+            ++$notifiedCount;
+        }
+
+        if ($notifiedCount > 0) {
+            $this->logger->info('Notified users of visibility change', [
+                'projectId' => $project->getId(),
+                'notifiedUsers' => $notifiedCount,
+            ]);
+        }
     }
 
     /**
