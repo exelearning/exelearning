@@ -80,6 +80,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
         // Check if user has already an open session
         $requestedSessionId = $request->query->get('odeSessionId');
+        $requestedProjectId = $request->query->get('projectId') ?? $request->query->get('project');
         $forceNewSession = filter_var(
             $request->query->get('forceNewSession'),
             FILTER_VALIDATE_BOOL
@@ -124,6 +125,59 @@ class CurrentOdeUsersApiController extends DefaultApiController
                     'responseMessage' => 'SESSION_NOT_FOUND',
                 ], JsonResponse::HTTP_NOT_FOUND);
             }
+        }
+        // MULTI-USER COLLABORATION: If projectId is provided, get or create shared session for that project
+        elseif ($requestedProjectId && !$forceNewSession) {
+            $this->logger->info('Handling projectId request', [
+                'projectId' => $requestedProjectId,
+                'user' => $databaseUser->getUserIdentifier(),
+            ]);
+
+            // Use the shared session logic - all users on same project share same session
+            $sessionData = $this->currentOdeUsersService->getOrCreateSessionForProject(
+                $requestedProjectId,
+                $databaseUser,
+                $clientIp
+            );
+
+            $currentOdeUserForUser = $sessionData['session'];
+            $isNewSession = $sessionData['isNewSession'];
+
+            // Ensure Project entity exists for this projectId
+            $projectRepo = $this->entityManager->getRepository(Project::class);
+            $existingProject = $projectRepo->find($requestedProjectId);
+
+            if (!$existingProject) {
+                // Create new Project entity
+                $project = new Project();
+                $project->setId($requestedProjectId);
+                $project->setTitle('New Project');
+                $project->setOwner($databaseUser);
+                $project->setVisibility('private');
+                $project->setArchived(false);
+
+                $this->entityManager->persist($project);
+
+                // Create ProjectCollaborator entry for the owner
+                $collaborator = new ProjectCollaborator();
+                $collaborator->setProject($project);
+                $collaborator->setUser($databaseUser);
+                $collaborator->setRole(ProjectCollaborator::ROLE_OWNER);
+                $collaborator->setGrantedBy($databaseUser);
+
+                $this->entityManager->persist($collaborator);
+                $this->entityManager->flush();
+
+                $this->logger->info('Created Project entity for projectId', [
+                    'projectId' => $requestedProjectId,
+                ]);
+            }
+
+            $this->logger->info('Session obtained for projectId', [
+                'projectId' => $requestedProjectId,
+                'sessionId' => $currentOdeUserForUser->getOdeSessionId(),
+                'isNewSession' => $isNewSession,
+            ]);
         }
         // LEGACY: Check if user already has their own session
         elseif (!$forceNewSession) {

@@ -316,12 +316,15 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
         $cutoffTime = new \DateTime();
         $cutoffTime->modify("-{$activeWithinMinutes} minutes");
 
+        // MULTI-USER FIX: Order by ID (oldest first) instead of lastAction (most recent first)
+        // This ensures we always return the FIRST created session for a project (owner's session)
+        // rather than a user's more recently accessed session
         return $this->createQueryBuilder('cou')
             ->where('cou.odeId = :odeId')
             ->andWhere('cou.lastAction >= :cutoffTime')
             ->setParameter('odeId', $odeId)
             ->setParameter('cutoffTime', $cutoffTime)
-            ->orderBy('cou.lastAction', 'DESC')
+            ->orderBy('cou.id', 'ASC')
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();

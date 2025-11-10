@@ -51,11 +51,11 @@ export default class ApiCallManager {
         if (odeSessionId) {
             params.set('odeSessionId', odeSessionId);
         }
-        // Note: projectId parameter removed - backend endpoint doesn't support it
-        // The backend only handles odeSessionId and forceNewSession parameters
-        // if (projectId) {
-        //     params.set('projectId', projectId);
-        // }
+        // Backend DOES support projectId parameter (GetCurrentProjectAction.php:41)
+        // This enables multi-user collaboration and project sharing
+        if (projectId) {
+            params.set('projectId', projectId);
+        }
         if (forceNewSession) {
             params.set('forceNewSession', '1');
         }

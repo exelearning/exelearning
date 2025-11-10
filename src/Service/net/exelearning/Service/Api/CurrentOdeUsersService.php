@@ -670,59 +670,70 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
     {
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
 
-        // Check if user already has an active session for this project
-        $existingUserSession = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUserIdentifier());
+        // SIMPLIFIED MODEL: 1 Project = 1 Session maximum
+        // All users working on the same project share THE SAME session
 
-        if ($existingUserSession && $existingUserSession->getOdeId() === $odeId) {
-            // User already in a session for this project - update activity and return
-            $existingUserSession->setLastAction(new \DateTime());
-            $this->entityManager->flush();
+        // STEP 1: Look for ANY active session for this project (from any user)
+        $existingSession = $currentOdeUsersRepository->findActiveSessionByOdeId($odeId, $activeWithinMinutes);
 
-            $usersInSession = $currentOdeUsersRepository->getUsersInSession(
-                $existingUserSession->getOdeSessionId(),
-                $activeWithinMinutes
+        if ($existingSession) {
+            // Session exists for this project - check if current user is already in it
+            $userInSession = $currentOdeUsersRepository->isUserInSession(
+                $existingSession->getOdeSessionId(),
+                $user->getUserIdentifier()
             );
 
-            $this->logger->info('User already has active session for project', [
-                'user' => $user->getUserIdentifier(),
-                'odeId' => $odeId,
-                'odeSessionId' => $existingUserSession->getOdeSessionId(),
-                'usersCount' => count($usersInSession),
-            ]);
+            if ($userInSession) {
+                // User IS already in this session - return their session entry
+                $userSession = $currentOdeUsersRepository->getCurrentSessionForUser(
+                    $user->getUserIdentifier(),
+                    $existingSession->getOdeSessionId()
+                );
 
-            return [
-                'session' => $existingUserSession,
-                'isNewSession' => false,
-                'usersInSession' => $usersInSession,
-            ];
+                $userSession->setLastAction(new \DateTime());
+                $this->entityManager->flush();
+
+                $usersInSession = $currentOdeUsersRepository->getUsersInSession(
+                    $existingSession->getOdeSessionId(),
+                    $activeWithinMinutes
+                );
+
+                $this->logger->info('User returned to existing project session', [
+                    'user' => $user->getUserIdentifier(),
+                    'odeId' => $odeId,
+                    'odeSessionId' => $existingSession->getOdeSessionId(),
+                    'usersCount' => count($usersInSession),
+                ]);
+
+                return [
+                    'session' => $userSession,
+                    'isNewSession' => false,
+                    'usersInSession' => $usersInSession,
+                ];
+            } else {
+                // User is NOT in this session - join them to it
+                $this->logger->info('User joining existing project session', [
+                    'user' => $user->getUserIdentifier(),
+                    'odeId' => $odeId,
+                    'odeSessionId' => $existingSession->getOdeSessionId(),
+                ]);
+
+                return $this->joinExistingSession(
+                    $existingSession->getOdeSessionId(),
+                    $existingSession->getOdeId(),
+                    $existingSession->getOdeVersionId(),
+                    $user,
+                    $clientIp,
+                    $activeWithinMinutes
+                );
+            }
         }
 
-        // Look for any active session for this project
-        $activeSession = $currentOdeUsersRepository->findActiveSessionByOdeId($odeId, $activeWithinMinutes);
-
-        if ($activeSession) {
-            // Active session found - join it
-            $this->logger->info('Joining existing active session for project', [
-                'user' => $user->getUserIdentifier(),
-                'odeId' => $odeId,
-                'odeSessionId' => $activeSession->getOdeSessionId(),
-            ]);
-
-            return $this->joinExistingSession(
-                $activeSession->getOdeSessionId(),
-                $activeSession->getOdeId(),
-                $activeSession->getOdeVersionId(),
-                $user,
-                $clientIp,
-                $activeWithinMinutes
-            );
-        }
-
-        // No active session found - create new one
+        // STEP 2: No active session exists for this project - create new one
         $newOdeSessionId = Util::generateId();
         $newOdeVersionId = Util::generateId();
 
-        $this->logger->info('Creating new session for project', [
+        $this->logger->info('Creating new project session', [
             'user' => $user->getUserIdentifier(),
             'odeId' => $odeId,
             'odeSessionId' => $newOdeSessionId,

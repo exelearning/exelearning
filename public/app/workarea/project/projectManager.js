@@ -923,7 +923,13 @@ export default class projectManager {
             !this.requestedProjectId &&
             !eXeLearning.symfony.odeSessionId;
 
-        if (targetSessionId || shouldForceNewSession) {
+        // Call getCurrentProject if we have a sessionId, need to force new session, OR have a projectId
+        // The backend (GetCurrentProjectAction.php) handles all these scenarios correctly
+        if (
+            targetSessionId ||
+            shouldForceNewSession ||
+            this.requestedProjectId
+        ) {
             const firstAttempt = await this.app.api.getCurrentProject(
                 targetSessionId,
                 {
@@ -944,34 +950,6 @@ export default class projectManager {
             } else if (firstAttempt && firstAttempt.__error) {
                 console.error('Error loading project session', firstAttempt);
                 throw new Error(firstAttempt.detail || firstAttempt.statusText);
-            }
-        }
-
-        if (!response && this.requestedProjectId) {
-            const openParams = {
-                projectId: this.requestedProjectId,
-            };
-            if (targetSessionId) {
-                openParams.odeSessionId = targetSessionId;
-            }
-            const openResponse =
-                await this.app.api.postSelectedOdeFile(openParams);
-            if (openResponse && openResponse.responseMessage === 'OK') {
-                targetSessionId = openResponse.odeSessionId;
-                if (openResponse.odeId) {
-                    this.requestedProjectId = String(openResponse.odeId);
-                }
-                this.setUrlSession(targetSessionId, this.requestedProjectId);
-                response = await this.app.api.getCurrentProject(
-                    targetSessionId,
-                    {
-                        projectId: this.requestedProjectId,
-                    }
-                );
-            } else if (openResponse && openResponse.responseMessage) {
-                console.error('Unable to open project', openResponse);
-                this.app.interface.loadingScreen.hide();
-                throw new Error(openResponse.responseMessage);
             }
         }
 
@@ -2329,6 +2307,11 @@ export default class projectManager {
      *
      */
     async cleanPreviousAutosaves() {
+        // Only clean autosaves if we have a valid session ID
+        if (!this.odeSession) {
+            console.warn('Cannot clean previous autosaves: odeSession not set');
+            return;
+        }
         let params = { odeSessionId: this.odeSession };
         await this.app.api.postCleanAutosavesByUser(params);
     }
