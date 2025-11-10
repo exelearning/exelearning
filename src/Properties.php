@@ -495,14 +495,6 @@ class Properties
             'category' => 'properties',
             'groups' => ['export'],
         ],
-        'pp_exportElp' => [
-            'title' => self::TRANS_PREFIX.'Include a copy of the source file',
-            'value' => 'false',
-            'help' => self::TRANS_PREFIX.'A copy of the eXeLearning file will be included when exporting the content.',
-            'type' => 'checkbox',
-            'category' => 'properties',
-            'groups' => ['export'],
-        ],
         'pp_addPagination' => [
             'title' => self::TRANS_PREFIX.'Page counter',
             'value' => 'false',
