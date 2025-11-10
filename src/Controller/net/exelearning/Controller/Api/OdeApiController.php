@@ -887,6 +887,12 @@ class OdeApiController extends DefaultApiController
 
             if ($odeFile) {
                 $elpFileName = $odeFile->getFileName();
+                // Preserve the original odeId from database to avoid creating a new one
+                $projectId = $odeFile->getOdeId();
+                $this->logger->info(
+                    'Using odeId from OdeFile record',
+                    ['odeId' => $projectId, 'odeFilesId' => $odeFilesId, 'file:' => $this, 'line' => __LINE__]
+                );
             }
         }
 
@@ -902,7 +908,8 @@ class OdeApiController extends DefaultApiController
                     $odeSessionId,
                     $elpFileName,
                     $databaseUser,
-                    $forceCloseOdeUserPreviousSession
+                    $forceCloseOdeUserPreviousSession,
+                    $projectId  // Pass projectId to preserve it from database
                 );
             } catch (UserAlreadyOpenSessionException $e) {
                 $responseData['responseMessage'] = 'error: '.$e->getMessage();
@@ -1575,7 +1582,7 @@ class OdeApiController extends DefaultApiController
             $jsonData = $this->getJsonSerialized($responseData);
 
             return new JsonResponse($jsonData, $this->status, [], true);
-        } else {
+        } elseif (!empty($odeFilesId) && is_array($odeFilesId)) {
             foreach ($odeFilesId as $odeFileId) {
                 $odeFileSync = $odeFilesSyncRepo->find($odeFileId);
 
@@ -1586,6 +1593,12 @@ class OdeApiController extends DefaultApiController
             $jsonData = $this->getJsonSerialized($responseData);
 
             return new JsonResponse($jsonData, $this->status, [], true);
+        } else {
+            // No valid ID provided
+            $responseData = ['responseMessage' => 'error: No file ID provided'];
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, 400, [], true);
         }
     }
 

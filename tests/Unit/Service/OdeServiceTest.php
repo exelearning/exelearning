@@ -28,12 +28,12 @@ final class OdeServiceTest extends TestCase
         $reflectionClass = new \ReflectionClass(OdeService::class);
         $reflectionMethod = $reflectionClass->getMethod('openElp');
 
-        // Verify method has 5 parameters (was 4 before the fix)
+        // Verify method has 6 parameters (was 4 before the fix, then 5, now 6)
         $parameters = $reflectionMethod->getParameters();
         self::assertCount(
-            5,
+            6,
             $parameters,
-            'openElp method should have 5 parameters including $isImportIdevices'
+            'openElp method should have 6 parameters including $isImportIdevices and $existingOdeId'
         );
 
         // Verify parameter names in order
@@ -42,6 +42,7 @@ final class OdeServiceTest extends TestCase
         self::assertEquals('odeSessionDistDirPath', $parameters[2]->getName(), 'Third parameter should be $odeSessionDistDirPath');
         self::assertEquals('checkElpFile', $parameters[3]->getName(), 'Fourth parameter should be $checkElpFile');
         self::assertEquals('isImportIdevices', $parameters[4]->getName(), 'Fifth parameter should be $isImportIdevices');
+        self::assertEquals('existingOdeId', $parameters[5]->getName(), 'Sixth parameter should be $existingOdeId');
     }
 
     /**

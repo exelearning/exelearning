@@ -1292,7 +1292,7 @@ class OdeService implements OdeServiceInterface
      *
      * @return array
      */
-    private function openElp($newOdeSessionId, $elpFileName, $odeSessionDistDirPath, $checkElpFile, $isImportIdevices = false)
+    private function openElp($newOdeSessionId, $elpFileName, $odeSessionDistDirPath, $checkElpFile, $isImportIdevices = false, $existingOdeId = null)
     {
         $isImportIdevices = false;
         $destinationFilePathName = $odeSessionDistDirPath.$elpFileName;
@@ -1330,8 +1330,17 @@ class OdeService implements OdeServiceInterface
 
             // In case the elp does not have data, we generate it
             if (empty($odeResponse['odeResources'])) {
-                $odeResponse['odeVersionId'] = Util::generateId();
-                $odeResponse['odeId'] = Util::generateId();
+                // Use existingOdeId if provided (from database when opening saved files)
+                // Otherwise, only generate new ID if odeResponse doesn't have one
+                if (!empty($existingOdeId)) {
+                    $odeResponse['odeId'] = $existingOdeId;
+                } elseif (empty($odeResponse['odeId'])) {
+                    $odeResponse['odeId'] = Util::generateId();
+                }
+
+                if (empty($odeResponse['odeVersionId'])) {
+                    $odeResponse['odeVersionId'] = Util::generateId();
+                }
                 $odeResponse['odeVersionName'] = 0;
             }
 
@@ -2271,6 +2280,7 @@ class OdeService implements OdeServiceInterface
         $elpFileName,
         $user,
         $forceCloseOdeUserPreviousSession,
+        $existingOdeId = null,
     ) {
         $result = [];
 
@@ -2289,7 +2299,7 @@ class OdeService implements OdeServiceInterface
                 return $result;
             }
 
-            $result = $this->openElp($newOdeSessionId, $elpFileName, $odeSessionDistDirPath, $checkElpFile);
+            $result = $this->openElp($newOdeSessionId, $elpFileName, $odeSessionDistDirPath, $checkElpFile, false, $existingOdeId);
 
             // Check if the elp file could be opened correctly
             if (empty($result)) {

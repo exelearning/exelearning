@@ -367,7 +367,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         });
         row.addEventListener('dblclick', () => {
             setTimeout(
-                () => this.openUserOdeFilesEvent(ode.fileName),
+                () => this.openUserOdeFilesEvent(ode),  // Pass full ode object to preserve odeId from database
                 this.timeMax
             );
         });
@@ -510,34 +510,48 @@ export default class modalOpenUserOdeFiles extends Modal {
     }
 
     openSelectedOdeFile() {
-        const selected = this.modalElementBody.querySelector(
-            '.ode-row.selected .ode-file-title'
+        const selectedRow = this.modalElementBody.querySelector('.ode-row.selected');
+        if (!selectedRow) return;
+
+        const odeId = selectedRow.getAttribute('ode-id');
+        const versionName = selectedRow.getAttribute('version-name');
+        const fileName = selectedRow.querySelector('.ode-file-title')?.id;
+
+        // Find the full ode object from the list to preserve all data
+        const ode = this.odesList.find(
+            o => o.odeId === odeId && String(o.versionName) === String(versionName)
         );
-        const odeFileName = selected ? selected.id : null;
-        if (odeFileName) {
+
+        if (ode || fileName) {
             setTimeout(
-                () => this.openUserOdeFilesEvent(odeFileName),
+                () => this.openUserOdeFilesEvent(ode || fileName),
                 this.timeMax
             );
         }
     }
 
-    async openUserOdeFilesEvent(id) {
+    async openUserOdeFilesEvent(odeOrFileName) {
+        // Handle both string (fileName) and object (ode) for backward compatibility
+        const fileName = typeof odeOrFileName === 'string' ? odeOrFileName : odeOrFileName.fileName;
+        const odeFilesId = typeof odeOrFileName === 'object' ? odeOrFileName.id : null;
+        const savedOdeId = typeof odeOrFileName === 'object' ? odeOrFileName.odeId : null;
+
         const params = {
-            elpFileName: id,
+            elpFileName: fileName,
             odeSessionId: eXeLearning.app.project.odeSession,
-            projectId: eXeLearning.app.project.odeId,
+            projectId: savedOdeId || eXeLearning.app.project.odeId,  // Use saved odeId if available
+            odeFilesId: odeFilesId,  // Pass database record ID to preserve original odeId
         };
         const odeParams = {
             odeSessionId: eXeLearning.app.project.odeSession,
             odeVersion: eXeLearning.app.project.odeVersion,
-            odeId: eXeLearning.app.project.odeId,
+            odeId: savedOdeId || eXeLearning.app.project.odeId,
         };
         const data = {
             title: _('Open project'),
             forceOpen: _('Open without saving changes'),
             openOdeFile: true,
-            id,
+            id: fileName,
         };
         let response = await eXeLearning.app.api.postSelectedOdeFile(params);
         if (response.responseMessage == 'OK') {
@@ -545,6 +559,9 @@ export default class modalOpenUserOdeFiles extends Modal {
             eXeLearning.app.project.odeSession = response.odeSessionId;
             eXeLearning.app.project.odeVersion = response.odeVersionId;
             eXeLearning.app.project.odeId = response.odeId;
+            // Update URL with new projectId so it's visible in browser
+            eXeLearning.app.project.requestedProjectId = response.odeId;
+            eXeLearning.app.project.setUrlSession(response.odeSessionId, response.odeId);
             await eXeLearning.app.project.openLoad();
             return;
         } else {
@@ -1031,6 +1048,9 @@ export default class modalOpenUserOdeFiles extends Modal {
                 eXeLearning.app.project.odeSession = response.odeSessionId;
                 eXeLearning.app.project.odeVersion = response.odeVersionId;
                 eXeLearning.app.project.odeId = response.odeId;
+                // Update URL with new projectId so it's visible in browser
+                eXeLearning.app.project.requestedProjectId = response.odeId;
+                eXeLearning.app.project.setUrlSession(response.odeSessionId, response.odeId);
                 await eXeLearning.app.project.openLoad();
                 clearPreUploadedData();
                 return;
@@ -1147,6 +1167,9 @@ export default class modalOpenUserOdeFiles extends Modal {
             eXeLearning.app.project.odeSession = response.odeSessionId;
             eXeLearning.app.project.odeVersion = response.odeVersionId;
             eXeLearning.app.project.odeId = response.odeId;
+            // Update URL with new projectId so it's visible in browser
+            eXeLearning.app.project.requestedProjectId = response.odeId;
+            eXeLearning.app.project.setUrlSession(response.odeSessionId, response.odeId);
             await eXeLearning.app.project.openLoad();
             return;
         } else {

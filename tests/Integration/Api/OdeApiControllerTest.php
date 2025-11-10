@@ -60,12 +60,12 @@ final class OdeApiControllerTest extends TestCase
         $reflectionClass = new \ReflectionClass(OdeService::class);
         $reflectionMethod = $reflectionClass->getMethod('openElp');
 
-        // Verify method has 5 parameters
+        // Verify method has 6 parameters
         $parameters = $reflectionMethod->getParameters();
         self::assertCount(
-            5,
+            6,
             $parameters,
-            'openElp method should have 5 parameters including $isImportIdevices'
+            'openElp method should have 6 parameters including $isImportIdevices and $existingOdeId'
         );
 
         // Verify the 5th parameter is named 'isImportIdevices'
