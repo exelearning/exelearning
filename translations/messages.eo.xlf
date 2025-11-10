@@ -411,7 +411,7 @@
       </trans-unit>
       <trans-unit id="ZLhutDM" resname="Send to AI">
         <source>Send to AI</source>
-        <target></target>
+        <target>~Send to AI</target>
       </trans-unit>
       <trans-unit id="bOxwr9C" resname="Specialty">
         <source>Specialty</source>
@@ -823,7 +823,7 @@
       </trans-unit>
       <trans-unit id="HAl2U3v" resname="There is no query to send to the assistant.">
         <source>There is no query to send to the assistant.</source>
-        <target></target>
+        <target>~Ne estas demando por sendi al la asistanto.</target>
       </trans-unit>
       <trans-unit id="jLcojpH" resname="Generating questions. Please wait...">
         <source>Generating questions. Please wait...</source>
@@ -907,35 +907,35 @@
       </trans-unit>
       <trans-unit id="wmZAGDi" resname="EdiCuaTeX - LaTeX Equation Editor">
         <source>EdiCuaTeX - LaTeX Equation Editor</source>
-        <target></target>
+        <target>~EdiCuaTeX - LaTeX Equation Editor</target>
       </trans-unit>
       <trans-unit id="3xt7SvG" resname="Educational Applications Laboratory">
         <source>Educational Applications Laboratory</source>
-        <target></target>
+        <target>~Laboratorio de Edukaj Aplikoj</target>
       </trans-unit>
       <trans-unit id="oTIGqj3" resname="Application created by Juan José de Haro">
         <source>Application created by Juan José de Haro</source>
-        <target></target>
+        <target>~Aplikado kreita de Juan José de Haro</target>
       </trans-unit>
       <trans-unit id="BSDT0ZB" resname="Could not get code from parent dialog:">
         <source>Could not get code from parent dialog:</source>
-        <target></target>
+        <target>~Ne povis akiri kodon de la gepatra dialogo:</target>
       </trans-unit>
       <trans-unit id="7WKfC9x" resname="Recent">
         <source>Recent</source>
-        <target></target>
+        <target>~Lastatempe</target>
       </trans-unit>
       <trans-unit id="vMqqN1e" resname="Error loading menu">
         <source>Error loading menu</source>
-        <target></target>
+        <target>~Eraro dum ŝarĝado de la menuo</target>
       </trans-unit>
       <trans-unit id="24mHwai" resname="Could not load">
         <source>Could not load</source>
-        <target></target>
+        <target>~Ne povis ŝarĝi</target>
       </trans-unit>
       <trans-unit id="GdRFNpn" resname="No menus found.">
         <source>No menus found.</source>
-        <target></target>
+        <target>~Neniuj menuoj trovitaj.</target>
       </trans-unit>
       <trans-unit id=".jhcwBR" resname="File">
         <source>File</source>
@@ -943,31 +943,31 @@
       </trans-unit>
       <trans-unit id="uKMbnxc" resname="Please describe the formula you need.">
         <source>Please describe the formula you need.</source>
-        <target></target>
+        <target>~Bonvolu priskribi la formulon, kiun vi bezonas.</target>
       </trans-unit>
       <trans-unit id="qe79.N0" resname="Instruction generated. You can now use the buttons.">
         <source>Instruction generated. You can now use the buttons.</source>
-        <target></target>
+        <target>~Instrukcio generita. Vi povas nun uzi la butonojn.</target>
       </trans-unit>
       <trans-unit id="yISxAqv" resname="Instruction copied to clipboard!">
         <source>Instruction copied to clipboard!</source>
-        <target></target>
+        <target>~Instrukcio kopiata al tonkesto!</target>
       </trans-unit>
       <trans-unit id="GyXTAnB" resname="Syntax error">
         <source>Syntax error</source>
-        <target></target>
+        <target>~Sintaksa eraro</target>
       </trans-unit>
       <trans-unit id="QriYn5V" resname="No formula to capture.">
         <source>No formula to capture.</source>
-        <target></target>
+        <target>~Neniu formulo por kapti.</target>
       </trans-unit>
       <trans-unit id="UDuhSdh" resname="Understood">
         <source>Understood</source>
-        <target></target>
+        <target>~Komprenita</target>
       </trans-unit>
       <trans-unit id="deMwCrv" resname="Right-click on the image to save or copy it.">
         <source>Right-click on the image to save or copy it.</source>
-        <target></target>
+        <target>~Ritru-klaku sur la bildo por konservi aŭ kopii ĝin.</target>
       </trans-unit>
       <trans-unit id="qNghuqo" resname="Close">
         <source>Close</source>
@@ -975,119 +975,119 @@
       </trans-unit>
       <trans-unit id="dGGvksN" resname="Matrix">
         <source>Matrix</source>
-        <target></target>
+        <target>~Matrico</target>
       </trans-unit>
       <trans-unit id="dZ9tZ_N" resname="Rows:">
         <source>Rows:</source>
-        <target></target>
+        <target>~Vicoj:</target>
       </trans-unit>
       <trans-unit id="SQExvxB" resname="Columns:">
         <source>Columns:</source>
-        <target></target>
+        <target>~Kolumnoj:</target>
       </trans-unit>
       <trans-unit id="jVQDWug" resname="Fill:">
         <source>Fill:</source>
-        <target></target>
+        <target>~Plenigu:</target>
       </trans-unit>
       <trans-unit id="4hCqAe1" resname="Subscripts (a, b...)">
         <source>Subscripts (a, b...)</source>
-        <target></target>
+        <target>~Subskriptoj (a, b...)</target>
       </trans-unit>
       <trans-unit id="QlFX6Ax" resname="Zeros (0)">
         <source>Zeros (0)</source>
-        <target></target>
+        <target>~Nuloj (0)</target>
       </trans-unit>
       <trans-unit id="E2ebkdm" resname="Ones (1)">
         <source>Ones (1)</source>
-        <target></target>
+        <target>~Unuoj (1)</target>
       </trans-unit>
       <trans-unit id="PCJDjjs" resname="Variables (a, b, c...)">
         <source>Variables (a, b, c...)</source>
-        <target></target>
+        <target>~Variabloj (a, b, c...)</target>
       </trans-unit>
       <trans-unit id="Nt4kRU_" resname="Numbers (1, 2, 3...)">
         <source>Numbers (1, 2, 3...)</source>
-        <target></target>
+        <target>~Nombroj (1, 2, 3...)</target>
       </trans-unit>
       <trans-unit id="GOOaLG1" resname="Empty ({})">
         <source>Empty ({})</source>
-        <target></target>
+        <target>~Malplena ({})</target>
       </trans-unit>
       <trans-unit id="u6GaqYo" resname="No recent symbols yet.">
         <source>No recent symbols yet.</source>
-        <target></target>
+        <target>~Ĝis nun neniuj lastaj simboloj.</target>
       </trans-unit>
       <trans-unit id="MXDrDSY" resname="Clear recent">
         <source>Clear recent</source>
-        <target></target>
+        <target>~Forviŝu lastajn</target>
       </trans-unit>
       <trans-unit id="8K208zw" resname="Code copied!">
         <source>Code copied!</source>
-        <target></target>
+        <target>~Kodo kopiiĝis!</target>
       </trans-unit>
       <trans-unit id="AMjB8_c" resname="Please enter a URL.">
         <source>Please enter a URL.</source>
-        <target></target>
+        <target>~Bonvolu enmeti URL-on.</target>
       </trans-unit>
       <trans-unit id="LeiwOch" resname="Menu loaded successfully.">
         <source>Menu loaded successfully.</source>
-        <target></target>
+        <target>~La menuo ŝarĝiĝis sukcese.</target>
       </trans-unit>
       <trans-unit id="Mkowaaq" resname="Error parsing local JSON:">
         <source>Error parsing local JSON:</source>
-        <target></target>
+        <target>~Eraro dum analizado de loka JSON:</target>
       </trans-unit>
       <trans-unit id="GzoPdJq" resname="The file is not a valid JSON">
         <source>The file is not a valid JSON</source>
-        <target></target>
+        <target>~La dosiero ne estas valida JSON</target>
       </trans-unit>
       <trans-unit id="QyFcmOR" resname="Create mathematical formulas visually, copy them or download them as images.">
         <source>Create mathematical formulas visually, copy them or download them as images.</source>
-        <target></target>
+        <target>~Kreu matematikajn formulojn vidale, kopiu ilin aŭ elŝutu ilin kiel bildojn.</target>
       </trans-unit>
       <trans-unit id="IRuda2t" resname="Menus">
         <source>Menus</source>
-        <target></target>
+        <target>~Menuoj</target>
       </trans-unit>
       <trans-unit id="jblMiRZ" resname="Search by description or code (e.g.: fraction, \\int)...">
         <source>Search by description or code (e.g.: fraction, \\int)...</source>
-        <target></target>
+        <target>~Serĉu laŭ priskribo aŭ kodo (ekz.: frakcio, \\int)...</target>
       </trans-unit>
       <trans-unit id="eYy3DEw" resname="Clear search">
         <source>Clear search</source>
-        <target></target>
+        <target>~Forviŝu serĉon</target>
       </trans-unit>
       <trans-unit id="uiShOBA" resname="Customize menu">
         <source>Customize menu</source>
-        <target></target>
+        <target>~Harmonizu menuon</target>
       </trans-unit>
       <trans-unit id="3cWWP_q" resname="Fullscreen">
         <source>Fullscreen</source>
-        <target></target>
+        <target>~Plenekrano</target>
       </trans-unit>
       <trans-unit id="weTJGRH" resname="LaTeX Code">
         <source>LaTeX Code</source>
-        <target></target>
+        <target>~LaTeX Kodo</target>
       </trans-unit>
       <trans-unit id="AYvg4zT" resname="Ask AI for formula">
         <source>Ask AI for formula</source>
-        <target></target>
+        <target>~Petu AI por formulon</target>
       </trans-unit>
       <trans-unit id="ie6UTcw" resname="AI Assistant">
         <source>AI Assistant</source>
-        <target></target>
+        <target>~AI Asistanto</target>
       </trans-unit>
       <trans-unit id="U8JrXZY" resname="Write your code here... \\frac{a}{b}">
         <source>Write your code here... \\frac{a}{b}</source>
-        <target></target>
+        <target>~ Skribu vian kodon ĉi tie... \\frac{a}{b}</target>
       </trans-unit>
       <trans-unit id="bz.sjt6" resname="Formula delimiters:">
         <source>Formula delimiters:</source>
-        <target></target>
+        <target>~Formulaj limigantoj:</target>
       </trans-unit>
       <trans-unit id="u91ifT9" resname="No delimiter">
         <source>No delimiter</source>
-        <target></target>
+        <target>~Sen limiganto</target>
       </trans-unit>
       <trans-unit id="mWcW572" resname="Insert">
         <source>Insert</source>
@@ -1103,39 +1103,39 @@
       </trans-unit>
       <trans-unit id="mwu5n4u" resname="View image">
         <source>View image</source>
-        <target></target>
+        <target>~Vidi bildon</target>
       </trans-unit>
       <trans-unit id="sYw60iz" resname="Manage menus">
         <source>Manage menus</source>
-        <target></target>
+        <target>~Administri menuojn</target>
       </trans-unit>
       <trans-unit id="YVdoHba" resname="You can edit your own menus with the">
         <source>You can edit your own menus with the</source>
-        <target></target>
+        <target>~Vi povas redakti viajn proprajn menuojn kun la</target>
       </trans-unit>
       <trans-unit id="DN1N6fV" resname="Menu Editor">
         <source>Menu Editor</source>
-        <target></target>
+        <target>~Menuo Redaktoro</target>
       </trans-unit>
       <trans-unit id="E8uiMCP" resname="Available menus">
         <source>Available menus</source>
-        <target></target>
+        <target>~Haveblaj menuoj</target>
       </trans-unit>
       <trans-unit id="gzEusjk" resname="Loading...">
         <source>Loading...</source>
-        <target></target>
+        <target>~Ŝarĝante...</target>
       </trans-unit>
       <trans-unit id="H75dm_N" resname="Reload list">
         <source>Reload list</source>
-        <target></target>
+        <target>~Reŝarĝi liston</target>
       </trans-unit>
       <trans-unit id="GD9uOOs" resname="Custom load">
         <source>Custom load</source>
-        <target></target>
+        <target>~ Propra ŝarĝo</target>
       </trans-unit>
       <trans-unit id="aB0Gjed" resname="Load menu from external URL">
         <source>Load menu from external URL</source>
-        <target></target>
+        <target>~Ŝarĝi menuon de eksterreta URL</target>
       </trans-unit>
       <trans-unit id="BTe0Urg" resname="Load">
         <source>Load</source>
@@ -1143,95 +1143,95 @@
       </trans-unit>
       <trans-unit id="RGbJeyQ" resname="Load menu from local file">
         <source>Load menu from local file</source>
-        <target></target>
+        <target>~Ŝarĝi menuon de loka dosiero</target>
       </trans-unit>
       <trans-unit id="CVeOHu9" resname="Clear cache and reload">
         <source>Clear cache and reload</source>
-        <target></target>
+        <target>~Forigi kaŝmemoron kaj reŝarĝi</target>
       </trans-unit>
       <trans-unit id="B3_jWNy" resname="AI Formula Assistant">
         <source>AI Formula Assistant</source>
-        <target></target>
+        <target>~AI Formulo Asistanto</target>
       </trans-unit>
       <trans-unit id="nRaDP9U" resname="Describe the formula or mathematical expression you need. The assistant will generate an instruction (prompt) for you to use in an AI model like ChatGPT.">
         <source>Describe the formula or mathematical expression you need. The assistant will generate an instruction (prompt) for you to use in an AI model like ChatGPT.</source>
-        <target></target>
+        <target>~Priskribu la formulon aŭ matematikajn esprimojn, kiujn vi bezonas. La asistanto generos instrukcion (prompton) por vi uzi en AI-modelo kiel ChatGPT.</target>
       </trans-unit>
       <trans-unit id="RR5AZBI" resname="1. Describe your formula:">
         <source>1. Describe your formula:</source>
-        <target></target>
+        <target>~1. Priskribu vian formulon:</target>
       </trans-unit>
       <trans-unit id="0qrTpGz" resname="E.g.: Quadratic equation with a=1, b=14 and c=-4">
         <source>E.g.: Quadratic equation with a=1, b=14 and c=-4</source>
-        <target></target>
+        <target>~Ekzemple: Kvadrata ekvacio kun a=1, b=14 kaj c=-4  </target>
       </trans-unit>
       <trans-unit id="SPizCpE" resname="2. Generate AI instruction">
         <source>2. Generate AI instruction</source>
-        <target></target>
+        <target>~2. Generi AI-instruadon  </target>
       </trans-unit>
       <trans-unit id="EaRuhiD" resname="3. Generated instruction:">
         <source>3. Generated instruction:</source>
-        <target></target>
+        <target>~3. Generita instrukcio:  </target>
       </trans-unit>
       <trans-unit id="P2JV64B" resname="The AI instruction will appear here...">
         <source>The AI instruction will appear here...</source>
-        <target></target>
+        <target>~La AI-instruado aperos ĉi tie...  </target>
       </trans-unit>
       <trans-unit id="X8KDLs5" resname="Open in ChatGPT">
         <source>Open in ChatGPT</source>
-        <target></target>
+        <target>~Malfermi en ChatGPT  </target>
       </trans-unit>
       <trans-unit id="LL0goME" resname="Copy for another AI">
         <source>Copy for another AI</source>
-        <target></target>
+        <target>~Kopii por alia AI  </target>
       </trans-unit>
       <trans-unit id="dvAM.ko" resname="Vars (a, b, c...)">
         <source>Vars (a, b, c...)</source>
-        <target></target>
+        <target>~Variabloj (a, b, c...)  </target>
       </trans-unit>
       <trans-unit id="rWM97hF" resname="Basic">
         <source>Basic</source>
-        <target></target>
+        <target>~Bazaj  </target>
       </trans-unit>
       <trans-unit id="p6sV2wl" resname="Fraction">
         <source>Fraction</source>
-        <target></target>
+        <target>~Frakcio  </target>
       </trans-unit>
       <trans-unit id="Yt5TsU4" resname="Small fraction">
         <source>Small fraction</source>
-        <target></target>
+        <target>~Malgranda frakcio</target>
       </trans-unit>
       <trans-unit id="ZIt9uEE" resname="Large fraction">
         <source>Large fraction</source>
-        <target></target>
+        <target>~Granda frakcio</target>
       </trans-unit>
       <trans-unit id="PAm0OR3" resname="Nested fraction">
         <source>Nested fraction</source>
-        <target></target>
+        <target>~Nestita frakcio</target>
       </trans-unit>
       <trans-unit id="JJcOnQK" resname="Infinity">
         <source>Infinity</source>
-        <target></target>
+        <target>~Infinitumo</target>
       </trans-unit>
       <trans-unit id="sWdKIT2" resname="Lowercase Greek letter alpha">
         <source>Lowercase Greek letter alpha</source>
-        <target></target>
+        <target>~Malgranda greka litero alfa</target>
       </trans-unit>
       <trans-unit id="51tXdBL" resname="Lowercase Greek letter beta">
         <source>Lowercase Greek letter beta</source>
-        <target></target>
+        <target>~Malgranda greka litero beta</target>
       </trans-unit>
       <trans-unit id="80Kr391" resname="Lowercase Greek letter pi">
         <source>Lowercase Greek letter pi</source>
-        <target></target>
+        <target>~Malgranda greka litero pi</target>
       </trans-unit>
       <trans-unit id="npAv28I" resname="Display mode">
         <source>Display mode</source>
-        <target></target>
+        <target>~Montra modo</target>
       </trans-unit>
       <trans-unit id="8.bnJvh" resname="Parentheses">
         <source>Parentheses</source>
-        <target></target>
+        <target>~Parentezoj</target>
       </trans-unit>
       <trans-unit id=".yEIhdI" resname="Root">
         <source>Root</source>
@@ -1251,35 +1251,35 @@
       </trans-unit>
       <trans-unit id="TEJoYtI" resname="Delimiters">
         <source>Delimiters</source>
-        <target></target>
+        <target>~Delimitiloj</target>
       </trans-unit>
       <trans-unit id="1Iql3OZ" resname="Square brackets">
         <source>Square brackets</source>
-        <target></target>
+        <target>~Kvadrataj krampoj</target>
       </trans-unit>
       <trans-unit id="T7evgVP" resname="Curly braces">
         <source>Curly braces</source>
-        <target></target>
+        <target>~Kurla krampoj</target>
       </trans-unit>
       <trans-unit id="0zze4jf" resname="Norm">
         <source>Norm</source>
-        <target></target>
+        <target>~Normo</target>
       </trans-unit>
       <trans-unit id="iYn1Wmo" resname="Floor function">
         <source>Floor function</source>
-        <target></target>
+        <target>~Plankfunkcio</target>
       </trans-unit>
       <trans-unit id="hhIKD3K" resname="Ceiling function">
         <source>Ceiling function</source>
-        <target></target>
+        <target>~Plafonkunkcio</target>
       </trans-unit>
       <trans-unit id="DiYvbWw" resname="Absolute value">
         <source>Absolute value</source>
-        <target></target>
+        <target>~ Absoluta valoro</target>
       </trans-unit>
       <trans-unit id="4.bzzOJ" resname="Angle">
         <source>Angle</source>
-        <target></target>
+        <target>~Angulo</target>
       </trans-unit>
       <trans-unit id="NMoOWkS" resname="Grouping">
         <source>Grouping</source>
@@ -1291,51 +1291,51 @@
       </trans-unit>
       <trans-unit id="QtIdflD" resname="Underbrace">
         <source>Underbrace</source>
-        <target></target>
+        <target>~Subkrampo</target>
       </trans-unit>
       <trans-unit id="zzmaDnW" resname="Overbrace">
         <source>Overbrace</source>
-        <target></target>
+        <target>~Superkrampo</target>
       </trans-unit>
       <trans-unit id="_HMf.Je" resname="Operators and relations">
         <source>Operators and relations</source>
-        <target></target>
+        <target>~Operatoroj kaj rilatoj</target>
       </trans-unit>
       <trans-unit id="EI7S36L" resname="Approximately equal">
         <source>Approximately equal</source>
-        <target></target>
+        <target>~Proksimume egalas</target>
       </trans-unit>
       <trans-unit id="2t8SD_O" resname="Approximate">
         <source>Approximate</source>
-        <target></target>
+        <target>~Proksima</target>
       </trans-unit>
       <trans-unit id="JJHU27u" resname="Asymptotically equal">
         <source>Asymptotically equal</source>
-        <target></target>
+        <target>~Asimptote egala</target>
       </trans-unit>
       <trans-unit id="0t4ArND" resname="Asterisk">
         <source>Asterisk</source>
-        <target></target>
+        <target>~Asterisko</target>
       </trans-unit>
       <trans-unit id="OzYR6vO" resname="Bowtie">
         <source>Bowtie</source>
-        <target></target>
+        <target>~Knoteco</target>
       </trans-unit>
       <trans-unit id="a9_R80T" resname="Circled quotient">
         <source>Circled quotient</source>
-        <target></target>
+        <target>~Circumferenca kvociento</target>
       </trans-unit>
       <trans-unit id="64_DmYX" resname="Composition">
         <source>Composition</source>
-        <target></target>
+        <target>~Komponado</target>
       </trans-unit>
       <trans-unit id="gpAROnt" resname="Congruent">
         <source>Congruent</source>
-        <target></target>
+        <target>~ Kongrua</target>
       </trans-unit>
       <trans-unit id="poD4d98" resname="Reduced Planck constant">
         <source>Reduced Planck constant</source>
-        <target></target>
+        <target>~Malgranda Plancka konstanto</target>
       </trans-unit>
       <trans-unit id="KuOLUS1" resname="Square">
         <source>Square</source>
@@ -1343,15 +1343,15 @@
       </trans-unit>
       <trans-unit id="9DoIqgi" resname="Large circle">
         <source>Large circle</source>
-        <target></target>
+        <target>~Granda cirklo</target>
       </trans-unit>
       <trans-unit id="BRiw3dy" resname="Difference">
         <source>Difference</source>
-        <target></target>
+        <target>~Difino</target>
       </trans-unit>
       <trans-unit id="BBgv1KF" resname="Not equal">
         <source>Not equal</source>
-        <target></target>
+        <target>~Ne egalas</target>
       </trans-unit>
       <trans-unit id="FLnk95F" resname="Division">
         <source>Division</source>
@@ -1359,35 +1359,35 @@
       </trans-unit>
       <trans-unit id="CpA2lkU" resname="Equivalent">
         <source>Equivalent</source>
-        <target></target>
+        <target>~Ekvivalentas</target>
       </trans-unit>
       <trans-unit id="uFvEWvW" resname="Dotless i">
         <source>Dotless i</source>
-        <target></target>
+        <target>~Senpika i</target>
       </trans-unit>
       <trans-unit id="cJyYeVF" resname="Intersection">
         <source>Intersection</source>
-        <target></target>
+        <target>~Intersekcio</target>
       </trans-unit>
       <trans-unit id="xSyAuIM" resname="Dotless j">
         <source>Dotless j</source>
-        <target></target>
+        <target>~Senpika j</target>
       </trans-unit>
       <trans-unit id="jKfrBDM" resname="Greater than or equal to">
         <source>Greater than or equal to</source>
-        <target></target>
+        <target>~Pli ol aŭ egala al</target>
       </trans-unit>
       <trans-unit id="CbLDCyz" resname="Greater than">
         <source>Greater than</source>
-        <target></target>
+        <target>~Pli ol</target>
       </trans-unit>
       <trans-unit id="jTjhCem" resname="Less than or equal to">
         <source>Less than or equal to</source>
-        <target></target>
+        <target>~Malpli ol aŭ egala al</target>
       </trans-unit>
       <trans-unit id="ybPoOJO" resname="Less than">
         <source>Less than</source>
-        <target></target>
+        <target>~Malpli ol</target>
       </trans-unit>
       <trans-unit id="_sDp8hs" resname="Multiplication">
         <source>Multiplication</source>
@@ -1395,359 +1395,359 @@
       </trans-unit>
       <trans-unit id="_0FY_tn" resname="Plus-minus">
         <source>Plus-minus</source>
-        <target></target>
+        <target>~Plus-meno</target>
       </trans-unit>
       <trans-unit id="MRBxrPT" resname="Nabla">
         <source>Nabla</source>
-        <target></target>
+        <target>~Nabla</target>
       </trans-unit>
       <trans-unit id="csnCY8d" resname="Not congruent">
         <source>Not congruent</source>
-        <target></target>
+        <target>~Ne kongruas</target>
       </trans-unit>
       <trans-unit id="YIwUjH5" resname="Not equivalent">
         <source>Not equivalent</source>
-        <target></target>
+        <target>~Ne ekvivalentas</target>
       </trans-unit>
       <trans-unit id="6La.4wl" resname="Not greater than or equal to (slant)">
         <source>Not greater than or equal to (slant)</source>
-        <target></target>
+        <target>~Ne pli granda aŭ egala (skvama)</target>
       </trans-unit>
       <trans-unit id="k6nFPM9" resname="Not greater than or equal to">
         <source>Not greater than or equal to</source>
-        <target></target>
+        <target>~Ne pli granda aŭ egala</target>
       </trans-unit>
       <trans-unit id="tCtYe9Q" resname="Not greater than">
         <source>Not greater than</source>
-        <target></target>
+        <target>~Ne pli granda</target>
       </trans-unit>
       <trans-unit id="vLPclOx" resname="Not less than or equal to (slant)">
         <source>Not less than or equal to (slant)</source>
-        <target></target>
+        <target>~Ne malpli granda aŭ egala (skvama)</target>
       </trans-unit>
       <trans-unit id="cB0naaj" resname="Not less than or equal to">
         <source>Not less than or equal to</source>
-        <target></target>
+        <target>~Ne malpli granda aŭ egala</target>
       </trans-unit>
       <trans-unit id="abaxgwf" resname="Not less than">
         <source>Not less than</source>
-        <target></target>
+        <target>~Ne malpli granda</target>
       </trans-unit>
       <trans-unit id="bbb9Uia" resname="Not an element of">
         <source>Not an element of</source>
-        <target></target>
+        <target>~Ne elemento de</target>
       </trans-unit>
       <trans-unit id="pTfkjNb" resname="Does not precede">
         <source>Does not precede</source>
-        <target></target>
+        <target>~Ne antaŭas  </target>
       </trans-unit>
       <trans-unit id="eoJ59O1" resname="Not similar">
         <source>Not similar</source>
-        <target></target>
+        <target>~Ne simila  </target>
       </trans-unit>
       <trans-unit id="bF3rrNu" resname="Not a subset or equal">
         <source>Not a subset or equal</source>
-        <target></target>
+        <target>~Ne subaro aŭ egalas  </target>
       </trans-unit>
       <trans-unit id="neOeJAp" resname="Does not succeed">
         <source>Does not succeed</source>
-        <target></target>
+        <target>~Ne sekvas  </target>
       </trans-unit>
       <trans-unit id="b2devf0" resname="Parallel">
         <source>Parallel</source>
-        <target></target>
+        <target>~ Paralela  </target>
       </trans-unit>
       <trans-unit id="J5R97yC" resname="Imaginary part">
         <source>Imaginary part</source>
-        <target></target>
+        <target>~ Imaga parto  </target>
       </trans-unit>
       <trans-unit id="OFe9tEx" resname="Real part">
         <source>Real part</source>
-        <target></target>
+        <target>~ Reala parto  </target>
       </trans-unit>
       <trans-unit id="Y6qvsPu" resname="Perpendicular">
         <source>Perpendicular</source>
-        <target></target>
+        <target>~ Perpendikula  </target>
       </trans-unit>
       <trans-unit id="jMRFspU" resname="Element of">
         <source>Element of</source>
-        <target></target>
+        <target>~ Elemento de  </target>
       </trans-unit>
       <trans-unit id="QHuLMDG" resname="Star product">
         <source>Star product</source>
-        <target></target>
+        <target>~ Stela produkto</target>
       </trans-unit>
       <trans-unit id="OoHfC3t" resname="Dot product">
         <source>Dot product</source>
-        <target></target>
+        <target>~Dot product</target>
       </trans-unit>
       <trans-unit id="vEEvQlf" resname="Tensor product">
         <source>Tensor product</source>
-        <target></target>
+        <target>~Tensor product</target>
       </trans-unit>
       <trans-unit id="8jc64cW" resname="Proportional to">
         <source>Proportional to</source>
-        <target></target>
+        <target>~Proportional to</target>
       </trans-unit>
       <trans-unit id="WAAnqIj" resname="Bullet">
         <source>Bullet</source>
-        <target></target>
+        <target>~Bulo</target>
       </trans-unit>
       <trans-unit id="U0btdzJ" resname="Diagonal dots">
         <source>Diagonal dots</source>
-        <target></target>
+        <target>~Diagona punktoj</target>
       </trans-unit>
       <trans-unit id="Gr_FqoK" resname="Horizontal dots">
         <source>Horizontal dots</source>
-        <target></target>
+        <target>~Horizontalaj punktoj</target>
       </trans-unit>
       <trans-unit id="YQ1mJG6" resname="Vertical dots">
         <source>Vertical dots</source>
-        <target></target>
+        <target>~Vertikalaj punktoj</target>
       </trans-unit>
       <trans-unit id="5b434BV" resname="Circled minus">
         <source>Circled minus</source>
-        <target></target>
+        <target>~Circumskriba minuso</target>
       </trans-unit>
       <trans-unit id=".dFeNVT" resname="Satisfies (models)">
         <source>Satisfies (models)</source>
-        <target></target>
+        <target>~Kontentenas (modelas)</target>
       </trans-unit>
       <trans-unit id="gfuNm1T" resname="Is deduced (vdash)">
         <source>Is deduced (vdash)</source>
-        <target></target>
+        <target>~Estas deduktita (vdash)</target>
       </trans-unit>
       <trans-unit id="p0qt6tZ" resname="Similar">
         <source>Similar</source>
-        <target></target>
+        <target>~Simila</target>
       </trans-unit>
       <trans-unit id="zCobXxz" resname="Subset">
         <source>Subset</source>
-        <target></target>
+        <target>~Subaro</target>
       </trans-unit>
       <trans-unit id="s0LjZaq" resname="Subset or equal">
         <source>Subset or equal</source>
-        <target></target>
+        <target>~Subaro aŭ egala</target>
       </trans-unit>
       <trans-unit id="9raBswJ" resname="Proper subset">
         <source>Proper subset</source>
-        <target></target>
+        <target>~Prava subaro</target>
       </trans-unit>
       <trans-unit id="lDECSLP" resname="Direct sum">
         <source>Direct sum</source>
-        <target></target>
+        <target>~Rekta sumo</target>
       </trans-unit>
       <trans-unit id="JCtvJyu" resname="Superset">
         <source>Superset</source>
-        <target></target>
+        <target>~Superaro</target>
       </trans-unit>
       <trans-unit id="pVZQ.I6" resname="Superset or equal">
         <source>Superset or equal</source>
-        <target></target>
+        <target>~Superaro aŭ egala</target>
       </trans-unit>
       <trans-unit id="p2fL7kT" resname="Small right triangle">
         <source>Small right triangle</source>
-        <target></target>
+        <target>~Eta dekstra triangulo</target>
       </trans-unit>
       <trans-unit id="S579Rh." resname="Large triangle">
         <source>Large triangle</source>
-        <target></target>
+        <target>~Granda triangulo</target>
       </trans-unit>
       <trans-unit id="d8.c0Ph" resname="Large inverted triangle">
         <source>Large inverted triangle</source>
-        <target></target>
+        <target>~Granda inversa triangulo</target>
       </trans-unit>
       <trans-unit id="GKDCwnE" resname="Small left triangle">
         <source>Small left triangle</source>
-        <target></target>
+        <target>~Malgranda maldekstra triangulo</target>
       </trans-unit>
       <trans-unit id="OdWyh_F" resname="Union">
         <source>Union</source>
-        <target></target>
+        <target>~Unuiĝo</target>
       </trans-unit>
       <trans-unit id="aPCXwTR" resname="Measured angle">
         <source>Measured angle</source>
-        <target></target>
+        <target>~Mezurita angulo</target>
       </trans-unit>
       <trans-unit id="bE8ERWC" resname="Sets">
         <source>Sets</source>
-        <target></target>
+        <target>~Aroj</target>
       </trans-unit>
       <trans-unit id="apd8EII" resname="Complex numbers">
         <source>Complex numbers</source>
-        <target></target>
+        <target>~Kompleksaj nombroj</target>
       </trans-unit>
       <trans-unit id="8BAw2YB" resname="Empty set">
         <source>Empty set</source>
-        <target></target>
+        <target>~Malplena aro</target>
       </trans-unit>
       <trans-unit id="4eXzNrk" resname="Integers">
         <source>Integers</source>
-        <target></target>
+        <target>~Entjeroj</target>
       </trans-unit>
       <trans-unit id="4G_kgk9" resname="Natural numbers">
         <source>Natural numbers</source>
-        <target></target>
+        <target>~Naturanumeroj</target>
       </trans-unit>
       <trans-unit id="8TmClYf" resname="Rational numbers">
         <source>Rational numbers</source>
-        <target></target>
+        <target>~Raciaj nombroj</target>
       </trans-unit>
       <trans-unit id="sszl1rE" resname="Real numbers">
         <source>Real numbers</source>
-        <target></target>
+        <target>~Reaj nombroj</target>
       </trans-unit>
       <trans-unit id="H_iI8sY" resname="Logic">
         <source>Logic</source>
-        <target></target>
+        <target>~Logiko</target>
       </trans-unit>
       <trans-unit id="6mRFOJi" resname="Conjunction">
         <source>Conjunction</source>
-        <target></target>
+        <target>~Konjunkcio</target>
       </trans-unit>
       <trans-unit id="PqzUq3E" resname="Disjunction">
         <source>Disjunction</source>
-        <target></target>
+        <target>~Disjunkcio</target>
       </trans-unit>
       <trans-unit id="ZjgoXTu" resname="Equivalence">
         <source>Equivalence</source>
-        <target></target>
+        <target>~Ekvivalenteco</target>
       </trans-unit>
       <trans-unit id="bmCTC9Z" resname="Exists">
         <source>Exists</source>
-        <target></target>
+        <target>~Estas</target>
       </trans-unit>
       <trans-unit id="VcIN6G5" resname="Implication">
         <source>Implication</source>
-        <target></target>
+        <target>~Impikado</target>
       </trans-unit>
       <trans-unit id="tQNbhAe" resname="Negation">
         <source>Negation</source>
-        <target></target>
+        <target>~Negado</target>
       </trans-unit>
       <trans-unit id="0Bi3hvk" resname="Does not exist">
         <source>Does not exist</source>
-        <target></target>
+        <target>~Ne ekzistas</target>
       </trans-unit>
       <trans-unit id="rkU3C7A" resname="Not for all">
         <source>Not for all</source>
-        <target></target>
+        <target>~Ne por ĉiuj</target>
       </trans-unit>
       <trans-unit id="08Axn.g" resname="For all">
         <source>For all</source>
-        <target></target>
+        <target>~Por ĉiuj</target>
       </trans-unit>
       <trans-unit id="QBRfNKG" resname="Functions">
         <source>Functions</source>
-        <target></target>
+        <target>~Funkcioj  </target>
       </trans-unit>
       <trans-unit id="4qXw4iO" resname="Cosecant">
         <source>Cosecant</source>
-        <target></target>
+        <target>~Kosekseko  </target>
       </trans-unit>
       <trans-unit id="f_24PgK" resname="Cosine">
         <source>Cosine</source>
-        <target></target>
+        <target>~Kosekso  </target>
       </trans-unit>
       <trans-unit id="977lpps" resname="Cotangent">
         <source>Cotangent</source>
-        <target></target>
+        <target>~Kotangento  </target>
       </trans-unit>
       <trans-unit id="BMLOadY" resname="Exponential">
         <source>Exponential</source>
-        <target></target>
+        <target>~Eksponenta  </target>
       </trans-unit>
       <trans-unit id="3bArSP6" resname="Logarithm">
         <source>Logarithm</source>
-        <target></target>
+        <target>~Logaritmo  </target>
       </trans-unit>
       <trans-unit id="2aZGSBw" resname="Natural logarithm">
         <source>Natural logarithm</source>
-        <target></target>
+        <target>~Natura logaritmo  </target>
       </trans-unit>
       <trans-unit id="v5ycRIL" resname="Square root">
         <source>Square root</source>
-        <target></target>
+        <target>~Kvadrata radiko  </target>
       </trans-unit>
       <trans-unit id="4ghVVNO" resname="Nth root">
         <source>Nth root</source>
-        <target></target>
+        <target>~N-ta radiko  </target>
       </trans-unit>
       <trans-unit id="7w4Di5j" resname="Secant">
         <source>Secant</source>
-        <target></target>
+        <target>~Sekanto</target>
       </trans-unit>
       <trans-unit id="F2SJ9iL" resname="Sine">
         <source>Sine</source>
-        <target></target>
+        <target>~Sine</target>
       </trans-unit>
       <trans-unit id="e20Vd86" resname="Tangent">
         <source>Tangent</source>
-        <target></target>
+        <target>~Tango</target>
       </trans-unit>
       <trans-unit id="HZdwGu2" resname="Calculus">
         <source>Calculus</source>
-        <target></target>
+        <target>~Kalkulo</target>
       </trans-unit>
       <trans-unit id="8yKuIDl" resname="Large coproduct">
         <source>Large coproduct</source>
-        <target></target>
+        <target>~Granda koprodukto</target>
       </trans-unit>
       <trans-unit id="tosUq9F" resname="Derivative">
         <source>Derivative</source>
-        <target></target>
+        <target>~Derivitaĵo</target>
       </trans-unit>
       <trans-unit id="GWFRx0M" resname="Partial derivative">
         <source>Partial derivative</source>
-        <target></target>
+        <target>~Parta derivaĵo</target>
       </trans-unit>
       <trans-unit id="4CO1kPU" resname="Definite integral">
         <source>Definite integral</source>
-        <target></target>
+        <target>~Difinita integrejo</target>
       </trans-unit>
       <trans-unit id="3Ax0IO6" resname="Double integral">
         <source>Double integral</source>
-        <target></target>
+        <target>~Duobla integrejo</target>
       </trans-unit>
       <trans-unit id="Jr4TBzV" resname="Indefinite integral">
         <source>Indefinite integral</source>
-        <target></target>
+        <target>~Nedefinita integrejo</target>
       </trans-unit>
       <trans-unit id="1Pp0bl." resname="Triple integral">
         <source>Triple integral</source>
-        <target></target>
+        <target>~Tria integrejo</target>
       </trans-unit>
       <trans-unit id="mP2oqw0" resname="Limit">
         <source>Limit</source>
-        <target></target>
+        <target>~Limito</target>
       </trans-unit>
       <trans-unit id="jjkUyDB" resname="Large logical product">
         <source>Large logical product</source>
-        <target></target>
+        <target>~Granda logika produkto</target>
       </trans-unit>
       <trans-unit id="XEsTcQz" resname="Large tensor product">
         <source>Large tensor product</source>
-        <target></target>
+        <target>~Granda tensorprodukto</target>
       </trans-unit>
       <trans-unit id="SKPq7WJ" resname="Product">
         <source>Product</source>
-        <target></target>
+        <target>~Produkto</target>
       </trans-unit>
       <trans-unit id="yTyeCqe" resname="Large direct sum">
         <source>Large direct sum</source>
-        <target></target>
+        <target>~Granda rektaj sumoj</target>
       </trans-unit>
       <trans-unit id="4BAotc9" resname="Large logical sum">
         <source>Large logical sum</source>
-        <target></target>
+        <target>~Granda logika sumo</target>
       </trans-unit>
       <trans-unit id="ZgomIcF" resname="Summation">
         <source>Summation</source>
-        <target></target>
+        <target>~Sumado</target>
       </trans-unit>
       <trans-unit id="GL7oE7j" resname="Large disjoint union">
         <source>Large disjoint union</source>
-        <target></target>
+        <target>~Granda disigita unio</target>
       </trans-unit>
       <trans-unit id="IN_eh7P" resname="Arrows">
         <source>Arrows</source>
@@ -1755,343 +1755,343 @@
       </trans-unit>
       <trans-unit id="Xa1CHji" resname="Right-left harpoons">
         <source>Right-left harpoons</source>
-        <target></target>
+        <target>~Dekstra-maldekstra harpoonoj</target>
       </trans-unit>
       <trans-unit id="gcF1pNI" resname="Left-right harpoons">
         <source>Left-right harpoons</source>
-        <target></target>
+        <target>~Maldekstra-dekstra harpoonoj</target>
       </trans-unit>
       <trans-unit id="maHhFvm" resname="Right harpoon down">
         <source>Right harpoon down</source>
-        <target></target>
+        <target>~Dekstra harpoono malsupren</target>
       </trans-unit>
       <trans-unit id="Rglg8kr" resname="Right harpoon up">
         <source>Right harpoon up</source>
-        <target></target>
+        <target>~Dekstra harpoono supren</target>
       </trans-unit>
       <trans-unit id="Ndl9_n9" resname="Left harpoon down">
         <source>Left harpoon down</source>
-        <target></target>
+        <target>~Maldekstra harpoono malsupren</target>
       </trans-unit>
       <trans-unit id="JE49rzP" resname="Left harpoon up">
         <source>Left harpoon up</source>
-        <target></target>
+        <target>~Maldekstra harpoono supren</target>
       </trans-unit>
       <trans-unit id="K1Prp5v" resname="Double arrow">
         <source>Double arrow</source>
-        <target></target>
+        <target>~Duobla flago</target>
       </trans-unit>
       <trans-unit id="UoIDZfr" resname="Long equivalence">
         <source>Long equivalence</source>
-        <target></target>
+        <target>~Longa ekvivalento</target>
       </trans-unit>
       <trans-unit id="okBpgji" resname="Down arrow">
         <source>Down arrow</source>
-        <target></target>
+        <target>~Malsupra flago</target>
       </trans-unit>
       <trans-unit id="V6Dm6uX" resname="Up arrow">
         <source>Up arrow</source>
-        <target></target>
+        <target>~Malsupra flago</target>
       </trans-unit>
       <trans-unit id="2xUlg0C" resname="Right loop arrow">
         <source>Right loop arrow</source>
-        <target></target>
+        <target>~Dekstra buŝo-flaga</target>
       </trans-unit>
       <trans-unit id="f6KOQNs" resname="Right circular arrow">
         <source>Right circular arrow</source>
-        <target></target>
+        <target>~Dekstra cirkla flago</target>
       </trans-unit>
       <trans-unit id="1cgD7N9" resname="Arrow with text below">
         <source>Arrow with text below</source>
-        <target></target>
+        <target>~Sago kun teksto sube</target>
       </trans-unit>
       <trans-unit id="rtCVSEI" resname="Arrow with text above">
         <source>Arrow with text above</source>
-        <target></target>
+        <target>~Sago kun teksto sube</target>
       </trans-unit>
       <trans-unit id="2xsg9dy" resname="Arrow with text above and below">
         <source>Arrow with text above and below</source>
-        <target></target>
+        <target>~Sago kun teksto sube kaj sube</target>
       </trans-unit>
       <trans-unit id="fkj1H3d" resname="Right curve arrow">
         <source>Right curve arrow</source>
-        <target></target>
+        <target>~Dekstra kurba sago</target>
       </trans-unit>
       <trans-unit id="ghYfksM" resname="Left curve arrow">
         <source>Left curve arrow</source>
-        <target></target>
+        <target>~Maldekstra kurba sago</target>
       </trans-unit>
       <trans-unit id="OSmpSwj" resname="Right arrow">
         <source>Right arrow</source>
-        <target></target>
+        <target>~Dekstra sago</target>
       </trans-unit>
       <trans-unit id="CDES.6M" resname="Right arrow with tail">
         <source>Right arrow with tail</source>
-        <target></target>
+        <target>~Dekstra sago kun vosto</target>
       </trans-unit>
       <trans-unit id="9FPEQH2" resname="Double down arrow">
         <source>Double down arrow</source>
-        <target></target>
+        <target>~Duobla malsupra sago</target>
       </trans-unit>
       <trans-unit id="xlsET7u" resname="Double up arrow">
         <source>Double up arrow</source>
-        <target></target>
+        <target>~Duobla supran sago</target>
       </trans-unit>
       <trans-unit id="yoaHldo" resname="Double vertical arrow">
         <source>Double vertical arrow</source>
-        <target></target>
+        <target>~Duobla vertikala sago</target>
       </trans-unit>
       <trans-unit id="WEYcQUx" resname="Left arrow">
         <source>Left arrow</source>
-        <target></target>
+        <target>~Maldekstra flago</target>
       </trans-unit>
       <trans-unit id="9zggaxq" resname="Left arrow (gets)">
         <source>Left arrow (gets)</source>
-        <target></target>
+        <target>~Maldekstra flago (prenas)</target>
       </trans-unit>
       <trans-unit id=".Jp_O9K" resname="Long arrow">
         <source>Long arrow</source>
-        <target></target>
+        <target>~Longa flago</target>
       </trans-unit>
       <trans-unit id="UA7JlpH" resname="Long double arrow">
         <source>Long double arrow</source>
-        <target></target>
+        <target>~Dua longa flago</target>
       </trans-unit>
       <trans-unit id="Sn28UKM" resname="Long left arrow">
         <source>Long left arrow</source>
-        <target></target>
+        <target>~Longa maldekstra flago</target>
       </trans-unit>
       <trans-unit id="jPW2wyM" resname="Northeast arrow">
         <source>Northeast arrow</source>
-        <target></target>
+        <target>~Nordoriento flago</target>
       </trans-unit>
       <trans-unit id="k1bApHV" resname="Northwest arrow">
         <source>Northwest arrow</source>
-        <target></target>
+        <target>~Okcidentoriento flago</target>
       </trans-unit>
       <trans-unit id="qNp__o7" resname="Wiggly right arrow">
         <source>Wiggly right arrow</source>
-        <target></target>
+        <target>~Kurba dekstra flago</target>
       </trans-unit>
       <trans-unit id="lkkmVGo" resname="Southeast arrow">
         <source>Southeast arrow</source>
-        <target></target>
+        <target>~Sudoriento flago</target>
       </trans-unit>
       <trans-unit id="uBaayuf" resname="Southwest arrow">
         <source>Southwest arrow</source>
-        <target></target>
+        <target>~Sudokcidentoriento flago</target>
       </trans-unit>
       <trans-unit id="EG4om2D" resname="Vector arrow">
         <source>Vector arrow</source>
-        <target></target>
+        <target>~Vektora sagxo</target>
       </trans-unit>
       <trans-unit id="KXK8RKN" resname="Double up arrows">
         <source>Double up arrows</source>
-        <target></target>
+        <target>~Duoblaj supraj sagxoj</target>
       </trans-unit>
       <trans-unit id="YAv_HJC" resname="Double right arrows">
         <source>Double right arrows</source>
-        <target></target>
+        <target>~Duoblaj dekstraj sagxoj</target>
       </trans-unit>
       <trans-unit id="FFbwCDG" resname="Implies">
         <source>Implies</source>
-        <target></target>
+        <target>~Indikas</target>
       </trans-unit>
       <trans-unit id="d9955iR" resname="Reverse implies">
         <source>Reverse implies</source>
-        <target></target>
+        <target>~Inverse indikas</target>
       </trans-unit>
       <trans-unit id="yjheIGP" resname="Long implies">
         <source>Long implies</source>
-        <target></target>
+        <target>~Longa indikas</target>
       </trans-unit>
       <trans-unit id="P0qDWYI" resname="Injection">
         <source>Injection</source>
-        <target></target>
+        <target>~Injekcio</target>
       </trans-unit>
       <trans-unit id="_JShhBV" resname="Long mapping">
         <source>Long mapping</source>
-        <target></target>
+        <target>~Longa mapado</target>
       </trans-unit>
       <trans-unit id="HAJ4vVG" resname="Mapsto">
         <source>Mapsto</source>
-        <target></target>
+        <target>~Mapas</target>
       </trans-unit>
       <trans-unit id="ShJlzWG" resname="Not implies right">
         <source>Not implies right</source>
-        <target></target>
+        <target>~Ne indikas dekstren</target>
       </trans-unit>
       <trans-unit id="VFADSQc" resname="Not implies left">
         <source>Not implies left</source>
-        <target></target>
+        <target>~Ne implicas maldekstre</target>
       </trans-unit>
       <trans-unit id="8wTneYj" resname="Vector">
         <source>Vector</source>
-        <target></target>
+        <target>~Vektoro</target>
       </trans-unit>
       <trans-unit id="FYKYcbP" resname="Matrices">
         <source>Matrices</source>
-        <target></target>
+        <target>~Matricoj</target>
       </trans-unit>
       <trans-unit id="3GgwCo9" resname="2x2 determinant">
         <source>2x2 determinant</source>
-        <target></target>
+        <target>~2x2 determinant</target>
       </trans-unit>
       <trans-unit id="Dxi8FII" resname="2x2 matrix">
         <source>2x2 matrix</source>
-        <target></target>
+        <target>~2x2 matrix</target>
       </trans-unit>
       <trans-unit id="mZlwn9N" resname="2x2 matrix with brackets">
         <source>2x2 matrix with brackets</source>
-        <target></target>
+        <target>~2x2 matrix kun braketoj</target>
       </trans-unit>
       <trans-unit id="v6_miUM" resname="3x3 matrix">
         <source>3x3 matrix</source>
-        <target></target>
+        <target>~3x3 matrix</target>
       </trans-unit>
       <trans-unit id="ReICqF0" resname="Systems">
         <source>Systems</source>
-        <target></target>
+        <target>~Sistemoj</target>
       </trans-unit>
       <trans-unit id="JA0wraK" resname="System of 3 equations with array">
         <source>System of 3 equations with array</source>
-        <target></target>
+        <target>~Sistemo de 3 ekvacioj kun arĥivo</target>
       </trans-unit>
       <trans-unit id="xfdx9Ua" resname="System with array">
         <source>System with array</source>
-        <target></target>
+        <target>~Sistemo kun arĥivo</target>
       </trans-unit>
       <trans-unit id="MkSc4Hv" resname="Decorations">
         <source>Decorations</source>
-        <target></target>
+        <target>~Ornamantoj</target>
       </trans-unit>
       <trans-unit id="Jvv1d6U" resname="Bar">
         <source>Bar</source>
-        <target></target>
+        <target>~Baro</target>
       </trans-unit>
       <trans-unit id="YTg6AgY" resname="Double dot">
         <source>Double dot</source>
-        <target></target>
+        <target>~Duobla punkto</target>
       </trans-unit>
       <trans-unit id="U98wkKb" resname="Dot">
         <source>Dot</source>
-        <target></target>
+        <target>~Punkto</target>
       </trans-unit>
       <trans-unit id="Gsf3ntf" resname="Overline">
         <source>Overline</source>
-        <target></target>
+        <target>~Superlinio</target>
       </trans-unit>
       <trans-unit id="6wJb8b6" resname="Hat">
         <source>Hat</source>
-        <target></target>
+        <target>~ Ĉapelo</target>
       </trans-unit>
       <trans-unit id="pXdkmeH" resname="Wide hat">
         <source>Wide hat</source>
-        <target></target>
+        <target>~Larĝa ĉapelo</target>
       </trans-unit>
       <trans-unit id="waOdF6U" resname="Tilde">
         <source>Tilde</source>
-        <target></target>
+        <target>~Tildo</target>
       </trans-unit>
       <trans-unit id="cPxBcId" resname="Annotations">
         <source>Annotations</source>
-        <target></target>
+        <target>~Notacioj</target>
       </trans-unit>
       <trans-unit id="O_DHQ3p" resname="Insert text">
         <source>Insert text</source>
-        <target></target>
+        <target>~Enmeti tekston</target>
       </trans-unit>
       <trans-unit id="2OG93.D" resname="Cross out with X">
         <source>Cross out with X</source>
-        <target></target>
+        <target>~Kruci per X</target>
       </trans-unit>
       <trans-unit id="S6xrJt." resname="Cross out">
         <source>Cross out</source>
-        <target></target>
+        <target>~Kruci</target>
       </trans-unit>
       <trans-unit id="n4.QYz1" resname="Cancel term">
         <source>Cancel term</source>
-        <target></target>
+        <target>~Nuligi termino</target>
       </trans-unit>
       <trans-unit id="7sZuzMj" resname="Cancel and annotate">
         <source>Cancel and annotate</source>
-        <target></target>
+        <target>~Nuligi kaj anotaciigi</target>
       </trans-unit>
       <trans-unit id="nLp5oym" resname="Text below">
         <source>Text below</source>
-        <target></target>
+        <target>~Teksto sube</target>
       </trans-unit>
       <trans-unit id="ivFn3H2" resname="Text above">
         <source>Text above</source>
-        <target></target>
+        <target>~Teksto supre</target>
       </trans-unit>
       <trans-unit id="ZKgEbfK" resname="Text formatting">
         <source>Text formatting</source>
-        <target></target>
+        <target>~Teksta formatiĝo</target>
       </trans-unit>
       <trans-unit id="knVPcTG" resname="Tiny text">
         <source>Tiny text</source>
-        <target></target>
+        <target>~Eta teksto</target>
       </trans-unit>
       <trans-unit id="u4Mz8gs" resname="Script size text">
         <source>Script size text</source>
-        <target></target>
+        <target>~Skripta grandeco teksto</target>
       </trans-unit>
       <trans-unit id="KPMHiIf" resname="Small text">
         <source>Small text</source>
-        <target></target>
+        <target>~Malgranda teksto</target>
       </trans-unit>
       <trans-unit id="6WOADdb" resname="Normal size text">
         <source>Normal size text</source>
-        <target></target>
+        <target>~Normala grandeco</target>
       </trans-unit>
       <trans-unit id="A4PW2eq" resname="Large text">
         <source>Large text</source>
-        <target></target>
+        <target>~Granda teksto</target>
       </trans-unit>
       <trans-unit id="B3vnaJp" resname="Larger text">
         <source>Larger text</source>
-        <target></target>
+        <target>~Pli granda teksto</target>
       </trans-unit>
       <trans-unit id="f5RgnTP" resname="Very large text">
         <source>Very large text</source>
-        <target></target>
+        <target>~Tre granda teksto</target>
       </trans-unit>
       <trans-unit id="U33cqMv" resname="Huge text">
         <source>Huge text</source>
-        <target></target>
+        <target>~Giganta teksto</target>
       </trans-unit>
       <trans-unit id="TRj6FQx" resname="Huger text">
         <source>Huger text</source>
-        <target></target>
+        <target>~Giganta teksto</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
-        <target></target>
+        <target>~Nigrabla grando</target>
       </trans-unit>
       <trans-unit id="_jCqQRd" resname="Math bold">
         <source>Math bold</source>
-        <target></target>
+        <target>~Matematika grando</target>
       </trans-unit>
       <trans-unit id="D3SztgJ" resname="Calligraphic">
         <source>Calligraphic</source>
-        <target></target>
+        <target>~Kalligrafia</target>
       </trans-unit>
       <trans-unit id="WoeHzkK" resname="Gothic">
         <source>Gothic</source>
-        <target></target>
+        <target>~Gotika</target>
       </trans-unit>
       <trans-unit id="aNBK_Ip" resname="Math italic">
         <source>Math italic</source>
-        <target></target>
+        <target>~Matematika italiko</target>
       </trans-unit>
       <trans-unit id="fXrbOjv" resname="Upright (math roman)">
         <source>Upright (math roman)</source>
-        <target></target>
+        <target>~Ŝirmo (matematika romo)</target>
       </trans-unit>
       <trans-unit id="O_wl2LD" resname="Typographic bold">
         <source>Typographic bold</source>
-        <target></target>
+        <target>~Tipografia grasa</target>
       </trans-unit>
       <trans-unit id="UZGwG.U" resname="Italic">
         <source>Italic</source>
@@ -2099,11 +2099,11 @@
       </trans-unit>
       <trans-unit id="tPzgyNe" resname="Monospace">
         <source>Monospace</source>
-        <target></target>
+        <target>~Monospaĉo</target>
       </trans-unit>
       <trans-unit id="anN2Yt5" resname="Plain text">
         <source>Plain text</source>
-        <target></target>
+        <target>~Simpla teksto</target>
       </trans-unit>
       <trans-unit id="VjYOput" resname="Color">
         <source>Color</source>
@@ -2115,1127 +2115,1127 @@
       </trans-unit>
       <trans-unit id="rPtyjFe" resname="Lowercase alpha">
         <source>Lowercase alpha</source>
-        <target></target>
+        <target>~Malalta letera alfa</target>
       </trans-unit>
       <trans-unit id="T03I8.Y" resname="Lowercase beta">
         <source>Lowercase beta</source>
-        <target></target>
+        <target>~Malalta letera beta</target>
       </trans-unit>
       <trans-unit id="JR9q_Sr" resname="Lowercase chi">
         <source>Lowercase chi</source>
-        <target></target>
+        <target>~Malalta letera ĉi</target>
       </trans-unit>
       <trans-unit id="a5xbnpw" resname="Uppercase Delta">
         <source>Uppercase Delta</source>
-        <target></target>
+        <target>~Majuskla Delta</target>
       </trans-unit>
       <trans-unit id="DwY.vMs" resname="Lowercase delta">
         <source>Lowercase delta</source>
-        <target></target>
+        <target>~Malalta letera delta</target>
       </trans-unit>
       <trans-unit id="ai.cpc_" resname="Lowercase eta">
         <source>Lowercase eta</source>
-        <target></target>
+        <target>~malgranda eta</target>
       </trans-unit>
       <trans-unit id="n6gJpFO" resname="Uppercase Gamma">
         <source>Uppercase Gamma</source>
-        <target></target>
+        <target>~granda Gamma</target>
       </trans-unit>
       <trans-unit id="D8xfSDt" resname="Lowercase gamma">
         <source>Lowercase gamma</source>
-        <target></target>
+        <target>~malgranda gamma</target>
       </trans-unit>
       <trans-unit id="EConhKv" resname="Lowercase iota">
         <source>Lowercase iota</source>
-        <target></target>
+        <target>~malgranda iota</target>
       </trans-unit>
       <trans-unit id="QmCZd5i" resname="Lowercase kappa">
         <source>Lowercase kappa</source>
-        <target></target>
+        <target>~malgranda kappa</target>
       </trans-unit>
       <trans-unit id="Tq470p5" resname="Uppercase Lambda">
         <source>Uppercase Lambda</source>
-        <target></target>
+        <target>~granda Lambda</target>
       </trans-unit>
       <trans-unit id="Fb4T8Tx" resname="Lowercase lambda">
         <source>Lowercase lambda</source>
-        <target></target>
+        <target>~malgranda lambda</target>
       </trans-unit>
       <trans-unit id="30TPgv3" resname="Lowercase mu">
         <source>Lowercase mu</source>
-        <target></target>
+        <target>~malgranda mu</target>
       </trans-unit>
       <trans-unit id="qw6NKUy" resname="Lowercase nu">
         <source>Lowercase nu</source>
-        <target></target>
+        <target>~malgranda nu</target>
       </trans-unit>
       <trans-unit id="7CsTeI2" resname="Uppercase Omega">
         <source>Uppercase Omega</source>
-        <target></target>
+        <target>~granda Omega</target>
       </trans-unit>
       <trans-unit id="OCcCD4i" resname="Lowercase omega">
         <source>Lowercase omega</source>
-        <target></target>
+        <target>~malalta omega</target>
       </trans-unit>
       <trans-unit id="AN4cJ2_" resname="Uppercase Phi">
         <source>Uppercase Phi</source>
-        <target></target>
+        <target>~granda Phi</target>
       </trans-unit>
       <trans-unit id="1zgfmrp" resname="Lowercase phi">
         <source>Lowercase phi</source>
-        <target></target>
+        <target>~malalta phi</target>
       </trans-unit>
       <trans-unit id=".NH5UNB" resname="Phi variant">
         <source>Phi variant</source>
-        <target></target>
+        <target>~Phi varianto</target>
       </trans-unit>
       <trans-unit id="iLmP1Xv" resname="Uppercase Pi">
         <source>Uppercase Pi</source>
-        <target></target>
+        <target>~granda Pi</target>
       </trans-unit>
       <trans-unit id="t72hhYR" resname="Pi variant">
         <source>Pi variant</source>
-        <target></target>
+        <target>~Pi varianto</target>
       </trans-unit>
       <trans-unit id="tuLP8.v" resname="Uppercase Psi">
         <source>Uppercase Psi</source>
-        <target></target>
+        <target>~granda Psi</target>
       </trans-unit>
       <trans-unit id="6eb0cLP" resname="Lowercase psi">
         <source>Lowercase psi</source>
-        <target></target>
+        <target>~malalta psi</target>
       </trans-unit>
       <trans-unit id="OV8JEXY" resname="Lowercase rho">
         <source>Lowercase rho</source>
-        <target></target>
+        <target>~malalta rho</target>
       </trans-unit>
       <trans-unit id="4EotDdl" resname="Rho variant">
         <source>Rho variant</source>
-        <target></target>
+        <target>~Rho varianto</target>
       </trans-unit>
       <trans-unit id="D6RKpIP" resname="Final sigma">
         <source>Final sigma</source>
-        <target></target>
+        <target>~Finia sigma</target>
       </trans-unit>
       <trans-unit id="pXdGI_9" resname="Uppercase Sigma">
         <source>Uppercase Sigma</source>
-        <target></target>
+        <target>~Majuskla Sigma</target>
       </trans-unit>
       <trans-unit id="z_YrGeR" resname="Lowercase sigma">
         <source>Lowercase sigma</source>
-        <target></target>
+        <target>~Minuskla sigma</target>
       </trans-unit>
       <trans-unit id="QP5TX.p" resname="Lowercase tau">
         <source>Lowercase tau</source>
-        <target></target>
+        <target>~Minuskla tau</target>
       </trans-unit>
       <trans-unit id="roX4Mmz" resname="Uppercase Theta">
         <source>Uppercase Theta</source>
-        <target></target>
+        <target>~Majuskla Theta</target>
       </trans-unit>
       <trans-unit id="WViWY8L" resname="Lowercase theta">
         <source>Lowercase theta</source>
-        <target></target>
+        <target>~Minuskla theta</target>
       </trans-unit>
       <trans-unit id="XCHYVHl" resname="Theta variant">
         <source>Theta variant</source>
-        <target></target>
+        <target>~Theta-variaĵo</target>
       </trans-unit>
       <trans-unit id="N790Gax" resname="Uppercase Upsilon">
         <source>Uppercase Upsilon</source>
-        <target></target>
+        <target>~Majuskla Upsilon</target>
       </trans-unit>
       <trans-unit id="g6oVkE0" resname="Lowercase upsilon">
         <source>Lowercase upsilon</source>
-        <target></target>
+        <target>~Minuskla upsilon</target>
       </trans-unit>
       <trans-unit id="7H4oilT" resname="Uppercase Xi">
         <source>Uppercase Xi</source>
-        <target></target>
+        <target>~Majuskla Xi</target>
       </trans-unit>
       <trans-unit id="Ix2KPDp" resname="Lowercase xi">
         <source>Lowercase xi</source>
-        <target></target>
+        <target>~malalta xi</target>
       </trans-unit>
       <trans-unit id="LjdB4QT" resname="Lowercase zeta">
         <source>Lowercase zeta</source>
-        <target></target>
+        <target>~malalta zeta</target>
       </trans-unit>
       <trans-unit id="wHATkt6" resname="Lowercase epsilon">
         <source>Lowercase epsilon</source>
-        <target></target>
+        <target>~malalta epsilon</target>
       </trans-unit>
       <trans-unit id="_jaEeiL" resname="Epsilon variant">
         <source>Epsilon variant</source>
-        <target></target>
+        <target>~epsilon-vario</target>
       </trans-unit>
       <trans-unit id="Olp1Qyu" resname="pH and acid-base balance">
         <source>pH and acid-base balance</source>
-        <target></target>
+        <target>~pH kaj acido-bazo ekvilibro</target>
       </trans-unit>
       <trans-unit id="65agbBi" resname="pH">
         <source>pH</source>
-        <target></target>
+        <target>~pH</target>
       </trans-unit>
       <trans-unit id="gVOLhjP" resname="Henderson–Hasselbalch">
         <source>Henderson–Hasselbalch</source>
-        <target></target>
+        <target>~Henderson–Hasselbalch</target>
       </trans-unit>
       <trans-unit id="vT5jmcB" resname="Enzyme kinetics">
         <source>Enzyme kinetics</source>
-        <target></target>
+        <target>~enzima kinetiko</target>
       </trans-unit>
       <trans-unit id="Xgaz.T." resname="Michaelis–Menten">
         <source>Michaelis–Menten</source>
-        <target></target>
+        <target>~Michaelis–Menten</target>
       </trans-unit>
       <trans-unit id="jMJl01Y" resname="Lineweaver–Burk">
         <source>Lineweaver–Burk</source>
-        <target></target>
+        <target>~Lineweaver–Burk</target>
       </trans-unit>
       <trans-unit id="ftw9jxc" resname="Population genetics">
         <source>Population genetics</source>
-        <target></target>
+        <target>~Populacia genetiko</target>
       </trans-unit>
       <trans-unit id="n8HPDdj" resname="Allele frequency">
         <source>Allele frequency</source>
-        <target></target>
+        <target>~Allela frekvenco</target>
       </trans-unit>
       <trans-unit id="p21gufE" resname="Hardy–Weinberg">
         <source>Hardy–Weinberg</source>
-        <target></target>
+        <target>~Hardy–Weinberg</target>
       </trans-unit>
       <trans-unit id="DaZC4V8" resname="Population dynamics">
         <source>Population dynamics</source>
-        <target></target>
+        <target>~Populacia dinamikoj</target>
       </trans-unit>
       <trans-unit id="QTccM29" resname="Exponential growth">
         <source>Exponential growth</source>
-        <target></target>
+        <target>~ Eksponenciala kresko</target>
       </trans-unit>
       <trans-unit id="IcXrBUh" resname="Logistic growth">
         <source>Logistic growth</source>
-        <target></target>
+        <target>~Logistika kresko</target>
       </trans-unit>
       <trans-unit id="MXTlMS." resname="Transport and diffusion">
         <source>Transport and diffusion</source>
-        <target></target>
+        <target>~Transporto kaj difuzo</target>
       </trans-unit>
       <trans-unit id="GUc3XmL" resname="Fick\'s Law">
         <source>Fick\'s Law</source>
-        <target></target>
+        <target>~Leĝo de Fick</target>
       </trans-unit>
       <trans-unit id="dGkKELF" resname="Nernst equation">
         <source>Nernst equation</source>
-        <target></target>
+        <target>~Nernst-eko</target>
       </trans-unit>
       <trans-unit id="dMDqJKm" resname="Osmotic pressure">
         <source>Osmotic pressure</source>
-        <target></target>
+        <target>~Osmotika premo</target>
       </trans-unit>
       <trans-unit id="WEoCJ32" resname="Central tendency measures">
         <source>Central tendency measures</source>
-        <target></target>
+        <target>~Mezuriloj de centra tendenco</target>
       </trans-unit>
       <trans-unit id="mjXLrrj" resname="Arithmetic mean">
         <source>Arithmetic mean</source>
-        <target></target>
+        <target>~Aritmetika mezo</target>
       </trans-unit>
       <trans-unit id="1qcvN9E" resname="Weighted mean">
         <source>Weighted mean</source>
-        <target></target>
+        <target>~Peza pezo</target>
       </trans-unit>
       <trans-unit id="K5U9CjB" resname="Geometric mean">
         <source>Geometric mean</source>
-        <target></target>
+        <target>~Geometria mezo</target>
       </trans-unit>
       <trans-unit id="SzGRWfn" resname="Harmonic mean">
         <source>Harmonic mean</source>
-        <target></target>
+        <target>~Harmonia mezo</target>
       </trans-unit>
       <trans-unit id="xRSa1OT" resname="Quadratic mean">
         <source>Quadratic mean</source>
-        <target></target>
+        <target>~Kvadrata mezo</target>
       </trans-unit>
       <trans-unit id="GS4nryp" resname="Median">
         <source>Median</source>
-        <target></target>
+        <target>~Mezo</target>
       </trans-unit>
       <trans-unit id="X3g9CS_" resname="k-th percentile">
         <source>k-th percentile</source>
-        <target></target>
+        <target>~k-a procentaĵo</target>
       </trans-unit>
       <trans-unit id="L6Stj0U" resname="Dispersion measures">
         <source>Dispersion measures</source>
-        <target></target>
+        <target>~Mezuriloj de disperso</target>
       </trans-unit>
       <trans-unit id="Bqh7l0G" resname="Range">
         <source>Range</source>
-        <target></target>
+        <target>~Intervalo</target>
       </trans-unit>
       <trans-unit id="bOZKd9O" resname="Interquartile range">
         <source>Interquartile range</source>
-        <target></target>
+        <target>~Interkvartila intervalo</target>
       </trans-unit>
       <trans-unit id="9NfNc4_" resname="Coefficient of variation">
         <source>Coefficient of variation</source>
-        <target></target>
+        <target>~Koeficiento de variado</target>
       </trans-unit>
       <trans-unit id="HkEgavk" resname="Population variance">
         <source>Population variance</source>
-        <target></target>
+        <target>~Populacia varianco</target>
       </trans-unit>
       <trans-unit id="7tYWWLJ" resname="Sample variance">
         <source>Sample variance</source>
-        <target></target>
+        <target>~Elekta varianco</target>
       </trans-unit>
       <trans-unit id="8uWRpVt" resname="Population standard deviation">
         <source>Population standard deviation</source>
-        <target></target>
+        <target>~Populacia normala devio</target>
       </trans-unit>
       <trans-unit id="diAKso2" resname="Sample standard deviation">
         <source>Sample standard deviation</source>
-        <target></target>
+        <target>~Elekta normala devio</target>
       </trans-unit>
       <trans-unit id="llRGJLb" resname="Mean absolute deviation">
         <source>Mean absolute deviation</source>
-        <target></target>
+        <target>~Meza absoluta devio</target>
       </trans-unit>
       <trans-unit id="no1gXa2" resname="Semi-interquartile range">
         <source>Semi-interquartile range</source>
-        <target></target>
+        <target>~Semi-interkvartila intervalo</target>
       </trans-unit>
       <trans-unit id="DmF3vIJ" resname="Standard score (population z-score)">
         <source>Standard score (population z-score)</source>
-        <target></target>
+        <target>~Normala poento (populacia z-poento)</target>
       </trans-unit>
       <trans-unit id="CJQRsMA" resname="Standard score (sample z-score)">
         <source>Standard score (sample z-score)</source>
-        <target></target>
+        <target>~Normala poento (ekzemplo z-poento)</target>
       </trans-unit>
       <trans-unit id="IbP1f.z" resname="Population kurtosis">
         <source>Population kurtosis</source>
-        <target></target>
+        <target>~Populacia kurtoso</target>
       </trans-unit>
       <trans-unit id="KVdJyzv" resname="Sample kurtosis">
         <source>Sample kurtosis</source>
-        <target></target>
+        <target>~Ekzemplo de kurtoso</target>
       </trans-unit>
       <trans-unit id="M2qx70T" resname="Frequencies">
         <source>Frequencies</source>
-        <target></target>
+        <target>~Frekvencoj</target>
       </trans-unit>
       <trans-unit id="wsy3AnY" resname="Relative frequency">
         <source>Relative frequency</source>
-        <target></target>
+        <target>~Rilativa frekvenco</target>
       </trans-unit>
       <trans-unit id="926tIW3" resname="Cumulative frequency">
         <source>Cumulative frequency</source>
-        <target></target>
+        <target>~Kumulativa frekvenco</target>
       </trans-unit>
       <trans-unit id="dmx74.T" resname="Cumulative absolute frequency">
         <source>Cumulative absolute frequency</source>
-        <target></target>
+        <target>~Kumulativa absoluta frekvenco</target>
       </trans-unit>
       <trans-unit id="0SbijM8" resname="Intervals">
         <source>Intervals</source>
-        <target></target>
+        <target>~Intervaloj</target>
       </trans-unit>
       <trans-unit id="FG1WYkC" resname="Class mark">
         <source>Class mark</source>
-        <target></target>
+        <target>~Klasmarko</target>
       </trans-unit>
       <trans-unit id="oXm.58e" resname="Class width">
         <source>Class width</source>
-        <target></target>
+        <target>~Klaslarĝo</target>
       </trans-unit>
       <trans-unit id="yVihj0k" resname="Median in intervals">
         <source>Median in intervals</source>
-        <target></target>
+        <target>~Mezumo en intervaloj</target>
       </trans-unit>
       <trans-unit id="V1zKl96" resname="Mode in intervals">
         <source>Mode in intervals</source>
-        <target></target>
+        <target>~Modo en intervaloj  </target>
       </trans-unit>
       <trans-unit id="Zg1Jdth" resname="Moments and generating functions">
         <source>Moments and generating functions</source>
-        <target></target>
+        <target>~Momento kaj generantaj funkcioj  </target>
       </trans-unit>
       <trans-unit id="68ac37M" resname="Discrete expectation">
         <source>Discrete expectation</source>
-        <target></target>
+        <target>~Diskreta atendo  </target>
       </trans-unit>
       <trans-unit id="ZqkFc.g" resname="Continuous expectation">
         <source>Continuous expectation</source>
-        <target></target>
+        <target>~Daŭrema atendo  </target>
       </trans-unit>
       <trans-unit id="RuVUK4R" resname="Variance (moments)">
         <source>Variance (moments)</source>
-        <target></target>
+        <target>~Varianco (momentoj)  </target>
       </trans-unit>
       <trans-unit id="HeZKxW6" resname="Moment-generating function">
         <source>Moment-generating function</source>
-        <target></target>
+        <target>~Momento-generanta funkcio  </target>
       </trans-unit>
       <trans-unit id="LW6su3S" resname="Probability distributions">
         <source>Probability distributions</source>
-        <target></target>
+        <target>~Probabla distribuaĵoj  </target>
       </trans-unit>
       <trans-unit id="pvv5WDL" resname="Binomial">
         <source>Binomial</source>
-        <target></target>
+        <target>~Binomio  </target>
       </trans-unit>
       <trans-unit id="7U9NoKL" resname="Poisson">
         <source>Poisson</source>
-        <target></target>
+        <target>~Poisson  </target>
       </trans-unit>
       <trans-unit id="qpzJnCs" resname="Standard normal distribution">
         <source>Standard normal distribution</source>
-        <target></target>
+        <target>~Normala distribuo</target>
       </trans-unit>
       <trans-unit id="m1Ztwtv" resname="Student\'s t-distribution">
         <source>Student\'s t-distribution</source>
-        <target></target>
+        <target>~Distributo de Student</target>
       </trans-unit>
       <trans-unit id="wVMC9z_" resname="Chi-squared distribution">
         <source>Chi-squared distribution</source>
-        <target></target>
+        <target>~Distributo de Chi-kvadrato</target>
       </trans-unit>
       <trans-unit id="5cXp7Wy" resname="Fisher\'s F-distribution">
         <source>Fisher\'s F-distribution</source>
-        <target></target>
+        <target>~Distributo F de Fisher</target>
       </trans-unit>
       <trans-unit id="MRreuZs" resname="Correlation coefficients">
         <source>Correlation coefficients</source>
-        <target></target>
+        <target>~Koeficientoj de korelacio</target>
       </trans-unit>
       <trans-unit id="Aqmrx8N" resname="Population covariance">
         <source>Population covariance</source>
-        <target></target>
+        <target>~Populacia kovariaĵo</target>
       </trans-unit>
       <trans-unit id="03wKnJ7" resname="Sample covariance">
         <source>Sample covariance</source>
-        <target></target>
+        <target>~Ekzempla kovariaĵo</target>
       </trans-unit>
       <trans-unit id="veaUocs" resname="Pearson">
         <source>Pearson</source>
-        <target></target>
+        <target>~Pearson</target>
       </trans-unit>
       <trans-unit id="uEvZPs_" resname="Pearson\'s t-test">
         <source>Pearson\'s t-test</source>
-        <target></target>
+        <target>~T-test de Pearson</target>
       </trans-unit>
       <trans-unit id="yGn1Vxe" resname="Spearman">
         <source>Spearman</source>
-        <target></target>
+        <target>~Spearman</target>
       </trans-unit>
       <trans-unit id="OnstoaE" resname="Kendall\'s Tau">
         <source>Kendall\'s Tau</source>
-        <target></target>
+        <target>~Tau de Kendall</target>
       </trans-unit>
       <trans-unit id="ofsPM_X" resname="Phi coefficient">
         <source>Phi coefficient</source>
-        <target></target>
+        <target>~Koeficiento Phi</target>
       </trans-unit>
       <trans-unit id="jNt7j4q" resname="Regression">
         <source>Regression</source>
-        <target></target>
+        <target>~Regraso</target>
       </trans-unit>
       <trans-unit id="4fnZlYp" resname="Regression line">
         <source>Regression line</source>
-        <target></target>
+        <target>~Regrasa linio</target>
       </trans-unit>
       <trans-unit id="HTyInDr" resname="Slope">
         <source>Slope</source>
-        <target></target>
+        <target>~Hiproto</target>
       </trans-unit>
       <trans-unit id="ZbtERgq" resname="Intercept">
         <source>Intercept</source>
-        <target></target>
+        <target>~Interkaptado</target>
       </trans-unit>
       <trans-unit id=".O6TrQt" resname="Correlation coefficient">
         <source>Correlation coefficient</source>
-        <target></target>
+        <target>~Korala koeficiento</target>
       </trans-unit>
       <trans-unit id="6BM_YaI" resname="Coefficient of determination">
         <source>Coefficient of determination</source>
-        <target></target>
+        <target>~Determinada koeficiento</target>
       </trans-unit>
       <trans-unit id="IP_vB9R" resname="Adjusted R^2">
         <source>Adjusted R^2</source>
-        <target></target>
+        <target>~ĝustigita R^2</target>
       </trans-unit>
       <trans-unit id="ZCpj9F1" resname="Standard error of the estimate">
         <source>Standard error of the estimate</source>
-        <target></target>
+        <target>~Normala eraro de la takso</target>
       </trans-unit>
       <trans-unit id="0oBLMH4" resname="Prediction interval">
         <source>Prediction interval</source>
-        <target></target>
+        <target>~Predikta intervalo</target>
       </trans-unit>
       <trans-unit id="aOiihng" resname="Statistical inference">
         <source>Statistical inference</source>
-        <target></target>
+        <target>~Statistika infero</target>
       </trans-unit>
       <trans-unit id="Cs0ewQN" resname="z-statistic">
         <source>z-statistic</source>
-        <target></target>
+        <target>~z-statistiko</target>
       </trans-unit>
       <trans-unit id="DLbn2YL" resname="t-statistic">
         <source>t-statistic</source>
-        <target></target>
+        <target>~t-statistiko</target>
       </trans-unit>
       <trans-unit id="qq6De8u" resname="Standard error with z">
         <source>Standard error with z</source>
-        <target></target>
+        <target>~Normala eraro kun z</target>
       </trans-unit>
       <trans-unit id="7L9KTKK" resname="Standard error with t">
         <source>Standard error with t</source>
-        <target></target>
+        <target>~Normala eraro kun t</target>
       </trans-unit>
       <trans-unit id="hDM3Y.8" resname="Interval with population standard deviation">
         <source>Interval with population standard deviation</source>
-        <target></target>
+        <target>~Intervalo kun populacia norma devio</target>
       </trans-unit>
       <trans-unit id="DvgFGH3" resname="Interval with sample deviation">
         <source>Interval with sample deviation</source>
-        <target></target>
+        <target>~Intervalo kun ekzemplo devio</target>
       </trans-unit>
       <trans-unit id="1yuaqgS" resname="Sample size (mean)">
         <source>Sample size (mean)</source>
-        <target></target>
+        <target>~Ekzemplara grandeco (mezo)</target>
       </trans-unit>
       <trans-unit id="uGSbpdt" resname="Sample size (proportion)">
         <source>Sample size (proportion)</source>
-        <target></target>
+        <target>~Ekzemplara grandeco (proporcio)</target>
       </trans-unit>
       <trans-unit id="JlwYM8z" resname="Proportion estimation">
         <source>Proportion estimation</source>
-        <target></target>
+        <target>~Proporcio takso</target>
       </trans-unit>
       <trans-unit id=".__sE54" resname="Standard error of proportion">
         <source>Standard error of proportion</source>
-        <target></target>
+        <target>~Norma eraro de proporcio</target>
       </trans-unit>
       <trans-unit id="GGNm9hl" resname="CI for proportion">
         <source>CI for proportion</source>
-        <target></target>
+        <target>~KON por proporcio</target>
       </trans-unit>
       <trans-unit id="QPXKzOy" resname="Hypothesis testing">
         <source>Hypothesis testing</source>
-        <target></target>
+        <target>~Hipoteza testado</target>
       </trans-unit>
       <trans-unit id="MCQD5MW" resname="z for proportions">
         <source>z for proportions</source>
-        <target></target>
+        <target>~z por proporcioj</target>
       </trans-unit>
       <trans-unit id="pxfnTD." resname="z for difference of proportions">
         <source>z for difference of proportions</source>
-        <target></target>
+        <target>~z por diferenco de proporcioj</target>
       </trans-unit>
       <trans-unit id="la4Hqia" resname="One-sample t-test">
         <source>One-sample t-test</source>
-        <target></target>
+        <target>~Unu-sample t-test</target>
       </trans-unit>
       <trans-unit id="L6dl5WM" resname="Independent two-sample t-test">
         <source>Independent two-sample t-test</source>
-        <target></target>
+        <target>~Sendependa du-sample t-test</target>
       </trans-unit>
       <trans-unit id="VN88VGF" resname="Pooled variance">
         <source>Pooled variance</source>
-        <target></target>
+        <target>~Kunpremita varianco</target>
       </trans-unit>
       <trans-unit id="ltrApOj" resname="Paired t-test">
         <source>Paired t-test</source>
-        <target></target>
+        <target>~Parigita t-test</target>
       </trans-unit>
       <trans-unit id="9BLu.Fk" resname="Chi-squared">
         <source>Chi-squared</source>
-        <target></target>
+        <target>~Kva-kvadrata</target>
       </trans-unit>
       <trans-unit id="ISm6UE." resname="ANOVA">
         <source>ANOVA</source>
-        <target></target>
+        <target>~ANOVA</target>
       </trans-unit>
       <trans-unit id="XYXz9Tl" resname="SS between groups">
         <source>SS between groups</source>
-        <target></target>
+        <target>~SS inter grupoj</target>
       </trans-unit>
       <trans-unit id="EbDuDA0" resname="SS within groups">
         <source>SS within groups</source>
-        <target></target>
+        <target>~SS ene de grupoj</target>
       </trans-unit>
       <trans-unit id="kMsi1zL" resname="F-statistic (ANOVA)">
         <source>F-statistic (ANOVA)</source>
-        <target></target>
+        <target>~F-statistiko (ANOVA)</target>
       </trans-unit>
       <trans-unit id="4Dzj951" resname="Association and contingency">
         <source>Association and contingency</source>
-        <target></target>
+        <target>~Asocio kaj kontingeco</target>
       </trans-unit>
       <trans-unit id="3Ic92qD" resname="Contingency coef">
         <source>Contingency coef</source>
-        <target></target>
+        <target>~Kontingeca koeficiento</target>
       </trans-unit>
       <trans-unit id="uXYBtiH" resname="Cramer\'s V">
         <source>Cramer\'s V</source>
-        <target></target>
+        <target>~Cramer's V</target>
       </trans-unit>
       <trans-unit id="mpVp63_" resname="Inequalities">
         <source>Inequalities</source>
-        <target></target>
+        <target>~Neegaleco</target>
       </trans-unit>
       <trans-unit id="SSI5U.g" resname="Chebyshev">
         <source>Chebyshev</source>
-        <target></target>
+        <target>~Chebyshev</target>
       </trans-unit>
       <trans-unit id="rLWISmN" resname="Kinematics">
         <source>Kinematics</source>
-        <target></target>
+        <target>~Kinematikoj</target>
       </trans-unit>
       <trans-unit id="BHRD.GQ" resname="Average velocity">
         <source>Average velocity</source>
-        <target></target>
+        <target>~Meza rapido</target>
       </trans-unit>
       <trans-unit id="3bFq872" resname="Average acceleration">
         <source>Average acceleration</source>
-        <target></target>
+        <target>~Meza akcelado</target>
       </trans-unit>
       <trans-unit id="HuOQm.E" resname="Uniform motion">
         <source>Uniform motion</source>
-        <target></target>
+        <target>~Uniforma movado</target>
       </trans-unit>
       <trans-unit id="teRz3k6" resname="Position with constant acceleration">
         <source>Position with constant acceleration</source>
-        <target></target>
+        <target>~Loko kun konstanta akcelado</target>
       </trans-unit>
       <trans-unit id="aFSsbYZ" resname="Velocity with constant acceleration">
         <source>Velocity with constant acceleration</source>
-        <target></target>
+        <target>~ rapido kun konstanta akcelado</target>
       </trans-unit>
       <trans-unit id="NopKOHk" resname="Velocity without time">
         <source>Velocity without time</source>
-        <target></target>
+        <target>~Rapido sen tempo</target>
       </trans-unit>
       <trans-unit id="Ezxekfn" resname="Dynamics">
         <source>Dynamics</source>
-        <target></target>
+        <target>~Dinamikoj</target>
       </trans-unit>
       <trans-unit id="0e4VnHD" resname="Newton\'s second law">
         <source>Newton\'s second law</source>
-        <target></target>
+        <target>~Leĝo de Newtona dua</target>
       </trans-unit>
       <trans-unit id="nOSecV3" resname="Linear momentum">
         <source>Linear momentum</source>
-        <target></target>
+        <target>~Lineara impeto</target>
       </trans-unit>
       <trans-unit id="4ra6VKT" resname="Force and impulse">
         <source>Force and impulse</source>
-        <target></target>
+        <target>~Forto kaj impulso</target>
       </trans-unit>
       <trans-unit id="MyOWufX" resname="Work">
         <source>Work</source>
-        <target></target>
+        <target>~Laboro</target>
       </trans-unit>
       <trans-unit id="nssc6Ar" resname="Power">
         <source>Power</source>
-        <target></target>
+        <target>~Potenco</target>
       </trans-unit>
       <trans-unit id="XHgfNbG" resname="Energy and Work">
         <source>Energy and Work</source>
-        <target></target>
+        <target>~Energio kaj Laboro</target>
       </trans-unit>
       <trans-unit id="NqB0xjJ" resname="Kinetic energy">
         <source>Kinetic energy</source>
-        <target></target>
+        <target>~Kinetika energio</target>
       </trans-unit>
       <trans-unit id="eFKEvy_" resname="Gravitational potential energy">
         <source>Gravitational potential energy</source>
-        <target></target>
+        <target>~Gravita potenciala energio</target>
       </trans-unit>
       <trans-unit id="OydQpv8" resname="Mechanical energy">
         <source>Mechanical energy</source>
-        <target></target>
+        <target>~Mezika energio</target>
       </trans-unit>
       <trans-unit id="TEwhpOT" resname="Work-energy theorem">
         <source>Work-energy theorem</source>
-        <target></target>
+        <target>~Teoremo de laboro-energio</target>
       </trans-unit>
       <trans-unit id="Ku5M5V9" resname="Electric power">
         <source>Electric power</source>
-        <target></target>
+        <target>~Elektro-povo</target>
       </trans-unit>
       <trans-unit id="auacBe." resname="Gravitation">
         <source>Gravitation</source>
-        <target></target>
+        <target>~Gravito</target>
       </trans-unit>
       <trans-unit id="dZjdSLz" resname="Law of universal gravitation">
         <source>Law of universal gravitation</source>
-        <target></target>
+        <target>~Leĝo de universala gravito</target>
       </trans-unit>
       <trans-unit id="xk0jrSA" resname="Gravitational field">
         <source>Gravitational field</source>
-        <target></target>
+        <target>~Gravitada kampo</target>
       </trans-unit>
       <trans-unit id="L9Mydsa" resname="Orbital velocity">
         <source>Orbital velocity</source>
-        <target></target>
+        <target>~Orbita rapido</target>
       </trans-unit>
       <trans-unit id="O5.Pd0L" resname="Waves and Oscillations">
         <source>Waves and Oscillations</source>
-        <target></target>
+        <target>~Ondoj kaj Osciiladoj</target>
       </trans-unit>
       <trans-unit id="fGhHSFh" resname="Wave speed">
         <source>Wave speed</source>
-        <target></target>
+        <target>~Ondov rapido</target>
       </trans-unit>
       <trans-unit id=".JfJF1w" resname="Period">
         <source>Period</source>
-        <target></target>
+        <target>~Periodo</target>
       </trans-unit>
       <trans-unit id="hmTgQuL" resname="Frequency">
         <source>Frequency</source>
-        <target></target>
+        <target>~Frekvenco</target>
       </trans-unit>
       <trans-unit id="S_bsq80" resname="Hooke\'s law">
         <source>Hooke\'s law</source>
-        <target></target>
+        <target>~Leĝo de Hooke</target>
       </trans-unit>
       <trans-unit id="bPEXqWV" resname="SHM Period">
         <source>SHM Period</source>
-        <target></target>
+        <target>~Periodo de SHM</target>
       </trans-unit>
       <trans-unit id="CY42PFV" resname="Simple harmonic motion">
         <source>Simple harmonic motion</source>
-        <target></target>
+        <target>~ Simpla harmonika movado</target>
       </trans-unit>
       <trans-unit id="hWbOeHF" resname="Electricity and Magnetism">
         <source>Electricity and Magnetism</source>
-        <target></target>
+        <target>~Elektro kaj Magnetismo</target>
       </trans-unit>
       <trans-unit id="NEfWVxU" resname="Ohm\'s law">
         <source>Ohm\'s law</source>
-        <target></target>
+        <target>~Leĝo de Ohm</target>
       </trans-unit>
       <trans-unit id="krzPnaF" resname="Resistors in series">
         <source>Resistors in series</source>
-        <target></target>
+        <target>~Rezistiloj en serio</target>
       </trans-unit>
       <trans-unit id="pP0d2zi" resname="Resistors in parallel">
         <source>Resistors in parallel</source>
-        <target></target>
+        <target>~Rezistiloj en paralelo</target>
       </trans-unit>
       <trans-unit id="SZQWXTO" resname="Capacitance">
         <source>Capacitance</source>
-        <target></target>
+        <target>~Kapacito</target>
       </trans-unit>
       <trans-unit id="IMAe1IQ" resname="Energy in capacitor">
         <source>Energy in capacitor</source>
-        <target></target>
+        <target>~Energio en kondensilo</target>
       </trans-unit>
       <trans-unit id="NPe3GJJ" resname="Lorentz force">
         <source>Lorentz force</source>
-        <target></target>
+        <target>~Lorentza forto</target>
       </trans-unit>
       <trans-unit id="bX0KY3r" resname="Magnetic flux">
         <source>Magnetic flux</source>
-        <target></target>
+        <target>~Magnetika fluo</target>
       </trans-unit>
       <trans-unit id="nXmzmVw" resname="Faraday\'s law">
         <source>Faraday\'s law</source>
-        <target></target>
+        <target>~Leĝo de Faraday</target>
       </trans-unit>
       <trans-unit id="6zh8ZQi" resname="Optics">
         <source>Optics</source>
-        <target></target>
+        <target>~Optiko</target>
       </trans-unit>
       <trans-unit id="5eLIb5E" resname="Snell\'s law">
         <source>Snell\'s law</source>
-        <target></target>
+        <target>~Leĝo de Snell</target>
       </trans-unit>
       <trans-unit id="zJO50eb" resname="Thin lens equation">
         <source>Thin lens equation</source>
-        <target></target>
+        <target>~Mallensendado ekvacio</target>
       </trans-unit>
       <trans-unit id="0C0Dgfq" resname="Lateral magnification">
         <source>Lateral magnification</source>
-        <target></target>
+        <target>~Latera magnifiko</target>
       </trans-unit>
       <trans-unit id="E7aIzqe" resname="Law of reflection">
         <source>Law of reflection</source>
-        <target></target>
+        <target>~Refleksia leĝo</target>
       </trans-unit>
       <trans-unit id="K8GR5PI" resname="Fluids">
         <source>Fluids</source>
-        <target></target>
+        <target>~Fluidoj</target>
       </trans-unit>
       <trans-unit id="uYqYMdn" resname="Pressure">
         <source>Pressure</source>
-        <target></target>
+        <target>~Premo</target>
       </trans-unit>
       <trans-unit id="n9r_fFv" resname="Hydrostatic pressure">
         <source>Hydrostatic pressure</source>
-        <target></target>
+        <target>~Hidrostatika premo</target>
       </trans-unit>
       <trans-unit id="fguek3O" resname="Continuity equation">
         <source>Continuity equation</source>
-        <target></target>
+        <target>~Daŭreco-ekvacio</target>
       </trans-unit>
       <trans-unit id="YXkma8N" resname="Bernoulli\'s equation">
         <source>Bernoulli\'s equation</source>
-        <target></target>
+        <target>~Bernoulli-eko</target>
       </trans-unit>
       <trans-unit id="rhuOmDb" resname="P + \\tfrac12 \\rho v^2 + \\rho g h = \\text{constant}">
         <source>P + \\tfrac12 \\rho v^2 + \\rho g h = \\text{constant}</source>
-        <target></target>
+        <target>~P + \\tfrac12 \\rho v^2 + \\rho g h = \\text{konstanto}</target>
       </trans-unit>
       <trans-unit id="CUfw.JS" resname="Thermodynamics">
         <source>Thermodynamics</source>
-        <target></target>
+        <target>~Termodinamiko</target>
       </trans-unit>
       <trans-unit id="Xq2fpcN" resname="Ideal gas law">
         <source>Ideal gas law</source>
-        <target></target>
+        <target>~Ideala gasleĝo</target>
       </trans-unit>
       <trans-unit id="P6E_sIA" resname="Sensible heat">
         <source>Sensible heat</source>
-        <target></target>
+        <target>~Sensenta varmo</target>
       </trans-unit>
       <trans-unit id="qDHjVoA" resname="Latent heat">
         <source>Latent heat</source>
-        <target></target>
+        <target>~Latenta varmo</target>
       </trans-unit>
       <trans-unit id="Xg4liL9" resname="First law of thermodynamics">
         <source>First law of thermodynamics</source>
-        <target></target>
+        <target>~Unua leĝo de termodinamiko</target>
       </trans-unit>
       <trans-unit id="L7GsYd2" resname="Entropy">
         <source>Entropy</source>
-        <target></target>
+        <target>~Entropio</target>
       </trans-unit>
       <trans-unit id="AqCmD31" resname="Perimeters and lengths">
         <source>Perimeters and lengths</source>
-        <target></target>
+        <target>~Perimetroj kaj longoj</target>
       </trans-unit>
       <trans-unit id="OqiINW0" resname="Perimeter of a square">
         <source>Perimeter of a square</source>
-        <target></target>
+        <target>~Perimetro de kvadrato</target>
       </trans-unit>
       <trans-unit id="8_9QNW3" resname="Perimeter of a rectangle">
         <source>Perimeter of a rectangle</source>
-        <target></target>
+        <target>~Perimetro de rektangulo</target>
       </trans-unit>
       <trans-unit id="Aho8Rv_" resname="Perimeter of a triangle">
         <source>Perimeter of a triangle</source>
-        <target></target>
+        <target>~Perimetro de triangulo</target>
       </trans-unit>
       <trans-unit id="pZHLMNt" resname="Perimeter of a regular polygon">
         <source>Perimeter of a regular polygon</source>
-        <target></target>
+        <target>~Perimetro de regula多angulo</target>
       </trans-unit>
       <trans-unit id="f.iebdH" resname="Circumference perimeter">
         <source>Circumference perimeter</source>
-        <target></target>
+        <target>~Ĉirkaŭa perimetro</target>
       </trans-unit>
       <trans-unit id="GNGVtLs" resname="Arc length (radians)">
         <source>Arc length (radians)</source>
-        <target></target>
+        <target>~Arc-longo (radianoj)</target>
       </trans-unit>
       <trans-unit id="UqsZi2z" resname="Arc length (degrees)">
         <source>Arc length (degrees)</source>
-        <target></target>
+        <target>~Arc-longo (gradoj)</target>
       </trans-unit>
       <trans-unit id="g27YRiB" resname="Right triangle perimeter">
         <source>Right triangle perimeter</source>
-        <target></target>
+        <target>~Perimetro de ĝusta triangulo</target>
       </trans-unit>
       <trans-unit id="A85Ag8r" resname="Areas of plane figures">
         <source>Areas of plane figures</source>
-        <target></target>
+        <target>~Areoj de ebenaj figuroj</target>
       </trans-unit>
       <trans-unit id="bXKIzez" resname="Area of a rectangle">
         <source>Area of a rectangle</source>
-        <target></target>
+        <target>~Areo de rektangulo</target>
       </trans-unit>
       <trans-unit id="6niW289" resname="Area of a triangle">
         <source>Area of a triangle</source>
-        <target></target>
+        <target>~Areo de triangulo</target>
       </trans-unit>
       <trans-unit id="BH6Jydc" resname="Area of a square">
         <source>Area of a square</source>
-        <target></target>
+        <target>~Areo de kvadrato</target>
       </trans-unit>
       <trans-unit id="VUaGjfi" resname="Area of a circle">
         <source>Area of a circle</source>
-        <target></target>
+        <target>~Areo de cirklo</target>
       </trans-unit>
       <trans-unit id="DA.G6FW" resname="Area of a trapezoid">
         <source>Area of a trapezoid</source>
-        <target></target>
+        <target>~Areo de trapezoido</target>
       </trans-unit>
       <trans-unit id="MbrcwpW" resname="Area of a parallelogram">
         <source>Area of a parallelogram</source>
-        <target></target>
+        <target>~Areao de paralelogramo</target>
       </trans-unit>
       <trans-unit id="Qfu9E1d" resname="Area of a rhombus">
         <source>Area of a rhombus</source>
-        <target></target>
+        <target>~Areao de rombo</target>
       </trans-unit>
       <trans-unit id="smrH1Nk" resname="Area of an ellipse">
         <source>Area of an ellipse</source>
-        <target></target>
+        <target>~Areao de elipsoido</target>
       </trans-unit>
       <trans-unit id="0FiE8xW" resname="Area of a triangle (with trigonometry)">
         <source>Area of a triangle (with trigonometry)</source>
-        <target></target>
+        <target>~Areao de triangulo (kun trigonometio)</target>
       </trans-unit>
       <trans-unit id="kEdw8OF" resname="Area of a circular sector">
         <source>Area of a circular sector</source>
-        <target></target>
+        <target>~Areao de cirkla sektoro</target>
       </trans-unit>
       <trans-unit id="E9G_Nsz" resname="Volumes of solids">
         <source>Volumes of solids</source>
-        <target></target>
+        <target>~Volumoj de solidoj</target>
       </trans-unit>
       <trans-unit id="lHgIzC_" resname="Volume of a cube">
         <source>Volume of a cube</source>
-        <target></target>
+        <target>~Volumo de kubo</target>
       </trans-unit>
       <trans-unit id="9HROMKE" resname="Volume of a prism">
         <source>Volume of a prism</source>
-        <target></target>
+        <target>~Volumo de prisma</target>
       </trans-unit>
       <trans-unit id="KTwAnxL" resname="Volume of a cylinder">
         <source>Volume of a cylinder</source>
-        <target></target>
+        <target>~Volumo de cilindro</target>
       </trans-unit>
       <trans-unit id="65xboUs" resname="Volume of a cone">
         <source>Volume of a cone</source>
-        <target></target>
+        <target>~Volumo de kono</target>
       </trans-unit>
       <trans-unit id="aS0F2_p" resname="Volume of a sphere">
         <source>Volume of a sphere</source>
-        <target></target>
+        <target>~Volumeno de sfero</target>
       </trans-unit>
       <trans-unit id="m.TmDGp" resname="Volume of a pyramid">
         <source>Volume of a pyramid</source>
-        <target></target>
+        <target>~Volumeno de piramido</target>
       </trans-unit>
       <trans-unit id="AbIvIj_" resname="Surface areas of solids">
         <source>Surface areas of solids</source>
-        <target></target>
+        <target>~Surfacaj areoj de solidoj</target>
       </trans-unit>
       <trans-unit id="6iSZp5k" resname="Lateral area of a cylinder">
         <source>Lateral area of a cylinder</source>
-        <target></target>
+        <target>~Latera areo de cilindro</target>
       </trans-unit>
       <trans-unit id="AwODqeZ" resname="Total area of a cylinder">
         <source>Total area of a cylinder</source>
-        <target></target>
+        <target>~Tuta areo de cilindro</target>
       </trans-unit>
       <trans-unit id="BB06wQ." resname="Lateral area of a cone">
         <source>Lateral area of a cone</source>
-        <target></target>
+        <target>~Latera areo de konuso</target>
       </trans-unit>
       <trans-unit id="IHEcT83" resname="Total area of a cone">
         <source>Total area of a cone</source>
-        <target></target>
+        <target>~Tuta areo de konuso</target>
       </trans-unit>
       <trans-unit id="5M4wkou" resname="Surface area of a sphere">
         <source>Surface area of a sphere</source>
-        <target></target>
+        <target>~Surfaca areo de sfero</target>
       </trans-unit>
       <trans-unit id="ZDaHwWJ" resname="Total area of a cube">
         <source>Total area of a cube</source>
-        <target></target>
+        <target>~Tuta areo de kubo</target>
       </trans-unit>
       <trans-unit id="XE.aqQ1" resname="Trigonometry and Coordinates">
         <source>Trigonometry and Coordinates</source>
-        <target></target>
+        <target>~Trigonometrijo kaj Koordinatoj</target>
       </trans-unit>
       <trans-unit id="OY6lLyX" resname="Pythagorean theorem">
         <source>Pythagorean theorem</source>
-        <target></target>
+        <target>~Pitagora teoremo</target>
       </trans-unit>
       <trans-unit id="Boz9iqG" resname="Law of sines">
         <source>Law of sines</source>
-        <target></target>
+        <target>~Leĝo de sinusoj</target>
       </trans-unit>
       <trans-unit id="pav9WDc" resname="Law of cosines">
         <source>Law of cosines</source>
-        <target></target>
+        <target>~Leĝo de kosinusoj</target>
       </trans-unit>
       <trans-unit id="K8KgOgu" resname="Equation of a line">
         <source>Equation of a line</source>
-        <target></target>
+        <target>~Lineara ekvacio</target>
       </trans-unit>
       <trans-unit id="A4b5Zw0" resname="Distance between two points">
         <source>Distance between two points</source>
-        <target></target>
+        <target>~Distanco inter du punktoj</target>
       </trans-unit>
       <trans-unit id="ovudQLv" resname="Midpoint">
         <source>Midpoint</source>
-        <target></target>
+        <target>~Mezpunkto</target>
       </trans-unit>
       <trans-unit id="ibzTMV7" resname="Equation of a circle">
         <source>Equation of a circle</source>
-        <target></target>
+        <target>~Cirklokvacio</target>
       </trans-unit>
       <trans-unit id="pDe6ra8" resname="Chemical symbolic notation">
         <source>Chemical symbolic notation</source>
-        <target></target>
+        <target>~Ĉemia simbolika notacio</target>
       </trans-unit>
       <trans-unit id="tU5KVc7" resname="Element with atomic and mass number">
         <source>Element with atomic and mass number</source>
-        <target></target>
+        <target>~Elemento kun atomnumero kaj maso</target>
       </trans-unit>
       <trans-unit id="7YJolaq" resname="Chemical formula (mhchem package)">
         <source>Chemical formula (mhchem package)</source>
-        <target></target>
+        <target>~Ĉemia formulado (mhchem pakaĵo)</target>
       </trans-unit>
       <trans-unit id="JH9NPDB" resname="Reaction arrow">
         <source>Reaction arrow</source>
-        <target></target>
+        <target>~Reaga striko</target>
       </trans-unit>
       <trans-unit id="9NFsJLa" resname="Reverse reaction arrow">
         <source>Reverse reaction arrow</source>
-        <target></target>
+        <target>~Reversa reaga striko</target>
       </trans-unit>
       <trans-unit id="mtCq69k" resname="Reversible reaction">
         <source>Reversible reaction</source>
-        <target></target>
+        <target>~Reversebla reago</target>
       </trans-unit>
       <trans-unit id="aiAsp20" resname="Example of chemical reaction">
         <source>Example of chemical reaction</source>
-        <target></target>
+        <target>~Ekzemplo de kemia reago</target>
       </trans-unit>
       <trans-unit id="WSyxOA6" resname="Positive ion">
         <source>Positive ion</source>
-        <target></target>
+        <target>~ Pozitiva jono</target>
       </trans-unit>
       <trans-unit id="Zwfmq1M" resname="Negative ion">
         <source>Negative ion</source>
-        <target></target>
+        <target>~Negativa jono</target>
       </trans-unit>
       <trans-unit id="IwqXK5c" resname="Solid state">
         <source>Solid state</source>
-        <target></target>
+        <target>~Solida stato</target>
       </trans-unit>
       <trans-unit id="k6I5uRB" resname="Liquid state">
         <source>Liquid state</source>
-        <target></target>
+        <target>~Likva stato</target>
       </trans-unit>
       <trans-unit id="EtljPQi" resname="Gaseous state">
         <source>Gaseous state</source>
-        <target></target>
+        <target>~Gasstato</target>
       </trans-unit>
       <trans-unit id="PuN5Xnh" resname="Aqueous state">
         <source>Aqueous state</source>
-        <target></target>
+        <target>~Akva stato</target>
       </trans-unit>
       <trans-unit id="XP87f.X" resname="Balanced reaction">
         <source>Balanced reaction</source>
-        <target></target>
+        <target>~Ekvilibria reakcio</target>
       </trans-unit>
       <trans-unit id="HiPuTCX" resname="Ideal gases">
         <source>Ideal gases</source>
-        <target></target>
+        <target>~Ideaj gasoj</target>
       </trans-unit>
       <trans-unit id="k2Jr3ux" resname="Ideal gas law equation">
         <source>Ideal gas law equation</source>
-        <target></target>
+        <target>~Ideala gasa leĝo ekvacio</target>
       </trans-unit>
       <trans-unit id="ZMRDPfD" resname="Density of an ideal gas">
         <source>Density of an ideal gas</source>
-        <target></target>
+        <target>~Denso de ideala gaso</target>
       </trans-unit>
       <trans-unit id="1VOgvRI" resname="Partial pressure">
         <source>Partial pressure</source>
-        <target></target>
+        <target>~Parta premo</target>
       </trans-unit>
       <trans-unit id="34KtaK8" resname="Stoichiometry">
         <source>Stoichiometry</source>
-        <target></target>
+        <target>~Stokiometrio</target>
       </trans-unit>
       <trans-unit id="Oyqjwit" resname="Amount of substance">
         <source>Amount of substance</source>
-        <target></target>
+        <target>~Kvanto de substanco</target>
       </trans-unit>
       <trans-unit id="RebpMvz" resname="Mass of substance">
         <source>Mass of substance</source>
-        <target></target>
+        <target>~Maso de substanco</target>
       </trans-unit>
       <trans-unit id="k9UNtub" resname="Molar concentration">
         <source>Molar concentration</source>
-        <target></target>
+        <target>~Molara koncentriĝo</target>
       </trans-unit>
       <trans-unit id="RhCv1CF" resname="Dilution">
         <source>Dilution</source>
-        <target></target>
+        <target>~Diluo</target>
       </trans-unit>
       <trans-unit id="Xxjp7g." resname="Chemical equilibrium">
         <source>Chemical equilibrium</source>
-        <target></target>
+        <target>~Kemia ekvilibro</target>
       </trans-unit>
       <trans-unit id="iJKSRuS" resname="Equilibrium constant (Kc)">
         <source>Equilibrium constant (Kc)</source>
-        <target></target>
+        <target>~Ekvilibro konstanto (Kc)</target>
       </trans-unit>
       <trans-unit id="LILvXqv" resname="Equilibrium constant (Kp)">
         <source>Equilibrium constant (Kp)</source>
-        <target></target>
+        <target>~Ekvilibro konstanto (Kp)</target>
       </trans-unit>
       <trans-unit id="PBF0CMi" resname="Reaction quotient">
         <source>Reaction quotient</source>
-        <target></target>
+        <target>~Reagoca kvociento</target>
       </trans-unit>
       <trans-unit id="uEWZs4q" resname="Acid-base">
         <source>Acid-base</source>
-        <target></target>
+        <target>~Acido-bazaj</target>
       </trans-unit>
       <trans-unit id="tNpAVOo" resname="pOH">
         <source>pOH</source>
-        <target></target>
+        <target>~pOH</target>
       </trans-unit>
       <trans-unit id="amjrth0" resname="pH-pOH relationship">
         <source>pH-pOH relationship</source>
-        <target></target>
+        <target>~pH-pOH rilato</target>
       </trans-unit>
       <trans-unit id="_8k5v1_" resname="Acidity constant">
         <source>Acidity constant</source>
-        <target></target>
+        <target>~Acideco konstanto</target>
       </trans-unit>
       <trans-unit id="Mi1fT1Q" resname="pKa">
         <source>pKa</source>
-        <target></target>
+        <target>~pKa</target>
       </trans-unit>
       <trans-unit id="jeaBPag" resname="Thermochemistry">
         <source>Thermochemistry</source>
-        <target></target>
+        <target>~Termokemio</target>
       </trans-unit>
       <trans-unit id="oYWOJB8" resname="Heat of reaction">
         <source>Heat of reaction</source>
-        <target></target>
+        <target>~Reakcia varmeco</target>
       </trans-unit>
       <trans-unit id="CdiWBSC" resname="Gibbs free energy">
         <source>Gibbs free energy</source>
-        <target></target>
+        <target>~Gibbs libera energio</target>
       </trans-unit>
       <trans-unit id="bzYL2EB" resname="Constants">
         <source>Constants</source>
-        <target></target>
+        <target>~Konstantoj</target>
       </trans-unit>
       <trans-unit id="jCRXf_X" resname="Avogadro\'s number">
         <source>Avogadro\'s number</source>
-        <target></target>
+        <target>~Avogadro-nombro</target>
       </trans-unit>
       <trans-unit id="mGez35A" resname="Gas constant">
         <source>Gas constant</source>
-        <target></target>
+        <target>~Gasa konstanto</target>
       </trans-unit>
       <trans-unit id="uf_UAIq" resname="Boltzmann constant">
         <source>Boltzmann constant</source>
-        <target></target>
+        <target>~Boltzmann-konstanto</target>
       </trans-unit>
       <trans-unit id="NMmVjl0" resname="Description">
         <source>Description</source>
@@ -3243,31 +3243,31 @@
       </trans-unit>
       <trans-unit id="UsAUFIg" resname="Basic symbols">
         <source>Basic symbols</source>
-        <target></target>
+        <target>~Bazaj simboloj</target>
       </trans-unit>
       <trans-unit id="VDu2g6x" resname="Statistics">
         <source>Statistics</source>
-        <target></target>
+        <target>~Statistikoj</target>
       </trans-unit>
       <trans-unit id="DS9SmDT" resname="Physics">
         <source>Physics</source>
-        <target></target>
+        <target>~Fiziko</target>
       </trans-unit>
       <trans-unit id="qN4_Ce0" resname="Geometry">
         <source>Geometry</source>
-        <target></target>
+        <target>~Geometrio</target>
       </trans-unit>
       <trans-unit id="kEux0ZS" resname="LaTeX Formula Visual Editor">
         <source>LaTeX Formula Visual Editor</source>
-        <target></target>
+        <target>~Vizuiga Redaktilo por LaTeX Formulo</target>
       </trans-unit>
       <trans-unit id="6Y5EmRo" resname="LaTeX Formula Editor">
         <source>LaTeX Formula Editor</source>
-        <target></target>
+        <target>~Redaktilo de LaTeX Formulo</target>
       </trans-unit>
       <trans-unit id="Jbx224G" resname="✨ Create with AI">
         <source>✨ Create with AI</source>
-        <target></target>
+        <target>~✨ Krei kun AI</target>
       </trans-unit>
       <trans-unit id="IRz2qG_" resname="Paste">
         <source>Paste</source>
@@ -3275,27 +3275,27 @@
       </trans-unit>
       <trans-unit id="5_ETqJi" resname="Copy JSON">
         <source>Copy JSON</source>
-        <target></target>
+        <target>~Kopiu JSON</target>
       </trans-unit>
       <trans-unit id="zhC7KYj" resname="Export JSON">
         <source>Export JSON</source>
-        <target></target>
+        <target>~Eksportu JSON</target>
       </trans-unit>
       <trans-unit id="YhNZ.Nz" resname="Go to category...">
         <source>Go to category...</source>
-        <target></target>
+        <target>~Iri al kategorio...</target>
       </trans-unit>
       <trans-unit id="MwHiujQ" resname="Collapse/Expand">
         <source>Collapse/Expand</source>
-        <target></target>
+        <target>~Faldi/Etendi</target>
       </trans-unit>
       <trans-unit id="m0h23vj" resname="Application by Juan José de Haro">
         <source>Application by Juan José de Haro</source>
-        <target></target>
+        <target>~Aplikado de Juan José de Haro</target>
       </trans-unit>
       <trans-unit id="kJw2kGt" resname="Creative Commons BY-SA License">
         <source>Creative Commons BY-SA License</source>
-        <target></target>
+        <target>~Krea Komuna BY-SA Licenco</target>
       </trans-unit>
       <trans-unit id="EhytB4v" resname="Cancel">
         <source>Cancel</source>
@@ -3303,247 +3303,247 @@
       </trans-unit>
       <trans-unit id="P7N703x" resname="Paste JSON content">
         <source>Paste JSON content</source>
-        <target></target>
+        <target>~Alglui JSON-enhavon</target>
       </trans-unit>
       <trans-unit id="pnLNy5q" resname="Paste the JSON code here...">
         <source>Paste the JSON code here...</source>
-        <target></target>
+        <target>~Ĝuu la JSON-kodon ĉi tie...</target>
       </trans-unit>
       <trans-unit id="6Aaaywp" resname="Type of content to paste:">
         <source>Type of content to paste:</source>
-        <target></target>
+        <target>~Tipo de enhavo por alglui:</target>
       </trans-unit>
       <trans-unit id="Ej1pm.C" resname="Full JSON (in new tab)">
         <source>Full JSON (in new tab)</source>
-        <target></target>
+        <target>~Plena JSON-dosiero (en nova lango)</target>
       </trans-unit>
       <trans-unit id="eh6TIM4" resname="Category (in current tab)">
         <source>Category (in current tab)</source>
-        <target></target>
+        <target>~Kategorio (en nuna lango)</target>
       </trans-unit>
       <trans-unit id="GL5YG3U" resname="Element(s) (in current tab)">
         <source>Element(s) (in current tab)</source>
-        <target></target>
+        <target>~Elemento(j) (en nuna lango)</target>
       </trans-unit>
       <trans-unit id="7MOqLbM" resname="Add element(s) to category:">
         <source>Add element(s) to category:</source>
-        <target></target>
+        <target>~Aldoni elementojn al kategorio:</target>
       </trans-unit>
       <trans-unit id="CbQ10zo" resname="Add Content">
         <source>Add Content</source>
-        <target></target>
+        <target>~Aldoni Enhavon</target>
       </trans-unit>
       <trans-unit id="HZtC59z" resname="AI Creation Wizard">
         <source>AI Creation Wizard</source>
-        <target></target>
+        <target>~AI Kreado-Sorĉilo</target>
       </trans-unit>
       <trans-unit id="LTHBJwJ" resname="1. What do you want to create?">
         <source>1. What do you want to create?</source>
-        <target></target>
+        <target>~1. Kion vi volas krei?</target>
       </trans-unit>
       <trans-unit id="t6deruw" resname="Full JSON file">
         <source>Full JSON file</source>
-        <target></target>
+        <target>~Plena JSON-dosiero</target>
       </trans-unit>
       <trans-unit id="h1JgnMe" resname="A single category">
         <source>A single category</source>
-        <target></target>
+        <target>~Unu kategorio</target>
       </trans-unit>
       <trans-unit id="V7TO7pz" resname="Multiple elements">
         <source>Multiple elements</source>
-        <target></target>
+        <target>~Multnombraj elementoj</target>
       </trans-unit>
       <trans-unit id="a0Sms.p" resname="2. Generate and use the prompt">
         <source>2. Generate and use the prompt</source>
-        <target></target>
+        <target>~2. Generu kaj uzu la prompton</target>
       </trans-unit>
       <trans-unit id="jKiYAgQ" resname="Follow the steps to generate a prompt and get the JSON code from your preferred AI.">
         <source>Follow the steps to generate a prompt and get the JSON code from your preferred AI.</source>
-        <target></target>
+        <target>~Sekvu la paŝojn por generi prompton kaj akiri la JSON-kodon de via preferata AI.</target>
       </trans-unit>
       <trans-unit id="HUg4ypV" resname="The generated prompt will appear here...">
         <source>The generated prompt will appear here...</source>
-        <target></target>
+        <target>~La generita prompto aperos ĉi tie...</target>
       </trans-unit>
       <trans-unit id="ME62tP7" resname="1. Generate Prompt">
         <source>1. Generate Prompt</source>
-        <target></target>
+        <target>~1. Generu Prompton</target>
       </trans-unit>
       <trans-unit id="t4Y7vhN" resname="2. Launch in ChatGPT">
         <source>2. Launch in ChatGPT</source>
-        <target></target>
+        <target>~2. Lanĉu en ChatGPT</target>
       </trans-unit>
       <trans-unit id="owzhu6J" resname="2a. Copy (other AI)">
         <source>2a. Copy (other AI)</source>
-        <target></target>
+        <target>~2a. Kopiu (alia AI)</target>
       </trans-unit>
       <trans-unit id="NrH8O8T" resname="3. Paste the result into the editor">
         <source>3. Paste the result into the editor</source>
-        <target></target>
+        <target>~3. Algluu la rezulton en la redaktilon</target>
       </trans-unit>
       <trans-unit id="4ISToky" resname="Once you have the code, close this window and use the">
         <source>Once you have the code, close this window and use the</source>
-        <target></target>
+        <target>~Kiam vi havas la kodon, fermu ĉi tiun fenestron kaj uzu la</target>
       </trans-unit>
       <trans-unit id="WzOdU6k" resname="button on the top bar to add your new creation.">
         <source>button on the top bar to add your new creation.</source>
-        <target></target>
+        <target>~butono en la supra stango por aldoni vian novan kreado.</target>
       </trans-unit>
       <trans-unit id="H1Pdq23" resname="Add formula set">
         <source>Add formula set</source>
-        <target></target>
+        <target>~Aldoni formularon aron</target>
       </trans-unit>
       <trans-unit id="c1ml4fV" resname="Clear cache">
         <source>Clear cache</source>
-        <target></target>
+        <target>~Forviŝi kaŝmemoron</target>
       </trans-unit>
       <trans-unit id="3s5o98B" resname="Loading list...">
         <source>Loading list...</source>
-        <target></target>
+        <target>~Ŝarĝanta liston...</target>
       </trans-unit>
       <trans-unit id="17WkMQd" resname="Other sources">
         <source>Other sources</source>
-        <target></target>
+        <target>~Aliaj fontoj</target>
       </trans-unit>
       <trans-unit id="kq9GQkE" resname="Paste a JSON URL...">
         <source>Paste a JSON URL...</source>
-        <target></target>
+        <target>~Alglui JSON-URL...</target>
       </trans-unit>
       <trans-unit id="v9IDBKP" resname="Open local file...">
         <source>Open local file...</source>
-        <target></target>
+        <target>~Malfermi lokan dosieron...</target>
       </trans-unit>
       <trans-unit id="N_rSZNB" resname="Add or load a formula set.">
         <source>Add or load a formula set.</source>
-        <target></target>
+        <target>~Aldoni aŭ ŝarĝi formularon aron.</target>
       </trans-unit>
       <trans-unit id="y8oZnQ1" resname="Edit category">
         <source>Edit category</source>
-        <target></target>
+        <target>~Redakti kategorion</target>
       </trans-unit>
       <trans-unit id="kzNsK0I" resname="Delete category">
         <source>Delete category</source>
-        <target></target>
+        <target>~Forviŝi kategorion</target>
       </trans-unit>
       <trans-unit id="_6ig_J7" resname="Add element">
         <source>Add element</source>
-        <target></target>
+        <target>~Aldoni elementon</target>
       </trans-unit>
       <trans-unit id="4e.Ukrc" resname="Element">
         <source>Element</source>
-        <target></target>
+        <target>~Elemento</target>
       </trans-unit>
       <trans-unit id="EAFBgeF" resname="Edit element">
         <source>Edit element</source>
-        <target></target>
+        <target>~Redakti elementon</target>
       </trans-unit>
       <trans-unit id="NR9IBAq" resname="Delete element">
         <source>Delete element</source>
-        <target></target>
+        <target>~Forigi elementon</target>
       </trans-unit>
       <trans-unit id="HBaY8d1" resname="The preview will appear here.">
         <source>The preview will appear here.</source>
-        <target></target>
+        <target>~La antaŭrigardo aperos ĉi tie.</target>
       </trans-unit>
       <trans-unit id="KYnJqPO" resname="Could not load the file for &quot;{name}&quot;.">
         <source>Could not load the file for "{name}".</source>
-        <target></target>
+        <target>~Ne povis ŝarĝi la dosieron por "{name}".</target>
       </trans-unit>
       <trans-unit id="bk0kTAy" resname="All browser data has been cleared.">
         <source>All browser data has been cleared.</source>
-        <target></target>
+        <target>~Ĉiuj retumilaj datumoj estis forigitaj.</target>
       </trans-unit>
       <trans-unit id="ywSABzT" resname="Please enter a valid URL.">
         <source>Please enter a valid URL.</source>
-        <target></target>
+        <target>~Bonvolu enmeti validan URL-on.</target>
       </trans-unit>
       <trans-unit id="2mSnUB6" resname="Custom URL">
         <source>Custom URL</source>
-        <target></target>
+        <target>~ Propra URL</target>
       </trans-unit>
       <trans-unit id="yxnTqdy" resname="The JSON file does not have the expected format.">
         <source>The JSON file does not have the expected format.</source>
-        <target></target>
+        <target>~La JSON-dosiero ne havas la atendatan formaton.</target>
       </trans-unit>
       <trans-unit id="jq51kLA" resname="Error processing the JSON file.">
         <source>Error processing the JSON file.</source>
-        <target></target>
+        <target>~Eraro dum prilaborado de la JSON-dosiero.</target>
       </trans-unit>
       <trans-unit id="lWnelGB" resname="There is nothing to copy.">
         <source>There is nothing to copy.</source>
-        <target></target>
+        <target>~Ne estas io por kopii.</target>
       </trans-unit>
       <trans-unit id="nTSRyxj" resname="Copied!">
         <source>Copied!</source>
-        <target></target>
+        <target>~Kopiiĝis!</target>
       </trans-unit>
       <trans-unit id="QJSAxuR" resname="There is nothing to export.">
         <source>There is nothing to export.</source>
-        <target></target>
+        <target>~Ne estas io por eksporti.</target>
       </trans-unit>
       <trans-unit id="uBZB_tp" resname="The text area is empty.">
         <source>The text area is empty.</source>
-        <target></target>
+        <target>~La teksta areo estas malplena.</target>
       </trans-unit>
       <trans-unit id="kpceGkk" resname="Pasted">
         <source>Pasted</source>
-        <target></target>
+        <target>~Ĝoje algluitaj</target>
       </trans-unit>
       <trans-unit id="MGL18xY" resname="Invalid full JSON.">
         <source>Invalid full JSON.</source>
-        <target></target>
+        <target>~Nevalida plena JSON.</target>
       </trans-unit>
       <trans-unit id="FZiW7rE" resname="Invalid category JSON.">
         <source>Invalid category JSON.</source>
-        <target></target>
+        <target>~Nevalida kategorio JSON.</target>
       </trans-unit>
       <trans-unit id="yCPWAZ." resname="Select a category.">
         <source>Select a category.</source>
-        <target></target>
+        <target>~Elektu kategorion.</target>
       </trans-unit>
       <trans-unit id="IdniqcW" resname="The format of the element or list of elements is invalid. Make sure they are valid JSON objects separated by commas.">
         <source>The format of the element or list of elements is invalid. Make sure they are valid JSON objects separated by commas.</source>
-        <target></target>
+        <target>~La formato de la elemento aŭ listo de elementoj estas nevalida. Certiĝu ke ili estas validaj JSON-objektoj apartigitaj per komo.</target>
       </trans-unit>
       <trans-unit id="epdjTC7" resname="No valid elements found in the pasted text.">
         <source>No valid elements found in the pasted text.</source>
-        <target></target>
+        <target>~Neni validaj elementoj trovitaj en la algluita teksto.</target>
       </trans-unit>
       <trans-unit id="PfM4T5v" resname="Error processing JSON: ">
         <source>Error processing JSON: </source>
-        <target></target>
+        <target>~Eraro dum prilaborado de JSON: </target>
       </trans-unit>
       <trans-unit id="_._yuBi" resname="Please enter a topic.">
         <source>Please enter a topic.</source>
-        <target></target>
+        <target>~Bonvolu enigi temon.</target>
       </trans-unit>
       <trans-unit id="9kJWMw7" resname="None.">
         <source>None.</source>
-        <target></target>
+        <target>~Neniu.</target>
       </trans-unit>
       <trans-unit id="dfaCCTV" resname="Could not copy the prompt.">
         <source>Could not copy the prompt.</source>
-        <target></target>
+        <target>~Ne eblis kopii la prompton.</target>
       </trans-unit>
       <trans-unit id="D8tDuEE" resname="Edit Category">
         <source>Edit Category</source>
-        <target></target>
+        <target>~Redakti Kategorion</target>
       </trans-unit>
       <trans-unit id="DkcHXDT" resname="Are you sure?">
         <source>Are you sure?</source>
-        <target></target>
+        <target>~Ĉu vi certas?</target>
       </trans-unit>
       <trans-unit id="LVKPgIf" resname="Add Element">
         <source>Add Element</source>
-        <target></target>
+        <target>~Aldoni Elementon</target>
       </trans-unit>
       <trans-unit id="oIuT5Lt" resname="Edit Element">
         <source>Edit Element</source>
-        <target></target>
+        <target>~Redakti Elementon</target>
       </trans-unit>
       <trans-unit id="FwHX503" resname="The name is required.">
         <source>The name is required.</source>
-        <target></target>
+        <target>~La nomo estas deviga.</target>
       </trans-unit>
       <trans-unit id="wbMeKOh" resname="Name">
         <source>Name</source>
@@ -3555,23 +3555,23 @@
       </trans-unit>
       <trans-unit id="pKYTYcI" resname="CSS Grid Template">
         <source>CSS Grid Template</source>
-        <target></target>
+        <target>~CSS Grid Ŝablono  </target>
       </trans-unit>
       <trans-unit id="YFcBvyL" resname="LaTeX (insert)">
         <source>LaTeX (insert)</source>
-        <target></target>
+        <target>~LaTeX (enmeti)  </target>
       </trans-unit>
       <trans-unit id="0NTcv5r" resname="LaTeX (display)">
         <source>LaTeX (display)</source>
-        <target></target>
+        <target>~LaTeX (montri)  </target>
       </trans-unit>
       <trans-unit id="4VQPnZ0" resname="Optional. If left blank, the insert LaTeX will be used.">
         <source>Optional. If left blank, the insert LaTeX will be used.</source>
-        <target></target>
+        <target>~Nedeviga. Se lasas malplen, estos estos la enmetita LaTeX.  </target>
       </trans-unit>
       <trans-unit id="MacJaqw" resname="Move to another category">
         <source>Move to another category</source>
-        <target></target>
+        <target>~Movi al alia kategorio  </target>
       </trans-unit>
       <trans-unit id="3l7_Oot" resname="Move">
         <source>Move</source>
@@ -3579,67 +3579,67 @@
       </trans-unit>
       <trans-unit id="p7NwjKy" resname="Title and LaTeX are required.">
         <source>Title and LaTeX are required.</source>
-        <target></target>
+        <target>~Titolo kaj LaTeX estas devigaj.  </target>
       </trans-unit>
       <trans-unit id="U0pR.fg" resname="It is already in this category.">
         <source>It is already in this category.</source>
-        <target></target>
+        <target>~Ĝi jam estas en ĉi tiu kategorio.  </target>
       </trans-unit>
       <trans-unit id="QmyUM.T" resname="Could not retrieve menus.">
         <source>Could not retrieve menus.</source>
-        <target></target>
+        <target>~Ne povis akiri la menuojn.  </target>
       </trans-unit>
       <trans-unit id="9nNjPjk" resname="Error loading the list.">
         <source>Error loading the list.</source>
-        <target></target>
+        <target>~Eraro dum ŝarĝado de la listo.  </target>
       </trans-unit>
       <trans-unit id="2K3bFkm" resname="Could not load the default base formulas.">
         <source>Could not load the default base formulas.</source>
-        <target></target>
+        <target>~Ne povis ŝarĝi la defaŭltajn bazajn formulojn.</target>
       </trans-unit>
       <trans-unit id="q4vxgjo" resname="General topic:">
         <source>General topic:</source>
-        <target></target>
+        <target>~Ĝenerala temo:</target>
       </trans-unit>
       <trans-unit id="rzcSvgD" resname="E.g.: Statistics, Linear Algebra...">
         <source>E.g.: Statistics, Linear Algebra...</source>
-        <target></target>
+        <target>~Ekz.: Statistiko, Lineara Algebra...</target>
       </trans-unit>
       <trans-unit id="7gggVR6" resname="Additional instructions for the AI (optional):">
         <source>Additional instructions for the AI (optional):</source>
-        <target></target>
+        <target>~Pliaj instrukcioj por la AI (opciaj):</target>
       </trans-unit>
       <trans-unit id="QL4hapV" resname="E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...">
         <source>E.g.: Create 3 categories with 5 formulas each. Or create 8 elements about...</source>
-        <target></target>
+        <target>~Ekz.: Krei 3 kategoriojn kun 5 formuloj ĉiu. Aŭ krei 8 elementojn pri...</target>
       </trans-unit>
       <trans-unit id="crgTovz" resname="Category topic:">
         <source>Category topic:</source>
-        <target></target>
+        <target>~Kategorio-temo:</target>
       </trans-unit>
       <trans-unit id="Y0uP2GQ" resname="E.g.: Vectors, Organic Chemistry...">
         <source>E.g.: Vectors, Organic Chemistry...</source>
-        <target></target>
+        <target>~Ekz.: Vektoroj, Organika Kemio...</target>
       </trans-unit>
       <trans-unit id="rKVEl9D" resname="Topic of the elements:">
         <source>Topic of the elements:</source>
-        <target></target>
+        <target>~Temo de la elementoj:</target>
       </trans-unit>
       <trans-unit id="jj._G0X" resname="E.g.: Trigonometric identities">
         <source>E.g.: Trigonometric identities</source>
-        <target></target>
+        <target>~Ekz.: Trigonometriaj identecoj</target>
       </trans-unit>
       <trans-unit id="GVu.XTz" resname="No .json files found in the \'docs\' folder.">
         <source>No .json files found in the \'docs\' folder.</source>
-        <target></target>
+        <target>~Neniu .json-dosiero trovita en la 'docs' dosierujo.</target>
       </trans-unit>
       <trans-unit id="3U32W5O" resname="No .json files found in the 'docs' folder.">
         <source>No .json files found in the 'docs' folder.</source>
-        <target></target>
+        <target>~Neniu .json-dosiero trovita en la 'docs' dosierujo.</target>
       </trans-unit>
       <trans-unit id="BuEgklH" resname="Create with AI">
         <source>Create with AI</source>
-        <target></target>
+        <target>~Kreu kun AI</target>
       </trans-unit>
       <trans-unit id="JOOpn8O" resname="Go to Tools - Preview to see the tooltip content">
         <source>Go to Tools - Preview to see the tooltip content</source>
@@ -3675,15 +3675,15 @@
       </trans-unit>
       <trans-unit id="Csyf_Vj" resname="New from Template...">
         <source>New from Template...</source>
-        <target></target>
+        <target>~Nova el Ŝablono...</target>
       </trans-unit>
       <trans-unit id="GbRjAbR" resname="Select a template to create a new project:">
         <source>Select a template to create a new project:</source>
-        <target></target>
+        <target>~Elektu ŝablonon por krei novan projekton:</target>
       </trans-unit>
       <trans-unit id="DchL58D" resname="No templates available for your language.">
         <source>No templates available for your language.</source>
-        <target></target>
+        <target>~Neniuj ŝablonoj disponeblaj por via lingvo.</target>
       </trans-unit>
       <trans-unit id="_SqArFZ" resname="Open">
         <source>Open</source>
@@ -3795,7 +3795,7 @@
       </trans-unit>
       <trans-unit id="HYELKV7" resname="Please refresh the page to try to reconnect to the server...">
         <source>Please refresh the page to try to reconnect to the server...</source>
-        <target></target>
+        <target>~Bonvolu reŝargi la paĝon por provi rekonektiĝi al la servilo...</target>
       </trans-unit>
       <trans-unit id="bH.yYS4" resname="Users online">
         <source>Users online</source>
@@ -3887,11 +3887,11 @@
       </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
-        <target></target>
+        <target>~Informo kaj prezento</target>
       </trans-unit>
       <trans-unit id="jkArR.M" resname="Assessment and tracking">
         <source>Assessment and tracking</source>
-        <target></target>
+        <target>~Takso kaj spurado</target>
       </trans-unit>
       <trans-unit id="TfHPH8U" resname="Games">
         <source>Games</source>
@@ -3903,7 +3903,7 @@
       </trans-unit>
       <trans-unit id="ALckUtg" resname="Science">
         <source>Science</source>
-        <target></target>
+        <target>~Scienco</target>
       </trans-unit>
       <trans-unit id="tmHbmhG" resname="Imported">
         <source>Imported</source>
@@ -3971,7 +3971,7 @@
       </trans-unit>
       <trans-unit id="NTWmm7D" resname="An error occurred while generating the preview.">
         <source>An error occurred while generating the preview.</source>
-        <target></target>
+        <target>~Eraro okazis dum generi la antaŭrigardon.</target>
       </trans-unit>
       <trans-unit id="6q_rouK" resname="An error occurred while generating the print preview.">
         <source>An error occurred while generating the print preview.</source>
@@ -3995,7 +3995,7 @@
       </trans-unit>
       <trans-unit id="CqqAOBm" resname="An error occurred while saving the project.">
         <source>An error occurred while saving the project.</source>
-        <target></target>
+        <target>~Eraro okazis dum konservi la projekton.</target>
       </trans-unit>
       <trans-unit id="Vc8VhHf" resname="Save project">
         <source>Save project</source>
@@ -4047,7 +4047,7 @@
       </trans-unit>
       <trans-unit id="qOmQIdj" resname="An error occurred while generating the file.">
         <source>An error occurred while generating the file.</source>
-        <target></target>
+        <target>~Eraro okazis dum generi la dosieron.</target>
       </trans-unit>
       <trans-unit id="swQ_hb0" resname="Save as">
         <source>Save as</source>
@@ -4063,23 +4063,23 @@
       </trans-unit>
       <trans-unit id="a.vZ7kn" resname="An error occurred while exporting the project.">
         <source>An error occurred while exporting the project.</source>
-        <target></target>
+        <target>~Eraro okazis dum eksporti la projekton.</target>
       </trans-unit>
       <trans-unit id="Q3Kq_T9" resname="This option is only available offline.">
         <source>This option is only available offline.</source>
-        <target></target>
+        <target>~Ĉi tiu opcio estas disponebla nur senrete.</target>
       </trans-unit>
       <trans-unit id="alnAuc." resname="Export canceled.">
         <source>Export canceled.</source>
-        <target></target>
+        <target>~Eksportado nuligita.</target>
       </trans-unit>
       <trans-unit id="AzTECQQ" resname="Unexpected error.">
         <source>Unexpected error.</source>
-        <target></target>
+        <target>~Nekonata eraro.</target>
       </trans-unit>
       <trans-unit id="k8.XhRG" resname="The project properties have been exported.">
         <source>The project properties have been exported.</source>
-        <target></target>
+        <target>~La projekto-proprietoj estis eksportitaj.</target>
       </trans-unit>
       <trans-unit id="YZXIGpx" resname="Other users are connected.">
         <source>Other users are connected.</source>
@@ -4367,7 +4367,7 @@
       </trans-unit>
       <trans-unit id="4YXoX88" resname="Do you want to delete the project (elp)? This cannot be undone.">
         <source>Do you want to delete the project (elp)? This cannot be undone.</source>
-        <target></target>
+        <target>~Ĉu vi volas forigi la projekton (elp)? Tio ne povas esti malkonata.</target>
       </trans-unit>
       <trans-unit id="OZeulWK" resname="Search...">
         <source>Search...</source>
@@ -4427,7 +4427,7 @@
       </trans-unit>
       <trans-unit id="COSKxUW" resname="An error occurred while saving the file: ${response.responseMessage}">
         <source>An error occurred while saving the file: ${response.responseMessage}</source>
-        <target></target>
+        <target>~Eraro okazis dum konservi la dosieron: ${response.responseMessage}</target>
       </trans-unit>
       <trans-unit id="Dpz4_Qq" resname="Error saving">
         <source>Error saving</source>
@@ -4479,7 +4479,7 @@
       </trans-unit>
       <trans-unit id="JOFdorq" resname="Select the Dropbox directory where the project will be uploaded:">
         <source>Select the Dropbox directory where the project will be uploaded:</source>
-        <target></target>
+        <target>~Elektu la Dropbox-dosierujon kie la projekto estos alŝutita:</target>
       </trans-unit>
       <trans-unit id="9a1eDpd" resname="Upload to Google Drive">
         <source>Upload to Google Drive</source>
@@ -4487,11 +4487,11 @@
       </trans-unit>
       <trans-unit id="HMP7DeK" resname="Select the Google Drive directory where the project will be uploaded:">
         <source>Select the Google Drive directory where the project will be uploaded:</source>
-        <target></target>
+        <target>~Elektu la Google Drive-dosierujon kie la projekto estos alŝutita:</target>
       </trans-unit>
       <trans-unit id="9Mm2eRT" resname="An error occurred while saving block's properties in database">
         <source>An error occurred while saving block's properties in database</source>
-        <target></target>
+        <target>~Eraro okazis dum konservado de la propraĵoj de la bloko en la datumbazo</target>
       </trans-unit>
       <trans-unit id="cIEcUOY" resname="Select an icon">
         <source>Select an icon</source>
@@ -4531,7 +4531,7 @@
       </trans-unit>
       <trans-unit id="Jxrmbyu" resname="Delete the box and all its iDevices? This cannot be undone.">
         <source>Delete the box and all its iDevices? This cannot be undone.</source>
-        <target></target>
+        <target>~Ĉu forigi la keston kaj ĉiujn ĝiajn iDevice-ojn? Tio ne povas esti malkonata.</target>
       </trans-unit>
       <trans-unit id="_YseMvk" resname="Box properties">
         <source>Box properties</source>
@@ -4551,7 +4551,7 @@
       </trans-unit>
       <trans-unit id="zLfwrs3" resname="Select the page you want to move the block to. This will be at the end of it.">
         <source>Select the page you want to move the block to. This will be at the end of it.</source>
-        <target></target>
+        <target>~Elektu la paĝon al kiu vi volas movi la blokon. Tio estos ĉe la fino de ĝi.</target>
       </trans-unit>
       <trans-unit id="k0oEgy_" resname="Select icon">
         <source>Select icon</source>
@@ -4567,19 +4567,19 @@
       </trans-unit>
       <trans-unit id="fEHzCCc" resname="An error occurred while update component in database">
         <source>An error occurred while update component in database</source>
-        <target></target>
+        <target>~Eraro okazis dum ĝisdatigo de la komponanto en la datumbazo</target>
       </trans-unit>
       <trans-unit id="wiM7f0K" resname="Identical contents in the same page might cause errors. Edit the new one or move it to another page.">
         <source>Identical contents in the same page might cause errors. Edit the new one or move it to another page.</source>
-        <target></target>
+        <target>~Identaj enhavoj en la sama paĝo eble kaŭzos erarojn. Redaktu la novan aŭ movu ĝin al alia paĝo.</target>
       </trans-unit>
       <trans-unit id="3.j2frP" resname="An error occurred while clone component in database">
         <source>An error occurred while clone component in database</source>
-        <target></target>
+        <target>~Eraro okazis dum kloni de la komponanto en la datumbazo</target>
       </trans-unit>
       <trans-unit id="ECdlxze" resname="An error occurred while removing the component from the database">
         <source>An error occurred while removing the component from the database</source>
-        <target></target>
+        <target>~Eraro okazis dum forigado de la komponanto el la datumbazo</target>
       </trans-unit>
       <trans-unit id="Ak3_Wjd" resname="Discard changes">
         <source>Discard changes</source>
@@ -4603,15 +4603,15 @@
       </trans-unit>
       <trans-unit id="qMGbqBh" resname="Select the page where you want to move the iDevice. It will be placed at the end of the page.">
         <source>Select the page where you want to move the iDevice. It will be placed at the end of the page.</source>
-        <target></target>
+        <target>~Elektu la paĝon al kiu vi volas movi la iDevice. Ĝi estos metita ĉe la fino de la paĝo.</target>
       </trans-unit>
       <trans-unit id="aG4weoA" resname="An error occurred while save component in database">
         <source>An error occurred while save component in database</source>
-        <target></target>
+        <target>~Eraro okazis dum konservado de la komponanto en la datumbazo</target>
       </trans-unit>
       <trans-unit id="78RKJPa" resname="An error occurred while saving the iDevice’s properties to the database.">
         <source>An error occurred while saving the iDevice’s properties to the database.</source>
-        <target></target>
+        <target>~Eraro okazis dum konservado de la propraĵoj de la iDevice en la datumbazo.</target>
       </trans-unit>
       <trans-unit id="8g6a9xW" resname="File is too large">
         <source>File is too large</source>
@@ -4631,7 +4631,7 @@
       </trans-unit>
       <trans-unit id="b0l3acH" resname="You cannot edit another iDevice until you save the current one">
         <source>You cannot edit another iDevice until you save the current one</source>
-        <target></target>
+        <target>~Vi ne povas redakti alian iDevice ĝis vi konservos la aktualan</target>
       </trans-unit>
       <trans-unit id="6b66eDm" resname="Remove Block">
         <source>Remove Block</source>
@@ -4659,7 +4659,7 @@
       </trans-unit>
       <trans-unit id="fPQsnoO" resname="You are currently editing another iDevice. Please close it before continuing">
         <source>You are currently editing another iDevice. Please close it before continuing</source>
-        <target></target>
+        <target>~Vi estas nuntempe redaktanta alian iDevice. Bonvolu fermi ĝin antaŭ daŭrigi</target>
       </trans-unit>
       <trans-unit id="38SLSPC" resname="An error occurred while loading the iDevice.">
         <source>An error occurred while loading the iDevice.</source>
@@ -4667,7 +4667,7 @@
       </trans-unit>
       <trans-unit id="_qN9nCf" resname="The box is empty. Do you want to delete it?">
         <source>The box is empty. Do you want to delete it?</source>
-        <target></target>
+        <target>~La skatolo estas malplena. Ĉu vi volas forigi ĝin?</target>
       </trans-unit>
       <trans-unit id="V5xJrEH" resname="This page is being edited by:">
         <source>This page is being edited by:</source>
@@ -4691,7 +4691,7 @@
       </trans-unit>
       <trans-unit id="YLhWBv4" resname="Error while saving: ${response.responseMessage}">
         <source>Error while saving: ${response.responseMessage}</source>
-        <target></target>
+        <target>~Eraro dum konservado: ${response.responseMessage}</target>
       </trans-unit>
       <trans-unit id="E4vyID5" resname="Style changed">
         <source>Style changed</source>
@@ -4699,7 +4699,7 @@
       </trans-unit>
       <trans-unit id="Wq0rrM1" resname="Your style has changed. Reload the page to apply changes?">
         <source>Your style has changed. Reload the page to apply changes?</source>
-        <target></target>
+        <target>~Via stilo ŝanĝiĝis. Ŝarĝu la paĝon denove por apliki ŝanĝojn?</target>
       </trans-unit>
       <trans-unit id="PlBZGgy" resname="Undo the last action?">
         <source>Undo the last action?</source>
@@ -4711,7 +4711,7 @@
       </trans-unit>
       <trans-unit id="gysLwdg" resname="An error occurred while saving the component.">
         <source>An error occurred while saving the component.</source>
-        <target></target>
+        <target>~Eraro okazis dum konservado de la komponanto.</target>
       </trans-unit>
       <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
         <source>You are editing an iDevice. Please close it before continuing</source>
@@ -4739,7 +4739,7 @@
       </trans-unit>
       <trans-unit id="Ww.bpx3" resname="An error occurred while saving node's properties in database">
         <source>An error occurred while saving node's properties in database</source>
-        <target></target>
+        <target>~Eraro okazis dum konservado de la propraĵoj de la nodo en la datumbazo</target>
       </trans-unit>
       <trans-unit id="7pvhS6V" resname="Structure node error">
         <source>Structure node error</source>
@@ -4755,7 +4755,7 @@
       </trans-unit>
       <trans-unit id="zr.mdKw" resname="An error occurred while updating the node in database">
         <source>An error occurred while updating the node in database</source>
-        <target></target>
+        <target>~Eraro okazis dum ĝisdatigo de la nodo en la datumbazo</target>
       </trans-unit>
       <trans-unit id=".govyiK" resname="An error occurred while remove the node in database">
         <source>An error occurred while remove the node in database</source>
@@ -5307,7 +5307,7 @@
       </trans-unit>
       <trans-unit id="7yUZmtN" resname="Add activity">
         <source>Add activity</source>
-        <target></target>
+        <target>~Aldoni agado</target>
       </trans-unit>
       <trans-unit id="llFOVuR" resname="Delete activity">
         <source>Delete activity</source>
@@ -5323,7 +5323,7 @@
       </trans-unit>
       <trans-unit id="YXVgwWH" resname="Case study">
         <source>Case study</source>
-        <target></target>
+        <target>~Kazo-studo</target>
       </trans-unit>
       <trans-unit id="VKh8TSL" resname="00:00">
         <source>00:00</source>
@@ -5347,19 +5347,19 @@
       </trans-unit>
       <trans-unit id="mgtLDuZ" resname="Do you want to delete this activity?">
         <source>Do you want to delete this activity?</source>
-        <target></target>
+        <target>~Ĉu vi volas forigi ĉi tiun agadon?  </target>
       </trans-unit>
       <trans-unit id="DDWnIrv" resname="The case study must have at least one activity">
         <source>The case study must have at least one activity</source>
-        <target></target>
+        <target>~La kazo-studo devas havi almenaŭ unu agadon  </target>
       </trans-unit>
       <trans-unit id="mFlaair" resname="Please complete the history">
         <source>Please complete the history</source>
-        <target></target>
+        <target>~Bonvolu kompletigi la historion  </target>
       </trans-unit>
       <trans-unit id="ofUWEOP" resname="You must provide the text for each activity">
         <source>You must provide the text for each activity</source>
-        <target></target>
+        <target>~Vi devas provizi la tekston por ĉiu ago  </target>
       </trans-unit>
       <trans-unit id="7bi6iI4" resname="Read the instructions and click on a trial when you're ready to play.">
         <source>Read the instructions and click on a trial when you're ready to play.</source>
@@ -7327,7 +7327,7 @@
       </trans-unit>
       <trans-unit id="cIWhj7d" resname="Your changes won't be saved until you click on \&quot;Save\&quot;.">
         <source>Your changes won't be saved until you click on \"Save\".</source>
-        <target></target>
+        <target>~Viaj ŝanĝoj ne estos konservitaj ĝis vi klakas sur \"Konservi\".  </target>
       </trans-unit>
       <trans-unit id="dEPpFWQ" resname="Do not show this message again">
         <source>Do not show this message again</source>
@@ -7371,7 +7371,7 @@
       </trans-unit>
       <trans-unit id="719B6M_" resname="Click on \&quot;Exit\&quot; to finish.">
         <source>Click on \"Exit\" to finish.</source>
-        <target></target>
+        <target>~Klaku sur \"Eliri\" por fini.  </target>
       </trans-unit>
       <trans-unit id="yLx_WEs" resname="Stop the playing video">
         <source>Stop the playing video</source>
@@ -7411,11 +7411,11 @@
       </trans-unit>
       <trans-unit id="RLB6gEc" resname="Please check the \&quot;Start\&quot; time">
         <source>Please check the \"Start\" time</source>
-        <target></target>
+        <target>~Bonvolu kontroli la \"Komenco\"-tempon  </target>
       </trans-unit>
       <trans-unit id="FSmyc.T" resname="Please check the \&quot;End\&quot; time">
         <source>Please check the \"End\" time</source>
-        <target></target>
+        <target>~Bonvolu kontroli la \"Fino\"-tempon  </target>
       </trans-unit>
       <trans-unit id="DmOBCiE" resname="Set the time for the slide to be shown">
         <source>Set the time for the slide to be shown</source>
@@ -7531,27 +7531,27 @@
       </trans-unit>
       <trans-unit id="D_G.38F" resname="Choose the zoom and the magnifier's size. Then move your mouse over the image to see it enlarged.">
         <source>Choose the zoom and the magnifier's size. Then move your mouse over the image to see it enlarged.</source>
-        <target></target>
+        <target>~Elektu la zoman kaj la grandecon de la lenso. Poste movu vian muson super la bildo por vidi ĝin pligrandigita.  </target>
       </trans-unit>
       <trans-unit id="LhPK3m6" resname="Magnifier">
         <source>Magnifier</source>
-        <target></target>
+        <target>~Lenso</target>
       </trans-unit>
       <trans-unit id="ToPhWpx" resname="Full screen">
         <source>Full screen</source>
-        <target></target>
+        <target>~Plena ekrano</target>
       </trans-unit>
       <trans-unit id="750yEWZ" resname="The image is not available.">
         <source>The image is not available.</source>
-        <target></target>
+        <target>~La bildo ne estas havebla.</target>
       </trans-unit>
       <trans-unit id="u2oxdiJ" resname="Image width">
         <source>Image width</source>
-        <target></target>
+        <target>~Bildolarĝo</target>
       </trans-unit>
       <trans-unit id="lfDRlEO" resname="Align">
         <source>Align</source>
-        <target></target>
+        <target>~Egli</target>
       </trans-unit>
       <trans-unit id="y.xG0GC" resname="Left">
         <source>Left</source>
@@ -7563,11 +7563,11 @@
       </trans-unit>
       <trans-unit id="kpC3CUG" resname="Initial Zoom">
         <source>Initial Zoom</source>
-        <target></target>
+        <target>~Inicia Zomo</target>
       </trans-unit>
       <trans-unit id="nzCIWGK" resname="Magnifier Size">
         <source>Magnifier Size</source>
-        <target></target>
+        <target>~Magnefiko Grandeco</target>
       </trans-unit>
       <trans-unit id="K9sgpC1" resname="Math operations">
         <source>Math operations</source>
@@ -8435,43 +8435,43 @@
       </trans-unit>
       <trans-unit id="1piunaK" resname="Alkali metals">
         <source>Alkali metals</source>
-        <target></target>
+        <target>~Alkala metaloj</target>
       </trans-unit>
       <trans-unit id="B_3nlZS" resname="Alkaline earth metals">
         <source>Alkaline earth metals</source>
-        <target></target>
+        <target>~Alkala termetaloj</target>
       </trans-unit>
       <trans-unit id="j3Itwu3" resname="Transition metals">
         <source>Transition metals</source>
-        <target></target>
+        <target>~Transirmetaloj</target>
       </trans-unit>
       <trans-unit id="8_ejxKp" resname="Post-Transition metals">
         <source>Post-Transition metals</source>
-        <target></target>
+        <target>~Post-transirmetaloj</target>
       </trans-unit>
       <trans-unit id="jPZCkB4" resname="Metalloids">
         <source>Metalloids</source>
-        <target></target>
+        <target>~Metaloidoj</target>
       </trans-unit>
       <trans-unit id="x7hstnQ" resname="Non-metals">
         <source>Non-metals</source>
-        <target></target>
+        <target>~Ne-metaloj</target>
       </trans-unit>
       <trans-unit id="l2FPPLx" resname="Halogens">
         <source>Halogens</source>
-        <target></target>
+        <target>~Halogenoj</target>
       </trans-unit>
       <trans-unit id="f4MBuUC" resname="Noble gases">
         <source>Noble gases</source>
-        <target></target>
+        <target>~Nobel-gasoj</target>
       </trans-unit>
       <trans-unit id="1Bo32t3" resname="Lanthanides">
         <source>Lanthanides</source>
-        <target></target>
+        <target>~Lanthanidoj</target>
       </trans-unit>
       <trans-unit id="qzg7BFl" resname="Actinides">
         <source>Actinides</source>
-        <target></target>
+        <target>~Aktinidoj</target>
       </trans-unit>
       <trans-unit id="OWXF.o4" resname="Element Groups">
         <source>Element Groups</source>
@@ -11247,15 +11247,15 @@
       </trans-unit>
       <trans-unit id="fE2HH6r" resname="Visibility type">
         <source>Visibility type</source>
-        <target></target>
+        <target>~Vido tipo</target>
       </trans-unit>
       <trans-unit id="RWxaLMk" resname="Visible to all">
         <source>Visible to all</source>
-        <target></target>
+        <target>~Videra al ĉiuj</target>
       </trans-unit>
       <trans-unit id="ZT.NQle" resname="Teacher only">
         <source>Teacher only</source>
-        <target></target>
+        <target>~Nur instruistoj</target>
       </trans-unit>
       <trans-unit id="37wivZ3" resname="ID">
         <source>ID</source>
@@ -11431,7 +11431,7 @@
       </trans-unit>
       <trans-unit id="UvqYVFn" resname="Please wait until the changes are completely saved.">
         <source>Please wait until the changes are completely saved.</source>
-        <target></target>
+        <target>~Bonvolu atendi ĝis la ŝanĝoj estas tute konservitaj.</target>
       </trans-unit>
       <trans-unit id="n1oCjz0" resname="An error has occurred that prevents the project from being exported">
         <source>An error has occurred that prevents the project from being exported</source>
@@ -11635,7 +11635,7 @@
       </trans-unit>
       <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
         <source>abcdefghijklmnñopqrstuvwxyz</source>
-        <target></target>
+        <target>~abcdefghijklmnñopqrstuvwxyz</target>
       </trans-unit>
       <trans-unit id="buoozPS" resname="Metadata creation date">
         <source>Metadata creation date</source>
@@ -11787,15 +11787,15 @@
       </trans-unit>
       <trans-unit id="bBHJSiQ" resname="Export as...">
         <source>Export as...</source>
-        <target></target>
+        <target>~Eksporti kiel...</target>
       </trans-unit>
       <trans-unit id="hoh2x39" resname="Export to Folder (Unzipped Website)">
         <source>Export to Folder (Unzipped Website)</source>
-        <target></target>
+        <target>~Eksporti al dosierujo (malzipita retejo)</target>
       </trans-unit>
       <trans-unit id="pkPMDRH" resname="Metadata (XML)">
         <source>Metadata (XML)</source>
-        <target></target>
+        <target>~Metadatumoj (XML)</target>
       </trans-unit>
       <trans-unit id="b0UHAqn" resname="Upload to">
         <source>Upload to</source>
@@ -11823,7 +11823,7 @@
       </trans-unit>
       <trans-unit id="ca3xgwu" resname="API Reference (Swagger)">
         <source>API Reference (Swagger)</source>
-        <target></target>
+        <target>~API-Riprovo (Swagger)</target>
       </trans-unit>
       <trans-unit id="_hZE4YS" resname="eXeLearning website">
         <source>eXeLearning website</source>
@@ -12247,631 +12247,631 @@
       </trans-unit>
       <trans-unit id="SIDjSV." resname="iDevice">
         <source>iDevice</source>
-        <target></target>
+        <target>~iDevice</target>
       </trans-unit>
       <trans-unit id="byLNU96" resname="Import (.elpx...)">
         <source>Import (.elpx...)</source>
-        <target></target>
+        <target>~Importi (.elpx...)</target>
       </trans-unit>
       <trans-unit id="t0jmRcI" resname="The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts">
         <source>The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts</source>
-        <target></target>
+        <target>~La nombro de provoj devas esti pli granda aŭ egala al la nombro de frazoj en la ludo. Uzu 0 por senlima nombro de provoj</target>
       </trans-unit>
       <trans-unit id="D7clkVP" resname="With fixed headers, the number of cards must be bigger than the number of columns">
         <source>With fixed headers, the number of cards must be bigger than the number of columns</source>
-        <target></target>
+        <target>~Kun fikstaj kapetoj, la nombro de kartoj devas esti pli granda ol la nombro de kolonoj</target>
       </trans-unit>
       <trans-unit id="fdwIkjV" resname="Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)">
         <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)</source>
-        <target></target>
+        <target>~Bonvolu elekti tekstan dosieron (.txt), JSON-dosieron (.json), aŭ XML (Moodle) dosieron (.xml)</target>
       </trans-unit>
       <trans-unit id="ekwfxIh" resname="Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) ">
         <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) </source>
-        <target></target>
+        <target>~Bonvolu elekti tekstan dosieron (.txt), JSON-dosieron (.json), aŭ XML(Moodle)-dosieron (.xml)  </target>
       </trans-unit>
       <trans-unit id="L41w01C" resname="The question text and the formula should have the same variables">
         <source>The question text and the formula should have the same variables</source>
-        <target></target>
+        <target>~La demando teksto kaj la formulo devus havi la saman variablon  </target>
       </trans-unit>
       <trans-unit id="3IL1weY" resname="Select the correct options and click on the 'Reply' button.">
         <source>Select the correct options and click on the 'Reply' button.</source>
-        <target></target>
+        <target>~Elektu la ĝustajn opciojn kaj klaku sur la butonon 'Respondi'.  </target>
       </trans-unit>
       <trans-unit id="GySH111" resname="Show when the mouse is over the icon or active area">
         <source>Show when the mouse is over the icon or active area</source>
-        <target></target>
+        <target>~Montri kiam la muso estas super la ikono aŭ aktiva areo  </target>
       </trans-unit>
       <trans-unit id="n_.r9xf" resname="Editar cuestionario">
         <source>Editar cuestionario</source>
-        <target></target>
+        <target>~Redakti teston  </target>
       </trans-unit>
       <trans-unit id="j5mwtQP" resname="The word cannot contain more than fourteen characters or white spaces">
         <source>The word cannot contain more than fourteen characters or white spaces</source>
-        <target></target>
+        <target>~La vorto ne povas enhavi pli ol dek kvar signojn aŭ blankajn spacojn  </target>
       </trans-unit>
       <trans-unit id="KAgEWOK" resname="You must select at least one type of data to complet">
         <source>You must select at least one type of data to complet</source>
-        <target></target>
+        <target>~Vi devas elekti almenaŭ unu datentipon por plenumi  </target>
       </trans-unit>
       <trans-unit id="aGuMwTn" resname="You must select at least one group of elements">
         <source>You must select at least one group of elements</source>
-        <target></target>
+        <target>~Vi devas elekti almenaŭ unu grupon de elementoj  </target>
       </trans-unit>
       <trans-unit id="_N0MKqb" resname="Please select a text file (.txt), or an XML(Moodle) file (.xml) ">
         <source>Please select a text file (.txt), or an XML(Moodle) file (.xml) </source>
-        <target></target>
+        <target>~Bonvolu elekti tekstan dosieron (.txt), aŭ XML(Moodle)-dosieron (.xml)  </target>
       </trans-unit>
       <trans-unit id="JTuD2Zp" resname="Your changes won\'t be saved until you click on &quot;Save&quot;.">
         <source>Your changes won\'t be saved until you click on "Save".</source>
-        <target></target>
+        <target>~Via ŝanĝoj ne estos konservitaj ĝis vi klakas sur "Konservi".</target>
       </trans-unit>
       <trans-unit id="JsWigaF" resname="Click on &quot;Exit&quot; to finish.">
         <source>Click on "Exit" to finish.</source>
-        <target></target>
+        <target>~Klaku sur "Eliri" por fini.</target>
       </trans-unit>
       <trans-unit id="EnsLnax" resname="Please check the &quot;Start&quot; time">
         <source>Please check the "Start" time</source>
-        <target></target>
+        <target>~Bonvolu kontroli la "Komenco" tempon</target>
       </trans-unit>
       <trans-unit id="lo0mftN" resname="Please check the &quot;End&quot; time">
         <source>Please check the "End" time</source>
-        <target></target>
+        <target>~Bonvolu kontroli la "Fino" tempon</target>
       </trans-unit>
       <trans-unit id="4qf1EYr" resname="Indicate the character, object or solution to discover">
         <source>Indicate the character, object or solution to discover</source>
-        <target></target>
+        <target>~Indiku la karakteron, objekton aŭ solvon por malkovri</target>
       </trans-unit>
       <trans-unit id="Ovrtva0" resname="You must indicate the number of points for each item to be assesed">
         <source>You must indicate the number of points for each item to be assesed</source>
-        <target></target>
+        <target>~Vi devas indiki la nombron da poentoj por ĉiu elemento por esti taksita</target>
       </trans-unit>
       <trans-unit id="Jm0CpVT" resname="Please write the challenge description.">
         <source>Please write the challenge description.</source>
-        <target></target>
+        <target>~Bonvolu verki la priskribon de la defio.</target>
       </trans-unit>
       <trans-unit id="H1p97J6" resname="Please write the title, description and solution of all the trials.">
         <source>Please write the title, description and solution of all the trials.</source>
-        <target></target>
+        <target>~Bonvolu verki la titolon, priskribon kaj solvon de ĉiuj provojn.</target>
       </trans-unit>
       <trans-unit id="PvsVjQU" resname="You must provide a definition, an image, and/or an audio for the word">
         <source>You must provide a definition, an image, and/or an audio for the word</source>
-        <target></target>
+        <target>~Vi devas provizi difinon, bildon, kaj/aŭ aŭdion por la vorto</target>
       </trans-unit>
       <trans-unit id="Pf0uSOu" resname="The score can't be saved because this page is not part of a SCORM package">
         <source>The score can't be saved because this page is not part of a SCORM package</source>
-        <target></target>
+        <target>~La poentaro ne povas esti konservita ĉar ĉi tiu paĝo ne estas parto de SCORM-pakaĵo</target>
       </trans-unit>
       <trans-unit id="nMiyKXf" resname="You must specify a number of rows and columns between three and five">
         <source>You must specify a number of rows and columns between three and five</source>
-        <target></target>
+        <target>~Vi devas specifigi nombron da vicoj kaj kolumnoj inter tri kaj kvin</target>
       </trans-unit>
       <trans-unit id="jtqwRb5" resname="You must complete the text and add an image or video">
         <source>You must complete the text and add an image or video</source>
-        <target></target>
+        <target>~Vi devas plenumi la tekston kaj aldoni bildon aŭ videon</target>
       </trans-unit>
       <trans-unit id="cjVsZ.0" resname="You can only import data from text or XML files for “connect with arrows” matching games.">
         <source>You can only import data from text or XML files for “connect with arrows” matching games.</source>
-        <target></target>
+        <target>~Vi povas nur importi datumojn el tekstaj aŭ XML-dosieroj por “konekti per sagoj” lertaj ludoj.</target>
       </trans-unit>
       <trans-unit id="xnR2kT7" resname="Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.">
         <source>Are you sure you want to continue without including an Image Description? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.</source>
-        <target></target>
+        <target>~Ĉu vi certas ke vi volas daŭrigi sen inkluzivi Bildan Priskribon? Sen ĝi la bildo eble ne estos alirebla por iuj uzantoj kun handikapoj, aŭ por tiuj uzantaj tekstan retumilon, aŭ navigante la Interreton kun bildoj malŝaltitaj.</target>
       </trans-unit>
       <trans-unit id="kGuPuRG" resname="You must select an image and text for this card">
         <source>You must select an image and text for this card</source>
-        <target></target>
+        <target>~Vi devas elekti bildon kaj tekston por ĉi tiu karto</target>
       </trans-unit>
       <trans-unit id="1dR3LOT" resname="You must indicate a text or sound for this card">
         <source>You must indicate a text or sound for this card</source>
-        <target></target>
+        <target>~Vi devas indiki tekston aŭ sonon por ĉi tiu karto</target>
       </trans-unit>
       <trans-unit id="fdvs82R" resname="You must link an image or sound to this card">
         <source>You must link an image or sound to this card</source>
-        <target></target>
+        <target>~Vi devas ligi bildon aŭ sonon al ĉi tiu karto</target>
       </trans-unit>
       <trans-unit id="UPkE2ow" resname="Type the right URL of a Youtube video">
         <source>Type the right URL of a Youtube video</source>
-        <target></target>
+        <target>~Tajpu ĝustan URL-on de Youtube-video</target>
       </trans-unit>
       <trans-unit id="ncD83dy" resname="The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts">
         <source>The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts</source>
-        <target></target>
+        <target>~La nombro da provojn devas esti pli granda aŭ egala al la nombro de paro en la ludo. Bonvolu elekti 0 por senfina kaj senlima nombro da provojn</target>
       </trans-unit>
       <trans-unit id="9_TZOpH" resname="opera">
         <source>opera</source>
-        <target></target>
+        <target>~opera</target>
       </trans-unit>
       <trans-unit id="AIsJtCT" resname="firefox">
         <source>firefox</source>
-        <target></target>
+        <target>~firefox</target>
       </trans-unit>
       <trans-unit id="9q5exJ3" resname="win">
         <source>win</source>
-        <target></target>
+        <target>~venki</target>
       </trans-unit>
       <trans-unit id="6mtIDms" resname="android">
         <source>android</source>
-        <target></target>
+        <target>~andorado</target>
       </trans-unit>
       <trans-unit id="KAY_bU7" resname="mac os x">
         <source>mac os x</source>
-        <target></target>
+        <target>~mac os x</target>
       </trans-unit>
       <trans-unit id="vWSuY4T" resname="linux">
         <source>linux</source>
-        <target></target>
+        <target>~linukso</target>
       </trans-unit>
       <trans-unit id="raddJ8A" resname="sunos">
         <source>sunos</source>
-        <target></target>
+        <target>~sunos</target>
       </trans-unit>
       <trans-unit id="EuDnhPB" resname="freebsd">
         <source>freebsd</source>
-        <target></target>
+        <target>~freebsd</target>
       </trans-unit>
       <trans-unit id="1d66.S6" resname="cros">
         <source>cros</source>
-        <target></target>
+        <target>~cros</target>
       </trans-unit>
       <trans-unit id="h_oV9Jy" resname="Format HTML Code">
         <source>Format HTML Code</source>
-        <target></target>
+        <target>~Formatu HTML-Kodon</target>
       </trans-unit>
       <trans-unit id="4EKJ1ju" resname="advanced editor">
         <source>advanced editor</source>
-        <target></target>
+        <target>~progresa redaktaĵo</target>
       </trans-unit>
       <trans-unit id="f99wpMS" resname="Standard YouTube License">
         <source>Standard YouTube License</source>
-        <target></target>
+        <target>~Norma YouTube-Licenco</target>
       </trans-unit>
       <trans-unit id="BTP4n6x" resname="Title Link">
         <source>Title Link</source>
-        <target></target>
+        <target>~Titola Ligilo</target>
       </trans-unit>
       <trans-unit id="4pH5XOA" resname="Autoplay">
         <source>Autoplay</source>
-        <target></target>
+        <target>~Aŭtomata ludado</target>
       </trans-unit>
       <trans-unit id="ESl1WZi" resname="Muted autoplay (recommended)">
         <source>Muted autoplay (recommended)</source>
-        <target></target>
+        <target>~Mutita aŭtomata ludado (rekomendata)</target>
       </trans-unit>
       <trans-unit id="cZ0oVQz" resname="Choose a file or paste a link (URL)">
         <source>Choose a file or paste a link (URL)</source>
-        <target></target>
+        <target>~Elektu dosieron aŭ algluu ligilon (URL)</target>
       </trans-unit>
       <trans-unit id="poYLy27" resname="Choose a file">
         <source>Choose a file</source>
-        <target></target>
+        <target>~Elektu dosieron</target>
       </trans-unit>
       <trans-unit id="igvddsQ" resname="Please check the &quot;License&quot; field">
         <source>Please check the "License" field</source>
-        <target></target>
+        <target>~Bonvolu kontroli la kampo "Licenco"</target>
       </trans-unit>
       <trans-unit id="a6wZFrc" resname="Please select the media file to edit it">
         <source>Please select the media file to edit it</source>
-        <target></target>
+        <target>~Bonvolu elekti la medi-dosieron por redakti ĝin</target>
       </trans-unit>
       <trans-unit id="q.0JpQQ" resname="Insert/Edit media">
         <source>Insert/Edit media</source>
-        <target></target>
+        <target>~Enmeti/Redakti median</target>
       </trans-unit>
       <trans-unit id="UaH5pD4" resname="Insert\/Edit Embedded Media">
         <source>Insert\/Edit Embedded Media</source>
-        <target></target>
+        <target>~Enmeti\/Redakti Enmetitan Medion</target>
       </trans-unit>
       <trans-unit id="ZLoYAYD" resname="Pause">
         <source>Pause</source>
-        <target></target>
+        <target>~Paŭzi</target>
       </trans-unit>
       <trans-unit id="QvKt848" resname="Error: Media Recorder">
         <source>Error: Media Recorder</source>
-        <target></target>
+        <target>~Eraro: Medioreĝistrilo</target>
       </trans-unit>
       <trans-unit id="SEGLQ0b" resname="Audio input:">
         <source>Audio input:</source>
-        <target></target>
+        <target>~Aŭda enigo:</target>
       </trans-unit>
       <trans-unit id="xNrynQ4" resname="TabIndex">
         <source>TabIndex</source>
-        <target></target>
+        <target>~TabIndex</target>
       </trans-unit>
       <trans-unit id="hucwGqq" resname="AccessKey">
         <source>AccessKey</source>
-        <target></target>
+        <target>~AccessKey</target>
       </trans-unit>
       <trans-unit id="NXe.m.c" resname="Value">
         <source>Value</source>
-        <target></target>
+        <target>~Valoro</target>
       </trans-unit>
       <trans-unit id="gaxVlAk" resname="Class added to the &quot;CSS class&quot; field.">
         <source>Class added to the "CSS class" field.</source>
-        <target></target>
+        <target>~Klaso aldonita al la kampo "CSS-klaso".</target>
       </trans-unit>
       <trans-unit id="TNNvqP6" resname="That content was created using the old formula editor.">
         <source>That content was created using the old formula editor.</source>
-        <target></target>
+        <target>~Tiu enhavo estis kreita uzante la malnovan formularedakilon.</target>
       </trans-unit>
       <trans-unit id="xrhbX_X" resname="Make it compatible with the new editor?">
         <source>Make it compatible with the new editor?</source>
-        <target></target>
+        <target>~Ĉu fari ĝin kongrua kun la nova redaktilo?</target>
       </trans-unit>
       <trans-unit id="WN9R520" resname="Done! Please select the LaTeX code that you want to edit.">
         <source>Done! Please select the LaTeX code that you want to edit.</source>
-        <target></target>
+        <target>~Fino! Bonvolu elekti la LaTeX-kodon, kiun vi volas redakti.</target>
       </trans-unit>
       <trans-unit id="tIT9Dxr" resname="Sorry, but the formula is not compatible with this editor.">
         <source>Sorry, but the formula is not compatible with this editor.</source>
-        <target></target>
+        <target>~Pardonu, sed la formulo ne estas kongrua kun ĉi tiu redaktilo.</target>
       </trans-unit>
       <trans-unit id="tw4o5eK" resname="If you want to edit a previous code, please select it before opening the editor.">
         <source>If you want to edit a previous code, please select it before opening the editor.</source>
-        <target></target>
+        <target>~Se vi volas redakti antaŭan kodon, bonvolu elekti ĝin antaŭ malfermi la redaktilon.</target>
       </trans-unit>
       <trans-unit id="bgFLuuR" resname="Insert/Edit math">
         <source>Insert/Edit math</source>
-        <target></target>
+        <target>~Enmetu/Redaktu matematikon</target>
       </trans-unit>
       <trans-unit id="y0GDp.V" resname="Crop and save">
         <source>Crop and save</source>
-        <target></target>
+        <target>~Trenku kaj konservu</target>
       </trans-unit>
       <trans-unit id="URIKx03" resname="Save without cropping">
         <source>Save without cropping</source>
-        <target></target>
+        <target>~Konservu sen trenado</target>
       </trans-unit>
       <trans-unit id="_x5b4NW" resname="Open an existing mind map from your disk">
         <source>Open an existing mind map from your disk</source>
-        <target></target>
+        <target>~Malfermu ekzistantan mensan mapon de via disko</target>
       </trans-unit>
       <trans-unit id="43ac_1r" resname="Open this map in a new window">
         <source>Open this map in a new window</source>
-        <target></target>
+        <target>~Malfermu ĉi tiun mapon en nova fenestro</target>
       </trans-unit>
       <trans-unit id="_Ci09gg" resname="Hide or show the navigator">
         <source>Hide or show the navigator</source>
-        <target></target>
+        <target>~Kaŝu aŭ montru la navigilon</target>
       </trans-unit>
       <trans-unit id="QKGR9zj" resname="Open map">
         <source>Open map</source>
-        <target></target>
+        <target>~Malfermu mapon</target>
       </trans-unit>
       <trans-unit id="QLeueB2" resname="Select a json file.">
         <source>Select a json file.</source>
-        <target></target>
+        <target>~Elektu json-dosieron.</target>
       </trans-unit>
       <trans-unit id="xlqZ47q" resname="Save map">
         <source>Save map</source>
-        <target></target>
+        <target>~Konservu mapon</target>
       </trans-unit>
       <trans-unit id="F56xAzI" resname="Save the mind map as a json file.">
         <source>Save the mind map as a json file.</source>
-        <target></target>
+        <target>~Konservu la menskarton kiel json-dosiero.</target>
       </trans-unit>
       <trans-unit id="JEWASrw" resname="Text style">
         <source>Text style</source>
-        <target></target>
+        <target>~Tekststilo</target>
       </trans-unit>
       <trans-unit id="b2fyIuk" resname="Line color">
         <source>Line color</source>
-        <target></target>
+        <target>~Linia koloro</target>
       </trans-unit>
       <trans-unit id="mwZll9R" resname="It works with mindmaps">
         <source>It works with mindmaps</source>
-        <target></target>
+        <target>~Ĝi funkcias kun menskartoj</target>
       </trans-unit>
       <trans-unit id="l1E1Z67" resname="You can edit the mind map...">
         <source>You can edit the mind map...</source>
-        <target></target>
+        <target>~Vi povas redakti la menskarton...</target>
       </trans-unit>
       <trans-unit id="GVHcNJ0" resname="Please create a mind map.">
         <source>Please create a mind map.</source>
-        <target></target>
+        <target>~Bonvolu krei menskarton.</target>
       </trans-unit>
       <trans-unit id="ycOZXSj" resname="Please provide a title.">
         <source>Please provide a title.</source>
-        <target></target>
+        <target>~Bonvolu doni titolon.</target>
       </trans-unit>
       <trans-unit id="NqzcwcS" resname="Failed to save properties">
         <source>Failed to save properties</source>
-        <target></target>
+        <target>~Malsukcesis konservi trajtojn</target>
       </trans-unit>
       <trans-unit id="bHbHhew" resname="Please write the abbreviation and its meaning.">
         <source>Please write the abbreviation and its meaning.</source>
-        <target></target>
+        <target>~Bonvolu skribi la mallongigon kaj ĝian signifon.</target>
       </trans-unit>
       <trans-unit id="ALh34kd" resname="The ACRONYM tag is not supported in HTML5.\n\nUse the ABBR tag instead?">
         <source>The ACRONYM tag is not supported in HTML5.\n\nUse the ABBR tag instead?</source>
-        <target></target>
+        <target>~La ACRONYM-tago ne estas subtenata en HTML5.\n\nUzu anstataŭ la ABBR-tagon?</target>
       </trans-unit>
       <trans-unit id="qqHT8tz" resname="Node">
         <source>Node</source>
-        <target></target>
+        <target>~Nodo</target>
       </trans-unit>
       <trans-unit id="nwwNBDk" resname="Popup">
         <source>Popup</source>
-        <target></target>
+        <target>~Apareo</target>
       </trans-unit>
       <trans-unit id="xu2Xqx3" resname="Link to the elp file (it will be exported)">
         <source>Link to the elp file (it will be exported)</source>
-        <target></target>
+        <target>~Ligo al elp-dosiero (ĝi estos eksportita)</target>
       </trans-unit>
       <trans-unit id="H65O8eQ" resname="Please enable JavaScript to play this game.">
         <source>Please enable JavaScript to play this game.</source>
-        <target></target>
+        <target>~Bonvolu ebligi JavaScript por ludi ĉi tiun ludon.</target>
       </trans-unit>
       <trans-unit id="d6JrxQ5" resname="Alphabet to Select From">
         <source>Alphabet to Select From</source>
-        <target></target>
+        <target>~Alfabetilo por Elekti De</target>
       </trans-unit>
       <trans-unit id="Z9OfOtp" resname="These games require JavaScript.">
         <source>These games require JavaScript.</source>
-        <target></target>
+        <target>~Ĉi tiuj ludoj postulas JavaScript.</target>
       </trans-unit>
       <trans-unit id="88.Te5l" resname="This is the message that the users with no JavaScript will see:">
         <source>This is the message that the users with no JavaScript will see:</source>
-        <target></target>
+        <target>~Jen la mesaĝo, kiun vidos uzantoj sen JavaScript:</target>
       </trans-unit>
       <trans-unit id="8kQHtBn" resname="You can change it at any time.">
         <source>You can change it at any time.</source>
-        <target></target>
+        <target>~Vi povas ŝanĝi ĝin iam ajn.</target>
       </trans-unit>
       <trans-unit id="pg8t9tx" resname="Write the list of letters and/or numbers to choose from.">
         <source>Write the list of letters and/or numbers to choose from.</source>
-        <target></target>
+        <target>~Verku la liston de literoj kaj/aŭ nombroj por elekti.</target>
       </trans-unit>
       <trans-unit id="kYHzMOL" resname="You may include capital letters or they can be automatically included.">
         <source>You may include capital letters or they can be automatically included.</source>
-        <target></target>
+        <target>~Vi povas inkludi majusklojn aŭ ili povas esti aŭtomate inkluditaj.</target>
       </trans-unit>
       <trans-unit id="80nggiY" resname="Choose if you want the game to be case sensitive.">
         <source>Choose if you want the game to be case sensitive.</source>
-        <target></target>
+        <target>~Elekti ĉu vi volas ke la ludo estu majuskla-sentema.</target>
       </trans-unit>
       <trans-unit id="w3urI7T" resname="Add at least one word to guess (question or definition + word).">
         <source>Add at least one word to guess (question or definition + word).</source>
-        <target></target>
+        <target>~Aldoni almenaŭ unu vorton por diveni (demando aŭ difino + vorto).</target>
       </trans-unit>
       <trans-unit id="BHbGCgY" resname="You may delete the game from the editor itself.">
         <source>You may delete the game from the editor itself.</source>
-        <target></target>
+        <target>~Vi povas forigi la ludon rekte en la redaktilo.</target>
       </trans-unit>
       <trans-unit id="s5Q81qh" resname="Don't forget to check the Accessibility tab.">
         <source>Don't forget to check the Accessibility tab.</source>
-        <target></target>
+        <target>~Ne forgesu kontroli la Taŭgeblec-tabon.</target>
       </trans-unit>
       <trans-unit id=".wwVlaA" resname="Automatically include capital letters">
         <source>Automatically include capital letters</source>
-        <target></target>
+        <target>~Aŭtomate inkluzivi majusklojn</target>
       </trans-unit>
       <trans-unit id="CcwJ2Hi" resname="Word to guess">
         <source>Word to guess</source>
-        <target></target>
+        <target>~Vorto por diveni</target>
       </trans-unit>
       <trans-unit id="tsBm1kF" resname="Hint or definition">
         <source>Hint or definition</source>
-        <target></target>
+        <target>~Sugesto aŭ difino</target>
       </trans-unit>
       <trans-unit id="txFFw.l" resname="Accessibility">
         <source>Accessibility</source>
-        <target></target>
+        <target>~Taŭgebleco</target>
       </trans-unit>
       <trans-unit id="ggtQp4Q" resname="Provide a warning to users who have JavaScript disabled (Accessibility).">
         <source>Provide a warning to users who have JavaScript disabled (Accessibility).</source>
-        <target></target>
+        <target>~Provizi averton al uzantoj kiuj havas JavaScript malŝaltita (Taŭgebleco).</target>
       </trans-unit>
       <trans-unit id="59FYaq0" resname="Please write the Alphabet to Select From">
         <source>Please write the Alphabet to Select From</source>
-        <target></target>
+        <target>~Bonvolu skribi la Alfabeto por Elekti</target>
       </trans-unit>
       <trans-unit id="OPaeP39" resname="A word to guess is missing">
         <source>A word to guess is missing</source>
-        <target></target>
+        <target>~Manĝa vorto por diveni mankas  </target>
       </trans-unit>
       <trans-unit id="9m_71xP" resname="A hint or definition is missing">
         <source>A hint or definition is missing</source>
-        <target></target>
+        <target>~Manĝo aŭ difino mankas  </target>
       </trans-unit>
       <trans-unit id="9dRcQq8" resname="Please add at least one word to guess">
         <source>Please add at least one word to guess</source>
-        <target></target>
+        <target>~Bonvolu aldoni almenaŭ unu vorton por diveni  </target>
       </trans-unit>
       <trans-unit id="NHFdqHp" resname="Please select a Page">
         <source>Please select a Page</source>
-        <target></target>
+        <target>~Bonvolu elekti Paĝon  </target>
       </trans-unit>
       <trans-unit id="eAXz0eN" resname="The Link is required">
         <source>The Link is required</source>
-        <target></target>
+        <target>~La Ligo estas deviga  </target>
       </trans-unit>
       <trans-unit id="SHPoGt." resname="The Link title is required">
         <source>The Link title is required</source>
-        <target></target>
+        <target>~La titolo de la Ligo estas deviga  </target>
       </trans-unit>
       <trans-unit id="_sWAHNX" resname="Please write the Definition">
         <source>Please write the Definition</source>
-        <target></target>
+        <target>~Bonvolu verki la Difinon  </target>
       </trans-unit>
       <trans-unit id="72663QW" resname="Plain text. You can add a title.">
         <source>Plain text. You can add a title.</source>
-        <target></target>
+        <target>~Simpla teksto. Vi povas aldoni titolon.  </target>
       </trans-unit>
       <trans-unit id="0jM1S.1" resname="Write the term and its definition. You may use HTML and edit it in the editor.">
         <source>Write the term and its definition. You may use HTML and edit it in the editor.</source>
-        <target></target>
+        <target>~Verku la terminon kaj ĝian difinon. Vi povas uzi HTML kaj redakti ĝin en la redaktilo.  </target>
       </trans-unit>
       <trans-unit id="v5ZRdyM" resname="Show the content of the first Free Text iDevice in the specified page.">
         <source>Show the content of the first Free Text iDevice in the specified page.</source>
-        <target></target>
+        <target>~Montru la enhavon de la unua Senpaga Teksta iDezajno en la specifita paĝo.</target>
       </trans-unit>
       <trans-unit id="k_kZsMw" resname="Term">
         <source>Term</source>
-        <target></target>
+        <target>~Term</target>
       </trans-unit>
       <trans-unit id="M5fgzop" resname="---">
         <source>---</source>
-        <target></target>
+        <target>~---</target>
       </trans-unit>
       <trans-unit id="dz7M8qJ" resname="No selection and not in link">
         <source>No selection and not in link</source>
-        <target></target>
+        <target>~Neniu elekto kaj ne en ligilo</target>
       </trans-unit>
       <trans-unit id="c49xFvy" resname="The tooltip data could not be retreived. Please create a new one choosing any of the available types.">
         <source>The tooltip data could not be retreived. Please create a new one choosing any of the available types.</source>
-        <target></target>
+        <target>~La ilustraĵa teksto ne povis esti akirita. Bonvolu krei novan elektante iun el la disponeblaj tipoj.</target>
       </trans-unit>
       <trans-unit id="X6QzAK9" resname="Link URL">
         <source>Link URL</source>
-        <target></target>
+        <target>~Ligila URL</target>
       </trans-unit>
       <trans-unit id="7lGkRnu" resname="Definition:">
         <source>Definition:</source>
-        <target></target>
+        <target>~Difino:</target>
       </trans-unit>
       <trans-unit id="X5gzruA" resname="Make a timeline?">
         <source>Make a timeline?</source>
-        <target></target>
+        <target>~Ĉu fari kronologion?</target>
       </trans-unit>
       <trans-unit id="4_HMslq" resname="Change the text of the tabs adding a title to each Heading 2 with the &quot;Insert/Edit Attributes&quot; option:">
         <source>Change the text of the tabs adding a title to each Heading 2 with the "Insert/Edit Attributes" option:</source>
-        <target></target>
+        <target>~Ŝanĝi la tekston de la flapetoj kaj aldoni titolon al ĉiu Kapitolo 2 per la opcio "Enmeti/Redakti Atribuojn":</target>
       </trans-unit>
       <trans-unit id="uuyq_8U" resname="Please write the Content">
         <source>Please write the Content</source>
-        <target></target>
+        <target>~Bonvolu verki la Enhavon</target>
       </trans-unit>
       <trans-unit id="k9fD7sJ" resname="Drop image here or $browse...$">
         <source>Drop image here or $browse...$</source>
-        <target></target>
+        <target>~Ĵetu bildon ĉi tie aŭ $brov...$</target>
       </trans-unit>
       <trans-unit id="TLhu5aI" resname="Max width">
         <source>Max width</source>
-        <target></target>
+        <target>~Maksimuma larĝo</target>
       </trans-unit>
       <trans-unit id="LrP1fL3" resname="Max height">
         <source>Max height</source>
-        <target></target>
+        <target>~Maksimuma alteco</target>
       </trans-unit>
       <trans-unit id="yy8vDP3" resname="Quality">
         <source>Quality</source>
-        <target></target>
+        <target>~Kvalito</target>
       </trans-unit>
       <trans-unit id="EYbFWLc" resname="You just added that image. Save the iDevice or select the image again to update it.">
         <source>You just added that image. Save the iDevice or select the image again to update it.</source>
-        <target></target>
+        <target>~Vi ĵus aldonis tiun bildon. Konservu la iDevice aŭ denove elektu la bildon por ĝisdatigi ĝin.</target>
       </trans-unit>
       <trans-unit id="c1GMB53" resname="$Save the current image$ before overwriting it.">
         <source>$Save the current image$ before overwriting it.</source>
-        <target></target>
+        <target>~$Konservu la nuna bildo$ antaŭ superskribi ĝin.</target>
       </trans-unit>
       <trans-unit id="315H6gn" resname="Error uploading image">
         <source>Error uploading image</source>
-        <target></target>
+        <target>~Eraro dum alŝuto de la bildo</target>
       </trans-unit>
       <trans-unit id="EIlrJpG" resname="Clear Image">
         <source>Clear Image</source>
-        <target></target>
+        <target>~Forigi Bildon</target>
       </trans-unit>
       <trans-unit id="JZshxFL" resname="Baseline">
         <source>Baseline</source>
-        <target></target>
+        <target>~Baza linio</target>
       </trans-unit>
       <trans-unit id="cPdWcFY" resname="Text top">
         <source>Text top</source>
-        <target></target>
+        <target>~Teksto supre</target>
       </trans-unit>
       <trans-unit id="_TXgB4k" resname="Text Bottom">
         <source>Text Bottom</source>
-        <target></target>
+        <target>~Teksto sube</target>
       </trans-unit>
       <trans-unit id="iMCV2Wn" resname="Solid">
         <source>Solid</source>
-        <target></target>
+        <target>~Solida</target>
       </trans-unit>
       <trans-unit id="ByD0fXH" resname="Dotted">
         <source>Dotted</source>
-        <target></target>
+        <target>~Punkta</target>
       </trans-unit>
       <trans-unit id="IJGwKvl" resname="Dashed">
         <source>Dashed</source>
-        <target></target>
+        <target>~Tracita</target>
       </trans-unit>
       <trans-unit id="ca_CvA8" resname="Double">
         <source>Double</source>
-        <target></target>
+        <target>~Duobla</target>
       </trans-unit>
       <trans-unit id="2cP9lEv" resname="Groove">
         <source>Groove</source>
-        <target></target>
+        <target>~Kavrilo</target>
       </trans-unit>
       <trans-unit id="eynG1GG" resname="Ridge">
         <source>Ridge</source>
-        <target></target>
+        <target>~Kresto</target>
       </trans-unit>
       <trans-unit id="u1wDw7i" resname="Inset">
         <source>Inset</source>
-        <target></target>
+        <target>~Enkadrigita</target>
       </trans-unit>
       <trans-unit id="ZpXyB5W" resname="Outset">
         <source>Outset</source>
-        <target></target>
+        <target>~Elirita</target>
       </trans-unit>
       <trans-unit id="bMJFh5R" resname="Hidden">
         <source>Hidden</source>
-        <target></target>
+        <target>~Kaŝita</target>
       </trans-unit>
       <trans-unit id="vl3t9vS" resname="Image list">
         <source>Image list</source>
-        <target></target>
+        <target>~Bildolisto</target>
       </trans-unit>
       <trans-unit id="69voHP4" resname="Image title">
         <source>Image title</source>
-        <target></target>
+        <target>~Bildtitolo</target>
       </trans-unit>
       <trans-unit id="Atp3bhQ" resname="Image is decorative">
         <source>Image is decorative</source>
-        <target></target>
+        <target>~Bildo estas ornamanta</target>
       </trans-unit>
       <trans-unit id="IQ79uoq" resname="Show caption">
         <source>Show caption</source>
-        <target></target>
+        <target>~Montri priskribon</target>
       </trans-unit>
       <trans-unit id="mD8meNC" resname="Custom File Picker">
         <source>Custom File Picker</source>
-        <target></target>
+        <target>~ Propra Dosierelektisto</target>
       </trans-unit>
       <trans-unit id="IK9jqUK" resname="Feed URL">
         <source>Feed URL</source>
-        <target></target>
+        <target>~Feda URL</target>
       </trans-unit>
       <trans-unit id="_aKE8Ft" resname="Maximum feeds">
         <source>Maximum feeds</source>
-        <target></target>
+        <target>~Maksimumaj fadenoj</target>
       </trans-unit>
       <trans-unit id="0PfIhmR" resname="RSS Feed">
         <source>RSS Feed</source>
-        <target></target>
+        <target>~RSS-Fedo</target>
       </trans-unit>
       <trans-unit id="fsH5WS0" resname="Markup language">
         <source>Markup language</source>
-        <target></target>
+        <target>~Marka lingvo</target>
       </trans-unit>
       <trans-unit id="eCYYXE5" resname="Markup (HTML, etc.)">
         <source>Markup (HTML, etc.)</source>
-        <target></target>
+        <target>~Marko (HTML, ktp.)</target>
       </trans-unit>
       <trans-unit id="f1tQ8qo" resname="C type">
         <source>C type</source>
-        <target></target>
+        <target>~C-tipo</target>
       </trans-unit>
       <trans-unit id="6_HJYbq" resname="Line numbers">
         <source>Line numbers</source>
-        <target></target>
+        <target>~Liniaj numeroj  </target>
       </trans-unit>
       <trans-unit id="TZosZdP" resname="Line highlight">
         <source>Line highlight</source>
-        <target></target>
+        <target>~Linia emfazado</target>
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
