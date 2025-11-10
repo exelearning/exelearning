@@ -45,6 +45,9 @@ class OdeService implements OdeServiceInterface
         CurrentOdeUsersServiceInterface $currentOdeUsersService,
         UserHelper $userHelper,
         TranslatorInterface $translator,
+        private readonly int $autosaveTimeInterval,
+        private readonly int $autosaveMaxFiles,
+        private readonly bool $countUserAutosaveSpace,
     ) {
         $this->entityManager = $entityManager;
         $this->logger = $logger;
@@ -639,7 +642,7 @@ class OdeService implements OdeServiceInterface
         }
 
         $intervalDateTime = new \DateTime();
-        $interval = DateUtil::getSecondsDateInterval(Settings::PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL);
+        $interval = DateUtil::getSecondsDateInterval($this->autosaveTimeInterval);
         $intervalDateTime->sub($interval);
 
         // If there is an odeFile more recent than autosave interval don't save
@@ -918,8 +921,7 @@ class OdeService implements OdeServiceInterface
     }
 
     /**
-     * Cleans autosaved odeFiles previous to number of files to maintain
-     * (Settings::PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES).
+     * Cleans autosaved odeFiles previous to number of files to maintain.
      *
      * @param string $odeId
      */
@@ -929,7 +931,7 @@ class OdeService implements OdeServiceInterface
 
         $autosavedOdeFilesToClean = $odeFilesRepository->findAutosavedFilesToCleanByMaxNumberOfFiles(
             $odeId,
-            Settings::PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES
+            $this->autosaveMaxFiles
         );
 
         foreach ($autosavedOdeFilesToClean as $autosavedOdeFileToClean) {
@@ -993,13 +995,13 @@ class OdeService implements OdeServiceInterface
     {
         $odeFilesRepository = $this->entityManager->getRepository(OdeFiles::class);
 
-        $onlyManualSave = !Settings::COUNT_USER_AUTOSAVE_SPACE_ODE_FILES;
+        $onlyManualSave = !$this->countUserAutosaveSpace;
 
         $userOdeFiles = $odeFilesRepository->listOdeFilesByUser($user->getUsername(), $onlyManualSave);
 
         // If its autosave previous OdeFiles will be cleaned
         if (!$isManualSave) {
-            $maxNumberOfFiles = Settings::PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES;
+            $maxNumberOfFiles = $this->autosaveMaxFiles;
 
             // Discard another OdeFile because current Elp will be added
             if ($maxNumberOfFiles >= 1) {
@@ -1031,7 +1033,7 @@ class OdeService implements OdeServiceInterface
         // Get user OdeFiles used space
         $odeFilesDiskSpace = FileUtil::getOdeFilesDiskSpace(
             $userOdeFiles,
-            Settings::COUNT_USER_AUTOSAVE_SPACE_ODE_FILES
+            $this->countUserAutosaveSpace
         );
 
         // Add current elp size
@@ -1040,15 +1042,16 @@ class OdeService implements OdeServiceInterface
 
         // If it's manual save or is autosave and autosaved files count on the user
         //  storage quota count current Elp size
-        if ($isManualSave || ((!$isManualSave) && Settings::COUNT_USER_AUTOSAVE_SPACE_ODE_FILES)) {
+        if ($isManualSave || ((!$isManualSave) && $this->countUserAutosaveSpace)) {
             $currentElpSize = FileUtil::getFileSize($currentElp);
         }
 
         // Total used space by user after saving current Elp
         $userUsedSpace = $odeFilesDiskSpace['usedSpace'] + $currentElpSize;
+        $maxSpace = SettingsUtil::getUserStorageMaxDiskSpaceInBytes();
 
-        if ($userUsedSpace > SettingsUtil::getUserStorageMaxDiskSpaceInBytes()) {
-            throw new UserInsufficientSpaceException();
+        if ($userUsedSpace > $maxSpace) {
+            throw new UserInsufficientSpaceException($odeFilesDiskSpace['usedSpace'], $maxSpace, $currentElpSize);
         }
 
         return true;
@@ -1301,6 +1304,7 @@ class OdeService implements OdeServiceInterface
      *
      * @param string $newOdeSessionId
      * @param string $elpFileName
+     * @param string $odeSessionDistDirPath
      * @param array  $checkElpFile
      * @param bool   $isImportIdevices
      *
@@ -1313,7 +1317,7 @@ class OdeService implements OdeServiceInterface
 
         try {
             Util::checkPhpZipExtension();
-            FileUtil::extractZipTo($destinationFilePathName, $odeSessionDistDirPath);
+            FileUtil::extractZipToOptimized($destinationFilePathName, $odeSessionDistDirPath, 100);
         } catch (PhpZipExtensionException $e) {
             $this->logger->error(
                 $e->getDescription(),
@@ -1329,10 +1333,10 @@ class OdeService implements OdeServiceInterface
 
         $fileName = Constants::PERMANENT_SAVE_CONTENT_FILENAME;
         $xmlFilePathName = $odeSessionDistDirPath.$fileName;
-        $elpContentFileContent = FileUtil::getFileContent($xmlFilePathName);
+        $elpContentFileContent = FileUtil::getFileContentOptimized($xmlFilePathName, 100);
 
         try {
-            $odeResponse = OdeXmlUtil::readOdeXml($newOdeSessionId, $elpContentFileContent);
+            $odeResponse = OdeXmlUtil::readOdeXmlOptimized($newOdeSessionId, $elpContentFileContent, 100);
 
             // Just after reading/parsing the XML and before usar odeResponse
             // Ensure these entries are always arrays
@@ -1414,7 +1418,7 @@ class OdeService implements OdeServiceInterface
                 return $result;
             }
 
-            FileUtil::extractZipTo($destinationFilePathName, $odeSessionDistDirPath);
+            FileUtil::extractZipToOptimized($destinationFilePathName, $odeSessionDistDirPath, 100);
         } catch (PhpZipExtensionException $e) {
             $this->logger->error(
                 $e->getDescription(),
@@ -1472,13 +1476,26 @@ class OdeService implements OdeServiceInterface
         }
 
         if (false === $elpFileName) {
-            $zipFilesList = scandir($epubExportDir);
-            foreach ($zipFilesList as $file) {
-                if (Constants::FILE_EXTENSION_ELP == pathinfo($file, PATHINFO_EXTENSION)) {
-                    $elpFileName = $file;
-                    $elpFilePathName = $epubExportDir.$elpFileName;
-                    break;
+            // Check if EPUB directory exists before scanning
+            if (is_dir($epubExportDir)) {
+                $zipFilesList = scandir($epubExportDir);
+                foreach ($zipFilesList as $file) {
+                    if (Constants::FILE_EXTENSION_ELP == pathinfo($file, PATHINFO_EXTENSION)) {
+                        $elpFileName = $file;
+                        $elpFilePathName = $epubExportDir.$elpFileName;
+                        break;
+                    }
                 }
+            } else {
+                $this->logger->debug(
+                    'EPUB export directory does not exist, skipping EPUB check',
+                    [
+                        'epubExportDir' => $epubExportDir,
+                        'zipFileName' => $zipFileName,
+                        'file:' => $this,
+                        'line' => __LINE__,
+                    ]
+                );
             }
         }
 
@@ -1521,19 +1538,90 @@ class OdeService implements OdeServiceInterface
         FileUtil::copyFile($elpFilePath, $destinationFilePathName);
 
         try {
-            Util::checkPhpZipExtension();
-            FileUtil::extractZipTo($destinationFilePathName, $odeSessionDistDirPath);
+            // Use optimized extraction for large files (>100MB)
+            $fileSize = filesize($destinationFilePathName);
+            if (false === $fileSize) {
+                throw new \RuntimeException('Unable to determine file size');
+            }
+
+            $thresholdBytes = 100 * 1024 * 1024; // 100MB
+            $startExtractionTime = microtime(true);
+
+            if ($fileSize > $thresholdBytes) {
+                $this->logger->info(
+                    'Using optimized ZIP extraction for large file',
+                    [
+                        'fileName' => $elpFileName,
+                        'fileSize' => $fileSize,
+                        'fileSizeMB' => round($fileSize / (1024 * 1024), 2),
+                        'file:' => $this,
+                        'line' => __LINE__,
+                    ]
+                );
+                FileUtil::extractZipToOptimized($destinationFilePathName, $odeSessionDistDirPath, 100);
+            } else {
+                FileUtil::extractZipToOptimized($destinationFilePathName, $odeSessionDistDirPath, 100);
+            }
+
+            $extractionTime = microtime(true) - $startExtractionTime;
+            $this->logger->info(
+                'ZIP extraction completed successfully',
+                [
+                    'fileName' => $elpFileName,
+                    'extractionTimeSeconds' => round($extractionTime, 2),
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
         } catch (PhpZipExtensionException $e) {
             $this->logger->error(
-                $e->getDescription(),
+                'PHP ZIP extension error: '.$e->getDescription(),
                 [
                     'className' => $e->getClassName(),
                     'phpZipExtensionInstalled' => $e->getZipExtensionInstalled(),
-                    'elpFileName' => $elpFileName, 'file:' => $this, 'line' => __LINE__,
+                    'elpFileName' => $elpFileName,
+                    'file:' => $this,
+                    'line' => __LINE__,
                 ]
             );
 
-            $result['responseMessage'] = 'error: '.$e->getDescription();
+            $result['responseMessage'] = 'error: ZIP extension error - '.$e->getDescription();
+
+            return $result;
+        } catch (\RuntimeException $e) {
+            $this->logger->error(
+                'Runtime error during ZIP extraction: '.$e->getMessage(),
+                [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'elpFileName' => $elpFileName,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                    'file:' => $this,
+                    'line:' => __LINE__,
+                ]
+            );
+
+            $result['responseMessage'] = 'error: Failed to extract ZIP file - '.$e->getMessage();
+
+            return $result;
+        } catch (\Throwable $e) {
+            $this->logger->error(
+                'Unexpected error during ZIP extraction: '.$e->getMessage(),
+                [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'elpFileName' => $elpFileName,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                    'file:' => $this,
+                    'line:' => __LINE__,
+                ]
+            );
+
+            $result['responseMessage'] = 'error: Unexpected error during ZIP extraction - '.$e->getMessage();
 
             return $result;
         }
@@ -1561,7 +1649,64 @@ class OdeService implements OdeServiceInterface
             }
         }
 
-        $elpContentFileContent = FileUtil::getFileContent($xmlFilePathName);
+        // Verify that the content XML file exists after extraction
+        if (!file_exists($xmlFilePathName)) {
+            $this->logger->error(
+                'Content XML file not found after ZIP extraction',
+                [
+                    'elpFileName' => $elpFileName,
+                    'expectedXmlPath' => $xmlFilePathName,
+                    'extractionDir' => $odeSessionDistDirPath,
+                    'checkedFiles' => [
+                        Constants::PERMANENT_SAVE_CONTENT_FILENAME,
+                        Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V3,
+                        Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V2,
+                    ],
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+
+            $result['responseMessage'] = 'error: Content XML file not found in the package. The file may be corrupted or not a valid ELP/EPUB package.';
+
+            return $result;
+        }
+
+        // Use optimized file reading for large XML files
+        $xmlFileSize = filesize($xmlFilePathName);
+        if (false === $xmlFileSize) {
+            $this->logger->error(
+                'Unable to determine XML file size',
+                [
+                    'elpFileName' => $elpFileName,
+                    'xmlFilePath' => $xmlFilePathName,
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+
+            $result['responseMessage'] = 'error: Unable to read content XML file';
+
+            return $result;
+        }
+
+        $xmlThresholdBytes = 100 * 1024 * 1024; // 100MB
+
+        if ($xmlFileSize > $xmlThresholdBytes) {
+            $this->logger->info(
+                'Using optimized file reading for large XML',
+                [
+                    'fileName' => $fileName,
+                    'fileSize' => $xmlFileSize,
+                    'fileSizeMB' => round($xmlFileSize / (1024 * 1024), 2),
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+            $elpContentFileContent = FileUtil::getFileContentOptimized($xmlFilePathName, 100);
+        } else {
+            $elpContentFileContent = FileUtil::getFileContentOptimized($xmlFilePathName, 100);
+        }
 
         $odeResponse = [];
 
@@ -1571,7 +1716,22 @@ class OdeService implements OdeServiceInterface
                 $odeResponse = OdeXmlUtil::readOldExeXml($newOdeSessionId, $elpContentFileContent, $this->translator);
             } else {
                 if (!$isImportIdevices) {
-                    $odeResponse = OdeXmlUtil::readOdeXml($newOdeSessionId, $elpContentFileContent);
+                    // Use optimized XML reading for large files
+                    if ($xmlFileSize > $xmlThresholdBytes) {
+                        $this->logger->info(
+                            'Using optimized XML parsing for large file',
+                            [
+                                'fileName' => $fileName,
+                                'fileSize' => $xmlFileSize,
+                                'fileSizeMB' => round($xmlFileSize / (1024 * 1024), 2),
+                                'file:' => $this,
+                                'line' => __LINE__,
+                            ]
+                        );
+                        $odeResponse = OdeXmlUtil::readOdeXmlOptimized($newOdeSessionId, $elpContentFileContent, 100);
+                    } else {
+                        $odeResponse = OdeXmlUtil::readOdeXmlOptimized($newOdeSessionId, $elpContentFileContent, 100);
+                    }
 
                     // Check if the ode has style theme directory
                     $themeDirPath = $odeSessionDistDirPath.Constants::EXPORT_DIR_THEME;
@@ -1682,18 +1842,34 @@ class OdeService implements OdeServiceInterface
             return $odeResponse;
         } catch (\Exception $e) {
             $this->logger->error(
-                'error processing xml: '.$e->getMessage(),
+                'Error processing XML: '.$e->getMessage(),
                 [
-                    'file' => $e->getFile(), 'line' => $e->getLine(),
-                    'odeSessionId' => $newOdeSessionId, 'file:' => $this, 'line' => __LINE__,
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                    'odeSessionId' => $newOdeSessionId,
+                    'elpFileName' => $elpFileName,
+                    'xmlFileName' => $fileName,
+                    'xmlFileSize' => $xmlFileSize ?? 'unknown',
+                    'file:' => $this,
+                    'line' => __LINE__,
                 ]
             );
+
+            // Specific error for old XML format parsing issues
             if (((Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V2 == $fileName) || (Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V3 == $fileName))
               && ('String could not be parsed as XML' == $e->getMessage())) {
                 $result['responseMessage'] = $this->translator->trans('Failed to read the XML content, please open the file in eXeLearning 2.9, save and try to open it here again. Please report if it fails. Thank you.');
 
                 return $result;
             }
+
+            // General XML processing error
+            $result['responseMessage'] = 'error: Failed to process package content - '.$e->getMessage();
+
+            return $result;
         }
     }
 
@@ -1721,7 +1897,7 @@ class OdeService implements OdeServiceInterface
         // Check php zip extension
         try {
             Util::checkPhpZipExtension();
-            FileUtil::extractZipTo($destinationFilePathName, $odeSessionDistDirPath);
+            FileUtil::extractZipToOptimized($destinationFilePathName, $odeSessionDistDirPath, 100);
         } catch (PhpZipExtensionException $e) {
             $this->logger->error(
                 $e->getDescription(),
@@ -1736,7 +1912,7 @@ class OdeService implements OdeServiceInterface
 
         $fileName = Constants::PERMANENT_SAVE_CONTENT_FILENAME;
         $xmlFilePathName = $odeSessionDistDirPath.$fileName;
-        $elpContentFileContent = FileUtil::getFileContent($xmlFilePathName);
+        $elpContentFileContent = FileUtil::getFileContentOptimized($xmlFilePathName, 100);
 
         try {
             // Read ode XML
@@ -2201,7 +2377,7 @@ class OdeService implements OdeServiceInterface
         }
 
         // Insert into current_ode_users
-        $this->currentOdeUsersService->createCurrentOdeUsers(
+        $currentOdeUser = $this->currentOdeUsersService->createCurrentOdeUsers(
             $odeValues['odeId'],
             $odeValues['odeVersionId'],
             $odeValues['odeSessionId'],
@@ -2210,6 +2386,11 @@ class OdeService implements OdeServiceInterface
         );
 
         $result = $this->processContentXml($odeValues, $user);
+
+        if ($currentOdeUser && $currentOdeUser->getCreatedAt() instanceof \DateTimeInterface) {
+            $cleanReference = \DateTimeImmutable::createFromMutable($currentOdeUser->getCreatedAt())->modify('-1 second');
+            $this->markSessionAsClean($odeValues['odeSessionId'], $cleanReference);
+        }
 
         return $result;
     }
@@ -2235,6 +2416,31 @@ class OdeService implements OdeServiceInterface
         }
 
         return $result;
+    }
+
+    /**
+     * Normalizes timestamps for freshly imported sessions so baseline comparisons work reliably.
+     */
+    private function markSessionAsClean(string $odeSessionId, \DateTimeImmutable $cleanReference): void
+    {
+        $connection = $this->entityManager->getConnection();
+        $formatted = $cleanReference->format('Y-m-d H:i:s');
+        $tables = [
+            'ode_nav_structure_sync',
+            'ode_pag_structure_sync',
+            'ode_components_sync',
+            'ode_properties_sync',
+        ];
+
+        foreach ($tables as $table) {
+            $connection->executeStatement(
+                sprintf('UPDATE %s SET created_at = :clean, updated_at = :clean WHERE ode_session_id = :sid', $table),
+                [
+                    'clean' => $formatted,
+                    'sid' => $odeSessionId,
+                ]
+            );
+        }
     }
 
     /**
@@ -2279,14 +2485,14 @@ class OdeService implements OdeServiceInterface
 
         try {
             Util::checkPhpZipExtension();
-            FileUtil::extractZipTo($elpFilePath, $importDir);
+            FileUtil::extractZipToOptimized($elpFilePath, $importDir, 100);
 
             [$contentFilePath, $isNewOdeXml] = $this->getElpContentFilePath($importDir);
-            $elpContentFileContent = FileUtil::getFileContent($contentFilePath);
+            $elpContentFileContent = FileUtil::getFileContentOptimized($contentFilePath, 100);
 
             $tempSessionId = Util::generateId();
             $odeResponse = $isNewOdeXml
-                ? OdeXmlUtil::readOdeXml($tempSessionId, $elpContentFileContent)
+                ? OdeXmlUtil::readOdeXmlOptimized($tempSessionId, $elpContentFileContent, 100)
                 : OdeXmlUtil::readOldExeXml($tempSessionId, $elpContentFileContent, $this->translator);
 
             $importedNavStructures = $odeResponse['odeNavStructureSyncs'] ?? [];
