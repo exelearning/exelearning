@@ -883,6 +883,12 @@ export default class NavbarFile {
                 // causing it to reuse the existing session instead of creating a fresh one
                 eXeLearning.app.project.requestedProjectId = null;
 
+                // Clear old session IDs to prevent 404 lookups on the deleted session
+                // This ensures loadCurrentProject() creates a new session instead of trying
+                // to retrieve the just-closed session
+                eXeLearning.app.project.explicitOdeSessionId = null;
+                eXeLearning.app.project.odeSession = null;
+
                 // Reload project
                 eXeLearning.app.project.loadCurrentProject();
                 eXeLearning.app.project.openLoad();
