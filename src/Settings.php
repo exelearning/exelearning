@@ -59,6 +59,7 @@ class Settings
         'image/png',
         'image/svg+xml',
         'image/webp',
+        'model/gltf-binary',
         'text/css',
         'text/csv',
         'text/html',
