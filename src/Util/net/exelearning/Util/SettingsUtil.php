@@ -79,7 +79,9 @@ class SettingsUtil
             return Constants::INSTALLATION_TYPE_OFFLINE_DEFAULT_DISK_SPACE;
         }
 
-        return (int) (Settings::USER_STORAGE_MAX_DISK_SPACE * pow(1024, $factor));
+        $maxDiskSpaceMB = self::getParameter('app.user_storage_max_disk_space');
+
+        return (int) ($maxDiskSpaceMB * pow(1024, $factor));
     }
 
     /**
@@ -93,7 +95,9 @@ class SettingsUtil
             return Constants::INSTALLATION_TYPE_OFFLINE_DEFAULT_DISK_SPACE;
         }
 
-        return (int) (Settings::FILE_UPLOAD_MAX_SIZE * pow(1024, $factor));
+        $maxUploadSizeMB = self::getParameter('app.file_upload_max_size');
+
+        return (int) ($maxUploadSizeMB * pow(1024, $factor));
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdeFiles;
 use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
+use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Entity\net\exelearning\Entity\OdePropertiesSync;
 use App\Exception\net\exelearning\Exception\Logical\AutosaveRecentSaveException;
 use App\Exception\net\exelearning\Exception\Logical\UserAlreadyOpenSessionException;
@@ -135,7 +136,7 @@ class OdeApiController extends DefaultApiController
         $odeSessionId = $request->get('odeSessionId');
 
         // In case version control is active do the save
-        if (Settings::VERSION_CONTROL) {
+        if ($this->getParameter('app.version_control')) {
             // if $odeSessionId is set load data from database
             if (!empty($odeSessionId)) {
                 $user = $this->getUser();
@@ -222,7 +223,19 @@ class OdeApiController extends DefaultApiController
 
                         $responseData['responseMessage'] = $saveOdeResult['responseMessage'];
                     } catch (UserInsufficientSpaceException $e) {
-                        $responseData['responseMessage'] = 'error: '.$e->getMessage();
+                        $this->logger->error(
+                            'Insufficient space for manual save',
+                            [
+                                'usedSpace' => $e->getUsedSpace(),
+                                'maxSpace' => $e->getMaxSpace(),
+                                'requiredSpace' => $e->getRequiredSpace(),
+                                'availableSpace' => $e->getAvailableSpace(),
+                                'user' => $user->getUsername(),
+                                'file:' => $this,
+                                'line' => __LINE__,
+                            ]
+                        );
+                        $responseData['responseMessage'] = 'error: '.$this->formatInsufficientSpaceMessage($e);
                     }
 
                     // Remove save flag active
@@ -260,7 +273,7 @@ class OdeApiController extends DefaultApiController
         $odeSessionId = $request->get('odeSessionId');
 
         // If the function autosave is active
-        if (Settings::AUTOSAVE_ODE_FILES_FUNCTION) {
+        if ($this->getParameter('app.autosave_ode_files_function')) {
             // if $odeSessionId is set load data from database
             if (!empty($odeSessionId)) {
                 $user = $this->getUser();
@@ -359,9 +372,21 @@ class OdeApiController extends DefaultApiController
                         $this->currentOdeUsersService->removeActiveSyncSaveFlag($user);
                         $responseData['responseMessage'] = 'notice: '.$e->getMessage();
                     } catch (UserInsufficientSpaceException $e) {
+                        $this->logger->error(
+                            'Insufficient space for autosave',
+                            [
+                                'usedSpace' => $e->getUsedSpace(),
+                                'maxSpace' => $e->getMaxSpace(),
+                                'requiredSpace' => $e->getRequiredSpace(),
+                                'availableSpace' => $e->getAvailableSpace(),
+                                'user' => $user->getUsername(),
+                                'file:' => $this,
+                                'line' => __LINE__,
+                            ]
+                        );
                         // Remove save flag active
                         $this->currentOdeUsersService->removeActiveSyncSaveFlag($user);
-                        $responseData['responseMessage'] = 'error: '.$e->getMessage();
+                        $responseData['responseMessage'] = 'error: '.$this->formatInsufficientSpaceMessage($e);
                     }
 
                     // Remove save flag active
@@ -378,7 +403,7 @@ class OdeApiController extends DefaultApiController
         } else {
             $this->logger->notice(
                 'autosave desactivated',
-                ['autosaveFunction' => Settings::AUTOSAVE_ODE_FILES_FUNCTION, 'file:' => $this, 'line' => __LINE__]
+                ['autosaveFunction' => $this->getParameter('app.autosave_ode_files_function'), 'file:' => $this, 'line' => __LINE__]
             );
 
             $responseData['responseMessage'] = 'notice: autosave desactivated';
@@ -399,7 +424,7 @@ class OdeApiController extends DefaultApiController
         $title = $request->get('title');
 
         // In case version control is active do the save
-        if (Settings::VERSION_CONTROL) {
+        if ($this->getParameter('app.version_control')) {
             // If $odeSessionId is set load data from database
             if (!empty($odeSessionId)) {
                 $user = $this->getUser();
@@ -490,7 +515,19 @@ class OdeApiController extends DefaultApiController
                         } catch (AutosaveRecentSaveException $e) {
                             $responseData['responseMessage'] = 'notice: '.$e->getMessage();
                         } catch (UserInsufficientSpaceException $e) {
-                            $responseData['responseMessage'] = 'error: '.$e->getMessage();
+                            $this->logger->error(
+                                'Insufficient space for save as',
+                                [
+                                    'usedSpace' => $e->getUsedSpace(),
+                                    'maxSpace' => $e->getMaxSpace(),
+                                    'requiredSpace' => $e->getRequiredSpace(),
+                                    'availableSpace' => $e->getAvailableSpace(),
+                                    'user' => $user->getUsername(),
+                                    'file:' => $this,
+                                    'line' => __LINE__,
+                                ]
+                            );
+                            $responseData['responseMessage'] = 'error: '.$this->formatInsufficientSpaceMessage($e);
                         }
                     } else {
                         $this->logger->error(
@@ -606,65 +643,45 @@ class OdeApiController extends DefaultApiController
         return new JsonResponse($jsonData, $this->status, [], true);
     }
 
+    /**
+     * Checks if the user should be asked to save before leaving the ODE session.
+     */
     #[Route('/check/before/leave/ode/session', methods: ['POST'], name: 'api_odes_check_before_leave_ode_session')]
-    public function checkBeforeLeaveOdeSessionAction(Request $request)
+    public function checkBeforeLeaveOdeSessionAction(Request $request): JsonResponse
     {
-        $odeSessionId = $request->get('odeSessionId');
-        $odeversionId = $request->get('odeVersionId');
+        $odeSessionId = (string) $request->get('odeSessionId');
+        $odeVersionId = $request->get('odeVersionId');
         $odeId = $request->get('odeId');
 
         $responseData = [];
 
-        // Look for number of odeNavStructureSync
-        $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
-        $odeNavStructureSync = $odeNavStructureSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
-        $numOdeNavStructureSync = count((array) $odeNavStructureSync);
+        if ('' === $odeSessionId) {
+            $this->logger->error('invalid data', ['odeSessionId' => $odeSessionId, 'file:' => $this, 'line' => __LINE__]);
+            $responseData['responseMessage'] = 'error: invalid data';
 
-        $hasChangedPageName = false;
-        $titlePage = Constants::ODE_PAGE_NAME;
-        if ($this->translator->trans($titlePage) != $odeNavStructureSync[0]->getPageName()
-            // TO DELETE WHEN New Page is translated correctly in first node
-            && $titlePage != $odeNavStructureSync[0]->getPageName()
-        ) {
-            $hasChangedPageName = true;
+            return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);
         }
 
-        $currentOdeUserRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
-        $currentOdeUsers = $currentOdeUserRepo->getCurrentUsers($odeId, $odeversionId, $odeSessionId);
-        $totalCurrentOdeUsers = count((array) $currentOdeUsers);
+        $baselineInstant = $this->resolveSessionBaselineInstant($odeId, $odeSessionId);
+        $componentCount = $this->countEntitiesForSession(OdeComponentsSync::class, $odeSessionId);
+        $navCount = $this->countEntitiesForSession(OdeNavStructureSync::class, $odeSessionId);
 
-        $odePropertiesSyncRepo = $this->entityManager->getRepository(OdePropertiesSync::class);
-        $odePropertiesSync = $odePropertiesSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
-        $hasChangesOdeProperties = false;
+        $hasDirtyComponents = $this->hasEntityChangesAfter(OdeComponentsSync::class, $odeSessionId, $baselineInstant);
+        $hasDirtyBlocks = $this->hasEntityChangesAfter(OdePagStructureSync::class, $odeSessionId, $baselineInstant);
+        $hasDirtyNav = $this->hasEntityChangesAfter(OdeNavStructureSync::class, $odeSessionId, $baselineInstant);
+        $hasDirtyProperties = $this->hasTrackedPropertyChanges($odeSessionId, $baselineInstant);
 
-        if (!empty($odePropertiesSync) && !$hasChangedPageName) {
-            foreach ($odePropertiesSync as $odePropertySync) {
-                $property = $odePropertySync->getValue();
-                $key = $odePropertySync->getKey();
-                if (('pp_title' == $key || 'pp_author' == $key || 'pp_description' == $key || 'pp_extraHeadContent' == $key || 'footer' == $key)
-                    && '' != $property) {
-                    $hasChangesOdeProperties = true;
-                    break;
-                }
-            }
-        }
+        $hasPendingChanges = $hasDirtyComponents || $hasDirtyBlocks || $hasDirtyNav || $hasDirtyProperties;
 
-        $odeComponentsSyncRepo = $this->entityManager->getRepository(OdeComponentsSync::class);
-        $odeComponentsSync = $odeComponentsSyncRepo->findBy(['odeSessionId' => $odeSessionId]);
-
-        // Check if ode components are empty and number of current users
-        if (1 == $totalCurrentOdeUsers && (!empty($odeComponentsSync) || 1 < $numOdeNavStructureSync)
-            || true === $hasChangesOdeProperties || true === $hasChangedPageName) {
+        if ($hasPendingChanges) {
             $responseData['askSave'] = true;
-        } elseif (empty($odeComponentsSync)) {
+        } elseif (0 === $componentCount && $navCount <= 1) {
             $responseData['leaveEmptySession'] = true;
         } else {
             $responseData['leaveSession'] = true;
         }
 
-        $jsonData = $this->getJsonSerialized($responseData);
-
-        return new JsonResponse($jsonData, $this->status, [], true);
+        return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);
     }
 
     #[Route('/ode/session/close', methods: ['POST'], name: 'api_odes_ode_session_close')]
@@ -713,18 +730,21 @@ class OdeApiController extends DefaultApiController
     #[Route('/ode/elp/open', methods: ['POST'], name: 'api_odes_ode_elp_open')]
     public function openElpAction(Request $request)
     {
-        $this->hydrateRequestBody($request);
-
         $responseData = [];
 
         // Collect parameters
         $elpFileName = $request->get('elpFileName');
         $odeSessionId = $request->get('odeSessionId');
-        $forceCloseOdeUserPreviousSession = filter_var(
-            $request->get('forceCloseOdeUserPreviousSession', false),
-            FILTER_VALIDATE_BOOLEAN,
-            FILTER_NULL_ON_FAILURE
-        ) ?? false;
+        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession');
+
+        if (
+            $request->request->has('forceCloseOdeUserPreviousSession')
+            && (('true' == $forceCloseOdeUserPreviousSession) || ('1' == $forceCloseOdeUserPreviousSession))
+        ) {
+            $forceCloseOdeUserPreviousSession = true;
+        } else {
+            $forceCloseOdeUserPreviousSession = false;
+        }
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
@@ -732,39 +752,13 @@ class OdeApiController extends DefaultApiController
         $clientIp = $request->getClientIp();
 
         try {
-            try {
-                // Check content in the xml and return values
-                $odeValues = $this->odeService->checkContentXmlAndCurrentUser(
-                    $odeSessionId,
-                    $elpFileName,
-                    $databaseUser,
-                    $forceCloseOdeUserPreviousSession
-                );
-            } catch (UserAlreadyOpenSessionException $e) {
-                $responseData['responseMessage'] = 'error: '.$e->getMessage();
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
-            } catch (\Throwable $e) {
-                $this->logger->error(
-                    'Error checking remote ODE file: '.$e->getMessage(),
-                    [
-                        'exception' => $e,
-                        'elpFileName' => $elpFileName,
-                        'odeSessionId' => $odeSessionId,
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                        'trace' => $e->getTraceAsString(),
-                        'file:' => $this,
-                        'line:' => __LINE__,
-                    ]
-                );
-
-                $responseData['responseMessage'] = $this->translator->trans('The file content is wrong');
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
-            }
+            // Check content in the xml and return values
+            $odeValues = $this->odeService->checkContentXmlAndCurrentUser(
+                $odeSessionId,
+                $elpFileName,
+                $databaseUser,
+                $forceCloseOdeUserPreviousSession
+            );
 
             if ('OK' !== $odeValues['responseMessage']) {
                 $responseData['responseMessage'] = $odeValues['responseMessage'];
@@ -783,7 +777,8 @@ class OdeApiController extends DefaultApiController
                 $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
-            $responseData['responseMessage'] = 'error: '.$e->getMessage();
+            $result['responseMessage'] = 'error: '.$e->getMessage();
+            $responseData['responseMessage'] = $result['responseMessage'];
             $jsonData = $this->getJsonSerialized($responseData);
 
             return new JsonResponse($jsonData, $this->status, [], true);
@@ -819,21 +814,28 @@ class OdeApiController extends DefaultApiController
     #[Route('/ode/local/elp/open', methods: ['POST'], name: 'api_odes_ode_local_elp_open')]
     public function openLocalElpAction(Request $request)
     {
-        $this->hydrateRequestBody($request);
-
         $responseData = [];
 
-        // Collect parameters
-        $elpFileName = $request->get('odeFileName');
-        $elpFilePath = $request->get('odeFilePath');
-        $forceCloseOdeUserPreviousSession = filter_var(
-            $request->get('forceCloseOdeUserPreviousSession', false),
-            FILTER_VALIDATE_BOOLEAN,
-            FILTER_NULL_ON_FAILURE
-        ) ?? false;
+        // Collect parameters from both form data and JSON body
+        $elpFileName = $request->get('odeFileName') ?? $request->getPayload()->get('odeFileName');
+        $elpFilePath = $request->get('odeFilePath') ?? $request->getPayload()->get('odeFilePath');
+        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession') ?? $request->getPayload()->get('forceCloseOdeUserPreviousSession');
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
+
+        // Convert forceCloseOdeUserPreviousSession to boolean
+        // Accept: true (bool), 'true' (string), '1' (string), 1 (int)
+        // Reject: false (bool), 'false' (string), '0' (string), 0 (int), null, anything else
+        if ((true === $forceCloseOdeUserPreviousSession)
+            || ('true' === $forceCloseOdeUserPreviousSession)
+            || ('1' === $forceCloseOdeUserPreviousSession)
+            || (1 === $forceCloseOdeUserPreviousSession)
+        ) {
+            $forceCloseOdeUserPreviousSession = true;
+        } else {
+            $forceCloseOdeUserPreviousSession = false;
+        }
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
@@ -841,11 +843,51 @@ class OdeApiController extends DefaultApiController
         $clientIp = $request->getClientIp();
 
         try {
+            // Validate required parameters
+            if (empty($elpFileName) || empty($elpFilePath)) {
+                $responseData['responseMessage'] = $this->translator->trans('Missing file name or path');
+                $jsonData = $this->getJsonSerialized($responseData);
+
+                return new JsonResponse($jsonData, $this->status, [], true);
+            }
+
             // Set locale (TODO: error translator returns to default locale)
             // Get properties of user
             $databaseUserPreferences = $this->userHelper->getUserPreferencesFromDatabase($user);
             $localeUserPreferences = $databaseUserPreferences['locale']->getValue();
             $this->translator->setLocale($localeUserPreferences);
+
+            // Validate file size before processing
+            if (!empty($elpFilePath) && file_exists($elpFilePath)) {
+                $fileSize = filesize($elpFilePath);
+                $uploadLimit = $this->getEffectiveUploadLimit();
+
+                if (false !== $fileSize && $fileSize > $uploadLimit['bytes']) {
+                    $this->logger->error(
+                        'File exceeds PHP upload limit',
+                        [
+                            'fileName' => $elpFileName,
+                            'fileSize' => $fileSize,
+                            'fileSizeFormatted' => $this->formatBytes($fileSize),
+                            'uploadLimit' => $uploadLimit['bytes'],
+                            'uploadLimitFormatted' => $uploadLimit['formatted'],
+                            'limitingFactor' => $uploadLimit['limit_name'],
+                            'file:' => $this,
+                            'line' => __LINE__,
+                        ]
+                    );
+
+                    $responseData['responseMessage'] = sprintf(
+                        'error: File size (%s) exceeds the maximum allowed size (%s). Please increase %s in PHP configuration.',
+                        $this->formatBytes($fileSize),
+                        $uploadLimit['formatted'],
+                        $uploadLimit['limit_name']
+                    );
+                    $jsonData = $this->getJsonSerialized($responseData);
+
+                    return new JsonResponse($jsonData, $this->status, [], true);
+                }
+            }
 
             // Check if it's a zip by filename of archive
             $ext = pathinfo($elpFileName, PATHINFO_EXTENSION);
@@ -875,15 +917,14 @@ class OdeApiController extends DefaultApiController
                     $forceCloseOdeUserPreviousSession
                 );
             } catch (UserAlreadyOpenSessionException $e) {
-                $responseData['responseMessage'] = 'error: '.$e->getMessage();
-                $jsonData = $this->getJsonSerialized($responseData);
-
-                return new JsonResponse($jsonData, $this->status, [], true);
+                // Re-throw session exceptions to be handled by outer catch
+                throw $e;
             } catch (\Throwable $e) {
                 $this->logger->error(
                     'Error checking local ODE file: '.$e->getMessage(),
                     [
-                        'exception' => $e,
+                        'exception' => get_class($e),
+                        'message' => $e->getMessage(),
                         'elpFileName' => $elpFileName,
                         'elpFilePath' => $elpFilePath,
                         'file' => $e->getFile(),
@@ -894,8 +935,25 @@ class OdeApiController extends DefaultApiController
                     ]
                 );
 
-                $responseData['responseMessage'] = $this->translator->trans('The file content is wrong');
+                $responseData['responseMessage'] = $this->translator->trans('The file content is wrong').': '.$e->getMessage();
+                $jsonData = $this->getJsonSerialized($responseData);
 
+                return new JsonResponse($jsonData, $this->status, [], true);
+            }
+
+            // Verify that odeValues is not empty
+            if (empty($odeValues)) {
+                $this->logger->error(
+                    'checkLocalOdeFile returned empty result',
+                    [
+                        'elpFileName' => $elpFileName,
+                        'elpFilePath' => $elpFilePath,
+                        'file:' => $this,
+                        'line' => __LINE__,
+                    ]
+                );
+
+                $responseData['responseMessage'] = 'error: Failed to process file - empty result from service';
                 $jsonData = $this->getJsonSerialized($responseData);
 
                 return new JsonResponse($jsonData, $this->status, [], true);
@@ -918,8 +976,28 @@ class OdeApiController extends DefaultApiController
                 $odeValues
             );
         } catch (UserAlreadyOpenSessionException $e) {
-            $responseData['responseMessage'] = 'error: '.$e->getMessage();
+            $result['responseMessage'] = 'error: '.$e->getMessage();
+            $responseData['responseMessage'] = $result['responseMessage'];
 
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, $this->status, [], true);
+        } catch (\Throwable $e) {
+            $this->logger->error(
+                'Unexpected error in openLocalElpAction: '.$e->getMessage(),
+                [
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                    'elpFileName' => $elpFileName ?? 'unknown',
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                    'file:' => $this,
+                    'line:' => __LINE__,
+                ]
+            );
+
+            $responseData['responseMessage'] = 'error: Unexpected error while opening file - '.$e->getMessage();
             $jsonData = $this->getJsonSerialized($responseData);
 
             return new JsonResponse($jsonData, $this->status, [], true);
@@ -1021,6 +1099,85 @@ class OdeApiController extends DefaultApiController
             if (!empty($tempFilePath) && file_exists($tempFilePath)) {
                 FileUtil::removeFile($tempFilePath);
             }
+        }
+
+        $jsonData = $this->getJsonSerialized($responseData);
+
+        return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
+    /**
+     * Import a previously uploaded file into the root by server local path.
+     * Accepts JSON: { odeSessionId, odeFileName, odeFilePath }.
+     */
+    #[Route('/ode/import/local/root', methods: ['POST'], name: 'api_odes_ode_local_elp_import_root_from_local')]
+    public function importElpToRootFromLocalAction(Request $request): JsonResponse
+    {
+        $responseData = [];
+
+        // Parse JSON body (relies on DefaultApiController::hydrateRequestBody supporting POST)
+        $this->hydrateRequestBody($request);
+
+        $odeSessionId = $request->get('odeSessionId');
+        $odeFileName = $request->get('odeFileName');
+        $odeFilePath = $request->get('odeFilePath');
+
+        if (empty($odeSessionId) || empty($odeFileName) || empty($odeFilePath)) {
+            $responseData['responseMessage'] = $this->translator->trans('Invalid request data');
+            $jsonData = $this->getJsonSerialized($responseData);
+
+            return new JsonResponse($jsonData, JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+
+        try {
+            // Validate that the file exists and is in the correct temporary directory
+            if (!file_exists($odeFilePath)) {
+                throw new \RuntimeException($this->translator->trans('Uploaded file not found'));
+            }
+
+            // Validate file extension
+            $extension = strtolower(pathinfo($odeFileName, PATHINFO_EXTENSION));
+            $allowedExtensions = ['elpx', 'elp', 'zip'];
+            if (!in_array($extension, $allowedExtensions, true)) {
+                throw new \RuntimeException($this->translator->trans('Invalid file type'));
+            }
+
+            // Get existing root nodes to calculate max order
+            $odeNavStructureRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
+            $existingRootNodes = $odeNavStructureRepo->findBy(
+                [
+                    'odeSessionId' => $odeSessionId,
+                    'odeNavStructureSync' => null,
+                ]
+            );
+
+            $maxRootOrder = 0;
+            foreach ($existingRootNodes as $rootNode) {
+                $maxRootOrder = max($maxRootOrder, (int) $rootNode->getOdeNavStructureSyncOrder());
+            }
+
+            // Import the ELP pages
+            $this->odeService->importElpPages($odeFilePath, $odeSessionId, null, $maxRootOrder);
+
+            $responseData['responseMessage'] = 'OK';
+            $responseData['structure'] = $this->buildNavStructureListDto($odeSessionId);
+
+            $this->publish($odeSessionId, 'structure-changed');
+        } catch (\Throwable $throwable) {
+            $this->logger->error(
+                'Error importing ELP from local path: '.$throwable->getMessage(),
+                [
+                    'file' => $throwable->getFile(),
+                    'line' => $throwable->getLine(),
+                    'odeSessionId' => $odeSessionId,
+                    'odeFileName' => $odeFileName,
+                    'odeFilePath' => $odeFilePath,
+                    'file:' => $this,
+                    'line' => __LINE__,
+                ]
+            );
+            $message = $throwable->getMessage();
+            $responseData['responseMessage'] = $this->translator->trans('Import error').': '.$message;
         }
 
         $jsonData = $this->getJsonSerialized($responseData);
@@ -1168,7 +1325,7 @@ class OdeApiController extends DefaultApiController
         $userLoggedName = $this->userHelper->getLoggedUserName($userLogged);
 
         // Autosave constant
-        $autosave = Settings::COUNT_USER_AUTOSAVE_SPACE_ODE_FILES;
+        $autosave = $this->getParameter('app.count_user_autosave_space_ode_files');
 
         $onlyManualSave = false;
 
@@ -1425,45 +1582,45 @@ class OdeApiController extends DefaultApiController
 
         $odeSessionId = $request->request->get('odeSessionId');
 
-        // Get the request size
+        // Get the request size (size of the chunk being uploaded)
         $contentLength = $request->server->get('CONTENT_LENGTH');
-        // Get the maximum size allowed in uploading files from the corresponding configuration in php.ini
-        $maxFileSize = ini_get('upload_max_filesize');
-        $maxFileSizeBytes = false;
+        $uploadLimit = $this->getEffectiveUploadLimit();
 
-        // In case of obtaining the 2 values ​​correctly,
-        // we make the necessary checks to be able to know if the size of the file in the request is
-        // greater than what is allowed
-        if ($contentLength && $maxFileSize) {
-            $unit = ['KB', 'MB', 'GB', 'TB', 'PB'];
-            $unit_match = array_search(strtoupper(substr($maxFileSize, -2)), $unit);
-            if (false === $unit_match) {
-                $unit = ['B', 'K', 'M', 'G', 'T', 'P'];
-                $unit_match = array_search(strtoupper(substr($maxFileSize, -1)), $unit);
-            }
-            $maxFileSizeBytes = intval($maxFileSize) * pow(
-                1024,
-                false === $unit_match ? 0 : $unit_match
-            );
+        $this->logger->info(
+            'File upload chunk received',
+            [
+                'uploadLimitFormatted' => $uploadLimit['formatted'],
+                'uploadLimitBytes' => $uploadLimit['bytes'],
+                'limitingFactor' => $uploadLimit['limit_name'],
+                'chunkSize' => $contentLength,
+                'chunkSizeFormatted' => $this->formatBytes((int) $contentLength),
+                'file:' => $this,
+                'line' => __LINE__,
+            ]
+        );
 
-            $this->logger->info(
-                'file size: large-elp-open',
+        // Check if chunk size exceeds the upload limit
+        if ($contentLength && $contentLength > $uploadLimit['bytes']) {
+            $this->logger->error(
+                'Upload chunk exceeds PHP upload limit',
                 [
-                    'upload_max_filesize' => $maxFileSize,
-                    'upload_max_filesize_bytes' => $maxFileSizeBytes,
-                    'file_length' => $contentLength,
+                    'chunkSize' => $contentLength,
+                    'chunkSizeFormatted' => $this->formatBytes((int) $contentLength),
+                    'uploadLimit' => $uploadLimit['bytes'],
+                    'uploadLimitFormatted' => $uploadLimit['formatted'],
+                    'limitingFactor' => $uploadLimit['limit_name'],
                     'file:' => $this,
                     'line' => __LINE__,
                 ]
             );
-        }
-        // Check if size of the file in the request is greater than what is allowed
-        if ($contentLength && $maxFileSize && $contentLength > $maxFileSizeBytes) {
-            $this->logger->error(
-                'file is too large',
-                ['file:' => $this, 'line' => __LINE__]
+
+            $responseData['responseMessage'] = sprintf(
+                'error: %s. Chunk size (%s) exceeds maximum allowed (%s). Increase %s in PHP configuration.',
+                $this->translator->trans('File is too large'),
+                $this->formatBytes((int) $contentLength),
+                $uploadLimit['formatted'],
+                $uploadLimit['limit_name']
             );
-            $responseData['responseMessage'] = $this->translator->trans('File is too large');
             $jsonData = $this->getJsonSerialized($responseData);
 
             return new JsonResponse($jsonData, $this->status, [], true);
@@ -1530,6 +1687,223 @@ class OdeApiController extends DefaultApiController
         $jsonData = $this->getJsonSerialized($responseData);
 
         return new JsonResponse($jsonData, $this->status, [], true);
+    }
+
+    /**
+     * Gets the effective upload size limit in bytes.
+     *
+     * Returns the minimum value between:
+     * - Application configured limit (FILE_UPLOAD_MAX_SIZE from .env)
+     * - PHP upload_max_filesize
+     * - PHP post_max_size
+     * - PHP memory_limit
+     *
+     * This ensures the most restrictive limit is enforced.
+     *
+     * @return array{bytes: int, formatted: string, limit_name: string}
+     */
+    private function getEffectiveUploadLimit(): array
+    {
+        // Get PHP limits
+        $uploadMaxFilesize = ini_get('upload_max_filesize');
+        $postMaxSize = ini_get('post_max_size');
+        $memoryLimit = ini_get('memory_limit');
+
+        // Convert PHP ini values to bytes
+        $uploadMaxBytes = $this->convertPhpIniToBytes($uploadMaxFilesize);
+        $postMaxBytes = $this->convertPhpIniToBytes($postMaxSize);
+        $memoryLimitBytes = $this->convertPhpIniToBytes($memoryLimit);
+
+        // Get application configured limit from .env (in MB)
+        $appMaxUploadMB = $this->getParameter('app.file_upload_max_size');
+        $appMaxUploadBytes = $appMaxUploadMB * 1024 * 1024;
+
+        // Find the minimum (most restrictive) limit
+        $limits = [
+            'app.file_upload_max_size' => $appMaxUploadBytes,
+            'upload_max_filesize' => $uploadMaxBytes,
+            'post_max_size' => $postMaxBytes,
+            'memory_limit' => $memoryLimitBytes,
+        ];
+
+        $minLimit = min($limits);
+        $limitName = array_search($minLimit, $limits);
+
+        return [
+            'bytes' => $minLimit,
+            'formatted' => $this->formatBytes($minLimit),
+            'limit_name' => $limitName,
+        ];
+    }
+
+    /**
+     * Converts PHP ini size value (e.g., "512M", "2G") to bytes.
+     *
+     * @param string $value PHP ini size value
+     *
+     * @return int Size in bytes
+     */
+    private function convertPhpIniToBytes(string $value): int
+    {
+        $value = trim($value);
+
+        // Unlimited
+        if ('-1' === $value) {
+            return PHP_INT_MAX;
+        }
+
+        $unit = strtoupper(substr($value, -1));
+        $number = (int) substr($value, 0, -1);
+
+        // If no unit or just a number, return as is
+        if (!$unit || is_numeric($unit)) {
+            return (int) $value;
+        }
+
+        switch ($unit) {
+            case 'G':
+                return $number * 1024 * 1024 * 1024;
+            case 'M':
+                return $number * 1024 * 1024;
+            case 'K':
+                return $number * 1024;
+            default:
+                return (int) $value;
+        }
+    }
+
+    /**
+     * Formats bytes to human-readable format (KB, MB, GB).
+     *
+     * @param int $bytes Size in bytes
+     *
+     * @return string Formatted size (e.g., "512 MB")
+     */
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= (1024 ** $pow);
+
+        return round($bytes, 2).' '.$units[$pow];
+    }
+
+    /**
+     * Formats a user-friendly error message for insufficient space exceptions.
+     *
+     * @param UserInsufficientSpaceException $e The exception with space details
+     *
+     * @return string Formatted error message with space information
+     */
+    private function formatInsufficientSpaceMessage(UserInsufficientSpaceException $e): string
+    {
+        $usedSpaceFormatted = $this->formatBytes($e->getUsedSpace());
+        $maxSpaceFormatted = $this->formatBytes($e->getMaxSpace());
+        $requiredSpaceFormatted = $this->formatBytes($e->getRequiredSpace());
+        $availableSpaceFormatted = $this->formatBytes($e->getAvailableSpace());
+
+        return $this->translator->trans(
+            'Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.',
+            [
+                '{usedSpace}' => $usedSpaceFormatted,
+                '{maxSpace}' => $maxSpaceFormatted,
+                '{requiredSpace}' => $requiredSpaceFormatted,
+                '{availableSpace}' => $availableSpaceFormatted,
+            ]
+        );
+    }
+
+    /**
+     * Determines when the session content last matched the persisted version.
+     */
+    private function resolveSessionBaselineInstant(?string $odeId, string $odeSessionId): \DateTimeImmutable
+    {
+        $lastPersistedAt = null;
+
+        if (!empty($odeId)) {
+            $lastFile = $this->entityManager->getRepository(OdeFiles::class)->getLastFileForOde($odeId);
+            if ($lastFile && $lastFile->getUpdatedAt() instanceof \DateTimeInterface) {
+                $lastPersistedAt = \DateTimeImmutable::createFromMutable($lastFile->getUpdatedAt());
+            }
+        }
+
+        $currentUsersRepo = $this->entityManager->getRepository(CurrentOdeUsers::class);
+        $sessionUsers = $currentUsersRepo->findBy(['odeSessionId' => $odeSessionId]);
+
+        $sessionCreatedAt = null;
+        foreach ($sessionUsers as $sessionUser) {
+            $createdAt = $sessionUser->getCreatedAt();
+            if ($createdAt instanceof \DateTimeInterface) {
+                $createdImmutable = \DateTimeImmutable::createFromMutable($createdAt);
+                if (null === $sessionCreatedAt || $createdImmutable < $sessionCreatedAt) {
+                    $sessionCreatedAt = $createdImmutable;
+                }
+            }
+        }
+
+        if ($sessionCreatedAt instanceof \DateTimeImmutable) {
+            if (null === $lastPersistedAt || $sessionCreatedAt > $lastPersistedAt) {
+                $lastPersistedAt = $sessionCreatedAt;
+            }
+        }
+
+        return $lastPersistedAt ?? new \DateTimeImmutable();
+    }
+
+    /**
+     * Counts persisted entities for a given session.
+     */
+    private function countEntitiesForSession(string $entityClass, string $odeSessionId): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(e.id)')
+            ->from($entityClass, 'e')
+            ->andWhere('e.odeSessionId = :sid')
+            ->setParameter('sid', $odeSessionId)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Checks whether any entity instances were updated after the provided timestamp.
+     */
+    private function hasEntityChangesAfter(string $entityClass, string $odeSessionId, \DateTimeImmutable $since): bool
+    {
+        $count = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(e.id)')
+            ->from($entityClass, 'e')
+            ->andWhere('e.odeSessionId = :sid')
+            ->andWhere('(e.updatedAt >= :since OR (e.updatedAt IS NULL AND e.createdAt >= :since))')
+            ->setParameter('sid', $odeSessionId)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) $count > 0;
+    }
+
+    /**
+     * Checks if tracked project metadata fields changed after the provided timestamp.
+     */
+    private function hasTrackedPropertyChanges(string $odeSessionId, \DateTimeImmutable $since): bool
+    {
+        $trackedKeys = ['pp_title', 'pp_author', 'pp_description', 'pp_extraHeadContent', 'footer'];
+
+        $count = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(OdePropertiesSync::class, 'p')
+            ->andWhere('p.odeSessionId = :sid')
+            ->andWhere('p.key IN (:keys)')
+            ->andWhere('(p.updatedAt >= :since OR (p.updatedAt IS NULL AND p.createdAt >= :since))')
+            ->setParameter('sid', $odeSessionId)
+            ->setParameter('keys', $trackedKeys)
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) $count > 0;
     }
 
     /**
