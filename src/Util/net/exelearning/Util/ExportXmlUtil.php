@@ -2578,6 +2578,7 @@ class ExportXmlUtil
             [$libsPath.'abcjs', 'class', 'abc-music', ['/abcjs/abcjs-basic-min.js', '/abcjs/exe_abc_music.js', '/abcjs/abcjs-audio.css']],
             [$commonPath.'exe_math', 'regex', '/\\\((.*?)\\\)|\\\[(.*?)\\\]/', [$dm.'tex-mml-svg.js']],
             [$commonPath.'exe_math', 'class', 'DataGame', [$dm.'tex-mml-svg.js']],
+            [$commonPath.'mermaid', 'class', 'mermaid', ['/mermaid/mermaid.min.js']],
         ];
 
         if (!is_array($odeNavStructureSyncs)) {
