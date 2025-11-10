@@ -129,22 +129,19 @@ export default class ShareProjectButton {
      */
     getCurrentDocumentUrl(fallbackUrl) {
         const url = new URL(window.location.href);
-        const sessionId =
-            eXeLearning.app.project.odeSession ||
-            url.searchParams.get('odeSessionId');
         const projectId =
             eXeLearning.app.project.odeId ||
             eXeLearning.app.project.requestedProjectId ||
             url.searchParams.get('projectId');
 
-        if (sessionId) {
-            url.searchParams.set('odeSessionId', sessionId);
-        }
         if (projectId) {
+            // Only use projectId for sharing - cleaner URLs
             url.searchParams.set('projectId', projectId);
+            // Remove odeSessionId to keep URL clean and permanent
+            url.searchParams.delete('odeSessionId');
         }
 
-        if (!sessionId && !projectId && fallbackUrl) {
+        if (!projectId && fallbackUrl) {
             return fallbackUrl;
         }
 

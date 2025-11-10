@@ -1100,29 +1100,45 @@ export default class projectManager {
     }
 
     setUrlSession(sessionId, projectId) {
-        if (!sessionId) {
+        if (!sessionId && !projectId) {
             return;
         }
 
         const url = new URL(window.location.href);
-        url.searchParams.set('odeSessionId', sessionId);
+
+        // Only use projectId in URL for cleaner, permanent URLs
         if (projectId) {
             url.searchParams.set('projectId', projectId);
-        } else {
+            // Remove legacy odeSessionId parameter
+            url.searchParams.delete('odeSessionId');
             url.searchParams.delete('project');
         }
+
         window.history.replaceState({}, '', url.toString());
-        this.explicitOdeSessionId = sessionId;
+
+        // Keep sessionId tracked internally for API calls
+        if (sessionId) {
+            this.explicitOdeSessionId = sessionId;
+        }
     }
 
     redirectToWorkarea() {
         const url = new URL(window.location.href);
         url.pathname = `${eXeLearning.symfony.basePath.replace(/\/$/, '')}/workarea`;
-        if (this.odeSession) {
-            url.searchParams.set('odeSessionId', this.odeSession);
-        } else {
+
+        // Use projectId instead of sessionId for cleaner, permanent URLs
+        if (this.odeId) {
+            url.searchParams.set('projectId', this.odeId);
             url.searchParams.delete('odeSessionId');
+        } else {
+            // Fallback to sessionId only if projectId not available
+            if (this.odeSession) {
+                url.searchParams.set('odeSessionId', this.odeSession);
+            } else {
+                url.searchParams.delete('odeSessionId');
+            }
         }
+
         window.location.replace(url.toString());
     }
 
