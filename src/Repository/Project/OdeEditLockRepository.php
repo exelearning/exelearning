@@ -22,11 +22,11 @@ class OdeEditLockRepository extends ServiceEntityRepository
      * Acquire a lock on a resource.
      * Uses pessimistic locking: only one user can lock a resource at a time.
      *
-     * @param string $odeSessionId The session identifier
-     * @param string $resourceType Resource type (page, block, idevice)
-     * @param string $resourceId Resource identifier
-     * @param string $userEmail User email
-     * @param int $lockDurationMinutes Lock duration in minutes
+     * @param string $odeSessionId        The session identifier
+     * @param string $resourceType        Resource type (page, block, idevice)
+     * @param string $resourceId          Resource identifier
+     * @param string $userEmail           User email
+     * @param int    $lockDurationMinutes Lock duration in minutes
      *
      * @return OdeEditLock|null Returns the lock if acquired, null if resource is already locked by another user
      */
@@ -35,7 +35,7 @@ class OdeEditLockRepository extends ServiceEntityRepository
         string $resourceType,
         string $resourceId,
         string $userEmail,
-        int $lockDurationMinutes = OdeEditLock::DEFAULT_LOCK_DURATION_MINUTES
+        int $lockDurationMinutes = OdeEditLock::DEFAULT_LOCK_DURATION_MINUTES,
     ): ?OdeEditLock {
         // First, clean expired locks for this resource
         $this->cleanExpiredLocksForResource($odeSessionId, $resourceType, $resourceId);
@@ -110,8 +110,8 @@ class OdeEditLockRepository extends ServiceEntityRepository
      *
      * @param string $odeSessionId The session identifier
      * @param string $resourceType Resource type
-     * @param string $resourceId Resource identifier
-     * @param string $userEmail User email (only owner can release)
+     * @param string $resourceId   Resource identifier
+     * @param string $userEmail    User email (only owner can release)
      *
      * @return bool True if lock was released, false if not locked or locked by another user
      */
@@ -119,7 +119,7 @@ class OdeEditLockRepository extends ServiceEntityRepository
         string $odeSessionId,
         string $resourceType,
         string $resourceId,
-        string $userEmail
+        string $userEmail,
     ): bool {
         $lock = $this->findLock($odeSessionId, $resourceType, $resourceId);
 
@@ -328,7 +328,7 @@ class OdeEditLockRepository extends ServiceEntityRepository
         string $resourceType,
         string $resourceId,
         string $userEmail,
-        int $extendMinutes = OdeEditLock::DEFAULT_LOCK_DURATION_MINUTES
+        int $extendMinutes = OdeEditLock::DEFAULT_LOCK_DURATION_MINUTES,
     ): bool {
         $lock = $this->isLocked($odeSessionId, $resourceType, $resourceId);
 

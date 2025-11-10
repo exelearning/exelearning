@@ -3,7 +3,6 @@
 namespace App\Controller\Project;
 
 use App\Controller\net\exelearning\Controller\Api\DefaultApiController;
-use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
 use App\Entity\net\exelearning\Entity\User;
 use App\Entity\Project\Project;
 use App\Entity\Project\ProjectCollaborator;

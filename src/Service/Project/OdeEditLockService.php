@@ -14,7 +14,7 @@ class OdeEditLockService
 {
     public function __construct(
         private readonly OdeEditLockRepository $lockRepository,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -29,7 +29,7 @@ class OdeEditLockService
         string $resourceType,
         string $resourceId,
         string $userEmail,
-        int $lockDurationMinutes = OdeEditLock::DEFAULT_LOCK_DURATION_MINUTES
+        int $lockDurationMinutes = OdeEditLock::DEFAULT_LOCK_DURATION_MINUTES,
     ): array {
         $lock = $this->lockRepository->acquireLock(
             $odeSessionId,
@@ -76,7 +76,7 @@ class OdeEditLockService
         string $odeSessionId,
         string $resourceType,
         string $resourceId,
-        string $userEmail
+        string $userEmail,
     ): bool {
         return $this->lockRepository->releaseLock(
             $odeSessionId,
@@ -95,7 +95,7 @@ class OdeEditLockService
         string $odeSessionId,
         string $resourceType,
         string $resourceId,
-        string $userEmail
+        string $userEmail,
     ): array {
         $lock = $this->lockRepository->isLocked($odeSessionId, $resourceType, $resourceId);
 
@@ -160,7 +160,7 @@ class OdeEditLockService
         string $resourceType,
         string $resourceId,
         string $userEmail,
-        int $extendMinutes = OdeEditLock::DEFAULT_LOCK_DURATION_MINUTES
+        int $extendMinutes = OdeEditLock::DEFAULT_LOCK_DURATION_MINUTES,
     ): bool {
         return $this->lockRepository->renewLock(
             $odeSessionId,

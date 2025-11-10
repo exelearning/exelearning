@@ -10,9 +10,9 @@ use App\Entity\net\exelearning\Entity\CurrentOdeUsersSyncChanges;
 use App\Entity\net\exelearning\Entity\OdeComponentsSync;
 use App\Entity\net\exelearning\Entity\OdeNavStructureSync;
 use App\Entity\net\exelearning\Entity\OdePagStructureSync;
+use App\Entity\Project\OdeEditLock;
 use App\Entity\Project\Project;
 use App\Entity\Project\ProjectCollaborator;
-use App\Entity\Project\OdeEditLock;
 use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersSyncChangesServiceInterface;
@@ -285,7 +285,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
                 ]);
             } else {
                 // User wants to STOP editing - release lock
-                if ($odeIdeviceId !== null) {
+                if (null !== $odeIdeviceId) {
                     $this->lockService->releaseLock(
                         $odeSessionId,
                         OdeEditLock::RESOURCE_TYPE_IDEVICE,
@@ -321,7 +321,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
 
                 if (null === $updated) {
                     // Failed to update - release lock we just acquired
-                    if ('true' === $odeComponentFlag && $odeIdeviceId !== null) {
+                    if ('true' === $odeComponentFlag && null !== $odeIdeviceId) {
                         $this->lockService->releaseLock(
                             $odeSessionId,
                             OdeEditLock::RESOURCE_TYPE_IDEVICE,
@@ -357,7 +357,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
                 $responseData['responseMessage'] = 'OK';
             } else {
                 // Legacy check failed - release lock if we acquired it
-                if ('true' === $odeComponentFlag && $odeIdeviceId !== null) {
+                if ('true' === $odeComponentFlag && null !== $odeIdeviceId) {
                     $this->lockService->releaseLock(
                         $odeSessionId,
                         OdeEditLock::RESOURCE_TYPE_IDEVICE,

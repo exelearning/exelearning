@@ -659,10 +659,10 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
      * Get or create a session for a project (enabling shared sessions).
      * If an active session exists for the project, joins it. Otherwise creates new.
      *
-     * @param string $odeId The project/ode identifier
-     * @param User $user The user joining/creating the session
-     * @param string $clientIp Client IP address
-     * @param int $activeWithinMinutes Consider session active if activity within N minutes (default 30)
+     * @param string $odeId               The project/ode identifier
+     * @param User   $user                The user joining/creating the session
+     * @param string $clientIp            Client IP address
+     * @param int    $activeWithinMinutes Consider session active if activity within N minutes (default 30)
      *
      * @return array ['session' => CurrentOdeUsers, 'isNewSession' => bool, 'usersInSession' => CurrentOdeUsers[]]
      */
@@ -747,12 +747,12 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
      * Join an existing session (for collaborative editing).
      * Adds the user to an existing session, enabling shared file access.
      *
-     * @param string $odeSessionId The session to join
-     * @param string $odeId The project identifier
-     * @param string $odeVersionId The version identifier
-     * @param User $user The user joining
-     * @param string $clientIp Client IP address
-     * @param int $activeWithinMinutes Activity window for counting users (default 30)
+     * @param string $odeSessionId        The session to join
+     * @param string $odeId               The project identifier
+     * @param string $odeVersionId        The version identifier
+     * @param User   $user                The user joining
+     * @param string $clientIp            Client IP address
+     * @param int    $activeWithinMinutes Activity window for counting users (default 30)
      *
      * @return array ['session' => CurrentOdeUsers, 'isNewSession' => bool, 'usersInSession' => CurrentOdeUsers[]]
      */
@@ -762,7 +762,7 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
         string $odeVersionId,
         User $user,
         string $clientIp,
-        int $activeWithinMinutes = 30
+        int $activeWithinMinutes = 30,
     ): array {
         $currentOdeUsersRepository = $this->entityManager->getRepository(CurrentOdeUsers::class);
 
@@ -824,8 +824,8 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
      * Check if a session can be safely cleaned up (no active users).
      * Used by cleanup service to avoid deleting files while users are active.
      *
-     * @param string $odeSessionId The session to check
-     * @param int $activeWithinMinutes Activity window (default 30)
+     * @param string $odeSessionId        The session to check
+     * @param int    $activeWithinMinutes Activity window (default 30)
      *
      * @return bool True if session can be cleaned (no active users), false otherwise
      */
@@ -837,9 +837,9 @@ class CurrentOdeUsersService implements CurrentOdeUsersServiceInterface
         $this->logger->debug('Checking if session can be cleaned up', [
             'odeSessionId' => $odeSessionId,
             'activeUsersCount' => $activeUsersCount,
-            'canCleanup' => $activeUsersCount === 0,
+            'canCleanup' => 0 === $activeUsersCount,
         ]);
 
-        return $activeUsersCount === 0;
+        return 0 === $activeUsersCount;
     }
 }

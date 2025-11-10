@@ -306,8 +306,8 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
      * Returns the most recently active session within the activity window.
      * Uses index: idx_current_ode_id (ode_id).
      *
-     * @param string $odeId The project/ode identifier
-     * @param int $activeWithinMinutes Consider active if action within N minutes (default 30)
+     * @param string $odeId               The project/ode identifier
+     * @param int    $activeWithinMinutes Consider active if action within N minutes (default 30)
      *
      * @return CurrentOdeUsers|null The most recent active session, or null if none found
      */
@@ -331,8 +331,8 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
      * Count active users in a specific session.
      * Uses index: idx_current_ode_session_id (ode_session_id).
      *
-     * @param string $odeSessionId The session identifier
-     * @param int $activeWithinMinutes Consider active if action within N minutes (default 30)
+     * @param string $odeSessionId        The session identifier
+     * @param int    $activeWithinMinutes Consider active if action within N minutes (default 30)
      *
      * @return int Number of active users in the session
      */
@@ -355,8 +355,8 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
      * Get all users currently active in a session.
      * Uses index: idx_current_ode_session_id (ode_session_id).
      *
-     * @param string $odeSessionId The session identifier
-     * @param int $activeWithinMinutes Consider active if action within N minutes (default 30)
+     * @param string $odeSessionId        The session identifier
+     * @param int    $activeWithinMinutes Consider active if action within N minutes (default 30)
      *
      * @return CurrentOdeUsers[] Array of active users in the session
      */
@@ -380,7 +380,7 @@ class CurrentOdeUsersRepository extends ServiceEntityRepository
      * Uses composite index: idx_current_ode_session_user (ode_session_id, user).
      *
      * @param string $odeSessionId The session identifier
-     * @param string $user The user email
+     * @param string $user         The user email
      *
      * @return bool True if user is in session, false otherwise
      */

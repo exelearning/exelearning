@@ -825,13 +825,15 @@ export default class projectManager {
         console.log('Access revoked event received:', payload);
 
         const projectTitle = payload.projectTitle || 'this project';
-        const message = payload.message || `Your access to ${projectTitle} has been revoked by the owner.`;
+        const message =
+            payload.message ||
+            `Your access to ${projectTitle} has been revoked by the owner.`;
 
         // Show modal to inform user
         this.app.modals.alert.show({
             title: _('Access Revoked'),
             body: _(message),
-            contentId: 'access-revoked'
+            contentId: 'access-revoked',
         });
 
         // Disable all editing controls immediately
@@ -851,13 +853,15 @@ export default class projectManager {
         console.log('Visibility changed event received:', payload);
 
         const projectTitle = payload.projectTitle || 'this project';
-        const message = payload.message || `${projectTitle} is now private. You no longer have access.`;
+        const message =
+            payload.message ||
+            `${projectTitle} is now private. You no longer have access.`;
 
         // Show modal to inform user
         this.app.modals.alert.show({
             title: _('Project Now Private'),
             body: _(message),
-            contentId: 'visibility-changed'
+            contentId: 'visibility-changed',
         });
 
         // Disable all editing controls immediately
@@ -874,18 +878,20 @@ export default class projectManager {
      */
     disableEditingControls() {
         // Disable all buttons
-        document.querySelectorAll('button:not([data-bs-dismiss])').forEach(btn => {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-        });
+        document
+            .querySelectorAll('button:not([data-bs-dismiss])')
+            .forEach((btn) => {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+            });
 
         // Make all inputs and textareas readonly
-        document.querySelectorAll('input, textarea').forEach(input => {
+        document.querySelectorAll('input, textarea').forEach((input) => {
             input.readOnly = true;
         });
 
         // Disable contenteditable elements
-        document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+        document.querySelectorAll('[contenteditable="true"]').forEach((el) => {
             el.contentEditable = 'false';
             el.style.opacity = '0.7';
         });
@@ -2371,8 +2377,10 @@ export default class projectManager {
         if (!odeNavStructureSyncId) {
             console.warn(
                 '[ProjectManager] Cannot set user edit flag: Navigation node not selected or not ready.',
-                'This may happen if the structure is still loading. iDevice ID:', odeIdeviceId,
-                'Block ID:', blockId
+                'This may happen if the structure is still loading. iDevice ID:',
+                odeIdeviceId,
+                'Block ID:',
+                blockId
             );
             return {
                 responseMessage: 'MISSING_NAV_NODE',

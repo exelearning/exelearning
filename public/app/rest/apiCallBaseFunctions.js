@@ -138,12 +138,18 @@ export default class ApiCallBaseFunctions {
                     : null;
 
             // Log specific known errors to help with debugging
-            if (errorResponse && errorResponse.responseMessage === 'Missing navigation node identifier') {
+            if (
+                errorResponse &&
+                errorResponse.responseMessage ===
+                    'Missing navigation node identifier'
+            ) {
                 console.warn(
                     '[API] Request failed: Navigation node identifier is missing.',
                     'This typically means the structure is not fully loaded yet.',
-                    'URL:', url,
-                    'Method:', method
+                    'URL:',
+                    url,
+                    'Method:',
+                    method
                 );
             }
 

@@ -52,7 +52,7 @@ class OdeEditLock
     {
         $this->lockedAt = new \DateTime();
         $this->expiresAt = new \DateTime();
-        $this->expiresAt->modify('+' . self::DEFAULT_LOCK_DURATION_MINUTES . ' minutes');
+        $this->expiresAt->modify('+'.self::DEFAULT_LOCK_DURATION_MINUTES.' minutes');
     }
 
     public function getId(): ?int
@@ -84,12 +84,7 @@ class OdeEditLock
             self::RESOURCE_TYPE_BLOCK,
             self::RESOURCE_TYPE_IDEVICE,
         ])) {
-            throw new \InvalidArgumentException(sprintf(
-                'Resource type must be one of: %s, %s, %s',
-                self::RESOURCE_TYPE_PAGE,
-                self::RESOURCE_TYPE_BLOCK,
-                self::RESOURCE_TYPE_IDEVICE
-            ));
+            throw new \InvalidArgumentException(sprintf('Resource type must be one of: %s, %s, %s', self::RESOURCE_TYPE_PAGE, self::RESOURCE_TYPE_BLOCK, self::RESOURCE_TYPE_IDEVICE));
         }
 
         $this->resourceType = $resourceType;

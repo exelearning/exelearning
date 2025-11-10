@@ -191,8 +191,8 @@ class DefaultApiController extends AbstractController
      * Returns false if no hub available.
      *
      * @param string $odeSessionId The session ID (topic)
-     * @param string $eventName The event name
-     * @param array $payload Additional data to send with the event
+     * @param string $eventName    The event name
+     * @param array  $payload      Additional data to send with the event
      */
     protected function publishWithData(string $odeSessionId, string $eventName, array $payload = []): string|bool
     {

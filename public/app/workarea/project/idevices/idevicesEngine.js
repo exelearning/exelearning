@@ -1125,8 +1125,12 @@ export default class IdevicesEngine {
         if (ideviceNode.mode === 'edition') {
             // Set true Component flag
             // Check if nodeSelected exists before accessing its attributes
-            const nodeSelected = this.project.app.project.structure.nodeSelected;
-            if (nodeSelected && typeof nodeSelected.getAttribute === 'function') {
+            const nodeSelected =
+                this.project.app.project.structure.nodeSelected;
+            if (
+                nodeSelected &&
+                typeof nodeSelected.getAttribute === 'function'
+            ) {
                 eXeLearning.app.project.changeUserFlagOnEdit(
                     true,
                     nodeSelected.getAttribute('nav-id'),
@@ -1134,7 +1138,9 @@ export default class IdevicesEngine {
                     ideviceNode.ideviceContent.id
                 );
             } else {
-                console.warn('[iDevicesEngine] Navigation node not ready when adding iDevice in edition mode. User flag will not be set.');
+                console.warn(
+                    '[iDevicesEngine] Navigation node not ready when adding iDevice in edition mode. User flag will not be set.'
+                );
             }
             ideviceNode.goWindowToIdevice();
         }
