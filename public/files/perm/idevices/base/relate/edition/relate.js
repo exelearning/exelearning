@@ -14,7 +14,7 @@ var $exeDevice = {
     classIdevice: 'relate',
     active: 0,
     activeCard: 0,
-    activeID: "",
+    activeID: '',
     cardsGame: [],
     typeEdit: -1,
     idPaste: '',
@@ -38,9 +38,13 @@ var $exeDevice = {
     },
 
     initCards: function () {
-        this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace("&percnt;", "%");
+        this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
+            '&percnt;',
+            '%'
+        );
 
-        if (!$exeDevice.cardsGame.length) $exeDevice.cardsGame.push($exeDevice.getDefaultCard());
+        if (!$exeDevice.cardsGame.length)
+            $exeDevice.cardsGame.push($exeDevice.getDefaultCard());
 
         $('#rclETextDiv, #rclETextDivBack').hide();
         this.active = 0;
@@ -48,58 +52,84 @@ var $exeDevice = {
 
     refreshTranslations: function () {
         this.ci18n = {
-            "msgSubmit": c_("Submit"),
-            "msgClue": c_("Cool! The clue is:"),
-            "msgCodeAccess": c_("Access code"),
-            "msgPlayStart": c_("Click here to play"),
-            "msgScore": c_("Score"),
-            "msgErrors": c_("Errors"),
-            "msgHits": c_("Hits"),
-            "msgScore": c_("Score"),
-            "msgMinimize": c_("Minimize"),
-            "msgMaximize": c_("Maximize"),
-            "msgFullScreen": c_("Full Screen"),
-            "msgExitFullScreen": c_("Exit Full Screen"),
-            "msgNoImage": c_("No picture question"),
-            "msgEndGameScore": c_("Please start the game before saving your score."),
-            "msgScoreScorm": c_("The score can't be saved because this page is not part of a SCORM package."),
-            "msgOnlySaveScore": c_("You can only save the score once!"),
-            "msgOnlySave": c_("You can only save once"),
-            "msgInformation": c_("Information"),
-            "msgYouScore": c_("Your score"),
-            "msgAuthor": c_("Authorship"),
-            "msgOnlySaveAuto": c_("Your score will be saved after each question. You can only play once."),
-            "msgSaveAuto": c_("Your score will be automatically saved after each question."),
-            "msgYouScore": c_("Your score"),
-            "msgSeveralScore": c_("You can save the score as many times as you want"),
-            "msgYouLastScore": c_("The last score saved is"),
-            "msgActityComply": c_("You have already done this activity."),
-            "msgPlaySeveralTimes": c_("You can do this activity as many times as you want"),
-            "msgClose": c_("Close"),
-            "msgAudio": c_("Audio"),
-            "msgNumQuestions": c_("Number of cards"),
-            "msgTryAgain": c_("You need at least %s&percnt; of correct answers to get the information. Please try again."),
-            "msgEndGameM": c_("You finished the game. Your score is %s."),
-            "msgUncompletedActivity": c_("Incomplete activity"),
-            "msgSuccessfulActivity": c_("Activity: Passed. Score: %s"),
-            "msgUnsuccessfulActivity": c_("Activity: Not passed. Score: %s"),
-            "msgTypeGame": c_('Relate'),
-            "msgCheck": c_('Check'),
-            "msgRestart": c_('Restart')
-        }
+            msgSubmit: c_('Submit'),
+            msgClue: c_('Cool! The clue is:'),
+            msgCodeAccess: c_('Access code'),
+            msgPlayStart: c_('Click here to play'),
+            msgScore: c_('Score'),
+            msgErrors: c_('Errors'),
+            msgHits: c_('Hits'),
+            msgScore: c_('Score'),
+            msgMinimize: c_('Minimize'),
+            msgMaximize: c_('Maximize'),
+            msgFullScreen: c_('Full Screen'),
+            msgExitFullScreen: c_('Exit Full Screen'),
+            msgNoImage: c_('No picture question'),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgInformation: c_('Information'),
+            msgYouScore: c_('Your score'),
+            msgAuthor: c_('Authorship'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgYouScore: c_('Your score'),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
+            msgYouLastScore: c_('The last score saved is'),
+            msgActityComply: c_('You have already done this activity.'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
+            msgClose: c_('Close'),
+            msgAudio: c_('Audio'),
+            msgNumQuestions: c_('Number of cards'),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameM: c_('You finished the game. Your score is %s.'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Relate'),
+            msgCheck: c_('Check'),
+            msgRestart: c_('Restart'),
+        };
     },
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _("The selected file does not contain a valid game");
-        msgs.msgNoSuportBrowser = _("Your browser is not compatible with this tool.");
-        msgs.msgCompleteData = _("Provide an image, text or audio for each card's front side");
-        msgs.msgCompleteDataBack = _("Provide an image, text or audio for each card's back side");
-        msgs.msgEOneCard = _("Please create at least one card");
-        msgs.msgMaxCards = _("Maximum card number: %s.");
-        msgs.msgIDLenght = _('The report identifier must have at least 5 characters');
-        msgs.msgTitleAltImageWarning = _("Accessibility warning");
-        msgs.msgAltImageWarning = _("At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.");
+        msgs.msgESelectFile = _(
+            'The selected file does not contain a valid game'
+        );
+        msgs.msgNoSuportBrowser = _(
+            'Your browser is not compatible with this tool.'
+        );
+        msgs.msgCompleteData = _(
+            "Provide an image, text or audio for each card's front side"
+        );
+        msgs.msgCompleteDataBack = _(
+            "Provide an image, text or audio for each card's back side"
+        );
+        msgs.msgEOneCard = _('Please create at least one card');
+        msgs.msgMaxCards = _('Maximum card number: %s.');
+        msgs.msgIDLenght = _(
+            'The report identifier must have at least 5 characters'
+        );
+        msgs.msgTitleAltImageWarning = _('Accessibility warning');
+        msgs.msgAltImageWarning = _(
+            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
+        );
     },
 
     createForm: function () {
@@ -107,8 +137,8 @@ var $exeDevice = {
             html = `
         <div id="relateQIdeviceForm">
             <p class="exe-block-info exe-block-dismissible" style="position:relative">
-                ${_("Create matching games with images, sounds and enriched texts.")} 
-                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_("Usage Instructions")}</a>
+                ${_('Create matching games with images, sounds and enriched texts.')} 
+                <a href="https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe29/relaciona.html" hreflang="es" target="_blank">${_('Usage Instructions')}</a>
                 <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
             </p>
             <div class="exe-form-tab" title="${_('General settings')}">
@@ -117,19 +147,19 @@ var $exeDevice = {
                     <legend><a href="#">${_('Options')}</a></legend>
                     <div>
                         <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                            <span>${_("Level")}:</span>
+                            <span>${_('Level')}:</span>
                             <span class="d-flex align-items-center gap-2 flex-nowrap">
                                 <div class="form-check form-check-inline m-0">
                                     <input class="RLC-Type form-check-input" checked id="rclETypeShow" type="radio" name="flctype" value="0"/>
-                                    <label for="rclETypeShow">${_("Essential")}</label>
+                                    <label for="rclETypeShow">${_('Essential')}</label>
                                 </div>
                                 <div class="form-check form-check-inline m-0">
                                     <input class="RLC-Type form-check-input" id="rclETypeNavigation" type="radio" name="flctype" value="1"/>
-                                    <label for="rclETypeNavigation">${_("Medium")}</label>
+                                    <label for="rclETypeNavigation">${_('Medium')}</label>
                                 </div>
                                 <div class="form-check form-check-inline m-0">
                                     <input class="RLC-Type form-check-input" id="rclETypeIdentify" type="radio" name="flctype" value="2"/>
-                                    <label for="rclETypeIdentify">${_("Advanced")}</label>
+                                    <label for="rclETypeIdentify">${_('Advanced')}</label>
                                 </div>
                             </span>
                         </div>
@@ -139,13 +169,13 @@ var $exeDevice = {
                                     <input type="checkbox" checked id="rclEShowSolution" class="toggle-input" />
                                     <span class="toggle-visual"></span>
                                 </span>
-                                <label class="toggle-label" for="rclEShowSolution">${_("Show solutions")}</label>
+                                <label class="toggle-label" for="rclEShowSolution">${_('Show solutions')}</label>
                             </div>
-                            <label for="rclETimeShowSolution">${_("Show solution time (seconds)")}:</label>
+                            <label for="rclETimeShowSolution">${_('Show solution time (seconds)')}:</label>
                             <input type="number" class="form-control" name="rclETimeShowSolution" id="rclETimeShowSolution" value="3" min="1" max="9" />
                         </div>
                         <div id="rclETimeDiv" class="d-none align-items-center flex-nowrap gap-2 mb-3">
-                            <label for="rclETime" class="mb-0">${_("Time (minutes)")}:</label>
+                            <label for="rclETime" class="mb-0">${_('Time (minutes)')}:</label>
                             <input type="number" class="form-control" name="rclETime" id="rclETime" value="3" min="0" max="59" />
                         </div>
                         <div class="toggle-item mb-3">
@@ -170,18 +200,18 @@ var $exeDevice = {
                                     <input type="checkbox" id="rclEEvaluation" class="toggle-input" />
                                     <span class="toggle-visual"></span>
                                 </span>
-                                <label class="toggle-label" for="rclEEvaluation">${_("Progress report")}</label>
+                                <label class="toggle-label" for="rclEEvaluation">${_('Progress report')}</label>
                             </div>
                             <div class="d-flex align-items-center flex-nowrap gap-2">
-                                <label for="rclEEvaluationID" class="mb-0">${_("Identifier")}:</label>
+                                <label for="rclEEvaluationID" class="mb-0">${_('Identifier')}:</label>
                                 <input type="text" class="form-control" id="rclEEvaluationID" disabled value="${eXeLearning.app.project.odeId || ''}"/>
                             </div>
-                            <a href="#rclEEvaluationHelp" id="rclEEvaluationHelpLnk" class="GameModeHelpLink" title="${_("Help")}">
-                                <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_("Help")}"/>
+                            <a href="#rclEEvaluationHelp" id="rclEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}"/>
                             </a>
                         </div>
                         <p id="rclEEvaluationHelp" class="RLC-TypeGameHelp exe-block-info">
-                            ${_("You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.")}
+                            ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
                         </p>
                     </div>
                 </fieldset>
@@ -305,34 +335,34 @@ var $exeDevice = {
                             </div>
                         </div>
                         <div class="RLC-ENavigationButtons d-flex flex-nowrap gap-2">
-                            <a href="#" id="rclEAddC" class="RLC-ENavigationButton" title="${_("Add question")}">
-                                <img src="${path}quextIEAdd.png" alt="${_("Add question")}" class="RLC-ENavigationButton" />
+                            <a href="#" id="rclEAddC" class="RLC-ENavigationButton" title="${_('Add question')}">
+                                <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="RLC-ENavigationButton" />
                             </a>
-                            <a href="#" id="rclEFirstC" class="RLC-ENavigationButton" title="${_("First question")}">
-                                <img src="${path}quextIEFirst.png" alt="${_("First question")}" class="RLC-ENavigationButton" />
+                            <a href="#" id="rclEFirstC" class="RLC-ENavigationButton" title="${_('First question')}">
+                                <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="RLC-ENavigationButton" />
                             </a>
-                            <a href="#" id="rclEPreviousC" class="RLC-ENavigationButton" title="${_("Previous question")}">
-                                <img src="${path}quextIEPrev.png" alt="${_("Previous question")}" class="RLC-ENavigationButton" />
+                            <a href="#" id="rclEPreviousC" class="RLC-ENavigationButton" title="${_('Previous question')}">
+                                <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="RLC-ENavigationButton" />
                             </a>
-                            <label class="sr-av" for="rclENumberCard">${_("Question number:")}:</label>
+                            <label class="sr-av" for="rclENumberCard">${_('Question number:')}:</label>
                             <input type="text" class="RLC-NumberCard form-control" id="rclENumberCard" value="1"/>
-                            <a href="#" id="rclENextC" class="RLC-ENavigationButton" title="${_("Next question")}">
-                                <img src="${path}quextIENext.png" alt="${_("Next question")}" class="RLC-ENavigationButton" />
+                            <a href="#" id="rclENextC" class="RLC-ENavigationButton" title="${_('Next question')}">
+                                <img src="${path}quextIENext.png" alt="${_('Next question')}" class="RLC-ENavigationButton" />
                             </a>
-                            <a href="#" id="rclELastC" class="RLC-ENavigationButton" title="${_("Last question")}">
-                                <img src="${path}quextIELast.png" alt="${_("Last question")}" class="RLC-ENavigationButton" />
+                            <a href="#" id="rclELastC" class="RLC-ENavigationButton" title="${_('Last question')}">
+                                <img src="${path}quextIELast.png" alt="${_('Last question')}" class="RLC-ENavigationButton" />
                             </a>
-                            <a href="#" id="rclEDeleteC" class="RLC-ENavigationButton" title="${_("Delete question")}">
-                                <img src="${path}quextIEDelete.png" alt="${_("Delete question")}" class="RLC-ENavigationButton" />
+                            <a href="#" id="rclEDeleteC" class="RLC-ENavigationButton" title="${_('Delete question')}">
+                                <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="RLC-ENavigationButton" />
                             </a>
-                            <a href="#" id="rclECopyC" class="RLC-ENavigationButton" title="${_("Copy question")}">
-                                <img src="${path}quextIECopy.png" alt="${_("Copy question")}" class="RLC-ENavigationButton" />
+                            <a href="#" id="rclECopyC" class="RLC-ENavigationButton" title="${_('Copy question')}">
+                                <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="RLC-ENavigationButton" />
                             </a>
-                            <a href="#" id="rclECutC" class="RLC-ENavigationButton" title="${_("Cut question")}">
-                                <img src="${path}quextIECut.png" alt="${_("Cut question")}" class="RLC-ENavigationButton" />
+                            <a href="#" id="rclECutC" class="RLC-ENavigationButton" title="${_('Cut question')}">
+                                <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="RLC-ENavigationButton" />
                             </a>
-                            <a href="#" id="rclEPasteC" class="RLC-ENavigationButton" title="${_("Paste question")}">
-                                <img src="${path}quextIEPaste.png" alt="${_("Paste question")}" class="RLC-ENavigationButton" />
+                            <a href="#" id="rclEPasteC" class="RLC-ENavigationButton" title="${_('Paste question')}">
+                                <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="RLC-ENavigationButton" />
                             </a>
                         </div>
                         <div class="RLC-ENumCardDiv" id="rclENumCardsDiv">
@@ -341,7 +371,7 @@ var $exeDevice = {
                         </div>
                     </div>
                 </fieldset>
-                ${$exeDevice.getTextFieldset("after")}
+                ${$exeDevice.getTextFieldset('after')}
             </div>
 
             ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
@@ -352,67 +382,102 @@ var $exeDevice = {
         </div>
     `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init("relateQIdeviceForm");
+        $exeDevicesEdition.iDevice.tabs.init('relateQIdeviceForm');
         $exeDevicesEdition.iDevice.gamification.scorm.init();
         this.enableForm();
     },
 
-
     getTextFieldset: function (position) {
-        if (typeof (position) != "string" || (position != "after" && position != "before")) return "";
+        if (
+            typeof position != 'string' ||
+            (position != 'after' && position != 'before')
+        )
+            return '';
         let tit = _('Content after'),
-            id = "After";
-        if (position == "before") {
+            id = 'After';
+        if (position == 'before') {
             tit = _('Content before');
-            id = "Before";
+            id = 'Before';
         }
-        return "<fieldset class='exe-fieldset exe-feedback-fieldset exe-fieldset-closed'>\
-                    <legend><a href='#'>" + tit + " (" + _('Optional').toLowerCase() + ")</a></legend>\
+        return (
+            "<fieldset class='exe-fieldset exe-feedback-fieldset exe-fieldset-closed'>\
+                    <legend><a href='#'>" +
+            tit +
+            ' (' +
+            _('Optional').toLowerCase() +
+            ")</a></legend>\
                     <div>\
                         <p>\
-                            <label for='eXeIdeviceText" + id + "' class='sr-av'>" + tit + ":</label>\
-                            <textarea id='eXeIdeviceText" + id + "' class='exe-html-editor'\></textarea>\
+                            <label for='eXeIdeviceText" +
+            id +
+            "' class='sr-av'>" +
+            tit +
+            ":</label>\
+                            <textarea id='eXeIdeviceText" +
+            id +
+            "' class='exe-html-editor'\></textarea>\
                         </p>\
                     <div>\
-				</fieldset>";
+				</fieldset>"
+        );
     },
-
-
 
     clearCard: function () {
         const resetFields = [
-            '#rclEURLImage', '#rclEX', '#rclEY', '#rclEAuthor', '#rclEAlt', '#rclEURLAudio', '#rclEText', '#rclETextDiv',
-            '#rclEColor', '#rclEBgColor', '#rclEURLImageBack', '#rclEXBack', '#rclEYBack', '#rclEAuthorBack',
-            '#rclEAltBack', '#rclEURLAudioBack', '#rclETextBack', '#rclETextDivBack', '#rclEColorBack', '#rclEBgColorBack'
+            '#rclEURLImage',
+            '#rclEX',
+            '#rclEY',
+            '#rclEAuthor',
+            '#rclEAlt',
+            '#rclEURLAudio',
+            '#rclEText',
+            '#rclETextDiv',
+            '#rclEColor',
+            '#rclEBgColor',
+            '#rclEURLImageBack',
+            '#rclEXBack',
+            '#rclEYBack',
+            '#rclEAuthorBack',
+            '#rclEAltBack',
+            '#rclEURLAudioBack',
+            '#rclETextBack',
+            '#rclETextDivBack',
+            '#rclEColorBack',
+            '#rclEBgColorBack',
         ];
 
         resetFields.forEach((selector, index) => {
-            const defaultValue = (selector.includes('Color') || selector.includes('BgColor')) ? (selector.includes('BgColor') ? '#ffffff' : '#000000') : '';
+            const defaultValue =
+                selector.includes('Color') || selector.includes('BgColor')
+                    ? selector.includes('BgColor')
+                        ? '#ffffff'
+                        : '#000000'
+                    : '';
             $(selector).val(defaultValue);
         });
 
         $('#rclEX, #rclEY, #rclEXBack, #rclEYBack').val('0');
-        $('#rclETextDiv, #rclETextDivBack').hide().css({
-            'background-color': $exeDevice.hexToRgba('#ffffff', 0.7),
-            'color': '#000000'
-        });
+        $('#rclETextDiv, #rclETextDivBack')
+            .hide()
+            .css({
+                'background-color': $exeDevice.hexToRgba('#ffffff', 0.7),
+                color: '#000000',
+            });
 
         $exeDevice.showImage(0);
         $exeDevice.showImage(1);
     },
-
 
     addCard: function () {
         if (!$exeDevice.validateCard()) return;
         let cards = $exeDevice.cardsGame;
         $exeDevice.clearCard();
         cards.push($exeDevice.getDefaultCard());
-        $exeDevice.active = cards.length - 1
+        $exeDevice.active = cards.length - 1;
         $('#rclEPasteC').hide();
         $('#rclENumCards').text(cards.length);
         $('#rclENumberCard').val(cards.length);
         $exeDevice.updateCardsNumber();
-
     },
 
     removeCard: function () {
@@ -443,7 +508,9 @@ var $exeDevice = {
         if (!$exeDevice.validateCard()) return;
 
         $exeDevice.typeEdit = 0;
-        $exeDevice.clipBoard = JSON.parse(JSON.stringify($exeDevice.cardsGame[$exeDevice.active]));
+        $exeDevice.clipBoard = JSON.parse(
+            JSON.stringify($exeDevice.cardsGame[$exeDevice.active])
+        );
 
         $('#rclEPasteC').show();
     },
@@ -456,7 +523,6 @@ var $exeDevice = {
         $('#rclEPasteC').show();
     },
 
-
     pasteCard: function () {
         let cards = $exeDevice.cardsGame,
             active = $exeDevice.active;
@@ -467,7 +533,11 @@ var $exeDevice = {
         } else if ($exeDevice.typeEdit == 1) {
             $('#rclEPasteC').hide();
             $exeDevice.typeEdit = -1;
-            $exeDevices.iDevice.gamification.helpers.arrayMove(cards, $exeDevice.numberCutCuestion, active);
+            $exeDevices.iDevice.gamification.helpers.arrayMove(
+                cards,
+                $exeDevice.numberCutCuestion,
+                active
+            );
             $('#rclENumCards').text(cards.length);
             $('#rclENumberCard').val(active + 1);
 
@@ -484,7 +554,6 @@ var $exeDevice = {
             $exeDevice.active++;
             $exeDevice.showCard($exeDevice.active);
         }
-
     },
 
     lastCard: function () {
@@ -493,7 +562,6 @@ var $exeDevice = {
             $exeDevice.active = $exeDevice.cardsGame.length - 1;
             $exeDevice.showCard($exeDevice.active);
         }
-
     },
 
     previousCard: function () {
@@ -502,7 +570,6 @@ var $exeDevice = {
             $exeDevice.active--;
         }
         $exeDevice.showCard($exeDevice.active);
-
     },
 
     firstCard: function () {
@@ -511,7 +578,6 @@ var $exeDevice = {
             $exeDevice.active = 0;
             $exeDevice.showCard($exeDevice.active);
         }
-
     },
 
     showCard: function (i) {
@@ -540,19 +606,25 @@ var $exeDevice = {
         let eText = $exeDevice.decodeURIComponentSafe(p.eText),
             eTextBk = $exeDevice.decodeURIComponentSafe(p.eTextBk);
 
-        $('#rclETextDiv').html(eText).toggle(!!eText).css({
-            'color': p.color,
-            'background-color': $exeDevice.hexToRgba(p.backcolor, 0.7)
-        });
+        $('#rclETextDiv')
+            .html(eText)
+            .toggle(!!eText)
+            .css({
+                color: p.color,
+                'background-color': $exeDevice.hexToRgba(p.backcolor, 0.7),
+            });
 
         $('#rclEText').val(eText);
         $('#rclEColor').val(p.color);
         $('#rclEBgColor').val(p.backcolor);
 
-        $('#rclETextDivBack').html(eTextBk).toggle(!!eTextBk).css({
-            'color': p.colorBk,
-            'background-color': $exeDevice.hexToRgba(p.backcolorBk, 0.7)
-        });
+        $('#rclETextDivBack')
+            .html(eTextBk)
+            .toggle(!!eTextBk)
+            .css({
+                color: p.colorBk,
+                'background-color': $exeDevice.hexToRgba(p.backcolorBk, 0.7),
+            });
 
         $('#rclETextBack').val(eTextBk);
         $('#rclEColorBack').val(p.colorBk);
@@ -565,15 +637,13 @@ var $exeDevice = {
         $('#rclENumCards').text($exeDevice.cardsGame.length);
     },
 
-
     decodeURIComponentSafe: function (s) {
-        return s ? decodeURIComponent(s).replace("&percnt;", "%") : s;
+        return s ? decodeURIComponent(s).replace('&percnt;', '%') : s;
     },
 
     encodeURIComponentSafe: function (s) {
-        return s ? encodeURIComponent(s.replace("%", "&percnt;")) : s;
+        return s ? encodeURIComponent(s.replace('%', '&percnt;')) : s;
     },
-
 
     validateCard: function () {
         const msgs = $exeDevice.msgs;
@@ -595,7 +665,9 @@ var $exeDevice = {
             audioBk: $('#rclEURLAudioBack').val(),
             colorBk: $('#rclEColorBack').val(),
             backcolorBk: $('#rclEBgColorBack').val(),
-            eTextBk: $exeDevice.encodeURIComponentSafe($('#rclETextBack').val())
+            eTextBk: $exeDevice.encodeURIComponentSafe(
+                $('#rclETextBack').val()
+            ),
         };
 
         $exeDevice.stopSound();
@@ -626,7 +698,9 @@ var $exeDevice = {
     },
 
     updateCardsNumber: function () {
-        let percentaje = parseInt($exeDevice.removeTags($('#rclEPercentajeCards').val()));
+        let percentaje = parseInt(
+            $exeDevice.removeTags($('#rclEPercentajeCards').val())
+        );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
 
@@ -639,10 +713,13 @@ var $exeDevice = {
     },
 
     addEventCard: function () {
-        $('#rclEAuthorAlt, #rclEAuthorAltBack').removeClass('d-flex').addClass('d-none');
+        $('#rclEAuthorAlt, #rclEAuthorAltBack')
+            .removeClass('d-flex')
+            .addClass('d-none');
 
         const loadAndPlayImage = (index) => $exeDevice.loadImage(index),
-            loadAndPlayAudio = (selector) => $exeDevice.loadAudio($(selector).val());
+            loadAndPlayAudio = (selector) =>
+                $exeDevice.loadAudio($(selector).val());
 
         $('#rclEURLImage').on('change', () => loadAndPlayImage(0));
         $('#rclEURLImageBack').on('change', () => loadAndPlayImage(1));
@@ -669,44 +746,58 @@ var $exeDevice = {
             loadAndPlayAudio('#rclEURLAudioBack');
         });
 
-        $('#rclEShowMore').on('click', e => {
-            e.preventDefault()
-            const $el = $('#rclEAuthorAlt')
-            if ($el.hasClass('d-none')) $el.removeClass('d-none').addClass('d-flex')
-            else $el.removeClass('d-flex').addClass('d-none')
-        })
+        $('#rclEShowMore').on('click', (e) => {
+            e.preventDefault();
+            const $el = $('#rclEAuthorAlt');
+            if ($el.hasClass('d-none'))
+                $el.removeClass('d-none').addClass('d-flex');
+            else $el.removeClass('d-flex').addClass('d-none');
+        });
 
-        $('#rclEShowMoreBack').on('click', e => {
-            e.preventDefault()
-            const $el = $('#rclEAuthorAltBack')
-            if ($el.hasClass('d-none')) $el.removeClass('d-none').addClass('d-flex')
-            else $el.removeClass('d-flex').addClass('d-none')
-        })
+        $('#rclEShowMoreBack').on('click', (e) => {
+            e.preventDefault();
+            const $el = $('#rclEAuthorAltBack');
+            if ($el.hasClass('d-none'))
+                $el.removeClass('d-none').addClass('d-flex');
+            else $el.removeClass('d-flex').addClass('d-none');
+        });
 
         $('#rclEText, #rclETextBack').on('keyup', function () {
-            const textDiv = $(this).is('#rclEText') ? '#rclETextDiv' : '#rclETextDivBack';
-            $(textDiv).html($(this).val()).toggle($(this).val().trim().length > 0);
+            const textDiv = $(this).is('#rclEText')
+                ? '#rclETextDiv'
+                : '#rclETextDivBack';
+            $(textDiv)
+                .html($(this).val())
+                .toggle($(this).val().trim().length > 0);
         });
 
         $('#rclEColor, #rclEColorBack').on('change', function () {
-            const textDiv = $(this).is('#rclEColor') ? '#rclETextDiv' : '#rclETextDivBack';
+            const textDiv = $(this).is('#rclEColor')
+                ? '#rclETextDiv'
+                : '#rclETextDivBack';
             $(textDiv).css('color', $(this).val());
         });
 
         $('#rclEBgColor, #rclEBgColorBack').on('change', function () {
-            const textDiv = $(this).is('#rclEBgColor') ? '#rclETextDiv' : '#rclETextDivBack',
+            const textDiv = $(this).is('#rclEBgColor')
+                    ? '#rclETextDiv'
+                    : '#rclETextDivBack',
                 bc = $exeDevice.hexToRgba($(this).val(), 0.7);
             $(textDiv).css('background-color', bc);
         });
 
-        $('#rclEImage').on('click', (e) => $exeDevice.clickImage(e.pageX, e.pageY));
+        $('#rclEImage').on('click', (e) =>
+            $exeDevice.clickImage(e.pageX, e.pageY)
+        );
 
         $('#rclECursor').on('click', function () {
             $(this).hide();
             $('#rclEX, #rclEY').val(0);
         });
 
-        $('#rclEImageBack').on('click', (e) => $exeDevice.clickImageBack(e.pageX, e.pageY));
+        $('#rclEImageBack').on('click', (e) =>
+            $exeDevice.clickImageBack(e.pageX, e.pageY)
+        );
 
         $('#rclECursorBack').on('click', function () {
             $(this).hide();
@@ -715,14 +806,22 @@ var $exeDevice = {
     },
 
     hexToRgba: function (hex, opacity) {
-        return 'rgba(' + (hex = hex.replace('#', '')).match(new RegExp('(.{' + hex.length / 3 + '})', 'g')).map(function (l) {
-            return parseInt(hex.length % 2 ? l + l : l, 16)
-        }).concat(isFinite(opacity) ? opacity : 1).join(',') + ')';
+        return (
+            'rgba(' +
+            (hex = hex.replace('#', ''))
+                .match(new RegExp('(.{' + hex.length / 3 + '})', 'g'))
+                .map(function (l) {
+                    return parseInt(hex.length % 2 ? l + l : l, 16);
+                })
+                .concat(isFinite(opacity) ? opacity : 1)
+                .join(',') +
+            ')'
+        );
     },
 
     getDefaultCard: function () {
         return {
-            id: "",
+            id: '',
             type: 2,
             url: '',
             audio: '',
@@ -732,7 +831,7 @@ var $exeDevice = {
             alt: '',
             eText: '',
             color: '#000000',
-            backcolor: "#ffffff",
+            backcolor: '#ffffff',
             correct: 0,
             urlBk: '',
             audioBk: '',
@@ -742,7 +841,7 @@ var $exeDevice = {
             altBk: '',
             eTextBk: '',
             colorBk: '#000000',
-            backcolorBk: "#ffffff"
+            backcolorBk: '#ffffff',
         };
     },
 
@@ -750,9 +849,10 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
-            const wrapper = $("<div></div>").html(originalHTML),
+            const wrapper = $('<div></div>').html(originalHTML),
                 json = $('.relaciona-DataGame', wrapper).text(),
-                dataGame = $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                dataGame =
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 cards = dataGame.cardsGame,
                 $imagesLink = $('.relaciona-LinkImages', wrapper),
                 $audiosLink = $('.relaciona-LinkAudios', wrapper),
@@ -763,7 +863,10 @@ var $exeDevice = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < cards.length) {
                     const flipcard = cards[iq];
-                    flipcard.url = $(this).attr('href').length < 4 ? "" : $(this).attr('href');
+                    flipcard.url =
+                        $(this).attr('href').length < 4
+                            ? ''
+                            : $(this).attr('href');
                 }
             });
 
@@ -771,7 +874,10 @@ var $exeDevice = {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < cards.length) {
                     const flipcard = cards[iq];
-                    flipcard.urlBk = $(this).attr('href').length < 4 ? "" : $(this).attr('href');
+                    flipcard.urlBk =
+                        $(this).attr('href').length < 4
+                            ? ''
+                            : $(this).attr('href');
                 }
             });
 
@@ -779,7 +885,10 @@ var $exeDevice = {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < cards.length) {
                     const flipcard = cards[iqa];
-                    flipcard.audio = $(this).attr('href').length < 4 ? "" : $(this).attr('href');
+                    flipcard.audio =
+                        $(this).attr('href').length < 4
+                            ? ''
+                            : $(this).attr('href');
                 }
             });
 
@@ -787,28 +896,32 @@ var $exeDevice = {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < cards.length) {
                     const flipcard = cards[iqa];
-                    flipcard.audioBk = $(this).attr('href').length < 4 ? "" : $(this).attr('href');
+                    flipcard.audioBk =
+                        $(this).attr('href').length < 4
+                            ? ''
+                            : $(this).attr('href');
                 }
             });
             $exeDevice.updateFieldGame(dataGame);
 
-            let instructions = $(".relaciona-instructions", wrapper);
+            let instructions = $('.relaciona-instructions', wrapper);
             if (instructions.length === 1) {
                 instructions = instructions.html() || '';
-                $("#eXeGameInstructions").val(instructions);
+                $('#eXeGameInstructions').val(instructions);
             }
 
-            let textAfter = $(".relaciona-extra-content", wrapper);
+            let textAfter = $('.relaciona-extra-content', wrapper);
             if (textAfter.length === 1) {
                 textAfter = textAfter.html() || '';
-                $("#eXeIdeviceTextAfter").val(textAfter);
+                $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                dataGame.msgs
+            );
             $exeDevice.showCard(0);
         }
     },
-
 
     save: function () {
         if (!$exeDevice.validateCard()) return false;
@@ -819,8 +932,8 @@ var $exeDevice = {
 
         const i18n = { ...this.ci18n };
 
-        Object.keys(this.ci18n).forEach(i => {
-            const fVal = $("#ci18n_" + i).val();
+        Object.keys(this.ci18n).forEach((i) => {
+            const fVal = $('#ci18n_' + i).val();
             if (fVal) i18n[i] = fVal;
         });
 
@@ -828,13 +941,16 @@ var $exeDevice = {
         const json = JSON.stringify(dataGame);
         const cards = dataGame.cardsGame;
 
-        let divContent = dataGame.instructions ? `<div class="relaciona-instructions gameQP-instructions">${dataGame.instructions}</div>` : "";
+        let divContent = dataGame.instructions
+            ? `<div class="relaciona-instructions gameQP-instructions">${dataGame.instructions}</div>`
+            : '';
         const linksMedias = $exeDevice.createlinksIMedias(cards);
         let html = `<div class="relaciona-IDevice">${divContent}<div class="relaciona-DataGame js-hidden">${json}</div>`;
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += linksMedias;
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
-        if (textAfter) html += `<div class="relaciona-extra-content">${textAfter}</div>`;
+        if (textAfter)
+            html += `<div class="relaciona-extra-content">${textAfter}</div>`;
 
         html += `<div class="relaciona-bns js-hidden">${$exeDevice.msgs.msgNoSuportBrowser}</div></div>`;
 
@@ -842,31 +958,42 @@ var $exeDevice = {
     },
 
     validateAlt: function () {
-        if (!$exeDevice.checkAltImage || $('#relacionaEAlt').val() !== "") return true;
+        if (!$exeDevice.checkAltImage || $('#relacionaEAlt').val() !== '')
+            return true;
 
-        eXe.app.confirm($exeDevice.msgs.msgTitleAltImageWarning, $exeDevice.msgs.msgAltImageWarning, () => {
-            $exeDevice.checkAltImage = false;
-            document.getElementsByClassName("button-save-idevice")[0].click();
-        });
+        eXe.app.confirm(
+            $exeDevice.msgs.msgTitleAltImageWarning,
+            $exeDevice.msgs.msgAltImageWarning,
+            () => {
+                $exeDevice.checkAltImage = false;
+                document
+                    .getElementsByClassName('button-save-idevice')[0]
+                    .click();
+            }
+        );
         return false;
     },
 
     createlinksIMedias: function (cardsGame) {
-        return cardsGame.map((p, i) => {
-            const properties = [
-                { prop: 'url', className: 'relaciona-LinkImages' },
-                { prop: 'urlBk', className: 'relaciona-LinkImagesBack' },
-                { prop: 'audio', className: 'relaciona-LinkAudios' },
-                { prop: 'audioBk', className: 'relaciona-LinkAudiosBack' }
-            ];
-            return properties.map(({ prop, className }) => {
-                const val = p[prop];
-                if (val && val.indexOf('http') !== 0) {
-                    return `<a href="${val}" class="js-hidden ${className}">${i}</a>`;
-                }
-                return '';
-            }).join('');
-        }).join('');
+        return cardsGame
+            .map((p, i) => {
+                const properties = [
+                    { prop: 'url', className: 'relaciona-LinkImages' },
+                    { prop: 'urlBk', className: 'relaciona-LinkImagesBack' },
+                    { prop: 'audio', className: 'relaciona-LinkAudios' },
+                    { prop: 'audioBk', className: 'relaciona-LinkAudiosBack' },
+                ];
+                return properties
+                    .map(({ prop, className }) => {
+                        const val = p[prop];
+                        if (val && val.indexOf('http') !== 0) {
+                            return `<a href="${val}" class="js-hidden ${className}">${i}</a>`;
+                        }
+                        return '';
+                    })
+                    .join('');
+            })
+            .join('');
     },
 
     showMessage: function (msg) {
@@ -874,7 +1001,10 @@ var $exeDevice = {
     },
 
     getIdeviceID: function () {
-        const ideviceid = $('#relateQIdeviceForm').closest(`div.idevice_node.${$exeDevice.classIdevice}`).attr('id') || '';
+        const ideviceid =
+            $('#relateQIdeviceForm')
+                .closest(`div.idevice_node.${$exeDevice.classIdevice}`)
+                .attr('id') || '';
         return ideviceid;
     },
 
@@ -884,8 +1014,11 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#rclEShowMinimize').is(':checked'),
             showSolution = $('#rclEShowSolution').is(':checked'),
-            timeShowSolution = parseInt(clear($('#rclETimeShowSolution').val())),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            timeShowSolution = parseInt(
+                clear($('#rclETimeShowSolution').val())
+            ),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#rclEPercentajeCards').val())),
             author = $('#rclEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
@@ -907,7 +1040,11 @@ var $exeDevice = {
             return false;
         }
 
-        if (itinerary.showCodeAccess && (itinerary.codeAccess.length == '' || itinerary.messageCodeAccess.length == '')) {
+        if (
+            itinerary.showCodeAccess &&
+            (itinerary.codeAccess.length == '' ||
+                itinerary.messageCodeAccess.length == '')
+        ) {
             return false;
         }
 
@@ -951,10 +1088,19 @@ var $exeDevice = {
         $image.attr('alt', alt);
         $nimage.show();
 
-        $image.prop('src', url)
+        $image
+            .prop('src', url)
             .on('load', function () {
-                if (this.complete && typeof this.naturalWidth !== "undefined" && this.naturalWidth !== 0) {
-                    const mData = $exeDevice.placeImageWindows(this, this.naturalWidth, this.naturalHeight);
+                if (
+                    this.complete &&
+                    typeof this.naturalWidth !== 'undefined' &&
+                    this.naturalWidth !== 0
+                ) {
+                    const mData = $exeDevice.placeImageWindows(
+                        this,
+                        this.naturalWidth,
+                        this.naturalHeight
+                    );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
                     $nimage.hide();
@@ -962,21 +1108,26 @@ var $exeDevice = {
                     return true;
                 }
                 return false;
-            }).on('error', function () {
+            })
+            .on('error', function () {
                 return false;
             });
     },
 
     playSound: function (selectedFile) {
-        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
+        const selectFile =
+            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
         $exeDevice.playerAudio = new Audio(selectFile);
-        $exeDevice.playerAudio.addEventListener("canplaythrough", () => {
+        $exeDevice.playerAudio.addEventListener('canplaythrough', () => {
             $exeDevice.playerAudio.play();
         });
     },
 
     stopSound: function () {
-        if ($exeDevice.playerAudio && typeof $exeDevice.playerAudio.pause === "function") {
+        if (
+            $exeDevice.playerAudio &&
+            typeof $exeDevice.playerAudio.pause === 'function'
+        ) {
             $exeDevice.playerAudio.pause();
         }
     },
@@ -987,13 +1138,15 @@ var $exeDevice = {
             const wI = $(image).width() || 1,
                 hI = $(image).height() || 1,
                 position = $(image).position(),
-                lI = position.left + (wI * x),
-                tI = position.top + (hI * y);
-            $(cursor).css({
-                left: `${lI}px`,
-                top: `${tI}px`,
-                'z-index': 50
-            }).show();
+                lI = position.left + wI * x,
+                tI = position.top + hI * y;
+            $(cursor)
+                .css({
+                    left: `${lI}px`,
+                    top: `${tI}px`,
+                    'z-index': 50,
+                })
+                .show();
         }
     },
 
@@ -1003,9 +1156,8 @@ var $exeDevice = {
             left: `${mData.x}px`,
             top: `${mData.y}px`,
             width: `${mData.w}px`,
-            height: `${mData.h}px`
+            height: `${mData.h}px`,
         });
-
     },
 
     addEvents: function () {
@@ -1017,7 +1169,9 @@ var $exeDevice = {
             e.preventDefault();
             const numcards = $exeDevice.cardsGame.length;
             if (numcards.length > maxCards) {
-                $exeDevice.showMessage($exeDevice.msgs.msgMaxCards.replace('%s', maxCards));
+                $exeDevice.showMessage(
+                    $exeDevice.msgs.msgMaxCards.replace('%s', maxCards)
+                );
                 return true;
             }
             return false;
@@ -1050,16 +1204,19 @@ var $exeDevice = {
             }
         });
 
-        $('#rclEFirstC, #rclEPreviousC, #rclENextC, #rclELastC').on('click', (e) => {
-            e.preventDefault();
-            const actions = {
-                rclEFirstC: 'firstCard',
-                rclEPreviousC: 'previousCard',
-                rclENextC: 'nextCard',
-                rclELastC: 'lastCard',
-            };
-            $exeDevice[actions[e.currentTarget.id]]();
-        });
+        $('#rclEFirstC, #rclEPreviousC, #rclENextC, #rclELastC').on(
+            'click',
+            (e) => {
+                e.preventDefault();
+                const actions = {
+                    rclEFirstC: 'firstCard',
+                    rclEPreviousC: 'previousCard',
+                    rclENextC: 'nextCard',
+                    rclELastC: 'lastCard',
+                };
+                $exeDevice[actions[e.currentTarget.id]]();
+            }
+        );
 
         $('#rclEReverseFaces').on('click', (e) => {
             e.preventDefault();
@@ -1085,11 +1242,27 @@ var $exeDevice = {
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
-                    eXe.app.alert(_('Please select a text file (.txt) or a Moodle XML file (.xml)'));
+                    eXe.app.alert(
+                        _(
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
+                        )
+                    );
                     return;
                 }
-                if (!file.type || !(file.type.match('text/plain') || file.type.match('application/json') || file.type.match('application/xml') || file.type.match('text/xml'))) {
-                    eXe.app.alert(_('Please select a text file (.txt) or a Moodle XML file (.xml)'));
+                if (
+                    !file.type ||
+                    !(
+                        file.type.match('text/plain') ||
+                        file.type.match('application/json') ||
+                        file.type.match('application/xml') ||
+                        file.type.match('text/xml')
+                    )
+                ) {
+                    eXe.app.alert(
+                        _(
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
+                        )
+                    );
                     return;
                 }
 
@@ -1134,11 +1307,13 @@ var $exeDevice = {
                     if ($exeDevice.validateCard() === false) {
                         $(this).val($exeDevice.active + 1);
                     }
-                    $exeDevice.active = num < $exeDevice.cardsGame.length ? num - 1 : $exeDevice.cardsGame.length - 1;
+                    $exeDevice.active =
+                        num < $exeDevice.cardsGame.length
+                            ? num - 1
+                            : $exeDevice.cardsGame.length - 1;
                     $exeDevice.showCard($exeDevice.active);
-
                 } else {
-                    $(this).val($exeDevice.active + 1)
+                    $(this).val($exeDevice.active + 1);
                 }
             }
         });
@@ -1168,7 +1343,8 @@ var $exeDevice = {
 
         $('#relateQIdeviceForm').on('click', 'input.RLC-Type', function () {
             const type = parseInt($(this).val(), 10);
-            $("#rclETimeDiv").toggleClass('d-none', type !== 2)
+            $('#rclETimeDiv')
+                .toggleClass('d-none', type !== 2)
                 .toggleClass('d-flex', type === 2);
         });
 
@@ -1177,21 +1353,22 @@ var $exeDevice = {
             $('#rclEEvaluationID').prop('disabled', !marcado);
         });
 
-        $("#rclEEvaluationHelpLnk").click(() => {
-            $("#rclEEvaluationHelp").toggle();
+        $('#rclEEvaluationHelpLnk').click(() => {
+            $('#rclEEvaluationHelp').toggle();
             return false;
         });
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(0, $exeDevice.insertCards);
-
+        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+            0,
+            $exeDevice.insertCards
+        );
 
         //eXe 3.0 Dismissible messages
-        $(".exe-block-dismissible .exe-block-close").click(function () {
+        $('.exe-block-dismissible .exe-block-close').click(function () {
             $(this).parent().fadeOut();
             return false;
         });
-
     },
 
     exportQuestions: function () {
@@ -1230,7 +1407,17 @@ var $exeDevice = {
     reverseFaces: function () {
         if (!$exeDevice.validateCard()) return;
 
-        const properties = ['url', 'x', 'y', 'author', 'alt', 'eText', 'color', 'backcolor', 'audio'];
+        const properties = [
+            'url',
+            'x',
+            'y',
+            'author',
+            'alt',
+            'eText',
+            'color',
+            'backcolor',
+            'audio',
+        ];
         $exeDevice.cardsGame.forEach((p) => {
             properties.forEach((prop) => {
                 const temp = p[prop];
@@ -1245,7 +1432,17 @@ var $exeDevice = {
         if (!$exeDevice.validateCard()) return;
 
         const p = $exeDevice.cardsGame[$exeDevice.active],
-            properties = ['url', 'x', 'y', 'author', 'alt', 'eText', 'color', 'backcolor', 'audio'];
+            properties = [
+                'url',
+                'x',
+                'y',
+                'author',
+                'alt',
+                'eText',
+                'color',
+                'backcolor',
+                'audio',
+            ];
         properties.forEach((prop) => {
             const temp = p[prop];
             p[prop] = p[`${prop}Bk`];
@@ -1256,14 +1453,19 @@ var $exeDevice = {
 
     loadImage: function (type) {
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-            url = type === 0 ? $('#rclEURLImage').val() : $('#rclEURLImageBack').val(),
+            url =
+                type === 0
+                    ? $('#rclEURLImage').val()
+                    : $('#rclEURLImageBack').val(),
             ext = url.split('.').pop().toLowerCase();
 
         if (url.length < 3) {
             return false;
         }
-        if ((url.startsWith('files')) && !validExt.includes(ext)) {
-            $exeDevice.showMessage(`${_("Supported formats")}: jpg, jpeg, gif, png, svg, webp`);
+        if (url.startsWith('files') && !validExt.includes(ext)) {
+            $exeDevice.showMessage(
+                `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
+            );
             return false;
         }
         $exeDevice.showImage(type);
@@ -1273,8 +1475,8 @@ var $exeDevice = {
         const validExt = ['mp3', 'ogg', 'waw'],
             ext = url.split('.').pop().toLowerCase();
 
-        if ((url.startsWith('files')) && !validExt.includes(ext)) {
-            $exeDevice.showMessage(`${_("Supported formats")}: mp3, ogg, waw`);
+        if (url.startsWith('files') && !validExt.includes(ext)) {
+            $exeDevice.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
             return false;
         }
 
@@ -1286,40 +1488,48 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
-        game.evaluation = typeof game.evaluation != "undefined" ? game.evaluation : false;
-        game.evaluationID = typeof game.evaluationID != "undefined" ? game.evaluationID : '';
-        game.weighted = typeof game.weighted !== 'undefined' ? game.weighted : 100;
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
+        game.evaluation =
+            typeof game.evaluation != 'undefined' ? game.evaluation : false;
+        game.evaluationID =
+            typeof game.evaluationID != 'undefined' ? game.evaluationID : '';
+        game.weighted =
+            typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#rclEShowMinimize').prop('checked', game.showMinimize);
         $('#rclEPercentajeCards').val(game.percentajeCards);
         $('#rclEAuthory').val(game.author);
         $('#rclEShowSolution').prop('checked', game.showSolution);
-        $('#rclETimeShowSolution').val(game.timeShowSolution)
+        $('#rclETimeShowSolution').val(game.timeShowSolution);
         $('#rclETimeShowSolution').prop('disabled', !game.showSolution);
         $('#rclETime').val(game.time);
-        $("input.RLC-Type[name='flctype'][value='" + game.type + "']").prop("checked", true);
-        $("#rclETimeDiv").removeClass('d-flex').addClass('d-none');
+        $("input.RLC-Type[name='flctype'][value='" + game.type + "']").prop(
+            'checked',
+            true
+        );
+        $('#rclETimeDiv').removeClass('d-flex').addClass('d-none');
         $('#rclEEvaluation').prop('checked', game.evaluation);
         $('#rclEEvaluationID').val(game.evaluationID);
-        $("#rclEEvaluationID").prop('disabled', (!game.evaluation));
+        $('#rclEEvaluationID').prop('disabled', !game.evaluation);
         if (game.type == 2) {
-            $("#rclETimeDiv").removeClass('d-none').addClass('d-flex');
+            $('#rclETimeDiv').removeClass('d-none').addClass('d-flex');
         }
 
-        $("#rclEArrowsDiv").hide();
+        $('#rclEArrowsDiv').hide();
 
         $exeDevice.cardsGame = game.cardsGame;
 
-        $("#rclEArrowsDiv").show();
+        $('#rclEArrowsDiv').show();
 
         $('#rclENumCards').text($exeDevice.cardsGame.length);
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
         $exeDevice.updateCardsNumber();
     },
@@ -1330,7 +1540,7 @@ var $exeDevice = {
         if (!dataGame) return false;
 
         const blob = JSON.stringify(dataGame),
-            newBlob = new Blob([blob], { type: "text/plain" });
+            newBlob = new Blob([blob], { type: 'text/plain' });
 
         if (window.navigator && window.navigator.msSaveOrOpenBlob) {
             window.navigator.msSaveOrOpenBlob(newBlob);
@@ -1340,7 +1550,7 @@ var $exeDevice = {
         const data = window.URL.createObjectURL(newBlob),
             link = document.createElement('a');
         link.href = data;
-        link.download = `${_("Activity")}-Relaciona.json`;
+        link.download = `${_('Activity')}-Relaciona.json`;
         document.getElementById('relateQIdeviceForm').appendChild(link);
         link.click();
         setTimeout(() => {
@@ -1352,9 +1562,9 @@ var $exeDevice = {
     importMoodle: function (xmlString) {
         const xmlDoc = $.parseXML(xmlString),
             $xml = $(xmlDoc);
-        if ($xml.find("GLOSSARY").length > 0) {
+        if ($xml.find('GLOSSARY').length > 0) {
             return $exeDevice.importGlosary(xmlString);
-        } else if ($xml.find("quiz").length > 0) {
+        } else if ($xml.find('quiz').length > 0) {
             return $exeDevice.importCuestionaryXML(xmlString);
         } else {
             return false;
@@ -1363,25 +1573,29 @@ var $exeDevice = {
 
     importCuestionaryXML: function (xmlText) {
         const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, "text/xml"),
+            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
             $xml = $(xmlDoc);
 
-        if ($xml.find("parsererror").length > 0) return false;
+        if ($xml.find('parsererror').length > 0) return false;
 
-        const $quiz = $xml.find("quiz").first();
+        const $quiz = $xml.find('quiz').first();
         if ($quiz.length === 0) {
             return false;
         }
 
         const cardsJson = [];
-        $quiz.find("question").each(function () {
+        $quiz.find('question').each(function () {
             const $question = $(this),
                 type = $question.attr('type');
             if (type !== 'shortanswer') {
                 return true;
             }
-            const questionText = $question.find("questiontext").first().text().trim(),
-                $answers = $question.find("answer");
+            const questionText = $question
+                    .find('questiontext')
+                    .first()
+                    .text()
+                    .trim(),
+                $answers = $question.find('answer');
             let eText = '',
                 maxFraction = -1;
             $answers.each(function () {
@@ -1416,20 +1630,23 @@ var $exeDevice = {
 
     importGlosary: function (xmlText) {
         const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, "text/xml"),
+            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
             $xml = $(xmlDoc);
 
-        if ($xml.find("parsererror").length > 0) return false;
+        if ($xml.find('parsererror').length > 0) return false;
 
-        const $entries = $xml.find("ENTRIES").first();
+        const $entries = $xml.find('ENTRIES').first();
 
         if ($entries.length === 0) return false;
 
         const cardsJson = [];
-        $entries.find("ENTRY").each(function () {
+        $entries.find('ENTRY').each(function () {
             const $this = $(this),
-                concept = $this.find("CONCEPT").text(),
-                definition = $this.find("DEFINITION").text().replace(/<[^>]*>/g, ''); // Elimina HTML
+                concept = $this.find('CONCEPT').text(),
+                definition = $this
+                    .find('DEFINITION')
+                    .text()
+                    .replace(/<[^>]*>/g, ''); // Elimina HTML
             if (concept && definition) {
                 cardsJson.push({
                     eText: concept,
@@ -1476,7 +1693,6 @@ var $exeDevice = {
         }
     },
 
-
     importText: function (content) {
         const lines = content.split('\n');
         $exeDevice.insertCards(lines);
@@ -1500,7 +1716,7 @@ var $exeDevice = {
     addCards: function (cards) {
         if (!cards || cards.length == 0) {
             eXe.app.alert(
-                _('Sorry, there are no questions for this type of activity.'),
+                _('Sorry, there are no questions for this type of activity.')
             );
             return;
         }
@@ -1542,7 +1758,7 @@ var $exeDevice = {
                 });
                 const et = {
                     eTextBk: $exeDevice.removeTags(
-                        $question.find('questiontext').first().text().trim(),
+                        $question.find('questiontext').first().text().trim()
                     ),
                     eText: $exeDevice.removeTags(eText),
                 };
@@ -1661,11 +1877,13 @@ var $exeDevice = {
 
         $x.val(posX / wI);
         $y.val(posY / hI);
-        $cursor.css({
-            left: posX + lI,
-            top: posY + tI,
-            'z-index': 50
-        }).show();
+        $cursor
+            .css({
+                left: posX + lI,
+                top: posY + tI,
+                'z-index': 50,
+            })
+            .show();
     },
 
     clickImageBack: function (epx, epy) {
@@ -1682,14 +1900,16 @@ var $exeDevice = {
 
         $x.val(posX / wI);
         $y.val(posY / hI);
-        $cursor.css({
-            left: posX + lI,
-            top: posY + tI,
-            'z-index': 50
-        }).show();
+        $cursor
+            .css({
+                left: posX + lI,
+                top: posY + tI,
+                'z-index': 50,
+            })
+            .show();
     },
 
     removeTags: function (str) {
-        return $("<div>").html(str).text();
+        return $('<div>').html(str).text();
     },
-}
+};

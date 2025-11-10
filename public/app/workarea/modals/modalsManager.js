@@ -15,10 +15,12 @@ import ModalLegalNotes from './modals/pages/modalLegalNotes.js';
 import ModalAbout from './modals/pages/modalAbout.js';
 import ModalProperties from './modals/pages/modalProperties.js';
 import ModalOpenUserOdeFiles from './modals/pages/modalOpenUserOdeFiles.js';
+import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
 import ModalPublishToGithub from './modals/pages/modalPublishToGithub.js';
 import ModalPublishToNetlify from './modals/pages/modalPublishToNetlify.js';
 import ModalPublishToCloudflare from './modals/pages/modalPublishToCloudflare.js';
+import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
 
 export default class ModalsManagement {
     constructor(app) {
@@ -40,10 +42,12 @@ export default class ModalsManagement {
         this.about = null;
         this.properties = null;
         this.openuserodefiles = null;
+        this.templateselection = null;
         this.sessionlogout = null;
         this.publishtogithub = null;
         this.publishtonetlify = null;
         this.publishtocf = null;
+        this.uploadprogress = null;
     }
 
     /**
@@ -67,6 +71,7 @@ export default class ModalsManagement {
         this.about = new ModalAbout(this);
         this.properties = new ModalProperties(this);
         this.openuserodefiles = new ModalOpenUserOdeFiles(this);
+        this.templateselection = new ModalTemplateSelection(this);
         this.sessionlogout = new ModalSessionLogout(this);
         this.publishtogithub = new ModalPublishToGithub(this);
         this.publishtogithub.init();
@@ -74,6 +79,7 @@ export default class ModalsManagement {
         this.publishtonetlify.init();
         this.publishtocf = new ModalPublishToCloudflare(this);
         this.publishtocf.init();
+        this.uploadprogress = new ModalUploadProgress(document.body);
     }
 
     /**
@@ -97,6 +103,7 @@ export default class ModalsManagement {
         this.about.behaviour();
         this.properties.behaviour();
         this.openuserodefiles.behaviour();
+        this.templateselection.behaviour();
         this.sessionlogout.behaviour();
         this.publishtogithub.behaviour();
         this.publishtonetlify.behaviour();
@@ -127,6 +134,7 @@ export default class ModalsManagement {
             this.about,
             this.properties,
             this.openuserodefiles,
+            this.templateselection,
             this.sessionlogout,
             this.publishtogithub,
             this.publishtonetlify,
