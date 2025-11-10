@@ -273,6 +273,11 @@
     padding-right: 2%
 }
 
+pre.mermaid {
+    margin: 1.5em 0;
+    text-align: center;
+}
+
 /* Blocks */
 .exe-block-warning {
     background: #FCF8E3;
