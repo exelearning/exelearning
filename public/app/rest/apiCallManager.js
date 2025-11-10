@@ -55,6 +55,19 @@ export default class ApiCallManager {
     }
 
     /**
+     * Get upload limits configuration
+     *
+     * Returns the effective file upload size limit considering both
+     * PHP limits and application configuration.
+     *
+     * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string, limitingFactor: string, details: object}>}
+     */
+    async getUploadLimits() {
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/config/upload-limits`;
+        return await this.func.get(url);
+    }
+
+    /**
      * Get the third party code information
      *
      * @returns
@@ -127,6 +140,17 @@ export default class ApiCallManager {
     }
 
     /**
+     * Get available templates for a given locale
+     *
+     * @param {string} locale - The locale code (e.g., 'en', 'es')
+     * @returns {Promise<Array>} - Array of template objects
+     */
+    async getTemplates(locale) {
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/v2/templates?locale=${locale}`;
+        return await this.func.get(url);
+    }
+
+    /**
      * Post odeSessionId and check availability
      *
      * @param {*} params
@@ -186,6 +210,25 @@ export default class ApiCallManager {
     async postImportElpToRoot(data) {
         let url = this.endpoints.api_odes_ode_local_elp_import_root.path;
         return await this.func.fileSendPost(url, data);
+    }
+
+    /**
+     * Import a previously uploaded file into the root by server local path.
+     * Payload: { odeSessionId, odeFileName, odeFilePath }
+     * @param {Object} payload
+     * @returns {Promise<Object>}
+     */
+    async postImportElpToRootFromLocal(payload = {}) {
+        let url =
+            this.endpoints.api_odes_ode_local_elp_import_root_from_local?.path;
+        if (!url) {
+            // Fallback if route not yet defined
+            url =
+                this.apiUrlBase +
+                this.apiUrlBasePath +
+                '/api/ode-management/odes/ode/import/local/root';
+        }
+        return await this.func.post(url, payload);
     }
 
     /**

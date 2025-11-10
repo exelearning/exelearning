@@ -7,21 +7,26 @@
  *
  */
 var $eXeBeforeAfter = {
-    idevicePath: "",
+    idevicePath: '',
     borderColors: $exeDevices.iDevice.gamification.colors.borderColors,
     colors: $exeDevices.iDevice.gamification.colors.backColor,
     options: [],
     hasSCORMbutton: false,
     isInExe: false,
-    userName: "",
-    previousScore: "",
-    initialScore: "",
+    userName: '',
+    previousScore: '',
+    initialScore: '',
     version: 3,
     scormAPIwrapper: 'libs/SCORM_API_wrapper.js',
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Before/After', 'beforeafter', 'beforeafter-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Before/After',
+            'beforeafter',
+            'beforeafter-IDevice'
+        );
     },
 
     enable: function () {
@@ -32,7 +37,7 @@ var $eXeBeforeAfter = {
         $eXeBeforeAfter.options = [];
 
         $eXeBeforeAfter.activities.each(function (i) {
-            const dl = $(".beforeafter-DataGame", this);
+            const dl = $('.beforeafter-DataGame', this);
             const mOption = $eXeBeforeAfter.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
@@ -45,15 +50,15 @@ var $eXeBeforeAfter = {
             const bfaf = $eXeBeforeAfter.createInterfaceCards(i);
 
             dl.before(bfaf).remove();
-            $("#bfafGameMinimize-" + i).hide();
-            $("#bfafGameContainer-" + i).hide();
-            $("#bfafCubierta-" + i).hide();
+            $('#bfafGameMinimize-' + i).hide();
+            $('#bfafGameContainer-' + i).hide();
+            $('#bfafCubierta-' + i).hide();
             if (mOption.showMinimize) {
-                $("#bfafGameMinimize-" + i)
-                    .css({ cursor: "pointer", })
+                $('#bfafGameMinimize-' + i)
+                    .css({ cursor: 'pointer' })
                     .show();
             } else {
-                $("#bfafGameContainer-" + i).show();
+                $('#bfafGameContainer-' + i).show();
             }
             $eXeBeforeAfter.addEvents(i);
         });
@@ -62,18 +67,23 @@ var $eXeBeforeAfter = {
         if (this.isInExe) {
             node = document.getElementById('node-content');
         }
-        if (node) $exeDevices.iDevice.gamification.observers.observeResize($eXeBeforeAfter, node);
+        if (node)
+            $exeDevices.iDevice.gamification.observers.observeResize(
+                $eXeBeforeAfter,
+                node
+            );
 
         $exeDevices.iDevice.gamification.math.updateLatex(
-            '.beforeafter-IDevice',
+            '.beforeafter-IDevice'
         );
     },
 
     loadDataGame: function (data, sthis) {
         const json = data.text(),
-            mOptions = $exeDevices.iDevice.gamification.helpers.isJsonString(json),
-            $imagesLink = $(".beforeafter-LinkImages", sthis),
-            $imagesLinkBack = $(".beforeafter-LinkImagesBack", sthis);
+            mOptions =
+                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+            $imagesLink = $('.beforeafter-LinkImages', sthis),
+            $imagesLinkBack = $('.beforeafter-LinkImagesBack', sthis);
 
         mOptions.gameStarted = false;
         mOptions.visiteds = 0;
@@ -82,9 +92,9 @@ var $eXeBeforeAfter = {
             const iq = parseInt($(this).text());
             if (!isNaN(iq) && iq < mOptions.cardsGame.length) {
                 const flipcard = mOptions.cardsGame[iq];
-                flipcard.url = $(this).attr("href");
+                flipcard.url = $(this).attr('href');
                 if (flipcard.url.length < 4) {
-                    flipcard.url = "";
+                    flipcard.url = '';
                 }
             }
         });
@@ -93,14 +103,14 @@ var $eXeBeforeAfter = {
             const iq = parseInt($(this).text());
             if (!isNaN(iq) && iq < mOptions.cardsGame.length) {
                 const flipcard = mOptions.cardsGame[iq];
-                flipcard.urlBk = $(this).attr("href");
+                flipcard.urlBk = $(this).attr('href');
                 if (flipcard.urlBk.length < 4) {
-                    flipcard.urlBk = "";
+                    flipcard.urlBk = '';
                 }
             }
         });
 
-        mOptions.id = typeof mOptions.id === "undefined" ? false : mOptions.id;
+        mOptions.id = typeof mOptions.id === 'undefined' ? false : mOptions.id;
         mOptions.hits = 0;
         mOptions.score = 0;
         mOptions.active = 0;
@@ -118,7 +128,6 @@ var $eXeBeforeAfter = {
         return mOptions;
     },
 
-
     startGame: function (instance) {
         let mOptions = $eXeBeforeAfter.options[instance];
         if (mOptions.gameStarted) return;
@@ -127,15 +136,13 @@ var $eXeBeforeAfter = {
         mOptions.score = 0;
         mOptions.gameOver = false;
         mOptions.obtainedClue = false;
-        $("#bfafCubierta-" + instance).hide();
-        $("#bfafStartGame-" + instance).hide();
+        $('#bfafCubierta-' + instance).hide();
+        $('#bfafStartGame-' + instance).hide();
         if (mOptions.isScorm > 0) {
             $eXeBeforeAfter.sendScore(true, instance);
         }
         $eXeBeforeAfter.saveEvaluation(instance);
-        $eXeBeforeAfter.showClue(instance)
-
-
+        $eXeBeforeAfter.showClue(instance);
     },
 
     createInterfaceCards: function (instance) {
@@ -192,7 +199,9 @@ var $eXeBeforeAfter = {
     getMainHtml: function (instance) {
         const mOptions = $eXeBeforeAfter.options[instance];
         const msgs = mOptions.msgs;
-        const orientation = mOptions.cardsGame[mOptions.active].vertical ? 'vertical' : 'horizontal';
+        const orientation = mOptions.cardsGame[mOptions.active].vertical
+            ? 'vertical'
+            : 'horizontal';
         const html = `<div class="BFAFP-ContainerBA" id="bfafpContainerBA-${instance}" data-orientation=${orientation}>
                 <img id="bfafpImageBefore-${instance}" src="" alt="${msgs.msgBeforeImage}" class="BFAFP-ImageBefore">
                 <div class="BFAFP-TitleBefore" id="bfafTitleBefore-${instance}"></div>
@@ -222,7 +231,8 @@ var $eXeBeforeAfter = {
         const $titleAfter = $(`#bfafTitleAfter-${instance}`);
         const $titleBefore = $(`#bfafTitleBefore-${instance}`);
         mOptions.active = number;
-        mOptions.visiteds = mOptions.visiteds < number ? number : mOptions.visiteds;
+        mOptions.visiteds =
+            mOptions.visiteds < number ? number : mOptions.visiteds;
 
         const isVertical = mOptions.cardsGame[number].vertical;
 
@@ -235,8 +245,9 @@ var $eXeBeforeAfter = {
         $imgAfter.attr('alt', card.alt);
         $imgBefore.attr('alt', card.altBk);
         $imgBefore.prop('src', card.urlBk);
-        $imgAfter.attr("src", card.url)
-            .one("load", function () {
+        $imgAfter
+            .attr('src', card.url)
+            .one('load', function () {
                 let naturalWidth = this.naturalWidth;
                 let naturalHeight = this.naturalHeight;
 
@@ -247,57 +258,63 @@ var $eXeBeforeAfter = {
                 let ratioAlto = naturalHeight / containerHeight;
 
                 if (ratioAncho > ratioAlto) {
-                    let nuevoAlto = naturalHeight * (containerWidth / naturalWidth);
+                    let nuevoAlto =
+                        naturalHeight * (containerWidth / naturalWidth);
                     $imgAfter.css({
-                        'width': containerWidth + "px",
-                        'height': nuevoAlto + "px",
+                        width: containerWidth + 'px',
+                        height: nuevoAlto + 'px',
                     });
                     $imgBefore.css({
-                        'width': containerWidth + "px",
-                        'height': nuevoAlto + "px",
+                        width: containerWidth + 'px',
+                        height: nuevoAlto + 'px',
                     });
                     $containerBA.css({
-                        'width': containerWidth + "px",
-                        'height': nuevoAlto + "px"
+                        width: containerWidth + 'px',
+                        height: nuevoAlto + 'px',
                     });
-
                 } else {
-                    let nuevoAncho = naturalWidth * (containerHeight / naturalHeight);
+                    let nuevoAncho =
+                        naturalWidth * (containerHeight / naturalHeight);
                     $imgAfter.css({
-                        'height': containerHeight + "px",
-                        'width': nuevoAncho + "px",
+                        height: containerHeight + 'px',
+                        width: nuevoAncho + 'px',
                     });
                     $imgBefore.css({
-                        'height': containerHeight + "px",
-                        'width': nuevoAncho + "px",
+                        height: containerHeight + 'px',
+                        width: nuevoAncho + 'px',
                     });
                     $containerBA.css({
-                        'height': containerHeight + "px",
-                        'width': nuevoAncho + "px",
+                        height: containerHeight + 'px',
+                        width: nuevoAncho + 'px',
                     });
-
                 }
                 const percentageInit = card.position;
                 const containerWidth1 = $containerBA.width();
                 const containerHeight1 = $containerBA.height();
 
-                const containerSize = isVertical ? containerHeight1 : containerWidth1;
+                const containerSize = isVertical
+                    ? containerHeight1
+                    : containerWidth1;
 
                 const pos = (percentageInit / 100) * containerSize;
-                $overlay.css({ 'border': '' });
-                $slider.css({ 'border': '' });
-                $titleBefore.removeClass('BFAFP-TitleBefore BFAFP-TitleBeforeV');
+                $overlay.css({ border: '' });
+                $slider.css({ border: '' });
+                $titleBefore.removeClass(
+                    'BFAFP-TitleBefore BFAFP-TitleBeforeV'
+                );
                 $titleAfter.removeClass('BFAFP-TitleAfter BFAFP-TitleAfterV');
                 $titleBefore.hide();
                 $titleAfter.hide();
 
                 if (card.eText.length > 0) {
-                    $titleAfter.html(card.eText).show()
+                    $titleAfter.html(card.eText).show();
                 }
                 if (card.eTextBk.length > 0) {
-                    $titleBefore.html(card.eTextBk).show()
+                    $titleBefore.html(card.eTextBk).show();
                 }
-                $nubmerInfo.text(`${mOptions.msgs.msgImage}: ${(number + 1)}/${mOptions.cardsGame.length}`);
+                $nubmerInfo.text(
+                    `${mOptions.msgs.msgImage}: ${number + 1}/${mOptions.cardsGame.length}`
+                );
 
                 if (mOptions.gameStarted && mOptions.isScorm > 0) {
                     $eXeBeforeAfter.sendScore(true, instance);
@@ -311,32 +328,29 @@ var $eXeBeforeAfter = {
                     $overlay.height(pos);
                     $overlay.css({ 'border-bottom': '4px solid #555' });
                     $overlay.width(containerWidth1);
-                    $slider.css({ 'left': 0, 'top': (pos - 3) + 'px' });
-                    $imgAfter.css({ 'cursor': 'n-resize' });
-                    $imgBefore.css({ 'cursor': 's-resize' });
+                    $slider.css({ left: 0, top: pos - 3 + 'px' });
+                    $imgAfter.css({ cursor: 'n-resize' });
+                    $imgBefore.css({ cursor: 's-resize' });
                     $titleBefore.addClass('BFAFP-TitleBeforeV');
                     $titleAfter.addClass('BFAFP-TitleAfterV');
                 } else {
                     $overlay.width(pos);
                     $overlay.css({ 'border-right': '4px solid #555' });
                     $overlay.height(containerHeight1);
-                    $slider.css({ 'left': (pos - 3) + 'px', 'top': 0 });
-                    $imgAfter.css({ 'cursor': 'w-resize' });
-                    $imgBefore.css({ 'cursor': 'e-resize' });
+                    $slider.css({ left: pos - 3 + 'px', top: 0 });
+                    $imgAfter.css({ cursor: 'w-resize' });
+                    $imgBefore.css({ cursor: 'e-resize' });
                     $titleBefore.addClass('BFAFP-TitleBefore');
                     $titleAfter.addClass('BFAFP-TitleAfter');
                 }
                 setTimeout(function () {
-                    $eXeBeforeAfter.initComparison(number, instance)
+                    $eXeBeforeAfter.initComparison(number, instance);
                     $containerBA.animate({ opacity: 1 }, 500);
-                }, 200)
-
+                }, 200);
             })
             .each(function () {
-                if (this.complete) $(this).trigger("load");
+                if (this.complete) $(this).trigger('load');
             });
-
-
     },
 
     initComparison: function (number, instance) {
@@ -351,13 +365,34 @@ var $eXeBeforeAfter = {
         const isVertical = card.vertical;
 
         if (slider._initComparisonHandlers) {
-            slider.removeEventListener('mousedown', slider._initComparisonHandlers.startSlide);
-            slider.removeEventListener('touchstart', slider._initComparisonHandlers.startSlide);
-            window.removeEventListener('mouseup', slider._initComparisonHandlers.stopSlide);
-            window.removeEventListener('touchend', slider._initComparisonHandlers.stopSlide);
-            window.removeEventListener('mousemove', slider._initComparisonHandlers.slideMove);
-            window.removeEventListener('touchmove', slider._initComparisonHandlers.slideMove);
-            window.removeEventListener('touchmove', slider._initComparisonHandlers.containerClick);
+            slider.removeEventListener(
+                'mousedown',
+                slider._initComparisonHandlers.startSlide
+            );
+            slider.removeEventListener(
+                'touchstart',
+                slider._initComparisonHandlers.startSlide
+            );
+            window.removeEventListener(
+                'mouseup',
+                slider._initComparisonHandlers.stopSlide
+            );
+            window.removeEventListener(
+                'touchend',
+                slider._initComparisonHandlers.stopSlide
+            );
+            window.removeEventListener(
+                'mousemove',
+                slider._initComparisonHandlers.slideMove
+            );
+            window.removeEventListener(
+                'touchmove',
+                slider._initComparisonHandlers.slideMove
+            );
+            window.removeEventListener(
+                'touchmove',
+                slider._initComparisonHandlers.containerClick
+            );
         }
 
         let clicked = false;
@@ -365,16 +400,20 @@ var $eXeBeforeAfter = {
         const getContainerSize = () =>
             isVertical ? container.offsetHeight : container.offsetWidth;
 
-        const getCursorPos = e => {
+        const getCursorPos = (e) => {
             const point = e.touches ? e.touches[0] : e,
                 rect = container.getBoundingClientRect();
-            return isVertical ? point.clientY - rect.top : point.clientX - rect.left;
+            return isVertical
+                ? point.clientY - rect.top
+                : point.clientX - rect.left;
         };
 
-        const slide = pos => {
+        const slide = (pos) => {
             const size = getContainerSize(),
                 clamped = Math.max(0, Math.min(pos, size)),
-                offset = clamped - (isVertical ? slider.offsetHeight : slider.offsetWidth) / 2;
+                offset =
+                    clamped -
+                    (isVertical ? slider.offsetHeight : slider.offsetWidth) / 2;
             if (isVertical) {
                 overlay.style.height = `${clamped}px`;
                 slider.style.top = `${offset - 3}px`;
@@ -384,9 +423,9 @@ var $eXeBeforeAfter = {
             }
         };
 
-        const slideMove = e => clicked && slide(getCursorPos(e));
+        const slideMove = (e) => clicked && slide(getCursorPos(e));
 
-        const startSlide = e => {
+        const startSlide = (e) => {
             e.preventDefault();
             clicked = true;
             slideMove(e);
@@ -407,39 +446,52 @@ var $eXeBeforeAfter = {
         window.addEventListener('mouseup', stopSlide);
         window.addEventListener('touchend', stopSlide);
 
-        if (container._initComparisonHandlers && container._initComparisonHandlers.containerClick) {
-            container.removeEventListener('click', container._initComparisonHandlers.containerClick);
+        if (
+            container._initComparisonHandlers &&
+            container._initComparisonHandlers.containerClick
+        ) {
+            container.removeEventListener(
+                'click',
+                container._initComparisonHandlers.containerClick
+            );
         }
 
-        const containerClick = e => {
+        const containerClick = (e) => {
             if (e.target === slider) return;
 
             const pos = getCursorPos(e);
-            const newOffset = pos - (isVertical ? slider.offsetHeight / 2 : slider.offsetWidth / 2);
+            const newOffset =
+                pos -
+                (isVertical ? slider.offsetHeight / 2 : slider.offsetWidth / 2);
             if (isVertical) {
-                $(overlay).animate({ height: pos }, 500, "swing");
-                $(slider).animate({ top: newOffset }, 500, "swing");
+                $(overlay).animate({ height: pos }, 500, 'swing');
+                $(slider).animate({ top: newOffset }, 500, 'swing');
             } else {
-                $(overlay).animate({ width: pos }, 500, "swing");
-                $(slider).animate({ left: newOffset }, 500, "swing");
+                $(overlay).animate({ width: pos }, 500, 'swing');
+                $(slider).animate({ left: newOffset }, 500, 'swing');
             }
         };
 
-
-        container._initComparisonHandlers = container._initComparisonHandlers || {};
+        container._initComparisonHandlers =
+            container._initComparisonHandlers || {};
         container._initComparisonHandlers.containerClick = containerClick;
         container.addEventListener('click', containerClick);
 
-        const percentageInit = mOptions.cardsGame[mOptions.active].position || 50;
+        const percentageInit =
+            mOptions.cardsGame[mOptions.active].position || 50;
         const initPos = (percentageInit / 100) * getContainerSize();
         slide(initPos);
     },
 
-
     showClue: function (instance) {
         const mOptions = $eXeBeforeAfter.options[instance],
-            percentageHits = (mOptions.visiteds * 10) / mOptions.cardsGame.length;
-        if (mOptions.itinerary.showClue && percentageHits >= mOptions.itinerary.percentageClue && !mOptions.obtainedClue) {
+            percentageHits =
+                (mOptions.visiteds * 10) / mOptions.cardsGame.length;
+        if (
+            mOptions.itinerary.showClue &&
+            percentageHits >= mOptions.itinerary.percentageClue &&
+            !mOptions.obtainedClue
+        ) {
             mOptions.obtainedClue = true;
             const msg = `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`;
             $eXeBeforeAfter.showMessage(2, msg, instance);
@@ -447,50 +499,54 @@ var $eXeBeforeAfter = {
     },
 
     removeEvents: function (instance) {
-        $(`#bfafLinkMaximize-${instance}`).off("click touchstart");
-        $(`#bfafLinkMinimize-${instance}`).off("click touchstart");
-        $(`#bfafCodeAccessButton-${instance}`).off("click touchstart");
-        $(`#bfafCodeAccessE-${instance}`).off("keydown");
+        $(`#bfafLinkMaximize-${instance}`).off('click touchstart');
+        $(`#bfafLinkMinimize-${instance}`).off('click touchstart');
+        $(`#bfafCodeAccessButton-${instance}`).off('click touchstart');
+        $(`#bfafCodeAccessE-${instance}`).off('keydown');
         $(window).off('unload.eXeBeforeAfter beforeunload.eXeBeforeAfter');
-
     },
 
     addEvents: function (instance) {
         const mOptions = $eXeBeforeAfter.options[instance];
-        const $bfafGameContainer = $("#bfafGameContainer-" + instance);
+        const $bfafGameContainer = $('#bfafGameContainer-' + instance);
 
         $eXeBeforeAfter.removeEvents(instance);
 
-        $("#bfafLinkMaximize-" + instance).on("click touchstart", function (e) {
+        $('#bfafLinkMaximize-' + instance).on('click touchstart', function (e) {
             e.preventDefault();
             $bfafGameContainer.show();
-            $("#bfafGameMinimize-" + instance).hide();
+            $('#bfafGameMinimize-' + instance).hide();
         });
 
-        $("#bfafLinkMinimize-" + instance).on("click touchstart", function (e) {
+        $('#bfafLinkMinimize-' + instance).on('click touchstart', function (e) {
             e.preventDefault();
             $bfafGameContainer.hide();
-            $("#bfafGameMinimize-" + instance)
-                .css("visibility", "visible")
+            $('#bfafGameMinimize-' + instance)
+                .css('visibility', 'visible')
                 .show();
         });
 
-        $("#bfafCubierta-" + instance).hide();
-        $("#bfafCodeAccessDiv-" + instance).hide();
+        $('#bfafCubierta-' + instance).hide();
+        $('#bfafCodeAccessDiv-' + instance).hide();
 
         if (mOptions.itinerary && mOptions.itinerary.showCodeAccess) {
-            $("#bfafMesajeAccesCodeE-" + instance).text(mOptions.itinerary.messageCodeAccess);
-            $("#bfafCodeAccessDiv-" + instance).show();
-            $("#bfafShowClue-" + instance).hide();
-            $("#bfafCubierta-" + instance).show();
+            $('#bfafMesajeAccesCodeE-' + instance).text(
+                mOptions.itinerary.messageCodeAccess
+            );
+            $('#bfafCodeAccessDiv-' + instance).show();
+            $('#bfafShowClue-' + instance).hide();
+            $('#bfafCubierta-' + instance).show();
         }
 
-        $("#bfafCodeAccessButton-" + instance).on("click touchstart", function (e) {
-            e.preventDefault();
-            $eXeBeforeAfter.enterCodeAccess(instance);
-        });
+        $('#bfafCodeAccessButton-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                $eXeBeforeAfter.enterCodeAccess(instance);
+            }
+        );
 
-        $("#bfafCodeAccessE-" + instance).on("keydown", function (event) {
+        $('#bfafCodeAccessE-' + instance).on('keydown', function (event) {
             if (event.which == 13 || event.keyCode == 13) {
                 $eXeBeforeAfter.enterCodeAccess(instance);
                 return false;
@@ -509,101 +565,119 @@ var $eXeBeforeAfter = {
                 this.value = value;
             });
 
-        $(window).on("unload.eXeBeforeAfter beforeunload.eXeBeforeAfter", function () {
-            if ($eXeBeforeAfter.mScorm) {
-                $exeDevices.iDevice.gamification.scorm.endScorm($eXeBeforeAfter.mScorm);
+        $(window).on(
+            'unload.eXeBeforeAfter beforeunload.eXeBeforeAfter',
+            function () {
+                if ($eXeBeforeAfter.mScorm) {
+                    $exeDevices.iDevice.gamification.scorm.endScorm(
+                        $eXeBeforeAfter.mScorm
+                    );
+                }
             }
-        });
+        );
 
         if (mOptions.author.trim().length > 0 && !mOptions.fullscreen) {
-            $("#bfafAuthorGame-" + instance).html(mOptions.msgs.msgAuthor + ": " + mOptions.author);
-            $("#bfafAuthorGame-" + instance).show();
+            $('#bfafAuthorGame-' + instance).html(
+                mOptions.msgs.msgAuthor + ': ' + mOptions.author
+            );
+            $('#bfafAuthorGame-' + instance).show();
         }
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
         }
 
-        $("#bfafLinkFullScreen-" + instance).on("click touchstart", function (e) {
-            e.preventDefault();
-            const element = document.getElementById("bfafGameContainer-" + instance);
-            $exeDevices.iDevice.gamification.helpers.toggleFullscreen(element);
-            setTimeout(function () {
-                $eXeBeforeAfter.showImage(mOptions.active, instance)
+        $('#bfafLinkFullScreen-' + instance).on(
+            'click touchstart',
+            function (e) {
+                e.preventDefault();
+                const element = document.getElementById(
+                    'bfafGameContainer-' + instance
+                );
+                $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
+                    element
+                );
+                setTimeout(function () {
+                    $eXeBeforeAfter.showImage(mOptions.active, instance);
+                }, 500);
+            }
+        );
 
-            }, 500)
-
-        });
-
-        $("#bfafNext-" + instance).on('click', function () {
-            mOptions.active = mOptions.active < mOptions.cardsGame.length - 1 ? mOptions.active + 1 : mOptions.active;
+        $('#bfafNext-' + instance).on('click', function () {
+            mOptions.active =
+                mOptions.active < mOptions.cardsGame.length - 1
+                    ? mOptions.active + 1
+                    : mOptions.active;
             $eXeBeforeAfter.showImage(mOptions.active, instance);
             $eXeBeforeAfter.activeButton(mOptions.active, instance);
         });
 
-        $("#bfafPrevious-" + instance).on('click', function () {
+        $('#bfafPrevious-' + instance).on('click', function () {
             mOptions.active = mOptions.active > 0 ? mOptions.active - 1 : 0;
             $eXeBeforeAfter.showImage(mOptions.active, instance);
-            $eXeBeforeAfter.activeButton(mOptions.active, instance)
+            $eXeBeforeAfter.activeButton(mOptions.active, instance);
         });
-        $("#bfafMultimedia-" + instance).hide();
+        $('#bfafMultimedia-' + instance).hide();
 
         if (!mOptions.itinerary.showCodeAccess) {
-            $("#bfafMultimedia-" + instance).show();
+            $('#bfafMultimedia-' + instance).show();
             $eXeBeforeAfter.showImage(0, instance);
             $eXeBeforeAfter.activeButton(0, instance);
         }
 
-        $("#bfafGameContainer-" + instance).on('click', function () {
+        $('#bfafGameContainer-' + instance).on('click', function () {
             if (!mOptions.gameStarted) {
-                $eXeBeforeAfter.startGame(instance)
+                $eXeBeforeAfter.startGame(instance);
             }
         });
 
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
-
     },
 
     activeButton: function (number, instance) {
         const mOptions = $eXeBeforeAfter.options[instance];
         const path = $eXeBeforeAfter.idevicePath;
 
-        $("#bfafPrevious-" + instance)
+        $('#bfafPrevious-' + instance)
             .prop('disabled', false)
-            .find('img').attr('src', `${path}bfafprevious.png`);
-        $("#bfafNext-" + instance)
+            .find('img')
+            .attr('src', `${path}bfafprevious.png`);
+        $('#bfafNext-' + instance)
             .prop('disabled', false)
-            .find('img').attr('src', `${path}bfafnext.png`);
-        $("#bfafPrevious-" + instance).css('cursor', 'pointer');
-        $("#bfafNext-" + instance).css('cursor', 'pointer');
+            .find('img')
+            .attr('src', `${path}bfafnext.png`);
+        $('#bfafPrevious-' + instance).css('cursor', 'pointer');
+        $('#bfafNext-' + instance).css('cursor', 'pointer');
         if (number <= 0) {
-            $("#bfafPrevious-" + instance)
+            $('#bfafPrevious-' + instance)
                 .prop('disabled', true)
-                .find('img').attr('src', `${path}bfafpreviousd.png`);
-            $("#bfafPrevious-" + instance).css('cursor', 'default')
+                .find('img')
+                .attr('src', `${path}bfafpreviousd.png`);
+            $('#bfafPrevious-' + instance).css('cursor', 'default');
         }
 
         if (number >= mOptions.cardsGame.length - 1) {
-            $("#bfafNext-" + instance)
+            $('#bfafNext-' + instance)
                 .prop('disabled', true)
-                .find('img').attr('src', `${path}bfafnextd.png`);
-            $("#bfafNext-" + instance).css('cursor', 'default')
+                .find('img')
+                .attr('src', `${path}bfafnextd.png`);
+            $('#bfafNext-' + instance).css('cursor', 'default');
         }
 
         if (mOptions.cardsGame.length == 1) {
-            $("#bfafButtonsBar-" + instance).hide();
+            $('#bfafButtonsBar-' + instance).hide();
         }
     },
 
-
-
     isMobile: function () {
-        return /Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
+        return /Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(
+            navigator.userAgent
+        );
     },
 
     enterCodeAccess: function (instance) {
@@ -611,53 +685,55 @@ var $eXeBeforeAfter = {
             codeInput = $(`#bfafCodeAccessE-${instance}`).val().toLowerCase(),
             codeAccess = mOptions.itinerary.codeAccess.toLowerCase();
         if (codeAccess === codeInput) {
-            $(`#bfafCodeAccessDiv-${instance}, #bfafCubierta-${instance}`).hide();
+            $(
+                `#bfafCodeAccessDiv-${instance}, #bfafCubierta-${instance}`
+            ).hide();
             $(`#bfafLinkMaximize-${instance}`).trigger('click');
-            $("#bfafMultimedia-" + instance).show();
+            $('#bfafMultimedia-' + instance).show();
             $eXeBeforeAfter.showImage(0, instance);
             $eXeBeforeAfter.activeButton(0, instance);
-
-
         } else {
             $(`#bfafMesajeAccesCodeE-${instance}`)
                 .fadeOut(300)
                 .fadeIn(200)
                 .fadeOut(300)
                 .fadeIn(200);
-            $(`#bfafCodeAccessE-${instance}`).val("");
+            $(`#bfafCodeAccessE-${instance}`).val('');
         }
     },
 
     showMessage: function (type, message, instance) {
         const colors = [
-            "#555555",
-            $eXeBeforeAfter.borderColors.red,
-            $eXeBeforeAfter.borderColors.green,
-            $eXeBeforeAfter.borderColors.blue,
-            $eXeBeforeAfter.borderColors.yellow
-        ],
+                '#555555',
+                $eXeBeforeAfter.borderColors.red,
+                $eXeBeforeAfter.borderColors.green,
+                $eXeBeforeAfter.borderColors.blue,
+                $eXeBeforeAfter.borderColors.yellow,
+            ],
             color = colors[type],
             $bfafMessage = $(`#bfafMessage-${instance}`);
         $bfafMessage
             .html(message)
-            .css({ color: color, "font-style": "bold" })
+            .css({ color: color, 'font-style': 'bold' })
             .show();
     },
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeBeforeAfter.options[instance];
 
-        mOptions.scorerp = ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
+        mOptions.scorerp =
+            ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeBeforeAfter.isInExe,
+            $eXeBeforeAfter.isInExe
         );
     },
 
     sendScore: function (auto, instance) {
         const mOptions = $eXeBeforeAfter.options[instance];
 
-        mOptions.scorerp = ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
+        mOptions.scorerp =
+            ((mOptions.visiteds + 1) * 10) / mOptions.cardsGame.length;
         mOptions.previousScore = $eXeBeforeAfter.previousScore;
         mOptions.userName = $eXeBeforeAfter.userName;
 
@@ -665,7 +741,6 @@ var $eXeBeforeAfter = {
 
         $eXeBeforeAfter.previousScore = mOptions.previousScore;
     },
-
 };
 $(function () {
     $eXeBeforeAfter.init();

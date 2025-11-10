@@ -37,7 +37,12 @@ var $eXeCompleta = {
     scormFunctions: 'libs/SCOFunctions.js',
     mScorm: null,
     init: function () {
-        $exeDevices.iDevice.gamification.initGame(this, 'Complete', 'complete', 'completa-IDevice');
+        $exeDevices.iDevice.gamification.initGame(
+            this,
+            'Complete',
+            'complete',
+            'completa-IDevice'
+        );
     },
 
     enable: function () {
@@ -66,7 +71,7 @@ var $eXeCompleta = {
             $('#cmptMessageMaximize-' + i).text(msg);
             $('#cmptMultimedia-' + i).prepend($('.completa-text-game', this));
             $('#cmptDivFeedBack-' + i).prepend(
-                $('.completa-feedback-game', this),
+                $('.completa-feedback-game', this)
             );
             $('#cmptDivFeedBack-' + i).hide();
             mOption.text = $('.completa-text-game', this).html();
@@ -80,9 +85,7 @@ var $eXeCompleta = {
             }
         });
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.completa-IDevice',
-        );
+        $exeDevices.iDevice.gamification.math.updateLatex('.completa-IDevice');
     },
 
     loadDataGame: function (data) {
@@ -224,7 +227,7 @@ var $eXeCompleta = {
         $(window).off('unload.eXeCompleta beforeunload.eXeCompleta');
 
         const gameContainer = document.querySelector(
-            `#cmptGameContainer-${instance}`,
+            `#cmptGameContainer-${instance}`
         );
 
         if (gameContainer) {
@@ -232,7 +235,7 @@ var $eXeCompleta = {
                 gameContainer.removeEventListener(
                     'touchmove',
                     mOptions.touchMoveHandler,
-                    { passive: false },
+                    { passive: false }
                 );
                 mOptions.touchMoveHandler = null;
             }
@@ -240,7 +243,7 @@ var $eXeCompleta = {
             if (mOptions.touchEndHandler) {
                 gameContainer.removeEventListener(
                     'touchend',
-                    mOptions.touchEndHandler,
+                    mOptions.touchEndHandler
                 );
                 mOptions.touchEndHandler = null;
             }
@@ -305,11 +308,11 @@ var $eXeCompleta = {
         $(`#cmptLinkFullScreen-${instance}`).on('click touchstart', (e) => {
             e.preventDefault();
             const element = document.getElementById(
-                `cmptGameContainer-${instance}`,
+                `cmptGameContainer-${instance}`
             );
             $exeDevices.iDevice.gamification.helpers.toggleFullscreen(
                 element,
-                instance,
+                instance
             );
         });
 
@@ -322,7 +325,7 @@ var $eXeCompleta = {
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `cmptGameContainer-${instance}`,
+                `cmptGameContainer-${instance}`
             );
 
         $(`#cmptStartGame-${instance}`).on('click', (e) => {
@@ -341,7 +344,7 @@ var $eXeCompleta = {
         if (mOptions.itinerary.showCodeAccess) {
             mOptions.gameStarted = false;
             $(`#cmptMesajeAccesCodeE-${instance}`).text(
-                mOptions.itinerary.messageCodeAccess,
+                mOptions.itinerary.messageCodeAccess
             );
             $eXeCompleta.showCubiertaOptions(0, instance);
         }
@@ -389,18 +392,21 @@ var $eXeCompleta = {
         $(`#cmptLinkMaximize-${instance}`).focus();
         $(`#cmptPShowClue-${instance}`).hide();
 
-        $(window).on('unload.eXeCompleta beforeunload.eXeCompleta', function () {
-            if (typeof $eXeCompleta.mScorm !== 'undefined') {
-                $exeDevices.iDevice.gamification.scorm.endScorm(
-                    $eXeCompleta.mScorm,
-                );
+        $(window).on(
+            'unload.eXeCompleta beforeunload.eXeCompleta',
+            function () {
+                if (typeof $eXeCompleta.mScorm !== 'undefined') {
+                    $exeDevices.iDevice.gamification.scorm.endScorm(
+                        $eXeCompleta.mScorm
+                    );
+                }
             }
-        });
+        );
 
         setTimeout(() => {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
                 mOptions,
-                this.isInExe,
+                this.isInExe
             );
         }, 500);
 
@@ -442,7 +448,7 @@ var $eXeCompleta = {
                         }
                     }
                 },
-                { passive: false },
+                { passive: false }
             );
 
         $(document).on('mouseup.eXeCompleta', () => {
@@ -531,12 +537,14 @@ var $eXeCompleta = {
         mOptions.counterClock = setInterval(function () {
             let $node = $('#cmptMainContainer-' + instance);
             let $content = $('#node-content');
-            if (!$node.length || ($content.length && $content.attr('mode') === "edition")) {
+            if (
+                !$node.length ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
                 clearInterval(mOptions.counterClock);
                 return;
             }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-
                 mOptions.counter--;
                 $eXeCompleta.updateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
@@ -584,7 +592,7 @@ var $eXeCompleta = {
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
-                `cmptGameContainer-${instance}`,
+                `cmptGameContainer-${instance}`
             );
         }
 
@@ -596,7 +604,7 @@ var $eXeCompleta = {
             } else {
                 mclue = mOptions.msgs.msgTryAgain.replace(
                     '%s',
-                    mOptions.itinerary.percentageClue,
+                    mOptions.itinerary.percentageClue
                 );
             }
             $(`#cmptPShowClue-${instance}`).text(mclue).show();
@@ -618,7 +626,7 @@ var $eXeCompleta = {
         $('#cmptMultimedia-' + instance)
             .find('.CMPT-Input')
             .val('');
-    if (mOptions.type == 1) {
+        if (mOptions.type == 1) {
             $('#cmptMultimedia-' + instance)
                 .find('.CMPT-Input')
                 .addClass('CMPT-Drag');
@@ -729,10 +737,9 @@ var $eXeCompleta = {
         if (mOptions.isScorm === 1) {
             $eXeCompleta.sendScore(true, instance);
             $('#cmptRepeatActivity-' + instance).text(
-                `${mOptions.msgs.msgYouScore}: ${score}`,
+                `${mOptions.msgs.msgYouScore}: ${score}`
             );
             $eXeCompleta.initialScore = score;
-
         }
 
         const percentageHits = (mOptions.hits * 100) / mOptions.number;
@@ -745,7 +752,7 @@ var $eXeCompleta = {
                 mOptions.obtainedClue = true;
                 $('#cmptPShowClue-' + instance)
                     .text(
-                        `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`,
+                        `${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`
                     )
                     .show();
             }
@@ -765,10 +772,10 @@ var $eXeCompleta = {
 
     checkWordLimit: function (word, answord) {
         let sWord = $.trim(word)
-            .replace(/\s+/g, ' ')
-            .replace(/\.$/, '')
-            .replace(/,$/, '')
-            .replace(/;$/, ''),
+                .replace(/\s+/g, ' ')
+                .replace(/\.$/, '')
+                .replace(/,$/, '')
+                .replace(/;$/, ''),
             sAnsWord = $.trim(answord)
                 .replace(/\s+/g, ' ')
                 .replace(/\.$/, '')
@@ -796,10 +803,10 @@ var $eXeCompleta = {
             proba = 1 - mOptions.percentajeError / 100;
 
         let sWord = $.trim(word)
-            .replace(/\s+/g, ' ')
-            .replace(/\.$/, '')
-            .replace(/,$/, '')
-            .replace(/;$/, ''),
+                .replace(/\s+/g, ' ')
+                .replace(/\.$/, '')
+                .replace(/,$/, '')
+                .replace(/;$/, ''),
             sAnsWord = $.trim(answord)
                 .replace(/\s+/g, ' ')
                 .replace(/\.$/, '')
@@ -1078,8 +1085,8 @@ var $eXeCompleta = {
     createButtons: function (instance) {
         const mOptions = $eXeCompleta.options[instance];
         let html = '';
-            for (const [key, value] of Object.entries(mOptions.oWords)) {
-                const button = `<div class="CMPT-WordsButton" data-word="${key}" data-number="${value}">${key}
+        for (const [key, value] of Object.entries(mOptions.oWords)) {
+            const button = `<div class="CMPT-WordsButton" data-word="${key}" data-number="${value}">${key}
                                 <div class="CMPT-WordsButtonNumber">${value}</div>
                             </div>`;
             html += button;
@@ -1095,7 +1102,7 @@ var $eXeCompleta = {
         $cc.each(function () {
             const v = parseInt(
                 $(this).find('.CMPT-WordsButtonNumber').eq(0).text(),
-                10,
+                10
             );
             if (v === 1) {
                 $(this).find('.CMPT-WordsButtonNumber').eq(0).hide();
@@ -1107,39 +1114,49 @@ var $eXeCompleta = {
             appendTo: 'body',
             zIndex: 10000,
             revert: 'invalid',
-            start: function () { $eXeCompleta.isDragging = true; },
+            start: function () {
+                $eXeCompleta.isDragging = true;
+            },
             stop: function () {
                 $eXeCompleta.isDragging = false;
-            }
+            },
         });
 
-        $(`#cmptMultimedia-${instance}`).find('.CMPT-Input.CMPT-Drag').droppable({
-            accept: function(draggable){
-                return draggable.hasClass('CMPT-WordsButton') || draggable.is('input.CMPT-Input');
-            },
-            tolerance: 'pointer',
-            hoverClass: 'hovering',
-            drop: function (event, ui) {
-                const $target = $(this);
-                if (ui.draggable.is('input.CMPT-Input') && ui.draggable[0] === $target[0]) return;
-                $eXeCompleta.moveCard(ui.draggable, $target, instance);
-            }
-        });
+        $(`#cmptMultimedia-${instance}`)
+            .find('.CMPT-Input.CMPT-Drag')
+            .droppable({
+                accept: function (draggable) {
+                    return (
+                        draggable.hasClass('CMPT-WordsButton') ||
+                        draggable.is('input.CMPT-Input')
+                    );
+                },
+                tolerance: 'pointer',
+                hoverClass: 'hovering',
+                drop: function (event, ui) {
+                    const $target = $(this);
+                    if (
+                        ui.draggable.is('input.CMPT-Input') &&
+                        ui.draggable[0] === $target[0]
+                    )
+                        return;
+                    $eXeCompleta.moveCard(ui.draggable, $target, instance);
+                },
+            });
         $buttonsDiv.show();
     },
 
     moveCard: function ($item, $destino, instance) {
-
-    const mOptions = $eXeCompleta.options[instance];
-    if (!mOptions.gameStarted || mOptions.gameOver) return;
-    if ($destino.is(':disabled')) return;
+        const mOptions = $eXeCompleta.options[instance];
+        if (!mOptions.gameStarted || mOptions.gameOver) return;
+        if ($destino.is(':disabled')) return;
 
         const fromInput = $item.is('input.CMPT-Input');
 
         let incoming = '';
         if (fromInput) {
             incoming = $.trim($item.val());
-            if (!incoming) return; 
+            if (!incoming) return;
         } else {
             const $clone = $item.clone();
             $clone.find('.CMPT-WordsButtonNumber').remove();
@@ -1148,35 +1165,53 @@ var $eXeCompleta = {
 
         const prev = $.trim($destino.val());
 
-
         if (prev) {
             const $buttonsDiv = $(`#cmptButonsDiv-${instance}`);
-            let $btn = $buttonsDiv.find(`.CMPT-WordsButton[data-word="${prev.replace(/"/g,'\\"')}"]`).first();
+            let $btn = $buttonsDiv
+                .find(
+                    `.CMPT-WordsButton[data-word="${prev.replace(/"/g, '\\"')}"]`
+                )
+                .first();
             if ($btn.length === 0) {
-                $btn = $buttonsDiv.find('.CMPT-WordsButton').filter(function(){
-                    const $c = $(this).clone();
-                    $c.find('.CMPT-WordsButtonNumber').remove();
-                    return $.trim($c.text()) === prev;
-                }).first();
+                $btn = $buttonsDiv
+                    .find('.CMPT-WordsButton')
+                    .filter(function () {
+                        const $c = $(this).clone();
+                        $c.find('.CMPT-WordsButtonNumber').remove();
+                        return $.trim($c.text()) === prev;
+                    })
+                    .first();
             }
             if ($btn.length) {
                 let $num = $btn.find('.CMPT-WordsButtonNumber').eq(0);
                 if ($num.length) {
                     const n = parseInt($num.text(), 10) + 1;
                     $num.text(n);
-                    if (n === 1) { $num.hide(); } else { $num.show(); }
-                } else {            
-                    $btn.each(function(){ this.style.removeProperty('text-decoration'); });
+                    if (n === 1) {
+                        $num.hide();
+                    } else {
+                        $num.show();
+                    }
+                } else {
+                    $btn.each(function () {
+                        this.style.removeProperty('text-decoration');
+                    });
                     $btn.append(`<div class="CMPT-WordsButtonNumber">1</div>`);
                     $btn.find('.CMPT-WordsButtonNumber').eq(0).hide();
-                    try { $btn.draggable('destroy'); } catch (e) {}
+                    try {
+                        $btn.draggable('destroy');
+                    } catch (e) {}
                     $btn.draggable({
                         helper: 'clone',
                         appendTo: 'body',
                         zIndex: 10000,
                         revert: 'invalid',
-                        start: function () { $eXeCompleta.isDragging = true; },
-                        stop: function () { $eXeCompleta.isDragging = false; }
+                        start: function () {
+                            $eXeCompleta.isDragging = true;
+                        },
+                        stop: function () {
+                            $eXeCompleta.isDragging = false;
+                        },
                     });
                 }
             }
@@ -1185,36 +1220,54 @@ var $eXeCompleta = {
         $destino.val(incoming);
         $destino.prop('readonly', true).addClass('CMPT-Drag');
         $destino.addClass('CMPT-Filled');
-        try { $destino.draggable('destroy'); } catch (e) {}
+        try {
+            $destino.draggable('destroy');
+        } catch (e) {}
         $destino.draggable({
             helper: 'clone',
             appendTo: 'body',
             zIndex: 10000,
             revert: 'invalid',
             cancel: '',
-            start: function () { $eXeCompleta.isDragging = true; },
-            stop: function () { $eXeCompleta.isDragging = false; }
+            start: function () {
+                $eXeCompleta.isDragging = true;
+            },
+            stop: function () {
+                $eXeCompleta.isDragging = false;
+            },
         });
 
         if (fromInput) {
             $item.val('');
             $item.prop('readonly', false).removeClass('CMPT-Filled');
-            setTimeout(function(){
+            setTimeout(function () {
                 $item.val('');
                 $item.prop('readonly', false).removeClass('CMPT-Filled');
-                try { $item.draggable('destroy'); } catch (e) {}
+                try {
+                    $item.draggable('destroy');
+                } catch (e) {}
                 $item.trigger('change');
             }, 0);
-            try { $item.draggable('destroy'); } catch (e) {}
+            try {
+                $item.draggable('destroy');
+            } catch (e) {}
         } else {
-             const $numIn = $item.find('.CMPT-WordsButtonNumber').eq(0);
+            const $numIn = $item.find('.CMPT-WordsButtonNumber').eq(0);
             if ($numIn.length) {
                 let count = parseInt($numIn.text(), 10) - 1;
                 $numIn.text(count);
                 if (count <= 0) {
                     $numIn.remove();
-                    $item.each(function(){ this.style.setProperty('text-decoration','line-through','important'); });
-                    try { $item.draggable('destroy'); } catch (e) {}
+                    $item.each(function () {
+                        this.style.setProperty(
+                            'text-decoration',
+                            'line-through',
+                            'important'
+                        );
+                    });
+                    try {
+                        $item.draggable('destroy');
+                    } catch (e) {}
                 } else if (count === 1) {
                     $numIn.hide();
                 } else {
@@ -1235,8 +1288,8 @@ var $eXeCompleta = {
                     1,
                     mOptions.msgs.msgTryAgain.replace(
                         '%s',
-                        mOptions.percentajeFB,
-                    ),
+                        mOptions.percentajeFB
+                    )
                 );
             }
         }
@@ -1259,7 +1312,7 @@ var $eXeCompleta = {
     getRetroFeedMessages: function (iHit, instance) {
         const msgs = $eXeCompleta.options[instance].msgs,
             sMessages = (iHit ? msgs.msgSuccesses : msgs.msgFailures).split(
-                '|',
+                '|'
             ),
             randomMessage =
                 sMessages[Math.floor(Math.random() * sMessages.length)];
@@ -1272,12 +1325,12 @@ var $eXeCompleta = {
 
     showMessage: function (type, message, instance) {
         const colors = [
-            '#555555',
-            $eXeCompleta.borderColors.red,
-            $eXeCompleta.borderColors.green,
-            $eXeCompleta.borderColors.blue,
-            $eXeCompleta.borderColors.yellow,
-        ],
+                '#555555',
+                $eXeCompleta.borderColors.red,
+                $eXeCompleta.borderColors.green,
+                $eXeCompleta.borderColors.blue,
+                $eXeCompleta.borderColors.yellow,
+            ],
             color = colors[type];
         $(`#cmptMensaje-${instance}`).text(message).css({
             color: color,
@@ -1302,12 +1355,10 @@ var $eXeCompleta = {
         mOptions.scorerp = (mOptions.hits * 10) / mOptions.number;
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             mOptions,
-            $eXeCompleta.isInExe,
+            $eXeCompleta.isInExe
         );
     },
 };
 $(function () {
     $eXeCompleta.init();
 });
-
-

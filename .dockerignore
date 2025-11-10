@@ -41,10 +41,10 @@ var/log/
 # Ignore local Symfony configuration files
 config/bootstrap.php
 config/packages/test/
-config/packages/dev/
+#config/packages/dev/
 config/packages/local/
 config/routes/test/
-config/routes/dev/
+#config/routes/dev/
 config/routes/local/
 
 # Ignore deployment-specific files

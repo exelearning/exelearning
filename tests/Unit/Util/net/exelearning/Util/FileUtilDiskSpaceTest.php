@@ -2,7 +2,6 @@
 
 namespace App\Tests\Unit\Util\net\exelearning\Util;
 
-use App\Settings;
 use App\Util\net\exelearning\Util\FileUtil;
 use App\Util\net\exelearning\Util\SettingsUtil;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,7 +24,8 @@ final class FileUtilDiskSpaceTest extends KernelTestCase
     public function testUserStorageMaxDiskSpaceIsRespected(): void
     {
         $diskSpaceBytes = SettingsUtil::getUserStorageMaxDiskSpaceInBytes();
-        $expected = Settings::USER_STORAGE_MAX_DISK_SPACE * 1024 * 1024;
+        $maxDiskSpaceMB = self::getContainer()->getParameter('app.user_storage_max_disk_space');
+        $expected = $maxDiskSpaceMB * 1024 * 1024;
         self::assertSame($expected, $diskSpaceBytes);
 
         $dummyFile = new class() {

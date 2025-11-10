@@ -26,6 +26,7 @@ Use the sections below to jump to what you need.
 - Internationalization: [Add and update translations](development/internationalization.md)
 - Real Time: [Mercure/SSE setup and tips](development/real-time.md)
 - Customization: [Applying safe CSS/JS](development/customization.md)
+- Customization: [Creating a Style](development/styles.md)
 - Version Control: [Branching and PRs](development/version-control.md)
 - Installers: [Installers](development/installers.md)
 

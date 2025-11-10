@@ -38,7 +38,7 @@ var $exeDevice = {
         this.refreshTranslations();
         this.ci18n.msgTryAgain = this.ci18n.msgTryAgain.replace(
             '&percnt;',
-            '%',
+            '%'
         );
 
         this.setMessagesInfo();
@@ -64,25 +64,45 @@ var $exeDevice = {
             msgNoImage: c_('No picture question'),
             msgCool: c_('Cool!'),
             msgLoseT: c_('You lost 330 points'),
-            msgSuccesses: c_('Right! | Excellent! | Great! | Very good! | Perfect!'),
-            msgFailures: c_('It was not that! | Incorrect! | Not correct! | Sorry! | Error!'),
-            msgTryAgain: c_('You need at least %s&percnt; of correct answers to get the information. Please try again.'),
-            msgEndGameScore: c_('Please start the game before saving your score.'),
-            msgScoreScorm: c_("The score can't be saved because this page is not part of a SCORM package."),
+            msgSuccesses: c_(
+                'Right! | Excellent! | Great! | Very good! | Perfect!'
+            ),
+            msgFailures: c_(
+                'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
+            ),
+            msgTryAgain: c_(
+                'You need at least %s&percnt; of correct answers to get the information. Please try again.'
+            ),
+            msgEndGameScore: c_(
+                'Please start the game before saving your score.'
+            ),
+            msgScoreScorm: c_(
+                "The score can't be saved because this page is not part of a SCORM package."
+            ),
             msgOnlySaveScore: c_('You can only save the score once!'),
             msgOnlySave: c_('You can only save once'),
             msgInformation: c_('Information'),
             msgYouScore: c_('Your score'),
-            msgOnlySaveAuto: c_('Your score will be saved after each question. You can only play once.'),
-            msgSaveAuto: c_('Your score will be automatically saved after each question.'),
-            msgSeveralScore: c_('You can save the score as many times as you want'),
+            msgOnlySaveAuto: c_(
+                'Your score will be saved after each question. You can only play once.'
+            ),
+            msgSaveAuto: c_(
+                'Your score will be automatically saved after each question.'
+            ),
+            msgSeveralScore: c_(
+                'You can save the score as many times as you want'
+            ),
             msgYouLastScore: c_('The last score saved is'),
             msgActityComply: c_('You have already done this activity.'),
-            msgPlaySeveralTimes: c_('You can do this activity as many times as you want'),
+            msgPlaySeveralTimes: c_(
+                'You can do this activity as many times as you want'
+            ),
             msgClose: c_('Close'),
             msgAudio: c_('Audio'),
             msgTimeOver: c_('Time is up. Please try again'),
-            msgAllAttemps: c_('You finished all the attempts! Please try again'),
+            msgAllAttemps: c_(
+                'You finished all the attempts! Please try again'
+            ),
             mgsAllPhrases: c_('You have ordered all the activities!'),
             msgAttempts: c_('Attempts'),
             msgNumbersAttemps: c_('Number of activities to be completed'),
@@ -100,37 +120,37 @@ var $exeDevice = {
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
             msgPhrases: c_('Phrases'),
             msgTypeGame: c_('Sort'),
-        }
+        };
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
         msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game',
+            'The selected file does not contain a valid game'
         );
         msgs.msgEURLValid = _(
-            'You must upload or indicate the valid URL of an image',
+            'You must upload or indicate the valid URL of an image'
         );
         msgs.msgEOneQuestion = _('Please provide at least one question');
         msgs.msgTypeChoose = _(
-            'Please check all the answers in the right order',
+            'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
-            'Your browser is not compatible with this tool.',
+            'Your browser is not compatible with this tool.'
         );
         msgs.msgFewAttempts = _(
-            'The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts',
+            'The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts'
         );
         msgs.msgCompleteData = _(
-            'You must indicate an image, a text or/and an audio for each card',
+            'You must indicate an image, a text or/and an audio for each card'
         );
         msgs.msgPairsMax = _('Maximum number of phrases: 20');
         msgs.msgCardsColumn = _(
-            'With fixed headers, the number of cards must be bigger than the number of columns',
+            'With fixed headers, the number of cards must be bigger than the number of columns'
         );
         msgs.msgIDLenght = _(
-            'The report identifier must have at least 5 characters',
+            'The report identifier must have at least 5 characters'
         );
         msgs.msgEOneWord = _('Please provide at least one word');
     },
@@ -380,27 +400,38 @@ var $exeDevice = {
 
     showTypeGame: function (type) {
         if (type == 0) {
-            $('#ordenaTimeShowDiv, #ordenaColumnsDiv, #ordenaActivityNumberDiv, #ordenaEDefinitionDiv, #ordenaEPhrase, #ordenaButtonCardDiv, #ordenaCustomizeCard,  #ordenaStartAutomaticallyDiv, #ordenaECustomMessagesDiv, #ordenaFixedHeaders')
-                .removeClass('d-flex').addClass('d-none');
+            $(
+                '#ordenaTimeShowDiv, #ordenaColumnsDiv, #ordenaActivityNumberDiv, #ordenaEDefinitionDiv, #ordenaEPhrase, #ordenaButtonCardDiv, #ordenaCustomizeCard,  #ordenaStartAutomaticallyDiv, #ordenaECustomMessagesDiv, #ordenaFixedHeaders'
+            )
+                .removeClass('d-flex')
+                .addClass('d-none');
             $('#ordenaEBackDiv').hide();
             $('#ordenaEWordBorderDiv, #ordenaEPĥraseIDiv')
-                .removeClass('d-none').addClass('d-flex');
+                .removeClass('d-none')
+                .addClass('d-flex');
 
             $('#ordenaECustomMessages').prop('checked', false);
             $('#ordenaButtonsPrhaseDiv').insertBefore('#ordenaEPhrase');
         } else {
-            $('#ordenaTimeShowDiv, #ordenaColumnsDiv, #ordenaActivityNumberDiv, #ordenaButtonCardDiv, #ordenaCustomizeCard, #ordenaFixedHeaders, #ordenaStartAutomaticallyDiv, #ordenaECustomMessagesDiv')
-                .removeClass('d-none').addClass('d-flex');
+            $(
+                '#ordenaTimeShowDiv, #ordenaColumnsDiv, #ordenaActivityNumberDiv, #ordenaButtonCardDiv, #ordenaCustomizeCard, #ordenaFixedHeaders, #ordenaStartAutomaticallyDiv, #ordenaECustomMessagesDiv'
+            )
+                .removeClass('d-none')
+                .addClass('d-flex');
 
             $('#ordenaEBackDiv').show();
 
             $('#ordenaEDefinitionDiv, #ordenaEPhrase')
-                .removeClass('d-none').addClass('d-flex');
+                .removeClass('d-none')
+                .addClass('d-flex');
 
             $('#ordenaEPĥraseIDiv, #ordenaEWordBorderDiv')
-                .removeClass('d-flex').addClass('d-none');
+                .removeClass('d-flex')
+                .addClass('d-none');
 
-            $('#ordenaButtonsPrhaseDiv').insertBefore('#ordenaActivityNumberDiv');
+            $('#ordenaButtonsPrhaseDiv').insertBefore(
+                '#ordenaActivityNumberDiv'
+            );
         }
         const customMessages = $('#ordenaECustomMessages').is(':checked');
 
@@ -413,19 +444,18 @@ var $exeDevice = {
                 .removeClass('d-flex')
                 .addClass('d-none');
         }
-
     },
 
     removeCard: function () {
         const numcards = $('#ordenaEPhrase').find(
-            'div.ODNE-EDatosCarta',
+            'div.ODNE-EDatosCarta'
         ).length;
         if (numcards < 2) {
             $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             const next = $('#ordenaEDatosCarta-' + $exeDevice.activeID)
-                .next('div.ODNE-EDatosCarta')
-                .data('id'),
+                    .next('div.ODNE-EDatosCarta')
+                    .data('id'),
                 prev = $('#ordenaEDatosCarta-' + $exeDevice.activeID)
                     .prev('div.ODNE-EDatosCarta')
                     .data('id');
@@ -438,7 +468,7 @@ var $exeDevice = {
             }
             $('.ODNE-EDatosCarta').removeClass('ODNE-EActive');
             $('#ordenaEDatosCarta-' + $exeDevice.activeID).addClass(
-                'ODNE-EActive',
+                'ODNE-EActive'
             );
             $('#ordenaEPasteC').hide();
         }
@@ -531,7 +561,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#ordenaEPercentajeQuestions').val()),
+            $exeDevice.removeTags($('#ordenaEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -683,7 +713,7 @@ var $exeDevice = {
 
         $container
             .find(
-                '.exe-file-picker:not(.initialized), .exe-image-picker:not(.initialized)',
+                '.exe-file-picker:not(.initialized), .exe-image-picker:not(.initialized)'
             )
             .each(function () {
                 const $input = $(this);
@@ -708,7 +738,7 @@ var $exeDevice = {
                 }
                 if (
                     !$container.find(
-                        `input[type="button"][data-filepicker="${id}"]`,
+                        `input[type="button"][data-filepicker="${id}"]`
                     ).length
                 ) {
                     const $button = $('<input>', {
@@ -785,7 +815,9 @@ var $exeDevice = {
     },
 
     addEventCard: function (id) {
-        $('#ordenaEAuthorAlt-' + id).removeClass('d-flex').addClass('d-none');
+        $('#ordenaEAuthorAlt-' + id)
+            .removeClass('d-flex')
+            .addClass('d-none');
 
         $('#ordenaEURLImage-' + id).on('change', function () {
             $exeDevice.loadImage(id);
@@ -810,8 +842,7 @@ var $exeDevice = {
             e.preventDefault();
             const $box = $('#ordenaEAuthorAlt-' + id);
             const show = $box.hasClass('d-none');
-            $box.toggleClass('d-none', !show)
-                .toggleClass('d-flex', show);
+            $box.toggleClass('d-none', !show).toggleClass('d-flex', show);
         });
 
         $('#ordenaEText-' + id).on('keyup', function () {
@@ -867,7 +898,7 @@ var $exeDevice = {
             $cards = $('#ordenaEPhrase').find('div.ODNE-EDatosCarta'),
             orderedColumns = $('#ordenaOrderedColumns').is(':checked'),
             gameColumns = parseInt(
-                $('input.ODNE-EColumns[name=odncolumns]:checked').val(),
+                $('input.ODNE-EColumns[name=odncolumns]:checked').val()
             ),
             type = parseInt($('input.ODNE-EType[name=odntype]:checked').val());
 
@@ -941,7 +972,9 @@ var $exeDevice = {
             const alpha = isFinite(opacity) ? opacity : 1;
             return 'rgba(' + parts.concat(alpha).join(',') + ')';
         } catch (e) {
-            return 'rgba(255,255,255,' + (isFinite(opacity) ? opacity : 1) + ')';
+            return (
+                'rgba(255,255,255,' + (isFinite(opacity) ? opacity : 1) + ')'
+            );
         }
     },
 
@@ -957,7 +990,7 @@ var $exeDevice = {
             json = $exeDevices.iDevice.gamification.helpers.decrypt(json);
 
             const dataGame =
-                $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $audiosDef = $('.ordena-LinkAudiosDef', wrapper),
                 $audiosError = $('.ordena-LinkAudiosError', wrapper),
                 $audiosHit = $('.ordena-LinkAudiosHit', wrapper),
@@ -1044,7 +1077,7 @@ var $exeDevice = {
                 $('#ordenaEFeedBackEditor').val(textFeedBack.html());
 
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
-                dataGame.msgs,
+                dataGame.msgs
             );
             $exeDevice.showPhrase(0, true);
         }
@@ -1077,7 +1110,6 @@ var $exeDevice = {
 
         let json = JSON.stringify(dataGame),
             divContent = '';
-
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
@@ -1134,10 +1166,10 @@ var $exeDevice = {
             function () {
                 $exeDevice.checkAltImage = false;
                 let saveButton = document.getElementsByClassName(
-                    'button-save-idevice',
+                    'button-save-idevice'
                 )[0];
                 saveButton.click();
-            },
+            }
         );
 
         return false;
@@ -1256,22 +1288,23 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#ordenaEShowMinimize').is(':checked'),
             wordBorder = $('#ordenaEWordBorder').is(':checked'),
-            itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            itinerary =
+                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#ordenaECaseSensitive').is(':checked'),
             feedBack = $('#ordenaEHasFeedBack').is(':checked'),
             percentajeFB = parseInt(clear($('#ordenaEPercentajeFB').val())),
             customMessages = $('#ordenaECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
-                clear($('#ordenaEPercentajeQuestions').val()),
+                clear($('#ordenaEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#ordenaETime').val())),
             timeShowSolution = parseInt(
-                clear($('#ordenaETimeShowSolution').val()),
+                clear($('#ordenaETimeShowSolution').val())
             ),
             cardHeight = parseInt(clear($('#ordenaCardHeight').val())),
             startAutomatically = $('#ordenaStartAutomatically').is(':checked'),
             gameColumns = parseInt(
-                $('input.ODNE-EColumns[name=odncolumns]:checked').val(),
+                $('input.ODNE-EColumns[name=odncolumns]:checked').val()
             ),
             author = $('#ordenaEAuthor').val(),
             showSolution = $('#ordenaEShowSolution').is(':checked'),
@@ -1357,7 +1390,7 @@ var $exeDevice = {
                     const mData = $exeDevice.placeImageWindows(
                         this,
                         this.naturalWidth,
-                        this.naturalHeight,
+                        this.naturalHeight
                     );
                     $exeDevice.drawImage(this, mData);
                     $image.show();
@@ -1632,9 +1665,12 @@ var $exeDevice = {
 
                 $('#ordenaFixedHeaders')
                     .toggleClass('d-none', !(number > 1))
-                    .toggleClass('d-flex', (number > 1));
+                    .toggleClass('d-flex', number > 1);
 
-                const type = parseInt($('input.ODNE-EType[name=odntype]:checked').val(), 10);
+                const type = parseInt(
+                    $('input.ODNE-EType[name=odntype]:checked').val(),
+                    10
+                );
                 if (type === 1) $exeDevice.resizePanel(ordered, number);
             }
         );
@@ -1646,11 +1682,11 @@ var $exeDevice = {
 
         $('#ordenaOrderedColumns').on('change', function () {
             const number = parseInt(
-                $('input.ODNE-EColumns[name=odncolumns]:checked').val(),
-            ),
+                    $('input.ODNE-EColumns[name=odncolumns]:checked').val()
+                ),
                 ordered = $(this).is(':checked'),
                 type = parseInt(
-                    $('input.ODNE-EType[name=odntype]:checked').val(),
+                    $('input.ODNE-EType[name=odntype]:checked').val()
                 );
             if (type == 1) {
                 $exeDevice.resizePanel(ordered, number);
@@ -1668,8 +1704,8 @@ var $exeDevice = {
         });
 
         const gameColumns = parseInt(
-            $('input.ODNE-EColumns[name=odncolumns]:checked').val(),
-        ),
+                $('input.ODNE-EColumns[name=odncolumns]:checked').val()
+            ),
             orderedColumns = $('#ordenaOrderedColumns').is(':checked'),
             type = parseInt($('input.ODNE-EType[name=odntype]:checked').val());
         if (type == 1) {
@@ -1694,28 +1730,21 @@ var $exeDevice = {
         $('.sortable_container').on('drop', function () {
             $(this).removeClass('drag-over');
         });
-        $('#ordenaEURLImgCard').on('change', () =>
-            $exeDevice.loadImageCard(),
-        );
-
+        $('#ordenaEURLImgCard').on('change', () => $exeDevice.loadImageCard());
     },
     loadImageCard: function () {
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
             url = $('#ordenaEURLImgCard').val(),
             ext = url.split('.').pop().toLowerCase();
 
-        if (
-            (url.indexOf('files') == 0) &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
         }
         $exeDevice.showImageCard(url);
     },
-
 
     resizePanel: function (ordered, number) {
         let wd = 1100;
@@ -1738,12 +1767,9 @@ var $exeDevice = {
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
             url = $('#ordenaEURLImage-' + id).val(),
             ext = url.split('.').pop().toLowerCase();
-        if (
-            url.indexOf('files') == 0 &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(
-                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp',
+                _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
         }
@@ -1753,10 +1779,7 @@ var $exeDevice = {
     loadAudio: function (url) {
         const validExt = ['mp3', 'wab', 'ogg'],
             ext = url.split('.').pop().toLowerCase();
-        if (
-            url.indexOf('files') == 0 &&
-            validExt.indexOf(ext) == -1
-        ) {
+        if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
             $exeDevice.showMessage(_('Supported formats') + ': mp3, wav, ogg');
             return false;
         } else {
@@ -1824,7 +1847,7 @@ var $exeDevice = {
         if ($exeDevice.validatePhrase()) {
             $exeDevice.typeEdit = 0;
             $exeDevice.clipBoard = JSON.parse(
-                JSON.stringify($exeDevice.phrasesGame[$exeDevice.active]),
+                JSON.stringify($exeDevice.phrasesGame[$exeDevice.active])
             );
             $('#ordenaEPaste').show();
         }
@@ -1854,7 +1877,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.phrasesGame,
                 $exeDevice.numberCutCuestion,
-                $exeDevice.active,
+                $exeDevice.active
             );
             $exeDevice.showPhrase($exeDevice.active);
             $('#ordenaENumPhrases').text($exeDevice.phrasesGame.length);
@@ -1897,7 +1920,9 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(game.itinerary);
+        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+            game.itinerary
+        );
         game.maxWidth =
             typeof game.maxWidth == 'undefined' ? false : game.maxWidth;
         game.orderedColumns =
@@ -1936,7 +1961,7 @@ var $exeDevice = {
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
-            game.weighted,
+            game.weighted
         );
         $exeDevice.phrasesGame = game.phrasesGame;
         $exeDevice.updateGameMode(game.feedBack);
@@ -1947,13 +1972,13 @@ var $exeDevice = {
 
         $(
             "input.ODNE-EColumns[name='odncolumns'][value='" +
-            game.gameColumns +
-            "']",
+                game.gameColumns +
+                "']"
         ).prop('checked', true);
 
-        $('#ordenaEURLImgCard').val(game.imgCard)
+        $('#ordenaEURLImgCard').val(game.imgCard);
 
-        $exeDevice.showImageCard(game.imgCard)
+        $exeDevice.showImageCard(game.imgCard);
 
         $exeDevice.updateQuestionsNumber();
 
@@ -1967,15 +1992,19 @@ var $exeDevice = {
         $('#ordenaEEvaluationID').prop('disabled', !game.evaluation);
         $("input.ODNE-EType[name='odntype'][value='" + game.type + "']").prop(
             'checked',
-            true,
+            true
         );
 
         $exeDevice.showTypeGame(game.type);
 
         if (game.type == 1 && game.customMessages) {
-            $('.ODNE-ECustomMessageDiv').removeClass('d-none').addClass('d-flex');
+            $('.ODNE-ECustomMessageDiv')
+                .removeClass('d-none')
+                .addClass('d-flex');
         } else {
-            $('.ODNE-ECustomMessageDiv').removeClass('d-flex').addClass('d-none');
+            $('.ODNE-ECustomMessageDiv')
+                .removeClass('d-flex')
+                .addClass('d-none');
         }
 
         if (game.type == 1 && game.gameColumns > 0) {
@@ -2007,7 +2036,6 @@ var $exeDevice = {
                 ) {
                     return false;
                 } else {
-
                     $image.show();
                     $nimage.hide();
                     return true;
@@ -2046,7 +2074,7 @@ var $exeDevice = {
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
-            $(image).parent().width() > 0 ? $(image).parent().width() : 1,
+                $(image).parent().width() > 0 ? $(image).parent().width() : 1,
             hDiv =
                 $(image).parent().height() > 0 ? $(image).parent().height() : 1,
             varW = naturalWidth / wDiv,
