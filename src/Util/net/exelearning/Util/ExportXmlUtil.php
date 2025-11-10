@@ -2009,10 +2009,9 @@ class ExportXmlUtil
         }
 
         // Package subtitle (immediately after package title)
-        $packageSubtitleTag = 'p';
-        if ('' != $subtitle) {
+        if (Constants::EXPORT_TYPE_HTML5_SP != $exportType && '' != $subtitle) {
             $headerEmpty = false;
-            $packageSubtitle = $pageHeader->addChild($packageSubtitleTag, htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));
+            $packageSubtitle = $pageHeader->addChild('p', htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));
             $packageSubtitle->addAttribute('class', 'package-subtitle');
         }
 
