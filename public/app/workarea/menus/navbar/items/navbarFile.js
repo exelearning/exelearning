@@ -878,6 +878,11 @@ export default class NavbarFile {
     async createSession(params) {
         await eXeLearning.app.api.postCloseSession(params).then((response) => {
             if (response.responseMessage == 'OK') {
+                // Clear requestedProjectId to force creation of a NEW project with new IDs
+                // Without this, loadCurrentProject() would pass the old projectId to the backend,
+                // causing it to reuse the existing session instead of creating a fresh one
+                eXeLearning.app.project.requestedProjectId = null;
+
                 // Reload project
                 eXeLearning.app.project.loadCurrentProject();
                 eXeLearning.app.project.openLoad();
