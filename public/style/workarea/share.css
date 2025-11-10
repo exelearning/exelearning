@@ -142,7 +142,6 @@
 
 #share-people-list {
     max-height: 300px;
-    overflow-y: auto;
 }
 
 .share-person-row {
@@ -445,63 +444,4 @@
     outline-offset: 2px;
 }
 
-/* ========================================================================
-   Dark Mode Support (if applicable)
-   ======================================================================== */
 
-@media (prefers-color-scheme: dark) {
-    .btn-share-pill {
-        background: #343a40;
-        border-color: #495057;
-        color: #f8f9fa;
-    }
-
-    .btn-share-pill:hover {
-        background: #495057;
-        border-color: #6c757d;
-    }
-
-    .btn-share-pill .share-visibility-indicator {
-        color: #dee2e6;
-    }
-
-    .btn-share-pill .share-button-text {
-        color: #0dcaf0;
-    }
-
-    #modalShare .modal-content {
-        background: #212529;
-        color: #f8f9fa;
-    }
-
-    #share-invite-email,
-    #share-visibility-select,
-    #share-link-input {
-        background: #343a40;
-        border-color: #495057;
-        color: #f8f9fa;
-    }
-
-    #share-copy-button {
-        background: #343a40;
-        border-color: #495057;
-        color: #f8f9fa;
-    }
-
-    #share-copy-button:hover {
-        background: #495057;
-    }
-
-    .share-person-row:hover {
-        background: #343a40;
-    }
-
-    .share-person-menu-btn:hover {
-        background: #495057;
-    }
-
-    .share-person-role-badge {
-        background: #495057;
-        color: #dee2e6;
-    }
-}
