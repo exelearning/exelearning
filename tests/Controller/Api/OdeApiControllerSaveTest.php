@@ -198,32 +198,30 @@ class OdeApiControllerSaveTest extends WebTestCase
         $this->assertArrayHasKey('responseMessage', $response);
     }
 
-    public function testSaveWithJsonBodyWorks(): void
+    public function testSaveWithFormDataWorks(): void
     {
         $session = $this->createSession();
 
         $client = static::createClient();
         $this->loginClient($client);
 
-        // Send JSON body like the frontend does
+        // Send FormData like the frontend actually does (not JSON)
+        // POST requests use FormData to avoid session cleanup issues that cause duplicate ODE components
         $client->request(
             'POST',
             '/api/ode-management/odes/ode/save/manual',
-            [],
-            [],
-            ['CONTENT_TYPE' => 'application/json'],
-            json_encode([
+            [
                 'odeSessionId' => $session['odeSessionId'],
                 'odeVersion' => $session['odeVersionId'],
                 'odeId' => $session['odeId'],
-            ])
+            ]
         );
 
         $statusCode = $client->getResponse()->getStatusCode();
 
         // Should be 200 (even if save fails for other reasons)
-        // What we're testing is that it correctly reads JSON body
-        $this->assertSame(200, $statusCode, 'Should accept JSON body and not return 400');
+        // What we're testing is that it correctly reads FormData parameters
+        $this->assertSame(200, $statusCode, 'Should accept FormData and not return 400');
 
         $response = json_decode($client->getResponse()->getContent(), true);
         $this->assertIsArray($response);

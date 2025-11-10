@@ -33,6 +33,22 @@ export default class ApiCallBaseFunctions {
     }
 
     /**
+     * POST request with JSON body (Content-Type: application/json)
+     * Use this for endpoints that explicitly require JSON instead of FormData
+     *
+     * @param {String} url
+     * @param {Object} data - Will be JSON.stringify'd
+     * @returns
+     */
+    async postJson(url, data, waiting = true) {
+        try {
+            return await this.doAjaxJson(url, 'POST', data, waiting);
+        } catch (err) {
+            return {};
+        }
+    }
+
+    /**
      *
      * @param {String} url
      * @param {Object} data
@@ -75,6 +91,38 @@ export default class ApiCallBaseFunctions {
     }
 
     /**
+     * PATCH request with FormData (default jQuery behavior)
+     * For endpoints that use hydrateRequestBody()
+     *
+     * @param {String} url
+     * @param {Object} data
+     * @returns
+     */
+    async patch(url, data, waiting = true) {
+        try {
+            return await this.doAjax(url, 'PATCH', data, waiting);
+        } catch (err) {
+            return {};
+        }
+    }
+
+    /**
+     * PATCH request with JSON body (Content-Type: application/json)
+     * Use this for endpoints that explicitly require JSON instead of FormData
+     *
+     * @param {String} url
+     * @param {Object} data - Will be JSON.stringify'd
+     * @returns
+     */
+    async patchJson(url, data, waiting = true) {
+        try {
+            return await this.doAjaxJson(url, 'PATCH', data, waiting);
+        } catch (err) {
+            return {};
+        }
+    }
+
+    /**
      *
      * @param {String} method
      * @param {String} url
@@ -103,6 +151,39 @@ export default class ApiCallBaseFunctions {
             url: url,
             method: method,
             data: data,
+            timeout: eXeLearning.config.clientCallWaitingTime,
+            dataType: 'json',
+            success: function (response) {
+                return response;
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                return { error: errorThrown };
+            },
+        });
+        setTimeout(() => {
+            this.removeWaitingPetition();
+        }, 100);
+        return response;
+    }
+
+    /**
+     * Helper method for AJAX calls that need to send JSON body
+     * Used by postJson() and patchJson()
+     *
+     * @param {*} url
+     * @param {*} method
+     * @param {*} data
+     * @param {*} waiting
+     * @returns
+     */
+    async doAjaxJson(url, method, data, waiting = true) {
+        if (waiting) this.addWaitingPetition();
+        let response = {};
+        response = await $.ajax({
+            url: url,
+            method: method,
+            data: JSON.stringify(data),
+            contentType: 'application/json',
             timeout: eXeLearning.config.clientCallWaitingTime,
             dataType: 'json',
             success: function (response) {
