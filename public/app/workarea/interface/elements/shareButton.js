@@ -101,7 +101,7 @@ export default class ShareProjectButton {
         this.currentVisibility = visibility;
 
         if (visibility === 'public') {
-            this.visibilityIcon.textContent = 'link';
+            this.visibilityIcon.textContent = 'public';
             this.visibilityText.textContent = _('Public');
         } else {
             this.visibilityIcon.textContent = 'lock';
