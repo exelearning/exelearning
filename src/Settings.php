@@ -155,24 +155,29 @@ class Settings
         'zu' => 'isiZulu',
     ];
 
-    // User storage quotas
-    public const USER_STORAGE_MAX_DISK_SPACE = 500; // Max disk space by user (in MB)
-    public const COUNT_USER_AUTOSAVE_SPACE_ODE_FILES = true; // Set if the autosaved files count on the user storage quota
-    public const FILE_UPLOAD_MAX_SIZE = 100; // Max file upload size (in MB)
-
-    // Permanent save
-    public const PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL = 600; // Time interval for autosave (in seconds)
-    public const PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES = 10; // Number of autosaved files to maintain
-
-    // Autosave function
-    public const AUTOSAVE_ODE_FILES_FUNCTION = true;
-
-    // Version control
-    public const VERSION_CONTROL = true;
-
-    // User recent ode files amount
-    public const USER_RECENT_ODE_FILES_AMOUNT = 3;
-
-    // Blocking level: "page" blocks entire pages, "idevice" blocks individual devices
-    public const COLLABORATIVE_BLOCK_LEVEL = 'idevice';
+    // =========================================================================
+    // DEPRECATED CONSTANTS - Now configured via environment variables
+    // =========================================================================
+    //
+    // The following constants have been migrated to environment variables
+    // configured in .env.dist and injected as Symfony parameters.
+    //
+    // Migration mapping:
+    // - USER_STORAGE_MAX_DISK_SPACE → USER_STORAGE_MAX_DISK_SPACE in .env
+    // - COUNT_USER_AUTOSAVE_SPACE_ODE_FILES → COUNT_USER_AUTOSAVE_SPACE_ODE_FILES in .env
+    // - FILE_UPLOAD_MAX_SIZE → FILE_UPLOAD_MAX_SIZE in .env
+    // - PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL → PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL in .env
+    // - PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES → PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES in .env
+    // - AUTOSAVE_ODE_FILES_FUNCTION → AUTOSAVE_ODE_FILES_FUNCTION in .env
+    // - VERSION_CONTROL → VERSION_CONTROL in .env
+    // - USER_RECENT_ODE_FILES_AMOUNT → USER_RECENT_ODE_FILES_AMOUNT in .env
+    // - COLLABORATIVE_BLOCK_LEVEL → COLLABORATIVE_BLOCK_LEVEL in .env
+    //
+    // To access these values:
+    // - Controllers: $this->getParameter('app.setting_name')
+    // - Services: Inject via constructor parameters
+    // - Tests: self::getContainer()->getParameter('app.setting_name')
+    //
+    // See config/services.yaml for parameter definitions.
+    // =========================================================================
 }

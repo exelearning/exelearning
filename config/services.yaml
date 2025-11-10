@@ -71,6 +71,21 @@ parameters:
     # Allow users to import/install iDevices
     app.online_idevices_install: '%env(bool:ONLINE_IDEVICES_INSTALL)%'
 
+    # User storage and file upload limits
+    app.user_storage_max_disk_space: '%env(int:USER_STORAGE_MAX_DISK_SPACE)%'
+    app.count_user_autosave_space_ode_files: '%env(bool:COUNT_USER_AUTOSAVE_SPACE_ODE_FILES)%'
+    app.file_upload_max_size: '%env(int:FILE_UPLOAD_MAX_SIZE)%'
+
+    # Autosave configuration
+    app.permanent_save_autosave_time_interval: '%env(int:PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL)%'
+    app.permanent_save_autosave_max_number_of_files: '%env(int:PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES)%'
+    app.autosave_ode_files_function: '%env(bool:AUTOSAVE_ODE_FILES_FUNCTION)%'
+
+    # Application features
+    app.version_control: '%env(bool:VERSION_CONTROL)%'
+    app.user_recent_ode_files_amount: '%env(int:USER_RECENT_ODE_FILES_AMOUNT)%'
+    app.collaborative_block_level: '%env(string:COLLABORATIVE_BLOCK_LEVEL)%'
+
 services:
     Symfony\Component\DependencyInjection\ContainerInterface: '@service_container'
     # default configuration for services in *this* file
@@ -192,6 +207,18 @@ services:
             $secret: '%api_jwt_secret%'
             $issuer: '%api_jwt_issuer%'
             $audience: '%api_jwt_audience%'
+
+    App\Service\net\exelearning\Service\Api\OdeService:
+        arguments:
+            $autosaveTimeInterval: '%app.permanent_save_autosave_time_interval%'
+            $autosaveMaxFiles: '%app.permanent_save_autosave_max_number_of_files%'
+            $countUserAutosaveSpace: '%app.count_user_autosave_space_ode_files%'
+
+    App\Repository\net\exelearning\Repository\OdeFilesRepository:
+        arguments:
+            $userRecentOdeFilesAmount: '%app.user_recent_ode_files_amount%'
+            $autosaveMaxFiles: '%app.permanent_save_autosave_max_number_of_files%'
+        tags: ['doctrine.repository_service']
 
     # Register custom Doctrine repositories as services
     App\Entity\Project\ProjectPropertyRepository:

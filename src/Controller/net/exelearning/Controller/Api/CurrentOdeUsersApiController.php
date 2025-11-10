@@ -13,7 +13,6 @@ use App\Entity\net\exelearning\Entity\OdePagStructureSync;
 use App\Helper\net\exelearning\Helper\UserHelper;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersServiceInterface;
 use App\Service\net\exelearning\Service\Api\CurrentOdeUsersSyncChangesServiceInterface;
-use App\Settings;
 use App\Util\net\exelearning\Util\Util;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -184,7 +183,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
                             ',timeIdeviceEditing:'.time().
                             ',actionType:'.$actionType.
                             ',pageId:'.$pageId.
-                            ',collaborativeMode:'.Settings::COLLABORATIVE_BLOCK_LEVEL;
+                            ',collaborativeMode:'.$this->getParameter('app.collaborative_block_level');
 
                 if ('true' !== $odeComponentFlag) {
                     $message .= ',editing:false';
