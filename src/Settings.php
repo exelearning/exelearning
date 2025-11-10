@@ -82,15 +82,15 @@ class Settings
 
     // Active locales for which translations will be extracted
     public const LOCALES = [
+        'ca' => 'Català',
         'en' => 'English',
         'es' => 'Español',
-        'ca' => 'Català',
+        'eo' => 'Esperanto',
         'eu' => 'Euskara',
         'gl' => 'Galego',
-        'va' => 'Valencià',
         'pt' => 'Português',
         'ro' => 'Română',
-        'eo' => 'Esperanto',
+        'va' => 'Valencià',
     ];
     public const DEFAULT_LOCALE = 'en';
 
