@@ -318,7 +318,7 @@ class Constants
     // Constant to show modal already logged user (seconds)
     public const MODAL_CLIENT_ALREADY_LOGGED_USER_TIME = 30;
     // Client timeout for server response (milliseconds)
-    public const CLIENT_CALL_WAITING_TIME = 20000;
+    public const CLIENT_CALL_WAITING_TIME = 600000; // 10 minutes for large file operations
 
     // Client interval get last edition (milliseconds)
     public const CLIENT_INTERVAL_GET_LAST_EDITION = 20000;

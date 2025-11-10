@@ -3,7 +3,6 @@
 namespace App\Repository\net\exelearning\Repository;
 
 use App\Entity\net\exelearning\Entity\OdeFiles;
-use App\Settings;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -15,8 +14,11 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class OdeFilesRepository extends ServiceEntityRepository
 {
-    public function __construct(ManagerRegistry $registry)
-    {
+    public function __construct(
+        ManagerRegistry $registry,
+        private readonly int $userRecentOdeFilesAmount,
+        private readonly int $autosaveMaxFiles,
+    ) {
         parent::__construct($registry, OdeFiles::class);
     }
 
@@ -176,7 +178,7 @@ class OdeFilesRepository extends ServiceEntityRepository
             if (!isset($unique[$odeId])) {
                 $unique[$odeId] = $odeFile;
             }
-            if (count($unique) >= Settings::USER_RECENT_ODE_FILES_AMOUNT) {
+            if (count($unique) >= $this->userRecentOdeFilesAmount) {
                 break;
             }
         }
@@ -194,7 +196,7 @@ class OdeFilesRepository extends ServiceEntityRepository
     public function findAutosavedFilesToCleanByMaxNumberOfFiles($odeId, $maxNumberOfFiles)
     {
         if (!isset($maxNumberOfFiles)) {
-            $maxNumberOfFiles = Settings::PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES;
+            $maxNumberOfFiles = $this->autosaveMaxFiles;
         }
 
         return $this->createQueryBuilder('a')
@@ -218,7 +220,7 @@ class OdeFilesRepository extends ServiceEntityRepository
     public function findUserAutosavedFilesToCleanByMaxNumberOfFiles($userName, $maxNumberOfFiles)
     {
         if (!isset($maxNumberOfFiles)) {
-            $maxNumberOfFiles = Settings::PERMANENT_SAVE_AUTOSAVE_MAX_NUMBER_OF_FILES;
+            $maxNumberOfFiles = $this->autosaveMaxFiles;
         }
 
         return $this->createQueryBuilder('a')

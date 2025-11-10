@@ -87,7 +87,7 @@ class CreateProjectAction extends AbstractController
     private function createFromMultipart(UploadedFile $file, Request $request, $dbUser): JsonResponse
     {
         // Enforce simple size safeguard (optional stronger checks are done later)
-        $maxMb = (int) (\App\Settings::FILE_UPLOAD_MAX_SIZE ?? 100);
+        $maxMb = $this->getParameter('app.file_upload_max_size');
         if ($file->getSize() && $file->getSize() > $maxMb * 1024 * 1024) {
             return $this->json(['title' => 'Payload too large', 'detail' => 'File exceeds upload limit', 'type' => '/errors/413'], 413);
         }
