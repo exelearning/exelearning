@@ -4617,6 +4617,14 @@
         <source>File is too large</source>
         <target>El archivo es demasiado grande</target>
       </trans-unit>
+      <trans-unit id="FileSizeExceedsLimit" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
+        <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
+        <target>El tamaño del archivo ({fileSize}) excede el tamaño máximo permitido ({maxSize}).</target>
+      </trans-unit>
+      <trans-unit id="InsufficientStorageSpace" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
+        <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
+        <target>Espacio de almacenamiento insuficiente. Estás usando {usedSpace} de {maxSpace}. El archivo requiere {requiredSpace}, pero solo tienes {availableSpace} disponible. Por favor, elimina algunos archivos para liberar espacio.</target>
+      </trans-unit>
       <trans-unit id="LmWdpVc" resname="Error saving the iDevice">
         <source>Error saving the iDevice</source>
         <target>Error al guardar el iDevice</target>

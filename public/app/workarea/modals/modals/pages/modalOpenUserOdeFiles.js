@@ -14,6 +14,75 @@ export default class modalOpenUserOdeFiles extends Modal {
         );
 
         this.odeFiles = [];
+        this.uploadLimits = null; // Cache for upload limits
+
+        // Load upload limits when modal is created
+        this.loadUploadLimits();
+    }
+
+    /**
+     * Load upload limits from server
+     * This is cached to avoid repeated API calls
+     */
+    async loadUploadLimits() {
+        try {
+            this.uploadLimits = await eXeLearning.app.api.getUploadLimits();
+        } catch (error) {
+            console.error('Failed to load upload limits:', error);
+            // Set a reasonable default if API call fails
+            this.uploadLimits = {
+                maxFileSize: 100 * 1024 * 1024, // 100MB default
+                maxFileSizeFormatted: '100 MB',
+            };
+        }
+    }
+
+    /**
+     * Validate file size before upload
+     *
+     * @param {File} file - The file to validate
+     * @returns {boolean} - true if file is valid, false otherwise
+     */
+    validateFileSize(file) {
+        if (!this.uploadLimits) {
+            console.warn('Upload limits not loaded yet, skipping validation');
+            return true; // Allow upload if limits not loaded yet
+        }
+
+        if (file.size > this.uploadLimits.maxFileSize) {
+            const fileSizeFormatted = this.formatBytes(file.size);
+            const errorMessage = _(
+                'File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).'
+            )
+                .replace('{fileSize}', fileSizeFormatted)
+                .replace('{maxSize}', this.uploadLimits.maxFileSizeFormatted);
+
+            eXeLearning.app.modals.alert.show({
+                title: _('File too large'),
+                body: errorMessage,
+                contentId: 'error',
+            });
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Format bytes to human-readable format
+     *
+     * @param {number} bytes - Size in bytes
+     * @returns {string} - Formatted size (e.g., "512 MB")
+     */
+    formatBytes(bytes) {
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        bytes = Math.max(bytes, 0);
+        const pow = Math.floor((bytes ? Math.log(bytes) : 0) / Math.log(1024));
+        const powCapped = Math.min(pow, units.length - 1);
+        const value = bytes / Math.pow(1024, powCapped);
+
+        return `${value.toFixed(2)} ${units[powCapped]}`;
     }
 
     show(data = {}) {
@@ -555,7 +624,15 @@ export default class modalOpenUserOdeFiles extends Modal {
         inputUpload.accept = '.' + eXeLearning.extension + ',.elp,.zip,.epub';
         inputUpload.addEventListener('change', () => {
             const file = inputUpload.files[0];
-            if (file) this.largeFilesUpload(file);
+            if (file) {
+                // Validate file size BEFORE attempting upload
+                if (!this.validateFileSize(file)) {
+                    // Clear the input so user can select a different file
+                    inputUpload.value = '';
+                    return;
+                }
+                this.largeFilesUpload(file);
+            }
         });
 
         let label = document.createElement('label');
@@ -588,8 +665,23 @@ export default class modalOpenUserOdeFiles extends Modal {
         inputMultiple.id = 'multiple-local-modal-ode-file-upload';
         inputMultiple.accept = '.elp,.zip';
         inputMultiple.addEventListener('change', () => {
-            if (inputMultiple.files?.length)
+            if (inputMultiple.files?.length) {
+                // Validate each file size BEFORE attempting upload
+                const invalidFiles = [];
+                for (const file of inputMultiple.files) {
+                    if (!this.validateFileSize(file)) {
+                        invalidFiles.push(file.name);
+                    }
+                }
+
+                if (invalidFiles.length > 0) {
+                    // Clear the input so user can select different files
+                    inputMultiple.value = '';
+                    return;
+                }
+
                 this.uploadOdeFilesToServer(inputMultiple.files);
+            }
         });
 
         let labelMultiple = document.createElement('label');

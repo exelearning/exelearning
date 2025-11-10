@@ -157,7 +157,20 @@ class PlatformIntegrationApiController extends DefaultApiController
                     $responseData['responseMessage'] = $odeExportResult['responseMessage'];
                 }
             } catch (UserInsufficientSpaceException $e) {
-                $responseData['responseMessage'] = 'error: '.$e->getMessage();
+                $this->logger->error(
+                    'Insufficient space for platform integration',
+                    [
+                        'usedSpace' => $e->getUsedSpace(),
+                        'maxSpace' => $e->getMaxSpace(),
+                        'requiredSpace' => $e->getRequiredSpace(),
+                        'availableSpace' => $e->getAvailableSpace(),
+                        'user' => $user->getUsername(),
+                        'odeSessionId' => $odeSessionId,
+                        'file:' => $this,
+                        'line' => __LINE__,
+                    ]
+                );
+                $responseData['responseMessage'] = 'error: '.$this->formatInsufficientSpaceMessage($e);
             }
         } else {
             $this->logger->error('invalid data', ['odeSessionId' => $odeSessionId, 'file:' => $this, 'line' => __LINE__]);
@@ -259,5 +272,48 @@ class PlatformIntegrationApiController extends DefaultApiController
         $jsonResponse = $this->getJsonSerialized($jsonData);
 
         return new JsonResponse($jsonResponse, $this->status, [], true);
+    }
+
+    /**
+     * Formats bytes to human-readable format (KB, MB, GB).
+     *
+     * @param int $bytes Size in bytes
+     *
+     * @return string Formatted size (e.g., "512 MB")
+     */
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= (1024 ** $pow);
+
+        return round($bytes, 2).' '.$units[$pow];
+    }
+
+    /**
+     * Formats a user-friendly error message for insufficient space exceptions.
+     *
+     * @param UserInsufficientSpaceException $e The exception with space details
+     *
+     * @return string Formatted error message with space information
+     */
+    private function formatInsufficientSpaceMessage(UserInsufficientSpaceException $e): string
+    {
+        $usedSpaceFormatted = $this->formatBytes($e->getUsedSpace());
+        $maxSpaceFormatted = $this->formatBytes($e->getMaxSpace());
+        $requiredSpaceFormatted = $this->formatBytes($e->getRequiredSpace());
+        $availableSpaceFormatted = $this->formatBytes($e->getAvailableSpace());
+
+        return $this->translator->trans(
+            'Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.',
+            [
+                '{usedSpace}' => $usedSpaceFormatted,
+                '{maxSpace}' => $maxSpaceFormatted,
+                '{requiredSpace}' => $requiredSpaceFormatted,
+                '{availableSpace}' => $availableSpaceFormatted,
+            ]
+        );
     }
 }
