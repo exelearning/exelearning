@@ -47,8 +47,7 @@ body:has(iframe.tox-edit-area__iframe[style="height: 100%; width: 100%;"]) .idev
     z-index: 10000;
     position: fixed !important;
     bottom: 18px;
-    left: 0;
-    width: calc(100% - 14px) !important;
+    right: 14px;
     border-radius: 0 !important;
     border: none !important;
     background: none !important;
