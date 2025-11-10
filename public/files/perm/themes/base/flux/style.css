@@ -61,6 +61,40 @@ a {
     width: 100%;
 }
 
+.package-subtitle {
+    width: 100%;
+    position: absolute;
+    left: 32px;
+    bottom: 0;
+    font-size: .9em;
+    color: #777;
+}
+
+.exe-web-site .package-subtitle {
+    max-width: 70%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.siteNav-off .page > header .package-subtitle {
+    left: 24px;
+}
+
+@media (max-width: 750px) {
+    .package-subtitle {
+        left: 24px;
+        font-size: 1em;
+    }
+}
+
+
+body:has(.package-subtitle) .package-title,
+body.exe-single-page:has(.package-subtitle) .package-node h1 {
+    position:relative;
+    top: -.2em;
+}
+
 main header:not(#head) {
     padding: 0 !important;
     margin: 0 !important;
@@ -696,17 +730,17 @@ table {
     color: #777;
     font-weight: 400;
     background: #fff;
+    position: fixed;
+    top: 38px;
+    right: 32px;
+    margin: 0;
+    padding: 0;
+    color: #777;
+    text-align: right:
 }
 
 .exe-web-site .page-counter {
-    position: fixed;
-    top: 38px;
     right: 366px;
-    margin: 0;
-    padding: 0;
-    font-size: 0.9em;
-    color: #777;
-    text-align: right;
 }
 
 body.exe-teacher-mode-toggler.exe-web-site .page-counter {
