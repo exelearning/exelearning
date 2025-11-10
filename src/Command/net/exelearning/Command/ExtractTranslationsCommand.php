@@ -95,6 +95,23 @@ class ExtractTranslationsCommand extends Command
         // Replace <target>__...</target> with <target></target>
         $updatedContent = preg_replace('/<target>__([^<]*)<\/target>/', '<target></target>', $content);
 
+        // Remove all strings that start with \\, like \\xrightarrow{\\text{text}}
+        $updatedContent = preg_replace_callback(
+            '/<trans-unit\b[^>]*>.*?<source>(.*?)<\/source>.*?<\/trans-unit>/s',
+            function ($matches) {
+                $source = $matches[1];
+                if (str_starts_with($source, '\\\\')) {
+                    return '';
+                }
+
+                return $matches[0]; // conservar el trans-unit
+            },
+            $updatedContent
+        );
+
+        // Remove empty lines between trans-unit elements
+        $updatedContent = str_replace("      \n", '', $updatedContent);
+
         // Save the updated content back to the file
         file_put_contents($file, $updatedContent);
 

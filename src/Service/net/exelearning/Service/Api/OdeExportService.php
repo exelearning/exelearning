@@ -567,6 +567,7 @@ class OdeExportService implements OdeExportServiceInterface
             'odeId' => $odeId,
             'odeVersionName' => $odeVersionName,
             'isDownload' => 'true',
+            'eXeVersion' => Constants::APP_VERSION,
         ];
 
         // Ode XML structure

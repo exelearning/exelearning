@@ -59,12 +59,14 @@ class Settings
         'image/png',
         'image/svg+xml',
         'image/webp',
+        'model/gltf-binary',
         'text/css',
         'text/csv',
         'text/html',
         'text/javascript',
         'text/plain',
         'text/vtt',
+        'text/xml',
         'video/3gpp',
         'video/mp4',
         'video/mpeg',
@@ -86,6 +88,8 @@ class Settings
         'eu' => 'Euskara',
         'gl' => 'Galego',
         'va' => 'Valencià',
+        'pt' => 'Português',
+        'ro' => 'Română',
         'eo' => 'Esperanto',
     ];
     public const DEFAULT_LOCALE = 'en';
