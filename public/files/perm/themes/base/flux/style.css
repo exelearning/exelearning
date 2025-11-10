@@ -30,6 +30,10 @@ a {
     margin-top: 40px;
 }
 
+.exe-epub .page-title, .exe-scorm .page-title, .exe-ims .page-title {
+    color: #282573;
+}
+
 .page > header .package-title,
 .siteNav-off .page > header .package-title {
     padding-left: 24px;
@@ -88,7 +92,6 @@ a {
     }
 }
 
-
 body:has(.package-subtitle) .package-title,
 body.exe-single-page:has(.package-subtitle) .package-node h1 {
     position:relative;
@@ -129,6 +132,39 @@ body.exe-export.exe-scorm,
 body.exe-export.exe-ims,
 body.exe-export.exe-epub {
     padding: 0;
+}
+
+body.exe-scorm .package-title,
+body.exe-ims .package-title,
+body.exe-epub .package-title{
+    position: absolute;
+    top: 24px;
+    left: 0;
+    font-weight: normal;
+    font-size: .95em;
+    color: #777;
+}
+
+body.exe-scorm .package-subtitle,
+body.exe-ims .package-subtitle,
+body.exe-epub .package-subtitle {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+body.exe-scorm .page-title,
+body.exe-ims .page-title,
+body.exe-epub .page-title {
+    padding: 0 32px;
+}
+
+@media (max-width: 750px) {
+    body.exe-scorm .page-title,
+    body.exe-ims .page-title,
+    body.exe-epub .page-title {
+        padding: 0 24px;
+    }
 }
 
 body.exe-web-site {
