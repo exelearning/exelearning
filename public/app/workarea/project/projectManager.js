@@ -982,7 +982,7 @@ export default class projectManager {
                     await this.app.api.postJoinCurrentOdeSessionId(params);
                 if (response.responseMessage == 'OK') {
                     this.odeSession = eXeLearning.symfony.odeSessionId;
-                    this.redirectToWorkarea();
+                    // URL will be updated below via setUrlSession() without page reload
                 }
             } else if (eXeLearning.symfony.odeSessionId) {
                 eXeLearning.symfony.odeSessionId = null;
