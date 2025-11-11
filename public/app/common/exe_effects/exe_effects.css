@@ -2,7 +2,8 @@
 .exe-accordion,.exe-accordion *{-webkit-box-sizing:border-box;-moz-box-sizing:border-box;box-sizing:border-box}
 .exe-accordion{width:90%;margin:2em 0 2em 5%}
 .js .exe-accordion{overflow:hidden;box-shadow:0px 1px 3px rgba(0,0,0,0.25);border-radius:3px;background:#fff;width:96%;margin-left:2%}
-.fx-accordion-title,.exe-accordion h2{width:100%;padding:15px;display:inline-block;background:#333;transition:all linear 0.15s;color:#fff}
+.exe-content .fx-accordion-title,
+.exe-content .exe-accordion h2{width:100%;padding:15px;display:inline-block;background:#333;transition:all linear 0.15s;color:#fff}
 .fx-accordion-title{border-top:1px solid #fff}
 .fx-accordion-title-0{border:none}
 .exe-content .exe-accordion h2{border-radius:3px;margin:0;font-size:1em}
@@ -45,7 +46,7 @@ html .js .fx-accordion-title{text-decoration:none}
 .exe-carousel{margin:2em auto;width:90%;position:relative}
 .js .exe-carousel{width:96%}
 .fx-carousel-pagination{margin:11px 0 0 0;padding:0;list-style:none;text-align:center;overflow:auto}
-.exe-carousel h2{margin-top:2em}
+.exe-content .exe-carousel h2{margin-top:2em}
 .js .exe-carousel h2{margin-top:1em}
 .fx-carousel-pagination li{display:inline;padding:0;margin:0 3px}
 .fx-carousel-pagination a{outline:none;display:inline-block;padding:3px 11px;border-radius:5px;background:#efefef;text-decoration:none}
@@ -73,9 +74,9 @@ div.fx-timeline-toggler{float:right;margin-right:0;white-space:nowrap}
 .fx-timeline-container a.fx-timeline-expand{color:#fff;cursor:pointer;background:#333;border-radius:4px;font-size:.95em;padding:3px 5px;display:block}
 .fx-timeline-container a.fx-timeline-expand:hover{filter:alpha(opacity=80);opacity:.8}
 div.fx-timeline-major{clear:left;float:left;margin:0 0 12px;width:95%}
-.fx-timeline-major h2{cursor:pointer;font-size:1.2em;margin:0 0 10px;padding:4px 4px 4px 20px}
-.fx-timeline-major h2:before{content:"—";margin-left:-20px}
-.exe-content .fx-timeline-major h2 a{background:#333;border-radius:4px;color:#fff;line-height:2.3em;padding:5px 10px;text-decoration:none}
+.exe-content .fx-timeline-major h2{cursor:pointer;font-size:1.2em;margin:0 0 10px;padding:4px 4px 4px 20px}
+.exe-content .fx-timeline-major h2:before{content:"—";margin-left:-20px}
+.exe-content .exe-content .fx-timeline-major h2 a{background:#333;border-radius:4px;color:#fff;line-height:2.3em;padding:5px 10px;text-decoration:none}
 div.fx-timeline-minor{clear:left;float:left;margin:0 12px 0 0;padding:4px 4px 4px 0;position:relative}
 .fx-timeline-minor h3{clear:left;font-size:1.25em;list-style-type:none;line-height:1.2em;margin:5px 0 12px;padding:0 0 0 24px;white-space:nowrap}
 .fx-timeline-major h3:before{content:"‒";margin:0 9px 0 -25px}
