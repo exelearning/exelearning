@@ -1177,7 +1177,9 @@ export default class NavbarFile {
 
             // Only proceed if a file was actually selected
             if (odeFile) {
-                eXeLearning.app.modals.openuserodefiles.largeFilesUpload(odeFile);
+                eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
+                    odeFile
+                );
             }
         });
         this.menu.navbar.append(inputUpload);
