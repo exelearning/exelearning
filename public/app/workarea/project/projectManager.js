@@ -824,6 +824,14 @@ export default class projectManager {
     handleAccessRevoked(payload) {
         console.log('Access revoked event received:', payload);
 
+        // Validate that this notification is for the current user
+        // The payload.user contains the email of the revoked user
+        const currentUserEmail = eXeLearning.user.username;
+        if (payload.user !== currentUserEmail) {
+            console.log('Access revoked event is not for current user, ignoring');
+            return;
+        }
+
         const projectTitle = payload.projectTitle || 'this project';
         const message =
             payload.message ||
@@ -839,9 +847,9 @@ export default class projectManager {
         // Disable all editing controls immediately
         this.disableEditingControls();
 
-        // Redirect to projects list after 3 seconds
+        // Redirect to workarea after 3 seconds
         setTimeout(() => {
-            window.location.href = '/projects';
+            window.location.href = '/workarea';
         }, 3000);
     }
 
@@ -851,6 +859,14 @@ export default class projectManager {
      */
     handleVisibilityChanged(payload) {
         console.log('Visibility changed event received:', payload);
+
+        // Validate that this notification is for the current user
+        // The payload.user contains the email of the user who lost access
+        const currentUserEmail = eXeLearning.user.username;
+        if (payload.user !== currentUserEmail) {
+            console.log('Visibility changed event is not for current user, ignoring');
+            return;
+        }
 
         const projectTitle = payload.projectTitle || 'this project';
         const message =
@@ -867,9 +883,9 @@ export default class projectManager {
         // Disable all editing controls immediately
         this.disableEditingControls();
 
-        // Redirect to projects list after 3 seconds
+        // Redirect to workarea after 3 seconds
         setTimeout(() => {
-            window.location.href = '/projects';
+            window.location.href = '/workarea';
         }, 3000);
     }
 
