@@ -126,6 +126,10 @@ export default class projectManager {
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
+        // Refresh share button visibility after document loads
+        if (this.app.interface?.shareButton) {
+            await this.app.interface.shareButton.loadInitialState();
+        }
         // Set offline atributtes
         this.setInstallationTypeAttribute();
         // Run autosave
