@@ -234,9 +234,23 @@ class OdeApiController extends DefaultApiController
                             ];
 
                             $this->odeService->moveElpFileToPerm($odeResultParameters, $databaseUser, $isManualSave);
-                        }
 
-                        $responseData['responseMessage'] = $saveOdeResult['responseMessage'];
+                            // Get the updated timestamp to return to frontend
+                            $odeFilesRepo = $this->entityManager->getRepository(OdeFiles::class);
+                            $odeFile = $odeFilesRepo->getLastFileForOde($odeId);
+
+                            $timestamp = null;
+                            if (!empty($odeFile) && $odeFile->getUpdatedAt()) {
+                                $timestamp = $odeFile->getUpdatedAt()->getTimestamp();
+                            }
+
+                            $responseData['responseMessage'] = 'OK';
+                            $responseData['lastUpdatedDate'] = $timestamp;
+                            $responseData['odeId'] = $odeId;
+                            $responseData['odeVersionId'] = $odeVersion;
+                        } else {
+                            $responseData['responseMessage'] = $saveOdeResult['responseMessage'];
+                        }
                     } catch (UserInsufficientSpaceException $e) {
                         $this->logger->error(
                             'Insufficient space for manual save',
@@ -2011,7 +2025,7 @@ class OdeApiController extends DefaultApiController
         }
 
         if ($sessionCreatedAt instanceof \DateTimeImmutable) {
-            if (null === $lastPersistedAt || $sessionCreatedAt > $lastPersistedAt) {
+            if (null === $lastPersistedAt) {
                 $lastPersistedAt = $sessionCreatedAt;
             }
         }

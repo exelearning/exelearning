@@ -1368,7 +1368,14 @@ export default class projectManager {
                     });
                 }
 
-                this.app.interface.connectionTime.loadLasUpdatedInInterface();
+                // Update last saved date from response or fallback to API call
+                if (response.lastUpdatedDate) {
+                    this.app.interface.connectionTime.lastUpdatedDate = response.lastUpdatedDate;
+                    this.app.interface.connectionTime.setLastUpdatedToElement();
+                } else {
+                    // Fallback: make API call if timestamp not in response
+                    this.app.interface.connectionTime.loadLasUpdatedInInterface();
+                }
                 toast.toastBody.innerHTML = _('Project saved.');
             } else {
                 this.showModalSaveError(response);
@@ -1403,7 +1410,14 @@ export default class projectManager {
                     });
                 }
 
-                this.app.interface.connectionTime.loadLasUpdatedInInterface();
+                // Update last saved date from response or fallback to API call
+                if (response.lastUpdatedDate) {
+                    this.app.interface.connectionTime.lastUpdatedDate = response.lastUpdatedDate;
+                    this.app.interface.connectionTime.setLastUpdatedToElement();
+                } else {
+                    // Fallback: make API call if timestamp not in response
+                    this.app.interface.connectionTime.loadLasUpdatedInInterface();
+                }
                 toast.toastBody.innerHTML = _('Project saved.');
             } else {
                 this.showModalSaveError(response);
