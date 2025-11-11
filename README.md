@@ -55,13 +55,7 @@ To try out eXeLearning instantly, run:
 docker run -d -p 8080:8080 --name exelearning exelearning/exelearning
 ```
 
-Then create a user:
-
-```bash
-docker exec -it exelearning php bin/console app:create-user user@exelearning.net 1234 demouser --no-fail
-```
-
-This will start eXeLearning at `http://localhost:8080` with your custom user.
+This will start eXeLearning at `http://localhost:8080` in single-user mode.
 
 Offline installers for Linux, Windows and macOS are also available on the [Releases page](https://github.com/exelearning/exelearning/releases). The online version is recommended for most use cases.
 
