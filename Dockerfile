@@ -141,4 +141,5 @@ HEALTHCHECK --interval=1m --timeout=15s --start-period=1m --retries=3 \
   CMD curl --fail --silent --show-error http://localhost:8080/healthcheck || exit 1
 
 EXPOSE 8080
+VOLUME ["/mnt/data"]
 
