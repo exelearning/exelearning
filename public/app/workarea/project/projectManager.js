@@ -128,7 +128,7 @@ export default class projectManager {
         this.showScreen();
         // Refresh share button visibility after document loads
         if (this.app.interface?.shareButton) {
-            await this.app.interface.shareButton.loadInitialState();
+            this.app.interface.shareButton.loadInitialState();
         }
         // Set offline atributtes
         this.setInstallationTypeAttribute();

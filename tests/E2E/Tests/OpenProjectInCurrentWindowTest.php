@@ -42,6 +42,8 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
         $initialHandleCount = count($initialHandles);
 
         // Try to open another project
+        // Ensure loading screen is gone before trying to interact
+        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
         $client->waitForVisibility('#dropdownFile', 10);
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-openuserodefiles'))->click();
@@ -68,7 +70,7 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
 
         // Click "Don't save" button
         $notSaveButton = $client->getWebDriver()->findElement(
-            WebDriverBy::cssSelector('#modalSessionLogout .btn-dont-save, #modalSessionLogout .not-save-session-button')
+            WebDriverBy::cssSelector('[data-testid="session-logout-without-save-btn"]')
         );
         $notSaveButton->click();
 
@@ -119,6 +121,8 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
         $initialHandleCount = count($initialHandles);
 
         // Click File -> New
+        // Ensure loading screen is gone before trying to interact
+        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
         $client->waitForVisibility('#dropdownFile', 10);
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-newproject'))->click();
@@ -135,7 +139,7 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
 
         // Click "Don't save"
         $notSaveButton = $client->getWebDriver()->findElement(
-            WebDriverBy::cssSelector('#modalSessionLogout .btn-dont-save, #modalSessionLogout .not-save-session-button')
+            WebDriverBy::cssSelector('[data-testid="session-logout-without-save-btn"]')
         );
         $notSaveButton->click();
 
@@ -170,6 +174,8 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
         $client->waitFor('.nav-element', 15);
 
         // DO NOT make changes - open another project directly
+        // Ensure loading screen is gone before trying to interact
+        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
         $client->waitForVisibility('#dropdownFile', 10);
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-openuserodefiles'))->click();
@@ -224,8 +230,25 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
         $this->assertTrue(is_string($path) && file_exists($path), "Fixture $filename must exist");
         $input->sendKeys($path);
 
+        // After uploading, the session logout modal may appear if there's an existing session
+        // Check for it and dismiss it if present
+        try {
+            $client->waitForVisibility('#modalSessionLogout', 3);
+            // Modal appeared, click "Open without saving"
+            $dismissButton = $client->getWebDriver()->findElement(
+                WebDriverBy::cssSelector('[data-testid="session-logout-without-save-btn"]')
+            );
+            $dismissButton->click();
+            $client->waitForInvisibility('#modalSessionLogout', 5);
+        } catch (\Throwable) {
+            // Modal didn't appear, continue normally
+        }
+
         // Wait for file to upload and modal to close
         try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 30); } catch (\Throwable) {}
+
+        // Wait for loading screen to fully disappear before returning
+        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
     }
 
     /**
@@ -263,6 +286,29 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
                     window.eXeLearning.app.project.hasChanges = true;
                 }
             ');
+        }
+    }
+
+    /**
+     * Helper method to dismiss any pre-existing session logout modal.
+     * This modal may appear on initial load if there's a previous session.
+     */
+    private function dismissSessionLogoutModal(\Symfony\Component\Panther\Client $client): void
+    {
+        try {
+            // Check if the modal is visible
+            $client->waitForVisibility('#modalSessionLogout', 2);
+
+            // Click the "Open without saving" button
+            $dismissButton = $client->getWebDriver()->findElement(
+                WebDriverBy::cssSelector('[data-testid="session-logout-without-save-btn"]')
+            );
+            $dismissButton->click();
+
+            // Wait for modal to close
+            $client->waitForInvisibility('#modalSessionLogout', 5);
+        } catch (\Throwable) {
+            // Modal not present, continue normally
         }
     }
 }

@@ -55,21 +55,43 @@ final class NodeTest extends BaseE2ETestCase
         // Movement operations (tolerant if already at extremes)
         $primary->moveDown()->moveUp()->moveRight()->moveLeft();
 
-        // Create a child, rename, duplicate, then delete the renamed one
+        // Create a child, rename, and delete (test basic operations)
         $childA = $primary->createChild('Child A');
         $childA->assertVisible('Child A');
 
         $childA->rename('Child A (renamed)');
         $childA->assertVisible('Child A (renamed)');
 
-        $childA->duplicate();
-        // We keep the duplicate in the tree; delete the renamed original
+        // Test duplicate operation separately
+        $childB = $primary->createChild('Child B');
+        $childB->assertVisible('Child B');
+        $childB->duplicate();
+        // Note: The duplicate remains in the tree and will be cleaned up in section B
+
+        // Delete the renamed node
         $childA->delete();
         $childA->assertNotVisible('Child A (renamed)');
 
         // ---------------------------
         // B) MULTIPLE CHILD NODES + REVERSE DELETE
         // ---------------------------
+
+        // First, clean up Child B and its duplicate from section A
+        try {
+            $childB->delete();
+            $childB->assertNotVisible('Child B');
+        } catch (\Throwable) {
+            // Already deleted or not found
+        }
+
+        // Delete any duplicate that might exist (it might have title "Child B (copy)" or "Child B")
+        $duplicateB = new Node('Child B', $childB->getWorkareaPage(), null, $primary);
+        try {
+            $duplicateB->select();
+            $duplicateB->delete();
+        } catch (\Throwable) {
+            // Not found, continue
+        }
 
         $createdChildren = [];
         for ($i = 1; $i <= 3; $i++) {

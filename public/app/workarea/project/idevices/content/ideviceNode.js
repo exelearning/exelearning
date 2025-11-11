@@ -1609,7 +1609,27 @@ export default class IdeviceNode {
      */
     async exportProcessIdeviceJson() {
         let response = {};
+
+        // Verify that idevice is properly initialized
+        if (!this.idevice || !this.idevice.exportObject) {
+            console.error('iDevice not properly initialized', {
+                odeIdeviceTypeName: this.odeIdeviceTypeName,
+                idevice: this.idevice
+            });
+            return { init: 'false', error: 'iDevice not initialized' };
+        }
+
         this.exportObject = window[this.idevice.exportObject];
+
+        // Verify that the export object exists in window
+        if (!this.exportObject) {
+            console.error('Export object not found in window', {
+                exportObjectName: this.idevice.exportObject,
+                odeIdeviceTypeName: this.odeIdeviceTypeName
+            });
+            return { init: 'false', error: 'Export object not loaded' };
+        }
+
         // Check that the idevice has save data
         if (
             this.jsonProperties &&
