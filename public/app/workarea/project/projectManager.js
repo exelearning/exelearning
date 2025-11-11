@@ -832,7 +832,9 @@ export default class projectManager {
         // The payload.user contains the email of the revoked user
         const currentUserEmail = eXeLearning.user.username;
         if (payload.user !== currentUserEmail) {
-            console.log('Access revoked event is not for current user, ignoring');
+            console.log(
+                'Access revoked event is not for current user, ignoring'
+            );
             return;
         }
 
@@ -868,7 +870,9 @@ export default class projectManager {
         // The payload.user contains the email of the user who lost access
         const currentUserEmail = eXeLearning.user.username;
         if (payload.user !== currentUserEmail) {
-            console.log('Visibility changed event is not for current user, ignoring');
+            console.log(
+                'Visibility changed event is not for current user, ignoring'
+            );
             return;
         }
 
