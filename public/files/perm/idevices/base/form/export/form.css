@@ -17,6 +17,7 @@
 
 .form-IDevice .form-instructions{
     margin-top: .5em;
+    overflow: auto;
 }
 
 .form-IDevice .form-buttons-container {
@@ -59,6 +60,12 @@
     clear: both;
 }
 
+.form-IDevice ul.FRMP-PREVIEW .FormView_question::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
 .form-IDevice ul.FRMP-PREVIEW .FormView_question .activity-title {
     display: none;
 }
@@ -69,6 +76,23 @@
 
 .form-IDevice .FormViewContainer {
     overflow: auto;
+    clear: both;
+}
+
+.form-IDevice .FormViewContainer::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.form-IDevice .FormViewContainer > div[title] {
+    overflow: auto;
+    clear: both;
+}
+
+.form-IDevice .FormViewContainer > div[title]::after {
+    content: "";
+    display: table;
     clear: both;
 }
 
@@ -147,6 +171,17 @@
 .form-IDevice .inline-icon.help-icon {
     cursor: help;
     float: right;
+}
+
+.form-IDevice [id^="questionTopBar"] {
+    overflow: auto;
+    clear: both;
+}
+
+.form-IDevice [id^="questionTopBar"]::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 .form-IDevice .FormViewContainer input.fillInput {
@@ -383,4 +418,15 @@ select.dropdownSelect {
     margin-bottom: 0;
     border: none;
     border-top: 2px solid #888;
+}
+
+.form-IDevice .FormViewContainer img,
+.form-IDevice .form-instructions img {
+    max-width: 100%;
+    height: auto;
+}
+
+.form-IDevice .FormViewContainer img[style*="float"],
+.form-IDevice .form-instructions img[style*="float"] {
+    max-width: 60%;
 }

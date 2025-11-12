@@ -49,6 +49,13 @@ ul#formPreview .FormView_question {
     padding: 10px;
     background-color: var(--file-odd);
     margin-bottom: 6px;
+    overflow: auto;
+}
+
+ul#formPreview .FormView_question::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 ul#formPreview .FormView_question.dragging {
@@ -64,6 +71,17 @@ ul#formPreview .FormView_question.dragging:nth-child(even) {
 /* ul#formPreview li:nth-child(even) {
   background-color: rgba(220, 220, 220, 0.8);
 } */
+
+ul#formPreview [id^="questionTopBar"] {
+    overflow: auto;
+    clear: both;
+}
+
+ul#formPreview [id^="questionTopBar"]::after {
+    content: "";
+    display: table;
+    clear: both;
+}
 
 ul#formPreview .FormView_question .QuestionLabel_ButtonsContainer {
     float: right;
@@ -98,6 +116,18 @@ ul#formPreview .FormView_question .QuestionLabel_edit {
 ul#formPreview .FormView_question .FormViewContainer {
     margin-top: 5px;
     margin-bottom: 5px;
+    overflow: auto;
+}
+
+ul#formPreview .FormView_question .FormViewContainer > div[title] {
+    overflow: auto;
+    clear: both;
+}
+
+ul#formPreview .FormView_question .FormViewContainer > div[title]::after {
+    content: "";
+    display: table;
+    clear: both;
 }
 
 ul#formPreview .FormView_question .FormViewContainer p {
@@ -525,6 +555,16 @@ ul#formPreview .FormView_question .QuestionLabel_actionButton[disabled="true"] {
     #formIdeviceFormTab2>* {
         flex: 0 0 100%;
     }
+}
+
+
+#formPreview .FormViewContainer img {
+    max-width: 100%;
+    height: auto;
+}
+
+#formPreview .FormViewContainer img[style*="float"] {
+    max-width: 60%;
 }
 
 #formIdeviceForm #formIdeviceFormTab2 label {
