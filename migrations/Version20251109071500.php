@@ -59,20 +59,22 @@ final class Version20251109071500 extends AbstractMigration
         // PASO 3: CREAR TABLA DE BLOQUEOS DE PROYECTO
         // =================================================================
 
-        $this->addSql('CREATE TABLE IF NOT EXISTS project_locks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_id VARCHAR(20) NOT NULL,
-            locked_by_id INTEGER NOT NULL,
-            session_id VARCHAR(20) NOT NULL,
-            locked_at DATETIME NOT NULL,
-            expires_at DATETIME NOT NULL,
-            CONSTRAINT fk_lock_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-            CONSTRAINT fk_lock_user FOREIGN KEY (locked_by_id) REFERENCES users(id) ON DELETE CASCADE
-        )');
-
-        $this->addSql('CREATE INDEX IF NOT EXISTS idx_lock_project ON project_locks(project_id)');
-        $this->addSql('CREATE INDEX IF NOT EXISTS idx_lock_expires ON project_locks(expires_at)');
-        $this->addSql('CREATE INDEX IF NOT EXISTS idx_lock_session ON project_locks(session_id)');
+        // Use Schema API instead of raw SQL for cross-database compatibility
+        if (!$schema->hasTable('project_locks')) {
+            $table = $schema->createTable('project_locks');
+            $table->addColumn('id', 'integer', ['autoincrement' => true, 'notnull' => true]);
+            $table->addColumn('project_id', 'string', ['length' => 20, 'notnull' => true]);
+            $table->addColumn('locked_by_id', 'integer', ['notnull' => true]);
+            $table->addColumn('session_id', 'string', ['length' => 20, 'notnull' => true]);
+            $table->addColumn('locked_at', 'datetime', ['notnull' => true]);
+            $table->addColumn('expires_at', 'datetime', ['notnull' => true]);
+            $table->setPrimaryKey(['id']);
+            $table->addIndex(['project_id'], 'idx_lock_project');
+            $table->addIndex(['expires_at'], 'idx_lock_expires');
+            $table->addIndex(['session_id'], 'idx_lock_session');
+            $table->addForeignKeyConstraint('projects', ['project_id'], ['id'], ['onDelete' => 'CASCADE'], 'fk_lock_project');
+            $table->addForeignKeyConstraint('users', ['locked_by_id'], ['id'], ['onDelete' => 'CASCADE'], 'fk_lock_user');
+        }
     }
 
     /**
@@ -84,6 +86,11 @@ final class Version20251109071500 extends AbstractMigration
         // PASO 4: MIGRAR DATOS EXISTENTES
         // =================================================================
 
+        $platform = $this->connection->getDatabasePlatform();
+        $isSQLite = $platform instanceof \Doctrine\DBAL\Platforms\SqlitePlatform;
+        $isPostgreSQL = $platform instanceof \Doctrine\DBAL\Platforms\PostgreSQLPlatform;
+        $isMySQL = $platform instanceof \Doctrine\DBAL\Platforms\MySQLPlatform;
+
         // 4.1: Actualizar project_id en ode_files (usar ode_id como project_id)
         $this->connection->executeStatement('UPDATE ode_files SET project_id = ode_id WHERE project_id IS NULL');
 
@@ -92,37 +99,108 @@ final class Version20251109071500 extends AbstractMigration
 
         // 4.3: Insertar proyectos faltantes que puedan existir en ode_files pero no en projects
         // Esto maneja casos edge donde ode_files tenga registros sin project correspondiente
-        $this->connection->executeStatement('INSERT OR IGNORE INTO projects (id, title, visibility, owner_id, created_at, last_accessed_at, is_archived)
-            SELECT
-                of.ode_id as id,
-                COALESCE(of.title, "Proyecto " || of.ode_id) as title,
-                "private" as visibility,
-                COALESCE(
-                    (SELECT id FROM users WHERE email = of.user LIMIT 1),
-                    (SELECT id FROM users ORDER BY id LIMIT 1)
-                ) as owner_id,
-                MIN(of.created_at) as created_at,
-                MAX(of.updated_at) as last_accessed_at,
-                0 as is_archived
-            FROM ode_files of
-            WHERE NOT EXISTS (SELECT 1 FROM projects p WHERE p.id = of.ode_id)
-            GROUP BY of.ode_id, of.title, of.user
-        ');
+
+        // Cross-database compatible INSERT IGNORE / ON CONFLICT
+        if ($isSQLite) {
+            // SQLite: INSERT OR IGNORE with || for concatenation
+            $insertProjectsSql = 'INSERT OR IGNORE INTO projects (id, title, visibility, owner_id, created_at, last_accessed_at, is_archived)
+                SELECT
+                    of.ode_id as id,
+                    COALESCE(of.title, "Proyecto " || of.ode_id) as title,
+                    "private" as visibility,
+                    COALESCE(
+                        (SELECT id FROM users WHERE email = of.user LIMIT 1),
+                        (SELECT id FROM users ORDER BY id LIMIT 1)
+                    ) as owner_id,
+                    MIN(of.created_at) as created_at,
+                    MAX(of.updated_at) as last_accessed_at,
+                    0 as is_archived
+                FROM ode_files of
+                WHERE NOT EXISTS (SELECT 1 FROM projects p WHERE p.id = of.ode_id)
+                GROUP BY of.ode_id, of.title, of.user';
+        } elseif ($isPostgreSQL) {
+            // PostgreSQL: ON CONFLICT DO NOTHING with || for concatenation
+            $insertProjectsSql = 'INSERT INTO projects (id, title, visibility, owner_id, created_at, last_accessed_at, is_archived)
+                SELECT
+                    of.ode_id as id,
+                    COALESCE(of.title, \'Proyecto \' || of.ode_id) as title,
+                    \'private\' as visibility,
+                    COALESCE(
+                        (SELECT id FROM users WHERE email = of.user LIMIT 1),
+                        (SELECT id FROM users ORDER BY id LIMIT 1)
+                    ) as owner_id,
+                    MIN(of.created_at) as created_at,
+                    MAX(of.updated_at) as last_accessed_at,
+                    false as is_archived
+                FROM ode_files of
+                WHERE NOT EXISTS (SELECT 1 FROM projects p WHERE p.id = of.ode_id)
+                GROUP BY of.ode_id, of.title, of.user
+                ON CONFLICT (id) DO NOTHING';
+        } else {
+            // MySQL/MariaDB: INSERT IGNORE with CONCAT
+            $insertProjectsSql = 'INSERT IGNORE INTO projects (id, title, visibility, owner_id, created_at, last_accessed_at, is_archived)
+                SELECT
+                    of.ode_id as id,
+                    COALESCE(of.title, CONCAT("Proyecto ", of.ode_id)) as title,
+                    "private" as visibility,
+                    COALESCE(
+                        (SELECT id FROM users WHERE email = of.user LIMIT 1),
+                        (SELECT id FROM users ORDER BY id LIMIT 1)
+                    ) as owner_id,
+                    MIN(of.created_at) as created_at,
+                    MAX(of.updated_at) as last_accessed_at,
+                    0 as is_archived
+                FROM ode_files of
+                WHERE NOT EXISTS (SELECT 1 FROM projects p WHERE p.id = of.ode_id)
+                GROUP BY of.ode_id, of.title, of.user';
+        }
+
+        $this->connection->executeStatement($insertProjectsSql);
 
         // 4.4: Crear colaboradores (owners) para proyectos nuevos
-        $this->connection->executeStatement('INSERT OR IGNORE INTO project_collaborators (project_id, user_id, role, granted_at, granted_by_id)
-            SELECT
-                p.id as project_id,
-                p.owner_id as user_id,
-                "owner" as role,
-                p.created_at as granted_at,
-                NULL as granted_by_id
-            FROM projects p
-            WHERE NOT EXISTS (
-                SELECT 1 FROM project_collaborators pc
-                WHERE pc.project_id = p.id AND pc.user_id = p.owner_id
-            )
-        ');
+        if ($isSQLite) {
+            $insertCollaboratorsSql = 'INSERT OR IGNORE INTO project_collaborators (project_id, user_id, role, granted_at, granted_by_id)
+                SELECT
+                    p.id as project_id,
+                    p.owner_id as user_id,
+                    "owner" as role,
+                    p.created_at as granted_at,
+                    NULL as granted_by_id
+                FROM projects p
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM project_collaborators pc
+                    WHERE pc.project_id = p.id AND pc.user_id = p.owner_id
+                )';
+        } elseif ($isPostgreSQL) {
+            $insertCollaboratorsSql = 'INSERT INTO project_collaborators (project_id, user_id, role, granted_at, granted_by_id)
+                SELECT
+                    p.id as project_id,
+                    p.owner_id as user_id,
+                    \'owner\' as role,
+                    p.created_at as granted_at,
+                    NULL as granted_by_id
+                FROM projects p
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM project_collaborators pc
+                    WHERE pc.project_id = p.id AND pc.user_id = p.owner_id
+                )
+                ON CONFLICT (project_id, user_id) DO NOTHING';
+        } else {
+            $insertCollaboratorsSql = 'INSERT IGNORE INTO project_collaborators (project_id, user_id, role, granted_at, granted_by_id)
+                SELECT
+                    p.id as project_id,
+                    p.owner_id as user_id,
+                    "owner" as role,
+                    p.created_at as granted_at,
+                    NULL as granted_by_id
+                FROM projects p
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM project_collaborators pc
+                    WHERE pc.project_id = p.id AND pc.user_id = p.owner_id
+                )';
+        }
+
+        $this->connection->executeStatement($insertCollaboratorsSql);
     }
 
     public function down(Schema $schema): void
@@ -130,28 +208,36 @@ final class Version20251109071500 extends AbstractMigration
         // Revertir cambios en orden inverso
 
         // Eliminar tabla de bloqueos
-        $this->addSql('DROP TABLE IF EXISTS project_locks');
+        if ($schema->hasTable('project_locks')) {
+            $schema->dropTable('project_locks');
+        }
 
         // Eliminar project_id de ode_files
-        $this->addSql('DROP INDEX IF EXISTS idx_ode_files_project');
-        $table = $schema->getTable('ode_files');
-        if ($table->hasColumn('project_id')) {
-            $table->dropColumn('project_id');
+        if ($schema->hasTable('ode_files')) {
+            $table = $schema->getTable('ode_files');
+            if ($table->hasIndex('idx_ode_files_project')) {
+                $table->dropIndex('idx_ode_files_project');
+            }
+            if ($table->hasColumn('project_id')) {
+                $table->dropColumn('project_id');
+            }
         }
 
         // Eliminar project_id de current_ode_users
-        $this->addSql('DROP INDEX IF EXISTS idx_current_ode_project');
-        $table = $schema->getTable('current_ode_users');
-        if ($table->hasColumn('project_id')) {
-            $table->dropColumn('project_id');
+        if ($schema->hasTable('current_ode_users')) {
+            $table = $schema->getTable('current_ode_users');
+            if ($table->hasIndex('idx_current_ode_project')) {
+                $table->dropIndex('idx_current_ode_project');
+            }
+            if ($table->hasColumn('project_id')) {
+                $table->dropColumn('project_id');
+            }
         }
 
-        // Eliminar índices de rendimiento de ode_files
+        // Eliminar índices de rendimiento (use raw SQL for IF EXISTS in indexes)
         $this->addSql('DROP INDEX IF EXISTS idx_ode_files_user_manual');
         $this->addSql('DROP INDEX IF EXISTS idx_ode_files_user_updated');
         $this->addSql('DROP INDEX IF EXISTS idx_ode_files_ode_updated');
-
-        // Eliminar índices de rendimiento de current_ode_users
         $this->addSql('DROP INDEX IF EXISTS idx_current_ode_session_user');
         $this->addSql('DROP INDEX IF EXISTS idx_current_ode_last_action');
         $this->addSql('DROP INDEX IF EXISTS idx_current_ode_id');

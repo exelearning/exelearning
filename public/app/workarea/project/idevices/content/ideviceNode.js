@@ -1614,7 +1614,7 @@ export default class IdeviceNode {
         if (!this.idevice || !this.idevice.exportObject) {
             console.error('iDevice not properly initialized', {
                 odeIdeviceTypeName: this.odeIdeviceTypeName,
-                idevice: this.idevice
+                idevice: this.idevice,
             });
             return { init: 'false', error: 'iDevice not initialized' };
         }
@@ -1623,11 +1623,25 @@ export default class IdeviceNode {
 
         // Verify that the export object exists in window
         if (!this.exportObject) {
-            console.error('Export object not found in window', {
+            // Wait a bit and retry once in case script is still loading
+            console.warn('Export object not found, retrying after delay...', {
                 exportObjectName: this.idevice.exportObject,
-                odeIdeviceTypeName: this.odeIdeviceTypeName
+                odeIdeviceTypeName: this.odeIdeviceTypeName,
             });
-            return { init: 'false', error: 'Export object not loaded' };
+
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            this.exportObject = window[this.idevice.exportObject];
+
+            if (!this.exportObject) {
+                console.error(
+                    'Export object still not found in window after retry',
+                    {
+                        exportObjectName: this.idevice.exportObject,
+                        odeIdeviceTypeName: this.odeIdeviceTypeName,
+                    }
+                );
+                return { init: 'false', error: 'Export object not loaded' };
+            }
         }
 
         // Check that the idevice has save data

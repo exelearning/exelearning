@@ -65,28 +65,33 @@ export default class ShareProjectButton {
 
     /**
      * Load initial project state to set visibility pill
+     * Called AFTER project is fully loaded, so odeId is guaranteed to be current
      */
     async loadInitialState() {
-        const projectId = this.getProjectId();
-
-        if (!projectId) {
-            // No project loaded yet, use default
-            this.updateVisibilityPill('private');
-            return;
-        }
-
         try {
+            // Use ONLY odeId - since this is called after openLoad completes,
+            // odeId is guaranteed to be current. No need to read from URL.
+            const projectId = eXeLearning.app.project?.odeId;
+
+            if (!projectId) {
+                // No project loaded yet, use default
+                this.updateVisibilityPill('private');
+                return;
+            }
+
             const response = await eXeLearning.app.api.getProject(projectId);
 
             if (response.responseMessage === 'OK' && response.project) {
                 this.updateVisibilityPill(response.project.visibility);
+            } else {
+                this.updateVisibilityPill('private');
             }
         } catch (error) {
-            console.error(
-                'ShareProjectButton: Failed to load initial state:',
-                error
+            // Silently handle errors - don't let shareButton issues affect main flow
+            console.debug(
+                'ShareButton loadInitialState error (non-critical):',
+                error.message
             );
-            // Use default on error
             this.updateVisibilityPill('private');
         }
     }
@@ -111,15 +116,12 @@ export default class ShareProjectButton {
 
     /**
      * Get current project ID
+     * Prefers odeId as it's the most reliable source
      * @returns {string|null}
      */
     getProjectId() {
-        return (
-            eXeLearning.app.project?.odeId ||
-            eXeLearning.app.project?.requestedProjectId ||
-            new URL(window.location.href).searchParams.get('projectId') ||
-            null
-        );
+        // Prefer odeId - it's always current after project loads
+        return eXeLearning.app.project?.odeId || null;
     }
 
     /**

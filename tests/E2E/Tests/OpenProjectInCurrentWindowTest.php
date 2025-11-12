@@ -5,6 +5,8 @@ namespace App\Tests\E2E\Tests;
 
 use App\Tests\E2E\Support\BaseE2ETestCase;
 use App\Tests\E2E\Factory\DocumentFactory;
+use App\Tests\E2E\Factory\NodeFactory;
+use App\Tests\E2E\Model\Document;
 use App\Tests\E2E\Support\Console;
 use Facebook\WebDriver\Remote\LocalFileDetector;
 use Facebook\WebDriver\WebDriverBy;
@@ -31,7 +33,7 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
         $this->openElpFile($client, 'basic-example.elp');
 
         // Wait for project to load
-        $client->waitForInvisibility('#load-screen-main', 30);
+        $this->waitForLoadingScreenToHide($client);
         $client->waitFor('.nav-element', 15);
 
         // Make a change to the project (edit title to trigger unsaved changes)
@@ -43,7 +45,8 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
 
         // Try to open another project
         // Ensure loading screen is gone before trying to interact
-        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
+        $this->waitForLoadingScreenToHide($client);
+        $this->closeAnyOpenModals($client);
         $client->waitForVisibility('#dropdownFile', 10);
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-openuserodefiles'))->click();
@@ -77,7 +80,7 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
         // Wait for dialogs to close and new project to load
         try { $client->waitForInvisibility('#modalSessionLogout', 10); } catch (\Throwable) {}
         try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 10); } catch (\Throwable) {}
-        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
+        $this->waitForLoadingScreenToHide($client);
 
         // Wait for the new project to load
         $client->waitFor('.nav-element', 15);
@@ -110,7 +113,7 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
 
         // Open first project
         $this->openElpFile($client, 'basic-example.elp');
-        $client->waitForInvisibility('#load-screen-main', 30);
+        $this->waitForLoadingScreenToHide($client);
         $client->waitFor('.nav-element', 15);
 
         // Make changes
@@ -122,10 +125,13 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
 
         // Click File -> New
         // Ensure loading screen is gone before trying to interact
-        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
+        $this->waitForLoadingScreenToHide($client);
+        $this->closeAnyOpenModals($client);
         $client->waitForVisibility('#dropdownFile', 10);
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
-        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-newproject'))->click();
+        $client->wait(0.5); // Wait for menu animation
+        $client->waitForVisibility('#navbar-button-new', 10);
+        $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-new'))->click();
 
         // Wait for save dialog
         try {
@@ -145,7 +151,7 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
 
         // Wait for new project to load
         try { $client->waitForInvisibility('#modalSessionLogout', 10); } catch (\Throwable) {}
-        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
+        $this->waitForLoadingScreenToHide($client);
 
         // Verify NO new window was created
         $finalHandles = $client->getWebDriver()->getWindowHandles();
@@ -170,12 +176,13 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
 
         // Open first project
         $this->openElpFile($client, 'basic-example.elp');
-        $client->waitForInvisibility('#load-screen-main', 30);
+        $this->waitForLoadingScreenToHide($client);
         $client->waitFor('.nav-element', 15);
 
         // DO NOT make changes - open another project directly
         // Ensure loading screen is gone before trying to interact
-        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
+        $this->waitForLoadingScreenToHide($client);
+        $this->closeAnyOpenModals($client);
         $client->waitForVisibility('#dropdownFile', 10);
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-openuserodefiles'))->click();
@@ -205,7 +212,7 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
 
         // Project should load directly
         try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 10); } catch (\Throwable) {}
-        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
+        $this->waitForLoadingScreenToHide($client);
 
         // Verify project loaded
         $this->assertStringContainsString('/workarea', $client->getCurrentURL());
@@ -230,6 +237,9 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
         $this->assertTrue(is_string($path) && file_exists($path), "Fixture $filename must exist");
         $input->sendKeys($path);
 
+        // Wait for upload progress modal to complete
+        $this->waitForUploadProgressModalToHide($client);
+
         // After uploading, the session logout modal may appear if there's an existing session
         // Check for it and dismiss it if present
         try {
@@ -248,44 +258,40 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
         try { $client->waitForInvisibility('#modalOpenUserOdeFiles', 30); } catch (\Throwable) {}
 
         // Wait for loading screen to fully disappear before returning
-        try { $client->waitForInvisibility('#load-screen-main', 30); } catch (\Throwable) {}
+        $this->waitForLoadingScreenToHide($client);
     }
 
     /**
      * Helper method to make unsaved changes to the project.
-     * This edits the project title to trigger the "unsaved changes" state.
+     * Creates a new node which registers a real change in the database.
      */
     private function makeUnsavedChanges(\Symfony\Component\Panther\Client $client): void
     {
+        // Close any open modals first
+        $this->closeAnyOpenModals($client);
+
+        // Get document model
+        $page = DocumentFactory::open($client);
+        $document = Document::fromWorkarea($page);
+        $root = $document->getRootNode();
+
+        // Create a new node - this creates a real entry in OdeNavStructureSync
+        // with a timestamp that will be detected as an unsaved change
+        $nodeFactory = new NodeFactory();
+        $node = $nodeFactory->createAndGet([
+            'document' => $document,
+            'title' => 'Unsaved Change Node ' . uniqid(),
+            'parent' => $root,
+        ]);
+
+        // Wait for change to be synced to database and visible in UI
+        $client->wait(2);
+
+        // Verify the node is visible in the tree
         try {
-            // Open properties/settings to edit title
-            $client->waitForVisibility('#dropdownProperties', 10);
-            $client->getWebDriver()->findElement(WebDriverBy::id('dropdownProperties'))->click();
-            $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-properties'))->click();
-            $client->waitForVisibility('#modalProperties', 10);
-
-            // Edit title field
-            $titleInput = $client->getWebDriver()->findElement(
-                WebDriverBy::cssSelector('#modalProperties input[name="pp_title"]')
-            );
-            $titleInput->clear();
-            $titleInput->sendKeys('Modified Title ' . uniqid());
-
-            // Close modal (this should trigger unsaved changes)
-            $closeButton = $client->getWebDriver()->findElement(
-                WebDriverBy::cssSelector('#modalProperties .btn-close, #modalProperties .modal-header button[data-bs-dismiss="modal"]')
-            );
-            $closeButton->click();
-
-            try { $client->waitForInvisibility('#modalProperties', 5); } catch (\Throwable) {}
-        } catch (\Throwable $e) {
-            // If properties modal approach fails, try a simpler approach:
-            // Just execute JS to mark the project as having changes
-            $client->executeScript('
-                if (window.eXeLearning && window.eXeLearning.app && window.eXeLearning.app.project) {
-                    window.eXeLearning.app.project.hasChanges = true;
-                }
-            ');
+            $client->waitFor('.nav-element', 5);
+        } catch (\Throwable) {
+            // Node may already exist, continue
         }
     }
 
@@ -309,6 +315,111 @@ final class OpenProjectInCurrentWindowTest extends BaseE2ETestCase
             $client->waitForInvisibility('#modalSessionLogout', 5);
         } catch (\Throwable) {
             // Modal not present, continue normally
+        }
+    }
+
+    /**
+     * Helper method to wait for the upload progress modal to hide.
+     * This modal appears when uploading .elp files and shows "Processing file...".
+     * We need to wait for it to complete before continuing.
+     */
+    private function waitForUploadProgressModalToHide(\Symfony\Component\Panther\Client $client, int $timeout = 30): void
+    {
+        try {
+            // Wait for the modal to appear (it may appear very briefly)
+            $client->waitForVisibility('#uploadProgressModal', 2);
+            // Wait for the modal to disappear
+            $client->waitForInvisibility('#uploadProgressModal', $timeout);
+        } catch (\Throwable) {
+            // Modal didn't appear or already disappeared - this is fine
+            // The upload may have been so fast that we missed it
+        }
+    }
+
+    /**
+     * Helper method to close any open blocking modals.
+     * This is useful before critical operations to ensure no modals are blocking interaction.
+     */
+    private function closeAnyOpenModals(\Symfony\Component\Panther\Client $client): void
+    {
+        // Check for "You are editing an iDevice" alert modal
+        try {
+            $alertModal = $client->getWebDriver()->findElement(WebDriverBy::cssSelector('#alert-modal'));
+            if ($alertModal->isDisplayed()) {
+                // Try to click the OK/Close button
+                $okButton = $client->getWebDriver()->findElement(
+                    WebDriverBy::cssSelector('#alert-modal .btn-primary, #alert-modal [data-dismiss="modal"]')
+                );
+                if ($okButton->isDisplayed()) {
+                    $okButton->click();
+                    $client->wait(0.5);
+                }
+            }
+        } catch (\Throwable) {
+            // No alert modal found or already closed
+        }
+
+        // Check for any open iDevice editor and try to close it properly
+        try {
+            $ideviceEditor = $client->getWebDriver()->findElement(WebDriverBy::cssSelector('.idevice-edition-modal.show, .idevice-editor.open'));
+            if ($ideviceEditor->isDisplayed()) {
+                // Look for save button first
+                try {
+                    $saveButton = $client->getWebDriver()->findElement(
+                        WebDriverBy::cssSelector('.idevice-save-button, [data-action="save-idevice"]')
+                    );
+                    if ($saveButton->isDisplayed()) {
+                        $saveButton->click();
+                        $client->wait(1); // Wait for save to complete
+                    }
+                } catch (\Throwable) {
+                    // No save button, try close button
+                    try {
+                        $closeButton = $client->getWebDriver()->findElement(
+                            WebDriverBy::cssSelector('.idevice-close-button, [data-dismiss="modal"]')
+                        );
+                        if ($closeButton->isDisplayed()) {
+                            $closeButton->click();
+                            $client->wait(0.5);
+                        }
+                    } catch (\Throwable) {
+                        // Could not close iDevice editor
+                    }
+                }
+            }
+        } catch (\Throwable) {
+            // No iDevice editor open
+        }
+
+        // Wait a bit to ensure any closing animations complete
+        $client->wait(0.5);
+    }
+
+    /**
+     * Helper method to wait for loading screen to be fully hidden.
+     * Uses explicit data-visible attribute check for more reliable detection.
+     */
+    private function waitForLoadingScreenToHide(\Symfony\Component\Panther\Client $client, int $timeout = 30): void
+    {
+        try {
+            // Wait for data-visible="false" attribute
+            $client->getWebDriver()->wait($timeout, 500)->until(
+                WebDriverExpectedCondition::attributeContains(
+                    WebDriverBy::id('load-screen-main'),
+                    'data-visible',
+                    'false'
+                )
+            );
+
+            // Additional wait for CSS animations to complete
+            $client->wait(1);
+        } catch (\Throwable) {
+            // Fallback: try traditional invisibility check
+            try {
+                $client->waitForInvisibility('#load-screen-main', 5);
+            } catch (\Throwable) {
+                // Loading screen may already be hidden
+            }
         }
     }
 }

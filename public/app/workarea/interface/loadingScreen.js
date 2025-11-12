@@ -20,13 +20,14 @@ export default class LoadingScreen {
      *
      */
     hide() {
+        // Update visibility flag IMMEDIATELY for test detection
+        this.loadingScreenNode.setAttribute('data-visible', 'false');
+
         this.loadingScreenNode.classList.remove('loading');
         this.loadingScreenNode.classList.add('hiding');
         setTimeout(() => {
             this.loadingScreenNode.classList.remove('hiding');
             this.loadingScreenNode.classList.add('hide');
-            // Testing: explicit visibility flag
-            this.loadingScreenNode.setAttribute('data-visible', 'false');
         }, this.hideTime);
     }
 }

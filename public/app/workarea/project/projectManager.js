@@ -108,35 +108,64 @@ export default class projectManager {
         await this.loadUser();
         // Show loading screen
         this.app.interface.loadingScreen.show();
-        // Load project properties
-        await this.loadProjectProperties();
-        // Wait for structure to be ready in database (prevents race conditions)
-        await this.waitForStructureReady();
-        // Load structure data
-        await this.loadStructureData();
-        // Load title
-        this.app.interface.odeTitleElement.setTitle();
-        // Initialized menus
-        this.properties.formProperties.remove();
-        this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected = false;
-        await this.structure.reloadStructureMenu();
-        // Load modals content
-        await this.loadModalsContent();
-        // Inicialize
-        await this.initialiceProject();
-        // Show workarea of app
-        this.showScreen();
-        // Refresh share button visibility after document loads
-        if (this.app.interface?.shareButton) {
-            this.app.interface.shareButton.loadInitialState();
-        }
-        // Set offline atributtes
-        this.setInstallationTypeAttribute();
-        // Run autosave
-        this.generateIntervalAutosave(true);
 
-        if (!this.offlineInstallation) {
-            await this.subscribeToSessionAndNotify();
+        try {
+            // Load project properties
+            await this.loadProjectProperties();
+            // Wait for structure to be ready in database (prevents race conditions)
+            await this.waitForStructureReady();
+            // Load structure data
+            await this.loadStructureData();
+            // Load title
+            this.app.interface.odeTitleElement.setTitle();
+            // Initialized menus
+            this.properties.formProperties.remove();
+            this.app.menus.menuStructure.menuStructureBehaviour.nodeSelected = false;
+            await this.structure.reloadStructureMenu();
+            // Load modals content
+            await this.loadModalsContent();
+            // Inicialize
+            await this.initialiceProject();
+            // Show workarea of app - wait for loading screen to hide completely
+            await this.showScreen();
+            // Refresh share button visibility AFTER screen is shown
+            // This prevents 404 errors from stale projectIds
+            if (this.app.interface?.shareButton) {
+                await this.app.interface.shareButton
+                    .loadInitialState()
+                    .catch((err) => {
+                        console.debug(
+                            'ShareButton initialization failed:',
+                            err
+                        );
+                    });
+            }
+            // Set offline atributtes
+            this.setInstallationTypeAttribute();
+            // Run autosave
+            this.generateIntervalAutosave(true);
+
+            if (!this.offlineInstallation) {
+                await this.subscribeToSessionAndNotify();
+            }
+        } catch (error) {
+            // Hide loading screen if any error occurs during project load
+            this.app.interface.loadingScreen.hide();
+            console.error('Error loading project:', error);
+            throw error;
+        } finally {
+            // Defensive cleanup: ensure loading screen is hidden
+            // Check if screen is still visible before hiding (in case showScreen() already hid it)
+            const loadingScreen = this.app.interface?.loadingScreen;
+            if (loadingScreen?.loadingScreenNode) {
+                const isVisible =
+                    loadingScreen.loadingScreenNode.getAttribute(
+                        'data-visible'
+                    );
+                if (isVisible !== 'false') {
+                    loadingScreen.hide();
+                }
+            }
         }
     }
 
@@ -145,11 +174,11 @@ export default class projectManager {
      * This prevents race conditions when opening existing projects where
      * the backend may still be committing data when the frontend tries to load it.
      *
-     * @param {number} maxRetries - Maximum number of retry attempts (default: 10)
-     * @param {number} delay - Delay in milliseconds between retries (default: 100ms)
+     * @param {number} maxRetries - Maximum number of retry attempts (default: 30)
+     * @param {number} delay - Delay in milliseconds between retries (default: 200ms)
      * @returns {Promise<boolean>} - Returns true if structure is ready, false if max retries reached
      */
-    async waitForStructureReady(maxRetries = 10, delay = 100) {
+    async waitForStructureReady(maxRetries = 30, delay = 200) {
         console.log('Waiting for structure to be ready in database...');
 
         for (let i = 0; i < maxRetries; i++) {
@@ -1299,12 +1328,17 @@ export default class projectManager {
 
     /**
      * Hide workarea loading screen
-     *
+     * Waits for the complete hide animation to finish before returning
      */
     async showScreen() {
-        setTimeout(() => {
-            this.app.interface.loadingScreen.hide();
-        }, 250);
+        // Wait for initial delay
+        await new Promise((resolve) => setTimeout(resolve, 250));
+
+        // Hide the loading screen
+        this.app.interface.loadingScreen.hide();
+
+        // Wait for the hide animation to complete (1000ms according to loadingScreen.js)
+        await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     /**
@@ -1370,7 +1404,8 @@ export default class projectManager {
 
                 // Update last saved date from response or fallback to API call
                 if (response.lastUpdatedDate) {
-                    this.app.interface.connectionTime.lastUpdatedDate = response.lastUpdatedDate;
+                    this.app.interface.connectionTime.lastUpdatedDate =
+                        response.lastUpdatedDate;
                     this.app.interface.connectionTime.setLastUpdatedToElement();
                 } else {
                     // Fallback: make API call if timestamp not in response
@@ -1412,7 +1447,8 @@ export default class projectManager {
 
                 // Update last saved date from response or fallback to API call
                 if (response.lastUpdatedDate) {
-                    this.app.interface.connectionTime.lastUpdatedDate = response.lastUpdatedDate;
+                    this.app.interface.connectionTime.lastUpdatedDate =
+                        response.lastUpdatedDate;
                     this.app.interface.connectionTime.setLastUpdatedToElement();
                 } else {
                     // Fallback: make API call if timestamp not in response
