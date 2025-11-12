@@ -8,7 +8,6 @@ This application supports several authentication methods that can be enabled ind
 - CAS: Central Authentication Service (service tickets via `ticket` query param).
 - OpenID Connect (OIDC): Authorization Code + PKCE login, user resolution via the OIDC UserInfo endpoint.
 - Guest: One‑click access that creates a temporary user without a password.
-- None (offline): Disables authentication and logs in the default user for local/offline use.
 
 To enable modes, set `APP_AUTH_METHODS` as a comma‑separated list:
 

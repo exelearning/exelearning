@@ -86,7 +86,6 @@ vendor/bin/phpunit --debug --filter=RealTime
 
 ### E2E Environment Variables
 
-* `APP_ONLINE_MODE`: `1` for online, `0` for offline
 * `TEST_USER_EMAIL`, `TEST_USER_PASSWORD`: Main user
 * `CAPTURE_SCREENSHOTS`: `true` to capture screenshots automatically on failures
 

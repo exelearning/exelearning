@@ -85,7 +85,7 @@ You can configure the app either:
 
 Common knobs (all supported by the example files):
 
-* **Application:** `APP_ENV`, `APP_DEBUG`, `APP_SECRET`, `APP_PORT`, `APP_ONLINE_MODE`
+* **Application:** `APP_ENV`, `APP_DEBUG`, `APP_SECRET`, `APP_PORT`
 * **Base path (subdirectory installs):** `BASE_PATH`
 * **Database:** `DB_DRIVER`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_CHARSET`, engine-specific version flags
 * **Files:** `FILES_DIR` (default: `/mnt/data/`)

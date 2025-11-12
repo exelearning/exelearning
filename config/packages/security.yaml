@@ -17,9 +17,7 @@ security:
             security: false
         main:
             # lazy: true
-
-            # Disable security (login) if offline mode (APP_ONLINE_MODE=false)
-            security: '%app.online_mode%'
+            security: true
 
             provider: app_user_provider
 

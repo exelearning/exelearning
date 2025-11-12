@@ -163,13 +163,6 @@ test-e2e-realtime: check-docker check-env css-dev
 	@echo "Running PHPUnit tests..."
 	@docker compose --profile e2e run --rm -e APP_ENV=test exelearning composer --no-cache phpunit-e2e-realtime
 
-# Run E2E tests for the offline (Electron) web content
-test-e2e-offline: check-docker check-env css-dev
-	@echo "Starting e2e test environment..."
-	@docker compose --profile e2e up -d --quiet-pull
-	@echo "Running PHPUnit tests..."
-	@docker compose --profile e2e run --rm -e APP_ENV=test -e APP_ONLINE_MODE=0 exelearning composer --no-cache phpunit-e2e-offline
-
 # Test the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
 test-electron: fail-on-windows install-php-bin
 	@echo "Running Electron E2E tests with Playwright..."
@@ -459,146 +452,6 @@ export-epub3:
 export-ims:
 	@$(MAKE) export-elpx FORMAT=ims INPUT="$(INPUT)" OUTPUT="$(OUTPUT)" DEBUG="$(DEBUG)" BASE_URL="$(BASE_URL)"
 
-install-composer-dependencies:
-	@echo "Install composer dependencies (no dev)"
-	@composer install --no-dev --classmap-authoritative --optimize-autoloader --no-interaction --no-progress
-
-# Temporarily installs nativephp/php-bin, extracts the runtime to runtime/php/...,
-# and removes the dev package so vendor/nativephp/php-bin is not included in the build.
-# Works on macOS, Linux, and Git Bash (MSYS/MINGW/CYGWIN). Does not use PowerShell.
-install-php-bin: install-composer-dependencies
-	@echo "Fetching nativephp/php-bin without dev mode (temp dir)..."
-	@set -e; \
-	TMPDIR="$$(mktemp -d)"; \
-	composer create-project --no-dev --no-scripts --no-interaction --prefer-dist nativephp/php-bin "$$TMPDIR/php-bin"; \
-	OS_NAME="$$(uname -s)"; \
-	extract_zip() { _zip="$$1"; _dest="$$2"; rm -rf "$$_dest"; mkdir -p "$$_dest"; \
-	  if command -v unzip >/dev/null 2>&1; then unzip -q -o "$$_zip" -d "$$_dest"; else bsdtar -xf "$$_zip" -C "$$_dest"; fi; }; \
-	case "$$OS_NAME" in \
-	  Linux) \
-	    echo "Preparing embedded PHP for Linux..."; \
-	    extract_zip "$$TMPDIR/php-bin/bin/linux/x64/php-8.4.zip" "runtime/php/linux/x64"; \
-	    [ -x "runtime/php/linux/x64/php-8.4/bin/php" ] && ln -sf "php-8.4/bin/php" "runtime/php/linux/x64/php" || true ;; \
-	  Darwin) \
-	    echo "Preparing embedded PHP for macOS..."; \
-	    extract_zip "$$TMPDIR/php-bin/bin/mac/arm64/php-8.4.zip" "runtime/php/mac/arm64"; \
-	    extract_zip "$$TMPDIR/php-bin/bin/mac/x64/php-8.4.zip"   "runtime/php/mac/x64"; \
-	    copy_php_bin() { root="$$1"; dest="$$root/php"; src=""; \
-	      for c in "$$root/php" "$$root/php-8.4/php" "$$root/php-8.4/bin/php" "$$root/bin/php"; do [ -x "$$c" ] && src="$$c" && break; done; \
-	      [ -z "$$src" ] && { echo "PHP binary not found under $$root"; exit 1; }; \
-	      [ "$$src" != "$$dest" ] && cp -f "$$src" "$$dest"; chmod +x "$$dest" || true; }; \
-	    copy_php_bin "runtime/php/mac/arm64"; copy_php_bin "runtime/php/mac/x64" ;; \
-	  MINGW*|MSYS*|CYGWIN*) \
-	    echo "Preparing embedded PHP for Windows (Git Bash)..."; \
-	    extract_zip "$$TMPDIR/php-bin/bin/win/x64/php-8.4.zip" "runtime/php/win/x64"; \
-	    if [ -f "runtime/php/win/x64/php-8.4/php.exe" ]; then \
-	      cp -f "runtime/php/win/x64/php-8.4/php.exe" "runtime/php/win/x64/php.exe"; \
-	    elif [ -f "runtime/php/win/x64/php-8.4/bin/php.exe" ]; then \
-	      cp -f "runtime/php/win/x64/php-8.4/bin/php.exe" "runtime/php/win/x64/php.exe"; \
-	    fi ;; \
-	  *) echo "Unsupported OS"; exit 1 ;; \
-	esac; \
-	rm -rf "$$TMPDIR"; \
-	echo "Embedded PHP runtime prepared under runtime/php/*"
-
-
-# Run the app locally with yarn (requires PHP binaries), pass DEBUG=1 to enable dev mode
-run-app: fail-on-windows css-node install-php-bin
-ifeq ($(SYSTEM_OS),windows)
-	powershell -Command "$$env:EXELEARNING_DEBUG_MODE='$(DEBUG)'; yarn start"	
-	#set EXELEARNING_DEBUG_MODE=$(DEBUG) && yarn start
-else
-	EXELEARNING_DEBUG_MODE=$(DEBUG) yarn start
-endif
-
-# Package the application with the specified version
-# Usage: make package VERSION=1.0.0
-package: fail-on-windows css-node install-php-bin
-ifndef VERSION
-	$(error VERSION is not set. Usage: make package VERSION=x.y.z)
-endif
-	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
-	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
-	$(if $(PACKAGE_VERSION),,$(error Unable to derive package version from '$(VERSION)'))
-	@echo "Packaging application with version $(VERSION)..."
-	@echo " -> Using sanitized package version $(PACKAGE_VERSION) for electron-builder"
-	
-	# Update version in Constants.php and package.json
-	@echo "Updating version in files..."
-	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = '$(VERSION)';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"$(PACKAGE_VERSION)\"|" package.json && rm -f package.json.bak
-
-	# Build & publish for current platform
-	@echo "Building & publishing for current platform..."
-	yarn build $(PUBLISH_ARG)
-	
-	# Restore the fixed version in package.json and Constants.php
-	@echo "Restoring fixed version v0.0.0-alpha in Constants.php and 0.0.0-alpha in package.json..."
-	@sed -i.bak "s|public const APP_VERSION = '.*';|public const APP_VERSION = 'v0.0.0-alpha';|" src/Constants.php && rm -f src/Constants.php.bak
-	@sed -i.bak "s|\"version\":[[:space:]]*\"[^\"]*\"|\"version\": \"0.0.0-alpha\"|" package.json && rm -f package.json.bak
-	
-	@echo "Package created successfully with version $(VERSION)"
-	@echo "Installer files available in the dist/ directory"
-
-
-## --------- WINDOWS LOCAL SIGN ---------
-
-.SILENT: check-release-env eb-inject-config eb-cleanup-config \
-         package-windows-local-sign
-.PHONY:  check-release-env eb-inject-config eb-cleanup-config \
-         package-windows-local-sign
-
-# Accept multiple aliases for certificate thumbprint
-CERT_SHA1      ?= $(or $(CERT_THUMBPRINT),$(CERTIFICATE_SHA1),$(WIN_CERTIFICATE_SHA1))
-
-# Fail fast if required env/inputs are missing
-check-release-env:
-	@: $(if $(VERSION),,$(error VERSION is not set. Usage: make package-windows-local-sign VERSION=vX.Y.Z CERT_THUMBPRINT=...))
-	@: $(if $(or $(GH_TOKEN),$(GITHUB_TOKEN),$(GITHUB_RELEASE_TOKEN)),,$(error GH_TOKEN or GITHUB_TOKEN is required to publish to GitHub))
-	@: $(if $(CERT_SHA1),,$(error Set CERT_THUMBPRINT (or CERTIFICATE_SHA1/WIN_CERTIFICATE_SHA1) with your certificate SHA1 thumbprint))
-
-# Inject ephemeral config into package.json:
-# - win.certificateSha1
-eb-inject-config:
-	node -e "const fs=require('fs');const pth='package.json';\
-	 const s=fs.readFileSync(pth,'utf8'); const pj=JSON.parse(s); \
-	 pj.build=pj.build||{}; \
-	 pj.build.win=pj.build.win||{}; \
-	 pj.build.win.certificateSha1 = process.env.CERT_SHA1 || pj.build.win.certificateSha1; \
-	 fs.writeFileSync(pth, JSON.stringify(pj,null,2)); \
-	 fs.writeFileSync('.eb-injected.sentinel','1'); \
-	 console.log('Injected: win.certificateSha1');"
-
-# Remove only what we injected (win.certificateSha1).
-eb-cleanup-config:
-	@if [ -f .eb-injected.sentinel ]; then \
-	  node -e "const fs=require('fs');const pth='package.json';\
-	    const pj=JSON.parse(fs.readFileSync(pth,'utf8')); \
-	    if(pj.build && pj.build.win){ delete pj.build.win.certificateSha1; } \
-	    fs.writeFileSync(pth, JSON.stringify(pj,null,2)); \
-	    console.log('Cleaned: win.certificateSha1');"; \
-	  rm -f .eb-injected.sentinel; \
-	fi
-
-# Windows packaging with local certificate store thumbprint
-# Usage:
-#   make package-windows-local-sign VERSION=v3.0.0 CERT_THUMBPRINT=<SHA1> [PUBLISH=always]
-package-windows-local-sign: fail-on-windows check-release-env eb-inject-config
-	@echo "→ Tag/version: $(VERSION)"
-	@echo "→ Cert SHA1: $(CERT_SHA1)"
-	@echo "Cleaning previous build artifacts..."; rm -rf vendor node_modules dist || true
-	@[ -d var/cache ] && find var/cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + || true
-
-	# Build & publish (re-use your existing 'package' flow)
-	# We pass VERSION as tag (with v-prefix as you venías usando).
-	@DEBUG=electron-builder \
-	 GH_TOKEN="$${GH_TOKEN:-$${GITHUB_TOKEN:-$${GITHUB_RELEASE_TOKEN}}}" \
-	 $(MAKE) package VERSION="$(VERSION)" PUBLISH=$(if $(PUBLISH),$(PUBLISH),always)
-
-	@$(MAKE) eb-cleanup-config
-	@echo "✔ Windows package (signed) built & published for $(VERSION)"
-## --------- END WINDOWS LOCAL SIGN ---------
-
 
 # Copy the vendor/ directory from the container to the local host
 # Use this when you want to inspect or debug vendor code locally
@@ -610,7 +463,7 @@ pull-vendor: check-docker check-env upd
 	@echo "✅ Done. Local ./vendor directory updated from container."
 
 
-.PHONY: css css-dev css-node
+.PHONY: css css-dev
 
 # Prevent MSYS path conversion breaking Docker paths on Windows Git Bash
 # (same approach used elsewhere in this Makefile for docker compose commands)
@@ -632,13 +485,6 @@ css-dev:
 	@printf '/*! File generated from assets/styles/main.scss. DO NOT EDIT. Built: %s UTC */\n' "$$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
 	  | cat - public/style/workarea/main.css > public/style/workarea/.main.css.tmp && mv public/style/workarea/.main.css.tmp public/style/workarea/main.css
 	@echo "CSS built (dev)."
-
-# Generate css direct with node, for local electron and package in GH
-css-node:
-	@echo "Installing Node.js dependencies..."
-	yarn install
-	@echo "Generating CSS (prod)..."
-	yarn run --silent sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map
 
 # Display help with available commands
 help:
@@ -709,16 +555,10 @@ help:
 	@echo "  test-unit             - Run unit tests with PHPUnit"
 	@echo "  test-e2e              - Run e2e tests with Paratest (chrome)"
 	@echo "  test-e2e-realtime     - Run e2e-realtime tests with Paratest (chrome)"
-	@echo "  test-e2e-offline      - Run e2e-offline tests with Paratest (chrome)"
 	@echo "  test-playwright       - Run local Playwright collaborative test (host browser)"
 	@echo "  test-shell            - Open a shell inside the exelearning container (and the chrome container)"
 	@echo "  test-local            - Run unit tests in local environment (no Docker, SQLite tmp DB)"
 	@echo "  test-unit-parallel    - Run unit tests in parallel using paratest"
-	@echo ""
-	@echo "Packaging:"
-	@echo ""
-	@echo "  run-app               - Run the app locally as it would work when packaged"
-	@echo "  package               - Generate installers for current platform with specified version (usage: make package VERSION=x.y.z)"
 	@echo ""
 	@echo "Translations (i18n):"
 	@echo ""

@@ -39,9 +39,6 @@ class App {
         this.sessionMonitor = null;
         this.sessionExpirationHandled = false;
 
-        if (!this.eXeLearning.config.isOfflineInstallation) {
-            this.setupSessionMonitor();
-        }
     }
 
     /**
@@ -515,70 +512,6 @@ class App {
         let msg = _(
             'eXeLearning %s is a development version. It is not for production use.'
         );
-
-        // Disable offline versions after DEMO_EXPIRATION_DATE
-        if ($('body').attr('installation-type') == 'offline') {
-            msg = _('This is just a demo version. Not for real projects.');
-            var expires = eXeLearning.expires;
-            if (expires.length == 8) {
-                expires = parseInt(expires);
-                if (!isNaN(expires) && expires != -1) {
-                    var date = new Date();
-                    var date = date
-                        .toISOString()
-                        .slice(0, 10)
-                        .replace(/-/g, '');
-                    if (date.length == 8) {
-                        if (date >= expires) {
-                            msg = _(
-                                'eXeLearning %s has expired! Please download the latest version.'
-                            );
-                            msg = msg.replace(
-                                'eXeLearning %s',
-                                '<strong>eXeLearning ' +
-                                    eXeLearning.version +
-                                    '</strong>'
-                            );
-                            $('body').html(
-                                '<div id="load-screen-main" class="expired"><p class="alert alert-warning">' +
-                                    msg +
-                                    '</p></div>'
-                            );
-                            return;
-                        } else {
-                            msg = _(
-                                'This is just a demo version. Not for real projects. Days before it expires: %s'
-                            );
-
-                            var expiresObj = expires.toString();
-                            expiresObj =
-                                expiresObj.substring(0, 4) +
-                                '-' +
-                                expiresObj.substring(4, 6) +
-                                '-' +
-                                expiresObj.substring(6, 8);
-                            var dateObj = date.toString();
-                            dateObj =
-                                dateObj.substring(0, 4) +
-                                '-' +
-                                dateObj.substring(4, 6) +
-                                '-' +
-                                dateObj.substring(6, 8);
-
-                            var expiresDate = new Date(expiresObj).getTime();
-                            var currentDate = new Date(dateObj).getTime();
-                            var diff = expiresDate - currentDate;
-                            diff = diff / (1000 * 60 * 60 * 24);
-
-                            msg = msg.replace(
-                                '%s',
-                                '<strong>' + diff + '</strong>'
-                            );
-                        }
-                    }
-                }
-            }
-        }
 
         msg = msg.replace('eXeLearning %s', '<strong>eXeLearning %s</strong>');
         msg = msg.replace('%s', eXeLearning.version);

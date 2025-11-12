@@ -42,10 +42,6 @@ class AuthenticationIntegrationTest extends WebTestCase
         $authMethods = $parameterBag->get('app.auth_methods');
         $this->assertIsArray($authMethods);
         
-        // Test that online_mode is loaded correctly
-        $onlineMode = $parameterBag->get('app.online_mode');
-        $this->assertIsBool($onlineMode);
-        
         // Test required CAS parameters when CAS is enabled
         if (in_array('cas', $authMethods)) {
             $this->assertNotNull($parameterBag->get('cas_url'));
@@ -65,8 +61,6 @@ class AuthenticationIntegrationTest extends WebTestCase
     
     public function testLoginPageLoadsCorrectlyInOnlineMode(): void
     {
-        // Set online mode to true for this test
-        // $this->setParameter('app.online_mode', true);
         
         $crawler = $this->client->request('GET', '/login');
         
@@ -93,8 +87,7 @@ class AuthenticationIntegrationTest extends WebTestCase
     
     public function testCasLoginRedirection(): void
     {
-        // Set online mode to true and enable CAS
-        // $this->setParameter('app.online_mode', true);
+        // Enable CAS
         // $this->setParameter('app.auth_methods', ['cas']);
 
         // Simulate CAS parameters
@@ -118,8 +111,6 @@ class AuthenticationIntegrationTest extends WebTestCase
     {
         // Start a request to have a Request with session
         $this->client->request('GET', '/');
-        // Set online mode to true for this test
-        // $this->setParameter('app.online_mode', true);
 
         // Create and log in a test user
         $user = $this->createTestUser();

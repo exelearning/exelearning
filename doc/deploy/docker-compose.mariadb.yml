@@ -16,7 +16,6 @@ services:
       APP_DEBUG: 0
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForMariaDBDeployment}"
       APP_PORT: "${APP_PORT:-8080}"
-      APP_ONLINE_MODE: 1
       XDEBUG_MODE: off
       
       # Database settings

@@ -35,29 +35,6 @@ class SettingsUtil
         return self::$container->getParameter($parameter);
     }
 
-    /**
-     * Checks if installation type is online.
-     */
-    public static function installationTypeIsOnline(): bool
-    {
-        return boolval(self::getParameter('app.online_mode')); // Assuming '1' represents online mode
-    }
-
-    /**
-     * Checks if installation type is offline.
-     */
-    public static function installationTypeIsOffline(): bool
-    {
-        return !self::installationTypeIsOnline(); // Assuming 0 represents offline
-    }
-
-    /**
-     * Checks if theme installation allowed in online.
-     */
-    public static function themeInstallationAllowed(): bool
-    {
-        return self::getParameter('app.online_themes_install');
-    }
 
     /**
      * Checks if idevices installation allowed in online.

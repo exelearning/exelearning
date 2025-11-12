@@ -12,7 +12,6 @@ parameters:
     auth_temp_email_domain_default: 'domain.local'
     base_path: '%env(string:BASE_PATH)%'
 
-    app.online_mode: '%env(bool:APP_ONLINE_MODE)%'
     app.auth_methods: '%env(csv:APP_AUTH_METHODS)%'
 
     app.version: !php/const App\Constants::APP_VERSION
@@ -243,6 +242,5 @@ services:
 
 twig:
     globals:
-        online_mode: '%app.online_mode%'
         auth_methods: '%app.auth_methods%'
         app_version: '%app.version%'

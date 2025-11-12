@@ -822,7 +822,6 @@ class OdeApiController extends DefaultApiController
         $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession') ?? $request->getPayload()->get('forceCloseOdeUserPreviousSession');
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
-        $isOnline = $this->getParameter('app.online_mode');
 
         // Convert forceCloseOdeUserPreviousSession to boolean
         // Accept: true (bool), 'true' (string), '1' (string), 1 (int)
@@ -1030,7 +1029,7 @@ class OdeApiController extends DefaultApiController
             $responseData['authorized'] = false;
         }
 
-        if ($isOnline && !$themesInstallationEnabled) {
+        if (!$themesInstallationEnabled) {
             $responseData['authorized'] = false;
         }
 

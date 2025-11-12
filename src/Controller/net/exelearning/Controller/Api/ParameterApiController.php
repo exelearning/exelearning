@@ -71,15 +71,8 @@ class ParameterApiController extends DefaultApiController
         $data['autosaveOdeFilesFunction'] = $this->getParameter('app.autosave_ode_files_function');
         $data['autosaveIntervalTime'] = $this->getParameter('app.permanent_save_autosave_time_interval');
         $data['countUserAutosave'] = $this->getParameter('app.count_user_autosave_space_ode_files');
+        $data['canInstallThemes'] = $this->getParameter('app.online_themes_install');
 
-        $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
-        $isOnline = $this->getParameter('app.online_mode');
-
-        if ($isOnline && !$themesInstallationEnabled) {
-            $data['canInstallThemes'] = 0;
-        } else {
-            $data['canInstallThemes'] = 1;
-        }
         // iDevice info
         $data['ideviceInfoFieldsConfig'] = $this->getProcessedPropertiesConfig(
             Properties::IDEVICE_INFO_FIELDS_CONFIG
