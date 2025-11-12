@@ -182,14 +182,6 @@ export default class NavbarFile {
     setSaveProjectEvent() {
         this.saveButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
-            // Offline desktop: use ELP export flow as persistent file save
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
-                this.downloadProjectEvent();
-                return;
-            }
             this.saveOdeEvent();
         });
     }
@@ -202,14 +194,6 @@ export default class NavbarFile {
     setSaveAsProjectEvent() {
         this.saveButtonAs.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
-            // Offline desktop: prompt file path and remember it
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
-                this.saveAsElpOffline();
-                return;
-            }
             this.saveAsOdeEvent();
         });
     }
@@ -1187,66 +1171,10 @@ export default class NavbarFile {
      *
      */
     openUserOdeFilesEvent() {
-        if (eXeLearning.config.isOfflineInstallation === true) {
-            // Electron offline: use native dialog so we know the real path
-            if (
-                window.electronAPI &&
-                typeof window.electronAPI.openElp === 'function'
-            ) {
-                (async () => {
-                    const filePath = await window.electronAPI.openElp();
-                    if (!filePath) return;
-                    // Read and build a File for existing upload flow
-                    const res = await window.electronAPI.readFile(filePath);
-                    if (!res || !res.ok) {
-                        eXeLearning.app.modals.alert.show({
-                            title: _('Error opening'),
-                            body:
-                                res && res.error
-                                    ? res.error
-                                    : _('Unknown error.'),
-                            contentId: 'error',
-                        });
-                        return;
-                    }
-                    const base64 = res.base64;
-                    const binStr = atob(base64);
-                    const len = binStr.length;
-                    const bytes = new Uint8Array(len);
-                    for (let i = 0; i < len; i++)
-                        bytes[i] = binStr.charCodeAt(i);
-                    const blob = new Blob([bytes], {
-                        type: 'application/octet-stream',
-                    });
-                    // Derive filename in a cross-platform way (Windows/Mac/Linux)
-                    const filename =
-                        (filePath && filePath.split(/[\\\/]/).pop()) ||
-                        'project.elpx';
-                    const file = new File([blob], filename, {
-                        type: 'application/octet-stream',
-                        lastModified: Date.now(),
-                    });
-                    // Store original local path so we can remember it after open
-                    try {
-                        window.__originalElpPath = filePath;
-                    } catch (_e) {}
-                    eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
-                        file
-                    );
-                })();
-            } else {
-                // Fallback to hidden input
-                this.createIdevicesUploadInput();
-                this.menu.navbar
-                    .querySelector('input.local-ode-file-upload-input')
-                    .click();
-            }
-        } else {
-            // Get ode files
-            this.getOdeFilesListEvent().then((response) => {
-                eXeLearning.app.modals.openuserodefiles.show(response);
-            });
-        }
+        // Get ode files
+        this.getOdeFilesListEvent().then((response) => {
+            eXeLearning.app.modals.openuserodefiles.show(response);
+        });
     }
 
     /**
@@ -1455,21 +1383,10 @@ export default class NavbarFile {
             'html5'
         );
         if (response['responseMessage'] == 'OK') {
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
-                this.electronSave(
-                    response['urlZipFile'],
-                    'export-html5',
-                    response['exportProjectName']
-                );
-            } else {
-                this.downloadLink(
-                    response['urlZipFile'],
-                    response['exportProjectName']
-                );
-            }
+            this.downloadLink(
+                response['urlZipFile'],
+                response['exportProjectName']
+            );
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1560,17 +1477,12 @@ export default class NavbarFile {
         };
         let toast = eXeLearning.app.toasts.createToast(toastData);
         try {
-            if (
-                !eXeLearning.config.isOfflineInstallation ||
-                !window.electronAPI
-            ) {
-                toast.toastBody.innerHTML = _(
-                    'This option is only available offline.'
-                );
-                toast.toastBody.classList.add('error');
-                setTimeout(() => toast.remove(), 1200);
-                return;
-            }
+            toast.toastBody.innerHTML = _(
+                'This option is only available offline.'
+            );
+            toast.toastBody.classList.add('error');
+            setTimeout(() => toast.remove(), 1200);
+            return;
             let odeSessionId = eXeLearning.app.project.odeSession;
             let response = await eXeLearning.app.api.getOdeExportDownload(
                 odeSessionId,
@@ -1645,11 +1557,7 @@ export default class NavbarFile {
             'html5-sp'
         );
         if (response['responseMessage'] == 'OK') {
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
-                this.electronSave(
+            this.downloadLink(
                     response['urlZipFile'],
                     'export-html5-sp',
                     response['exportProjectName']
@@ -1755,11 +1663,7 @@ export default class NavbarFile {
             'scorm12'
         );
         if (response['responseMessage'] == 'OK') {
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
-                this.electronSave(
+            this.downloadLink(
                     response['urlZipFile'],
                     'export-scorm12',
                     response['exportProjectName']
@@ -1865,11 +1769,7 @@ export default class NavbarFile {
             'scorm2004'
         );
         if (response['responseMessage'] == 'OK') {
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
-                this.electronSave(
+            this.downloadLink(
                     response['urlZipFile'],
                     'export-scorm2004',
                     response['exportProjectName']
@@ -1975,11 +1875,7 @@ export default class NavbarFile {
             'ims'
         );
         if (response['responseMessage'] == 'OK') {
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
-                this.electronSave(
+            this.downloadLink(
                     response['urlZipFile'],
                     'export-ims',
                     response['exportProjectName']
@@ -2085,11 +1981,7 @@ export default class NavbarFile {
             'epub3'
         );
         if (response['responseMessage'] == 'OK') {
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
-                this.electronSave(
+            this.downloadLink(
                     response['urlZipFile'],
                     'export-epub3',
                     response['exportProjectName']
@@ -2195,11 +2087,7 @@ export default class NavbarFile {
             'properties'
         );
         if (response['responseMessage'] == 'OK') {
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
-                this.electronSave(
+            this.downloadLink(
                     response['urlZipFile'],
                     'export-xml-properties',
                     response['exportProjectName']
@@ -2346,44 +2234,7 @@ export default class NavbarFile {
             .getFileResourcesForceDownload($url)
             .then((response) => {
                 const finalUrl = response.url || $url;
-                // In Electron offline builds, always prefer native save flow to avoid duplicate pickers
-                if (
-                    eXeLearning.config.isOfflineInstallation === true &&
-                    window.electronAPI &&
-                    typeof window.electronAPI.save === 'function'
-                ) {
-                    const key = window.__currentProjectId || 'default';
-                    const suggested =
-                        typeof $name === 'string' && $name
-                            ? $name
-                            : 'document.elpx';
-                    // Try to infer a typeKey from the extension for better naming
-                    let typeKey = eXeLearning.extension;
-                    try {
-                        if (/export-html5-sp/i.test(suggested))
-                            typeKey = 'export-html5-sp';
-                        else if (/export-html5/i.test(suggested))
-                            typeKey = 'export-html5';
-                        else if (/export-scorm2004/i.test(suggested))
-                            typeKey = 'export-scorm2004';
-                        else if (/export-scorm12/i.test(suggested))
-                            typeKey = 'export-scorm12';
-                        else if (/export-ims/i.test(suggested))
-                            typeKey = 'export-ims';
-                        else if (/export-epub3/i.test(suggested))
-                            typeKey = 'export-epub3';
-                        else if (/xml/i.test(suggested))
-                            typeKey = 'export-xml-properties';
-                        else if (/\.zip$/i.test(suggested)) typeKey = 'export';
-                    } catch (_e) {}
-                    const safeName = this.normalizeSuggestedName(
-                        suggested,
-                        typeKey
-                    );
-                    window.electronAPI.save(finalUrl, key, safeName);
-                    return;
-                }
-                // Browser fallback
+                // Browser download
                 let downloadLink = document.createElement('a');
                 downloadLink.href = finalUrl;
                 downloadLink.download = $name;

@@ -16,13 +16,6 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
      */
     private function injectOnlineStubs(Client $client): void
     {
-        // Ensure we are in online mode
-        $client->executeScript(<<<'JS'
-            (function(){
-                try { if (window.eXeLearning && window.eXeLearning.config) { window.eXeLearning.config.isOfflineInstallation = false; } } catch (e) {}
-            })();
-        JS);
-
         // Track online flows and stub expensive API calls
         $client->executeScript(<<<'JS'
             (function(){

@@ -52,19 +52,6 @@ class SecurityController extends AbstractController
     #[Route('/login', name: 'app_login')]
     public function login(SessionInterface $session, AuthenticationUtils $authenticationUtils): Response
     {
-        // Check if offline mode is enabled
-        if (!$this->params->get('app.online_mode')) {
-            // Load the default user
-            $user = $this->getDefaultUser();
-
-            // Programmatically log in the user
-            $this->loginUser($user);
-
-            // Redirect to workarea
-            return $this->redirectToRoute('workarea');
-        }
-
-        // If online mode, proceed with normal login form
         // get the login error if there is one
         $error = $authenticationUtils->getLastAuthenticationError();
         // last username entered by the user
@@ -374,26 +361,6 @@ class SecurityController extends AbstractController
 
         // Fallback: local logout only
         return $this->redirect($redirectUri);
-    }
-
-    /**
-     * Load the default user in offline mode.
-     */
-    private function getDefaultUser()
-    {
-        $userRepo = $this->entityManager->getRepository(User::class);
-
-        return $userRepo->find(1) ?? throw new \RuntimeException('Default user not found.');
-    }
-
-    /**
-     * Programmatically log in the user in offline mode.
-     */
-    private function loginUser(User $user)
-    {
-        $firewallName = $this->params->get('security.firewall_name', 'main'); // The firewall name you're using
-        $token = new UsernamePasswordToken($user, $firewallName, $user->getRoles());
-        $this->tokenStorage->setToken($token);
     }
 
     #[Route('/login/guest', name: 'guest_login', methods: ['POST'])]

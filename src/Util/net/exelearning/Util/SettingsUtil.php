@@ -52,10 +52,6 @@ class SettingsUtil
     {
         $factor = 2;
 
-        if (self::installationTypeIsOffline()) {
-            return Constants::INSTALLATION_TYPE_OFFLINE_DEFAULT_DISK_SPACE;
-        }
-
         $maxDiskSpaceMB = self::getParameter('app.user_storage_max_disk_space');
 
         return (int) ($maxDiskSpaceMB * pow(1024, $factor));
@@ -67,10 +63,6 @@ class SettingsUtil
     public static function getFileMaxUploadSizeInBytes(): int
     {
         $factor = 2;
-
-        if (self::installationTypeIsOffline()) {
-            return Constants::INSTALLATION_TYPE_OFFLINE_DEFAULT_DISK_SPACE;
-        }
 
         $maxUploadSizeMB = self::getParameter('app.file_upload_max_size');
 

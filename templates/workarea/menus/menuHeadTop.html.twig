@@ -63,11 +63,7 @@
                 <ul class="dropdown-menu" aria-labelledby="exeUserMenuToggler">
                     <li><a class="dropdown-item" id="navbar-button-preferences" href="#">{{ "Preferences" | trans }}</a></li>
                     <li class="dropdown-divider"></li>
-                    {% if config.isOfflineInstallation %}
-                    <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ "Exit" | trans }}</a></li>
-                    {% else %}
                     <li><a class="dropdown-item" id="head-bottom-logout-button" href="#">{{ "Logout" | trans }}</a></li>
-                    {% endif %}
                 </ul>
             </div>
         </div>

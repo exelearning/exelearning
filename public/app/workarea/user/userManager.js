@@ -46,17 +46,8 @@ export default class UserManager {
      *
      */
     reloadVersionControl(versionControl) {
-        if (
-            versionControl == 'false' &&
-            eXeLearning.config.isOfflineInstallation === true
-        ) {
-            versionControl = this.versionValues.inactive;
-            this.versionControl = versionControl;
-            this.deleteOdeFilesByDate();
-        } else {
-            versionControl = this.versionValues.active;
-            this.versionControl = versionControl;
-        }
+        versionControl = this.versionValues.active;
+        this.versionControl = versionControl;
     }
 
     /**

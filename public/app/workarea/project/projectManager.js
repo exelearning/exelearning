@@ -9,16 +9,13 @@ export default class projectManager {
         this.properties = new ProjectProperties(this);
         this.idevices = new IdevicesEngine(this);
         this.structure = new StructureEngine(this);
-        this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
         this.clientIntervalUpdate = eXeLearning.config.clientIntervalUpdate;
         this.syncIntervalTime = 250;
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                this.app.eXeLearning.mercure.url,
-                this.app.eXeLearning.mercure.jwtSecretKey
-            );
-            this.eventSource;
-        }
+        this.realTimeEventNotifier = new RealTimeEventNotifier(
+            this.app.eXeLearning.mercure.url,
+            this.app.eXeLearning.mercure.jwtSecretKey
+        );
+        this.eventSource;
 
         // Collaborative
         this.activeLocks = new Map(); // Map<pageId, { user, gravatar }>
@@ -63,9 +60,7 @@ export default class projectManager {
         //Remove previous autosaves
         this.cleanPreviousAutosaves();
 
-        if (!this.offlineInstallation) {
-            await this.subscribeToSessionAndNotify();
-        }
+        await this.subscribeToSessionAndNotify();
     }
 
     /**
@@ -100,9 +95,7 @@ export default class projectManager {
         // Run autosave
         this.generateIntervalAutosave(true);
 
-        if (!this.offlineInstallation) {
-            await this.subscribeToSessionAndNotify();
-        }
+        await this.subscribeToSessionAndNotify();
     }
 
     /**
@@ -1010,32 +1003,9 @@ export default class projectManager {
      *
      */
     setInstallationTypeAttribute() {
-        if (this.offlineInstallation == true) {
-            document
-                .querySelector('body')
-                .setAttribute('installation-type', 'offline');
-            /* To review (see #432)
-            document.querySelector(
-                '#navbar-button-download-project',
-            ).innerHTML = 'Save';
-            */
-            document.querySelector('#head-top-download-button').innerHTML =
-                'save';
-            document
-                .querySelector('#head-top-download-button')
-                .setAttribute('title', 'Save');
-
-            // Expose a stable project key for Electron (per-project save path)
-            try {
-                window.__currentProjectId = this.odeId || 'default';
-            } catch (e) {}
-
-            // Offline Save As is now provided by a dedicated menu item
-        } else {
-            document
-                .querySelector('body')
-                .setAttribute('installation-type', 'online');
-        }
+        document
+            .querySelector('body')
+            .setAttribute('installation-type', 'online');
     }
 
     /**
@@ -1043,78 +1013,38 @@ export default class projectManager {
      *
      */
     async save() {
-        if (eXeLearning.config.isOfflineInstallation) {
-            // To do (offline version save action #432)
-            let data = {
-                odeSessionId: this.odeSession,
-                odeVersion: this.odeVersion,
-                odeId: this.odeId,
-            };
-            // Show message
-            let toastData = {
-                title: _('Save'),
-                body: _('Saving the project...'),
-                icon: 'downloading',
-            };
-            let toast = this.app.toasts.createToast(toastData);
-            // Save
-            let response = await this.app.api.postOdeSave(data);
-            if (response && response.responseMessage == 'OK') {
-                if (!this.offlineInstallation) {
-                    this.realTimeEventNotifier.notify(this.odeSession, {
-                        name: 'new-content-published',
-                    });
-                }
+        let data = {
+            odeSessionId: this.odeSession,
+            odeVersion: this.odeVersion,
+            odeId: this.odeId,
+        };
+        // Show message
+        let toastData = {
+            title: _('Save'),
+            body: _('Saving the project...'),
+            icon: 'downloading',
+        };
+        let toast = this.app.toasts.createToast(toastData);
+        // Save
+        let response = await this.app.api.postOdeSave(data);
+        if (response && response.responseMessage == 'OK') {
+            this.realTimeEventNotifier.notify(this.odeSession, {
+                name: 'new-content-published',
+            });
 
-                this.app.interface.connectionTime.loadLasUpdatedInInterface();
-                toast.toastBody.innerHTML = _('Project saved.');
-            } else {
-                this.showModalSaveError(response);
-                toast.toastBody.innerHTML = _(
-                    'An error occurred while saving the project.'
-                );
-                toast.toastBody.classList.add('error');
-            }
-            // Remove message
-            setTimeout(() => {
-                toast.remove();
-            }, 1000);
+            this.app.interface.connectionTime.loadLasUpdatedInInterface();
+            toast.toastBody.innerHTML = _('Project saved.');
         } else {
-            let data = {
-                odeSessionId: this.odeSession,
-                odeVersion: this.odeVersion,
-                odeId: this.odeId,
-            };
-            // Show message
-            let toastData = {
-                title: _('Save'),
-                body: _('Saving the project...'),
-                icon: 'downloading',
-            };
-            let toast = this.app.toasts.createToast(toastData);
-            // Save
-            let response = await this.app.api.postOdeSave(data);
-            if (response && response.responseMessage == 'OK') {
-                if (!this.offlineInstallation) {
-                    this.realTimeEventNotifier.notify(this.odeSession, {
-                        name: 'new-content-published',
-                    });
-                }
-
-                this.app.interface.connectionTime.loadLasUpdatedInInterface();
-                toast.toastBody.innerHTML = _('Project saved.');
-            } else {
-                this.showModalSaveError(response);
-                toast.toastBody.innerHTML = _(
-                    'An error occurred while saving the project.'
-                );
-                toast.toastBody.classList.add('error');
-            }
-            // Remove message
-            setTimeout(() => {
-                toast.remove();
-            }, 1000);
+            this.showModalSaveError(response);
+            toast.toastBody.innerHTML = _(
+                'An error occurred while saving the project.'
+            );
+            toast.toastBody.classList.add('error');
         }
+        // Remove message
+        setTimeout(() => {
+            toast.remove();
+        }, 1000);
     }
 
     /**
@@ -1192,42 +1122,39 @@ export default class projectManager {
      *
      */
     async generateIntervalCheckOdeUpdates() {
-        // Check online version
-        if (this.offlineInstallation !== true) {
-            setInterval(() => {
-                // Params
-                let odeId = this.odeId;
-                let odeVersion = this.odeVersion;
-                let odeSession = this.odeSession;
-                let isCheckUpdate = true;
-                let elementsPage = document.querySelectorAll(
-                    '.idevice-element-in-content'
-                );
-                let elementsDragging = document.querySelectorAll('.dragging');
-                let pageId = this.structure.getSelectNodeNavId();
-                // Check users in session
-                isCheckUpdate = this.checkUsersInSession(
-                    odeId,
-                    odeVersion,
-                    odeSession,
-                    isCheckUpdate
-                );
-                // Check if any element is in mode edition
-                isCheckUpdate = this.checkModeEdition(
-                    elementsPage,
-                    isCheckUpdate
-                );
-                // Check if any element is dragging
-                isCheckUpdate = this.checkDraggingElement(
-                    elementsDragging,
-                    isCheckUpdate
-                );
-                if (isCheckUpdate) {
-                    // Check if the user has an update and action type
-                    this.checkUserUpdateFlag(pageId);
-                }
-            }, this.clientIntervalUpdate);
-        }
+        setInterval(() => {
+            // Params
+            let odeId = this.odeId;
+            let odeVersion = this.odeVersion;
+            let odeSession = this.odeSession;
+            let isCheckUpdate = true;
+            let elementsPage = document.querySelectorAll(
+                '.idevice-element-in-content'
+            );
+            let elementsDragging = document.querySelectorAll('.dragging');
+            let pageId = this.structure.getSelectNodeNavId();
+            // Check users in session
+            isCheckUpdate = this.checkUsersInSession(
+                odeId,
+                odeVersion,
+                odeSession,
+                isCheckUpdate
+            );
+            // Check if any element is in mode edition
+            isCheckUpdate = this.checkModeEdition(
+                elementsPage,
+                isCheckUpdate
+            );
+            // Check if any element is dragging
+            isCheckUpdate = this.checkDraggingElement(
+                elementsDragging,
+                isCheckUpdate
+            );
+            if (isCheckUpdate) {
+                // Check if the user has an update and action type
+                this.checkUserUpdateFlag(pageId);
+            }
+        }, this.clientIntervalUpdate);
     }
 
     /**
@@ -2098,7 +2025,7 @@ export default class projectManager {
         };
 
         // In case of multiple session and odeComponentFlag set to false wait for the clientIntervalUpdate
-        if (this.offlineInstallation !== true && odeComponentFlag == false) {
+        if (odeComponentFlag == false) {
             // Params
             let odeId = this.odeId;
             let odeVersion = this.odeVersion;

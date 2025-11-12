@@ -69,13 +69,10 @@ class WorkareaController extends DefaultWorkareaController
         $odePlatformNew = $request->get('newOde');
         $odePlatformId = $request->get('odeId');
 
-        // Check installation type
-        $isOfflineInstallation = SettingsUtil::installationTypeIsOffline();
-
         // Platform selected.
-        // If offline mode is activated or integration has not token, $platformIntegration is false
+        // If integration has not token, $platformIntegration is false
         $platformIntegration = true;
-        if (empty($request->query->get('jwt_token')) || $isOfflineInstallation) {
+        if (empty($request->query->get('jwt_token'))) {
             $platformIntegration = false;
         }
 
@@ -102,14 +99,8 @@ class WorkareaController extends DefaultWorkareaController
         // User
         $userLogged = $this->getUser();
 
-        // Check that you do not have a user and that offline mode is activated
-        if (empty($userLogged) && $isOfflineInstallation) {
-            // If you don't have a user, create an anonymous user
-            $userLogged = new User();
-            $userLogged->setEmail('anonymous-exe-1@exelearning.net');
-        }
-
-        if (empty($userLogged) && !$isOfflineInstallation) {
+        // Check if user is logged in, if not redirect to login
+        if (empty($userLogged)) {
             $shareCode = $request->query->get('shareCode');
             if ($shareCode) {
                 return $this->redirectToRoute('app_login', ['shareCode' => $shareCode]);
@@ -198,14 +189,12 @@ class WorkareaController extends DefaultWorkareaController
             }
         }
 
-        // Check if the application is in online mode
-        $appOnlineMode = filter_var($this->getParameter('app.online_mode'), FILTER_VALIDATE_BOOLEAN);
         // Get the Mercure JWT secret key from the environment
         $secretKey = $this->getParameter('mercure_jwt_secret_key');
         $mercure = null;
 
-        // Configure Mercure only if the app is online and the secret key is provided.
-        if ($appOnlineMode && !empty($secretKey)) {
+        // Configure Mercure if the secret key is provided.
+        if (!empty($secretKey)) {
             // This Mercure url will be set for clients, so public url is used.
             $mercureUrl = $this->getParameter('mercure_public_url');
 
@@ -247,7 +236,6 @@ class WorkareaController extends DefaultWorkareaController
                     'clientIntervalGetLastEdition' => $clientIntervalGetLastEdition,
                     'clientIntervalUpdate' => $clientIntervalUpdate,
                     'defaultTheme' => $defaultTheme,
-                    'isOfflineInstallation' => $isOfflineInstallation,
                     'platformIntegration' => $platformIntegration,
                     'userStyles' => $userStyles,
                     'userIdevices' => $userIdevices,

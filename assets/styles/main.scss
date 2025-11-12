@@ -36,9 +36,8 @@ body[mode="advanced"] .exe-simplified {
     display: none !important;
 }
 
-/* eXe Mode */
-body[installation-type="offline"] .exe-online,
-body[installation-type="online"] .exe-offline {
+/* eXe Mode - Hide offline-specific elements */
+body .exe-offline {
     display: none !important;
 }
 

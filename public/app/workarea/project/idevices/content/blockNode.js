@@ -33,14 +33,10 @@ export default class IdeviceBlockNode {
         this.blockNameElementText = null;
         this.toggleElement = null;
         this.blockButtons = null;
-        this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
-
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey
-            );
-        }
+        this.realTimeEventNotifier = new RealTimeEventNotifier(
+            eXeLearning.mercure.url,
+            eXeLearning.mercure.jwtSecretKey
+        );
     }
 
     /**

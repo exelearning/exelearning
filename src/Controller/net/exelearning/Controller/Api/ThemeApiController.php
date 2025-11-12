@@ -86,9 +86,8 @@ class ThemeApiController extends DefaultApiController
         $INSTALL_FAILED = 'Could not install the theme';
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
-        $isOnline = $this->getParameter('app.online_mode');
 
-        if ($isOnline && !$themesInstallationEnabled) {
+        if (!$themesInstallationEnabled) {
             $responseData['responseMessage'] = 'Unauthorized';
 
             return $this->json($responseData, $this->status);
@@ -143,12 +142,10 @@ class ThemeApiController extends DefaultApiController
     public function importOdeThemeAction(Request $request)
     {
         $responseData = [];
-        $isOnline = false;
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
-        $isOnline = $this->getParameter('app.online_mode');
 
-        if ($isOnline && !$themesInstallationEnabled) {
+        if (!$themesInstallationEnabled) {
             $responseData['responseMessage'] = 'Unauthorized';
 
             return new JsonResponse($this->getJsonSerialized($responseData), $this->status, [], true);

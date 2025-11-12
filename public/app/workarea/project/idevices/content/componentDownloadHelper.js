@@ -74,38 +74,6 @@ async function runElectronDownload(
 export async function downloadComponentFile(url, suggestedName, keyOptions) {
     if (!url) return;
     const fileName = normalizeFileName(suggestedName);
-    const storageKey = resolveStorageKey(keyOptions);
-    const electronAPI = window?.electronAPI;
-    const preferElectron =
-        !!electronAPI && eXeLearning?.config?.isOfflineInstallation === true;
-
-    if (preferElectron) {
-        const hasRemembered = isKeyRemembered(storageKey);
-        let success = false;
-
-        if (hasRemembered) {
-            success = await runElectronDownload(
-                electronAPI,
-                'save',
-                url,
-                storageKey,
-                fileName
-            );
-        }
-
-        if (!success) {
-            success = await runElectronDownload(
-                electronAPI,
-                'saveAs',
-                url,
-                storageKey,
-                fileName
-            );
-            if (success) markKeyRemembered(storageKey);
-        }
-
-        if (success) return;
-    }
 
     triggerBrowserDownload(url, fileName);
 }

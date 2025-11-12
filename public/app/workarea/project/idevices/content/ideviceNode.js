@@ -51,14 +51,10 @@ export default class IdeviceNode {
         // Check if is valid
         this.checkIsValid();
 
-        this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
-
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey
-            );
-        }
+        this.realTimeEventNotifier = new RealTimeEventNotifier(
+            eXeLearning.mercure.url,
+            eXeLearning.mercure.jwtSecretKey
+        );
         this.nodeContainer = document.querySelector('#node-content-container');
 
         this.timeIdeviceEditing = null;

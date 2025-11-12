@@ -19,12 +19,6 @@ export default class LogoutButton {
      */
     addEventClick() {
         this.logoutMenuHeadButton.addEventListener('click', (event) => {
-            if (eXeLearning.config.isOfflineInstallation) {
-                // Disable the beforeunload handler to prevent the confirmation dialog and close the main window
-                window.onbeforeunload = null;
-                window.close();
-                return;
-            }
             let odeSessionId = eXeLearning.app.project.odeSession;
             let odeVersionId = eXeLearning.app.project.odeVersion;
             let odeId = eXeLearning.app.project.odeId;

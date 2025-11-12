@@ -102,11 +102,6 @@ class OdeApiController extends DefaultApiController
     #[Route('/{odeId}/{odeVersionId}/{odeSessionId}/current-users', methods: ['GET'], name: 'api_odes_current_users')]
     public function getOdeCurrentUsersAction(Request $request, $odeId, $odeVersionId, $odeSessionId)
     {
-        // In offline mode, don't run this action.
-        if (SettingsUtil::installationTypeIsOffline()) {
-            return new JsonResponse(['error' => 'Offline mode enabled, operation not allowed'], JsonResponse::HTTP_FORBIDDEN);
-        }
-
         $responseData = new OdeCurrentUsersDto();
         $responseData->setOdeSessionId($odeSessionId);
 

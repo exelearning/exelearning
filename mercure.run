@@ -3,12 +3,6 @@
 # Pipe stderr to stdout
 exec 2>&1
 
-# If online mode is explicitly disabled, do not start Mercure
-if [ "${APP_ONLINE_MODE:-1}" = "0" ]; then
-    echo "Mercure is disabled: APP_ONLINE_MODE=0"
-    exec sleep infinity
-fi
-
 # Check APP_ENV and run mercure with the appropriate configuration
 case "${APP_ENV:-}" in
   dev)

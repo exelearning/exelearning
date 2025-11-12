@@ -328,7 +328,6 @@ up-local: check-env css-dev
 	export DB_DRIVER=pdo_sqlite && \
 	export APP_ENV=dev && \
 	export APP_DEBUG=1 && \
-	export APP_ONLINE_MODE=1 && \
 	export DB_PATH="$$TMPDIR/exelearning.db" && \
 	export FILES_DIR="$$TMPDIR/" && \
 	export TEST_USER_EMAIL="user@exelearning.net" && \

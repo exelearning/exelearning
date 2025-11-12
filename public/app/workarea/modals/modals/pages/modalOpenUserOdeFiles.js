@@ -102,9 +102,7 @@ export default class modalOpenUserOdeFiles extends Modal {
             this.setBodyElement(bodyContent);
 
             const footerContent = this.makeFooterElement(data);
-            if (eXeLearning.config.isOfflineInstallation === false) {
-                this.setFooterElement(footerContent);
-            }
+            this.setFooterElement(footerContent);
             this.modal.show();
         }, time);
     }
