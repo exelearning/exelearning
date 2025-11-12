@@ -642,7 +642,7 @@ class OdeExportService implements OdeExportServiceInterface
 
         // Copy ELP to the export dir if it is necessary
         $elpFileName = false;
-        if ($addElpToExport || ('true' == $odeProperties['pp_exportElp']->getValue())) {
+        if ($addElpToExport) {
             $elpFileName = $this->copyDistElpToExport(
                 $dbUser,
                 $odeId,

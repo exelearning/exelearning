@@ -317,8 +317,6 @@ class ParameterApiController extends DefaultApiController
         $this->translator->trans('The exported content will be editable with eXeLearning.');
         $this->translator->trans('"Made with eXeLearning" link');
         $this->translator->trans('Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.');
-        $this->translator->trans('Include a copy of the source file');
-        $this->translator->trans('A copy of the eXeLearning file will be included when exporting the content.');
         $this->translator->trans('Page counter');
         $this->translator->trans('A text with the page number will be added on each page.');
         $this->translator->trans('Search bar (Website export only)');
