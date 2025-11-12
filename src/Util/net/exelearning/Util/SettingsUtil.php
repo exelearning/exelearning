@@ -2,7 +2,6 @@
 
 namespace App\Util\net\exelearning\Util;
 
-use App\Constants;
 use App\Settings;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -34,7 +33,6 @@ class SettingsUtil
 
         return self::$container->getParameter($parameter);
     }
-
 
     /**
      * Checks if idevices installation allowed in online.

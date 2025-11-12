@@ -12,10 +12,6 @@ export default class NavbarFile {
         this.saveButtonAs = this.menu.navbar.querySelector(
             '#navbar-button-save-as'
         );
-        // Offline-only: dedicated Save As item
-        this.saveButtonAsOffline = this.menu.navbar.querySelector(
-            '#navbar-button-save-as-offline'
-        );
         /*
         Temporally disabled:
         this.uploadGoogleDriveButton = this.menu.navbar.querySelector(
@@ -31,13 +27,6 @@ export default class NavbarFile {
         this.openUserOdeFilesButton = this.menu.navbar.querySelector(
             '#navbar-button-openuserodefiles'
         );
-        // Offline-only Open and Save entries (in the offline actions block)
-        this.openOfflineButton = this.menu.navbar.querySelector(
-            '#navbar-button-open-offline'
-        );
-        this.saveOfflineButton = this.menu.navbar.querySelector(
-            '#navbar-button-save-offline'
-        );
         this.recentProjectsButton = this.menu.navbar.querySelector(
             '#navbar-button-dropdown-recent-projects'
         );
@@ -52,9 +41,6 @@ export default class NavbarFile {
         );
         this.exportHTML5AsButton = this.menu.navbar.querySelector(
             '#navbar-button-exportas-html5'
-        );
-        this.exportHTML5FolderAsButton = this.menu.navbar.querySelector(
-            '#navbar-button-exportas-html5-folder'
         );
         this.exportHTML5SPButton = this.menu.navbar.querySelector(
             '#navbar-button-export-html5-sp'
@@ -114,7 +100,6 @@ export default class NavbarFile {
         this.setNewFromTemplateEvent();
         this.setSaveProjectEvent();
         this.setSaveAsProjectEvent();
-        this.setSaveAsProjectOfflineEvent();
         /*
         Temporally disabled:
         this.setUploadGoogleDriveEvent();
@@ -122,14 +107,11 @@ export default class NavbarFile {
         */
         this.setUploadPlatformEvent();
         this.setOpenUserOdeFilesEvent();
-        this.setOpenOfflineEvent();
         this.setRecentProjectsEvent();
         this.setDownloadProjectEvent();
-        this.setSaveProjectOfflineEvent();
         this.setDownloadProjectAsEvent();
         this.setExportHTML5Event();
         this.setExportHTML5AsEvent();
-        this.setExportHTML5FolderAsEvent();
         this.setExportHTML5SPEvent();
         this.setExportHTML5SPAsEvent();
         this.setExportPrintEvent();
@@ -199,18 +181,6 @@ export default class NavbarFile {
     }
 
     /**
-     * Save as (offline-only explicit entry)
-     * File -> Save as (offline)
-     */
-    setSaveAsProjectOfflineEvent() {
-        if (!this.saveButtonAsOffline) return;
-        this.saveButtonAsOffline.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.saveAsElpOffline();
-        });
-    }
-
-    /**
      * Upload ELP to Google Drive
      * File -> Upload to -> Google Drive
      *
@@ -266,17 +236,6 @@ export default class NavbarFile {
     }
 
     /**
-     * Offline explicit Open action
-     * File -> Offline actions -> Open
-     */
-    setOpenOfflineEvent() {
-        if (!this.openOfflineButton) return;
-        this.openOfflineButton.addEventListener('click', () => {
-            this.openUserOdeFilesEvent();
-        });
-    }
-
-    /**
      * Show the 3 most recent elp
      * File -> Recent projects
      *
@@ -301,31 +260,6 @@ export default class NavbarFile {
     }
 
     /**
-     * Offline explicit Save action
-     * File -> Offline actions -> Save
-     */
-    setSaveProjectOfflineEvent() {
-        if (!this.saveOfflineButton) return;
-        this.saveOfflineButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return false;
-            this.downloadProjectEvent();
-            return false;
-        });
-    }
-
-    /**
-     * Download project (ELP) As... (offline)
-     */
-    setDownloadProjectAsEvent() {
-        if (!this.downloadProjectAsButton) return;
-        this.downloadProjectAsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return false;
-            this.saveAsElpOffline();
-            return false;
-        });
-    }
-
-    /**
      * Download the project to HTML5
      * File -> Export as -> HTML5 (web site)
      *
@@ -342,17 +276,6 @@ export default class NavbarFile {
         this.exportHTML5AsButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5AsEvent();
-        });
-    }
-
-    /**
-     * Export Website directly to a folder (offline only)
-     */
-    setExportHTML5FolderAsEvent() {
-        if (!this.exportHTML5FolderAsButton) return;
-        this.exportHTML5FolderAsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.exportHTML5FolderAsEvent();
         });
     }
 
@@ -1277,11 +1200,6 @@ export default class NavbarFile {
             eXeLearning.extension
         );
         if (response['responseMessage'] == 'OK') {
-            this.electronSave(
-                response['urlZipFile'],
-                eXeLearning.extension,
-                response['exportProjectName']
-            );
             toast.toastBody.innerHTML = _('File generated.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1307,66 +1225,6 @@ export default class NavbarFile {
     }
 
     /**
-     * Offline-only: Save As for ELP using Electron persistent path
-     */
-    async saveAsElpOffline() {
-        try {
-            let toastData = {
-                title: _('Save as'),
-                body: _('File generation in progress.'),
-                icon: 'downloading',
-            };
-            let toast = eXeLearning.app.toasts.createToast(toastData);
-            let odeSessionId = eXeLearning.app.project.odeSession;
-            let response = await eXeLearning.app.api.getOdeExportDownload(
-                odeSessionId,
-                eXeLearning.extension
-            );
-            if (response && response.responseMessage === 'OK') {
-                const url = response['urlZipFile'];
-                const suggested =
-                    response['exportProjectName'] || 'document.elpx';
-                const key = window.__currentProjectId || 'default';
-                const safeName = this.normalizeSuggestedName(
-                    suggested,
-                    eXeLearning.extension
-                );
-                if (
-                    window.electronAPI &&
-                    typeof window.electronAPI.saveAs === 'function'
-                ) {
-                    await window.electronAPI.saveAs(url, key, safeName);
-                } else {
-                    // Fallback to browser download
-                    this.downloadLink(url, safeName);
-                }
-                toast.toastBody.innerHTML = _('File generated.');
-            } else {
-                toast.toastBody.innerHTML = _(
-                    'An error occurred while generating the file.'
-                );
-                toast.toastBody.classList.add('error');
-                eXeLearning.app.modals.alert.show({
-                    title: _('Error'),
-                    body:
-                        response && response['responseMessage']
-                            ? response['responseMessage']
-                            : _('Unknown error.'),
-                    contentId: 'error',
-                });
-            }
-            setTimeout(() => toast.remove(), 1000);
-            eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
-        } catch (e) {
-            eXeLearning.app.modals.alert.show({
-                title: _('Error'),
-                body: e.message || 'Unknown error.',
-                contentId: 'error',
-            });
-        }
-    }
-
-    /**
      * Export the ode as HTML5 and download it
      *
      */
@@ -1383,10 +1241,6 @@ export default class NavbarFile {
             'html5'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                response['urlZipFile'],
-                response['exportProjectName']
-            );
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1427,24 +1281,6 @@ export default class NavbarFile {
             'html5'
         );
         if (response['responseMessage'] == 'OK') {
-            const url = response['urlZipFile'];
-            const suggested = this.normalizeSuggestedName(
-                response['exportProjectName'],
-                'export-html5'
-            );
-            const keyBase = window.__currentProjectId || 'default';
-            if (
-                window.electronAPI &&
-                typeof window.electronAPI.saveAs === 'function'
-            ) {
-                await window.electronAPI.saveAs(
-                    url,
-                    `${keyBase}:export-html5`,
-                    suggested
-                );
-            } else {
-                this.downloadLink(url, suggested);
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1466,81 +1302,6 @@ export default class NavbarFile {
     }
 
     /**
-<<<<<<< HEAD
-     * Export Website to folder (unzipped) — offline Electron only
-     */
-    async exportHTML5FolderAsEvent() {
-        let toastData = {
-            title: _('Export'),
-            body: _('Generating export files...'),
-            icon: 'downloading',
-        };
-        let toast = eXeLearning.app.toasts.createToast(toastData);
-        try {
-            toast.toastBody.innerHTML = _(
-                'This option is only available offline.'
-            );
-            toast.toastBody.classList.add('error');
-            setTimeout(() => toast.remove(), 1200);
-            return;
-            let odeSessionId = eXeLearning.app.project.odeSession;
-            let response = await eXeLearning.app.api.getOdeExportDownload(
-                odeSessionId,
-                'html5'
-            );
-            if (response && response['responseMessage'] === 'OK') {
-                const url = response['urlZipFile'];
-                const suggestedBase = this.normalizeSuggestedName(
-                    response['exportProjectName'],
-                    'export-html5'
-                ).replace(/\.zip$/i, '');
-                const keyBase = window.__currentProjectId || 'default';
-
-                if (typeof window.electronAPI.exportToFolder === 'function') {
-                    const result = await window.electronAPI.exportToFolder(
-                        url,
-                        `${keyBase}:export-html5-folder`,
-                        suggestedBase
-                    );
-                    if (result && result.ok) {
-                        toast.toastBody.innerHTML = _(
-                            'The project has been exported.'
-                        );
-                    } else {
-                        toast.toastBody.innerHTML = _('Export canceled.');
-                    }
-                } else {
-                    // Fallback: download as zip if folder export is not available
-                    this.downloadLink(url, `${suggestedBase}.zip`);
-                    toast.toastBody.innerHTML = _(
-                        'The project has been exported.'
-                    );
-                }
-            } else {
-                toast.toastBody.innerHTML = _(
-                    'An error occurred while exporting the project.'
-                );
-                toast.toastBody.classList.add('error');
-                eXeLearning.app.modals.alert.show({
-                    title: _('Error'),
-                    body:
-                        response && response['responseMessage']
-                            ? response['responseMessage']
-                            : _('Unknown error.'),
-                    contentId: 'error',
-                });
-            }
-        } catch (e) {
-            toast.toastBody.innerHTML = _('Unexpected error.');
-            toast.toastBody.classList.add('error');
-        }
-        setTimeout(() => toast.remove(), 1000);
-        eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface();
-    }
-
-    /**
-=======
->>>>>>> c0ba7aea408904076081df962baf800d79424a91
      * Export the ode as HTML5 and download it
      *
      */
@@ -1557,17 +1318,6 @@ export default class NavbarFile {
             'html5-sp'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                    response['urlZipFile'],
-                    'export-html5-sp',
-                    response['exportProjectName']
-                );
-            } else {
-                this.downloadLink(
-                    response['urlZipFile'],
-                    response['exportProjectName']
-                );
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1608,24 +1358,6 @@ export default class NavbarFile {
             'html5-sp'
         );
         if (response['responseMessage'] == 'OK') {
-            const url = response['urlZipFile'];
-            const suggested = this.normalizeSuggestedName(
-                response['exportProjectName'],
-                'export-html5-sp'
-            );
-            const keyBase = window.__currentProjectId || 'default';
-            if (
-                window.electronAPI &&
-                typeof window.electronAPI.saveAs === 'function'
-            ) {
-                await window.electronAPI.saveAs(
-                    url,
-                    `${keyBase}:export-html5-sp`,
-                    suggested
-                );
-            } else {
-                this.downloadLink(url, suggested);
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1663,17 +1395,6 @@ export default class NavbarFile {
             'scorm12'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                    response['urlZipFile'],
-                    'export-scorm12',
-                    response['exportProjectName']
-                );
-            } else {
-                this.downloadLink(
-                    response['urlZipFile'],
-                    response['exportProjectName']
-                );
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1714,24 +1435,6 @@ export default class NavbarFile {
             'scorm12'
         );
         if (response['responseMessage'] == 'OK') {
-            const url = response['urlZipFile'];
-            const suggested = this.normalizeSuggestedName(
-                response['exportProjectName'],
-                'export-scorm12'
-            );
-            const keyBase = window.__currentProjectId || 'default';
-            if (
-                window.electronAPI &&
-                typeof window.electronAPI.saveAs === 'function'
-            ) {
-                await window.electronAPI.saveAs(
-                    url,
-                    `${keyBase}:export-scorm12`,
-                    suggested
-                );
-            } else {
-                this.downloadLink(url, suggested);
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1769,17 +1472,6 @@ export default class NavbarFile {
             'scorm2004'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                    response['urlZipFile'],
-                    'export-scorm2004',
-                    response['exportProjectName']
-                );
-            } else {
-                this.downloadLink(
-                    response['urlZipFile'],
-                    response['exportProjectName']
-                );
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1875,17 +1567,6 @@ export default class NavbarFile {
             'ims'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                    response['urlZipFile'],
-                    'export-ims',
-                    response['exportProjectName']
-                );
-            } else {
-                this.downloadLink(
-                    response['urlZipFile'],
-                    response['exportProjectName']
-                );
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1926,24 +1607,6 @@ export default class NavbarFile {
             'ims'
         );
         if (response['responseMessage'] == 'OK') {
-            const url = response['urlZipFile'];
-            const suggested = this.normalizeSuggestedName(
-                response['exportProjectName'],
-                'export-ims'
-            );
-            const keyBase = window.__currentProjectId || 'default';
-            if (
-                window.electronAPI &&
-                typeof window.electronAPI.saveAs === 'function'
-            ) {
-                await window.electronAPI.saveAs(
-                    url,
-                    `${keyBase}:export-ims`,
-                    suggested
-                );
-            } else {
-                this.downloadLink(url, suggested);
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -1981,17 +1644,6 @@ export default class NavbarFile {
             'epub3'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                    response['urlZipFile'],
-                    'export-epub3',
-                    response['exportProjectName']
-                );
-            } else {
-                this.downloadLink(
-                    response['urlZipFile'],
-                    response['exportProjectName']
-                );
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -2032,24 +1684,6 @@ export default class NavbarFile {
             'epub3'
         );
         if (response['responseMessage'] == 'OK') {
-            const url = response['urlZipFile'];
-            const suggested = this.normalizeSuggestedName(
-                response['exportProjectName'],
-                'export-epub3'
-            );
-            const keyBase = window.__currentProjectId || 'default';
-            if (
-                window.electronAPI &&
-                typeof window.electronAPI.saveAs === 'function'
-            ) {
-                await window.electronAPI.saveAs(
-                    url,
-                    `${keyBase}:export-epub3`,
-                    suggested
-                );
-            } else {
-                this.downloadLink(url, suggested);
-            }
             toast.toastBody.innerHTML = _('The project has been exported.');
         } else {
             toast.toastBody.innerHTML = _(
@@ -2087,17 +1721,6 @@ export default class NavbarFile {
             'properties'
         );
         if (response['responseMessage'] == 'OK') {
-            this.downloadLink(
-                    response['urlZipFile'],
-                    'export-xml-properties',
-                    response['exportProjectName']
-                );
-            } else {
-                this.downloadLink(
-                    response['urlZipFile'],
-                    response['exportProjectName']
-                );
-            }
             toast.toastBody.innerHTML = _(
                 'The project properties have been exported.'
             );
@@ -2140,24 +1763,6 @@ export default class NavbarFile {
             'properties'
         );
         if (response['responseMessage'] == 'OK') {
-            const url = response['urlZipFile'];
-            const suggested = this.normalizeSuggestedName(
-                response['exportProjectName'],
-                'export-xml-properties'
-            );
-            const keyBase = window.__currentProjectId || 'default';
-            if (
-                window.electronAPI &&
-                typeof window.electronAPI.saveAs === 'function'
-            ) {
-                await window.electronAPI.saveAs(
-                    url,
-                    `${keyBase}:export-xml-properties`,
-                    suggested
-                );
-            } else {
-                this.downloadLink(url, suggested);
-            }
             toast.toastBody.innerHTML = _(
                 'The project properties have been exported.'
             );
@@ -2242,30 +1847,6 @@ export default class NavbarFile {
                 downloadLink.click();
                 document.body.removeChild(downloadLink);
             });
-    }
-
-    /**
-     * Offline helper: remember per-export-type path
-     * @param {string} url
-     * @param {string} typeKey
-     * @param {string} suggestedName
-     */
-    electronSave(url, typeKey, suggestedName) {
-        const keyBase = window.__currentProjectId || 'default';
-        // For standard project save (ELP), reuse the base key so Save after Save As uses same path
-        const key =
-            typeKey === eXeLearning.extension
-                ? keyBase
-                : `${keyBase}:${typeKey}`;
-        const safeName = this.normalizeSuggestedName(suggestedName, typeKey);
-        if (
-            window.electronAPI &&
-            typeof window.electronAPI.save === 'function'
-        ) {
-            window.electronAPI.save(url, key, safeName);
-        } else {
-            this.downloadLink(url, safeName);
-        }
     }
 
     /**

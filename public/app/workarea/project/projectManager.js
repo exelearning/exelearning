@@ -1141,10 +1141,7 @@ export default class projectManager {
                 isCheckUpdate
             );
             // Check if any element is in mode edition
-            isCheckUpdate = this.checkModeEdition(
-                elementsPage,
-                isCheckUpdate
-            );
+            isCheckUpdate = this.checkModeEdition(elementsPage, isCheckUpdate);
             // Check if any element is dragging
             isCheckUpdate = this.checkDraggingElement(
                 elementsDragging,

@@ -376,8 +376,7 @@ export default class ModalIdeviceManager extends Modal {
      * @returns
      */
     makeElementButtonImportIdevice() {
-        if (eXeLearning.config.userIdevices == false)
-            return false;
+        if (eXeLearning.config.userIdevices == false) return false;
         let buttonImportIdevice = document.createElement('button');
         buttonImportIdevice.classList.add(
             'idevices-button-import',

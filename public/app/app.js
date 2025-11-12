@@ -38,7 +38,6 @@ class App {
         this.shortcuts = new Shortcuts(this);
         this.sessionMonitor = null;
         this.sessionExpirationHandled = false;
-
     }
 
     /**

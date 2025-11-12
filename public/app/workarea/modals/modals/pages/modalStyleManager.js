@@ -447,8 +447,7 @@ export default class ModalStyleManager extends Modal {
      * @returns
      */
     makeElementButtonImportTheme(ithemes) {
-        if (eXeLearning.config.userStyles == false)
-            return false;
+        if (eXeLearning.config.userStyles == false) return false;
         let buttonImportTheme = document.createElement('button');
         buttonImportTheme.classList.add('themes-button-import');
         buttonImportTheme.classList.add('btn');

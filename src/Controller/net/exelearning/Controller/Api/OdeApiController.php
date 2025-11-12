@@ -28,7 +28,6 @@ use App\Service\net\exelearning\Service\Api\OdeComponentsSyncServiceInterface;
 use App\Service\net\exelearning\Service\Api\OdeServiceInterface;
 use App\Settings;
 use App\Util\net\exelearning\Util\FileUtil;
-use App\Util\net\exelearning\Util\SettingsUtil;
 use App\Util\net\exelearning\Util\Util;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
