@@ -164,7 +164,7 @@ var $form = {
         data.idevicePath = this.idevicePath;
         data.title = title;
         data.gameStarted = false;
-        data.idevice = 'exe-form-container';
+        data.idevice = 'form-IDevice';
         data.numberQuestions = data.questionsData
             ? data.questionsData.length
             : 0;
@@ -795,11 +795,14 @@ var $form = {
         // Hide all suggestions
         $formPreview.find('.FRMP-Suggestion').hide();
         // Reset suggestion icons to show state
-        $formPreview.find('.FRMP-SuggestionIcon').each(function() {
+        $formPreview.find('.FRMP-SuggestionIcon').each(function () {
             const $icon = $(this);
             const src = $icon.attr('src');
             if (src && src.includes('hidesuggestion')) {
-                $icon.attr('src', src.replace('hidesuggestion', 'showsuggestion'));
+                $icon.attr(
+                    'src',
+                    src.replace('hidesuggestion', 'showsuggestion')
+                );
                 $icon.attr('alt', data.msgs.msgSuggestion);
             }
         });
@@ -1450,7 +1453,10 @@ var $form = {
             $formPreview.find('select.dropdownSelect').each(function () {
                 const $sel = $(this);
                 const selectId = $sel.data('id');
-                const correctAnswer = $(`#dropdownAnswer_${selectId}`, $formPreview).text();
+                const correctAnswer = $(
+                    `#dropdownAnswer_${selectId}`,
+                    $formPreview
+                ).text();
                 $sel.css('backgroundColor', '').val(correctAnswer);
             });
             // Ocultar puntuación si es necesario
@@ -1509,14 +1515,12 @@ var $form = {
         $question.find('.dropdownSelect').each((_, select) => {
             const $select = $(select);
             const questionId = $select.data('id');
-            const answerValue = $(
-                `#dropdownAnswer_${questionId}`,
-                $question
-            ).text();
-            if ($select.val()) {
-                if ($select.val() === answerValue) {
-                    correctWords++;
-                }
+            const answerValue = $(`#dropdownAnswer_${questionId}`, $question)
+                .text()
+                .trim();
+            const selectedValue = $select.val() ? $select.val().trim() : '';
+            if (selectedValue && selectedValue === answerValue) {
+                correctWords++;
             }
         });
         const isCorrect =

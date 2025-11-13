@@ -15,7 +15,7 @@
     display: none;
 }
 
-.form-IDevice .form-instructions{
+.form-IDevice .form-instructions {
     margin-top: .5em;
     overflow: auto;
 }
@@ -31,12 +31,12 @@
 }
 
 .form-IDevice .form-results-container {
-    margin-top: 10px;
     padding: 5px 60px 5px;
-    justify-content: flex-start;
-    flex-direction: column;
+    justify-content: center;
+    flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
+    gap: 0.5em;
     font-size: 18px;
 }
 
@@ -85,12 +85,12 @@
     clear: both;
 }
 
-.form-IDevice .FormViewContainer > div[title] {
+.form-IDevice .FormViewContainer>div[title] {
     overflow: auto;
     clear: both;
 }
 
-.form-IDevice .FormViewContainer > div[title]::after {
+.form-IDevice .FormViewContainer>div[title]::after {
     content: "";
     display: table;
     clear: both;
