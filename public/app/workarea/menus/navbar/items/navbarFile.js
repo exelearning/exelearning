@@ -1166,9 +1166,8 @@ export default class NavbarFile {
         inputUpload.setAttribute('accept', '.elpx,.zip');
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
-            let uploadOdeFile = document.querySelector(
-                '.local-ode-file-upload-input'
-            );
+            // Use e.target instead of querySelector to get the actual input that triggered the event
+            let uploadOdeFile = e.target;
             let odeFile = uploadOdeFile.files[0];
 
             // Create new input and remove older (prevents files cache)
@@ -1176,7 +1175,12 @@ export default class NavbarFile {
             inputUpload.remove();
             this.menu.navbar.append(newUploadInput);
 
-            eXeLearning.app.modals.openuserodefiles.largeFilesUpload(odeFile);
+            // Only proceed if a file was actually selected
+            if (odeFile) {
+                eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
+                    odeFile
+                );
+            }
         });
         this.menu.navbar.append(inputUpload);
         return inputUpload;
@@ -2304,9 +2308,8 @@ export default class NavbarFile {
         inputUpload.setAttribute('accept', '.xml');
         inputUpload.classList.add('hidden');
         inputUpload.addEventListener('change', (e) => {
-            let uploadOdeFile = document.querySelector(
-                '.local-xml-properties-upload-input'
-            );
+            // Use e.target instead of querySelector to get the actual input that triggered the event
+            let uploadOdeFile = e.target;
             let odeFile = uploadOdeFile.files[0];
 
             // Create new input and remove older (prevents files cache)
@@ -2314,11 +2317,14 @@ export default class NavbarFile {
             inputUpload.remove();
             this.menu.navbar.append(newUploadInput);
 
-            eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
-                odeFile,
-                false,
-                true
-            );
+            // Only proceed if a file was actually selected
+            if (odeFile) {
+                eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
+                    odeFile,
+                    false,
+                    true
+                );
+            }
         });
         this.menu.navbar.append(inputUpload);
         return inputUpload;
