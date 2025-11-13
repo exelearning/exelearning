@@ -792,6 +792,17 @@ var $form = {
         $formPreview.find('select').css('border-color', '').val('');
         // Remove feedback messages
         $formPreview.find('.form-feedback-message').remove();
+        // Hide all suggestions
+        $formPreview.find('.FRMP-Suggestion').hide();
+        // Reset suggestion icons to show state
+        $formPreview.find('.FRMP-SuggestionIcon').each(function() {
+            const $icon = $(this);
+            const src = $icon.attr('src');
+            if (src && src.includes('hidesuggestion')) {
+                $icon.attr('src', src.replace('hidesuggestion', 'showsuggestion'));
+                $icon.attr('alt', data.msgs.msgSuggestion);
+            }
+        });
         $form.hideScore(data.id);
         data.gameStarted = false;
         data.gameOver = false;
@@ -1108,12 +1119,13 @@ var $form = {
         while (htmlDropdown.search(regexReplace) >= 0) {
             selectId = this.generateRandomId();
             let answerString = htmlDropdown.match(regexElement);
+            let answer = answerString ? answerString[0] : '';
             htmlDropdown = htmlDropdown.replace(
                 regexReplace,
                 this.getSelectDropdownQuestion(
                     selectId,
                     allOptionsShuffle,
-                    answerString
+                    answer
                 )
             );
         }
@@ -1438,8 +1450,8 @@ var $form = {
             $formPreview.find('select.dropdownSelect').each(function () {
                 const $sel = $(this);
                 const selectId = $sel.data('id');
-                const correctAnswer = $(`#dropdownAnswer_${selectId}`).text();
-                $sel.css('border-color', '').val(correctAnswer);
+                const correctAnswer = $(`#dropdownAnswer_${selectId}`, $formPreview).text();
+                $sel.css('backgroundColor', '').val(correctAnswer);
             });
             // Ocultar puntuación si es necesario
             // this.hideScore(data.id);
