@@ -2738,17 +2738,10 @@ class OdeService implements OdeServiceInterface
     private function getElpContentFilePath(string $importDir): array
     {
         $candidates = [
-            // Files in the root of the archive
             [$importDir.DIRECTORY_SEPARATOR.Constants::PERMANENT_SAVE_CONTENT_FILENAME, true],
             [$importDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V3, false],
             [$importDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V2, false],
         ];
-
-        // Also consider EPUB-exported packages that place content inside an EPUB/ directory
-        $epubDir = rtrim($importDir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB;
-        $candidates[] = [$epubDir.DIRECTORY_SEPARATOR.Constants::PERMANENT_SAVE_CONTENT_FILENAME, true];
-        $candidates[] = [$epubDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V3, false];
-        $candidates[] = [$epubDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V2, false];
 
         foreach ($candidates as [$path, $isNew]) {
             if (file_exists($path)) {
