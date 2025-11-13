@@ -1163,7 +1163,7 @@ export default class NavbarFile {
         inputUpload.setAttribute('type', 'file');
         inputUpload.setAttribute('name', 'local-ode-file-upload');
         // Allow both .elpx and .zip for offline picker fallback
-        inputUpload.setAttribute('accept', '.elpx,.zip');
+        inputUpload.setAttribute('accept', '.elpx,.elp,.zip,.epub');
         inputUpload.classList.add('d-none');
         inputUpload.addEventListener('change', (e) => {
             // Use e.target instead of querySelector to get the actual input that triggered the event
