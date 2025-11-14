@@ -248,7 +248,10 @@ export default class MenuStructureBehaviour {
         inputUpload.classList.add('local-ode-file-upload-input', 'd-none');
         inputUpload.setAttribute('type', 'file');
         inputUpload.setAttribute('name', 'local-ode-file-upload');
-        inputUpload.setAttribute('accept', '.elpx,.block,.idevice,.elp,.zip,.epub');
+        inputUpload.setAttribute(
+            'accept',
+            '.elpx,.block,.idevice,.elp,.zip,.epub'
+        );
         inputUpload.id = 'local-ode-file-upload';
         let label = document.createElement('label');
         label.setAttribute('for', inputUpload.id);
