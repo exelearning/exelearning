@@ -30,6 +30,10 @@ a {
     margin-top: 40px;
 }
 
+.exe-epub .page-title, .exe-scorm .page-title, .exe-ims .page-title {
+    color: #282573;
+}
+
 .page > header .package-title,
 .siteNav-off .page > header .package-title {
     padding-left: 24px;
@@ -59,6 +63,39 @@ a {
 .exe-ims .page > header .package-title,
 .exe-single-page .package-header h1 {
     width: 100%;
+}
+
+.package-subtitle {
+    width: 100%;
+    position: absolute;
+    left: 32px;
+    bottom: 0;
+    font-size: .9em;
+    color: #777;
+}
+
+.exe-web-site .package-subtitle {
+    max-width: 70%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.siteNav-off .page > header .package-subtitle {
+    left: 24px;
+}
+
+@media (max-width: 750px) {
+    .package-subtitle {
+        left: 24px;
+        font-size: 1em;
+    }
+}
+
+body:has(.package-subtitle) .package-title,
+body.exe-single-page:has(.package-subtitle) .package-node h1 {
+    position:relative;
+    top: -.2em;
 }
 
 main header:not(#head) {
@@ -95,6 +132,39 @@ body.exe-export.exe-scorm,
 body.exe-export.exe-ims,
 body.exe-export.exe-epub {
     padding: 0;
+}
+
+body.exe-scorm .package-title,
+body.exe-ims .package-title,
+body.exe-epub .package-title{
+    position: absolute;
+    top: 24px;
+    left: 0;
+    font-weight: normal;
+    font-size: .95em;
+    color: #777;
+}
+
+body.exe-scorm .package-subtitle,
+body.exe-ims .package-subtitle,
+body.exe-epub .package-subtitle {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+body.exe-scorm .page-title,
+body.exe-ims .page-title,
+body.exe-epub .page-title {
+    padding: 0 32px;
+}
+
+@media (max-width: 750px) {
+    body.exe-scorm .page-title,
+    body.exe-ims .page-title,
+    body.exe-epub .page-title {
+        padding: 0 24px;
+    }
 }
 
 body.exe-web-site {
@@ -349,23 +419,23 @@ body.siteNav-off #siteFooter {
     margin-bottom: 6px;
 }
 
-#siteNav a.package-link {
+#siteNav a.highlighted-link {
     color: #fff;
     margin-top: 10px;
     background: #191748 url(img/book_white.svg) no-repeat 8px center;
     padding-left: 42px;
 }
 
-#siteNav a.package-link.active {
+#siteNav a.highlighted-link.active {
     background: #ffcc00 url(img/book_color.svg) no-repeat 8px center !important;
     color: #282573;
 }
 
-#siteNav a.package-link:hover {
+#siteNav a.highlighted-link:hover {
     background: #ffcc00 url(img/book_color.svg) no-repeat 8px center !important;
     color: #282573;
 }
-#siteNav a.package-link:focus {
+#siteNav a.highlighted-link:focus {
     background: #ffcc00 url(img/book_color.svg) no-repeat 8px center !important;
     color: #282573;
 }
@@ -696,17 +766,17 @@ table {
     color: #777;
     font-weight: 400;
     background: #fff;
+    position: fixed;
+    top: 38px;
+    right: 32px;
+    margin: 0;
+    padding: 0;
+    color: #777;
+    text-align: right;
 }
 
 .exe-web-site .page-counter {
-    position: fixed;
-    top: 38px;
     right: 366px;
-    margin: 0;
-    padding: 0;
-    font-size: 0.9em;
-    color: #777;
-    text-align: right;
 }
 
 body.exe-teacher-mode-toggler.exe-web-site .page-counter {

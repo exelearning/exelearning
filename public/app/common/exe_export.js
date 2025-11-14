@@ -69,7 +69,7 @@ $exeExport = {
             if (document.getElementById("teacher-mode-toggler")) return;
             if ($("body").hasClass("exe-epub")) return;
             document.body.classList.add('exe-teacher-mode-toggler');
-            var btn = '<div class="form-check form-switch float-right"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+$exe_i18n.teacher_mode+'</label></div>';
+            var btn = '<div class="form-check form-switch" id="teacher-mode-toggler-wrapper"><input class="form-check-input" type="checkbox" role="switch" id="teacher-mode-toggler"><label class="form-check-label" for="teacher-mode-toggler">'+$exe_i18n.teacher_mode+'</label></div>';
             if ($("body").hasClass("exe-single-page")) $("header.package-header").before(btn);
             else $("header.page-header").prepend(btn);
             this.toggler = $("#teacher-mode-toggler");

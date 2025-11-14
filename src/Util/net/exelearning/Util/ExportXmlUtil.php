@@ -1854,7 +1854,7 @@ class ExportXmlUtil
 
                 // Add highlight class to anchor element if enabled
                 if ($isHighlighted) {
-                    $class .= $class ? ' package-link' : 'package-link';
+                    $class .= $class ? ' highlighted-link' : 'highlighted-link';
                 }
 
                 if (!empty($class)) {
@@ -1863,7 +1863,6 @@ class ExportXmlUtil
             }
             ++$indexNode;
         }
-
         // Add class active to the current page except
         $navLiActive = $navUl->xpath('//li[@odePageId="'.$currentOdePageId.'"]');
         if (isset($navLiActive[0])) {
@@ -2009,10 +2008,9 @@ class ExportXmlUtil
         }
 
         // Package subtitle (immediately after package title)
-        $packageSubtitleTag = 'p';
-        if ('' != $subtitle) {
+        if (Constants::EXPORT_TYPE_HTML5_SP != $exportType && '' != $subtitle) {
             $headerEmpty = false;
-            $packageSubtitle = $pageHeader->addChild($packageSubtitleTag, htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));
+            $packageSubtitle = $pageHeader->addChild('p', htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));
             $packageSubtitle->addAttribute('class', 'package-subtitle');
         }
 
