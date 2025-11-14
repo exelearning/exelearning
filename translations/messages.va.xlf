@@ -5651,7 +5651,7 @@
       </trans-unit>
       <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
         <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target>Necessiteu com a mínim %s&amp;percnt; de respostes correctes per obtenir la informació. Torneu-ho a intentar.</target>
+        <target><![CDATA[Necessiteu com a mínim %s&percnt; de respostes correctes per obtenir la informació. Torneu-ho a intentar.]]></target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5771,7 +5771,7 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
         <source>&amp;percnt; right to see the feedback</source>
-        <target>&amp;percnt; dret a veure els comentaris</target>
+        <target><![CDATA[&percnt; dret a veure els comentaris]]></target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5891,7 +5891,7 @@
       </trans-unit>
       <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
         <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target>Es permeten lletres incorrectes (&amp;percnt;)</target>
+        <target><![CDATA[Es permeten lletres incorrectes (&percnt;)]]></target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -9651,7 +9651,7 @@
       </trans-unit>
       <trans-unit id="o84Jjwl" resname="Action &amp; Expression">
         <source>Action &amp; Expression</source>
-        <target>Acció &amp; Expressió</target>
+        <target><![CDATA[Acció & Expressió]]></target>
       </trans-unit>
       <trans-unit id="t.hHQcC" resname="Presentation">
         <source>Presentation</source>
@@ -12015,7 +12015,7 @@
       </trans-unit>
       <trans-unit id="lgtXQPh" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.</source>
-        <target>Has de revisar el %s&amp;percnt;  dels continguts de l'activitat abans de completar el qüestionari.</target>
+        <target><![CDATA[Has de revisar el %s&percnt;  dels continguts de l'activitat abans de completar el qüestionari.]]></target>
       </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
@@ -12875,7 +12875,7 @@
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>Heu de revisar el %s&amp;percnt; dels continguts de l'activitat abans de completar el qüestionari.</target>
+        <target><![CDATA[Heu de revisar el %s&percnt; dels continguts de l'activitat abans de completar el qüestionari.]]></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
