@@ -1716,6 +1716,12 @@ var $form = {
             </div>
         `;
         $question.find('.FormViewContainer').after(feedbackHtml);
+
+        if (data.showSlider) {
+            setTimeout(function () {
+                $form.resizeSlideShow(data);
+            }, 50);
+        }
     },
 
     loadSCORM_API_wrapper: function (data) {

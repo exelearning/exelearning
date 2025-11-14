@@ -639,8 +639,8 @@ var $eXePuzzle = {
                 <p>${ms}</p>
             </div>
             <div class="PZLP-CompletedButtons">
-                <a href="#" class="PZLP-RepeatPuzzle">${mOptions.msgs.msgsRepeat}</a>
-                <a href="#" class="PZLP-NextPuzzle">${mr}</a>
+                <button type="button" class="PZLP-RepeatPuzzle btn btn-primary">${mOptions.msgs.msgsRepeat}</button>
+                <button type="button" class="PZLP-NextPuzzle btn btn-primary">${mr}</button>
             </div>
         </div>
     </div>`;
