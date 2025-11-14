@@ -1862,7 +1862,6 @@ class ExportXmlUtil
                 }
             }
             ++$indexNode;
-
         }
         // Add class active to the current page except
         $navLiActive = $navUl->xpath('//li[@odePageId="'.$currentOdePageId.'"]');
