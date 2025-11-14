@@ -166,9 +166,17 @@ body.siteNav-off main.page,
 body.siteNav-off #siteFooter {
     padding-left: 20px;
 }
-#siteNav ul,
-#siteNav li {
+#siteNav ul {
     margin: 0;
+    padding: 0;
+    list-style: none;
+}
+#siteNav ul ul {
+    margin-top: 5px;
+}
+
+#siteNav li {
+    margin: 0 0 5px 0;
     padding: 0;
     list-style: none;
 }
@@ -190,7 +198,6 @@ body.siteNav-off #siteFooter {
 #siteNav a.highlighted-link {
     color: #d76b4a;
     background: #ededed;
-    margin-top: 10px;
 }
 
 #siteNav a.highlighted-link:hover,
