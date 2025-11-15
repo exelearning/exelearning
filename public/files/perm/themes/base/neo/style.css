@@ -650,6 +650,10 @@ body.siteNav-off button#siteNavToggler .sr-av {
     border-color: #fff;
 }
 
+.exe-export .box .box-content {
+    padding-top: 20px;
+}
+
 .exe-export .box.no-header .box-content {
     background: none;
     border: none;
@@ -669,12 +673,11 @@ body.siteNav-off button#siteNavToggler .sr-av {
 
 /* Table */
 
-table {
+.exe-content table {
     display: table;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100% !important;
-    margin: 2em 0 !important;
 }
 
 /* Licenses */
@@ -908,15 +911,6 @@ body.siteNav-off button#searchBarTogger {
 .exe-export .mode-teacher .form-switch .form-check-input:focus {
     background-image: url(img/switch_white.svg);
     background-position: right 1.6px center;
-}
-
-/* Accesibilidad */
-.exe-atools-on #eXeAtools #eXeAtoolsSet {
-    display: flex;
-    padding: 6px 4px;
-}
-#eXeAtools select {
-    position: static !important;
 }
 
 /* Responsive design */

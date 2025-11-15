@@ -64,6 +64,10 @@ body.exe-web-site {
     top: -2.1em;
 }
 
+.exe-single-page main.page > section {
+    min-height: 4em;
+}
+
 .exe-content .box {
     margin: 20px 0;
     border: none;
