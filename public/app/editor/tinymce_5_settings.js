@@ -12,7 +12,7 @@ var $exeTinyMCE = {
     buttons2:
         'alignleft aligncenter alignright alignjustify | template clearfloat addcontent | bullist numlist definitionlist | exelink unlink | outdent indent | blockquote blockquoteandcite | ltr rtl',
     buttons3:
-        'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap exemermaid | exeaudio abcmusic | codemagic | fullscreen',
+        'undo redo | cut copy paste pastetext | pastehtml pastecode edicuatex | tooltips modalwindow exeeffects | exeimage exemedia | exemindmap | exeaudio abcmusic | codemagic | fullscreen',
     browser_spellcheck: true,
 
     menubar: 'edit insert format table tools',
@@ -23,7 +23,7 @@ var $exeTinyMCE = {
         },
         insert: {
             title: 'Insert',
-            items: 'template | hr charmap anchor clearfloat addcontent | abbr insertdatetime',
+            items: 'template | hr charmap anchor clearfloat addcontent exemermaid | abbr insertdatetime',
         }, // ' | exegames_hangman' removed
         format: {
             title: 'Format',
