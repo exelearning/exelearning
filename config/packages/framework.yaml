@@ -36,7 +36,7 @@ framework:
         strict_requirements: null     # Disable the cache for dynamic routes
 
     assets:
-        base_path: 'assets/%app.version%'  # Base path for assets based on version for avoid cache
+        base_path: '%assets.base_path%'  # Base path for assets based on version to avoid cache
 
 parameters:
     default_cache_dir: '%kernel.project_dir%/var/cache'
