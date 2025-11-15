@@ -891,7 +891,7 @@ body.siteNav-off button#searchBarTogger {
     background-repeat: no-repeat;
     background-position: left 1.6px center;
 }
-#teacher-mode-toggler-wrapper .form-check-input:focus {
+.mode-teacher #teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch_white.svg);
     background-position: right 1.6px center;
 }

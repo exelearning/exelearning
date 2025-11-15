@@ -877,7 +877,7 @@ body.siteNav-off button#searchBarTogger {
 
 /* Modo docente */
 
-.exe-export .form-check {
+#teacher-mode-toggler-wrapper {
     float: none;
     position: absolute;
     top: 18px;
@@ -892,34 +892,30 @@ body.siteNav-off button#searchBarTogger {
     background-position: right center;
     background-size: 28px;
 }
-.exe-export .form-check-label {
+#teacher-mode-toggler-wrapper .form-check-label {
     position: absolute;
     clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
     clip: rect(1px, 1px, 1px, 1px);
 }
-.exe-export .form-switch .form-check-input {
+#teacher-mode-toggler-wrapper .form-check-input {
     width: 2.6em;
     height: 1.4em;
 }
-.exe-export .form-check-input:checked {
+#teacher-mode-toggler-wrapper .form-check-input:checked {
     background-color: #ffcc00;
     border-color: #ffcc00;
 }
-.exe-export .form-check-input:focus {
+#teacher-mode-toggler-wrapper .form-check-input:focus {
     border-color: #ffcc00;
     box-shadow: 0 0 0 0.25rem rgba(255, 204, 0, 0.25);
 }
-.exe-export .form-check label {
-    width: 64px;
-    font-size: 1rem;
-}
-.exe-export .form-switch .form-check-input:focus {
+#teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch.svg);
     background-size: 19px;
     background-repeat: no-repeat;
     background-position: left 1.6px center;
 }
-.exe-export .mode-teacher .form-switch .form-check-input:focus {
+.mode-teacher #teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch_white.svg);
     background-position: right 1.6px center;
 }
@@ -986,16 +982,13 @@ body.siteNav-off button#searchBarTogger {
         display: none;
     }
 
-    .exe-export .form-check {
+    #teacher-mode-toggler-wrapper {
         right: 182px;
     }
-    .exe-export .form-check:hover {
+    #teacher-mode-toggler-wrapper:hover {
         background-color: transparent;
     }
-    .exe-export .form-check-label {
-        display: none;
-    }
-    .exe-export .form-check-input {
+    #teacher-mode-toggler-wrapper .form-check-input {
         margin: 0 !important;
     }
     .exe-teacher-mode-toggler .page > header .package-title,
@@ -1181,14 +1174,14 @@ body.siteNav-off button#searchBarTogger {
     .nav-buttons .nav-button-left {
         right: 80px;
     }
-    .exe-export .form-check {
+    #teacher-mode-toggler-wrapper {
         right: 150px;
     }
-    .exe-export .form-switch .form-check-input {
+    #teacher-mode-toggler-wrapper .form-check-input {
         width: 2.5em;
         height: 1.5em;
     }
-    .exe-export .form-switch .form-check-input:focus {
+    #teacher-mode-toggler-wrapper .form-check-input:focus {
         background-size: 16px;
     }
     button#siteNavToggler {
