@@ -186,6 +186,18 @@ body.exe-web-site {
     text-decoration: none;
 }
 
+/* Effects */
+.exe-accordion .fx-accordion-title, 
+.fx-pagination .fx-current a {
+    background-color:#180051;
+}
+.exe-fx a{
+    color: #3F0D78;
+}
+.exe-fx a:hover,
+.exe-fx a:focus {
+    color: #7219C6;
+}
 .exe-download-package-link a {
     background: #282573;
     color: #fff;

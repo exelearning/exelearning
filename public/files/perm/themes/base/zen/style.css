@@ -191,6 +191,19 @@ body.exe-epub .page-title {
     text-decoration: none;
 }
 
+/* Effects */
+.exe-accordion .fx-accordion-title, 
+.fx-pagination .fx-current a {
+    background-color:#005771;
+}
+.exe-fx a{
+    color: #1A718B;
+}
+.exe-fx a:hover,
+.exe-fx a:focus {
+    color: #338AA4;
+}
+
 .exe-download-package-link a {
     background: #00758f;
     color: #fff;
