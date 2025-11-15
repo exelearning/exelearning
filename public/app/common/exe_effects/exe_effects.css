@@ -39,7 +39,7 @@ html .js .fx-accordion-title{text-decoration:none}
 .fx-prev-next a{font-family:Arial,Verdana,Helvetica,sans-serif}
 .fx-pagination .fx-disabled{filter:alpha(opacity=30);opacity:.3}
 .fx-pagination .fx-disabled,.fx-pagination .fx-disabled a,.fx-pagination .fx-disabled a:hover{cursor:text;text-decoration:none}
-.exe-content .fx-pagination .fx-current a{background:#333;color:#fff}
+.fx-pagination .fx-current a{background:#333;color:#fff}
 .fx-page-content{display:none;background:#efefef;padding:1px 15px .5em 15px;border-radius:5px}
 .fx-page-content.fx-current{display:block}
 /* Carousel */
@@ -54,6 +54,8 @@ html .js .fx-accordion-title{text-decoration:none}
 .fx-carousel-pagination .fx-disabled{filter:alpha(opacity=30);opacity:.3}
 .fx-carousel-pagination .fx-disabled,.fx-carousel-pagination .fx-disabled a,.fx-carousel-pagination .fx-disabled a:hover{cursor:text;text-decoration:none}
 .fx-carousel-pagination .fx-current a{background:#333;color:#fff}
+.fx-pagination .fx-current a:hover,
+.fx-pagination .fx-current a:focus {color:#fff}
 .fx-carousel-content{display:none;background:#efefef;padding:1px 15px .5em 15px;border-radius:5px;margin:0 65px}
 .fx-carousel-content.fx-current{display:block}
 .fx-carousel-pagination li{font-size:.85em}
@@ -107,18 +109,3 @@ html[xmlns] .fx-timeline-container,html[xmlns] .fx-timeline-event{display:block}
 .exe-epub3 .exe-timeline{background:#fff;color:#333;margin:20px auto;padding:25px;border-radius:5px;border-top-left-radius:0;border-bottom-left-radius:0;border-left:2px solid #555}
 .exe-epub3 .exe-timeline h2{background:#555;color:#FFF;padding:5px 20px;border-radius:5px;border-top-left-radius:0;border-bottom-left-radius:0;margin:5px 0 5px -25px;display:inline-block}
 .exe-epub3 .exe-timeline h3:before{content:"‒ ";margin:0 5px 0 -25px}
-
-/* Colors (simplified example) */
-/*
-.exe-content .exe-carousel li.fx-C2{background:none}
-.box-content .exe-fx .fx-C1,
-.box-content .exe-fx .fx-C1 a{
-background:#333;
-color:#FFF;
-}
-.box-content .exe-fx .fx-C2,
-.box-content .exe-fx .fx-C2 a,
-.box-content .fx-pagination a{
-background:#FFF;
-}
-*/
