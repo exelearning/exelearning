@@ -893,7 +893,9 @@ body.siteNav-off button#searchBarTogger {
     background-size: 28px;
 }
 .exe-export .form-check-label {
-    display: none;
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
 }
 .exe-export .form-switch .form-check-input {
     width: 2.6em;
