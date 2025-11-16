@@ -64,6 +64,10 @@ body.exe-web-site {
     top: -2.1em;
 }
 
+.exe-single-page main.page > section {
+    min-height: 4em;
+}
+
 .exe-content .box {
     margin: 20px 0;
     border: none;
@@ -166,9 +170,17 @@ body.siteNav-off main.page,
 body.siteNav-off #siteFooter {
     padding-left: 20px;
 }
-#siteNav ul,
-#siteNav li {
+#siteNav ul {
     margin: 0;
+    padding: 0;
+    list-style: none;
+}
+#siteNav ul ul {
+    margin-top: 5px;
+}
+
+#siteNav li {
+    margin: 0 0 5px 0;
     padding: 0;
     list-style: none;
 }
@@ -190,7 +202,6 @@ body.siteNav-off #siteFooter {
 #siteNav a.highlighted-link {
     color: #d76b4a;
     background: #ededed;
-    margin-top: 10px;
 }
 
 #siteNav a.highlighted-link:hover,
@@ -616,7 +627,7 @@ label[for="teacher-mode-toggler"] {
 
 @media print {
     /* Node in new page: section.package-node{page-break-after:always} */
-    html body {
+    html body.exe-export {
         background: #fff;
     }
     .exe-content {

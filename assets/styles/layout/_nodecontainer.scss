@@ -3,11 +3,17 @@
     &:has(#properties-node-content-form).exe-content {
         background: none;
     }
+    &:has(#node-content[node-selected='root']) {
+        font-size: var(--bs-body-font-size);
+        font-family: var(--bs-font-sans-serif);
+    }
     #eXeBetaWarning {
         z-index: 999;
         margin: 10px;
         font-size: .95em;
         padding: 10px 20px;
+        font-size: var(--bs-body-font-size);
+        font-family: var(--bs-font-sans-serif);
         button {
             scale: .75;
             margin-top: -9px;

@@ -177,12 +177,6 @@ body.exe-web-site {
     padding: 0;
 }
 
-body.exe-export,
-body.exe-web-site {
-    font-family: "Nunito", Arial, Verdana, Helvetica, sans-serif;
-    font-size: 120%;
-}
-
 .exe-content a {
     color: #0d77d1;
 }
@@ -190,6 +184,24 @@ body.exe-web-site {
 .exe-content a:focus {
     color: #0a60ab;
     text-decoration: none;
+}
+
+/* Effects */
+.exe-accordion .fx-accordion-title, 
+.fx-pagination .fx-current a {
+    background-color:#004900;
+}
+.exe-fx a{
+    color: #006304;
+}
+.exe-fx a:hover,
+.exe-fx a:focus {
+    color: #26892A;
+}
+
+.exe-download-package-link a {
+    background: #004900;
+    color: #fff;
 }
 
 .exe-download-package-link a {
@@ -206,6 +218,8 @@ body.exe-web-site {
 }
 
 .exe-content {
+    font-family: "Nunito", Arial, Verdana, Helvetica, sans-serif;
+    font-size: 120%;
     color: #333;
     background-color: #f4f4f4;
     background: url(img/background.png);
@@ -650,6 +664,10 @@ body.siteNav-off button#siteNavToggler .sr-av {
     border-color: #fff;
 }
 
+.exe-export .box .box-content {
+    padding-top: 20px;
+}
+
 .exe-export .box.no-header .box-content {
     background: none;
     border: none;
@@ -669,12 +687,11 @@ body.siteNav-off button#siteNavToggler .sr-av {
 
 /* Table */
 
-table {
+.exe-content table {
     display: table;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100% !important;
-    margin: 2em 0 !important;
 }
 
 /* Licenses */
@@ -865,7 +882,7 @@ body.siteNav-off button#searchBarTogger {
 
 /* Modo docente */
 
-.exe-export .form-check {
+#teacher-mode-toggler-wrapper {
     float: none;
     position: absolute;
     top: 18px;
@@ -880,43 +897,32 @@ body.siteNav-off button#searchBarTogger {
     background-position: right center;
     background-size: 28px;
 }
-.exe-export .form-check-label {
-    display: none;
+#teacher-mode-toggler-wrapper .form-check-label {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
 }
-.exe-export .form-switch .form-check-input {
+#teacher-mode-toggler-wrapper .form-check-input {
     width: 2.6em;
     height: 1.4em;
 }
-.exe-export .form-check-input:checked {
+#teacher-mode-toggler-wrapper .form-check-input:checked {
     background-color: #ffcc00;
     border-color: #ffcc00;
 }
-.exe-export .form-check-input:focus {
+#teacher-mode-toggler-wrapper .form-check-input:focus {
     border-color: #ffcc00;
     box-shadow: 0 0 0 0.25rem rgba(255, 204, 0, 0.25);
 }
-.exe-export .form-check label {
-    width: 64px;
-    font-size: 1rem;
-}
-.exe-export .form-switch .form-check-input:focus {
+#teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch.svg);
     background-size: 16px;
     background-repeat: no-repeat;
     background-position: left 1.6px center;
 }
-.exe-export .mode-teacher .form-switch .form-check-input:focus {
+.mode-teacher #teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch_white.svg);
     background-position: right 1.6px center;
-}
-
-/* Accesibilidad */
-.exe-atools-on #eXeAtools #eXeAtoolsSet {
-    display: flex;
-    padding: 6px 4px;
-}
-#eXeAtools select {
-    position: static !important;
 }
 
 /* Responsive design */
@@ -976,16 +982,13 @@ body.siteNav-off button#searchBarTogger {
     }
 
     /* Form & pagination*/
-    .exe-export .form-check {
+    #teacher-mode-toggler-wrapper {
         right: 182px;
     }
-    .exe-export .form-check:hover {
+    #teacher-mode-toggler-wrapper:hover {
         background-color: transparent;
     }
-    .exe-export .form-check-label {
-        display: none;
-    }
-    .exe-export .form-check-input {
+    #teacher-mode-toggler-wrapper .form-check-input {
         margin: 0 !important;
     }
     .exe-teacher-mode-toggler.exe-web-site .page-counter {
@@ -1207,14 +1210,14 @@ body.siteNav-off button#searchBarTogger {
     }
 
     /* Teacher mode*/
-    .exe-export .form-check {
+    #teacher-mode-toggler-wrapper {
         right: 120px;
     }
-    .exe-export .form-switch .form-check-input {
+    #teacher-mode-toggler-wrapper .form-check-input {
         width: 2.5em;
         height: 1.5em;
     }
-    .exe-export .form-switch .form-check-input:focus {
+    #teacher-mode-toggler-wrapper .form-check-input:focus {
         background-size: 16px;
     }
     .exe-teacher-mode-toggler .page > header .package-title,
@@ -1230,7 +1233,7 @@ body.siteNav-off button#searchBarTogger {
 }
 
 @media print {
-    html body {
+    html body.exe-export {
         background: #fff;
     }
     .exe-content {

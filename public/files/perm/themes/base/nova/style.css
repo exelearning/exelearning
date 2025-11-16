@@ -54,6 +54,34 @@ main header:not(#head) {
     width: 100%;
 }
 
+.package-subtitle {
+    width: 100%;
+    position: absolute;
+    left: 32px;
+    bottom: -.2em;
+    font-size: .9em;
+    color: #777;
+}
+
+.exe-web-site .package-subtitle {
+    max-width: 70%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+@media (max-width: 750px) {
+    .package-subtitle {
+        font-size: 1em;
+    }
+}
+
+body:has(.package-subtitle) .package-title,
+body.exe-single-page:has(.package-subtitle) .package-node h1 {
+    position:relative;
+    top: -.2em;
+}
+
 .page > header {
     position: fixed;
     top: 0;
@@ -90,9 +118,64 @@ body.exe-web-site {
     padding: 0;
 }
 
-body.exe-export,
-body.exe-web-site {
-    font-family: "Open Sans";
+body.exe-scorm .package-title,
+body.exe-ims .package-title,
+body.exe-epub .package-title{
+    position: absolute;
+    top: 20px;
+    left: 0;
+    font-weight: normal;
+    font-size: .95em;
+    color: #777;
+}
+
+body.exe-scorm .package-subtitle + .page-title,
+body.exe-ims .package-subtitle + .page-title,
+body.exe-epub .package-subtitle + .page-title{
+    margin-top: 30px;
+}
+
+body.exe-scorm .page-counter,
+body.exe-ims .page-counter,
+body.exe-epub .page-counter{
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+body.exe-scorm #teacher-mode-toggler-wrapper,
+body.exe-ims #teacher-mode-toggler-wrapper,
+body.exe-epub #teacher-mode-toggler-wrapper{
+    position: absolute;
+    top: 30px;
+    right: 20px;
+}
+
+body.exe-scorm .package-subtitle,
+body.exe-ims .package-subtitle,
+body.exe-epub .package-subtitle {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+body.exe-scorm .page-title,
+body.exe-ims .page-title,
+body.exe-epub .page-title {
+    padding: 0 32px;
+}
+
+@media (max-width: 750px) {
+    body.exe-scorm .page-title,
+    body.exe-ims .page-title,
+    body.exe-epub .page-title {
+        padding: 0 24px;
+    }
+    body.exe-scorm .page > header .package-title,
+    body.exe-ims .page > header .package-title,
+    body.exe-epub .page > header .package-title {
+        padding-left: 24px;
+    }
 }
 
 .exe-content a {
@@ -102,6 +185,19 @@ body.exe-web-site {
 .exe-content a:focus {
     color: #0a60ab;
     text-decoration: none;
+}
+
+/* Effects */
+.exe-accordion .fx-accordion-title, 
+.fx-pagination .fx-current a {
+    background-color:#1B1866;
+}
+.exe-fx a{
+    color: #423F8D;
+}
+.exe-fx a:hover,
+.exe-fx a:focus {
+    color: #5B58A6;
 }
 
 .exe-download-package-link a {
@@ -123,8 +219,9 @@ body.exe-web-site {
     display: block;
 }
 
-.exe-content,
-body {
+body.exe-export,
+.exe-content {
+    font-family: "Open Sans";
     color: #333;
     background-color: #f4f4f4;
 }
@@ -584,6 +681,10 @@ button.toggler:focus {
     border-color: #fff;
 }
 
+.exe-export .box .box-content {
+    padding-top: 20px;
+}
+
 .exe-export .box.no-header .box-content {
     background: none;
     border: none;
@@ -646,7 +747,10 @@ button.toggler:focus {
 #packageLicense.cc-0 {
     background-position: 0 -600px;
 }
-
+/* Page footer */
+#siteUserFooter {
+    margin-bottom: 20px;
+}
 /* iDevice buttons */
 .exe-content .iDevice_buttons input {
     background: #fff;
@@ -770,7 +874,7 @@ body.siteNav-off button#searchBarTogger {
 
 /* Modo docente */
 
-.exe-export .form-check {
+#teacher-mode-toggler-wrapper {
     float: none;
     position: absolute;
     top: 18px;
@@ -785,43 +889,32 @@ body.siteNav-off button#searchBarTogger {
     background-position: right center;
     background-size: 28px;
 }
-.exe-export .form-check-label {
-    display: none;
+#teacher-mode-toggler-wrapper .form-check-label {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
 }
-.exe-export .form-switch .form-check-input {
+#teacher-mode-toggler-wrapper .form-check-input {
     width: 2.6em;
     height: 1.4em;
 }
-.exe-export .form-check-input:checked {
+#teacher-mode-toggler-wrapper .form-check-input:checked {
     background-color: #ffcc00;
     border-color: #ffcc00;
 }
-.exe-export .form-check-input:focus {
+#teacher-mode-toggler-wrapper .form-check-input:focus {
     border-color: #ffcc00;
     box-shadow: 0 0 0 0.25rem rgba(255, 204, 0, 0.25);
 }
-.exe-export .form-check label {
-    width: 64px;
-    font-size: 1rem;
-}
-.exe-export .form-switch .form-check-input:focus {
+#teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch.svg);
     background-size: 16px;
     background-repeat: no-repeat;
     background-position: left 1.6px center;
 }
-.exe-export .mode-teacher .form-switch .form-check-input:focus {
+.mode-teacher #teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch_white.svg);
     background-position: right 1.6px center;
-}
-
-/* Accesibilidad */
-.exe-atools-on #eXeAtools #eXeAtoolsSet {
-    display: flex;
-    padding: 6px 4px;
-}
-#eXeAtools select {
-    position: static !important;
 }
 
 @media (max-width: 1440px) {
@@ -866,25 +959,21 @@ body.siteNav-off button#searchBarTogger {
     .siteNav-off .page > header .package-title {
         width: calc(100% - 230px);
     }
+    .exe-teacher-mode-toggler.exe-web-site .page-counter,
     .exe-web-site .page-counter {
-        right: 190px;
-    }
-    .exe-teacher-mode-toggler.exe-web-site .page-counter {
-        right: 290px;
+        right: 193px;
+        top: 12px;
     }
     .page-counter-label {
         display: none;
     }
-    .exe-export .form-check {
+    #teacher-mode-toggler-wrapper {
         right: 182px;
     }
-    .exe-export .form-check:hover {
+    #teacher-mode-toggler-wrapper:hover {
         background-color: transparent;
     }
-    .exe-export .form-check-label {
-        display: none;
-    }
-    .exe-export .form-check-input {
+    #teacher-mode-toggler-wrapper .form-check-input {
         margin: 0 !important;
     }
     .exe-teacher-mode-toggler .page > header .package-title,
@@ -1104,25 +1193,27 @@ body.siteNav-off button#searchBarTogger {
     .exe-web-site #siteFooterContent {
         padding: 0 30px;
     }
-    .exe-export .form-check {
+    #teacher-mode-toggler-wrapper {
         right: 120px;
     }
-    .exe-export .form-switch .form-check-input {
+    #teacher-mode-toggler-wrapper .form-check-input {
         width: 2.5em;
         height: 1.5em;
     }
-    .exe-export .form-switch .form-check-input:focus {
+    #teacher-mode-toggler-wrapper .form-check-input:focus {
         background-size: 16px;
     }
     .exe-teacher-mode-toggler .page > header .package-title,
     .exe-teacher-mode-toggler.siteNav-off .page > header .package-title {
         width: calc(100% - 180px);
     }
+    .exe-teacher-mode-toggler.exe-web-site .page-counter,
     .exe-web-site .page-counter {
         right: 140px;
     }
-    .exe-teacher-mode-toggler.exe-web-site .page-counter {
-        right: 210px;
+    #teacher-mode-toggler-wrapper {
+        right: 130px;
+        z-index: 999;
     }
     .page-title {
         margin-top: 32px;
@@ -1140,7 +1231,7 @@ table {
 }
 
 @media print {
-    html body {
+    html body.exe-export {
         background: #fff;
     }
     .exe-content {
