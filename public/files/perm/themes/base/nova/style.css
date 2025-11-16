@@ -178,11 +178,6 @@ body.exe-epub .page-title {
     }
 }
 
-body.exe-export,
-body.exe-web-site {
-    font-family: "Open Sans";
-}
-
 .exe-content a {
     color: #0d77d1;
 }
@@ -224,8 +219,9 @@ body.exe-web-site {
     display: block;
 }
 
-.exe-content,
-body {
+body.exe-export,
+.exe-content {
+    font-family: "Open Sans";
     color: #333;
     background-color: #f4f4f4;
 }
@@ -1235,7 +1231,7 @@ table {
 }
 
 @media print {
-    html body {
+    html body.exe-export {
         background: #fff;
     }
     .exe-content {

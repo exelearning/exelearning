@@ -627,7 +627,7 @@ label[for="teacher-mode-toggler"] {
 
 @media print {
     /* Node in new page: section.package-node{page-break-after:always} */
-    html body {
+    html body.exe-export {
         background: #fff;
     }
     .exe-content {

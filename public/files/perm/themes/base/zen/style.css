@@ -32,12 +32,6 @@
         url(fonts/Inter-BoldItalic.woff) format("woff");
 }
 
-body.exe-export,
-.exe-content {
-    font-family: "Inter";
-    font-weight: 400;
-}
-
 .page-title {
     font-weight: bold;
     margin-top: 20px;
@@ -224,7 +218,9 @@ body.exe-epub .page-title {
 }
 
 .exe-content,
-body {
+body.exe-export {
+    font-family: "Inter";
+    font-weight: 400;
     color: #333;
     background-color: #f4f4f4;
 }
@@ -1231,7 +1227,7 @@ table {
 }
 
 @media print {
-    html body {
+    html body.exe-export {
         background: #fff;
     }
     .exe-content {

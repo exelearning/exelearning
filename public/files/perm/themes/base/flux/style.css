@@ -171,12 +171,6 @@ body.exe-web-site {
     padding: 0;
 }
 
-body.exe-export,
-body.exe-web-site {
-    font-family: "Fredoka", Arial, Verdana, Helvetica, sans-serif;
-    font-size: 120%;
-}
-
 .exe-content a {
     color: #0d77d1;
 }
@@ -212,6 +206,8 @@ body.exe-web-site {
 }
 
 .exe-content {
+    font-family: "Fredoka", Arial, Verdana, Helvetica, sans-serif;
+    font-size: 120%;
     color: #333;
     background-color: #f4f4f4;
     background: url(img/background.png);
@@ -1250,7 +1246,7 @@ body.siteNav-off button#searchBarTogger {
 }
 
 @media print {
-    html body {
+    html body.exe-export {
         background: #fff;
     }
     .exe-content {
