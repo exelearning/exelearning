@@ -2963,11 +2963,17 @@ export default class projectManager {
     /**
      *
      * @return {boolean} - True if at least one iDevice is in edition mode, false otherwise.
+     * It also saves the package properties if needed
      */
     checkOpenIdevice() {
         const container = document.getElementById('node-content');
         if (!container) {
             return false;
+        }
+        // Save the package properties
+        const propertiesForm = $('#node-content[node-selected="root"]:visible');
+        if (propertiesForm.length == 1) {
+            eXeLearning.app.project.properties.formProperties.saveAction();
         }
         const element = container.querySelector(
             'div.idevice_node[mode="edition"]'
