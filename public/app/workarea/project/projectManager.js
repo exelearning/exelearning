@@ -2970,11 +2970,20 @@ export default class projectManager {
         if (!container) {
             return false;
         }
-        // Save the package properties
-        const propertiesForm = $('#node-content[node-selected="root"]:visible');
-        if (propertiesForm.length == 1) {
+
+        // Save the package properties if the Properties form is visible
+        const propertiesForm = document.querySelector(
+            '#node-content[node-selected="root"]'
+        );
+        if (
+            propertiesForm &&
+            (propertiesForm.offsetWidth > 0 ||
+                propertiesForm.offsetHeight > 0 ||
+                propertiesForm.getClientRects().length > 0)
+        ) {
             eXeLearning.app.project.properties.formProperties.saveAction();
         }
+
         const element = container.querySelector(
             'div.idevice_node[mode="edition"]'
         );
