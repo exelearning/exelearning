@@ -64,22 +64,22 @@
                     {# Additional login method buttons #}
                     <div class="other-methods">
                         {% if 'password' in auth_methods %}
-                        <p class="small text-center">{{ 'Other authentication methods:' | trans }}</p>
+                        <p class="small">{{ 'Other authentication methods:' | trans }}</p>
                         {% else %}
-                        <p class="small text-center">{{ 'Authentication methods:' | trans }}</p>
+                        <p class="small">{{ 'Authentication methods:' | trans }}</p>
                         {% endif %}
-                        <div class="other-methods-buttons d-flex justify-content-center align-items-center g-5">
+                        <div class="other-methods-buttons d-flex g-5">
                         {# Important!: Disable @hotwired on links with data-turbo="false" to avoid prefetching the login pages #}
                         {% if 'cas' in auth_methods %}
-                            <a href="{{ path('cas_login') }}" id="login-link-cas" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center mx-1" data-turbo="false" data-no-prefetch>CAS</a>
+                            <a href="{{ path('cas_login') }}" id="login-link-cas" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center me-2" data-turbo="false" data-no-prefetch>CAS</a>
                         {% endif %}
                         {% if 'openid' in auth_methods %}
-                            <a href="{{ path('openid_connect') }}" id="login-link-openid" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center mx-1" data-turbo="false" data-no-prefetch>OpenID</a>
+                            <a href="{{ path('openid_connect') }}" id="login-link-openid" rel="nofollow noreferrer" class="btn btn-secondary d-flex justify-content-center align-items-center me-2" data-turbo="false" data-no-prefetch>OpenID</a>
                         {% endif %}
                         {% if 'guest' in auth_methods %}
                             <form method="post" action="{{ path('guest_login') }}" id="login-form-guest" class="d-inline" data-turbo="false" data-no-prefetch>
                                 <input type="hidden" name="guest_login_nonce" value="{{ guest_login_nonce ?? '' }}">
-                                <button type="submit" id="login-link-guest" class="btn btn-secondary d-flex justify-content-center align-items-center mx-1">{{ 'Guest' | trans }}</button>
+                                <button type="submit" id="login-link-guest" class="btn btn-secondary d-flex justify-content-center align-items-center me-2">{{ 'Guest' | trans }}</button>
                             </form>
                         {% endif %}
                         </div>

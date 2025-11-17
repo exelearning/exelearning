@@ -60,6 +60,14 @@ body.exe-web-site {
     margin-bottom: 3.5em;
 }
 
+.exe-single-page .package-subtitle {
+    top: -2.1em;
+}
+
+.exe-single-page main.page > section {
+    min-height: 4em;
+}
+
 .exe-content .box {
     margin: 20px 0;
     border: none;
@@ -162,9 +170,17 @@ body.siteNav-off main.page,
 body.siteNav-off #siteFooter {
     padding-left: 20px;
 }
-#siteNav ul,
-#siteNav li {
+#siteNav ul {
     margin: 0;
+    padding: 0;
+    list-style: none;
+}
+#siteNav ul ul {
+    margin-top: 5px;
+}
+
+#siteNav li {
+    margin: 0 0 5px 0;
     padding: 0;
     list-style: none;
 }
@@ -183,14 +199,13 @@ body.siteNav-off #siteFooter {
     color: #d76b4a;
 }
 
-#siteNav a.package-link {
+#siteNav a.highlighted-link {
     color: #d76b4a;
     background: #ededed;
-    margin-top: 10px;
 }
 
-#siteNav a.package-link:hover,
-#siteNav a.package-link:focus {
+#siteNav a.highlighted-link:hover,
+#siteNav a.highlighted-link:focus {
     background: #fff;
 }
 
@@ -274,6 +289,12 @@ button.toggler:focus {
     position: absolute;
     clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
     clip: rect(1px, 1px, 1px, 1px);
+}
+.package-subtitle {
+    font-size: .95em;
+    color: #666;
+    position: relative;
+    top: -.15em;
 }
 .nav-buttons .nav-button-right {
     left: auto;
@@ -507,6 +528,10 @@ button.toggler:focus {
 }
 
 /* Teacher mode */
+#teacher-mode-toggler-wrapper {
+    float: right;
+    margin: 0 0 0 1em;
+}
 #teacher-mode-toggler.form-check-input:checked {
     background-color: #078e8e;
     border-color: #078e8e;
@@ -602,7 +627,7 @@ label[for="teacher-mode-toggler"] {
 
 @media print {
     /* Node in new page: section.package-node{page-break-after:always} */
-    html body {
+    html body.exe-export {
         background: #fff;
     }
     .exe-content {

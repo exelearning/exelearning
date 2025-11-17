@@ -1854,7 +1854,7 @@ class ExportXmlUtil
 
                 // Add highlight class to anchor element if enabled
                 if ($isHighlighted) {
-                    $class .= $class ? ' package-link' : 'package-link';
+                    $class .= $class ? ' highlighted-link' : 'highlighted-link';
                 }
 
                 if (!empty($class)) {
@@ -1863,7 +1863,6 @@ class ExportXmlUtil
             }
             ++$indexNode;
         }
-
         // Add class active to the current page except
         $navLiActive = $navUl->xpath('//li[@odePageId="'.$currentOdePageId.'"]');
         if (isset($navLiActive[0])) {
@@ -2009,10 +2008,9 @@ class ExportXmlUtil
         }
 
         // Package subtitle (immediately after package title)
-        $packageSubtitleTag = 'p';
-        if ('' != $subtitle) {
+        if (Constants::EXPORT_TYPE_HTML5_SP != $exportType && '' != $subtitle) {
             $headerEmpty = false;
-            $packageSubtitle = $pageHeader->addChild($packageSubtitleTag, htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));
+            $packageSubtitle = $pageHeader->addChild('p', htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));
             $packageSubtitle->addAttribute('class', 'package-subtitle');
         }
 
@@ -2578,6 +2576,7 @@ class ExportXmlUtil
             [$libsPath.'abcjs', 'class', 'abc-music', ['/abcjs/abcjs-basic-min.js', '/abcjs/exe_abc_music.js', '/abcjs/abcjs-audio.css']],
             [$commonPath.'exe_math', 'regex', '/\\\((.*?)\\\)|\\\[(.*?)\\\]/', [$dm.'tex-mml-svg.js']],
             [$commonPath.'exe_math', 'class', 'DataGame', [$dm.'tex-mml-svg.js']],
+            [$commonPath.'mermaid', 'class', 'mermaid', ['/mermaid/mermaid.min.js']],
         ];
 
         if (!is_array($odeNavStructureSyncs)) {

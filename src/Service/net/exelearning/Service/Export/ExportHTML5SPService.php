@@ -208,6 +208,13 @@ class ExportHTML5SPService implements ExportServiceInterface
             $headerNode['class'] = trim($existingClass.' '.$newClass);
         }
 
+        // Package subtitle (immediately after package title)
+        $subtitle = isset($odeProperties['pp_subtitle']) ? $odeProperties['pp_subtitle']->getValue() : '';
+        if ('' != $subtitle) {
+            $packageSubtitle = $headerNode->addChild('p', htmlspecialchars($subtitle, ENT_XML1, 'UTF-8'));
+            $packageSubtitle->addAttribute('class', 'package-subtitle');
+        }
+
         // Convert  to DOMDocument
         $dom = dom_import_simplexml($targetPageContent)->ownerDocument;
         $dom->formatOutput = true;

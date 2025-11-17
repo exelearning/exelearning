@@ -52,6 +52,7 @@ var $exe = {
         $exe.setIframesProperties();
         $exe.hasTooltips();
         $exe.math.init();
+        $exe.mermaid.init();
         $exe.dl.init();
         $exe.sfHover();
         // Add a zoom icon to the images using CSS
@@ -169,7 +170,42 @@ var $exe = {
             }
         }
     },
-
+    // Mermaid options
+    mermaid: {
+        // Mermaid script path
+        engine: $("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js",
+        reload_pending: false,
+            //'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js',
+        loadMermaid: function () {
+            if (typeof window.mermaid === 'undefined') {
+                const script = document.createElement("script");
+                script.src = this.engine;
+                script.async = true;
+                script.onload = function () {
+                    mermaid = window.mermaid;
+                    mermaid.initialize({ startOnLoad: false });
+                    mermaid.run();
+                };
+                document.head.appendChild(script);
+                this.reload_pending = false;
+            } else {
+                // debounce reloading to avoid multiple calls
+                if (!this.reload_pending) {
+                    this.reload_pending = true;
+                    setTimeout(function () {
+                        $exe.mermaid.reload_pending = false;
+                        mermaid.run();
+                    }, 100);
+                }
+            }
+        },
+        init: function () {
+            var mermaidNodes = $(".mermaid");
+            if (mermaidNodes.length > 0) {
+                this.loadMermaid();
+            }
+        }
+    },
     // Modal Window: Height problem in some browsers #328
     setModalWindowContentSize: function () {
         if (window.chrome) {

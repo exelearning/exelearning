@@ -53,6 +53,9 @@
 *   Files: public/app/common/fix\_webm\_duration/\*
     *   Copyright: 2018 Yury Sitnikov
     *   License: MIT
+*   Files: /public/app/common/mermaid/mermaid.min.js
+    *   Copyright: Knut Sveidqvist (mermaid.js.org)
+    *   License: MIT
 *   Files: /public/app/common/mindmaps/\*
     *   Copyright: David Richard
     *   License: AGPL V3 (included in eXeLearning with the developer's consent)
@@ -127,6 +130,12 @@
     *   License: MIT
 *   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exeimage/image-compressor/js/vue.min.js
     *   Copyright: Evan You
+    *   License: MIT
+*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemermaid/\*
+    *   Copyright: Luis Ramón López López
+    *   License: CC-BY-SA-4.0
+*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemermaid/img/\*
+    *   Copyright: mermaid.js.org
     *   License: MIT
 *   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor (cropper.js, jquery-cropper.js and CSS)
     *   Copyright: Chen Fengyuan

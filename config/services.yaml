@@ -11,6 +11,7 @@ parameters:
 
     auth_temp_email_domain_default: 'domain.local'
     base_path: '%env(string:BASE_PATH)%'
+    assets.base_path: '%env(default::string:BASE_PATH)%/assets/%app.version%'
 
     app.online_mode: '%env(bool:APP_ONLINE_MODE)%'
     app.auth_methods: '%env(csv:APP_AUTH_METHODS)%'

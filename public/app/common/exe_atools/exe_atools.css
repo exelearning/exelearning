@@ -104,7 +104,7 @@ body.exe-atools-mo .exe-content{font-family:'Montserrat', sans-serif}
 #eXeAtools.loading{display:none}
 #eXeAtoolsBtnSet{position:fixed;bottom:0;left:0;z-index:999999;background:#000;border-top-right-radius:4px;width:35px;height:35px}
 #eXeAtoolsBtn{position:absolute;top:0;left:0;border-top-right-radius:4px}
-#eXeAtoolsSet{display:none;font-size:12px;font-family:Arial, sans-serif;position:fixed;bottom:0;left:0;background:#000;border-top-right-radius:4px;z-index:999999;white-space:nowrap;height:35px}
+#eXeAtoolsSet{display:none;font-size:12px!important;font-family:Arial, sans-serif;position:fixed;bottom:0;left:0;background:#000;border-top-right-radius:4px;z-index:999999;white-space:nowrap;height:35px}
 .exe-atools-on #eXeAtoolsBtnSet{display:none}
 .exe-atools-on #eXeAtoolsSet{display:block}
 
@@ -115,7 +115,7 @@ body.exe-atools-mo .exe-content{font-family:'Montserrat', sans-serif}
 }
 
 #eXeAtools label{margin:0;padding:0}
-#eXeAtools select{margin:0;padding:0;font-size:12px;font-family:Arial, sans-serif;background:#fff;color:#000;border:2px solid #fff; padding:2px 2px 1px 5px;margin:0 5px 0 10px;position:relative;top:6px;vertical-align:top}
+#eXeAtools select{margin:0;padding:0;font-size:12px!important;font-family:Arial, sans-serif;background:#fff;color:#000;border:2px solid #fff; padding:2px 2px 1px 5px;margin:0 5px 0 10px;position:relative;top:6px;vertical-align:top}
 #eXeAtools select:focus{border-color:yellow}
 #eXeAtools button,
 #eXeAtools span{margin:0;padding:0;background:url(exe_atools.png) no-repeat 0 0;width:35px;height:35px;display:inline-block;background-size:auto 35px;cursor:pointer;border:none}

@@ -81,6 +81,7 @@ Common prerequisites
   - Development: `http://localhost:8080/login/openid/callback`
   - Production: `https://<your-domain>/login/openid/callback`
 - Scopes: `OIDC_SCOPE="openid email"` is recommended. Add `profile` if you want name/picture.
+- ⚠️ If you encounter issues, try removing the trailing slash (/) from your `OIDC_ISSUER`.
 
 ### Google (Identity Platform)
 
