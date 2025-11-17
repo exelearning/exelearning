@@ -716,7 +716,9 @@ export default class FormProperties {
         return this.saveProperties(propertiesDict, false).then((response) => {
             const lang = propertiesDict.pp_lang;
             if (lang) {
-                this.properties.project.app.locale.loadContentTranslationsStrings(lang);
+                this.properties.project.app.locale.loadContentTranslationsStrings(
+                    lang
+                );
             }
 
             /* Automatically saved (no message)

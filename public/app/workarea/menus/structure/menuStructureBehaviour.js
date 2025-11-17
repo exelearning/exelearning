@@ -85,14 +85,17 @@ export default class MenuStructureBehaviour {
             element.addEventListener('click', async (event) => {
                 event.stopPropagation();
                 if (await eXeLearning.app.project.checkOpenIdevice()) return;
-                this.selectNode(element.parentElement).then(async (nodeElement) => {
-                    if (await eXeLearning.app.project.checkOpenIdevice()) return;
-                    // Check dbclick
-                    if (nodeElement && this.dbclickNode) {
-                        this.showModalPropertiesNode();
-                        this.dbclickNode = false;
+                this.selectNode(element.parentElement).then(
+                    async (nodeElement) => {
+                        if (await eXeLearning.app.project.checkOpenIdevice())
+                            return;
+                        // Check dbclick
+                        if (nodeElement && this.dbclickNode) {
+                            this.showModalPropertiesNode();
+                            this.dbclickNode = false;
+                        }
                     }
-                });
+                );
             });
         });
     }

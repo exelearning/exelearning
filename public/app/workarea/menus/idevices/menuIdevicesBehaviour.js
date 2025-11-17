@@ -40,7 +40,8 @@ export default class MenuIdevicesBehaviour {
                         element.classList.add('off');
                     });
                     eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
-                    if (await eXeLearning.app.project.checkOpenIdevice()) return;
+                    if (await eXeLearning.app.project.checkOpenIdevice())
+                        return;
                     category.classList.remove('off');
                     category.classList.add('on');
                     category.classList.add('last-open');

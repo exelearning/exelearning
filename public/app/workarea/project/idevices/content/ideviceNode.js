@@ -691,7 +691,9 @@ export default class IdeviceNode {
                             parent &&
                             parent.getAttribute('mode') === 'export'
                         ) {
-                            if (await eXeLearning.app.project.checkOpenIdevice())
+                            if (
+                                await eXeLearning.app.project.checkOpenIdevice()
+                            )
                                 return;
                         }
                         if (response.responseMessage !== 'OK') {
@@ -819,7 +821,8 @@ export default class IdeviceNode {
             .addEventListener('click', async (e) => {
                 const parent = e.target.closest('.idevice_node');
                 if (parent && parent.getAttribute('mode') === 'export') {
-                    if (await eXeLearning.app.project.checkOpenIdevice()) return;
+                    if (await eXeLearning.app.project.checkOpenIdevice())
+                        return;
                 }
                 // Create the "Add Text" button
                 this.createAddTextBtn();

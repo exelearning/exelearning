@@ -2629,21 +2629,21 @@ $(function () {
         r = e(),
         n = [],
         i = function (e) {
-            (e.off('dragstart.h5s'),
+            e.off('dragstart.h5s'),
                 e.off('dragend.h5s'),
                 e.off('selectstart.h5s'),
                 e.off('dragover.h5s'),
                 e.off('dragenter.h5s'),
-                e.off('drop.h5s'));
+                e.off('drop.h5s');
         },
         o = function (e) {
-            (e.off('dragover.h5s'), e.off('dragenter.h5s'), e.off('drop.h5s'));
+            e.off('dragover.h5s'), e.off('dragenter.h5s'), e.off('drop.h5s');
         },
         d = function (e, t) {
-            ((e.dataTransfer.effectAllowed = 'move'),
+            (e.dataTransfer.effectAllowed = 'move'),
                 e.dataTransfer.setData('text', ''),
                 e.dataTransfer.setDragImage &&
-                    e.dataTransfer.setDragImage(t.item, t.x, t.y));
+                    e.dataTransfer.setDragImage(t.item, t.x, t.y);
         },
         s = function (e, t) {
             return (
@@ -2657,21 +2657,21 @@ $(function () {
         },
         f = function (e, t) {
             var a = l(t);
-            ((a = s(e, a)), d(e, a));
+            (a = s(e, a)), d(e, a);
         },
         h = function (e, t) {
             return 'undefined' == typeof e ? t : e;
         },
         g = function (e) {
-            (e.removeData('opts'),
+            e.removeData('opts'),
                 e.removeData('connectWith'),
                 e.removeData('items'),
-                e.removeAttr('aria-dropeffect'));
+                e.removeAttr('aria-dropeffect');
         },
         c = function (e) {
-            (e.removeAttr('aria-grabbed'),
+            e.removeAttr('aria-grabbed'),
                 e.removeAttr('draggable'),
-                e.removeAttr('role'));
+                e.removeAttr('role');
         },
         u = function (e, t) {
             return e[0] === t[0]
@@ -2684,13 +2684,13 @@ $(function () {
             var t = e.data('opts') || {},
                 a = e.children(t.items),
                 r = t.handle ? a.find(t.handle) : a;
-            (o(e), g(e), r.off('mousedown.h5s'), i(a), c(a));
+            o(e), g(e), r.off('mousedown.h5s'), i(a), c(a);
         },
         m = function (t) {
             var a = t.data('opts'),
                 r = t.children(a.items),
                 n = a.handle ? r.find(a.handle) : r;
-            (t.attr('aria-dropeffect', 'move'), n.attr('draggable', 'true'));
+            t.attr('aria-dropeffect', 'move'), n.attr('draggable', 'true');
             var i = (document || window.document).createElement('span');
             'function' != typeof i.dragDrop ||
                 a.disableIEFix ||
@@ -2704,15 +2704,15 @@ $(function () {
             var t = e.data('opts'),
                 a = e.children(t.items),
                 r = t.handle ? a.find(t.handle) : a;
-            (e.attr('aria-dropeffect', 'none'),
+            e.attr('aria-dropeffect', 'none'),
                 r.attr('draggable', !1),
-                r.off('mousedown.h5s'));
+                r.off('mousedown.h5s');
         },
         b = function (e) {
             var t = e.data('opts'),
                 a = e.children(t.items),
                 r = t.handle ? a.find(t.handle) : a;
-            (i(a), r.off('mousedown.h5s'), o(e));
+            i(a), r.off('mousedown.h5s'), o(e);
         },
         x = function (i, o) {
             var s = e(i),
@@ -2733,7 +2733,7 @@ $(function () {
                 s.each(function () {
                     var i = e(this);
                     if (/enable|disable|destroy/.test(l)) return void x[l](i);
-                    ((o = h(i.data('opts'), o)), i.data('opts', o), b(i));
+                    (o = h(i.data('opts'), o)), i.data('opts', o), b(i);
                     var s,
                         g,
                         c,
@@ -2752,9 +2752,9 @@ $(function () {
                                 : e(o.placeholder).addClass(o.placeholderClass);
                     if (!i.attr('data-sortable-id')) {
                         var I = n.length;
-                        ((n[I] = i),
+                        (n[I] = i),
                             i.attr('data-sortable-id', I),
-                            p.attr('data-item-sortable-id', I));
+                            p.attr('data-item-sortable-id', I);
                     }
                     if (
                         (i.data('items', o.items),
@@ -2766,7 +2766,7 @@ $(function () {
                         o.hoverClass)
                     ) {
                         var C = 'sortable-over';
-                        ('string' == typeof o.hoverClass && (C = o.hoverClass),
+                        'string' == typeof o.hoverClass && (C = o.hoverClass),
                             p.hover(
                                 function () {
                                     e(this).addClass(C);
@@ -2774,10 +2774,10 @@ $(function () {
                                 function () {
                                     e(this).removeClass(C);
                                 }
-                            ));
+                            );
                     }
-                    (p.on('dragstart.h5s', function (r) {
-                        (r.stopImmediatePropagation(),
+                    p.on('dragstart.h5s', function (r) {
+                        r.stopImmediatePropagation(),
                             o.dragImage
                                 ? (d(r.originalEvent, {
                                       item: o.dragImage,
@@ -2798,7 +2798,7 @@ $(function () {
                                 item: t,
                                 placeholder: v,
                                 startparent: g,
-                            }));
+                            });
                     }),
                         p.on('dragend.h5s', function () {
                             t &&
@@ -2866,18 +2866,18 @@ $(function () {
                                             )
                                                 return !1;
                                         }
-                                        (t.hide(),
+                                        t.hide(),
                                             v.index() < e(this).index()
                                                 ? e(this).after(v)
                                                 : e(this).before(v),
-                                            r.not(v).detach());
+                                            r.not(v).detach();
                                     } else
                                         r.is(this) ||
                                             e(this).children(o.items).length ||
                                             (r.detach(), e(this).append(v));
                                     return !1;
                                 }
-                            }));
+                            });
                 })
             );
         };

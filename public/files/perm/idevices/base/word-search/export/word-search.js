@@ -1176,7 +1176,7 @@ $(function () {
  * For all details and documentation:
  *     http://github.com/bunkat/wordfind
  */
-((function () {
+(function () {
     'use strict';
     ('undefined' != typeof exports && null !== exports
         ? exports
@@ -1334,7 +1334,7 @@ $(function () {
                 var o = l(t, n, e);
                 if (0 === o.length) return !1;
                 var a = o[Math.floor(Math.random() * o.length)];
-                return (f(t, e, a.x, a.y, r[a.orientation]), !0);
+                return f(t, e, a.x, a.y, r[a.orientation]), !0;
             },
             l = function (t, n, a) {
                 for (
@@ -1360,7 +1360,7 @@ $(function () {
                     )
                         if (p(S, x, l, f, d)) {
                             var w = u(a, t, S, x, $);
-                            ((w >= c || (!n.preferOverlap && w > -1)) &&
+                            (w >= c || (!n.preferOverlap && w > -1)) &&
                                 ((c = w),
                                 i.push({
                                     x: S,
@@ -1368,10 +1368,10 @@ $(function () {
                                     orientation: g,
                                     overlap: w,
                                 })),
-                                ++S >= f && ((S = 0), x++));
+                                ++S >= f && ((S = 0), x++);
                         } else {
                             var z = P(S, x, d);
-                            ((S = z.x), (x = z.y));
+                            (S = z.x), (x = z.y);
                         }
                 return n.preferOverlap ? s(i, c) : i;
             },
@@ -1432,12 +1432,12 @@ $(function () {
                             throw Error(
                                 `No valid ${d.width}x${d.height} grid found and not allowed to grow more`
                             );
-                        (console.log(
+                        console.log(
                             `No valid ${d.width}x${d.height} grid found after ${l - 1} attempts, trying with bigger grid`
                         ),
                             d.height++,
                             d.width++,
-                            (l = 0));
+                            (l = 0);
                     }
                 }
                 if (d.fillBlanks) {
@@ -1521,7 +1521,7 @@ $(function () {
                         n += ('' === o[a] ? ' ' : o[a]) + ' ';
                     n += '\n';
                 }
-                return (console.log(n), n);
+                return console.log(n), n;
             },
         };
     })();
@@ -1533,14 +1533,14 @@ $(function () {
                     var i = r[o];
                     e += '<div>';
                     for (var l = 0, u = i.length; l < u; l++)
-                        ((e +=
+                        (e +=
                             '<button class="SPP-PuzzleSquare" x="' +
                             l +
                             '" y="' +
                             o +
                             '">'),
                             (e += i[l] || '&nbsp;'),
-                            (e += '</button>'));
+                            (e += '</button>');
                     e += '</div>';
                 }
                 n(t).html(e);
@@ -1565,11 +1565,11 @@ $(function () {
                     c = [],
                     h = '',
                     v = function (t) {
-                        (t.preventDefault(),
+                        t.preventDefault(),
                             n(this).addClass('selected'),
                             (f = this),
                             c.push(this),
-                            (h = n(this).text()));
+                            (h = n(this).text());
                     },
                     g = function (r) {
                         r.preventDefault();
@@ -1581,7 +1581,7 @@ $(function () {
                         $(t.elementFromPoint(o, a));
                     },
                     p = function (t) {
-                        (t.preventDefault(), $(this));
+                        t.preventDefault(), $(this);
                     },
                     $ = function (t) {
                         if (f) {
@@ -1594,9 +1594,9 @@ $(function () {
                                         break;
                                     }
                                 for (; r < c.length; )
-                                    (n(c[c.length - 1]).removeClass('selected'),
+                                    n(c[c.length - 1]).removeClass('selected'),
                                         c.splice(r, 1),
-                                        (h = h.substr(0, h.length - 1)));
+                                        (h = h.substr(0, h.length - 1));
                                 var l = o(
                                     n(f).attr('x') - 0,
                                     n(f).attr('y') - 0,
@@ -1622,9 +1622,9 @@ $(function () {
                     P = function (t) {
                         for (var r = 0, e = l.length; r < e; r++)
                             if (0 === l[r].indexOf(h + n(t).text())) {
-                                (n(t).addClass('selected'),
+                                n(t).addClass('selected'),
                                     c.push(t),
-                                    (h += n(t).text()));
+                                    (h += n(t).text());
                                 break;
                             }
                     },
@@ -1643,7 +1643,7 @@ $(function () {
                                     $eXeSopa &&
                                     typeof $eXeSopa.updateScore == 'function'
                                 ) {
-                                    ($container
+                                    $container
                                         .find('.selected')
                                         .addClass('found'),
                                         $eXeSopa.updateScore(
@@ -1652,7 +1652,7 @@ $(function () {
                                             e,
                                             instanceId
                                         ),
-                                        l.splice(o, 1));
+                                        l.splice(o, 1);
                                 }
                             }
                             0 === l.length &&
@@ -1661,13 +1661,13 @@ $(function () {
                                     .find('.SPP-PuzzleSquare')
                                     .addClass('complete'));
                         }
-                        ($container.find('.selected').removeClass('selected'),
+                        $container.find('.selected').removeClass('selected'),
                             (f = null),
                             (c = []),
                             (h = ''),
-                            (d = null));
+                            (d = null);
                     };
-                ($container.find('input.SSP-Word').removeClass('SPP-WordFound'),
+                $container.find('input.SSP-Word').removeClass('SPP-WordFound'),
                     (l = $container
                         .find('input.SSP-Word')
                         .toArray()
@@ -1731,9 +1731,9 @@ $(function () {
                                 c.addClass('SPP-WordFound');
                             }
                         }
-                    }));
+                    });
             };
-        ((a.emptySquaresCount = function () {
+        (a.emptySquaresCount = function () {
             var t = n('.SPP-PuzzleSquare').toArray();
             return t.length - t.filter((t) => t.textContent.trim()).length;
         }),
@@ -1767,5 +1767,5 @@ $(function () {
                         '"></li>'
                 ).appendTo(t);
             }),
-            (window.WordFindGame = a));
-    })(document, jQuery, wordfind));
+            (window.WordFindGame = a);
+    })(document, jQuery, wordfind);
