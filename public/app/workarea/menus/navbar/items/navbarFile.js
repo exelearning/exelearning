@@ -189,10 +189,7 @@ export default class NavbarFile {
                 '#node-content[node-selected="root"]'
             );
             const isVisible =
-                propertiesForm &&
-                (propertiesForm.offsetWidth > 0 ||
-                    propertiesForm.offsetHeight > 0 ||
-                    propertiesForm.getClientRects().length > 0);
+                propertiesForm && propertiesForm.offsetParent !== null;
 
             if (isVisible) {
                 // Wait until project properties are fully saved
