@@ -2965,23 +2965,25 @@ export default class projectManager {
      * @return {boolean} - True if at least one iDevice is in edition mode, false otherwise.
      * It also saves the package properties if needed
      */
-    checkOpenIdevice() {
+    checkOpenIdevice(skipPropertiesSave) {
         const container = document.getElementById('node-content');
         if (!container) {
             return false;
         }
 
         // Save the package properties if the Properties form is visible
-        const propertiesForm = document.querySelector(
-            '#node-content[node-selected="root"]'
-        );
-        if (
-            propertiesForm &&
-            (propertiesForm.offsetWidth > 0 ||
-                propertiesForm.offsetHeight > 0 ||
-                propertiesForm.getClientRects().length > 0)
-        ) {
-            eXeLearning.app.project.properties.formProperties.saveAction();
+        if (!skipPropertiesSave) {
+            const propertiesForm = document.querySelector(
+                '#node-content[node-selected="root"]'
+            );
+            if (
+                propertiesForm &&
+                (propertiesForm.offsetWidth > 0 ||
+                    propertiesForm.offsetHeight > 0 ||
+                    propertiesForm.getClientRects().length > 0)
+            ) {
+                eXeLearning.app.project.properties.formProperties.saveAction();
+            }
         }
 
         const element = container.querySelector(

@@ -180,8 +180,29 @@ export default class NavbarFile {
      *
      */
     setSaveProjectEvent() {
-        this.saveButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.saveButton.addEventListener('click', async () => {
+            // Check if an iDevice is open, but without saving the package properties
+            if (eXeLearning.app.project.checkOpenIdevice(true)) return;
+
+            // Check if the Properties form is visible and save the package properties if needed
+            const propertiesForm = document.querySelector(
+                '#node-content[node-selected="root"]'
+            );
+            const isVisible =
+                propertiesForm &&
+                (propertiesForm.offsetWidth > 0 ||
+                    propertiesForm.offsetHeight > 0 ||
+                    propertiesForm.getClientRects().length > 0);
+
+            if (isVisible) {
+                // Wait until project properties are fully saved
+                const ok =
+                    await eXeLearning.app.project.properties.formProperties.saveAction();
+
+                if (!ok) return; // Required fields missing → stop here
+            }
+
+            // Execute final action after saveAction is completed
             // Offline desktop: use ELP export flow as persistent file save
             if (
                 eXeLearning.config.isOfflineInstallation &&
@@ -190,6 +211,7 @@ export default class NavbarFile {
                 this.downloadProjectEvent();
                 return;
             }
+
             this.saveOdeEvent();
         });
     }

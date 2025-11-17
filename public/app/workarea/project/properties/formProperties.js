@@ -689,6 +689,7 @@ export default class FormProperties {
         this.hideHelpContentAll();
         const propertiesDict = this.getPropertiesData();
         let missingFields = false;
+
         const query = `#properties-node-content-form .property-value.required`;
         this.nodeContent.querySelectorAll(query).forEach((field) => {
             const value = this.getFieldValueByType(field);
@@ -706,23 +707,31 @@ export default class FormProperties {
                 body: _('Please fill in all required fields.'),
                 contentId: 'error',
             });
-        } else {
-            this.saveProperties(propertiesDict, false).then((response) => {
-                this.properties.project.app.locale.loadContentTranslationsStrings(
-                    propertiesDict.pp_lang
-                );
-                const toastData = {
-                    title: _('Project properties'),
-                    body: _('Project properties saved.'),
-                    icon: 'downloading',
-                };
-                const toast =
-                    window.eXeLearning.app.toasts.createToast(toastData);
-                setTimeout(() => {
-                    toast.remove();
-                }, 1000);
-            });
+
+            // Return a resolved Promise so await works correctly
+            return Promise.resolve(false);
         }
+
+        // Return the Promise from saveProperties
+        return this.saveProperties(propertiesDict, false).then((response) => {
+            this.properties.project.app.locale.loadContentTranslationsStrings(
+                propertiesDict.pp_lang
+            );
+
+            /* Automatically saved (no message)
+            const toastData = {
+                title: _('Project properties'),
+                body: _('Project properties saved.'),
+                icon: 'downloading',
+            };
+            const toast = window.eXeLearning.app.toasts.createToast(toastData);
+            setTimeout(() => {
+                toast.remove();
+            }, 1000);
+            */
+
+            return true; // Indicate success
+        });
     }
 
     getPropertiesData() {
