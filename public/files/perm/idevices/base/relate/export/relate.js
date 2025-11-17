@@ -1599,19 +1599,19 @@ var $eXeRelaciona = {
 
     saveEvaluation: function (instance) {
         const mOptions = $eXeRelaciona.options[instance];
-        (mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards),
+        ((mOptions.scorerp = (mOptions.hits * 10) / mOptions.realNumberCards),
             $exeDevices.iDevice.gamification.report.saveEvaluation(
                 mOptions,
                 $eXeRelaciona.isInExe
-            );
+            ));
     },
 
     sendScore: function (auto, instance) {
         const mOptions = $eXeRelaciona.options[instance];
 
-        (mOptions.scorerp = score =
+        ((mOptions.scorerp = score =
             (mOptions.hits * 10) / mOptions.realNumberCards),
-            (mOptions.previousScore = $eXeRelaciona.previousScore);
+            (mOptions.previousScore = $eXeRelaciona.previousScore));
         mOptions.userName = $eXeRelaciona.userName;
 
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, mOptions);

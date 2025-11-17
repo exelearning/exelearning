@@ -9238,18 +9238,18 @@
                     paintOrder;
                 var _this = this;
                 return __generator(this, function (_c) {
-                    (_a = this.createFontStyle(styles)),
+                    ((_a = this.createFontStyle(styles)),
                         (font = _a[0]),
                         (fontFamily = _a[1]),
-                        (fontSize = _a[2]);
+                        (fontSize = _a[2]));
                     this.ctx.font = font;
                     this.ctx.direction =
                         styles.direction === 1 /* RTL */ ? 'rtl' : 'ltr';
                     this.ctx.textAlign = 'left';
                     this.ctx.textBaseline = 'alphabetic';
-                    (_b = this.fontMetrics.getMetrics(fontFamily, fontSize)),
+                    ((_b = this.fontMetrics.getMetrics(fontFamily, fontSize)),
                         (baseline = _b.baseline),
-                        (middle = _b.middle);
+                        (middle = _b.middle));
                     paintOrder = styles.paintOrder;
                     text.textBounds.forEach(function (text) {
                         paintOrder.forEach(function (paintOrderLayer) {
@@ -9438,7 +9438,7 @@
                             container = paint.container;
                             curves = paint.curves;
                             styles = container.styles;
-                            (_i = 0), (_a = container.textNodes);
+                            ((_i = 0), (_a = container.textNodes));
                             _c.label = 1;
                         case 1:
                             if (!(_i < _a.length)) return [3 /*break*/, 4];
@@ -9626,9 +9626,9 @@
                                 isTextInputElement(container) &&
                                 container.value.length
                             ) {
-                                (_b = this.createFontStyle(styles)),
+                                ((_b = this.createFontStyle(styles)),
                                     (fontFamily = _b[0]),
-                                    (fontSize = _b[1]);
+                                    (fontSize = _b[1]));
                                 baseline = this.fontMetrics.getMetrics(
                                     fontFamily,
                                     fontSize
@@ -9806,7 +9806,7 @@
                             // https://www.w3.org/TR/css-position-3/#painting-order
                             // 1. the background and borders of the element forming the stacking context.
                             _p.sent();
-                            (_i = 0), (_a = stack.negativeZIndex);
+                            ((_i = 0), (_a = stack.negativeZIndex));
                             _p.label = 2;
                         case 2:
                             if (!(_i < _a.length)) return [3 /*break*/, 5];
@@ -9827,7 +9827,7 @@
                         case 6:
                             // 3. For all its in-flow, non-positioned, block-level descendants in tree order:
                             _p.sent();
-                            (_b = 0), (_c = stack.nonInlineLevel);
+                            ((_b = 0), (_c = stack.nonInlineLevel));
                             _p.label = 7;
                         case 7:
                             if (!(_b < _c.length)) return [3 /*break*/, 10];
@@ -9840,7 +9840,7 @@
                             _b++;
                             return [3 /*break*/, 7];
                         case 10:
-                            (_d = 0), (_e = stack.nonPositionedFloats);
+                            ((_d = 0), (_e = stack.nonPositionedFloats));
                             _p.label = 11;
                         case 11:
                             if (!(_d < _e.length)) return [3 /*break*/, 14];
@@ -9853,7 +9853,7 @@
                             _d++;
                             return [3 /*break*/, 11];
                         case 14:
-                            (_f = 0), (_g = stack.nonPositionedInlineLevel);
+                            ((_f = 0), (_g = stack.nonPositionedInlineLevel));
                             _p.label = 15;
                         case 15:
                             if (!(_f < _g.length)) return [3 /*break*/, 18];
@@ -9866,7 +9866,7 @@
                             _f++;
                             return [3 /*break*/, 15];
                         case 18:
-                            (_h = 0), (_j = stack.inlineLevel);
+                            ((_h = 0), (_j = stack.inlineLevel));
                             _p.label = 19;
                         case 19:
                             if (!(_h < _j.length)) return [3 /*break*/, 22];
@@ -9879,9 +9879,9 @@
                             _h++;
                             return [3 /*break*/, 19];
                         case 22:
-                            (_k = 0),
+                            ((_k = 0),
                                 (_l =
-                                    stack.zeroOrAutoZIndexOrTransformedOrOpacity);
+                                    stack.zeroOrAutoZIndexOrTransformedOrOpacity));
                             _p.label = 23;
                         case 23:
                             if (!(_k < _l.length)) return [3 /*break*/, 26];
@@ -9894,7 +9894,7 @@
                             _k++;
                             return [3 /*break*/, 23];
                         case 26:
-                            (_m = 0), (_o = stack.positiveZIndex);
+                            ((_m = 0), (_o = stack.positiveZIndex));
                             _p.label = 27;
                         case 27:
                             if (!(_m < _o.length)) return [3 /*break*/, 30];
@@ -10069,7 +10069,7 @@
                                             return [3 /*break*/, 4];
                                         case 4:
                                             if (image) {
-                                                (_c =
+                                                ((_c =
                                                     calculateBackgroundRendering(
                                                         container,
                                                         index,
@@ -10084,7 +10084,7 @@
                                                     (x = _c[1]),
                                                     (y = _c[2]),
                                                     (width = _c[3]),
-                                                    (height = _c[4]);
+                                                    (height = _c[4]));
                                                 pattern =
                                                     this_1.ctx.createPattern(
                                                         this_1.resizeImage(
@@ -10108,7 +10108,7 @@
                                                     backgroundImage
                                                 )
                                             ) {
-                                                (_d =
+                                                ((_d =
                                                     calculateBackgroundRendering(
                                                         container,
                                                         index,
@@ -10118,8 +10118,8 @@
                                                     (x = _d[1]),
                                                     (y = _d[2]),
                                                     (width = _d[3]),
-                                                    (height = _d[4]);
-                                                (_e =
+                                                    (height = _d[4]));
+                                                ((_e =
                                                     calculateGradientDirection(
                                                         backgroundImage.angle,
                                                         width,
@@ -10129,7 +10129,7 @@
                                                     (x0 = _e[1]),
                                                     (x1 = _e[2]),
                                                     (y0 = _e[3]),
-                                                    (y1 = _e[4]);
+                                                    (y1 = _e[4]));
                                                 canvas =
                                                     document.createElement(
                                                         'canvas'
@@ -10180,7 +10180,7 @@
                                                     backgroundImage
                                                 )
                                             ) {
-                                                (_f =
+                                                ((_f =
                                                     calculateBackgroundRendering(
                                                         container,
                                                         index,
@@ -10190,7 +10190,7 @@
                                                     (left = _f[1]),
                                                     (top_1 = _f[2]),
                                                     (width = _f[3]),
-                                                    (height = _f[4]);
+                                                    (height = _f[4]));
                                                 position =
                                                     backgroundImage.position
                                                         .length === 0
@@ -10206,7 +10206,7 @@
                                                     ],
                                                     height
                                                 );
-                                                (_g = calculateRadius(
+                                                ((_g = calculateRadius(
                                                     backgroundImage,
                                                     x,
                                                     y,
@@ -10214,7 +10214,7 @@
                                                     height
                                                 )),
                                                     (rx = _g[0]),
-                                                    (ry = _g[1]);
+                                                    (ry = _g[1]));
                                                 if (rx > 0 && ry > 0) {
                                                     radialGradient_1 =
                                                         this_1.ctx.createRadialGradient(
@@ -10295,10 +10295,10 @@
                                 });
                             };
                             this_1 = this;
-                            (_i = 0),
+                            ((_i = 0),
                                 (_a = container.styles.backgroundImage
                                     .slice(0)
-                                    .reverse());
+                                    .reverse()));
                             _b.label = 1;
                         case 1:
                             if (!(_i < _a.length)) return [3 /*break*/, 4];
@@ -10492,7 +10492,7 @@
                             _a.label = 2;
                         case 2:
                             side = 0;
-                            (_i = 0), (borders_1 = borders);
+                            ((_i = 0), (borders_1 = borders));
                             _a.label = 3;
                         case 3:
                             if (!(_i < borders_1.length))
@@ -11164,7 +11164,7 @@
                         ];
                     case 1:
                         container = _u.sent();
-                        (_a =
+                        ((_a =
                             isBodyElement(clonedElement) ||
                             isHTMLElement(clonedElement)
                                 ? parseDocumentSize(clonedElement.ownerDocument)
@@ -11172,7 +11172,7 @@
                             (width = _a.width),
                             (height = _a.height),
                             (left = _a.left),
-                            (top = _a.top);
+                            (top = _a.top));
                         backgroundColor = parseBackgroundColor(
                             context,
                             clonedElement,
