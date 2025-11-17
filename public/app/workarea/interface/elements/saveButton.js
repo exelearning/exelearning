@@ -20,7 +20,7 @@ export default class SaveProjectButton {
     addEventClick() {
         this.saveMenuHeadButton.addEventListener('click', async (event) => {
             // Check if an iDevice is open, but without saving the package properties
-            if (eXeLearning.app.project.checkOpenIdevice(true)) return;
+            if (await eXeLearning.app.project.checkOpenIdevice(true)) return;
 
             // Collaborative mode synchronization
             let exe = eXeLearning.app.project;

@@ -61,8 +61,8 @@ export default class NavbarFile {
      *
      */
     setPreferencesEvent() {
-        this.preferencesButton.addEventListener('click', (e) => {
-            if (eXeLearning.app.project.checkOpenIdevice()) {
+        this.preferencesButton.addEventListener('click', async (e) => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) {
                 e.preventDefault();
                 return false;
             }
@@ -121,8 +121,8 @@ export default class NavbarFile {
      *
      */
     setPreviewEvent() {
-        this.previewButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.previewButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.previewEvent();
         });
     }

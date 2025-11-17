@@ -33,6 +33,8 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
                             // Stub save()
                             if (window.eXeLearning.app.project) {
                                 window.eXeLearning.app.project.save = async function(){ window.__OnlineCalls.saveOde++; return true; };
+                                // Stub checkOpenIdevice() to avoid async delays in tests
+                                window.eXeLearning.app.project.checkOpenIdevice = async function(){ return false; };
                             }
                             // Stub saveAsOdeEvent() and downloadLink
                             if (window.eXeLearning.app.menus && window.eXeLearning.app.menus.navbar && window.eXeLearning.app.menus.navbar.file) {
@@ -73,7 +75,7 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-save'))->click();
 
         // Give async JS time to finish
-        sleep(1);
+        sleep(2);
 
         // Assert backend save stub was hit; no electron API expected in online tests
         $saveCount = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.saveOde) || 0;');
@@ -94,6 +96,9 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAs'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-export-html5'))->click();
 
+        // Give async JS time to finish
+        sleep(1);
+
         $exportCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.exportApi) || 0;');
         $downloadCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.downloadLink) || 0;');
         $this->assertGreaterThanOrEqual(1, $exportCalls, 'Export API should be called');
@@ -113,6 +118,9 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAs'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-download-project'))->click();
+
+        // Give async JS time to finish
+        sleep(1);
 
         $exportCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.exportApi) || 0;');
         $downloadCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.downloadLink) || 0;');

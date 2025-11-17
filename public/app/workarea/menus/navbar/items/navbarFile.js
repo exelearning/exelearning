@@ -182,7 +182,7 @@ export default class NavbarFile {
     setSaveProjectEvent() {
         this.saveButton.addEventListener('click', async () => {
             // Check if an iDevice is open, but without saving the package properties
-            if (eXeLearning.app.project.checkOpenIdevice(true)) return;
+            if (await eXeLearning.app.project.checkOpenIdevice(true)) return;
 
             // Check if the Properties form is visible and save the package properties if needed
             const propertiesForm = document.querySelector(
@@ -219,8 +219,8 @@ export default class NavbarFile {
      *
      */
     setSaveAsProjectEvent() {
-        this.saveButtonAs.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.saveButtonAs.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             // Offline desktop: prompt file path and remember it
             if (
                 eXeLearning.config.isOfflineInstallation &&
@@ -239,8 +239,8 @@ export default class NavbarFile {
      */
     setSaveAsProjectOfflineEvent() {
         if (!this.saveButtonAsOffline) return;
-        this.saveButtonAsOffline.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.saveButtonAsOffline.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.saveAsElpOffline();
         });
     }
@@ -328,8 +328,8 @@ export default class NavbarFile {
      *
      */
     setDownloadProjectEvent() {
-        this.downloadProjectButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return false;
+        this.downloadProjectButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return false;
             this.downloadProjectEvent();
             return false;
         });
@@ -341,8 +341,8 @@ export default class NavbarFile {
      */
     setSaveProjectOfflineEvent() {
         if (!this.saveOfflineButton) return;
-        this.saveOfflineButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return false;
+        this.saveOfflineButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return false;
             this.downloadProjectEvent();
             return false;
         });
@@ -353,8 +353,8 @@ export default class NavbarFile {
      */
     setDownloadProjectAsEvent() {
         if (!this.downloadProjectAsButton) return;
-        this.downloadProjectAsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return false;
+        this.downloadProjectAsButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return false;
             this.saveAsElpOffline();
             return false;
         });
@@ -366,16 +366,16 @@ export default class NavbarFile {
      *
      */
     setExportHTML5Event() {
-        this.exportHTML5Button.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportHTML5Button.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5Event();
         });
     }
 
     setExportHTML5AsEvent() {
         if (!this.exportHTML5AsButton) return;
-        this.exportHTML5AsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportHTML5AsButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5AsEvent();
         });
     }
@@ -385,8 +385,8 @@ export default class NavbarFile {
      */
     setExportHTML5FolderAsEvent() {
         if (!this.exportHTML5FolderAsButton) return;
-        this.exportHTML5FolderAsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportHTML5FolderAsButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5FolderAsEvent();
         });
     }
@@ -397,16 +397,16 @@ export default class NavbarFile {
      *
      */
     setExportHTML5SPEvent() {
-        this.exportHTML5SPButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportHTML5SPButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5SPEvent();
         });
     }
 
     setExportHTML5SPAsEvent() {
         if (!this.exportHTML5SPAsButton) return;
-        this.exportHTML5SPAsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportHTML5SPAsButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportHTML5SPAsEvent();
         });
     }
@@ -416,8 +416,8 @@ export default class NavbarFile {
      */
     setExportPrintEvent() {
         if (!this.exportPrintButton) return;
-        this.exportPrintButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportPrintButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.openPrintPreview();
         });
     }
@@ -513,16 +513,16 @@ export default class NavbarFile {
      *
      */
     setExportSCORM12Event() {
-        this.exportSCORM12Button.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportSCORM12Button.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportSCORM12Event();
         });
     }
 
     setExportSCORM12AsEvent() {
         if (!this.exportSCORM12AsButton) return;
-        this.exportSCORM12AsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportSCORM12AsButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportSCORM12AsEvent();
         });
     }
@@ -533,16 +533,16 @@ export default class NavbarFile {
      *
      */
     setExportSCORM2004Event() {
-        this.exportSCORM2004Button.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportSCORM2004Button.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportSCORM2004Event();
         });
     }
 
     setExportSCORM2004AsEvent() {
         if (!this.exportSCORM2004AsButton) return;
-        this.exportSCORM2004AsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportSCORM2004AsButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportSCORM2004AsEvent();
         });
     }
@@ -553,16 +553,16 @@ export default class NavbarFile {
      *
      */
     setExportIMSEvent() {
-        this.exportIMSButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportIMSButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportIMSEvent();
         });
     }
 
     setExportIMSAsEvent() {
         if (!this.exportIMSAsButton) return;
-        this.exportIMSAsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportIMSAsButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportIMSAsEvent();
         });
     }
@@ -573,16 +573,16 @@ export default class NavbarFile {
      *
      */
     setExportEPUB3Event() {
-        this.exportEPUB3Button.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportEPUB3Button.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportEPUB3Event();
         });
     }
 
     setExportEPUB3AsEvent() {
         if (!this.exportEPUB3AsButton) return;
-        this.exportEPUB3AsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportEPUB3AsButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportEPUB3AsEvent();
         });
     }
@@ -593,16 +593,16 @@ export default class NavbarFile {
      *
      */
     setExportXmlPropertiesEvent() {
-        this.exportXmlPropertiesButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportXmlPropertiesButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportXmlPropertiesEvent();
         });
     }
 
     setExportXmlPropertiesAsEvent() {
         if (!this.exportXmlPropertiesAsButton) return;
-        this.exportXmlPropertiesAsButton.addEventListener('click', () => {
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
+        this.exportXmlPropertiesAsButton.addEventListener('click', async () => {
+            if (await eXeLearning.app.project.checkOpenIdevice()) return;
             this.exportXmlPropertiesAsEvent();
         });
     }

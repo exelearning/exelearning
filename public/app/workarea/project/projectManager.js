@@ -33,9 +33,10 @@ export default class projectManager {
         await this.loadCurrentProject();
         // Load project properties
         await this.loadProjectProperties();
-        this.app.locale.loadContentTranslationsStrings(
-            this.properties.properties.pp_lang.value
-        );
+        const lang = this.properties?.properties?.pp_lang?.value;
+        if (lang) {
+            this.app.locale.loadContentTranslationsStrings(lang);
+        }
         // Compose and initialized interface
         await this.loadInterface();
         // Load structure data
@@ -2962,17 +2963,20 @@ export default class projectManager {
 
     /**
      *
-     * @return {boolean} - True if at least one iDevice is in edition mode, false otherwise.
+     * @return {Promise<boolean>} - True if at least one iDevice is in edition mode, false otherwise.
      * It also saves the package properties if needed
      */
-    checkOpenIdevice(skipPropertiesSave) {
+    async checkOpenIdevice(skipPropertiesSave) {
         const container = document.getElementById('node-content');
         if (!container) {
             return false;
         }
 
         // Save the package properties if the Properties form is visible
-        if (!skipPropertiesSave) {
+        if (
+            !skipPropertiesSave &&
+            eXeLearning?.app?.project?.properties?.formProperties?.saveAction
+        ) {
             const propertiesForm = document.querySelector(
                 '#node-content[node-selected="root"]'
             );
@@ -2982,7 +2986,7 @@ export default class projectManager {
                     propertiesForm.offsetHeight > 0 ||
                     propertiesForm.getClientRects().length > 0)
             ) {
-                eXeLearning.app.project.properties.formProperties.saveAction();
+                await eXeLearning.app.project.properties.formProperties.saveAction();
             }
         }
 

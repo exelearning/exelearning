@@ -28,6 +28,10 @@ export default class Locale {
     }
 
     async loadContentTranslationsStrings(lang) {
+        if (!lang || lang === 'undefined') {
+            console.warn('[Locale] Attempted to load translations with invalid lang:', lang);
+            return;
+        }
         this.c_strings = await this.app.api.getTranslations(lang);
     }
 

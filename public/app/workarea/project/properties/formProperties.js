@@ -714,9 +714,10 @@ export default class FormProperties {
 
         // Return the Promise from saveProperties
         return this.saveProperties(propertiesDict, false).then((response) => {
-            this.properties.project.app.locale.loadContentTranslationsStrings(
-                propertiesDict.pp_lang
-            );
+            const lang = propertiesDict.pp_lang;
+            if (lang) {
+                this.properties.project.app.locale.loadContentTranslationsStrings(lang);
+            }
 
             /* Automatically saved (no message)
             const toastData = {
