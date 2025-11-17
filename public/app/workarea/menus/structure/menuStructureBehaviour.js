@@ -179,7 +179,8 @@ export default class MenuStructureBehaviour {
         this.menuNav
             .querySelector('.button_nav_action.action_add')
             .addEventListener('click', async (e) => {
-                if (await eXeLearning.app.project.checkOpenIdevice()) return;
+                if (await eXeLearning.app.project.checkOpenIdevice(true))
+                    return;
                 this.showModalNewNode();
             });
     }
