@@ -30,16 +30,31 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
                 const tryPatch = function(){
                     try {
                         if (window.eXeLearning && window.eXeLearning.app) {
-                            // Stub save()
-                            if (window.eXeLearning.app.project) {
-                                window.eXeLearning.app.project.save = async function(){ window.__OnlineCalls.saveOde++; return true; };
-                            }
-                            // Stub saveAsOdeEvent()
-                            if (window.eXeLearning.app.menus && window.eXeLearning.app.menus.navbar && window.eXeLearning.app.menus.navbar.file) {
+                            // Stub file menu events
+                            if (window.eXeLearning.app.menus &&
+                                window.eXeLearning.app.menus.navbar &&
+                                window.eXeLearning.app.menus.navbar.file) {
+
                                 const fileMenu = window.eXeLearning.app.menus.navbar.file;
-                                fileMenu.saveAsOdeEvent = async function(){ window.__OnlineCalls.saveAsOde++; return true; };
-                                fileMenu.downloadLink = function(){ window.__OnlineCalls.downloadLink++; };
+
+                                // Stub Save event (new flow calls saveOdeEvent)
+                                fileMenu.saveOdeEvent = async function () {
+                                    window.__OnlineCalls.saveOde++;
+                                    return true;
+                                };
+
+                                // Stub Save As event
+                                fileMenu.saveAsOdeEvent = async function(){
+                                    window.__OnlineCalls.saveAsOde++;
+                                    return true;
+                                };
+
+                                // Stub download link
+                                fileMenu.downloadLink = function(){
+                                    window.__OnlineCalls.downloadLink++;
+                                };
                             }
+
                             // Stub export download API
                             if (window.eXeLearning.app.api) {
                                 window.eXeLearning.app.api.getOdeExportDownload = async function(odeSessionId, type){
@@ -48,6 +63,7 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
                                     return { responseMessage: 'OK', urlZipFile: '/fake/download/url', exportProjectName: name };
                                 };
                             }
+
                             return true;
                         }
                     } catch (e) {}
