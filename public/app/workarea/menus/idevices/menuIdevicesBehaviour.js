@@ -18,7 +18,7 @@ export default class MenuIdevicesBehaviour {
      */
     addEventClickIdeviceCategory() {
         this.parent.categoriesIdevicesLabels.forEach((label) => {
-            label.addEventListener('click', (event) => {
+            label.addEventListener('click', async (event) => {
                 let category = label.parentNode;
 
                 // saving active label
@@ -40,7 +40,8 @@ export default class MenuIdevicesBehaviour {
                         element.classList.add('off');
                     });
                     eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
-                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    if (await eXeLearning.app.project.checkOpenIdevice())
+                        return;
                     category.classList.remove('off');
                     category.classList.add('on');
                     category.classList.add('last-open');

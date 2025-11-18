@@ -540,8 +540,8 @@ export default class IdeviceBlockNode {
     addBehaviourButtonMoveUpBlock() {
         this.blockButtons
             .querySelector('#moveUp' + this.blockId)
-            .addEventListener('click', (element) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (element) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 // Hide the actions menu if needed
                 var elm = $('#dropdownMenuButton' + this.blockId);
                 if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
@@ -603,8 +603,8 @@ export default class IdeviceBlockNode {
     addBehaviourButtonMoveDownBlock() {
         this.blockButtons
             .querySelector('#moveDown' + this.blockId)
-            .addEventListener('click', (element) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (element) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 // Hide the actions menu if needed
                 var elm = $('#dropdownMenuButton' + this.blockId);
                 if (elm.attr('aria-expanded') == 'true') elm.trigger('click');
