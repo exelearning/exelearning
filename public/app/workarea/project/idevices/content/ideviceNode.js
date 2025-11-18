@@ -682,16 +682,18 @@ export default class IdeviceNode {
     addBehaviourPropertiesIdeviceButton() {
         this.ideviceButtons
             .querySelector('#propertiesIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (e) => {
+            .addEventListener('click', async (e) => {
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, this.odeIdeviceId)
-                    .then((response) => {
+                    .then(async (response) => {
                         const parent = e.target.closest('.idevice_node');
                         if (
                             parent &&
                             parent.getAttribute('mode') === 'export'
                         ) {
-                            if (eXeLearning.app.project.checkOpenIdevice())
+                            if (
+                                await eXeLearning.app.project.checkOpenIdevice()
+                            )
                                 return;
                         }
                         if (response.responseMessage !== 'OK') {
@@ -719,8 +721,8 @@ export default class IdeviceNode {
         this.timeIdeviceEditing = new Date().getTime();
         this.ideviceButtons
             .querySelector('#editIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (e) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (e.target.disabled) return;
                 this.toogleIdeviceButtonsState(true);
                 eXeLearning.app.project
@@ -816,10 +818,11 @@ export default class IdeviceNode {
     addBehaviourDeleteIdeviceButton() {
         this.ideviceButtons
             .querySelector('#deleteIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (e) => {
+            .addEventListener('click', async (e) => {
                 const parent = e.target.closest('.idevice_node');
                 if (parent && parent.getAttribute('mode') === 'export') {
-                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    if (await eXeLearning.app.project.checkOpenIdevice())
+                        return;
                 }
                 // Create the "Add Text" button
                 this.createAddTextBtn();
@@ -931,8 +934,8 @@ export default class IdeviceNode {
     addBehaviouCloneIdeviceButton() {
         this.ideviceButtons
             .querySelector('#cloneIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (element) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (element) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 this.apiCloneIdevice();
             });
     }
@@ -953,8 +956,8 @@ export default class IdeviceNode {
     addBehaviourMoveUpIdeviceButton() {
         this.ideviceButtons
             .querySelector('#moveUpIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (element) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (element) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 // check component Flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, this.odeIdeviceId)
@@ -1018,8 +1021,8 @@ export default class IdeviceNode {
     addBehaviourMoveDownIdeviceButton() {
         this.ideviceButtons
             .querySelector('#moveDownIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (element) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (element) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 // Check odeComponent flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, this.odeIdeviceId)
@@ -1082,8 +1085,8 @@ export default class IdeviceNode {
     addBehaviourMoveToPageIdeviceButton() {
         this.ideviceButtons
             .querySelector('#moveIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (element) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (element) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 // Check odeComponent flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, this.odeIdeviceId)
@@ -1178,8 +1181,8 @@ export default class IdeviceNode {
     addBehaviourExportIdeviceButton() {
         this.ideviceButtons
             .querySelector('#exportIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (element) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (element) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 // Check odeComponent flag
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, this.odeIdeviceId)
@@ -1206,8 +1209,8 @@ export default class IdeviceNode {
     addBehaviourMinifyIdeviceButton() {
         this.ideviceButtons
             .querySelector('#minifyIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (element) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (element) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 const iDevice = $(
                     "div.idevice_body[idevice-id='" + this.odeIdeviceId + "']"
                 );

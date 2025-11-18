@@ -33,12 +33,17 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
                             // Stub save()
                             if (window.eXeLearning.app.project) {
                                 window.eXeLearning.app.project.save = async function(){ window.__OnlineCalls.saveOde++; return true; };
+                                // Stub checkOpenIdevice() to avoid async delays in tests
+                                window.eXeLearning.app.project.checkOpenIdevice = async function(){ return false; };
                             }
-                            // Stub saveAsOdeEvent()
+                            // Stub saveAsOdeEvent() and downloadLink
                             if (window.eXeLearning.app.menus && window.eXeLearning.app.menus.navbar && window.eXeLearning.app.menus.navbar.file) {
                                 const fileMenu = window.eXeLearning.app.menus.navbar.file;
                                 fileMenu.saveAsOdeEvent = async function(){ window.__OnlineCalls.saveAsOde++; return true; };
                                 fileMenu.downloadLink = function(){ window.__OnlineCalls.downloadLink++; };
+
+                                // stub saveOdeEvent
+                                fileMenu.saveOdeEvent = async function(){ window.__OnlineCalls.saveOde++; return true; };
                             }
                             // Stub export download API
                             if (window.eXeLearning.app.api) {
@@ -69,12 +74,15 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownFile'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-save'))->click();
 
+        // Give async JS time to finish
+        sleep(2);
+
         // Assert backend save stub was hit; no electron API expected in online tests
         $saveCount = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.saveOde) || 0;');
         $this->assertGreaterThanOrEqual(1, $saveCount);
 
         // Check browser console for errors
-        Console::assertNoBrowserErrors($client);        
+        Console::assertNoBrowserErrors($client);
     }
 
     public function testOnlineExportHtml5TriggersApiAndBrowserDownload(): void
@@ -88,13 +96,16 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAs'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-export-html5'))->click();
 
+        // Give async JS time to finish
+        sleep(1);
+
         $exportCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.exportApi) || 0;');
         $downloadCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.downloadLink) || 0;');
         $this->assertGreaterThanOrEqual(1, $exportCalls, 'Export API should be called');
         $this->assertGreaterThanOrEqual(1, $downloadCalls, 'Browser download should be triggered');
 
         // Check browser console for errors
-        Console::assertNoBrowserErrors($client);        
+        Console::assertNoBrowserErrors($client);
     }
 
     public function testOnlineDownloadProjectTriggersApiAndBrowserDownload(): void
@@ -108,15 +119,17 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
         $client->getWebDriver()->findElement(WebDriverBy::id('dropdownExportAs'))->click();
         $client->getWebDriver()->findElement(WebDriverBy::id('navbar-button-download-project'))->click();
 
+        // Give async JS time to finish
+        sleep(1);
+
         $exportCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.exportApi) || 0;');
         $downloadCalls = (int) $client->executeScript('return (window.__OnlineCalls && window.__OnlineCalls.downloadLink) || 0;');
         $this->assertGreaterThanOrEqual(1, $exportCalls, 'Export API should be called');
         $this->assertGreaterThanOrEqual(1, $downloadCalls, 'Browser download should be triggered');
 
         // Check browser console for errors
-        Console::assertNoBrowserErrors($client);        
+        Console::assertNoBrowserErrors($client);
     }
-
 
     public function testExportToFolderOptionNotVisibleOnline(): void
     {
@@ -130,6 +143,6 @@ final class MenuOnlineFunctionalityTest extends BaseE2ETestCase
         $this->assertFalse($present, 'Export to Folder option must not appear online');
 
         // Check browser console for errors
-        Console::assertNoBrowserErrors($client);        
+        Console::assertNoBrowserErrors($client);
     }
 }
