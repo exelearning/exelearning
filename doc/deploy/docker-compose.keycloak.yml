@@ -34,6 +34,7 @@ services:
 
       APP_AUTH_METHODS: "password,openid"
       AUTH_CREATE_USERS: true
+      # Attention!! OIDC_ISSUER url must end with "/"
       OIDC_ISSUER: "${OIDC_ISSUER:-http://keycloak:8081/realms/exelearning/}"
       OIDC_AUTHORIZATION_ENDPOINT: "${OIDC_AUTHORIZATION_ENDPOINT:-http://keycloak:8081/realms/exelearning/protocol/openid-connect/auth}"
       OIDC_TOKEN_ENDPOINT: "${OIDC_TOKEN_ENDPOINT:-http://keycloak:8081/realms/exelearning/protocol/openid-connect/token}"
@@ -106,6 +107,8 @@ services:
       - "${KEYCLOAK_PORT:-8081}:8081"
     volumes:
       - keycloak-data:/opt/keycloak/data
+      # Attention: this mount should be removed in a production environment, since
+      # the realms use to be defined at hand and depends on the given environment.
       - ./keycloak-realms:/opt/keycloak/data/import
 
 volumes:
