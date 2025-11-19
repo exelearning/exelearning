@@ -86,6 +86,8 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.4.5
     restart: unless-stopped
+    # Atention!! in a production environment the following line should be replaced by
+    # command: ["start"]
     command: ["start-dev", "--import-realm"]
     depends_on:
       - keycloak-db
