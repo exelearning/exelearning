@@ -18,11 +18,9 @@ export default class SaveProjectButton {
      *
      */
     addEventClick() {
-        this.saveMenuHeadButton.addEventListener('click', async (event) => {
-            // Check if an iDevice is open, but without saving the package properties
-            if (await eXeLearning.app.project.checkOpenIdevice(true)) return;
-
-            // Collaborative mode synchronization
+        this.saveMenuHeadButton.addEventListener('click', (event) => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            // Collaborative
             let exe = eXeLearning.app.project;
             if (exe.realTimeEventNotifier) {
                 exe.realTimeEventNotifier.notify(exe.odeSession, {
@@ -30,23 +28,8 @@ export default class SaveProjectButton {
                     payload: true,
                 });
             }
-
-            // Check if the Properties form is visible and save the package properties if needed
-            const propertiesForm = document.querySelector(
-                '#node-content[node-selected="root"]'
-            );
-            const isVisible =
-                propertiesForm && propertiesForm.offsetParent !== null;
-
-            if (isVisible) {
-                // Wait until project properties are fully saved
-                const ok =
-                    await eXeLearning.app.project.properties.formProperties.saveAction();
-
-                if (!ok) return; // Required fields missing → stop here
-            }
-
-            // Execute final action after saveAction is completed
+            // Offline mode (Electron or browser): download ELP file
+            // Online mode: save to database only
             if (eXeLearning.config.isOfflineInstallation) {
                 eXeLearning.app.menus.navbar.file.downloadProjectEvent();
             } else {

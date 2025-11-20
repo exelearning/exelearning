@@ -54,8 +54,8 @@ export default class OdeTitleMenu {
             title.click();
         });
 
-        title.addEventListener('click', async () => {
-            if (await eXeLearning.app.project.checkOpenIdevice()) return;
+        title.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
 
             if (isEditing) return;
             isEditing = true;
