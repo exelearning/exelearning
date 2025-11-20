@@ -1,0 +1,46 @@
+---
+services:
+
+  exelearning:
+    image: exelearning/exelearning:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - mnt-data:/mnt/data:rw  # Volumen persistente para datos de la aplicación
+      - ./.env:/app/.env
+
+    environment:
+      PRE_CONFIGURE_COMMANDS:
+      POST_CONFIGURE_COMMANDS: |
+        php bin/console app:create-user test@exelearning.net testpassword testuser --no-fail
+    ports:
+      - ${APP_PORT}:8080  # Expone el puerto interno 8080 al puerto definido por APP_PORT en el .env
+
+
+  exelearning-db:
+    image: mariadb:10.5.8
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/mysql # Persistencia de datos de la base de datos
+
+
+  # Servicio para auto-actualizar exelearning cuando una nueva version de la imagen docker sea creada
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    environment:
+      TZ: Atlantic/Canary
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # Necesario para monitorizar otros contenedores
+    # Revisa si actualizaciones todos los días a las 3:00, aplicando cambios automáticamente
+    command: --schedule "0 0 3 * * *" --cleanup exelearning exelearning-db
+
+volumes:
+  mnt-data:  # Volumen para datos persistentes de la aplicación
+  db-data:   # Volumen para datos de PostgreSQL

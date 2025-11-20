@@ -67,14 +67,14 @@ final class NodeRealTimeTest extends BaseE2ETestCase
         ]);
 
         // B sees it (allow extra time for initial propagation)
-        (new Node($a1Title, $workareaB, $a1->getId(), $rootB))->assertVisible($a1Title, 90, true);
+        (new Node($a1Title, $workareaB, $a1->getId(), $rootB))->assertVisible($a1Title, 60, true);
 
         // A renames the node
         $a1Renamed = $a1Title . ' (renamed)';
         $a1->rename($a1Renamed);
         // B sees rename
-        (new Node($a1Renamed, $workareaB, $a1->getId(), $rootB))->assertVisible($a1Renamed, 90, true);
-        (new Node($a1Title, $workareaB, null, $rootB))->assertNotVisible($a1Title, 90, true);
+        (new Node($a1Renamed, $workareaB, $a1->getId(), $rootB))->assertVisible($a1Renamed, 60, true);
+        (new Node($a1Title, $workareaB, null, $rootB))->assertNotVisible($a1Title, 60, true);
 
         // A creates and then deletes another node
         $a2Title = 'RT A2 ' . uniqid();
@@ -83,9 +83,9 @@ final class NodeRealTimeTest extends BaseE2ETestCase
             'parent'   => $rootA,
             'title'    => $a2Title,
         ]);
-        (new Node($a2Title, $workareaB, $a2->getId(), $rootB))->assertVisible($a2Title, 90, true);
+        (new Node($a2Title, $workareaB, $a2->getId(), $rootB))->assertVisible($a2Title, 60, true);
         $a2->delete();
-        (new Node($a2Title, $workareaB, $a2->getId(), $rootB))->assertNotVisible($a2Title, 90, true);
+        (new Node($a2Title, $workareaB, $a2->getId(), $rootB))->assertNotVisible($a2Title, 60, true);
 
         // -----------------------
         // B → A propagation
@@ -99,18 +99,18 @@ final class NodeRealTimeTest extends BaseE2ETestCase
             'title'    => $b1Title,
         ]);
         // A sees it (allow extra time for propagation)
-        (new Node($b1Title, $workareaA, $b1->getId(), $rootA))->assertVisible($b1Title, 90, true);
+        (new Node($b1Title, $workareaA, $b1->getId(), $rootA))->assertVisible($b1Title, 60, true);
 
         // B renames
         $b1Renamed = $b1Title . ' (renamed)';
         $b1->rename($b1Renamed);
         // A sees rename
-        (new Node($b1Renamed, $workareaA, $b1->getId(), $rootA))->assertVisible($b1Renamed, 90, true);
-        (new Node($b1Title, $workareaA, null, $rootA))->assertNotVisible($b1Title, 90, true);
+        (new Node($b1Renamed, $workareaA, $b1->getId(), $rootA))->assertVisible($b1Renamed, 60, true);
+        (new Node($b1Title, $workareaA, null, $rootA))->assertNotVisible($b1Title, 60, true);
 
         // B deletes
         $b1->delete();
-        (new Node($b1Renamed, $workareaA, $b1->getId(), $rootA))->assertNotVisible($b1Renamed, 90, true);
+        (new Node($b1Renamed, $workareaA, $b1->getId(), $rootA))->assertNotVisible($b1Renamed, 60, true);
 
         // Final console checks
         Console::assertNoBrowserErrors($clientA);
