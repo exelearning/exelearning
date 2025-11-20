@@ -18,8 +18,8 @@ export default class PreviewButton {
      *
      */
     addEventClick() {
-        this.previewMenuHeadButton.addEventListener('click', async (event) => {
-            if (await eXeLearning.app.project.checkOpenIdevice()) return;
+        this.previewMenuHeadButton.addEventListener('click', (event) => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
             eXeLearning.app.menus.navbar.utilities.previewEvent();
         });
     }

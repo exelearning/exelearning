@@ -44,8 +44,8 @@ export default class NavbarFile {
      *
      */
     setStyleManagerEvent() {
-        this.button.addEventListener('click', async () => {
-            if (await eXeLearning.app.project.checkOpenIdevice()) return;
+        this.button.addEventListener('click', () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
             this.styleManagerEvent();
         });
     }

@@ -364,8 +364,8 @@ export default class IdevicesEngine {
      *
      */
     addEventDragStartToContentIdevice(element) {
-        element.addEventListener('dragstart', async (event) => {
-            if (await eXeLearning.app.project.checkOpenIdevice()) {
+        element.addEventListener('dragstart', (event) => {
+            if (eXeLearning.app.project.checkOpenIdevice()) {
                 event.preventDefault();
                 return;
             }
@@ -597,8 +597,8 @@ export default class IdevicesEngine {
      *
      */
     addEventDragStartToContentBlock(element) {
-        element.addEventListener('dragstart', async (event) => {
-            if (await eXeLearning.app.project.checkOpenIdevice()) {
+        element.addEventListener('dragstart', (event) => {
+            if (eXeLearning.app.project.checkOpenIdevice()) {
                 event.preventDefault();
                 return;
             }
