@@ -82,17 +82,20 @@ export default class MenuStructureBehaviour {
             `.nav-element > .nav-element-text`
         );
         navLabelElements.forEach((element) => {
-            element.addEventListener('click', (event) => {
+            element.addEventListener('click', async (event) => {
                 event.stopPropagation();
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
-                this.selectNode(element.parentElement).then((nodeElement) => {
-                    if (eXeLearning.app.project.checkOpenIdevice()) return;
-                    // Check dbclick
-                    if (nodeElement && this.dbclickNode) {
-                        this.showModalPropertiesNode();
-                        this.dbclickNode = false;
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
+                this.selectNode(element.parentElement).then(
+                    async (nodeElement) => {
+                        if (await eXeLearning.app.project.checkOpenIdevice())
+                            return;
+                        // Check dbclick
+                        if (nodeElement && this.dbclickNode) {
+                            this.showModalPropertiesNode();
+                            this.dbclickNode = false;
+                        }
                     }
-                });
+                );
             });
         });
     }
@@ -105,8 +108,8 @@ export default class MenuStructureBehaviour {
             `.nav-element:not([nav-id="root"]) > .nav-element-text`
         );
         navLabelElements.forEach((element) => {
-            element.addEventListener('dblclick', (event) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            element.addEventListener('dblclick', async (event) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 event.stopPropagation();
                 this.dbclickNode = true;
             });
@@ -137,8 +140,8 @@ export default class MenuStructureBehaviour {
             `.nav-element > .exe-icon`
         );
         navIconsElements.forEach((element) => {
-            element.addEventListener('click', (event) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            element.addEventListener('click', async (event) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 event.stopPropagation();
                 let navElement = element.parentElement;
                 let node = this.structureEngine.getNode(
@@ -175,8 +178,9 @@ export default class MenuStructureBehaviour {
     addEventNavNewNodeOnclick() {
         this.menuNav
             .querySelector('.button_nav_action.action_add')
-            .addEventListener('click', (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (e) => {
+                if (await eXeLearning.app.project.checkOpenIdevice(true))
+                    return;
                 this.showModalNewNode();
             });
     }
@@ -187,8 +191,8 @@ export default class MenuStructureBehaviour {
     addEventNavPropertiesNodeOnclick() {
         this.menuNav
             .querySelector('.button_nav_action.action_properties')
-            .addEventListener('click', (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (e) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.showModalPropertiesNode();
                 }
@@ -202,8 +206,8 @@ export default class MenuStructureBehaviour {
         let params = { odeSessionId: eXeLearning.app.project.odeSession };
         this.menuNav
             .querySelector('.button_nav_action.action_delete')
-            .addEventListener('click', (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (e) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     eXeLearning.app.api
                         .postCheckUsersOdePage(params)
@@ -229,7 +233,7 @@ export default class MenuStructureBehaviour {
         this.menuNav
             .querySelector('.button_nav_action.action_clone')
             .addEventListener('click', async (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     await this.structureEngine.cloneNodeAndReload(
                         this.nodeSelected.getAttribute('nav-id')
@@ -362,7 +366,7 @@ export default class MenuStructureBehaviour {
         this.menuNav
             .querySelector('.button_nav_action.action_import_idevices')
             .addEventListener('click', async (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.menuNav
                         .querySelector('input.local-ode-file-upload-input')
@@ -387,8 +391,8 @@ export default class MenuStructureBehaviour {
     addEventNavCheckOdePageBrokenLinksOnclick() {
         this.menuNav
             .querySelector('.button_nav_action.action_check_broken_links')
-            .addEventListener('click', (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (e) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     let selectedNav = this.menuNav.querySelector(
                         '#main .toggle-on .selected'
@@ -418,8 +422,8 @@ export default class MenuStructureBehaviour {
     addEventNavMovPrevOnClick() {
         this.menuNav
             .querySelector('.button_nav_action.action_move_prev')
-            .addEventListener('click', (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (e) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodePrev(
                         this.nodeSelected.getAttribute('nav-id')
@@ -434,8 +438,8 @@ export default class MenuStructureBehaviour {
     addEventNavMovNextOnClick() {
         this.menuNav
             .querySelector('.button_nav_action.action_move_next')
-            .addEventListener('click', (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (e) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodeNext(
                         this.nodeSelected.getAttribute('nav-id')
@@ -450,8 +454,8 @@ export default class MenuStructureBehaviour {
     addEventNavMovUpOnClick() {
         this.menuNav
             .querySelector('.button_nav_action.action_move_up')
-            .addEventListener('click', (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (e) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodeUp(
                         this.nodeSelected.getAttribute('nav-id')
@@ -466,8 +470,8 @@ export default class MenuStructureBehaviour {
     addEventNavMovDownOnClick() {
         this.menuNav
             .querySelector('.button_nav_action.action_move_down')
-            .addEventListener('click', (e) => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
+            .addEventListener('click', async (e) => {
+                if (await eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodeDown(
                         this.nodeSelected.getAttribute('nav-id')
@@ -712,7 +716,7 @@ export default class MenuStructureBehaviour {
      */
     addEventDragStart(node) {
         node.addEventListener('dragstart', async (event) => {
-            if (eXeLearning.app.project.checkOpenIdevice()) {
+            if (await eXeLearning.app.project.checkOpenIdevice()) {
                 event.preventDefault();
                 return;
             }
