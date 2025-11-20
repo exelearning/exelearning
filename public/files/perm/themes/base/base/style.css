@@ -165,6 +165,7 @@ body.siteNav-off #siteNav {
 .exe-web-site #siteFooter {
     padding-left: 320px;
     padding-right: 20px;
+    margin-bottom: 20px;
 }
 body.siteNav-off main.page,
 body.siteNav-off #siteFooter {
@@ -503,14 +504,12 @@ button.toggler:focus {
 
 /* Page counter */
 .page-counter {
-    text-align: right;
-}
-.page-counter {
-    margin: 0 0 0.5em 0;
+    display: inline;
+    float: right;
+    margin: 0 0 0.5em 20px;
     font-size: 0.9em;
     color: #777;
     font-weight: 300;
-    background: #fff;
 }
 .page-counter .page-counter-sep {
     margin: 0 0.1em;
