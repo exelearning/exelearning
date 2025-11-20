@@ -1,14 +1,31 @@
 # eXeLearning Deployment Configurations
 
-This directory contains sample Docker Compose configurations for deploying eXeLearning with different database backends.
+This directory contains deployment configurations for eXeLearning.
 
-## Available Configurations
+## Deployment Methods
+
+### Ansible (Automated Deployment)
+
+For automated deployment to Ubuntu servers, see [ansible/README.md](ansible/README.md).
+
+The Ansible playbook deploys eXeLearning with MariaDB and Watchtower (automatic updates) using Docker Compose.
+
+```bash
+cd ansible
+make help               # Show available commands
+make deploy-remote      # Deploy to a remote server
+make up                 # Test with local VM
+```
+
+### Docker Compose (Manual Deployment)
+
+Sample Docker Compose configurations for different database backends:
 
 - **PostgreSQL**: [docker-compose.postgres.yml](docker-compose.postgres.yml)
 - **MariaDB**: [docker-compose.mariadb.yml](docker-compose.mariadb.yml)
 - **SQLite**: [docker-compose.sqlite.yml](docker-compose.sqlite.yml) (simplest option)
 
-## How to Use
+## How to Use Docker Compose
 
 1. Create a deployment directory and copy the desired configuration file:
    ```bash
