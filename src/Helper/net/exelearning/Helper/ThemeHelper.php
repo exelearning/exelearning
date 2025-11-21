@@ -211,6 +211,9 @@ class ThemeHelper
             // Load icons
             $theme->loadIcons($this, $user);
 
+            // Load favicon
+            $theme->loadFavicon($this, $user);
+
             // Set templates
             if (isset($themeConfigArray['template-page'])) {
                 $templatePageFile = $themeDirPath.$themeConfigArray['template-page'];

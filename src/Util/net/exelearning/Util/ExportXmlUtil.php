@@ -1360,6 +1360,20 @@ class ExportXmlUtil
             $styleLink->addAttribute('href', $styleUrl);
         }
 
+        // Add favicon link if available
+        if ($theme->getFaviconUrl()) {
+            $faviconLink = $headCss->addChild('link', '');
+            $faviconLink->addAttribute('rel', 'icon');
+            // Determine type based on file extension
+            $extension = strtolower(pathinfo($theme->getFaviconImg(), PATHINFO_EXTENSION));
+            $typeMap = ['ico' => 'image/x-icon', 'png' => 'image/png'];
+
+            if (isset($typeMap[$extension])) {
+                $faviconLink->addAttribute('type', $typeMap[$extension]);
+            }
+            $faviconLink->addAttribute('href', $resourcesPrefix.Constants::EXPORT_DIR_THEME.Constants::SLASH.$theme->getFaviconImg());
+        }
+
         return $headCss;
     }
 

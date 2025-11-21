@@ -63,10 +63,12 @@ class Constants
     public const THEME_GENERATED_CSS_FILE = 'generated.css';
     public const THEME_CONFIG_FILENAME = 'config.xml';
     public const THEME_ICONS_DIR = 'icons';
+    public const THEME_IMG_DIR = 'img';
     public const THEME_HEADER_IMG_DIR = 'header';
     public const THEME_LOGO_IMG_DIR = 'logo';
     public const THEME_HEADER_IMG = 'header';
     public const THEME_LOGO_IMG = 'logo';
+    public const THEME_FAVICON_FILENAME = 'favicon';
     public const THEME_TYPE_BASE = 'base';
     public const THEME_TYPE_USER = 'user';
     public const THEME_INSTALLABLE = 'downloadable';
