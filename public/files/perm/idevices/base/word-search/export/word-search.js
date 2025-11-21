@@ -17,7 +17,7 @@ var $eXeSopa = {
         green: '#036354',
         red: '#660101',
         white: '#ffffff',
-        yellow: '#f3d55a'
+        yellow: '#f3d55a',
     },
     colors: {
         black: '#1c1b1b',
@@ -25,7 +25,7 @@ var $eXeSopa = {
         green: '#caede8',
         red: '#fbd2d6',
         white: '#ffffff',
-        yellow: '#fcf4d3'
+        yellow: '#fcf4d3',
     },
     instances: [],
     hasSCORMbutton: false,
