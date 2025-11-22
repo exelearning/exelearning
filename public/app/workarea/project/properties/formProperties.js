@@ -838,13 +838,7 @@ export default class FormProperties {
 
         const buttonSave = document.createElement('button');
         buttonSave.setAttribute('type', 'button');
-        buttonSave.classList.add(
-            'confirm',
-            'btn',
-            'btn-primary',
-            'mb-3',
-            'visually-hidden'
-        );
+        buttonSave.classList.add('confirm', 'btn', 'btn-primary', 'mb-3');
         buttonSave.innerHTML = _('Save metadata and properties');
 
         footer.append(buttonSave);
