@@ -27,8 +27,12 @@ a {
 .page-title {
     font-weight: bold;
     color: white;
-    text-shadow: 0 0 4px rgba(21, 32, 61, .8);
     margin-top: 40px;
+}
+
+.exe-web-site .page-title,
+.exe-single-page .page-title {
+    text-shadow: 0 0 4px rgba(21, 32, 61, .8);
 }
 
 .exe-epub .page-title, .exe-scorm .page-title, .exe-ims .page-title {
@@ -1264,7 +1268,7 @@ body.siteNav-off button#searchBarTogger {
     @page {
         margin: 1.5cm;
     }
-    .page-title {
+    .exe-export .page-title {
         text-shadow: none;
     }
     #packageLicense.cc {
