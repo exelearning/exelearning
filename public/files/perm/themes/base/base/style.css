@@ -640,17 +640,6 @@ label[for="teacher-mode-toggler"] {
     a{font-weight:bolder;text-decoration:none!important}
     a[href^=http]:after{content:" <" attr(href) "> "}
     */
-    body #header,
-    body #emptyHeader,
-    body #nodeDecoration {
-        height: auto !important;
-        min-height: 0;
-        border: none;
-        padding: 0;
-    }
-    body #headerContent {
-        padding-top: 40px;
-    }
     #packageLicense.cc {
         background: none;
         padding-left: 0;
