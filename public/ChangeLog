@@ -31,7 +31,8 @@
 - Updated deployment documentation, including new Ansible deployment instructions and Keycloak integration
 - Translations revision and cleanup
 - Complete Catalan (CA), Basque (EU), Spanish (ES), Galician (GL), and Valencian (VA) translations
-- Added automatic Portuguese, Romanian, and Esperanto translations
+- New Portuguese and French translations (partially automated).
+- Automatic Romanian and Esperanto translations.
 
 ### Fixed
 
