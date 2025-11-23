@@ -1361,9 +1361,9 @@ class ExportXmlUtil
         }
 
         // Add favicon link if available
+        $faviconLink = $headCss->addChild('link', '');
+        $faviconLink->addAttribute('rel', 'icon');
         if ($theme->getFaviconUrl()) {
-            $faviconLink = $headCss->addChild('link', '');
-            $faviconLink->addAttribute('rel', 'icon');
             // Determine type based on file extension
             $extension = strtolower(pathinfo($theme->getFaviconImg(), PATHINFO_EXTENSION));
             $typeMap = ['ico' => 'image/x-icon', 'png' => 'image/png'];
@@ -1372,6 +1372,9 @@ class ExportXmlUtil
                 $faviconLink->addAttribute('type', $typeMap[$extension]);
             }
             $faviconLink->addAttribute('href', $resourcesPrefix.Constants::EXPORT_DIR_THEME.Constants::SLASH.$theme->getFaviconImg());
+        } else {
+            $faviconLink->addAttribute('type', 'image/x-icon');
+            $faviconLink->addAttribute('href', $resourcesPrefix.Constants::EXPORT_DIR_PUBLIC_LIBS.Constants::SLASH.Constants::THEME_FAVICON_FILENAME.'.ico');
         }
 
         return $headCss;

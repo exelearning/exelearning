@@ -979,6 +979,7 @@ class OdeExportService implements OdeExportServiceInterface
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common.js',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'jquery',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'bootstrap',
+            Constants::THEME_FAVICON_FILENAME.'.ico',
         ];
         $filesToCopy = array_merge($filesToCopy, $libraries);
 
