@@ -18,9 +18,9 @@ export default class ShareProjectButton {
      *
      */
     addEventClick() {
-        this.shareMenuHeadButton.addEventListener('click', async (event) => {
+        this.shareMenuHeadButton.addEventListener('click', (event) => {
             // First save content (make propietary of the content)
-            if (await eXeLearning.app.project.checkOpenIdevice()) return;
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
             eXeLearning.app.project.save().then(() => {
                 this.copyUserSessionId();
             });

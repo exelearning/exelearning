@@ -18,8 +18,8 @@ export default class DownloadProjectButton {
      *
      */
     addEventClick() {
-        this.downloadMenuHeadButton.addEventListener('click', async (event) => {
-            if (await eXeLearning.app.project.checkOpenIdevice()) return;
+        this.downloadMenuHeadButton.addEventListener('click', (event) => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
             eXeLearning.app.menus.navbar.file.downloadProjectEvent();
         });
     }
