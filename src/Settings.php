@@ -87,6 +87,7 @@ class Settings
         'es' => 'Español',
         'eo' => 'Esperanto',
         'eu' => 'Euskara',
+        'fr' => 'Français',
         'gl' => 'Galego',
         'pt' => 'Português',
         'ro' => 'Română',
