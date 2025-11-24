@@ -1,0 +1,16 @@
+#cloud-config
+# Cloud-init configuration for eXeLearning VM
+
+# Add SSH authorized keys for the default ubuntu user
+users:
+  - name: ubuntu
+    ssh_authorized_keys:
+      - SSH_PUBLIC_KEY_PLACEHOLDER
+
+# Ensure SSH is enabled and running
+packages:
+  - openssh-server
+
+runcmd:
+  - systemctl enable ssh
+  - systemctl start ssh

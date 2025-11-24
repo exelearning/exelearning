@@ -119,9 +119,13 @@ body.exe-epub .package-title{
     padding-left: 32px;
 }
 
-body.exe-scorm .package-subtitle + .page-title,
-body.exe-ims .package-subtitle + .page-title,
-body.exe-epub .package-subtitle + .page-title{
+.exe-web-site .package-header {
+    width: 100%;
+}
+
+body.exe-scorm:has(.package-subtitle) .page-title,
+body.exe-ims:has(.package-subtitle) .page-title,
+body.exe-epub:has(.package-subtitle) .page-title{
     margin-top: 30px;
     color: #fff;
 }
@@ -866,6 +870,7 @@ body.siteNav-off button#searchBarTogger {
 #teacher-mode-toggler-wrapper {
     float: none;
     position: absolute;
+    top: 9px;
     right: 300px;
     display: flex;
     align-items: center;
@@ -1236,17 +1241,6 @@ table {
     }
     @page {
         margin: 1.5cm;
-    }
-    body #header,
-    body #emptyHeader,
-    body #nodeDecoration {
-        height: auto !important;
-        min-height: 0;
-        border: none;
-        padding: 0;
-    }
-    body #headerContent {
-        padding-top: 40px;
     }
     #packageLicense.cc {
         background: none;
