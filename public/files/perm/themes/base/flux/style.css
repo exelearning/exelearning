@@ -30,6 +30,11 @@ a {
     margin-top: 40px;
 }
 
+.exe-web-site .page-title,
+.exe-single-page .page-title {
+    text-shadow: 0 0 4px rgba(21, 32, 61, .8);
+}
+
 .exe-epub .page-title, .exe-scorm .page-title, .exe-ims .page-title {
     color: #282573;
 }
@@ -48,9 +53,9 @@ a {
     width: calc(100% - 550px);
 }
 
-.exe-scorm .page header .page-title,
-.exe-ims .page header .page-title,
-.exe-epub .page header .page-title {
+.exe-scorm .page .page-header .page-title,
+.exe-ims .page .page-header .page-title,
+.exe-epub .page .page-header .page-title {
     width: 100%;
 }
 
@@ -132,6 +137,10 @@ body.exe-export.exe-scorm,
 body.exe-export.exe-ims,
 body.exe-export.exe-epub {
     padding: 0;
+}
+
+.exe-web-site .package-header {
+    width: 100%;
 }
 
 body.exe-scorm .package-title,
@@ -900,6 +909,9 @@ body.siteNav-off button#searchBarTogger {
     background-position: right center;
     background-size: 28px;
 }
+.exe-single-page #teacher-mode-toggler-wrapper {
+    right: 20px;
+}
 #teacher-mode-toggler-wrapper .form-check-label {
     position: absolute;
     clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
@@ -1256,16 +1268,8 @@ body.siteNav-off button#searchBarTogger {
     @page {
         margin: 1.5cm;
     }
-    body #header,
-    body #emptyHeader,
-    body #nodeDecoration {
-        height: auto !important;
-        min-height: 0;
-        border: none;
-        padding: 0;
-    }
-    body #headerContent {
-        padding-top: 40px;
+    .exe-export .page-title {
+        text-shadow: none;
     }
     #packageLicense.cc {
         background: none;

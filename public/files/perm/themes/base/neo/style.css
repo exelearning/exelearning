@@ -63,9 +63,9 @@ a {
     width: 100%;
 }
 
-.exe-scorm .page header .page-title,
-.exe-ims .page header .page-title,
-.exe-epub .page header .page-title {
+.exe-scorm .page .page-header .page-title,
+.exe-ims .page .page-header .page-title,
+.exe-epub .page .page-header .page-title {
     width: 100%;
 }
 
@@ -138,6 +138,10 @@ body.exe-export.exe-scorm,
 body.exe-export.exe-ims,
 body.exe-export.exe-epub {
     padding: 0;
+}
+
+.exe-web-site .package-header {
+    width: 100%;
 }
 
 body.exe-scorm .package-title,
@@ -1242,17 +1246,6 @@ body.siteNav-off button#searchBarTogger {
     }
     @page {
         margin: 1.5cm;
-    }
-    body #header,
-    body #emptyHeader,
-    body #nodeDecoration {
-        height: auto !important;
-        min-height: 0;
-        border: none;
-        padding: 0;
-    }
-    body #headerContent {
-        padding-top: 40px;
     }
     #packageLicense.cc {
         background: none;

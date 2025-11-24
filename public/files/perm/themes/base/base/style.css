@@ -128,19 +128,15 @@ body.exe-web-site {
 #siteNav {
     float: left;
     background: #f6f6f6;
-    border-right: 1px solid #f0f0f0;
+    _border-right: 1px solid #f0f0f0;
     width: 300px;
     padding-top: 66px;
     padding-left: 8px;
 }
-#siteNav:after {
-    content: "";
-    width: 300px;
-    height: 100vh;
-    background: #f6f6f6;
-    position: absolute;
-    left: 0;
-    border-right: 1px solid #f0f0f0;
+.exe-web-site .exe-content {
+    box-shadow: 
+        inset 300px 0 0 0 #f6f6f6,
+        inset 301px 0 0 0 #f0f0f0;
 }
 #siteFooterExtra {
     margin-bottom: 2em;
@@ -156,6 +152,9 @@ body.exe-web-site {
 body.siteNav-off #siteNav {
     display: none;
 }
+body.siteNav-off .exe-content {
+    box-shadow: none;
+}
 .exe-web-site main.page {
     padding-top: 4.5em;
     padding-left: 320px;
@@ -163,8 +162,7 @@ body.siteNav-off #siteNav {
     /* min-height: calc(100vh - 300px); */
 }
 .exe-web-site #siteFooter {
-    padding-left: 320px;
-    padding-right: 20px;
+    padding:  20px 20px 20px 320px;
 }
 body.siteNav-off main.page,
 body.siteNav-off #siteFooter {
@@ -244,9 +242,8 @@ button.toggler {
     transition: background-color 0.5s ease;
 }
 .nav-buttons span.nav-button {
-    opacity: 0.5;
-    filter: grayscale(1);
     cursor: not-allowed;
+    background-color: #b7b7b7;
 }
 .nav-buttons .nav-button-left {
     background-position: -80px 0;
@@ -503,14 +500,12 @@ button.toggler:focus {
 
 /* Page counter */
 .page-counter {
-    text-align: right;
-}
-.page-counter {
-    margin: 0 0 0.5em 0;
+    display: inline;
+    float: right;
+    margin: 0 0 0.5em 20px;
     font-size: 0.9em;
     color: #777;
     font-weight: 300;
-    background: #fff;
 }
 .page-counter .page-counter-sep {
     margin: 0 0.1em;
@@ -558,18 +553,22 @@ label[for="teacher-mode-toggler"] {
 
 /* Responsive design */
 @media (max-width: 767.98px) {
-    #siteNav,
-    #siteNav:after {
-        width: 255px;
+    #siteNav {
+        width: 251px;
+    }
+    .exe-web-site .exe-content {
+        box-shadow: 
+            inset 251px 0 0 0 #f6f6f6,
+            inset 252px 0 0 0 #f0f0f0;
     }
     #siteNav a {
-        max-width: 230px;
+        max-width: 235px;
     }
     button#siteNavToggler {
-        left: 230px;
+        left: 232px;
     }
     button#searchBarTogger {
-        left: 280px;
+        left: 282px;
     }
     .exe-web-site main.page,
     .exe-web-site #siteFooter {
@@ -585,8 +584,8 @@ label[for="teacher-mode-toggler"] {
         min-height: 0 !important;
         height: auto !important;
     }
-    #siteNav:after {
-        display: none;
+    .exe-web-site .exe-content {
+        box-shadow: none;
     }
     body.exe-web-site main.page {
         padding-top: 2.5em;
@@ -641,17 +640,6 @@ label[for="teacher-mode-toggler"] {
     a{font-weight:bolder;text-decoration:none!important}
     a[href^=http]:after{content:" <" attr(href) "> "}
     */
-    body #header,
-    body #emptyHeader,
-    body #nodeDecoration {
-        height: auto !important;
-        min-height: 0;
-        border: none;
-        padding: 0;
-    }
-    body #headerContent {
-        padding-top: 40px;
-    }
     #packageLicense.cc {
         background: none;
         padding-left: 0;

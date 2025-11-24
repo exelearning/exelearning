@@ -123,7 +123,7 @@ var myTheme = {
     // function that move the h2 outside the header
     movePageTitle: function () {
         const tryMove = () => {
-            const $header = $('.page > header.page-header');
+            const $header = $('.main-header .page-header');
             const $title = $header.find('.page-title').first();
 
             // Search container of content

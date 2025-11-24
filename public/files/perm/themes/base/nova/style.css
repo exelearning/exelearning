@@ -79,7 +79,7 @@ main header:not(#head) {
 body:has(.package-subtitle) .package-title,
 body.exe-single-page:has(.package-subtitle) .package-node h1 {
     position:relative;
-    top: -.2em;
+    top: -.33em;
 }
 
 .page > header {
@@ -118,6 +118,10 @@ body.exe-web-site {
     padding: 0;
 }
 
+.exe-web-site .package-header {
+    width: 100%;
+}
+
 body.exe-scorm .package-title,
 body.exe-ims .package-title,
 body.exe-epub .package-title{
@@ -129,9 +133,9 @@ body.exe-epub .package-title{
     color: #777;
 }
 
-body.exe-scorm .package-subtitle + .page-title,
-body.exe-ims .package-subtitle + .page-title,
-body.exe-epub .package-subtitle + .page-title{
+body.exe-scorm:has(.package-subtitle) .page-title,
+body.exe-ims:has(.package-subtitle) .page-title,
+body.exe-epub:has(.package-subtitle) .page-title{
     margin-top: 30px;
 }
 
@@ -1240,17 +1244,6 @@ table {
     }
     @page {
         margin: 1.5cm;
-    }
-    body #header,
-    body #emptyHeader,
-    body #nodeDecoration {
-        height: auto !important;
-        min-height: 0;
-        border: none;
-        padding: 0;
-    }
-    body #headerContent {
-        padding-top: 40px;
     }
     #packageLicense.cc {
         background: none;
