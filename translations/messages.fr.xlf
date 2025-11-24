@@ -12023,7 +12023,7 @@
       </trans-unit>
       <trans-unit id="lgtXQPh" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.</source>
-        <target>~Vous devez revoir %s&percnt; du contenu de l’activité avant de remplir le questionnaire.</target>
+        <target><![CDATA[~Vous devez revoir %s&percnt; du contenu de l’activité avant de remplir le questionnaire.]]></target>
       </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
@@ -12883,7 +12883,7 @@
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>~Vous devez examiner %s&percnt; du contenu de l'activité avant de remplir le questionnaire.</target>
+        <target><![CDATA[~Vous devez examiner %s&percnt; du contenu de l'activité avant de remplir le questionnaire.]]></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
