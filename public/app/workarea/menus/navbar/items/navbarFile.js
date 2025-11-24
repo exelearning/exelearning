@@ -1293,7 +1293,8 @@ export default class NavbarFile {
                 recentProjectLink.classList.add('dropdown-item');
                 recentProjectLink.setAttribute('href', '#');
 
-                recentProjectLink.addEventListener('click', () => {
+                recentProjectLink.addEventListener('click', (event) => {
+                    event.preventDefault();
                     let odeSessionId = eXeLearning.app.project.odeSession;
                     let odeVersionId = eXeLearning.app.project.odeVersion;
                     let odeId = eXeLearning.app.project.odeId;

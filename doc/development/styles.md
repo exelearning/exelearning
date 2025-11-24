@@ -96,6 +96,8 @@ Example usage in CSS:
 }
 ```
 
+You can also customize the favicon of the exports by including a `favicon.ico` or `favicon.png` file inside the `img/` folder.
+
 ---
 
 ## CSS and Exported Content

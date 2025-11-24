@@ -1,5 +1,77 @@
 # CHANGELOG
 
+## v3.0.1 – 2025-11-26
+
+### Added
+
+- New dark mode preference
+- Simultaneous editing of iDevice and box titles
+- Support for opening editable EPUB files
+- Progress dialog added for uploads and imports
+- Full Styles review and documentation
+- Allow custom favicons in styles
+- New project subtitle property
+- New "Hide title" option in page settings
+- New "Highlight page" option in page settings with styles compatibility
+- New Mermaid diagrams plugin for TinyMCE
+- Allow text/xml files (like .gpx) and .gltf files
+- eXeLearning version added to the export structure
+- Extract sources for video, audio, images and pictures; improved multimedia handling
+- Default profile image added if no internet connection
+- Support for converting old .elp files via REST API
+- Support for exporting contents via REST API
+- Domain used for generating temporary emails for CAS/OpenID users is now configurable
+- Improvements for binded directories on Windows
+- New `make.bat` file for Windows
+- Upgraded default proxy settings
+- Increased default minimum values for `client_max_body_size`, `post_max_size`, and `upload_max_filesize`
+- Added new environment variables: `memory_limit=512M`, `max_execution_time=600`, and `max_input_time=600` to raise PHP memory and execution time limits
+- Added new environment variables (`APP_ENV`, `APP_PORT`, `APP_ONLINE_MODE`, `APP_AUTH_METHODS`, and default test user credentials) to the Dockerfile for improved configuration and onboarding
+- Align asset paths with `BASE_PATH` when deploying behind an Nginx subdirectory
+- Updated deployment documentation, including new Ansible deployment instructions and Keycloak integration
+- Translations revision and cleanup
+- Complete Catalan (CA), Basque (EU), Spanish (ES), Galician (GL), and Valencian (VA) translations
+- New Portuguese and French translations (partially automated).
+- Automatic Romanian and Esperanto translations.
+
+### Fixed
+
+- ".elpx" extension missing in the Save As dialog
+- Multiple Word Search iDevice instances per page
+- Improved Crossword iDevice performance and word placement
+- Optimizations for handling large files (over 100MB) in the ODE import workflow
+- Metadata error in profiler when using MariaDB
+- TinyMCE image/media plugin bugs
+- TinyMCE fullscreen mode z-index issue (last line selection)
+
+### Upgraded
+
+- Upgraded base image to `erseco/alpine-php-webserver:3.22.2` with PHP/Symfony performance tweaks
+- doctrine/doctrine-bundle: 2.18.0 → 3.0.0
+- doctrine/doctrine-migrations-bundle: 3.5.0 → 3.7.0
+- doctrine/orm: 3.5.2 → 3.5.3
+- electron: 38.5.0 → 39.0.0
+- friendsofphp/php-cs-fixer: 3.88.2 → 3.89.2
+- symfony/css-selector: 7.3.0 → 7.3.6
+- symfony/debug-bundle: 7.3.4 → 7.3.5
+- symfony/console: 7.3.4 → 7.3.5
+- symfony/framework-bundle: 7.3.5 → 7.3.6
+- symfony/http-foundation: 7.3.5 → 7.3.7 (in the composer group across 1 directory)
+- symfony/intl: 7.3.4 → 7.3.5
+- symfony/mailer: 7.3.4 → 7.3.5
+- rector/rector: 2.2.6 → 2.2.8
+- symfony/serializer: 7.3.4 → 7.3.5
+- symfony/validator: 7.3.4 → 7.3.7
+- symfony/yaml: 7.3.3 → 7.3.5
+
+### Removed
+
+- Doctrine deprecations
+- "Include a copy of the source file" preference
+- Old "- Page title -" JavaScript solution for highlighted pages
+
+---
+
 ## v3.0.0 – 2025-10-28
 
 - First official release of eXeLearning 3.0

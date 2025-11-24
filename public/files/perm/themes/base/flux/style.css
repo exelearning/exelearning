@@ -1,21 +1,21 @@
 @charset "UTF-8";
 @font-face {
     font-family: "Fredoka";
-    src: url("fonts/Fredoka-Regular.woff") format("woff");
+    src: url(fonts/Fredoka-Regular.woff) format("woff");
     font-weight: 400;
     font-style: normal;
 }
 
 @font-face {
     font-family: "Fredoka";
-    src: url("fonts/Fredoka-SemiBold.woff") format("woff");
+    src: url(fonts/Fredoka-SemiBold.woff) format("woff");
     font-weight: 600;
     font-style: normal;
 }
 
 @font-face {
     font-family: "Fredoka";
-    src: url("fonts/Fredoka-Bold.woff") format("woff");
+    src: url(fonts/Fredoka-Bold.woff) format("woff");
     font-weight: 700;
     font-style: normal;
 }
@@ -368,11 +368,6 @@ body.exe-export.exe-epub .exe-content {
     display: none;
 }
 
-#siteFooterExtra {
-    margin-bottom: 2em;
-    color: #555;
-    font-size: 0.95em;
-}
 #siteNav .other-section {
     display: none;
 }
