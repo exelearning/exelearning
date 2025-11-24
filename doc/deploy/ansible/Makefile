@@ -33,16 +33,20 @@ launch-vm: check-multipass
 	@if multipass info $(MULTIPASS_NAME) >/dev/null 2>&1; then \
 		echo "⚠️  VM '$(MULTIPASS_NAME)' already exists. Skipping launch."; \
 	else \
-		echo "🚀 Launching VM '$(MULTIPASS_NAME)'..."; \
-		multipass launch 24.04 --name $(MULTIPASS_NAME) --memory 2G --cpus 2 --disk 10G; \
-		echo "🔑 Configuring SSH access..."; \
+		echo "🔑 Preparing cloud-init configuration..."; \
 		if [ -f ~/.ssh/id_rsa.pub ]; then \
-			multipass exec $(MULTIPASS_NAME) -- bash -c "echo '$$(cat ~/.ssh/id_rsa.pub)' >> ~/.ssh/authorized_keys"; \
-		elif [ -f ~/.ssh/id_ed25519.pub ]; then \
-			multipass exec $(MULTIPASS_NAME) -- bash -c "echo '$$(cat ~/.ssh/id_ed25519.pub)' >> ~/.ssh/authorized_keys"; \
+			SSH_KEY=$$(cat ~/.ssh/id_rsa.pub); \
 		else \
-			echo "⚠️  No SSH public key found. You may need to use 'multipass shell $(MULTIPASS_NAME)' instead."; \
+			echo "❌ No SSH public key found (id_rsa.pub)"; \
+			echo "Generate it with ssh-keygen"; \
+			exit 1; \
 		fi; \
+		sed "s|SSH_PUBLIC_KEY_PLACEHOLDER|$$SSH_KEY|" cloud-init.yaml > cloud-init-generated.yaml; \
+		echo "🚀 Launching VM '$(MULTIPASS_NAME)' with cloud-init..."; \
+		multipass launch 24.04 --name $(MULTIPASS_NAME) --memory 2G --cpus 2 --disk 10G --cloud-init cloud-init-generated.yaml; \
+		echo "⏳ Waiting for cloud-init to complete..."; \
+		sleep 15; \
+		rm -f cloud-init-generated.yaml; \
 	fi
 
 # Get VM IP address
@@ -54,7 +58,17 @@ up: check-ansible launch-vm deploy-virtual
 
 # Run playbook on the virtual machine
 deploy-virtual: check-ansible launch-vm
-	ansible-playbook -i "$$(multipass info $(MULTIPASS_NAME) | awk '/IPv4/ {print $$2}')," -u $(MULTIPASS_USER) $(PLAYBOOK_FILE) \
+	@echo "⏳ Ensuring SSH connectivity before Ansible deployment..."
+	@VM_IP=$$(multipass info $(MULTIPASS_NAME) | awk '/IPv4/ {print $$2}'); \
+	for i in 1 2 3 4 5; do \
+		if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o BatchMode=yes $(MULTIPASS_USER)@$$VM_IP "echo ready" >/dev/null 2>&1; then \
+			echo "✅ SSH connection successful!"; \
+			break; \
+		fi; \
+		echo "  Waiting for SSH... (attempt $$i/5)"; \
+		sleep 3; \
+	done; \
+	ansible-playbook -i "$$VM_IP," -u $(MULTIPASS_USER) $(PLAYBOOK_FILE) \
 		--extra-vars "use_https=false"
 
 # SSH access to the VM

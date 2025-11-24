@@ -12015,7 +12015,7 @@
       </trans-unit>
       <trans-unit id="lgtXQPh" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.</source>
-        <target>~Trebuie să revizuiți %s&percnt; din conținutul activității înainte de a completa chestionarul.  </target>
+        <target><![CDATA[~Trebuie să revizuiți %s&percnt; din conținutul activității înainte de a completa chestionarul.]]></target>
       </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
@@ -12875,7 +12875,7 @@
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>~Trebuie să revizuiți %s&percnt; din conținutul activității înainte de a completa chestionarul.</target>
+        <target><![CDATA[~Trebuie să revizuiți %s&percnt; din conținutul activității înainte de a completa chestionarul.]]></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
