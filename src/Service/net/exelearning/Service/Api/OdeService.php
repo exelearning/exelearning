@@ -2487,7 +2487,7 @@ class OdeService implements OdeServiceInterface
             Util::checkPhpZipExtension();
             FileUtil::extractZipToOptimized($elpFilePath, $importDir, 100);
 
-            [$contentFilePath, $isNewOdeXml] = $this->getElpContentFilePath($importDir);
+            [$contentFilePath, $isNewOdeXml, $isEPUB] = $this->getElpContentFilePath($importDir);
             $elpContentFileContent = FileUtil::getFileContentOptimized($contentFilePath, 100);
 
             $tempSessionId = Util::generateId();
@@ -2512,7 +2512,13 @@ class OdeService implements OdeServiceInterface
                 $this->persistNavStructureTree($odeNavStructureSync);
             }
 
+            // For EPUB files, the base directory should point to the EPUB subdirectory
+            if ($isEPUB) {
+                $importDir = $importDir.DIRECTORY_SEPARATOR.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB;
+            }
+
             $distBaseDir = rtrim($importDir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+
             $contentResourcesDir = $distBaseDir.FileUtil::getPathFromDirStructureArray(
                 Constants::PERMANENT_SAVE_ODE_DIR_STRUCTURE,
                 Constants::PERMANENT_SAVE_CONTENT_RESOURCES_DIRNAME
@@ -2738,14 +2744,15 @@ class OdeService implements OdeServiceInterface
     private function getElpContentFilePath(string $importDir): array
     {
         $candidates = [
-            [$importDir.DIRECTORY_SEPARATOR.Constants::PERMANENT_SAVE_CONTENT_FILENAME, true],
-            [$importDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V3, false],
-            [$importDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V2, false],
+            [$importDir.DIRECTORY_SEPARATOR.Constants::PERMANENT_SAVE_CONTENT_FILENAME, true, false],
+            [$importDir.DIRECTORY_SEPARATOR.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB.DIRECTORY_SEPARATOR.Constants::PERMANENT_SAVE_CONTENT_FILENAME, true, true],
+            [$importDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V3, false, false],
+            [$importDir.DIRECTORY_SEPARATOR.Constants::OLD_PERMANENT_SAVE_CONTENT_FILENAME_V2, false, false],
         ];
 
-        foreach ($candidates as [$path, $isNew]) {
+        foreach ($candidates as [$path, $isNew, $isEPUB]) {
             if (file_exists($path)) {
-                return [$path, $isNew];
+                return [$path, $isNew, $isEPUB];
             }
         }
 

@@ -663,7 +663,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         inputMultiple.multiple = true;
         inputMultiple.name = 'multiple-local-ode-file-upload';
         inputMultiple.id = 'multiple-local-modal-ode-file-upload';
-        inputMultiple.accept = '.elp,.zip';
+        inputMultiple.accept = '.elp,.zip,.epub';
         inputMultiple.addEventListener('change', () => {
             if (inputMultiple.files?.length) {
                 // Validate each file size BEFORE attempting upload
