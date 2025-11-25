@@ -12,7 +12,7 @@
         border-radius: var(--radius);
         opacity: 1;
         min-height: 40px !important;
-        padding: 18px 36px;
+        padding: 18px 20px;
         border: 1px solid var(--gray-100) !important;
         &.loading {
             opacity: 0;
@@ -20,8 +20,6 @@
         input {
             &.box-title {
                 text-align: left;
-                font-weight: bold;
-                font-size: var(--h2-fs);
                 padding-left: var(--margin-s);
             }
         }
@@ -98,10 +96,6 @@
             border: 0;
             background: none;
             font-family: var(--icons-ff);
-            img {
-                width: auto;
-                height: 30px;
-            }
             &.box-icon {
                 &:hover {
                     img {
@@ -148,10 +142,6 @@
             justify-content: flex-start;
             align-items: center;
             .box-title {
-                color: var(--text);
-                font-size: 16px;
-                font-weight: 600;
-                padding: 4px 8px;
                 :empty {
                     min-width: 50%;
                     min-height: 24px;
