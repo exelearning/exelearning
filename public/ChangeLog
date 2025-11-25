@@ -13,7 +13,7 @@
 - New project subtitle property
 - New "Hide title" option in page settings
 - New "Highlight page" option in page settings with styles compatibility
-- New Mermaid diagrams plugin for TinyMCE
+- New Mermaid diagrams plugin added to the TinyMCE Insert menu
 - Form iDevice improvements: edition/form.js refactor and new feedback/hint options
 - Responsive improvements in Puzzle and Word Search iDevices
 - Allow text/xml files (like .gpx) and .gltf files
@@ -32,9 +32,9 @@
 - Align asset paths with `BASE_PATH` when deploying behind an Nginx subdirectory
 - Updated deployment documentation, including new Ansible deployment instructions and Keycloak integration
 - Translations revision and cleanup
-- Complete Catalan (CA), Basque (EU), Spanish (ES), Galician (GL), and Valencian (VA) translations
-- New Portuguese and French translations (partially automated).
-- Automatic Romanian and Esperanto translations.
+- Complete translations: Catalan (CA), Basque (EU), Galician (GL), Spanish (ES), Romanian (RO), and Valencian (VA)
+- New Portuguese and French translations (partially automated)
+- Automatic Esperanto translation
 
 ### Fixed
 
