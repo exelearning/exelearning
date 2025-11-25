@@ -14,6 +14,8 @@
 - New "Hide title" option in page settings
 - New "Highlight page" option in page settings with styles compatibility
 - New Mermaid diagrams plugin for TinyMCE
+- Form iDevice improvements: edition/form.js refactor and new feedback/hint options
+- Responsive improvements in Puzzle and Word Search iDevices
 - Allow text/xml files (like .gpx) and .gltf files
 - eXeLearning version added to the export structure
 - Extract sources for video, audio, images and pictures; improved multimedia handling
@@ -36,10 +38,12 @@
 
 ### Fixed
 
+- Optimizations for handling large files (over 100MB) in the ODE import workflow
 - ".elpx" extension missing in the Save As dialog
 - Multiple Word Search iDevice instances per page
 - Improved Crossword iDevice performance and word placement
-- Optimizations for handling large files (over 100MB) in the ODE import workflow
+- Floated images overflowing in Form iDevice questions
+- SCORM fixes: improved score recovery and better suspend_data handling
 - Metadata error in profiler when using MariaDB
 - TinyMCE image/media plugin bugs
 - TinyMCE fullscreen mode z-index issue (last line selection)
@@ -47,18 +51,24 @@
 ### Upgraded
 
 - Upgraded base image to `erseco/alpine-php-webserver:3.22.2` with PHP/Symfony performance tweaks
+- actions/checkout: 5 → 6
+- api-platform/core: 4.2.1 → 4.2.6
 - doctrine/doctrine-bundle: 2.18.0 → 3.0.0
 - doctrine/doctrine-migrations-bundle: 3.5.0 → 3.7.0
 - doctrine/orm: 3.5.2 → 3.5.3
 - electron: 38.5.0 → 39.0.0
-- friendsofphp/php-cs-fixer: 3.88.2 → 3.89.2
+- friendsofphp/php-cs-fixer: 3.88.2 → 3.90.0
+- mariadb: 11.2.2 → 12.1.2 in /doc/deploy
+- symfony/browser-kit: 7.3.2 → 7.3.6
 - symfony/css-selector: 7.3.0 → 7.3.6
 - symfony/debug-bundle: 7.3.4 → 7.3.5
 - symfony/console: 7.3.4 → 7.3.5
+- symfony/flex: 2.8.2 → 2.10.0
 - symfony/framework-bundle: 7.3.5 → 7.3.6
 - symfony/http-foundation: 7.3.5 → 7.3.7 (in the composer group across 1 directory)
 - symfony/intl: 7.3.4 → 7.3.5
 - symfony/mailer: 7.3.4 → 7.3.5
+- symfony/maker-bundle: 1.64.0 → 1.65.0
 - rector/rector: 2.2.6 → 2.2.8
 - symfony/serializer: 7.3.4 → 7.3.5
 - symfony/validator: 7.3.4 → 7.3.7
