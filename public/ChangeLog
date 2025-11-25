@@ -58,7 +58,6 @@
 - doctrine/orm: 3.5.2 → 3.5.3
 - electron: 38.5.0 → 39.0.0
 - friendsofphp/php-cs-fixer: 3.88.2 → 3.90.0
-- mariadb: 11.2.2 → 12.1.2 in /doc/deploy
 - symfony/browser-kit: 7.3.2 → 7.3.6
 - symfony/css-selector: 7.3.0 → 7.3.6
 - symfony/debug-bundle: 7.3.4 → 7.3.5
