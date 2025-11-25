@@ -639,8 +639,8 @@ var $eXePuzzle = {
                 <p>${ms}</p>
             </div>
             <div class="PZLP-CompletedButtons">
-                <a href="#" class="PZLP-RepeatPuzzle">${mOptions.msgs.msgsRepeat}</a>
-                <a href="#" class="PZLP-NextPuzzle">${mr}</a>
+                <button type="button" class="PZLP-RepeatPuzzle btn btn-primary">${mOptions.msgs.msgsRepeat}</button>
+                <button type="button" class="PZLP-NextPuzzle btn btn-primary">${mr}</button>
             </div>
         </div>
     </div>`;
@@ -1391,11 +1391,23 @@ var $eXePuzzle = {
                 document.msFullscreenElement === container)
         );
 
-        let baseWidth = isFS
-            ? $('#pzlMultimedia-' + instance).width() || $parent.width() || 900
-            : $parent.width() > 900
-              ? 900
-              : $parent.width();
+        const isMobile = $eXePuzzle.isMobile();
+        const parentWidth = $parent.width() || 900;
+
+        // En móviles, usar el ancho completo disponible
+        // En desktop, limitar a 900px
+        let baseWidth;
+        if (isFS) {
+            baseWidth =
+                $('#pzlMultimedia-' + instance).width() || parentWidth || 900;
+        } else if (isMobile) {
+            // En móviles, usar el ancho completo del contenedor, con un mínimo de 280px
+            baseWidth = Math.max(280, parentWidth);
+        } else {
+            // En desktop, limitar a 900px
+            baseWidth = parentWidth > 900 ? 900 : parentWidth;
+        }
+
         if (!baseWidth || baseWidth <= 0) baseWidth = 900;
 
         const wDiv = baseWidth,

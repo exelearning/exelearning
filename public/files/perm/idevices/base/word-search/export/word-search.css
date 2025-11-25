@@ -1041,7 +1041,56 @@ div:fullscreen .SPP-LinkMinimize {
     margin: 0 !important;
 }
 
-@media only screen and (min-width: 600px) {
+@media only screen and (max-width: 600px) {
+    .SPP-PuzzleSquare {
+        height: 1.6rem;
+        width: 1.6rem;
+        font: 1.1rem sans-serif;
+    }
+    
+    .SPP-Puzzle {
+        padding: 0;
+    }
+}
+
+@media only screen and (max-width: 400px) {
+    .SPP-PuzzleSquare {
+        height: 1.3rem;
+        width: 1.3rem;
+        font: 0.9rem sans-serif;
+    }
+    
+    .SPP-Puzzle {
+        padding: 0;
+    }
+}
+
+@media only screen and (max-width: 340px) {
+    .SPP-PuzzleSquare {
+        height: 1.1rem;
+        width: 1.1rem;
+        font: 0.75rem sans-serif;
+    }
+    
+    .SPP-Puzzle {
+        padding: 0;
+    }
+}
+
+@media only screen and (max-width: 280px) {
+    .SPP-PuzzleSquare {
+        height: 0.9rem;
+        width: 0.9rem;
+        font: 0.65rem sans-serif;
+    }
+    
+    .SPP-Puzzle {
+        padding: 0;
+        border-width: 0.5px;
+    }
+}
+
+@media only screen and (min-width: 601px) {
     .SPP-Puzzle {
         padding: 1rem;
     }

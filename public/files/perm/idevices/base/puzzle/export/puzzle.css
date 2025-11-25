@@ -912,6 +912,7 @@ div:fullscreen .PZLP-ImageDiv {
     .PZLP-ImageDiv {
         width: 100%;
         height: 100vh;
+        max-height: 500px;
     }
 
     .PZLP-ImageDiv:before {
@@ -919,7 +920,7 @@ div:fullscreen .PZLP-ImageDiv {
         display: none;
         padding-top: 0;
     }
-
+    
     .PZLP-Completed {
         top: 50%;
         background-color: rgba(255, 255, 255, 0.9);

@@ -621,6 +621,33 @@ var $exeDevices = {
                     }
                 },
 
+                // Nueva función: Obtener puntuación de una actividad específica desde suspend_data
+                getActivityScore: function (ideviceNumber) {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
+                        return 0;
+                    }
+
+                    const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+                    const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+
+                    if (lmsData[ideviceNumber]) {
+                        // Score está guardado en escala 0-1000, convertir a 0-10
+                        return (lmsData[ideviceNumber].score / 10) || 0;
+                    }
+
+                    return 0;
+                },
+
+                // Nueva función: Obtener puntuación total del nodo desde cmi.core.score.raw
+                getTotalScore: function () {
+                    if (typeof pipwerks === 'undefined' || !pipwerks.SCORM) {
+                        return 0;
+                    }
+
+                    const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
+                    return parseFloat(rawScore) || 0;
+                },
+
                 endScorm: function (scormgame) {
                     /*if (scormgame && typeof scormgame.quit == "function") scormgame.quit();*/
                 },
@@ -654,13 +681,27 @@ var $exeDevices = {
                 },
 
                 createScoreScormHtml: function (game) {
-                    const $exeScoreNode = $("#exeScoreNode");
+                    let $exeScoreNode = $("#exeScoreNode");
+                    let initialScore = 0;
+                    
+                    if (typeof pipwerks !== 'undefined' && pipwerks.SCORM) {
+                        const rawScore = pipwerks.SCORM.get("cmi.core.score.raw");
+                        if (rawScore && rawScore !== "" && rawScore !== "0") {
+                            initialScore = parseFloat(rawScore) || 0;
+                        } else {
+                            const suspendData = pipwerks.SCORM.get("cmi.suspend_data") || "";
+                            if (suspendData && suspendData.trim() !== "") {
+                                const lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
+                                initialScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                            }
+                        }
+                    }
 
                     if ($exeScoreNode.length === 0) {
                         const newScoreNodeHtml = `
                                     <div id="exeScoreNode" class="text-end p-2">
                                         <div id="eXeScoreNodeScore" class="bg-success text-white d-inline-block px-2 py-1">
-                                            ${game.msgs.msgYouScore}: 0/100
+                                            ${game.msgs.msgYouScore}: ${initialScore}/100
                                         </div>
                                     </div>
                                 `;
@@ -674,6 +715,8 @@ var $exeDevices = {
                         if ($page.length > 0) {
                             $page.prepend(newScoreNodeHtml);
                         }
+                    } else {
+                        $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${initialScore}/100`);
                     }
                 },
 
@@ -799,14 +842,23 @@ var $exeDevices = {
 
                         lmsData = $exeDevices.iDevice.gamification.scorm.parseSuspendData(suspendData);
 
-                        lmsData[game.ideviceNumber] = {
-                            title: game.title,
-                            score: lmsData[game.ideviceNumber]?.score || (game.scorerp * 10),
-                            weighted: game.weighted
-                        };
+                        if (lmsData[game.ideviceNumber]) {
+                            game.previousScore = (lmsData[game.ideviceNumber].score / 10).toFixed(2);
+                            // Actualizar el score node con la puntuación recuperada
+                            const totalScore = $exeDevices.iDevice.gamification.scorm.getFinalScore(lmsData);
+                            if (totalScore > 0) {
+                                $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${totalScore}/100`);
+                            }
+                        } else {
+                            lmsData[game.ideviceNumber] = {
+                                title: game.title,
+                                score: 0,
+                                weighted: game.weighted
+                            };
 
-                        const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
-                        pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
+                            const newFormatData = $exeDevices.iDevice.gamification.scorm.convertToLineFormat(lmsData, game);
+                            pipwerks.SCORM.set("cmi.suspend_data", newFormatData);
+                        }
                     }
 
                     $exeDevices.iDevice.gamification.scorm.updateScormNew(game, lmsData);
@@ -966,7 +1018,7 @@ var $exeDevices = {
                     if (newFinalScore >= 50) {
                         pipwerks.SCORM.set("cmi.core.lesson_status", "passed");
                     } else {
-                        pipwerks.SCORM.set("cmi.core.lesson_status", "incomplete");
+                        pipwerks.SCORM.set("cmi.core.lesson_status", "failed");
                     }
 
                     $("#eXeScoreNodeScore").text(`${game.msgs.msgYouScore}: ${newFinalScore}/100`);
