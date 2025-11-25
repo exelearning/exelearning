@@ -104,84 +104,62 @@ var $exeDevice = {
     getQuestionIndexById: function (id) {
         return this.questionsForm.findIndex((q) => q.id === id);
     },
-
-    tc_: function (englishText) {
-        const idevicePrefix = 'form';
-        const ideviceKey = `${idevicePrefix}.${englishText}`;
-        if (
-            typeof eXeLearning !== 'undefined' &&
-            eXeLearning.app &&
-            eXeLearning.app.locale &&
-            eXeLearning.app.locale.c_strings &&
-            eXeLearning.app.locale.c_strings.translations &&
-            eXeLearning.app.locale.c_strings.translations[ideviceKey]
-        ) {
-            return eXeLearning.app.locale.c_strings.translations[ideviceKey];
-        }
-
-        return c_(englishText);
-    },
-
     refreshTranslations: function () {
         this.ci18n = {
-            msgScoreScorm: this.tc_(
+            msgScoreScorm: c_(
                 "The score can't be saved because this page is not part of a SCORM package."
             ),
-            msgYouScore: this.tc_('You scores is'),
-            msgScore: this.tc_('Score'),
-            msgWeight: this.tc_('Weight'),
-            msgYouLastScore: this.tc_('The last score saved is'),
-            msgOnlySaveScore: this.tc_('You can only save the score once!'),
-            msgOnlySave: this.tc_('You can only save once'),
-            msgOnlySaveAuto: this.tc_(
+            msgYouScore: c_('You scores is'),
+            msgScore: c_('Score'),
+            msgWeight: c_('Weight'),
+            msgYouLastScore: c_('The last score saved is'),
+            msgOnlySaveScore: c_('You can only save the score once!'),
+            msgOnlySave: c_('You can only save once'),
+            msgOnlySaveAuto: c_(
                 'Your score will be saved after each question. You can only play once.'
             ),
-            msgSaveAuto: this.tc_(
+            msgSaveAuto: c_(
                 'Your score will be automatically saved after each question.'
             ),
-            msgSeveralScore: this.tc_(
+            msgSeveralScore: c_(
                 'You can save the score as many times as you want'
             ),
-            msgPlaySeveralTimes: this.tc_(
+            msgPlaySeveralTimes: c_(
                 'You can do this activity as many times as you want'
             ),
-            msgActityComply: this.tc_('You have already done this activity.'),
-            msgUncompletedActivity: this.tc_('Incomplete activity'),
-            msgSuccessfulActivity: this.tc_('Activity: Passed. Score: %s'),
-            msgUnsuccessfulActivity: this.tc_(
-                'Activity: Not passed. Score: %s'
-            ),
-            msgTypeGame: this.tc_('Form'),
-            msgStartGame: this.tc_('Click here to start'),
-            msgTime: this.tc_('Time per question'),
-            msgSaveScore: this.tc_('Save score'),
-            msgResult: this.tc_('Result'),
-            msgCheck: this.tc_('Check'),
-            msgReset: this.tc_('Reset'),
-            msgShowAnswers: this.tc_('Show answers'),
-            msgTestResultPass: this.tc_('Congratulations! You passed the test'),
-            msgTestResultNotPass: this.tc_('Sorry. You failed the test'),
-            msgTrueFalseHelp: this.tc_(
+            msgActityComply: c_('You have already done this activity.'),
+            msgUncompletedActivity: c_('Incomplete activity'),
+            msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
+            msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgTypeGame: c_('Form'),
+            msgStartGame: c_('Click here to start'),
+            msgTime: c_('Time per question'),
+            msgSaveScore: c_('Save score'),
+            msgResult: c_('Result'),
+            msgCheck: c_('Check'),
+            msgReset: c_('Reset'),
+            msgShowAnswers: c_('Show answers'),
+            msgTestResultPass: c_('Congratulations! You passed the test'),
+            msgTestResultNotPass: c_('Sorry. You failed the test'),
+            msgTrueFalseHelp: c_(
                 'Select whether the statement is true or false'
             ),
-            msgDropdownHelp: this.tc_(
+            msgDropdownHelp: c_(
                 'Choose the correct answer among the options proposed'
             ),
-            msgFillHelp: this.tc_(
-                'Fill in the blanks with the appropriate word'
-            ),
-            msgSingleSelectionHelp: this.tc_(
+            msgFillHelp: c_('Fill in the blanks with the appropriate word'),
+            msgSingleSelectionHelp: c_(
                 'Multiple choice with only one correct answer'
             ),
-            msgMultipleSelectionHelp: this.tc_(
+            msgMultipleSelectionHelp: c_(
                 'Multiple choice with multiple corrects answers'
             ),
-            msgPlayStart: this.tc_('Click here to start'),
-            msgTrue: this.tc_('True'),
-            msgFalse: this.tc_('False'),
-            msgNext: this.tc_('Next'),
-            msgPrevious: this.tc_('Previous'),
-            msgSuggestion: this.tc_('Suggestion'),
+            msgPlayStart: c_('Click here to start'),
+            msgTrue: c_('True'),
+            msgFalse: c_('False'),
+            msgNext: c_('Next'),
+            msgPrevious: c_('Previous'),
+            msgSuggestion: c_('Suggestion'),
         };
     },
 
