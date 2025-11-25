@@ -60,7 +60,7 @@ services:
         php bin/console app:create-user ${TEST_USER_EMAIL:-user@exelearning.net} ${TEST_USER_PASSWORD:-1234} ${TEST_USER_USERNAME:-user} --no-fail
 
   exelearning-db:
-    image: mariadb:11.2.2
+    image: mariadb:12.1.2
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-root}"
@@ -73,7 +73,7 @@ services:
       - exelearning-db-data:/var/lib/mysql
 
   keycloak-db:
-    image: mariadb:11.2.2
+    image: mariadb:12.1.2
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: "${KEYCLOAK_DB_ROOT_PASSWORD:-root}"
