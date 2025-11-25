@@ -2515,7 +2515,7 @@ class OdeService implements OdeServiceInterface
             // For EPUB files, the base directory should point to the EPUB subdirectory
             $epubDir = $importDir.DIRECTORY_SEPARATOR.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB.DIRECTORY_SEPARATOR;
             $distBaseDir = is_dir($epubDir) ? $epubDir : rtrim($importDir, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
-            
+
             $contentResourcesDir = $distBaseDir.FileUtil::getPathFromDirStructureArray(
                 Constants::PERMANENT_SAVE_ODE_DIR_STRUCTURE,
                 Constants::PERMANENT_SAVE_CONTENT_RESOURCES_DIRNAME
@@ -2743,7 +2743,7 @@ class OdeService implements OdeServiceInterface
         // Check if this is an EPUB file (content is inside EPUB/ subdirectory)
         $epubDir = $importDir.DIRECTORY_SEPARATOR.Constants::EXPORT_EPUB3_EXPORT_DIR_EPUB.DIRECTORY_SEPARATOR;
         $searchDir = $importDir;
-        
+
         if (is_dir($epubDir)) {
             $searchDir = $epubDir;
         }

@@ -1060,13 +1060,13 @@ class OdeApiController extends DefaultApiController
             }
 
             $extension = $uploadedFile->guessExtension() ?: $uploadedFile->getClientOriginalExtension() ?: 'zip';
-            
+
             // Validate file extension
             $allowedExtensions = ['elpx', 'elp', 'zip', 'epub'];
             if (!in_array(strtolower($extension), $allowedExtensions, true)) {
                 throw new \RuntimeException($this->translator->trans('Invalid file type'));
             }
-            
+
             $tempFileName = 'import-root-'.Util::generateId().'.'.$extension;
             $uploadedFile->move($tmpDir, $tempFileName);
             $tempFilePath = $tmpDir.DIRECTORY_SEPARATOR.$tempFileName;
