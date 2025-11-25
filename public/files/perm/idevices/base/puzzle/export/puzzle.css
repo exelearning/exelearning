@@ -368,13 +368,9 @@
     overflow: hidden;
     width: 100%;
     margin: 0 auto;
-    position: relative
-}
-
-.PZLP-ImageDiv:before {
-    content: '';
-    display: block;
-    padding-top: 56%;
+    position: relative;
+    height: auto;
+    min-height: 200px;
 }
 
 
@@ -911,14 +907,9 @@ div:fullscreen .PZLP-ImageDiv {
 
     .PZLP-ImageDiv {
         width: 100%;
-        height: 100vh;
-        max-height: 500px;
-    }
-
-    .PZLP-ImageDiv:before {
-        content: '';
-        display: none;
-        padding-top: 0;
+        height: auto;
+        min-height: 200px;
+        max-height: 400px;
     }
     
     .PZLP-Completed {
