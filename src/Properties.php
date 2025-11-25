@@ -47,7 +47,7 @@ class Properties
         ],
         'versionControl' => [
             'title' => self::TRANS_PREFIX.'Version control',
-            'value' => "'".Settings::VERSION_CONTROL."'",
+            'value' => 'true',
             'type' => 'checkbox',
             'category' => self::TRANS_PREFIX.'General settings',
         ],
@@ -491,14 +491,6 @@ class Properties
             'title' => self::TRANS_PREFIX.'"Made with eXeLearning" link',
             'value' => 'true',
             'help' => self::TRANS_PREFIX.'Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.',
-            'type' => 'checkbox',
-            'category' => 'properties',
-            'groups' => ['export'],
-        ],
-        'pp_exportElp' => [
-            'title' => self::TRANS_PREFIX.'Include a copy of the source file',
-            'value' => 'false',
-            'help' => self::TRANS_PREFIX.'A copy of the eXeLearning file will be included when exporting the content.',
             'type' => 'checkbox',
             'category' => 'properties',
             'groups' => ['export'],

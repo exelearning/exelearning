@@ -73,32 +73,6 @@ var myTheme = {
                 myTheme.checkNav();
             });
         }
-        // To review (special links)
-        $('#siteNav a').each(function (i) {
-            var t = $(this).text().trim();
-            if (
-                t.startsWith('- ') &&
-                t.endsWith(' -') &&
-                $('li', this).length == 0
-            ) {
-                t = t.substring(2);
-                t = t.substring(0, t.length - 2);
-                $(this).text(t).addClass('package-link');
-            }
-        });
-        $('.page-header .page-title').each(function () {
-            var t = $(this).text().trim();
-            var res;
-            if (t.startsWith('- ') && t.endsWith(' -')) {
-                res = t;
-                res = res.substring(2);
-                res = res.substring(0, res.length - 2);
-                // Update page title
-                $(this).text(res);
-                // Update HTML title
-                document.title = document.title.replace(t, res);
-            }
-        });
         // Search form
         this.searchForm();
     },

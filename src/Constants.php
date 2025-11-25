@@ -63,10 +63,12 @@ class Constants
     public const THEME_GENERATED_CSS_FILE = 'generated.css';
     public const THEME_CONFIG_FILENAME = 'config.xml';
     public const THEME_ICONS_DIR = 'icons';
+    public const THEME_IMG_DIR = 'img';
     public const THEME_HEADER_IMG_DIR = 'header';
     public const THEME_LOGO_IMG_DIR = 'logo';
     public const THEME_HEADER_IMG = 'header';
     public const THEME_LOGO_IMG = 'logo';
+    public const THEME_FAVICON_FILENAME = 'favicon';
     public const THEME_TYPE_BASE = 'base';
     public const THEME_TYPE_USER = 'user';
     public const THEME_INSTALLABLE = 'downloadable';
@@ -318,7 +320,7 @@ class Constants
     // Constant to show modal already logged user (seconds)
     public const MODAL_CLIENT_ALREADY_LOGGED_USER_TIME = 30;
     // Client timeout for server response (milliseconds)
-    public const CLIENT_CALL_WAITING_TIME = 20000;
+    public const CLIENT_CALL_WAITING_TIME = 600000; // 10 minutes for large file operations
 
     // Client interval get last edition (milliseconds)
     public const CLIENT_INTERVAL_GET_LAST_EDITION = 20000;

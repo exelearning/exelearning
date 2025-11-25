@@ -728,6 +728,206 @@ class OdeXmlUtil
     }
 
     /**
+     * Process the xml of an Ode with optimizations for large files.
+     * Uses memory management and chunked processing.
+     *
+     * @param string $odeSessionId
+     * @param string $elpContentFileContent
+     * @param int    $fileSizeThresholdMB   Threshold to use optimized processing (default: 100MB)
+     *
+     * @return array
+     */
+    public static function readOdeXmlOptimized($odeSessionId, $elpContentFileContent, $fileSizeThresholdMB = 100)
+    {
+        $contentSize = strlen($elpContentFileContent);
+        $thresholdBytes = $fileSizeThresholdMB * 1024 * 1024;
+
+        // For smaller files, use standard method
+        if ($contentSize < $thresholdBytes) {
+            return self::readOdeXml($odeSessionId, $elpContentFileContent);
+        }
+
+        // For large files, use optimized processing with memory management
+        $oldTimeLimit = ini_get('max_execution_time');
+        $oldMemoryLimit = ini_get('memory_limit');
+
+        try {
+            // Increase limits for large files
+            set_time_limit(0);
+            ini_set('memory_limit', '1024M');
+
+            // Enable garbage collection
+            gc_enable();
+
+            // This prevents mojibake issues
+            if ($elpContentFileContent && !mb_check_encoding($elpContentFileContent, 'UTF-8')) {
+                $enc = mb_detect_encoding($elpContentFileContent, ['UTF-8', 'Windows-1252', 'ISO-8859-1'], true);
+                if ($enc) {
+                    $elpContentFileContent = mb_convert_encoding($elpContentFileContent, 'UTF-8', $enc);
+                }
+            }
+
+            // Initialize response arrays
+            $odeResponse = [];
+            $odeResponse['userPreferences'] = [];
+            $odeResponse['odeResources'] = [];
+            $odeResponse['odeProperties'] = [];
+            $odeResponse['odeNavStructureSyncs'] = [];
+
+            $sessionPath = null;
+            if (!empty($odeSessionId)) {
+                $sessionPath = UrlUtil::getOdeSessionUrl($odeSessionId);
+            }
+
+            $commonReplaces = [
+                self::ODE_XML_CONTEXT_PATH.Constants::SLASH => $sessionPath,
+            ];
+
+            // Use LIBXML_PARSEHUGE for large XML files
+            $xml = new \SimpleXMLElement($elpContentFileContent, LIBXML_PARSEHUGE | LIBXML_COMPACT);
+
+            // Process UserPreferences
+            if (isset($xml->{self::ODE_XML_TAG_USER_PREFERENCES})) {
+                foreach ($xml->{self::ODE_XML_TAG_USER_PREFERENCES}->children() as $xmlUserPreferences) {
+                    $userPreferences = new UserPreferencesDto();
+                    $userPreferences->setKey($xmlUserPreferences->{self::ODE_XML_TAG_FIELD_KEY});
+                    $userPreferences->setValue($xmlUserPreferences->{self::ODE_XML_TAG_FIELD_VALUE});
+                    array_push($odeResponse['userPreferences'], $userPreferences);
+                }
+                gc_collect_cycles();
+            }
+
+            // Process Resources
+            if (isset($xml->{self::ODE_XML_TAG_RESOURCES})) {
+                foreach ($xml->{self::ODE_XML_TAG_RESOURCES}->children() as $xmlOdeResource) {
+                    $odeResources = new OdeResourcesDto();
+                    $odeResources->setKey($xmlOdeResource->{self::ODE_XML_TAG_FIELD_KEY});
+                    $odeResources->setValue($xmlOdeResource->{self::ODE_XML_TAG_FIELD_VALUE});
+                    array_push($odeResponse['odeResources'], $odeResources);
+                }
+                gc_collect_cycles();
+            }
+
+            // Process Properties
+            if (isset($xml->{self::ODE_XML_TAG_PROPERTIES})) {
+                foreach ($xml->{self::ODE_XML_TAG_PROPERTIES}->children() as $xmlOdeProperty) {
+                    $odeProperties = new OdePropertiesSync();
+                    $odeProperties->setOdeSessionId($odeSessionId);
+                    $odeProperties->setKey($xmlOdeProperty->{self::ODE_XML_TAG_FIELD_KEY});
+                    $odeProperties->setValue($xmlOdeProperty->{self::ODE_XML_TAG_FIELD_VALUE});
+                    array_push($odeResponse['odeProperties'], $odeProperties);
+                }
+                gc_collect_cycles();
+            }
+
+            // Process OdeNavStructureSyncs with chunking
+            $navStructureCount = 0;
+            foreach ($xml->{self::ODE_XML_TAG_ODE_NAV_STRUCTURES}->children() as $xmlOdeNavStructure) {
+                $odeNavStructureSync = new OdeNavStructureSync();
+
+                $odeNavStructureSync->setOdeSessionId($odeSessionId);
+                $odeNavStructureSync->setOdePageId($xmlOdeNavStructure->{self::ODE_XML_TAG_FIELD_ODE_PAGE_ID});
+                $odeNavStructureSync->setOdeParentPageId($xmlOdeNavStructure->{self::ODE_XML_TAG_FIELD_ODE_PARENT_PAGE_ID});
+                $odeNavStructureSync->setPageName($xmlOdeNavStructure->{self::ODE_XML_TAG_FIELD_PAGE_NAME});
+                $odeNavStructureSync->setOdeNavStructureSyncOrder(intval($xmlOdeNavStructure->{self::ODE_XML_TAG_FIELD_ODE_NAV_STRUCTURE_ORDER}));
+
+                // Process properties
+                foreach ($xmlOdeNavStructure->{self::ODE_XML_TAG_ODE_NAV_STRUCTURE_PROPERTIES}->children() as $xmlOdeNavStructureProperty) {
+                    $odeNavStructureSyncProperty = new OdeNavStructureSyncProperties();
+                    $odeNavStructureSyncProperty->setKey($xmlOdeNavStructureProperty->{self::ODE_XML_TAG_FIELD_KEY});
+                    $odeNavStructureSyncProperty->setValue($xmlOdeNavStructureProperty->{self::ODE_XML_TAG_FIELD_VALUE});
+                    $odeNavStructureSync->addOdeNavStructureSyncProperties($odeNavStructureSyncProperty);
+                }
+
+                // Process OdePagStructureSyncs
+                foreach ($xmlOdeNavStructure->{self::ODE_XML_TAG_ODE_PAG_STRUCTURES}->children() as $xmlOdePagStructure) {
+                    $odePagStructureSync = new OdePagStructureSync();
+
+                    $odePagStructureSync->setOdeSessionId($odeSessionId);
+                    $odePagStructureSync->setOdePageId($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ODE_PAGE_ID});
+                    $odePagStructureSync->setOdeBlockId($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ODE_BLOCK_ID});
+                    $odePagStructureSync->setBlockName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_BLOCK_NAME});
+                    $odePagStructureSync->setIconName($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ICON_NAME});
+                    $odePagStructureSync->setOdePagStructureSyncOrder(intval($xmlOdePagStructure->{self::ODE_XML_TAG_FIELD_ODE_PAG_STRUCTURE_ORDER}));
+
+                    foreach ($xmlOdePagStructure->{self::ODE_XML_TAG_ODE_PAG_STRUCTURE_PROPERTIES}->children() as $xmlOdePagStructureProperty) {
+                        $odePagStructureSyncProperty = new OdePagStructureSyncProperties();
+                        $odePagStructureSyncProperty->setKey($xmlOdePagStructureProperty->{self::ODE_XML_TAG_FIELD_KEY});
+                        $odePagStructureSyncProperty->setValue($xmlOdePagStructureProperty->{self::ODE_XML_TAG_FIELD_VALUE});
+                        $odePagStructureSync->addOdePagStructureSyncProperties($odePagStructureSyncProperty);
+                    }
+
+                    // Process OdeComponentsSyncs
+                    foreach ($xmlOdePagStructure->{self::ODE_XML_TAG_ODE_COMPONENTS}->children() as $xmlOdeComponent) {
+                        $odeComponentsSync = new OdeComponentsSync();
+
+                        $odeComponentsSync->setOdeSessionId($odeSessionId);
+                        $odeComponentsSync->setOdePageId($xmlOdeComponent->{self::ODE_XML_TAG_FIELD_ODE_PAGE_ID});
+                        $odeComponentsSync->setOdeBlockId($xmlOdeComponent->{self::ODE_XML_TAG_FIELD_ODE_BLOCK_ID});
+                        $odeComponentsSync->setOdeIdeviceId($xmlOdeComponent->{self::ODE_XML_TAG_FIELD_ODE_IDEVICE_ID});
+                        $odeComponentsSync->setOdeIdeviceTypeName($xmlOdeComponent->{self::ODE_XML_TAG_FIELD_ODE_IDEVICE_TYPE_NAME});
+
+                        if (isset($commonReplaces)) {
+                            $odeComponentsSyncHtmlView = self::applyReplaces($commonReplaces, $xmlOdeComponent->{self::ODE_XML_TAG_FIELD_HTML_VIEW});
+                        } else {
+                            $odeComponentsSyncHtmlView = $xmlOdeComponent->{self::ODE_XML_TAG_FIELD_HTML_VIEW};
+                        }
+                        $odeComponentsSync->setHtmlView($odeComponentsSyncHtmlView);
+
+                        if (isset($commonReplaces)) {
+                            $odeComponentsSyncJsonProperties = self::applyReplaces($commonReplaces, $xmlOdeComponent->{self::ODE_XML_TAG_FIELD_JSON_PROPERTIES});
+                        } else {
+                            $odeComponentsSyncJsonProperties = $xmlOdeComponent->{self::ODE_XML_TAG_FIELD_JSON_PROPERTIES};
+                        }
+                        $odeComponentsSync->setJsonProperties($odeComponentsSyncJsonProperties);
+                        $odeComponentsSync->setOdeComponentsSyncOrder(intval($xmlOdeComponent->{self::ODE_XML_TAG_FIELD_ODE_COMPONENTS_ORDER}));
+
+                        foreach ($xmlOdeComponent->{self::ODE_XML_TAG_ODE_COMPONENTS_PROPERTIES}->children() as $xmlOdeComponentProperty) {
+                            $odeComponentsSyncProperty = new OdeComponentsSyncProperties();
+                            $odeComponentsSyncProperty->setKey($xmlOdeComponentProperty->{self::ODE_XML_TAG_FIELD_KEY});
+                            $odeComponentsSyncProperty->setValue($xmlOdeComponentProperty->{self::ODE_XML_TAG_FIELD_VALUE});
+                            $odeComponentsSync->addOdeComponentsSyncProperties($odeComponentsSyncProperty);
+                        }
+
+                        $odePagStructureSync->addOdeComponentsSync($odeComponentsSync);
+                    }
+
+                    $odeNavStructureSync->addOdePagStructureSync($odePagStructureSync);
+                }
+
+                array_push($odeResponse['odeNavStructureSyncs'], $odeNavStructureSync);
+
+                // Free memory every 10 nav structures
+                ++$navStructureCount;
+                if (0 === $navStructureCount % 10) {
+                    gc_collect_cycles();
+                }
+            }
+
+            // Associate hierarchy
+            foreach ($odeResponse['odeNavStructureSyncs'] as $odeNavStructureSync) {
+                if (!empty($odeNavStructureSync->getOdeParentPageId())) {
+                    foreach ($odeResponse['odeNavStructureSyncs'] as $odeNavStructureSyncSearch) {
+                        if ($odeNavStructureSyncSearch->getOdePageId() == $odeNavStructureSync->getOdeParentPageId()) {
+                            $odeNavStructureSync->setOdeNavStructureSync($odeNavStructureSyncSearch);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Final garbage collection
+            gc_collect_cycles();
+
+            return $odeResponse;
+        } finally {
+            // Restore original limits
+            set_time_limit((int) $oldTimeLimit);
+            ini_set('memory_limit', $oldMemoryLimit);
+        }
+    }
+
+    /**
      * Process the xml of an Ode.
      *
      * @param string $odeSessionId

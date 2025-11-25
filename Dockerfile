@@ -20,6 +20,13 @@ ENV VERSION=${VERSION} \
     nginx_root_directory=/app/public \
     SITE_URL=http://localhost \
     DEBUG=false \
+    APP_ENV=prod \
+    APP_PORT=8080 \
+    APP_ONLINE_MODE=1 \
+    APP_AUTH_METHODS=password,guest \
+    TEST_USER_EMAIL=user@exelearning.net \
+    TEST_USER_USERNAME=user \
+    TEST_USER_PASSWORD=1234 \
     client_max_body_size=512M \
     post_max_size=512M \
     upload_max_filesize=512M \
@@ -132,3 +139,7 @@ RUN rm /app/02-configure-symfony.sh
 
 HEALTHCHECK --interval=1m --timeout=15s --start-period=1m --retries=3 \
   CMD curl --fail --silent --show-error http://localhost:8080/healthcheck || exit 1
+
+EXPOSE 8080
+VOLUME ["/mnt/data"]
+

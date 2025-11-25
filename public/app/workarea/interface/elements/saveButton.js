@@ -28,11 +28,9 @@ export default class SaveProjectButton {
                     payload: true,
                 });
             }
-            // Offline desktop: map Save to persistent ELP save
-            if (
-                eXeLearning.config.isOfflineInstallation &&
-                window.electronAPI
-            ) {
+            // Offline mode (Electron or browser): download ELP file
+            // Online mode: save to database only
+            if (eXeLearning.config.isOfflineInstallation) {
                 eXeLearning.app.menus.navbar.file.downloadProjectEvent();
             } else {
                 eXeLearning.app.project.save();

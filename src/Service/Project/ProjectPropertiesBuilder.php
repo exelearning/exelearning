@@ -86,7 +86,6 @@ class ProjectPropertiesBuilder
             'pp_description' => '',
             'exportSource' => false,
             'pp_addExeLink' => false,
-            'pp_exportElp' => false,
             'pp_addPagination' => false,
             'pp_addSearchBox' => false,
             'pp_addAccessibilityToolbar' => false,

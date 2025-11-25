@@ -43,7 +43,6 @@ class OdeOldXmlPropertiesGet
             'exportSource',
             'pp_addSearchBox',
             'pp_addPagination',
-            'pp_exportElp',
             'pp_addAccessibilityToolbar',
             'pp_addExeLink',
         ];

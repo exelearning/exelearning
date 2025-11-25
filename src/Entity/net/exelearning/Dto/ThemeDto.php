@@ -29,6 +29,7 @@ class ThemeDto extends BaseDto
     public const THEME_XML_TAG_LINK_COLOR = 'link-color';
     public const THEME_XML_TAG_HEADER_IMG = 'header-img';
     public const THEME_XML_TAG_LOGO_IMG = 'logo-img';
+    public const THEME_XML_TAG_FAVICON_IMG = 'favicon-img';
     public const THEME_XML_TAG_DOWNLOADABLE = 'downloadable';
 
     private $icons;
@@ -131,12 +132,22 @@ class ThemeDto extends BaseDto
     /**
      * @var string
      */
+    protected $faviconImg;
+
+    /**
+     * @var string
+     */
     protected $headerImgUrl;
 
     /**
      * @var string
      */
     protected $logoImgUrl;
+
+    /**
+     * @var string
+     */
+    protected $faviconUrl;
 
     /**
      * @var bool
@@ -464,6 +475,22 @@ class ThemeDto extends BaseDto
     /**
      * @return string
      */
+    public function getFaviconImg()
+    {
+        return $this->faviconImg;
+    }
+
+    /**
+     * @param string $faviconImg
+     */
+    public function setFaviconImg($faviconImg)
+    {
+        $this->faviconImg = $faviconImg;
+    }
+
+    /**
+     * @return string
+     */
     public function getHeaderImgUrl()
     {
         return $this->headerImgUrl;
@@ -491,6 +518,22 @@ class ThemeDto extends BaseDto
     public function setLogoImgUrl($logoImgUrl)
     {
         $this->logoImgUrl = $logoImgUrl;
+    }
+
+    /**
+     * @return string
+     */
+    public function getFaviconUrl()
+    {
+        return $this->faviconUrl;
+    }
+
+    /**
+     * @param string $faviconUrl
+     */
+    public function setFaviconUrl($faviconUrl)
+    {
+        $this->faviconUrl = $faviconUrl;
     }
 
     /**
@@ -568,6 +611,10 @@ class ThemeDto extends BaseDto
 
         if (isset($themeConfigArray[self::THEME_XML_TAG_LOGO_IMG])) {
             $this->setLogoImg($themeConfigArray[self::THEME_XML_TAG_LOGO_IMG]);
+        }
+
+        if (isset($themeConfigArray[self::THEME_XML_TAG_FAVICON_IMG])) {
+            $this->setFaviconImg($themeConfigArray[self::THEME_XML_TAG_FAVICON_IMG]);
         }
 
         if (isset($themeConfigArray[self::THEME_XML_TAG_DOWNLOADABLE])) {
@@ -677,6 +724,39 @@ class ThemeDto extends BaseDto
     }
 
     /**
+     * Get favicon.
+     *
+     * @param ThemeHelper   $themeHelper
+     * @param UserInterface $user
+     *
+     * @return string
+     */
+    public function loadFavicon($themeHelper, $user)
+    {
+        $themeDir = $themeHelper->getThemeDir($this->dirName, $this->type, $user);
+        $faviconDir = $themeDir.Constants::THEME_IMG_DIR;
+
+        // Get favicon from theme dir
+        if (is_dir($faviconDir)) {
+            // Search for favicon files with common extensions
+            $faviconExtensions = ['ico', 'png'];
+
+            foreach ($faviconExtensions as $ext) {
+                $faviconFile = $faviconDir.DIRECTORY_SEPARATOR.Constants::THEME_FAVICON_FILENAME.'.'.$ext;
+                if (file_exists($faviconFile)) {
+                    $faviconPath = Constants::THEME_IMG_DIR.Constants::SLASH.Constants::THEME_FAVICON_FILENAME.'.'.$ext;
+                    $this->setFaviconImg($faviconPath);
+                    $this->setFaviconUrl($this->url.Constants::SLASH.$faviconPath);
+
+                    return $faviconPath;
+                }
+            }
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * Create config xml.
      *
      * @param ThemeHelper   $themeHelper
@@ -732,6 +812,10 @@ class ThemeDto extends BaseDto
 
         if ($themeConfigArray[self::THEME_XML_TAG_LOGO_IMG]) {
             $xml->addChild(self::THEME_XML_TAG_LOGO_IMG, $themeConfigArray[self::THEME_XML_TAG_LOGO_IMG]);
+        }
+
+        if ($themeConfigArray[self::THEME_XML_TAG_FAVICON_IMG]) {
+            $xml->addChild(self::THEME_XML_TAG_FAVICON_IMG, $themeConfigArray[self::THEME_XML_TAG_FAVICON_IMG]);
         }
 
         $themeDir = $themeHelper->getThemeDir($this->dirName, $this->type, $user);

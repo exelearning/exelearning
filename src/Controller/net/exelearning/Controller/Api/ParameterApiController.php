@@ -67,10 +67,10 @@ class ParameterApiController extends DefaultApiController
         $data['generateNewItemKey'] = Constants::GENERATE_NEW_ITEM_KEY;
         $data['locales'] = Settings::LOCALES;
         $data['csvItemSeparator'] = Constants::CSV_ITEM_SEPARATOR;
-        $data['versionControl'] = Settings::VERSION_CONTROL;
-        $data['autosaveOdeFilesFunction'] = Settings::AUTOSAVE_ODE_FILES_FUNCTION;
-        $data['autosaveIntervalTime'] = Settings::PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL;
-        $data['countUserAutosave'] = Settings::COUNT_USER_AUTOSAVE_SPACE_ODE_FILES;
+        $data['versionControl'] = $this->getParameter('app.version_control');
+        $data['autosaveOdeFilesFunction'] = $this->getParameter('app.autosave_ode_files_function');
+        $data['autosaveIntervalTime'] = $this->getParameter('app.permanent_save_autosave_time_interval');
+        $data['countUserAutosave'] = $this->getParameter('app.count_user_autosave_space_ode_files');
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
@@ -317,8 +317,6 @@ class ParameterApiController extends DefaultApiController
         $this->translator->trans('The exported content will be editable with eXeLearning.');
         $this->translator->trans('"Made with eXeLearning" link');
         $this->translator->trans('Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.');
-        $this->translator->trans('Include a copy of the source file');
-        $this->translator->trans('A copy of the eXeLearning file will be included when exporting the content.');
         $this->translator->trans('Page counter');
         $this->translator->trans('A text with the page number will be added on each page.');
         $this->translator->trans('Search bar (Website export only)');

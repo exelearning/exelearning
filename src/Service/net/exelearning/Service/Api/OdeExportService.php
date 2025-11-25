@@ -642,7 +642,7 @@ class OdeExportService implements OdeExportServiceInterface
 
         // Copy ELP to the export dir if it is necessary
         $elpFileName = false;
-        if ($addElpToExport || ('true' == $odeProperties['pp_exportElp']->getValue())) {
+        if ($addElpToExport) {
             $elpFileName = $this->copyDistElpToExport(
                 $dbUser,
                 $odeId,
@@ -979,6 +979,7 @@ class OdeExportService implements OdeExportServiceInterface
             Constants::JS_APP_NAME.DIRECTORY_SEPARATOR.Constants::COMMON_NAME.DIRECTORY_SEPARATOR.'common.js',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'jquery',
             Constants::LIBS_DIR.DIRECTORY_SEPARATOR.'bootstrap',
+            Constants::THEME_FAVICON_FILENAME.'.ico',
         ];
         $filesToCopy = array_merge($filesToCopy, $libraries);
 

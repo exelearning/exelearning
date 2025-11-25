@@ -1,21 +1,21 @@
 @charset "UTF-8";
 @font-face {
     font-family: "Fredoka";
-    src: url("fonts/Fredoka-Regular.woff") format("woff");
+    src: url(fonts/Fredoka-Regular.woff) format("woff");
     font-weight: 400;
     font-style: normal;
 }
 
 @font-face {
     font-family: "Fredoka";
-    src: url("fonts/Fredoka-SemiBold.woff") format("woff");
+    src: url(fonts/Fredoka-SemiBold.woff) format("woff");
     font-weight: 600;
     font-style: normal;
 }
 
 @font-face {
     font-family: "Fredoka";
-    src: url("fonts/Fredoka-Bold.woff") format("woff");
+    src: url(fonts/Fredoka-Bold.woff) format("woff");
     font-weight: 700;
     font-style: normal;
 }
@@ -28,6 +28,15 @@ a {
     font-weight: bold;
     color: white;
     margin-top: 40px;
+}
+
+.exe-web-site .page-title,
+.exe-single-page .page-title {
+    text-shadow: 0 0 4px rgba(21, 32, 61, .8);
+}
+
+.exe-epub .page-title, .exe-scorm .page-title, .exe-ims .page-title {
+    color: #282573;
 }
 
 .page > header .package-title,
@@ -44,9 +53,9 @@ a {
     width: calc(100% - 550px);
 }
 
-.exe-scorm .page header .page-title,
-.exe-ims .page header .page-title,
-.exe-epub .page header .page-title {
+.exe-scorm .page .page-header .page-title,
+.exe-ims .page .page-header .page-title,
+.exe-epub .page .page-header .page-title {
     width: 100%;
 }
 
@@ -59,6 +68,39 @@ a {
 .exe-ims .page > header .package-title,
 .exe-single-page .package-header h1 {
     width: 100%;
+}
+
+.package-subtitle {
+    width: 100%;
+    position: absolute;
+    left: 32px;
+    bottom: 0;
+    font-size: .9em;
+    color: #777;
+}
+
+.exe-web-site .package-subtitle {
+    max-width: 70%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.siteNav-off .page > header .package-subtitle {
+    left: 24px;
+}
+
+@media (max-width: 750px) {
+    .package-subtitle {
+        left: 24px;
+        font-size: 1em;
+    }
+}
+
+body:has(.package-subtitle) .package-title,
+body.exe-single-page:has(.package-subtitle) .package-node h1 {
+    position:relative;
+    top: -.2em;
 }
 
 main header:not(#head) {
@@ -97,14 +139,45 @@ body.exe-export.exe-epub {
     padding: 0;
 }
 
-body.exe-web-site {
-    padding: 0;
+.exe-web-site .package-header {
+    width: 100%;
 }
 
-body.exe-export,
+body.exe-scorm .package-title,
+body.exe-ims .package-title,
+body.exe-epub .package-title{
+    position: absolute;
+    top: 24px;
+    left: 0;
+    font-weight: normal;
+    font-size: .95em;
+    color: #777;
+}
+
+body.exe-scorm .package-subtitle,
+body.exe-ims .package-subtitle,
+body.exe-epub .package-subtitle {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+body.exe-scorm .page-title,
+body.exe-ims .page-title,
+body.exe-epub .page-title {
+    padding: 0 32px;
+}
+
+@media (max-width: 750px) {
+    body.exe-scorm .page-title,
+    body.exe-ims .page-title,
+    body.exe-epub .page-title {
+        padding: 0 24px;
+    }
+}
+
 body.exe-web-site {
-    font-family: "Fredoka", Arial, Verdana, Helvetica, sans-serif;
-    font-size: 120%;
+    padding: 0;
 }
 
 .exe-content a {
@@ -116,6 +189,18 @@ body.exe-web-site {
     text-decoration: none;
 }
 
+/* Effects */
+.exe-accordion .fx-accordion-title, 
+.fx-pagination .fx-current a {
+    background-color:#180051;
+}
+.exe-fx a{
+    color: #3F0D78;
+}
+.exe-fx a:hover,
+.exe-fx a:focus {
+    color: #7219C6;
+}
 .exe-download-package-link a {
     background: #282573;
     color: #fff;
@@ -130,6 +215,8 @@ body.exe-web-site {
 }
 
 .exe-content {
+    font-family: "Fredoka", Arial, Verdana, Helvetica, sans-serif;
+    font-size: 120%;
     color: #333;
     background-color: #f4f4f4;
     background: url(img/background.png);
@@ -281,11 +368,6 @@ body.exe-export.exe-epub .exe-content {
     display: none;
 }
 
-#siteFooterExtra {
-    margin-bottom: 2em;
-    color: #555;
-    font-size: 0.95em;
-}
 #siteNav .other-section {
     display: none;
 }
@@ -349,23 +431,23 @@ body.siteNav-off #siteFooter {
     margin-bottom: 6px;
 }
 
-#siteNav a.package-link {
+#siteNav a.highlighted-link {
     color: #fff;
     margin-top: 10px;
     background: #191748 url(img/book_white.svg) no-repeat 8px center;
     padding-left: 42px;
 }
 
-#siteNav a.package-link.active {
+#siteNav a.highlighted-link.active {
     background: #ffcc00 url(img/book_color.svg) no-repeat 8px center !important;
     color: #282573;
 }
 
-#siteNav a.package-link:hover {
+#siteNav a.highlighted-link:hover {
     background: #ffcc00 url(img/book_color.svg) no-repeat 8px center !important;
     color: #282573;
 }
-#siteNav a.package-link:focus {
+#siteNav a.highlighted-link:focus {
     background: #ffcc00 url(img/book_color.svg) no-repeat 8px center !important;
     color: #282573;
 }
@@ -588,6 +670,10 @@ body.siteNav-off button#siteNavToggler .sr-av {
     border-color: #fff;
 }
 
+.exe-export .box .box-content {
+    padding-top: 20px;
+}
+
 .exe-export .box.no-header .box-content {
     background: none;
     border: none;
@@ -607,12 +693,11 @@ body.siteNav-off button#siteNavToggler .sr-av {
 
 /* Table */
 
-table {
+.exe-content table {
     display: table;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100% !important;
-    margin: 2em 0 !important;
 }
 
 /* Licenses */
@@ -696,17 +781,17 @@ table {
     color: #777;
     font-weight: 400;
     background: #fff;
+    position: fixed;
+    top: 38px;
+    right: 32px;
+    margin: 0;
+    padding: 0;
+    color: #777;
+    text-align: right;
 }
 
 .exe-web-site .page-counter {
-    position: fixed;
-    top: 38px;
     right: 366px;
-    margin: 0;
-    padding: 0;
-    font-size: 0.9em;
-    color: #777;
-    text-align: right;
 }
 
 body.exe-teacher-mode-toggler.exe-web-site .page-counter {
@@ -802,18 +887,9 @@ body.siteNav-off button#searchBarTogger {
     padding: 2.25rem;
 }
 
-/* Accesibilidad */
-.exe-atools-on #eXeAtools #eXeAtoolsSet {
-    display: flex;
-    padding: 6px 4px;
-}
-#eXeAtools select {
-    position: static !important;
-}
-
 /* Modo docente */
 
-.exe-export .form-check {
+#teacher-mode-toggler-wrapper {
     float: none;
     position: absolute;
     top: 18px;
@@ -828,32 +904,33 @@ body.siteNav-off button#searchBarTogger {
     background-position: right center;
     background-size: 28px;
 }
-.exe-export .form-check-label {
-    display: none;
+.exe-single-page #teacher-mode-toggler-wrapper {
+    right: 20px;
 }
-.exe-export .form-switch .form-check-input {
+#teacher-mode-toggler-wrapper .form-check-label {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
+}
+#teacher-mode-toggler-wrapper .form-check-input {
     width: 2.6em;
     height: 1.4em;
 }
-.exe-export .form-check-input:checked {
+#teacher-mode-toggler-wrapper .form-check-input:checked {
     background-color: #ffcc00;
     border-color: #ffcc00;
 }
-.exe-export .form-check-input:focus {
+#teacher-mode-toggler-wrapper .form-check-input:focus {
     border-color: #ffcc00;
     box-shadow: 0 0 0 0.25rem rgba(255, 204, 0, 0.25);
 }
-.exe-export .form-check label {
-    width: 64px;
-    font-size: 1rem;
-}
-.exe-export .form-switch .form-check-input:focus {
+#teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch.svg);
     background-size: 19px;
     background-repeat: no-repeat;
     background-position: left 1.6px center;
 }
-.exe-export .mode-teacher .form-switch .form-check-input:focus {
+.mode-teacher #teacher-mode-toggler-wrapper .form-check-input:focus {
     background-image: url(img/switch_white.svg);
     background-position: right 1.6px center;
 }
@@ -906,10 +983,11 @@ body.siteNav-off button#searchBarTogger {
     .siteNav-off .page > header .package-title {
         width: calc(100% - 240px);
     }
+    body.exe-teacher-mode-toggler.exe-web-site .page-counter,
     .exe-web-site .page-counter {
         left: auto;
-        right: 80px;
-        top: 72px;
+        right: 193px;
+        top: 5px;
     }
     .exe-search-on .nav-buttons .nav-button-left,
     .exe-search-on .nav-buttons .nav-button-right {
@@ -919,16 +997,13 @@ body.siteNav-off button#searchBarTogger {
         display: none;
     }
 
-    .exe-export .form-check {
+    #teacher-mode-toggler-wrapper {
         right: 182px;
     }
-    .exe-export .form-check:hover {
+    #teacher-mode-toggler-wrapper:hover {
         background-color: transparent;
     }
-    .exe-export .form-check-label {
-        display: none;
-    }
-    .exe-export .form-check-input {
+    #teacher-mode-toggler-wrapper .form-check-input {
         margin: 0 !important;
     }
     .exe-teacher-mode-toggler .page > header .package-title,
@@ -1094,7 +1169,7 @@ body.siteNav-off button#searchBarTogger {
     .page > header .package-title,
     .siteNav-off .page > header .package-title {
         padding-left: 24px;
-        width: calc(100% - 124px);
+        width: calc(100% - 130px);
         overflow: hidden;
         text-overflow: ellipsis;
         height: auto;
@@ -1114,14 +1189,14 @@ body.siteNav-off button#searchBarTogger {
     .nav-buttons .nav-button-left {
         right: 80px;
     }
-    .exe-export .form-check {
+    #teacher-mode-toggler-wrapper {
         right: 150px;
     }
-    .exe-export .form-switch .form-check-input {
+    #teacher-mode-toggler-wrapper .form-check-input {
         width: 2.5em;
         height: 1.5em;
     }
-    .exe-export .form-switch .form-check-input:focus {
+    #teacher-mode-toggler-wrapper .form-check-input:focus {
         background-size: 16px;
     }
     button#siteNavToggler {
@@ -1150,9 +1225,10 @@ body.siteNav-off button#searchBarTogger {
     body button#searchBarTogger {
         height: 60px;
     }
+    body.exe-teacher-mode-toggler.exe-web-site .page-counter,
     .exe-web-site .page-counter {
-        right: 50px;
-        top: 66px;
+        right: 104px;
+        top: 4px;
     }
     .exe-search-on.siteNav-off button#siteNavToggler,
     .exe-search-on button#siteNavToggler {
@@ -1177,7 +1253,7 @@ body.siteNav-off button#searchBarTogger {
 }
 
 @media print {
-    html body {
+    html body.exe-export {
         background: #fff;
     }
     .exe-content {
@@ -1187,16 +1263,8 @@ body.siteNav-off button#searchBarTogger {
     @page {
         margin: 1.5cm;
     }
-    body #header,
-    body #emptyHeader,
-    body #nodeDecoration {
-        height: auto !important;
-        min-height: 0;
-        border: none;
-        padding: 0;
-    }
-    body #headerContent {
-        padding-top: 40px;
+    .exe-export .page-title {
+        text-shadow: none;
     }
     #packageLicense.cc {
         background: none;

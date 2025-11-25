@@ -71,19 +71,6 @@ var myTheme = {
                 myTheme.checkNav();
             });
         }
-        // To review (special links)
-        $('#siteNav a').each(function (i) {
-            var t = $(this).text().trim();
-            if (
-                t.startsWith('- ') &&
-                t.endsWith(' -') &&
-                $('li', this).length == 0
-            ) {
-                t = t.substring(2);
-                t = t.substring(0, t.length - 2);
-                $(this).text(t).addClass('package-link');
-            }
-        });
         // Search form
         this.searchForm();
 
@@ -136,7 +123,7 @@ var myTheme = {
     // function that move the h2 outside the header
     movePageTitle: function () {
         const tryMove = () => {
-            const $header = $('.page > header.page-header');
+            const $header = $('.main-header .page-header');
             const $title = $header.find('.page-title').first();
 
             // Search container of content
