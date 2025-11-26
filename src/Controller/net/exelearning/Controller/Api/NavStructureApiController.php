@@ -188,7 +188,7 @@ class NavStructureApiController extends DefaultApiController
 
         // if $odeNavStructureSyncIdParent is set load data from database
         // FIX #695: 'root' is a sentinel value meaning "no parent", not a database ID
-        if (!empty($odeNavStructureSyncIdParent) && $odeNavStructureSyncIdParent !== Constants::ROOT_NODE_IDENTIFIER) {
+        if (!empty($odeNavStructureSyncIdParent) && Constants::ROOT_NODE_IDENTIFIER !== $odeNavStructureSyncIdParent) {
             $odeNavStructureSyncParent = $odeNavStructureSyncRepo->find($odeNavStructureSyncIdParent);
 
             if ((!empty($odeNavStructureSyncParent)) && (empty($odeParentPageId))) {
