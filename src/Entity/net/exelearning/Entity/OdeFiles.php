@@ -43,7 +43,8 @@ class OdeFiles extends BaseEntity
     #[ORM\Column(name: 'size', type: 'bigint', nullable: false, options: ['unsigned' => true])]
     protected int $size;
 
-    #[ORM\Column(name: 'user', type: 'string', length: 128, nullable: false)]
+    // FIX #695: Column renamed from 'user' to 'username' for PostgreSQL compatibility
+    #[ORM\Column(name: 'username', type: 'string', length: 128, nullable: false)]
     protected string $user;
 
     #[ORM\Column(name: 'is_manual_save', type: 'boolean', nullable: false, options: ['default' => true])]

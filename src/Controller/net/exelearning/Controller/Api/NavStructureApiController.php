@@ -187,7 +187,8 @@ class NavStructureApiController extends DefaultApiController
         $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
 
         // if $odeNavStructureSyncIdParent is set load data from database
-        if (!empty($odeNavStructureSyncIdParent)) {
+        // FIX #695: 'root' is a sentinel value meaning "no parent", not a database ID
+        if (!empty($odeNavStructureSyncIdParent) && $odeNavStructureSyncIdParent !== Constants::ROOT_NODE_IDENTIFIER) {
             $odeNavStructureSyncParent = $odeNavStructureSyncRepo->find($odeNavStructureSyncIdParent);
 
             if ((!empty($odeNavStructureSyncParent)) && (empty($odeParentPageId))) {

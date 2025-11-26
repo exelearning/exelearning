@@ -27,7 +27,8 @@ class OdeOperationsLog extends BaseEntity
     #[ORM\Column(name: 'id_destination', type: 'string', length: 20, nullable: true, options: ['fixed' => true])]
     protected ?string $idDestination = null;
 
-    #[ORM\Column(name: 'user', type: 'string', length: 128, nullable: false)]
+    // FIX #695: Column renamed from 'user' to 'username' for PostgreSQL compatibility
+    #[ORM\Column(name: 'username', type: 'string', length: 128, nullable: false)]
     protected string $user;
 
     #[ORM\Column(name: 'additional_data', type: 'string', length: 4096, nullable: true)]

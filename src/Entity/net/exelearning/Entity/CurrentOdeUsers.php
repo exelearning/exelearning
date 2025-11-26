@@ -41,8 +41,10 @@ use Symfony\Component\Serializer\Annotation\Groups;
 #[ORM\Index(name: 'index2', columns: ['ode_id'])]
 #[ORM\Index(name: 'index3', columns: ['ode_version_id'])]
 #[ORM\Index(name: 'index4', columns: ['ode_session_id'])]
-#[ORM\Index(name: 'index5', columns: ['user'])]
-#[ORM\Index(name: 'index6', columns: ['ode_session_id', 'user'])]
+// FIX #695: Column renamed from 'user' to 'username' for PostgreSQL compatibility
+// The column name 'user' is a reserved keyword in PostgreSQL
+#[ORM\Index(name: 'index5', columns: ['username'])]
+#[ORM\Index(name: 'index6', columns: ['ode_session_id', 'username'])]
 
 class CurrentOdeUsers extends BaseEntity
 {
@@ -55,9 +57,10 @@ class CurrentOdeUsers extends BaseEntity
     #[ORM\Column(name: 'ode_session_id', type: 'string', length: 20, nullable: false, options: ['fixed' => true])]
     protected string $odeSessionId;
 
-    #[ORM\Column(name: 'user', type: 'string', length: 128, nullable: false)]
-    protected string $user;
+    // FIX #695: Column renamed from 'user' to 'username' for PostgreSQL compatibility
+    #[ORM\Column(name: 'username', type: 'string', length: 128, nullable: false)]
     #[Groups(['current_ode_users:read'])]
+    protected string $user;
 
     #[ORM\Column(name: 'last_action', type: 'datetime', nullable: false)]
     protected \DateTime $lastAction;
