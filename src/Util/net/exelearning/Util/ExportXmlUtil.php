@@ -2622,7 +2622,7 @@ class ExportXmlUtil
                                 if (!in_array($uiLibDir, $librariesToCopy, true)) {
                                     $librariesToCopy[] = $uiLibDir;
                                 }
-                                $uiFiles = ['/jquery-ui/jquery-ui.min.js'];
+                                $uiFiles = ['/jquery-ui/jquery-ui.min.js', '/jquery-ui/jquery.ui.touch-punch.min.js'];
                                 $alreadyPresent = false;
                                 foreach ($filesToCopy as $existing) {
                                     if (is_array($existing)) {

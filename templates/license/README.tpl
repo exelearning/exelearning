@@ -116,6 +116,9 @@
 *   File: /public/libs/jquery-ui/jquery-ui.min.js
     *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
+*   File: /public/libs/jquery.ui.touch-punch.min.js
+    *   Copyright: Dave Furfero
+    *   License: MIT or GPL Version 2 (dual licensed)
 *   Files: /public/libs/showdown/* (Showdown v2)
     *   Copyright: ShowdownJS
     *   License: MIT

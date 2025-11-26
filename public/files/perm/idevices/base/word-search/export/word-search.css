@@ -118,6 +118,7 @@
     justify-content: center;
     align-items: flex-start;
     flex-wrap: wrap;
+    overflow: hidden;
 }
 
 .SPP-ResolveDiv {
@@ -125,6 +126,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    overflow: hidden;
 }
 
 .SPP-Protector,
@@ -1021,72 +1023,140 @@ div:fullscreen .SPP-LinkMinimize {
     display: inline-block;
     border: 1px solid black;
     padding: 2vw;
+    max-width: 100%;
+    width: auto;
+    box-sizing: border-box;
+    overflow: visible;
 }
 
 .SPP-Puzzle>div {
     /* rows */
     width: 100%;
     margin: 0 auto;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
 }
 
 /* style for each square in the puzzle */
 .SPP-PuzzleSquare {
     height: 6vw;
     width: 6vw;
+    max-width: 3rem;
+    max-height: 3rem;
     text-transform: uppercase;
     background-color: white;
     border: 0;
-    font: 4vw sans-serif;
+    font-size: 4vw;
     padding: 0 !important;
     margin: 0 !important;
+    flex-shrink: 1;
+    flex-grow: 0;
+    box-sizing: border-box;
+    aspect-ratio: 1 / 1;
 }
 
 @media only screen and (max-width: 600px) {
     .SPP-PuzzleSquare {
-        height: 1.6rem;
-        width: 1.6rem;
-        font: 1.1rem sans-serif;
+        height: 7vw;
+        width: 7vw;
+        max-width: 1.8rem;
+        max-height: 1.8rem;
+        font-size: 4.5vw;
+        flex-shrink: 1;
+        aspect-ratio: 1 / 1;
     }
     
     .SPP-Puzzle {
-        padding: 0;
+        padding: 0.3vw;
+        width: auto;
+    }
+    
+    .SPP-GameContainer {
+        padding: 0.3em 0.1em 0 0.1em;
+    }
+    
+    .SPP-Multimedia {
+        margin: 0.2em auto;
+    }
+}
+
+
+@media only screen and (max-width: 500px) {
+    .SPP-PuzzleSquare {
+        height: 7.5vw;
+        width: 7.5vw;
+        max-width: 1.5rem;
+        max-height: 1.5rem;
+        font-size: 3.8vw;
+        flex-shrink: 1;
+        aspect-ratio: 1 / 1;
+    }
+    
+    .SPP-Puzzle {
+        padding: 0.2vw;
+        border-width: 0.5px;
+        width: auto;
+    }
+    
+    .SPP-GameContainer {
+        padding: 0.3em 0.1em 0 0.1em;
+    }
+    
+    .SPP-Multimedia {
+        margin: 0.1em auto;
     }
 }
 
 @media only screen and (max-width: 400px) {
     .SPP-PuzzleSquare {
-        height: 1.3rem;
-        width: 1.3rem;
-        font: 0.9rem sans-serif;
+        height: 7.5vw;
+        width: 7.5vw;
+        max-width: 1.2rem;
+        max-height: 1.2rem;
+        font-size: 3.5vw;
+        flex-shrink: 1;
+        aspect-ratio: 1 / 1;
     }
     
     .SPP-Puzzle {
-        padding: 0;
-    }
-}
-
-@media only screen and (max-width: 340px) {
-    .SPP-PuzzleSquare {
-        height: 1.1rem;
-        width: 1.1rem;
-        font: 0.75rem sans-serif;
-    }
-    
-    .SPP-Puzzle {
-        padding: 0;
-    }
-}
-
-@media only screen and (max-width: 280px) {
-    .SPP-PuzzleSquare {
-        height: 0.9rem;
-        width: 0.9rem;
-        font: 0.65rem sans-serif;
-    }
-    
-    .SPP-Puzzle {
-        padding: 0;
+        padding: 0.2vw;
         border-width: 0.5px;
+        width: auto;
+    }
+    
+    .SPP-GameContainer {
+        padding: 0.2em 0.1em 0 0.1em;
+    }
+    
+    .SPP-Multimedia {
+        margin: 0.1em auto;
+    }
+}
+
+@media only screen and (max-width: 350px) {
+    .SPP-PuzzleSquare {
+        height: 6.5vw;
+        width: 8-5vw;
+        max-width: 1.1rem;
+        max-height: 1.1rem;
+        font-size: 3.5vw;
+        flex-shrink: 1;
+        aspect-ratio: 1 / 1;
+    }
+    
+    .SPP-Puzzle {
+        padding: 0.1vw;
+        border-width: 0.5px;
+        width: auto;
+    }
+    
+    .SPP-GameContainer {
+        padding: 0.1em 0 0 0;
+    }
+    
+    .SPP-Multimedia {
+        margin: 0.1em auto;
     }
 }
 
@@ -1096,9 +1166,12 @@ div:fullscreen .SPP-LinkMinimize {
     }
 
     .SPP-PuzzleSquare {
-        height: 2rem;
-        width: 2rem;
-        font: 1.3rem sans-serif;
+        height: 2.5rem;
+        width: 2.5rem;
+        max-width: 2.5rem;
+        max-height: 2.5rem;
+        font-size: 1.5rem;
+        aspect-ratio: 1 / 1;
     }
 }
 

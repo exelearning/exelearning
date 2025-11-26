@@ -723,6 +723,30 @@ var $eXePuzzle = {
                     height: newHeight + 'px',
                 });
             });
+
+        $eXePuzzle.adjustImageDivHeight(instance);
+    },
+
+    adjustImageDivHeight: function (instance) {
+        const $imageDiv = $('#pzlImageDiv-' + instance);
+        const $imagePuzzle = $('#pzlImagePuzzle-' + instance);
+        const $image = $('#pzlImage-' + instance);
+
+        if ($imagePuzzle.length && $image.length) {
+            const puzzleWidth = $imagePuzzle.width();
+            const puzzleHeight = $imagePuzzle.height();
+
+            if (puzzleWidth > 0 && puzzleHeight > 0) {
+                const containerWidth = $imageDiv.width();
+                const aspectRatio = puzzleHeight / puzzleWidth;
+                const calculatedHeight = containerWidth * aspectRatio;
+
+                $imageDiv.css({
+                    height: calculatedHeight + 'px',
+                    'padding-top': '0',
+                });
+            }
+        }
     },
 
     showSholution: function (instance) {
