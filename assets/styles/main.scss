@@ -42,6 +42,54 @@ body[installation-type="online"] .exe-offline {
     display: none !important;
 }
 
+/* eXe Dark Mode */
+html[data-exe-mode="dark"]:not(:has(body.login-page)) {
+    filter: invert(98%) hue-rotate(180deg);
+}
+html[data-exe-mode="dark"]:not(:has(body.login-page)) :is(img, video, iframe) {
+    filter: invert(100%) hue-rotate(180deg);
+}
+html[data-exe-mode="dark"] .idevice_icon.idevice-img-icon {
+    filter: invert(92%) hue-rotate(180deg) !important;
+}
+html[data-exe-mode="dark"]:not(:has(body.login-page)) .help-modal-top .exe-logo {
+    background: #FFF;
+    padding: 10px;
+    border-radius: 8px;
+    filter: invert(92%) hue-rotate(180deg) !important;
+}
+html[data-exe-mode="dark"]:not(:has(body.login-page)) .modal .modal-body.help-modal-with-logo .help-modal-top {
+    height: 120px;
+}
+html[data-exe-mode="dark"]:not(:has(body.login-page)):not(:has(body.login-page)) #load-screen-main {
+    filter: invert(100%) hue-rotate(180deg);
+}
+html[data-exe-mode="dark"]:not(:has(body.login-page)) #load-screen-main {
+    background-color: #000!important;
+    color: #FFF;
+    background-image: url(images/exe-text-logo-white.svg)
+}
+html[data-exe-mode="dark"]:has(body.login-page) body {
+    background: #000;
+}
+html[data-exe-mode="dark"]:has(body.login-page) .card-body {
+    background: #FFF;
+    border-radius: 8px;
+}
+html[data-exe-mode="dark"] select {
+    background-color: #000 !important;
+    color: #EEE !important;
+    border: 1px solid #292d33 !important;
+}
+html[data-exe-mode="dark"] select option {
+    background-color: #000 !important;
+    color: #EEE !important;
+}
+html[data-exe-mode="dark"]:not(:has(body.login-page)) select,
+html[data-exe-mode="dark"]:not(:has(body.login-page)) option{
+    filter: invert(98%) hue-rotate(180deg);
+}
+
 /* TinyMCE fullscreen mode */
 body:has(iframe.tox-edit-area__iframe[style="height: 100%; width: 100%;"]) .idevice_actions {
     z-index: 10000;

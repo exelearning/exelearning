@@ -51,6 +51,12 @@ class Properties
             'type' => 'checkbox',
             'category' => self::TRANS_PREFIX.'General settings',
         ],
+        'darkMode' => [
+            'title' => self::TRANS_PREFIX.'Dark mode',
+            'value' => 'false',
+            'type' => 'checkbox',
+            'category' => self::TRANS_PREFIX.'General settings',
+        ],
     ];
 
     /*********************************************************************************

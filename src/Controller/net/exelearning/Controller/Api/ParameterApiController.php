@@ -226,6 +226,7 @@ class ParameterApiController extends DefaultApiController
         $this->translator->trans('You can choose a different licence for the current project.');
         $this->translator->trans('Style'); // To review
         $this->translator->trans('Version control');
+        $this->translator->trans('Dark mode');
 
         // STYLES CONFIG (to review)
         // Edition theme categories
