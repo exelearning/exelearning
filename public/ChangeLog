@@ -48,6 +48,7 @@
 - Floated images overflowing in Form iDevice questions
 - SCORM fixes: improved score recovery and better suspend_data handling
 - Metadata error in profiler when using MariaDB
+- PostgreSQL compatibility issues caused by use of reserved keywords
 - TinyMCE fullscreen mode z-index issue (last line selection)
 
 ### Upgraded
