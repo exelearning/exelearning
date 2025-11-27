@@ -1,10 +1,9 @@
 # CHANGELOG
 
-## v3.0.1 – 2025-11-26
+## v3.0.1 – 2025-11-27
 
 ### Added
 
-- New dark mode preference
 - Simultaneous editing of iDevice and box titles
 - Support for opening editable EPUB files
 - Progress dialog added for uploads and imports
@@ -40,13 +39,13 @@
 ### Fixed
 
 - Optimizations for handling large files (over 100MB) in the ODE import workflow
+- Path normalization on Windows (fix incorrect directory separators)
 - ".elpx" extension missing in the Save As dialog
 - Multiple Word Search iDevice instances per page
 - Improved Crossword iDevice performance and word placement
 - Floated images overflowing in Form iDevice questions
 - SCORM fixes: improved score recovery and better suspend_data handling
 - Metadata error in profiler when using MariaDB
-- TinyMCE image/media plugin bugs
 - TinyMCE fullscreen mode z-index issue (last line selection)
 
 ### Upgraded
