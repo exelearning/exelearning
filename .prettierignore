@@ -1,7 +1,6 @@
 # .prettierignore
 /public/app/common/**
 /public/libs/**
-/public/files/perm/idevices/base/**
 node_modules/
 dist/
 vendor/
