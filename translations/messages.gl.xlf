@@ -12991,55 +12991,55 @@
       </trans-unit>
       <trans-unit id="PlLb91P" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
         <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
-        <target></target>
+        <target>~O tamaño do ficheiro ({fileSize}) supera o tamaño máximo permitido ({maxSize}).</target>
       </trans-unit>
       <trans-unit id="0W12xcN" resname="File too large">
         <source>File too large</source>
-        <target></target>
+        <target>~O ficheiro é demasiado grande</target>
       </trans-unit>
       <trans-unit id="B0MzbU." resname="Invalid file content">
         <source>Invalid file content</source>
-        <target></target>
+        <target>~O contido do ficheiro non é válido</target>
       </trans-unit>
       <trans-unit id="gvmO9Y9" resname="Answer type: Single">
         <source>Answer type: Single</source>
-        <target></target>
+        <target>~Tipo de resposta: Única</target>
       </trans-unit>
       <trans-unit id="HTNyf33" resname="Answer type: Multiple">
         <source>Answer type: Multiple</source>
-        <target></target>
+        <target>~Tipo de resposta: Múltiple</target>
       </trans-unit>
       <trans-unit id="TNTKzfg" resname="Suggestion or hint (optional)">
         <source>Suggestion or hint (optional)</source>
-        <target></target>
+        <target>~Suxestión ou pista (opcional)</target>
       </trans-unit>
       <trans-unit id="BZ1S0r1" resname="Hint or suggestion for the student">
         <source>Hint or suggestion for the student</source>
-        <target></target>
+        <target>~Pista ou suxestión para o estudante</target>
       </trans-unit>
       <trans-unit id="hdE6_li" resname="Feedback for correct answer (optional)">
         <source>Feedback for correct answer (optional)</source>
-        <target></target>
+        <target>~Retroalimentación se a resposta é correcta (opcional)</target>
       </trans-unit>
       <trans-unit id="m4TNsCc" resname="Message shown when answer is correct">
         <source>Message shown when answer is correct</source>
-        <target></target>
+        <target>~Mensaxe mostrado cando a resposta é correcta</target>
       </trans-unit>
       <trans-unit id="iWMpEte" resname="Feedback for wrong answer (optional)">
         <source>Feedback for wrong answer (optional)</source>
-        <target></target>
+        <target>~Retroalimentación se a resposta non é correcta (opcional)</target>
       </trans-unit>
       <trans-unit id="PY8dpAN" resname="Message shown when answer is wrong">
         <source>Message shown when answer is wrong</source>
-        <target></target>
+        <target>~Mensaxe mostrado cando a resposta é incorrecta</target>
       </trans-unit>
       <trans-unit id="94Iy.Ws" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
         <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
-        <target></target>
+        <target>~Espazo de almacenamento insuficiente. Estás a usar {usedSpace} de {maxSpace}. O ficheiro require {requiredSpace}, pero só tes {availableSpace} dispoñibles. Por favor, elimina algúns ficheiros para liberar espazo.</target>
       </trans-unit>
       <trans-unit id="HtCHM4W" resname="Hide page title">
         <source>Hide page title</source>
-        <target></target>
+        <target>~Agochar o título da páxina</target>
       </trans-unit>
     </body>
   </file>
