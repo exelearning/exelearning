@@ -12255,15 +12255,15 @@
       </trans-unit>
       <trans-unit id="t0jmRcI" resname="The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts">
         <source>The number of attempts has to be bigger or equal to the number of phrases in the game. Use 0 for an unlimited number of attempts</source>
-        <target>> Saiakera-kopuruak handiagoa edo jokoaren esaldi-kopuruaren berdina izan behar du. Erabili 0 saiakera kopuru mugagabe baterako</target>
+        <target><![CDATA[> Saiakera-kopuruak handiagoa edo jokoaren esaldi-kopuruaren berdina izan behar du. Erabili 0 saiakera kopuru mugagabe baterako]]></target>
       </trans-unit>
       <trans-unit id="D7clkVP" resname="With fixed headers, the number of cards must be bigger than the number of columns">
         <source>With fixed headers, the number of cards must be bigger than the number of columns</source>
-        <target>> Zenbakien saiakera kopurua jokoko esaldien kopuruaren berdina edo handiagoa izan behar du. Erabili 0 saiakera kopuru mugagabea izateko</target>
+        <target><![CDATA[> Zenbakien saiakera kopurua jokoko esaldien kopuruaren berdina edo handiagoa izan behar du. Erabili 0 saiakera kopuru mugagabea izateko]]></target>
       </trans-unit>
       <trans-unit id="fdwIkjV" resname="Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)">
         <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)</source>
-        <target>> With fixed headers, the number of cards must be bigger than the number of columns</target>
+        <target><![CDATA[> With fixed headers, the number of cards must be bigger than the number of columns]]></target>
       </trans-unit>
       <trans-unit id="ekwfxIh" resname="Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) ">
         <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) </source>
@@ -12271,30 +12271,30 @@
       </trans-unit>
       <trans-unit id="L41w01C" resname="The question text and the formula should have the same variables">
         <source>The question text and the formula should have the same variables</source>
-        <target>> Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)</target>
+        <target><![CDATA[> Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)]]></target>
       </trans-unit>
       <trans-unit id="3IL1weY" resname="Select the correct options and click on the 'Reply' button.">
         <source>Select the correct options and click on the 'Reply' button.</source>
-        <target>> Mesedez, hautatu testu fitxategi bat (.txt), JSON fitxategi bat (.json), edo XML(Moodle) fitxategi bat (.xml)</target>
+        <target><![CDATA[> Mesedez, hautatu testu fitxategi bat (.txt), JSON fitxategi bat (.json), edo XML(Moodle) fitxategi bat (.xml)]]></target>
       </trans-unit>
       <trans-unit id="GySH111" resname="Show when the mouse is over the icon or active area">
         <source>Show when the mouse is over the icon or active area</source>
-        <target>> Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) </target>
+        <target><![CDATA[> Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) ]]></target>
       </trans-unit>
       <trans-unit id="n_.r9xf" resname="Editar cuestionario">
         <source>Editar cuestionario</source>
-        <target>> Mesedez, hautatu testu fitxategi bat (.txt), JSON fitxategi bat (.json), edo XML(Moodle) fitxategi bat (.xml)</target>
+        <target><![CDATA[> Mesedez, hautatu testu fitxategi bat (.txt), JSON fitxategi bat (.json), edo XML(Moodle) fitxategi bat (.xml)]]></target>
       </trans-unit>
       <trans-unit id="j5mwtQP" resname="The word cannot contain more than fourteen characters or white spaces">
         <source>The word cannot contain more than fourteen characters or white spaces</source>
-        <target>> The question text and the formula should have the same variables</target>
+        <target><![CDATA[> The question text and the formula should have the same variables]]></target>
       </trans-unit>
       <trans-unit id="KAgEWOK" resname="You must select at least one type of data to complet">
         <source>You must select at least one type of data to complet</source>
-        <target>> Galderaren testua eta formula berdinak izan behar dute aldagaietan</target>
+        <target><![CDATA[> Galderaren testua eta formula berdinak izan behar dute aldagaietan]]></target>
       </trans-unit>
       <trans-unit id="aGuMwTn" resname="You must select at least one group of elements">
-        <source>You must select at least one group of items</source>
+        <source>You must select at least one group of elements</source>
         <target>Elementu-multzo bat hautatu behar duzu gutxienez</target>
       </trans-unit>
       <trans-unit id="_N0MKqb" resname="Please select a text file (.txt), or an XML(Moodle) file (.xml) ">
@@ -12992,6 +12992,62 @@
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
         <target>Informazio gehigarria gehitu izenburu nagusian.</target>
+      </trans-unit>
+      <trans-unit id="PlLb91P" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
+        <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
+        <target>~Fitxategiaren tamaina ({fileSize}) onartutako gehieneko tamaina ({maxSize}) gainditzen du.</target>
+      </trans-unit>
+      <trans-unit id="0W12xcN" resname="File too large">
+        <source>File too large</source>
+        <target>~Fitxategia gehiegi handia da</target>
+      </trans-unit>
+      <trans-unit id="B0MzbU." resname="Invalid file content">
+        <source>Invalid file content</source>
+        <target>~Fitxategiaren edukia ez da baliagarria</target>
+      </trans-unit>
+      <trans-unit id="gvmO9Y9" resname="Answer type: Single">
+        <source>Answer type: Single</source>
+        <target>~Erantzun motak: Bakarra</target>
+      </trans-unit>
+      <trans-unit id="HTNyf33" resname="Answer type: Multiple">
+        <source>Answer type: Multiple</source>
+        <target>~Erantzun motak: Anitza</target>
+      </trans-unit>
+      <trans-unit id="TNTKzfg" resname="Suggestion or hint (optional)">
+        <source>Suggestion or hint (optional)</source>
+        <target>~Iradokizuna edo pista (aukerakoa)</target>
+      </trans-unit>
+      <trans-unit id="BZ1S0r1" resname="Hint or suggestion for the student">
+        <source>Hint or suggestion for the student</source>
+        <target>~Ikasleari iradokizun edo pista</target>
+      </trans-unit>
+      <trans-unit id="hdE6_li" resname="Feedback for correct answer (optional)">
+        <source>Feedback for correct answer (optional)</source>
+        <target>~Erantzun zuzena denean iritzia (aukerakoa)</target>
+      </trans-unit>
+      <trans-unit id="m4TNsCc" resname="Message shown when answer is correct">
+        <source>Message shown when answer is correct</source>
+        <target>~Mezua erakusten da erantzuna zuzena denean</target>
+      </trans-unit>
+      <trans-unit id="iWMpEte" resname="Feedback for wrong answer (optional)">
+        <source>Feedback for wrong answer (optional)</source>
+        <target>~Erantzun okerra denean iritzia (aukerakoa)</target>
+      </trans-unit>
+      <trans-unit id="PY8dpAN" resname="Message shown when answer is wrong">
+        <source>Message shown when answer is wrong</source>
+        <target>~Mezua erakusten da erantzuna okerra denean</target>
+      </trans-unit>
+      <trans-unit id="94Iy.Ws" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
+        <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
+        <target>~Biltegiratzeko lekua ez da nahikoa. {maxSpace}-etatik {usedSpace} erabiltzen ari zara. Fitxeroak {requiredSpace} behar ditu, baina soilik {availableSpace} dituzu erabilgarri. Mesedez, ezabatu fitxategi batzuk leku gehiago askatzeko.</target>
+      </trans-unit>
+      <trans-unit id="HtCHM4W" resname="Hide page title">
+        <source>Hide page title</source>
+        <target>~Orrialdearen izenburua ezkutatu</target>
+      </trans-unit>
+      <trans-unit id="HGZVLdj" resname="Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?">
+        <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
+        <target>~Elkarrekin editatzea esperimentala da eta ez da behar bezala funtziona dezake. Erabili probetarako bakarrik, datuak galdu daitezke. Jarraitu nahi duzu?</target>
       </trans-unit>
     </body>
   </file>

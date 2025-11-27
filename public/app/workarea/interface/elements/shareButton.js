@@ -19,10 +19,19 @@ export default class ShareProjectButton {
      */
     addEventClick() {
         this.shareMenuHeadButton.addEventListener('click', (event) => {
-            // First save content (make propietary of the content)
-            if (eXeLearning.app.project.checkOpenIdevice()) return;
-            eXeLearning.app.project.save().then(() => {
-                this.copyUserSessionId();
+            eXeLearning.app.modals.confirm.show({
+                title: _('Warning'),
+                body: _(
+                    'Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?'
+                ),
+                confirmButtonText: _('Yes'),
+                confirmExec: () => {
+                    // First save content (make propietary of the content)
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    eXeLearning.app.project.save().then(() => {
+                        this.copyUserSessionId();
+                    });
+                },
             });
         });
     }

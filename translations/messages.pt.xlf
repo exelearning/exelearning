@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
-  <file source-language="en" target-language="en" datatype="plaintext" original="file.ext">
+  <file source-language="en" target-language="pt" datatype="plaintext" original="file.ext">
     <header>
       <tool tool-id="symfony" tool-name="Symfony"/>
     </header>
@@ -6215,7 +6215,7 @@
       </trans-unit>
       <trans-unit id="eBiTSqv" resname="You finished the game. Your score is %s.">
         <source>You finished the game. Your score is %s.</source>
-        <target/>
+        <target></target>
       </trans-unit>
       <trans-unit id="13_eLOl" resname="Please create at least one activity">
         <source>Please create at least one activity</source>
@@ -9015,7 +9015,7 @@
       </trans-unit>
       <trans-unit id="HymDl3i" resname="New column">
         <source>New column</source>
-        <target/>
+        <target></target>
       </trans-unit>
       <trans-unit id="EXqwPw9" resname="New row">
         <source>New row</source>
@@ -12992,6 +12992,62 @@
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
         <target>~Adiciona informações adicionais ao título principal.</target>
+      </trans-unit>
+      <trans-unit id="PlLb91P" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
+        <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
+        <target>~O tamanho do arquivo ({fileSize}) excede o tamanho máximo permitido ({maxSize}).</target>
+      </trans-unit>
+      <trans-unit id="0W12xcN" resname="File too large">
+        <source>File too large</source>
+        <target>~Arquivo muito grande</target>
+      </trans-unit>
+      <trans-unit id="B0MzbU." resname="Invalid file content">
+        <source>Invalid file content</source>
+        <target>~Conteúdo do arquivo inválido</target>
+      </trans-unit>
+      <trans-unit id="gvmO9Y9" resname="Answer type: Single">
+        <source>Answer type: Single</source>
+        <target>~Tipo de resposta: Única</target>
+      </trans-unit>
+      <trans-unit id="HTNyf33" resname="Answer type: Multiple">
+        <source>Answer type: Multiple</source>
+        <target>~Tipo de resposta: Múltipla</target>
+      </trans-unit>
+      <trans-unit id="TNTKzfg" resname="Suggestion or hint (optional)">
+        <source>Suggestion or hint (optional)</source>
+        <target>~Sugestão ou dica (opcional)</target>
+      </trans-unit>
+      <trans-unit id="BZ1S0r1" resname="Hint or suggestion for the student">
+        <source>Hint or suggestion for the student</source>
+        <target>~Dica ou sugestão para o estudante</target>
+      </trans-unit>
+      <trans-unit id="hdE6_li" resname="Feedback for correct answer (optional)">
+        <source>Feedback for correct answer (optional)</source>
+        <target>~Feedback se a resposta estiver correta (opcional)</target>
+      </trans-unit>
+      <trans-unit id="m4TNsCc" resname="Message shown when answer is correct">
+        <source>Message shown when answer is correct</source>
+        <target>~Mensagem exibida quando a resposta está correta</target>
+      </trans-unit>
+      <trans-unit id="iWMpEte" resname="Feedback for wrong answer (optional)">
+        <source>Feedback for wrong answer (optional)</source>
+        <target>~Feedback se a resposta estiver incorreta (opcional)</target>
+      </trans-unit>
+      <trans-unit id="PY8dpAN" resname="Message shown when answer is wrong">
+        <source>Message shown when answer is wrong</source>
+        <target>~Mensagem exibida quando a resposta está incorreta</target>
+      </trans-unit>
+      <trans-unit id="94Iy.Ws" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
+        <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
+        <target>~Espaço de armazenamento insuficiente. Está a usar {usedSpace} de {maxSpace}. O arquivo requer {requiredSpace}, mas só tem {availableSpace} disponível. Por favor, exclua alguns arquivos para liberar espaço.</target>
+      </trans-unit>
+      <trans-unit id="HtCHM4W" resname="Hide page title">
+        <source>Hide page title</source>
+        <target>~Ocultar o título da página</target>
+      </trans-unit>
+      <trans-unit id="HGZVLdj" resname="Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?">
+        <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
+        <target>~A edição colaborativa é experimental e pode não funcionar corretamente. Use-a apenas para testes, pois os dados podem ser perdidos. Deseja continuar?</target>
       </trans-unit>
     </body>
   </file>

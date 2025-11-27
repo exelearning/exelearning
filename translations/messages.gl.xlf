@@ -5651,7 +5651,7 @@
       </trans-unit>
       <trans-unit id="3EmhqPa" resname="You need at least %s&amp;percnt; of correct answers to get the information. Please try again.">
         <source>You need at least %s&amp;percnt; of correct answers to get the information. Please try again.</source>
-        <target>Precisas polo menos %s&amp;percnt; de respostas correctas para obter a información. Téntao de novo.</target>
+        <target><![CDATA[Precisas polo menos %s&percnt; de respostas correctas para obter a información. Téntao de novo.]]></target>
       </trans-unit>
       <trans-unit id="p_aCAey" resname="Time is up. Please try again">
         <source>Time is up. Please try again</source>
@@ -5771,7 +5771,7 @@
       </trans-unit>
       <trans-unit id="I4MH_aK" resname="&amp;percnt; right to see the feedback">
         <source>&amp;percnt; right to see the feedback</source>
-        <target>&amp;percnt; de acertos requiridos para ver a retroalimentación</target>
+        <target><![CDATA[&percnt; de acertos requiridos para ver a retroalimentación]]></target>
       </trans-unit>
       <trans-unit id="a_DSSKc" resname="Image back">
         <source>Image back</source>
@@ -5891,7 +5891,7 @@
       </trans-unit>
       <trans-unit id="jhOcP6n" resname="Incorrect letters allowed (&amp;percnt;)">
         <source>Incorrect letters allowed (&amp;percnt;)</source>
-        <target>Permítense letras incorrectas (&amp;percnt;)</target>
+        <target><![CDATA[Permítense letras incorrectas (&percnt;)]]></target>
       </trans-unit>
       <trans-unit id="XV5EOaM" resname="Field width proportional to the words length">
         <source>Field width proportional to the words length</source>
@@ -12871,7 +12871,7 @@
       </trans-unit>
       <trans-unit id="cIfYpvB" resname="You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt; of the contents of the activity before completing the questionnaire.</source>
-        <target>Debes revisar el %s&amp;percnt; dos contidos da actividade antes de completar o cuestionario.</target>
+        <target><![CDATA[Debes revisar el %s&percnt; dos contidos da actividade antes de completar o cuestionario.]]></target>
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
@@ -12988,6 +12988,62 @@
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
         <target>Engade información adicional ao título principal.</target>
+      </trans-unit>
+      <trans-unit id="PlLb91P" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
+        <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
+        <target>~O tamaño do ficheiro ({fileSize}) supera o tamaño máximo permitido ({maxSize}).</target>
+      </trans-unit>
+      <trans-unit id="0W12xcN" resname="File too large">
+        <source>File too large</source>
+        <target>~O ficheiro é demasiado grande</target>
+      </trans-unit>
+      <trans-unit id="B0MzbU." resname="Invalid file content">
+        <source>Invalid file content</source>
+        <target>~O contido do ficheiro non é válido</target>
+      </trans-unit>
+      <trans-unit id="gvmO9Y9" resname="Answer type: Single">
+        <source>Answer type: Single</source>
+        <target>~Tipo de resposta: Única</target>
+      </trans-unit>
+      <trans-unit id="HTNyf33" resname="Answer type: Multiple">
+        <source>Answer type: Multiple</source>
+        <target>~Tipo de resposta: Múltiple</target>
+      </trans-unit>
+      <trans-unit id="TNTKzfg" resname="Suggestion or hint (optional)">
+        <source>Suggestion or hint (optional)</source>
+        <target>~Suxestión ou pista (opcional)</target>
+      </trans-unit>
+      <trans-unit id="BZ1S0r1" resname="Hint or suggestion for the student">
+        <source>Hint or suggestion for the student</source>
+        <target>~Pista ou suxestión para o estudante</target>
+      </trans-unit>
+      <trans-unit id="hdE6_li" resname="Feedback for correct answer (optional)">
+        <source>Feedback for correct answer (optional)</source>
+        <target>~Retroalimentación se a resposta é correcta (opcional)</target>
+      </trans-unit>
+      <trans-unit id="m4TNsCc" resname="Message shown when answer is correct">
+        <source>Message shown when answer is correct</source>
+        <target>~Mensaxe mostrado cando a resposta é correcta</target>
+      </trans-unit>
+      <trans-unit id="iWMpEte" resname="Feedback for wrong answer (optional)">
+        <source>Feedback for wrong answer (optional)</source>
+        <target>~Retroalimentación se a resposta non é correcta (opcional)</target>
+      </trans-unit>
+      <trans-unit id="PY8dpAN" resname="Message shown when answer is wrong">
+        <source>Message shown when answer is wrong</source>
+        <target>~Mensaxe mostrado cando a resposta é incorrecta</target>
+      </trans-unit>
+      <trans-unit id="94Iy.Ws" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
+        <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
+        <target>~Espazo de almacenamento insuficiente. Estás a usar {usedSpace} de {maxSpace}. O ficheiro require {requiredSpace}, pero só tes {availableSpace} dispoñibles. Por favor, elimina algúns ficheiros para liberar espazo.</target>
+      </trans-unit>
+      <trans-unit id="HtCHM4W" resname="Hide page title">
+        <source>Hide page title</source>
+        <target>~Agochar o título da páxina</target>
+      </trans-unit>
+      <trans-unit id="HGZVLdj" resname="Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?">
+        <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
+        <target>~A edición colaborativa é experimental e pode non funcionar correctamente. Úsase só para probas, xa que se poderían perder datos. Queres continuar?</target>
       </trans-unit>
     </body>
   </file>

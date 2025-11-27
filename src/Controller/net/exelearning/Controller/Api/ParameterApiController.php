@@ -284,6 +284,7 @@ class ParameterApiController extends DefaultApiController
 
         // PAGES PROPERTIES
         // $this->translator->trans('Title');
+        $this->translator->trans('Hide page title');
         $this->translator->trans('Title HTML');
         $this->translator->trans('Advanced (SEO)');
         $this->translator->trans('Different title on the page');
