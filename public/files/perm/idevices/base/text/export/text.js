@@ -185,35 +185,39 @@ var $text = {
         const $btn = $(
             `#${data.ideviceId} input.feedbackbutton, #${data.ideviceId} input.feedbacktooglebutton`
         );
-        if ($btn.length !== 1) return;
-
-        const [textA, textB = textA] = $btn.val().split('|');
-        $btn.val(textA).attr('data-text-a', textA).attr('data-text-b', textB);
-        $btn.off('click').closest('.feedback-button').removeClass('clearfix');
-
-        $btn.on('click', function () {
-            if ($text.working) return false;
-            $text.working = true;
-            const btn = $(this);
-            const feedbackEl = btn
+        if ($btn.length === 1) {
+            const [textA, textB = textA] = $btn.val().split('|');
+            $btn.val(textA)
+                .attr('data-text-a', textA)
+                .attr('data-text-b', textB);
+            $btn.off('click')
                 .closest('.feedback-button')
-                .next('.feedback');
+                .removeClass('clearfix');
 
-            if (feedbackEl.is(':visible')) {
-                btn.val(btn.attr('data-text-a'));
-                feedbackEl.fadeOut(() => {
-                    $text.working = false;
-                });
-            } else {
-                btn.val(btn.attr('data-text-b'));
-                feedbackEl.fadeIn(() => {
-                    $text.working = false;
-                });
-            }
-            $exeDevices.iDevice.gamification.math.updateLatex(
-                '.exe-text-template'
-            );
-        });
+            $btn.on('click', function () {
+                if ($text.working) return false;
+                $text.working = true;
+                const btn = $(this);
+                const feedbackEl = btn
+                    .closest('.feedback-button')
+                    .next('.feedback');
+
+                if (feedbackEl.is(':visible')) {
+                    btn.val(btn.attr('data-text-a'));
+                    feedbackEl.fadeOut(() => {
+                        $text.working = false;
+                    });
+                } else {
+                    btn.val(btn.attr('data-text-b'));
+                    feedbackEl.fadeIn(() => {
+                        $text.working = false;
+                    });
+                }
+                $exeDevices.iDevice.gamification.math.updateLatex(
+                    '.exe-text-template'
+                );
+            });
+        }
         const dataString = $node.html() || '';
         const hasLatex =
             $exeDevices.iDevice.gamification.math.hasLatex(dataString);

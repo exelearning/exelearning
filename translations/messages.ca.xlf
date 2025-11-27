@@ -12454,7 +12454,7 @@
         <target>Insereix/Edita media</target>
       </trans-unit>
       <trans-unit id="UaH5pD4" resname="Insert\/Edit Embedded Media">
-        <source>Insert/Edit Embedded Media</source>
+        <source>Insert\/Edit Embedded Media</source>
         <target>Insereix/Edita els media incrustats</target>
       </trans-unit>
       <trans-unit id="ZLoYAYD" resname="Pause">
@@ -12988,6 +12988,62 @@
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
         <target>Afegeix informació addicional al títol principal.</target>
+      </trans-unit>
+      <trans-unit id="PlLb91P" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
+        <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
+        <target>~La mida del fitxer ({fileSize}) supera la mida màxima permesa ({maxSize}).</target>
+      </trans-unit>
+      <trans-unit id="0W12xcN" resname="File too large">
+        <source>File too large</source>
+        <target>~El fitxer és massa gran</target>
+      </trans-unit>
+      <trans-unit id="B0MzbU." resname="Invalid file content">
+        <source>Invalid file content</source>
+        <target>~El contingut del fitxer no és vàlid</target>
+      </trans-unit>
+      <trans-unit id="gvmO9Y9" resname="Answer type: Single">
+        <source>Answer type: Single</source>
+        <target>~Tipus de resposta: Única</target>
+      </trans-unit>
+      <trans-unit id="HTNyf33" resname="Answer type: Multiple">
+        <source>Answer type: Multiple</source>
+        <target>~Tipus de resposta: Múltiple</target>
+      </trans-unit>
+      <trans-unit id="TNTKzfg" resname="Suggestion or hint (optional)">
+        <source>Suggestion or hint (optional)</source>
+        <target>~Suggeriment o pista (opcional)</target>
+      </trans-unit>
+      <trans-unit id="BZ1S0r1" resname="Hint or suggestion for the student">
+        <source>Hint or suggestion for the student</source>
+        <target>~Pista o suggeriment per a l'estudiant</target>
+      </trans-unit>
+      <trans-unit id="hdE6_li" resname="Feedback for correct answer (optional)">
+        <source>Feedback for correct answer (optional)</source>
+        <target>~Comentari si la resposta és correcta (opcional)</target>
+      </trans-unit>
+      <trans-unit id="m4TNsCc" resname="Message shown when answer is correct">
+        <source>Message shown when answer is correct</source>
+        <target>~Missatge mostrat quan la resposta és correcta</target>
+      </trans-unit>
+      <trans-unit id="iWMpEte" resname="Feedback for wrong answer (optional)">
+        <source>Feedback for wrong answer (optional)</source>
+        <target>~Comentari si la resposta no és correcta (opcional)</target>
+      </trans-unit>
+      <trans-unit id="PY8dpAN" resname="Message shown when answer is wrong">
+        <source>Message shown when answer is wrong</source>
+        <target>~Missatge mostrat quan la resposta és incorrecta</target>
+      </trans-unit>
+      <trans-unit id="94Iy.Ws" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
+        <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
+        <target>~Espai d'emmagatzematge insuficient. Esteu utilitzant {usedSpace} de {maxSpace}. El fitxer requereix {requiredSpace}, però només disposeu de {availableSpace} disponibles. Si us plau, elimineu alguns fitxers per alliberar espai.</target>
+      </trans-unit>
+      <trans-unit id="HtCHM4W" resname="Hide page title">
+        <source>Hide page title</source>
+        <target>~Amaga el títol de la pàgina</target>
+      </trans-unit>
+      <trans-unit id="HGZVLdj" resname="Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?">
+        <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
+        <target>~L'edició col·laborativa és experimental i pot no funcionar correctament. Utilitzeu-la només per a proves, ja que es podrien perdre dades. Voleu continuar?</target>
       </trans-unit>
     </body>
   </file>

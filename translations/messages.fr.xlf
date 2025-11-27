@@ -4617,11 +4617,11 @@
         <source>File is too large</source>
         <target>~Le fichier est trop volumineux</target>
       </trans-unit>
-      <trans-unit id="FileSizeExceedsLimit" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
+      <trans-unit id="PlLb91P" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
         <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
         <target>~La taille du fichier ({fileSize}) dépasse la taille maximale autorisée ({maxSize}).</target>
       </trans-unit>
-      <trans-unit id="InsufficientStorageSpace" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
+      <trans-unit id="94Iy.Ws" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
         <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
         <target>~Espace de stockage insuffisant. Vous utilisez {usedSpace} sur {maxSpace}. Le fichier nécessite {requiredSpace}, mais il ne vous reste que {availableSpace}. Veuillez supprimer certains fichiers pour libérer de l'espace.</target>
       </trans-unit>
@@ -13000,6 +13000,54 @@
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
         <target>~Ajoute des informations supplémentaires au titre principal.</target>
+      </trans-unit>
+      <trans-unit id="0W12xcN" resname="File too large">
+        <source>File too large</source>
+        <target>~Fichier trop volumineux</target>
+      </trans-unit>
+      <trans-unit id="B0MzbU." resname="Invalid file content">
+        <source>Invalid file content</source>
+        <target>~Contenu du fichier non valide</target>
+      </trans-unit>
+      <trans-unit id="gvmO9Y9" resname="Answer type: Single">
+        <source>Answer type: Single</source>
+        <target>~Type de réponse : Unique</target>
+      </trans-unit>
+      <trans-unit id="HTNyf33" resname="Answer type: Multiple">
+        <source>Answer type: Multiple</source>
+        <target>~Type de réponse : Multiple</target>
+      </trans-unit>
+      <trans-unit id="TNTKzfg" resname="Suggestion or hint (optional)">
+        <source>Suggestion or hint (optional)</source>
+        <target>~Suggestion ou indice (facultatif)</target>
+      </trans-unit>
+      <trans-unit id="BZ1S0r1" resname="Hint or suggestion for the student">
+        <source>Hint or suggestion for the student</source>
+        <target>~Indice ou suggestion pour l'étudiant</target>
+      </trans-unit>
+      <trans-unit id="hdE6_li" resname="Feedback for correct answer (optional)">
+        <source>Feedback for correct answer (optional)</source>
+        <target>~Retour si la réponse est correcte (facultatif)</target>
+      </trans-unit>
+      <trans-unit id="m4TNsCc" resname="Message shown when answer is correct">
+        <source>Message shown when answer is correct</source>
+        <target>~Message affiché lorsque la réponse est correcte</target>
+      </trans-unit>
+      <trans-unit id="iWMpEte" resname="Feedback for wrong answer (optional)">
+        <source>Feedback for wrong answer (optional)</source>
+        <target>~Retour si la réponse est incorrecte (facultatif)</target>
+      </trans-unit>
+      <trans-unit id="PY8dpAN" resname="Message shown when answer is wrong">
+        <source>Message shown when answer is wrong</source>
+        <target>~Message affiché lorsque la réponse est incorrecte</target>
+      </trans-unit>
+      <trans-unit id="HtCHM4W" resname="Hide page title">
+        <source>Hide page title</source>
+        <target>~Masquer le titre de la page</target>
+      </trans-unit>
+      <trans-unit id="HGZVLdj" resname="Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?">
+        <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
+        <target>~L’édition collaborative est expérimentale et peut ne pas fonctionner correctement. Utilisez-la uniquement pour des tests, car des données pourraient être perdues. Voulez-vous continuer?</target>
       </trans-unit>
     </body>
   </file>
