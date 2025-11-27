@@ -187,8 +187,12 @@ var $text = {
         );
         if ($btn.length === 1) {
             const [textA, textB = textA] = $btn.val().split('|');
-            $btn.val(textA).attr('data-text-a', textA).attr('data-text-b', textB);
-            $btn.off('click').closest('.feedback-button').removeClass('clearfix');
+            $btn.val(textA)
+                .attr('data-text-a', textA)
+                .attr('data-text-b', textB);
+            $btn.off('click')
+                .closest('.feedback-button')
+                .removeClass('clearfix');
 
             $btn.on('click', function () {
                 if ($text.working) return false;
@@ -255,7 +259,7 @@ var $text = {
         return doc.body.innerHTML;
     },
 
-    init(data, accessibility) { },
+    init(data, accessibility) {},
 
     createMainContent(content) {
         return `
