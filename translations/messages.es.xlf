@@ -13041,6 +13041,10 @@
         <source>Hide page title</source>
         <target>Ocultar el título de la página</target>
       </trans-unit>
+      <trans-unit id="HGZVLdj" resname="Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?">
+        <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
+        <target>La edición colaborativa es experimental y puede no funcionar del todo bien. Úsala solo para pruebas. Se podrían perder datos. ¿Quieres continuar?</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

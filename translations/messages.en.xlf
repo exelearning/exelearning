@@ -13045,6 +13045,10 @@
         <source>Hide page title</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="HGZVLdj" resname="Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?">
+        <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
