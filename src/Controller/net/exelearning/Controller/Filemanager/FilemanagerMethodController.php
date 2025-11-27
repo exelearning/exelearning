@@ -660,6 +660,9 @@ class FilemanagerMethodController extends DefaultApiController
         // Relative path
         $relativePath = $pathIni.DIRECTORY_SEPARATOR.$path;
 
+        // Hotfix #711: Normalize path separators for URLs (Windows compatibility)
+        $relativePath = str_replace('\\', '/', $relativePath);
+
         $data = [
             'path' => $relativePath,
         ];
