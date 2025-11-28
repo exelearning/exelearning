@@ -501,8 +501,7 @@ var $eXePuzzle = {
         }
 
         $(image).hide();
-        
-       
+
         return true;
     },
 
@@ -725,7 +724,6 @@ var $eXePuzzle = {
                     height: newHeight + 'px',
                 });
             });
-
     },
 
     adjustImageDivHeight: function (instance) {
