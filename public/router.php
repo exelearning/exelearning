@@ -72,6 +72,34 @@ if (preg_match('#^/files/tmp/(.*)$#', $uri, $matches)) {
     serveFile($path, $mimeTypes);
 }
 
+// Handle /files/perm/idevices/users/... requests using FILES_DIR (#712)
+if (preg_match('#^/files/perm/idevices/users/(.*)$#', $uri, $matches)) {
+    $filesDir = getenv('FILES_DIR');
+
+    if (!$filesDir) {
+        header('HTTP/1.1 500 Internal Server Error');
+        echo "Error: FILES_DIR environment variable is not set.";
+        exit;
+    }
+
+    $path = rtrim($filesDir, '/') . '/perm/idevices/users/' . $matches[1];
+    serveFile($path, $mimeTypes);
+}
+
+// Handle /files/perm/themes/users/... requests using FILES_DIR (#712)
+if (preg_match('#^/files/perm/themes/users/(.*)$#', $uri, $matches)) {
+    $filesDir = getenv('FILES_DIR');
+
+    if (!$filesDir) {
+        header('HTTP/1.1 500 Internal Server Error');
+        echo "Error: FILES_DIR environment variable is not set.";
+        exit;
+    }
+
+    $path = rtrim($filesDir, '/') . '/perm/themes/users/' . $matches[1];
+    serveFile($path, $mimeTypes);
+}
+
 if (file_exists($requestedFile) && is_file($requestedFile)) {
     serveFile($requestedFile, $mimeTypes);
 }
