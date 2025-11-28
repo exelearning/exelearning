@@ -369,8 +369,12 @@
     width: 100%;
     margin: 0 auto;
     position: relative;
-    height: auto;
-    min-height: 200px;
+}
+
+.PZLP-ImageDiv:before {
+    content: '';
+    display: block;
+    padding-top: 56%;
 }
 
 
@@ -905,11 +909,8 @@ div:fullscreen .PZLP-ImageDiv {
         display: none;
     }
 
-    .PZLP-ImageDiv {
-        width: 100%;
-        height: auto;
-        min-height: 200px;
-        max-height: 400px;
+    .PZLP-ImageDiv:before {
+        padding-top: 100%;
     }
     
     .PZLP-Completed {
