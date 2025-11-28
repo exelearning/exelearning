@@ -40,7 +40,7 @@
 
 - Optimizations for handling large files (over 100MB) in the ODE import workflow
 - Path normalization on Windows (fix incorrect directory separators)
-- Style import and installation issues (some iDevice icons were missing)
+- Styles and iDevices import and installation issues (user-specific files served from new directories)
 - ".elpx" extension missing in the Save As dialog
 - Multiple Word Search iDevice instances per page
 - Feedback button functionality issues in the Text iDevice
