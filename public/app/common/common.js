@@ -1564,6 +1564,64 @@ var $exeDevices = {
             },
 
             helpers: {
+                sanitizeJSONString: function (jsonString) {
+                    if (typeof jsonString !== 'string' || jsonString === '') return jsonString;
+
+                    let inString = false;
+                    let result = '';
+
+                    for (let i = 0; i < jsonString.length; i++) {
+                        const ch = jsonString[i];
+
+                        if (!inString) {
+                            if (ch === '"') {
+                                inString = true;
+                            }
+                            result += ch;
+                            continue;
+                        }
+
+                        if (ch === '\\') {
+                            if (i + 1 < jsonString.length) {
+                                result += ch + jsonString[i + 1];
+                                i++;
+                            } else {
+                                result += ch;
+                            }
+                            continue;
+                        }
+
+                        if (ch === '"') {
+                            inString = false;
+                            result += ch;
+                            continue;
+                        }
+
+                        const code = ch.charCodeAt(0);
+
+                        if (code === 0x08) {
+                            result += '\\b';
+                        } else if (code === 0x09) {
+                            result += '\\t';
+                        } else if (code === 0x0a) {
+                            result += '\\n';
+                        } else if (code === 0x0c) {
+                            result += '\\f';
+                        } else if (code === 0x0d) {
+                            result += '\\r';
+                        } else if (code === 0x2028 || code === 0x2029) {
+                            const hex = code.toString(16).padStart(4, '0');
+                            result += `\\u${hex}`;
+                        } else if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) {
+                            const hex = code.toString(16).padStart(4, '0');
+                            result += `\\u${hex}`;
+                        } else {
+                            result += ch;
+                        }
+                    }
+
+                    return result;
+                },
                 isJsonString: function (str) {
                     if (typeof str !== 'string') return false;
                     str = str.trim();

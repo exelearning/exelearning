@@ -137,16 +137,20 @@ $exeExport = {
                         case 'json':
                             let jsonDataText = ideviceNode.getAttribute('data-idevice-json-data');
                             let jsonData = null;
-                            
-                            // Parse JSON data or create empty object if not valid
+
+                            // Parse JSON data (sanitized) or create empty object if not valid
                             try {
                                 if (jsonDataText) {
-                                    jsonData = JSON.parse(jsonDataText);
+                                    const sanitized =
+                                        $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                                            jsonDataText
+                                        );
+                                    jsonData = JSON.parse(sanitized);
                                 }
                             } catch (e) {
                                 jsonData = null;
                             }
-                            
+
                             // Check for SCORM data if jsonData is valid
                             if (jsonData && jsonData.exportScorm && jsonData.exportScorm.saveScore) {
                                 isSCORM = true;
@@ -213,7 +217,11 @@ $exeExport = {
             // Parse JSON data or create empty object if not valid
             try {
                 if (jsonDataText) {
-                    jsonData = JSON.parse(jsonDataText);
+                    const sanitized =
+                        $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                            jsonDataText
+                        );
+                    jsonData = JSON.parse(sanitized);
                 }
             } catch (e) {
                 jsonData = null;

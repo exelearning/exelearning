@@ -108,99 +108,6 @@ export default class IdeviceNode {
     parseParams = ['jsonProperties'];
 
     /**
-     * Sanitizes a JSON string before calling JSON.parse, escaping control
-     * characters only inside string literals. Non-string values are returned
-     * unchanged.
-     *
-     * @param {string} jsonString Potentially invalid JSON text.
-     * @returns {string} Sanitized JSON string safe for JSON.parse.
-     */
-    sanitizeJSONString(jsonString) {
-        if (typeof jsonString !== 'string') {
-            return jsonString;
-        }
-
-        let result = '';
-        let inString = false;
-        let i = 0;
-
-        while (i < jsonString.length) {
-            const char = jsonString[i];
-            const code = char.charCodeAt(0);
-
-            if (!inString) {
-                if (char === '"') {
-                    inString = true;
-                }
-                result += char;
-                i++;
-                continue;
-            }
-
-            if (char === '\\') {
-                result += char;
-                i++;
-
-                if (i < jsonString.length) {
-                    const nextChar = jsonString[i];
-                    const nextCode = nextChar.charCodeAt(0);
-                    if (nextCode < 0x20 || nextCode === 0x7f) {
-                        result +=
-                            '\\u' + ('0000' + nextCode.toString(16)).slice(-4);
-                    } else {
-                        result += nextChar;
-                    }
-                    i++;
-                }
-                continue;
-            }
-
-            if (char === '"') {
-                inString = false;
-                result += char;
-                i++;
-                continue;
-            }
-
-            if (code < 0x20) {
-                switch (code) {
-                    case 0x08:
-                        result += '\\b';
-                        break;
-                    case 0x09:
-                        result += '\\t';
-                        break;
-                    case 0x0a:
-                        result += '\\n';
-                        break;
-                    case 0x0c:
-                        result += '\\f';
-                        break;
-                    case 0x0d:
-                        result += '\\r';
-                        break;
-                    default:
-                        result +=
-                            '\\u' + ('0000' + code.toString(16)).slice(-4);
-                }
-            } else if (code === 0x7f) {
-                result += '\\u007f';
-            } else if (code >= 0x80 && code <= 0x9f) {
-                result += '\\u' + ('0000' + code.toString(16)).slice(-4);
-            } else if (code === 0x2028) {
-                result += '\\u2028';
-            } else if (code === 0x2029) {
-                result += '\\u2029';
-            } else {
-                result += char;
-            }
-            i++;
-        }
-
-        return result;
-    }
-
-    /**
      * Set values of api object
      *
      * @param {Array} data
@@ -216,7 +123,10 @@ export default class IdeviceNode {
                 value !== ''
             ) {
                 try {
-                    const sanitizedValue = this.sanitizeJSONString(value);
+                    const sanitizedValue =
+                        $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(
+                            value
+                        );
                     this[param] = JSON.parse(sanitizedValue);
                 } catch (e) {
                     console.error(
