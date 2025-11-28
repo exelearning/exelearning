@@ -1587,8 +1587,9 @@ export default class IdeviceNode {
     async exportProcessIdeviceJson() {
         let response = {};
         this.exportObject = window[this.idevice.exportObject];
-        // Check that the idevice has save data
+        // Check that the idevice has save data and exportObject is available
         if (
+            this.exportObject &&
             this.jsonProperties &&
             Object.keys(this.jsonProperties).length > 0
         ) {
@@ -1624,8 +1625,10 @@ export default class IdeviceNode {
             response = new Promise((resolve, reject) => {
                 // In case the idevice has no json data, We try to load the viewhtml of it
                 this.ideviceBody.innerHTML = this.exportHtmlView();
-                this.exportObject.renderBehaviour({}, this.accesibility);
-                this.exportObject.init({}, this.accesibility);
+                if (this.exportObject) {
+                    this.exportObject.renderBehaviour({}, this.accesibility);
+                    this.exportObject.init({}, this.accesibility);
+                }
                 resolve({ init: 'true' });
             });
             return response;

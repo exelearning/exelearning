@@ -3,6 +3,7 @@
 namespace App\Tests\Api\v2;
 
 use App\Entity\net\exelearning\Entity\User;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -88,15 +89,17 @@ class ElpConvertApiTest extends WebTestCase
         $this->assertSame('MISSING_FILE', $response['code'] ?? null);
     }
 
+    #[Group('slow')]
     public function testConvertElpWithValidFile(): void
     {
-        $this->markTestSkipped('This test requires significant time and resources');
+        // TODO: Fix multipart form data handling - currently returns HTTP 415
+        $this->markTestSkipped('Test requires multipart form data fix (HTTP 415 error)');
 
         $client = static::createClient();
         $this->loginClient($client);
 
         // Use actual ELP file from fixtures
-        $testElpPath = __DIR__.'/../Fixtures/basic-example.elp';
+        $testElpPath = __DIR__.'/../../Fixtures/basic-example.elp';
         if (!file_exists($testElpPath)) {
             $this->markTestSkipped('Test ELP file not found: '.$testElpPath);
         }

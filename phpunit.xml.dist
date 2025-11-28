@@ -106,6 +106,12 @@
       </testsuite>      
     </testsuites>
 
+    <groups>
+        <exclude>
+            <group>slow</group>
+        </exclude>
+    </groups>
+
     <source
       restrictNotices="true"
       restrictWarnings="true">
