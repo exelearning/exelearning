@@ -42,9 +42,11 @@
 - Optimizations for handling large files (over 100MB) in the ODE import workflow
 - Path normalization on Windows (fix incorrect directory separators)
 - Styles and iDevices import and installation issues (user-specific files served from new directories)
+- Sanitize JSON to avoid errors caused by unescaped control characters in legacy iDevices
 - ".elpx" extension missing in the Save As dialog
 - Multiple Word Search iDevice instances per page
 - Feedback button functionality issues in the Text iDevice
+- Puzzle iDevice presentation on mobile devices
 - Improved Crossword iDevice performance and word placement
 - Floated images overflowing in Form iDevice questions
 - SCORM fixes: improved score recovery and better suspend_data handling
