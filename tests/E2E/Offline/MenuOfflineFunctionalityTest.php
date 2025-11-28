@@ -214,16 +214,8 @@ class MenuOfflineFunctionalityTest extends BaseE2ETestCase
 
     public function testExportAsScorm2004OfflineUsesElectronSaveAs(): void
     {
-        /* To review (SCORM 2004 export is currently hidden)
-        $client = $this->initOfflineClientWithMock();
-
-        $this->openOfflineExportMenu($client);
-        $this->clickMenuItem($client, '#navbar-button-exportas-scorm2004');
-
-        $this->waitForMockCall($client, 'saveAs');
-        $exportCalls = (int) $client->executeScript('return (window.__MockApiCalls && window.__MockApiCalls.getOdeExportDownload) || 0;');
-        $this->assertGreaterThanOrEqual(1, $exportCalls);
-        */
+        // SCORM 2004 export is currently hidden in the UI
+        $this->markTestSkipped('SCORM 2004 export menu item is currently hidden');
     }
 
     public function testExportAsImsOfflineUsesElectronSaveAs(): void
@@ -252,16 +244,8 @@ class MenuOfflineFunctionalityTest extends BaseE2ETestCase
 
     public function testExportAsXmlOfflineUsesElectronSaveAs(): void
     {
-        /* To review ("Metadata (XML)" export is currently hidden)
-        $client = $this->initOfflineClientWithMock();
-
-        $this->openOfflineExportMenu($client);
-        $this->clickMenuItem($client, '#navbar-button-exportas-xml-properties');
-
-        $this->waitForMockCall($client, 'saveAs');
-        $exportCalls = (int) $client->executeScript('return (window.__MockApiCalls && window.__MockApiCalls.getOdeExportDownload) || 0;');
-        $this->assertGreaterThanOrEqual(1, $exportCalls);
-        */
+        // Metadata (XML) export is currently hidden in the UI
+        $this->markTestSkipped('Metadata (XML) export menu item is currently hidden');
     }
 
     public function testToolbarSaveUsesElectronSave(): void
@@ -274,19 +258,17 @@ class MenuOfflineFunctionalityTest extends BaseE2ETestCase
         $this->waitForMockCall($client, 'save');
     }
 
-    public function testDownloadButtonExportsThenAsksLocation(): void
+    public function testSaveButtonTriggersElectronSave(): void
     {
         $client = $this->initOfflineClientWithMock();
 
-        $this->markTestSkipped('Skipped due temporary unavailable button');
+        // Click the toolbar Save button
+        $this->clickToolbarButton($client, '#head-top-save-button');
 
-        // Click the toolbar Download button (ELP export)
-        $this->clickToolbarButton($client, '#head-top-download-button');
-
-        // Should call export API and then electron save
+        // Should call electron save
         $this->waitForMockCall($client, 'save');
-        $exportCalls = (int) $client->executeScript('return (window.__MockApiCalls && window.__MockApiCalls.getOdeExportDownload) || 0;');
-        $this->assertGreaterThanOrEqual(1, $exportCalls);
+        $saveCalls = (int) $client->executeScript('return (window.__MockElectronCalls && window.__MockElectronCalls.save) || 0;');
+        $this->assertGreaterThanOrEqual(1, $saveCalls);
     }
 
     public function testSaveFirstTimeAsksLocationAndSubsequentSavesOverwrite(): void

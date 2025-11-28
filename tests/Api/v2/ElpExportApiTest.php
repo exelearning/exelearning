@@ -4,6 +4,7 @@ namespace App\Tests\Api\v2;
 
 use App\Entity\net\exelearning\Entity\User;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -90,15 +91,17 @@ class ElpExportApiTest extends WebTestCase
         ];
     }
 
+    #[Group('slow')]
     public function testExportWithBaseUrl(): void
     {
-        $this->markTestSkipped('This test requires significant time and resources');
+        // TODO: Fix multipart form data handling - currently returns HTTP 415
+        $this->markTestSkipped('Test requires multipart form data fix (HTTP 415 error)');
 
         $client = static::createClient();
         $this->loginClient($client);
 
         // Use actual ELP file from fixtures
-        $testElpPath = __DIR__.'/../Fixtures/basic-example.elp';
+        $testElpPath = __DIR__.'/../../Fixtures/basic-example.elp';
         if (!file_exists($testElpPath)) {
             $this->markTestSkipped('Test ELP file not found: '.$testElpPath);
         }
@@ -124,15 +127,17 @@ class ElpExportApiTest extends WebTestCase
         $this->assertArrayHasKey('files', $response);
     }
 
+    #[Group('slow')]
     public function testExportWithoutDownloadReturnsJson(): void
     {
-        $this->markTestSkipped('This test requires significant time and resources');
+        // TODO: Fix multipart form data handling - currently returns HTTP 415
+        $this->markTestSkipped('Test requires multipart form data fix (HTTP 415 error)');
 
         $client = static::createClient();
         $this->loginClient($client);
 
         // Use actual ELP file from fixtures
-        $testElpPath = __DIR__.'/../Fixtures/basic-example.elp';
+        $testElpPath = __DIR__.'/../../Fixtures/basic-example.elp';
         if (!file_exists($testElpPath)) {
             $this->markTestSkipped('Test ELP file not found: '.$testElpPath);
         }
@@ -161,15 +166,17 @@ class ElpExportApiTest extends WebTestCase
         $this->assertArrayHasKey('exportPath', $response);
     }
 
+    #[Group('slow')]
     public function testExportHtml5WithDownloadReturnsZip(): void
     {
-        $this->markTestSkipped('This test requires significant time and resources; enable locally with fixtures');
+        // TODO: Fix multipart form data handling - currently returns HTTP 415
+        $this->markTestSkipped('Test requires multipart form data fix (HTTP 415 error)');
 
         $client = static::createClient();
         $this->loginClient($client);
 
         // Use actual ELP file from fixtures
-        $testElpPath = __DIR__.'/../Fixtures/basic-example.elp';
+        $testElpPath = __DIR__.'/../../Fixtures/basic-example.elp';
         if (!file_exists($testElpPath)) {
             $this->markTestSkipped('Test ELP file not found: '.$testElpPath);
         }
@@ -203,15 +210,17 @@ class ElpExportApiTest extends WebTestCase
         $this->assertGreaterThan(0, strlen($content));
     }
 
+    #[Group('slow')]
     public function testExportElpWithDownloadReturnsElpArchive(): void
     {
-        $this->markTestSkipped('This test requires significant time and resources; enable locally with fixtures');
+        // TODO: Fix multipart form data handling - currently returns HTTP 415
+        $this->markTestSkipped('Test requires multipart form data fix (HTTP 415 error)');
 
         $client = static::createClient();
         $this->loginClient($client);
 
         // Use actual ELP file from fixtures
-        $testElpPath = __DIR__.'/../Fixtures/basic-example.elp';
+        $testElpPath = __DIR__.'/../../Fixtures/basic-example.elp';
         if (!file_exists($testElpPath)) {
             $this->markTestSkipped('Test ELP file not found: '.$testElpPath);
         }
@@ -244,15 +253,17 @@ class ElpExportApiTest extends WebTestCase
         $this->assertGreaterThan(0, strlen($content));
     }
 
+    #[Group('slow')]
     public function testExportScorm12WithDownloadReturnsZip(): void
     {
-        $this->markTestSkipped('This test requires significant time and resources; enable locally with fixtures');
+        // TODO: Fix multipart form data handling - currently returns HTTP 415
+        $this->markTestSkipped('Test requires multipart form data fix (HTTP 415 error)');
 
         $client = static::createClient();
         $this->loginClient($client);
 
         // Use actual ELP file from fixtures
-        $testElpPath = __DIR__.'/../Fixtures/basic-example.elp';
+        $testElpPath = __DIR__.'/../../Fixtures/basic-example.elp';
         if (!file_exists($testElpPath)) {
             $this->markTestSkipped('Test ELP file not found: '.$testElpPath);
         }

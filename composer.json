@@ -100,6 +100,7 @@
         "phpunit-e2e": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e --colors=always",
         "phpunit-e2e-realtime": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e-realtime --colors=always",
         "phpunit-e2e-offline": "vendor/bin/paratest --processes auto --tmp-dir /dev/shm --testsuite e2e-offline --colors=always",
+        "phpunit-slow": "vendor/bin/phpunit --group slow --testdox --colors=always",
         "translations:extract": "php bin/console app:translations:extract",
         "cache-clear": "php bin/console cache:clear",
         "tmp-cleanup": "php bin/console app:tmp-files:cleanup",
@@ -113,6 +114,7 @@
         "phpunit-e2e": "Run e2e tests with maximum reliability (process isolation).",
         "phpunit-e2e-realtime": "Run e2e-realtime tests with maximum reliability (process isolation).",
         "phpunit-unit-parallel": "Run unit tests in parallel using paratest with maximum speed (--functional mode)",
+        "phpunit-slow": "Run resource-intensive tests that are excluded from normal test runs.",
         "db-schema-update": "Run the migrations to update the database schema.",
         "cache-clear": "Clear the Symfony cache.",
         "assets-install": "Install the public assets."

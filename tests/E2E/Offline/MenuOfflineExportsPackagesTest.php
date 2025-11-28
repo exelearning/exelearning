@@ -95,12 +95,8 @@ class MenuOfflineExportsPackagesTest extends BaseE2ETestCase
 
     public function testExportAsScorm2004OfflineUsesElectronSaveAs(): void
     {
-        /* To review (SCORM 2004 export is currently hidden)
-        $client = $this->client();
-        $this->openOfflineExportMenu($client);
-        $this->clickMenuItem($client, '#navbar-button-exportas-scorm2004');
-        $this->waitSaveAs($client);
-        */
+        // SCORM 2004 export is currently hidden in the UI
+        $this->markTestSkipped('SCORM 2004 export menu item is currently hidden');
     }
 
     public function testExportAsImsOfflineUsesElectronSaveAs(): void
@@ -121,11 +117,7 @@ class MenuOfflineExportsPackagesTest extends BaseE2ETestCase
 
     public function testExportAsXmlOfflineUsesElectronSaveAs(): void
     {
-        /* To review ("Metadata (XML)" export is currently hidden)
-        $client = $this->client();
-        $this->openOfflineExportMenu($client);
-        $this->clickMenuItem($client, '#navbar-button-exportas-xml-properties');
-        $this->waitSaveAs($client);
-        */
+        // Metadata (XML) export is currently hidden in the UI
+        $this->markTestSkipped('Metadata (XML) export menu item is currently hidden');
     }
 }
