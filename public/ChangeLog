@@ -31,6 +31,7 @@
 - Added new environment variables (`APP_ENV`, `APP_PORT`, `APP_ONLINE_MODE`, `APP_AUTH_METHODS`, and default test user credentials) to the Dockerfile for improved configuration and onboarding
 - Align asset paths with `BASE_PATH` when deploying behind an Nginx subdirectory
 - Updated deployment documentation, including new Ansible deployment instructions and Keycloak integration
+- Improved test management and reliability, with support for running resource-intensive tests separately
 - Translations revision and cleanup
 - Complete translations: Catalan (CA), Basque (EU), Galician (GL), Spanish (ES), Romanian (RO), and Valencian (VA)
 - New Portuguese and French translations (partially automated)
