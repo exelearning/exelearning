@@ -3,6 +3,7 @@
 namespace App\Service\net\exelearning\Service\Api;
 
 use App\Constants;
+use App\Dto\Project\PageExportOptions;
 use App\Entity\net\exelearning\Dto\ThemeDto;
 use App\Entity\net\exelearning\Dto\UserPreferencesDto;
 use App\Entity\net\exelearning\Entity\CurrentOdeUsers;
@@ -101,7 +102,7 @@ class OdeExportService implements OdeExportServiceInterface
      * @param string        $exportType
      * @param bool          $preview
      * @param bool          $isIntegration
-     *
+     * @param PageExportOptions|null $pageScope
      * @return array
      */
     public function export(
@@ -113,6 +114,7 @@ class OdeExportService implements OdeExportServiceInterface
         $preview = false,
         $isIntegration = false,
         $tempPath = '',
+        ?PageExportOptions $pageScope = null,
     ) {
         $response = [];
 
@@ -136,6 +138,9 @@ class OdeExportService implements OdeExportServiceInterface
         // Get ode pages
         $odeNavStructureSyncRepo = $this->entityManager->getRepository(OdeNavStructureSync::class);
         $odeNavStructureSyncs = $odeNavStructureSyncRepo->findByOdeSessionId($odeSessionId);
+        if ($pageScope) {
+            $odeNavStructureSyncs = $this->limitNavStructureToScope($odeNavStructureSyncs, $pageScope);
+        }
         // TODO NOT NECESSARY because it will always have a page ******************
         if (empty($odeNavStructureSyncs)) {
             $error = $this->translator->trans('Please create at least one page before exporting.');
@@ -1470,6 +1475,88 @@ class OdeExportService implements OdeExportServiceInterface
         }
 
         return $idevicesByPage;
+    }
+
+    /**
+     * Limit the nav structure to the requested page scope.
+     *
+     * @param OdeNavStructureSync[] $odeNavStructureSyncs
+     *
+     * @return OdeNavStructureSync[]
+     */
+    private function limitNavStructureToScope(array $odeNavStructureSyncs, PageExportOptions $scope): array
+    {
+        $map = [];
+        foreach ($odeNavStructureSyncs as $node) {
+            $map[$node->getOdePageId()] = $node;
+        }
+
+        $selectedIds = [];
+        foreach ($scope->getPageIds() as $pageId) {
+            if (!isset($map[$pageId])) {
+                throw new \InvalidArgumentException(sprintf('Page "%s" not found in project.', $pageId));
+            }
+            $selectedIds[] = $pageId;
+            if ($scope->includeDescendants()) {
+                $selectedIds = array_merge($selectedIds, $this->collectDescendantIds($odeNavStructureSyncs, $pageId));
+            }
+        }
+
+        $selectedIds = array_values(array_unique($selectedIds));
+
+        if (empty($selectedIds)) {
+            throw new \InvalidArgumentException('No pages selected for export.');
+        }
+
+        $clones = [];
+        foreach ($selectedIds as $id) {
+            $clones[$id] = clone $map[$id];
+        }
+
+        foreach ($clones as $id => $node) {
+            $parentId = $node->getOdeParentPageId();
+            if (!$parentId || !isset($clones[$parentId])) {
+                $node->setOdeNavStructureSync(null);
+                $node->setOdeParentPageId(null);
+            } else {
+                $node->setOdeNavStructureSync($clones[$parentId]);
+            }
+        }
+
+        $groups = [];
+        foreach ($clones as $node) {
+            $parentKey = $node->getOdeParentPageId() ?? '__root';
+            $groups[$parentKey][] = $node;
+        }
+
+        foreach ($groups as $siblings) {
+            usort($siblings, fn ($a, $b) => $a->getOdeNavStructureSyncOrder() <=> $b->getOdeNavStructureSyncOrder());
+            $order = 1;
+            foreach ($siblings as $node) {
+                $node->setOdeNavStructureSyncOrder($order++);
+            }
+        }
+
+        return array_values($clones);
+    }
+
+    /**
+     * @param OdeNavStructureSync[] $nodes
+     *
+     * @return string[]
+     */
+    private function collectDescendantIds(array $nodes, string $parentId): array
+    {
+        $ids = [];
+        foreach ($nodes as $node) {
+            if ($node->getOdeParentPageId() === $parentId) {
+                $childId = (string) $node->getOdePageId();
+                $ids[] = $childId;
+                $ids = array_merge($ids, $this->collectDescendantIds($nodes, $childId));
+            }
+        }
+
+        return $ids;
     }
 
     /**

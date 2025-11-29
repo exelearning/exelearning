@@ -97,6 +97,18 @@ use Symfony\Component\Serializer\Annotation\Groups;
                 description: 'Reorders direct children of a page by the provided array of page IDs.'
             )
         ),
+        // DOWNLOAD SINGLE PAGE
+        new Post(
+            uriTemplate: '/projects/{projectId}/pages/{pageId}/download',
+            security: 'is_granted("ROLE_USER")',
+            controller: \App\Controller\Api\Project\Pages\DownloadPageAction::class,
+            read: false,
+            output: false,
+            openapi: new Operation(
+                summary: 'Download page',
+                description: 'Generates an export package for a single page. Accepts JSON body with "format" and optional "includeSubtree".'
+            )
+        ),
         // DELETE
         new Delete(
             uriTemplate: '/projects/{projectId}/pages/{pageId}',
