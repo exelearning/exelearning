@@ -45,6 +45,40 @@ curl -s -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json' \
 
 ---
 
+### Download a single page
+
+Use this endpoint when you want to export just one page of a project (instead of the whole project) into any of the standard formats (ELPX, HTML5, SCORM, IMS, EPUB3, etc.). The UI uses it for the “Download page” button that appears within the navigation tree, but it can also be consumed directly via the API.
+
+```
+POST /api/v2/projects/{projectId}/pages/{pageId}/download
+Authorization: Bearer <JWT>
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "format": "website",     // Required. Accepts elpx, website, single-page, scorm12, scorm2004, ims, epub3
+  "sessionId": "optional"  // Optional. Provide when exporting an unsaved project/tab session
+}
+```
+
+Response:
+
+```json
+{
+  "responseMessage": "OK",
+  "urlZipFile": "https://example.org/export/tmp/....zip",
+  "zipFileName": "intro_website.zip",
+  "exportProjectName": "intro_website.zip"
+}
+```
+
+- Returns HTTP 403 if the authenticated user does not own the project/session.
+- Returns HTTP 404 when the pageId or session cannot be resolved.
+- Formats map to the same values used by the standard download menu: `website` (HTML5), `single-page`, `ims`, `scorm12`, `scorm2004`, `epub3`, and `elpx`.
+
 ## Access Model (Visibility)
 
 - Unprivileged (`ROLE_USER`):

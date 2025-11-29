@@ -13049,6 +13049,42 @@
         <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
         <target>~L’édition collaborative est expérimentale et peut ne pas fonctionner correctement. Utilisez-la uniquement pour des tests, car des données pourraient être perdues. Voulez-vous continuer?</target>
       </trans-unit>
+      <trans-unit id="h2JEZ2r" resname="Download page">
+        <source>Download page</source>
+        <target>Télécharger la page</target>
+      </trans-unit>
+      <trans-unit id="VmUKBrh" resname="Selected page is no longer available.">
+        <source>Selected page is no longer available.</source>
+        <target>La page sélectionnée n’est plus disponible.</target>
+      </trans-unit>
+      <trans-unit id="xjIJTAn" resname="An error occurred while downloading the page.">
+        <source>An error occurred while downloading the page.</source>
+        <target>Une erreur s’est produite lors du téléchargement de la page.</target>
+      </trans-unit>
+      <trans-unit id="n9IKvEH" resname="API client not ready.">
+        <source>API client not ready.</source>
+        <target>Le client de l’API n’est pas prêt.</target>
+      </trans-unit>
+      <trans-unit id="5q.cGN8" resname="Download link not available.">
+        <source>Download link not available.</source>
+        <target>Le lien de téléchargement n’est pas disponible.</target>
+      </trans-unit>
+      <trans-unit id="cqg82Ug" resname="Mermaid code">
+        <source>Mermaid code</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="IEkbrq1" resname="Use CTRL+V on your keyboard to paste into the window.">
+        <source>Use CTRL+V on your keyboard to paste into the window.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uk.Vvql" resname="Need help? Visit %s">
+        <source>Need help? Visit %s</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="JO9aYD_" resname="Mermaid diagram">
+        <source>Mermaid diagram</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

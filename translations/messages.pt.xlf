@@ -13049,6 +13049,42 @@
         <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
         <target>~A edição colaborativa é experimental e pode não funcionar corretamente. Use-a apenas para testes, pois os dados podem ser perdidos. Deseja continuar?</target>
       </trans-unit>
+      <trans-unit id="h2JEZ2r" resname="Download page">
+        <source>Download page</source>
+        <target>Descarregar página</target>
+      </trans-unit>
+      <trans-unit id="VmUKBrh" resname="Selected page is no longer available.">
+        <source>Selected page is no longer available.</source>
+        <target>A página selecionada já não está disponível.</target>
+      </trans-unit>
+      <trans-unit id="xjIJTAn" resname="An error occurred while downloading the page.">
+        <source>An error occurred while downloading the page.</source>
+        <target>Ocorreu um erro ao descarregar a página.</target>
+      </trans-unit>
+      <trans-unit id="n9IKvEH" resname="API client not ready.">
+        <source>API client not ready.</source>
+        <target>O cliente da API não está pronto.</target>
+      </trans-unit>
+      <trans-unit id="5q.cGN8" resname="Download link not available.">
+        <source>Download link not available.</source>
+        <target>A ligação de descarga não está disponível.</target>
+      </trans-unit>
+      <trans-unit id="cqg82Ug" resname="Mermaid code">
+        <source>Mermaid code</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="IEkbrq1" resname="Use CTRL+V on your keyboard to paste into the window.">
+        <source>Use CTRL+V on your keyboard to paste into the window.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uk.Vvql" resname="Need help? Visit %s">
+        <source>Need help? Visit %s</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="JO9aYD_" resname="Mermaid diagram">
+        <source>Mermaid diagram</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

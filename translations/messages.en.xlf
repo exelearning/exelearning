@@ -13049,6 +13049,42 @@
         <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="h2JEZ2r" resname="Download page">
+        <source>Download page</source>
+        <target>Download page</target>
+      </trans-unit>
+      <trans-unit id="VmUKBrh" resname="Selected page is no longer available.">
+        <source>Selected page is no longer available.</source>
+        <target>Selected page is no longer available.</target>
+      </trans-unit>
+      <trans-unit id="xjIJTAn" resname="An error occurred while downloading the page.">
+        <source>An error occurred while downloading the page.</source>
+        <target>An error occurred while downloading the page.</target>
+      </trans-unit>
+      <trans-unit id="n9IKvEH" resname="API client not ready.">
+        <source>API client not ready.</source>
+        <target>API client not ready.</target>
+      </trans-unit>
+      <trans-unit id="5q.cGN8" resname="Download link not available.">
+        <source>Download link not available.</source>
+        <target>Download link not available.</target>
+      </trans-unit>
+      <trans-unit id="cqg82Ug" resname="Mermaid code">
+        <source>Mermaid code</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="IEkbrq1" resname="Use CTRL+V on your keyboard to paste into the window.">
+        <source>Use CTRL+V on your keyboard to paste into the window.</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uk.Vvql" resname="Need help? Visit %s">
+        <source>Need help? Visit %s</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="JO9aYD_" resname="Mermaid diagram">
+        <source>Mermaid diagram</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
