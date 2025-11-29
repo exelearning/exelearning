@@ -168,26 +168,20 @@ export default class MenuStructureCompose {
             textElement.append(iconRootElement);
         } else {
             textElement.setAttribute('draggable', true);
-            let menuIcon = document.createElement('i');
-            menuIcon.classList.add('small-icon', 'settings-icon-green');
-            let titleElement = document.createElement('span');
-            titleElement.classList.add('visually-hidden');
-            titleElement.textContent = _('Page properties');
-            let menuButton = document.createElement('button');
-            menuButton.classList.add(
-                'btn',
-                'button-tertiary',
-                'button-narrow',
-                'd-flex',
-                'justify-content-center',
-                'align-items-center',
-                'node-menu-button',
-                'page-settings'
-            );
-            menuButton.setAttribute('data-menunavid', node.id);
-            menuButton.style.cursor = 'pointer';
-            menuButton.append(menuIcon);
-            menuButton.append(titleElement);
+            // Action buttons (download + settings)
+            const downloadButton = this.makeNodeActionButton({
+                node,
+                classes: ['node-download-button', 'page-download'],
+                iconClasses: ['small-icon', 'download-icon-green'],
+                label: _('Download page'),
+            });
+            const menuButton = this.makeNodeActionButton({
+                node,
+                classes: ['node-menu-button', 'page-settings'],
+                iconClasses: ['small-icon', 'settings-icon-green'],
+                label: _('Page properties'),
+            });
+            textElement.append(downloadButton);
             textElement.append(menuButton);
         }
 
@@ -197,6 +191,39 @@ export default class MenuStructureCompose {
         textElement.append(dragOverElement);
 
         return textElement;
+    }
+
+    /**
+     * Create a small action button used in nav nodes.
+     *
+     * @param {Object} options
+     * @returns {HTMLButtonElement}
+     */
+    makeNodeActionButton({ node, classes, iconClasses, label }) {
+        const button = document.createElement('button');
+        button.classList.add(
+            'btn',
+            'button-tertiary',
+            'button-narrow',
+            'd-flex',
+            'justify-content-center',
+            'align-items-center',
+            ...classes
+        );
+        button.setAttribute('data-menunavid', node.id);
+        button.style.cursor = 'pointer';
+
+        const icon = document.createElement('i');
+        icon.classList.add(...iconClasses);
+        icon.setAttribute('aria-hidden', 'true');
+
+        const titleElement = document.createElement('span');
+        titleElement.classList.add('visually-hidden');
+        titleElement.textContent = label;
+
+        button.append(icon);
+        button.append(titleElement);
+        return button;
     }
 
     /**
@@ -352,10 +379,18 @@ export default class MenuStructureCompose {
 
         tree.addEventListener('keydown', onTreeKeydown);
 
-        tree.querySelectorAll('.page-settings').forEach((btn) => {
+        const pageActionButtons = tree.querySelectorAll(
+            '.page-settings, .page-download'
+        );
+        pageActionButtons.forEach((btn) => {
             btn.setAttribute('role', 'button');
             btn.setAttribute('tabindex', '0');
-            btn.setAttribute('aria-label', 'Opciones de página');
+            btn.setAttribute(
+                'aria-label',
+                btn.classList.contains('page-download')
+                    ? _('Download page')
+                    : 'Opciones de página'
+            );
             btn.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();

@@ -40,6 +40,7 @@ export default class MenuStructureBehaviour {
         this.addEventNavElementOnDbclick();
         this.addEventNavElementIconOnclick();
         this.addEventNavElementOnMenuIconClic();
+        this.addEventNavElementOnDownloadClick();
         this.addDragAndDropFunctionalityToNavElements();
     }
 
@@ -61,6 +62,11 @@ export default class MenuStructureBehaviour {
             if (menuBtn) {
                 menuBtn.setAttribute('data-testid', 'nav-node-menu');
                 menuBtn.setAttribute('data-node-id', id);
+            }
+            const downloadBtn = nav.querySelector('.node-download-button');
+            if (downloadBtn) {
+                downloadBtn.setAttribute('data-testid', 'nav-node-download');
+                downloadBtn.setAttribute('data-node-id', id);
             }
             const toggle = nav.querySelector('.exe-icon');
             if (toggle) {
@@ -125,6 +131,38 @@ export default class MenuStructureBehaviour {
                 );
                 node.showModalProperties();
                 this.mutationForModalProperties();
+            });
+        });
+    }
+
+    addEventNavElementOnDownloadClick() {
+        const downloadButtons = this.menuNav.querySelectorAll(
+            `.nav-element:not([nav-id="root"]) > .nav-element-text .node-download-button`
+        );
+        downloadButtons.forEach((element) => {
+            element.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const nodeId = element.getAttribute('data-menunavid');
+                const node = this.structureEngine.getNode(nodeId);
+                const defaultFormat =
+                    node?.properties?.downloadFormat?.value || 'elpx';
+                const pageTitle = node?.pageName || '';
+                // Open modal to select format; backend download handled via event
+                const modalDownload = eXeLearning?.app?.modals?.pagedownload;
+                if (modalDownload && modalDownload.show) {
+                    modalDownload.show({
+                        nodeId,
+                        pageTitle,
+                        defaultFormat,
+                    });
+                } else {
+                    // Fallback: emit direct event if modal not ready
+                    document.dispatchEvent(
+                        new CustomEvent('nav:download-page:confirm', {
+                            detail: { nodeId, format: defaultFormat },
+                        })
+                    );
+                }
             });
         });
     }

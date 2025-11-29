@@ -1586,6 +1586,21 @@
     }
 }
 
+/* Modal page download */
+
+#modalDownloadPage {
+    .modal-dialog {
+        max-width: 450px;
+        min-width: 300px;
+    }
+    .modal-content {
+        max-width: 450px;
+        min-width: 300px;
+        width: 100%;
+    }
+}
+
+
 /* Modal share button */
 
 .share-link-div {
@@ -1831,7 +1846,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 16px;        
+            margin-bottom: 16px;
             .toggle-item,
             .toggle-label {
                 cursor: pointer;

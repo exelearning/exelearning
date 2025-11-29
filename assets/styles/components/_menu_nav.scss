@@ -151,7 +151,8 @@
                     border-radius: 4px;
                     margin-bottom: 0;
                     /* border: 1px solid var(--gray-200) !important; */
-                    .node-menu-button {
+                    .node-menu-button,
+                    .node-download-button {
                         visibility: hidden;
                     }
 
@@ -202,7 +203,8 @@
                         line-height: 24px;
                         padding-left: 6px;
                     }
-                    .node-menu-button {
+                    .node-menu-button,
+                    .node-download-button {
                         display: none;
                         font-family: var(--icons-ff);
                         width: 22px;
@@ -248,7 +250,8 @@
                 }
                 &:focus-visible {
                     > .nav-element-text {
-                        .node-menu-button {
+                        .node-menu-button,
+                        .node-download-button {
                             display: block !important;
                             visibility: visible !important;
                         }
@@ -382,7 +385,8 @@
                         color: var(--text);
                         cursor: pointer;
                         transition: var(--tr-02);
-                        > .nav-element-text > .node-menu-button {
+                        > .nav-element-text > .node-menu-button,
+                        > .nav-element-text > .node-download-button {
                             display: block;
                             visibility: visible;
                         }
