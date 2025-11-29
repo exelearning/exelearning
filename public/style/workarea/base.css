@@ -193,16 +193,24 @@
 
 /* TinyMCE: Images and media */
 .exe-figure {
-    margin: 2em 0;
+    display: inline-block;
+    margin: 1.5em 0;
     max-width: 100%
 }
 
+.position-left {
+    display: block;
+    margin: 1.5em auto 1.5em 0
+}
+
 .position-center {
-    margin: 2em auto
+    display: block;
+    margin: 1.5em auto
 }
 
 .position-right {
-    margin: 2em 0 2em auto
+    display: block;
+    margin: 1.5em 0 1.5em auto
 }
 
 .float-left {
@@ -213,6 +221,11 @@
 .float-right {
     float: right;
     margin: .5em 0 1em 2em
+}
+
+.exe-figure.position-center {
+    display: block;
+    margin: 1.5em auto
 }
 
 .figcaption {
@@ -618,7 +631,7 @@ video {
     }
 
     .exe-layout-3-cols .exe-col .exe-figure {
-        margin: 2em auto
+        margin: 1.5em auto
     }
 }
 
@@ -634,7 +647,7 @@ video {
     }
 
     .exe-layout-2-cols .exe-col .exe-figure {
-        margin: 2em auto
+        margin: 1.5em auto
     }
 }
 
