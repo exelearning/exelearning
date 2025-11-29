@@ -228,7 +228,7 @@ export default class ApiCallManager {
                 this.apiUrlBasePath +
                 '/api/ode-management/odes/ode/import/local/root';
         }
-        return await this.func.post(url, payload);
+        return await this.func.postJson(url, payload);
     }
 
     /**
@@ -588,6 +588,24 @@ export default class ApiCallManager {
             odeSessionId,
             eXeLearning.extension
         );
+    }
+
+    /**
+     * Generate a downloadable package for a single page.
+     *
+     * @param {string} projectId
+     * @param {string} pageId
+     * @param {{format: string, sessionId?: string}} payload
+     * @returns {Promise<object>}
+     */
+    async postProjectPageDownload(projectId, pageId, payload) {
+        const route = this.endpoints.api_v2_projects_pages_download;
+        if (!route) return {};
+        let url = route.path;
+        url = url.replace('{projectId}', projectId || 'default');
+        url = url.replace('{pageId}', pageId);
+
+        return await this.func.postJson(url, payload);
     }
 
     /**

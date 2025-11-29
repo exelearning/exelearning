@@ -106,7 +106,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
             output: false,
             openapi: new Operation(
                 summary: 'Download page',
-                description: 'Generates an export package for a single page. Accepts JSON body with "format" and optional "includeSubtree".'
+                description: 'Generates an export package for a single page. Accepts JSON body with "format".'
             )
         ),
         // DELETE

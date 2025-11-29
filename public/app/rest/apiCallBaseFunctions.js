@@ -33,6 +33,21 @@ export default class ApiCallBaseFunctions {
     }
 
     /**
+     * POST with JSON payload
+     *
+     * @param {String} url
+     * @param {Object} data
+     * @returns
+     */
+    async postJson(url, data, waiting = true) {
+        try {
+            return await this.doJsonAjax(url, 'POST', data, waiting);
+        } catch (err) {
+            return {};
+        }
+    }
+
+    /**
      *
      * @param {String} url
      * @param {Object} data
@@ -105,6 +120,33 @@ export default class ApiCallBaseFunctions {
             data: data,
             timeout: eXeLearning.config.clientCallWaitingTime,
             dataType: 'json',
+            success: function (response) {
+                return response;
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                return { error: errorThrown };
+            },
+        });
+        setTimeout(() => {
+            this.removeWaitingPetition();
+        }, 100);
+        return response;
+    }
+
+    /**
+     * Perform ajax call sending JSON body.
+     */
+    async doJsonAjax(url, method, data, waiting = true) {
+        if (waiting) this.addWaitingPetition();
+        let response = {};
+        response = await $.ajax({
+            url: url,
+            method: method,
+            data: JSON.stringify(data),
+            timeout: eXeLearning.config.clientCallWaitingTime,
+            dataType: 'json',
+            processData: false,
+            contentType: 'application/json; charset=UTF-8',
             success: function (response) {
                 return response;
             },

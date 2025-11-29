@@ -25,7 +25,6 @@ export default class ModalDownloadPage extends Modal {
         this.cancelButton = this.modalElement.querySelector(
             'button.close.btn.btn-secondary'
         );
-
         this.nodeId = null;
 
         this.confirmButton.addEventListener('click', () => {

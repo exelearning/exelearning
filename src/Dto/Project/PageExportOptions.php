@@ -9,8 +9,9 @@ class PageExportOptions
 {
     /** @var string[] */
     private array $pageIds;
+    private string $primaryPageId;
 
-    public function __construct(iterable $pageIds, private readonly bool $includeDescendants = false)
+    public function __construct(iterable $pageIds)
     {
         $normalized = [];
         foreach ($pageIds as $id) {
@@ -28,6 +29,7 @@ class PageExportOptions
         }
 
         $this->pageIds = $normalized;
+        $this->primaryPageId = $normalized[0];
     }
 
     /**
@@ -38,9 +40,13 @@ class PageExportOptions
         return $this->pageIds;
     }
 
-    public function includeDescendants(): bool
+    public function isSinglePage(): bool
     {
-        return $this->includeDescendants;
+        return 1 === \count($this->pageIds);
+    }
+
+    public function getPrimaryPageId(): string
+    {
+        return $this->primaryPageId;
     }
 }
-

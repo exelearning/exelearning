@@ -15,6 +15,12 @@ export default class MenuStructureBehaviour {
         this.dbclickNode = false;
         // Add object to engine
         this.structureEngine.menuStructureBehaviour = this;
+        this.downloadPageConfirmListener = (event) =>
+            this.handleDownloadPageConfirm(event);
+        document.addEventListener(
+            'nav:download-page:confirm',
+            this.downloadPageConfirmListener
+        );
     }
 
     /**
@@ -165,6 +171,193 @@ export default class MenuStructureBehaviour {
                 }
             });
         });
+    }
+
+    /**
+     * Handles confirmation of a page download action (modal or fallback).
+     *
+     * @param {CustomEvent} event
+     */
+    async handleDownloadPageConfirm(event) {
+        const detail = event?.detail || {};
+        const nodeId = detail.nodeId;
+        const format = (detail.format || 'elpx').toLowerCase();
+        if (!nodeId) return;
+
+        const node = this.structureEngine.getNode(nodeId);
+        if (!node) {
+            eXeLearning.app.modals.alert.show({
+                title: _('Download page'),
+                body: _('Selected page is no longer available.'),
+                contentId: 'error',
+            });
+            return;
+        }
+
+        const toast = eXeLearning.app.toasts.createToast({
+            title: _('Download page'),
+            body: _('Generating export files...'),
+            icon: 'downloading',
+        });
+
+        try {
+            const response = await this.requestPageDownload(node, format);
+            if (
+                response &&
+                response.responseMessage === 'OK' &&
+                response.urlZipFile
+            ) {
+                this.savePageDownloadResponse(response, node, format);
+                toast.toastBody.innerHTML = _('File generated.');
+            } else {
+                const message =
+                    response?.detail ||
+                    response?.responseMessage ||
+                    _('Unknown error.');
+                throw new Error(message);
+            }
+        } catch (error) {
+            toast.toastBody.innerHTML = _(
+                'An error occurred while downloading the page.'
+            );
+            toast.toastBody.classList.add('error');
+            eXeLearning.app.modals.alert.show({
+                title: _('Download page'),
+                body: error.message || _('Unknown error.'),
+                contentId: 'error',
+            });
+        } finally {
+            setTimeout(() => {
+                toast.remove();
+            }, 1200);
+        }
+    }
+
+    /**
+     * Request the backend to generate a page export.
+     *
+     * @param {*} node
+     * @param {string} format
+     * @returns {Promise<object>}
+     */
+    async requestPageDownload(node, format) {
+        const api = eXeLearning?.app?.api;
+        if (!api) {
+            throw new Error(_('API client not ready.'));
+        }
+        const projectId = eXeLearning?.app?.project?.odeId || 'default';
+        const payload = { format };
+        const sessionId = eXeLearning?.app?.project?.odeSession;
+        if (sessionId) {
+            payload.sessionId = sessionId;
+        }
+
+        return await api.postProjectPageDownload(
+            projectId,
+            node.pageId,
+            payload
+        );
+    }
+
+    /**
+     * Persist the generated download (Electron or browser).
+     *
+     * @param {object} response
+     * @param {*} node
+     * @param {string} format
+     */
+    savePageDownloadResponse(response, node, format) {
+        const url =
+            response?.urlZipFile || response?.urlZip || response?.url || null;
+        if (!url) {
+            throw new Error(_('Download link not available.'));
+        }
+        const suggestion = this.buildDownloadSuggestion(response, node, format);
+        const helper = this.getFileMenuHelper();
+        const typeKey = `page-download-${format}`;
+        if (
+            helper &&
+            eXeLearning.config.isOfflineInstallation &&
+            typeof helper.electronSave === 'function'
+        ) {
+            helper.electronSave(url, typeKey, suggestion);
+            return;
+        }
+
+        const normalizedName =
+            helper && typeof helper.normalizeSuggestedName === 'function'
+                ? helper.normalizeSuggestedName(suggestion, typeKey)
+                : this.normalizePageDownloadName(suggestion, format);
+
+        if (helper && typeof helper.downloadLink === 'function') {
+            helper.downloadLink(url, normalizedName);
+            return;
+        }
+
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = normalizedName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+    }
+
+    /**
+     * Build a readable file suggestion for downloads.
+     */
+    buildDownloadSuggestion(response, node, format) {
+        const pageTitle = (node?.pageName || '').trim();
+        if (pageTitle) {
+            return pageTitle;
+        }
+
+        const rawProjectName = (response?.exportProjectName || '').trim();
+        if (rawProjectName) {
+            return rawProjectName.replace(/\.[^.]+$/, '');
+        }
+
+        const fallback = _('Page');
+        return `${fallback}_${format}`;
+    }
+
+    /**
+     * Helper to access navbar file menu functions.
+     */
+    getFileMenuHelper() {
+        return eXeLearning?.app?.menus?.navbar?.file || null;
+    }
+
+    /**
+     * Normalize filenames when navbar helper is unavailable.
+     */
+    normalizePageDownloadName(name, format) {
+        const sanitized =
+            (name || '')
+                .replace(/[\\/:*?"<>|]/g, '_')
+                .replace(/\s+/g, ' ')
+                .trim() || 'page';
+        const extension = this.getExtensionForFormat(format);
+        if (!sanitized.toLowerCase().endsWith(extension)) {
+            return `${sanitized}${extension}`;
+        }
+        return sanitized;
+    }
+
+    /**
+     * Basic mapping between export formats and extensions.
+     */
+    getExtensionForFormat(format) {
+        const normalized = (format || '').toLowerCase();
+        if (normalized === 'elpx' || normalized === 'elp') {
+            const elpExt = (
+                '.' + (eXeLearning?.extension || 'elpx')
+            ).toLowerCase();
+            return elpExt;
+        }
+        if (normalized === 'epub3') {
+            return '.epub';
+        }
+        return '.zip';
     }
 
     /**

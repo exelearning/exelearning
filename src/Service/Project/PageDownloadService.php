@@ -40,14 +40,13 @@ class PageDownloadService
     }
 
     /**
-     * Generate an export payload limited to a single page (optionally its subtree).
+     * Generate an export payload limited to a single page.
      */
     public function generateDownload(
         UserInterface $user,
         string $projectId,
         string $pageId,
         string $format,
-        bool $includeSubtree,
         ?string $sessionId,
         string $baseUrl = '',
     ): array {
@@ -69,7 +68,7 @@ class PageDownloadService
             false,
             false,
             $tempSuffix,
-            new PageExportOptions([$pageId], $includeSubtree)
+            new PageExportOptions([$pageId])
         );
     }
 

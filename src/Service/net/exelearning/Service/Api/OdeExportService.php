@@ -102,7 +102,7 @@ class OdeExportService implements OdeExportServiceInterface
      * @param string        $exportType
      * @param bool          $preview
      * @param bool          $isIntegration
-     * @param PageExportOptions|null $pageScope
+     *
      * @return array
      */
     public function export(
@@ -285,11 +285,12 @@ class OdeExportService implements OdeExportServiceInterface
         // Export dir path
         // $exportDirPath = $this->fileHelper->getOdeSessionUserTmpExportDir($odeSessionId, $dbUser);
         $exportDirPath = $this->fileHelper->getOdeSessionUserTmpExportDir($odeSessionId, $dbUser, $tempPath);
-        $exportDirPath = $exportDirPath.$tempPath;
 
         // Get url to export dir
         $urlExportDir = UrlUtil::getOdeSessionExportUrl($odeSessionId, $dbUser);
-        $urlExportDir = $urlExportDir.$tempPath;
+        if ($tempPath) {
+            $urlExportDir .= $tempPath;
+        }
 
         // Index filename
         $indexFileName = self::generateIndexFileName();
@@ -333,9 +334,19 @@ class OdeExportService implements OdeExportServiceInterface
             $slug = strtolower($this->slugger->slug($odeProperties['pp_title']->getValue()));
             // Url to zip file
             $exportFileName = $this->zipExportFile($dbUser, $odeId, $odeVersionId, $odeSessionId, $exportDirPath, $ext, $slug, $typeSuffix);
+
+            if ($pageScope && $pageScope->isSinglePage()) {
+                $primaryName = $this->getPrimaryPageNameForScope($odeNavStructureSyncs, $pageScope);
+                if ($primaryName) {
+                    $customName = $this->buildScopedExportFileName($primaryName, $ext);
+                    $exportFileName = $this->renameExportFileIfPossible($exportDirPath, $exportFileName, $customName);
+                }
+            }
+
             $response['urlZipFile'] = $urlExportDir.$exportFileName;
             // Add zip file name to response
             $response['zipFileName'] = $exportFileName;
+            $response['exportProjectName'] = $exportFileName;
 
             // Stores the ode permanently
             $this->odeService->moveElpFileToPerm($saveOdeResultParameters, $dbUser, $isManualSave);
@@ -690,14 +701,21 @@ class OdeExportService implements OdeExportServiceInterface
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
                     $ideviceId = $odeComponentsSync->getOdeIdeviceId();
+                    if (!isset($idevicesMapping[$ideviceId])) {
+                        continue;
+                    }
                     $newIdeviceId = $idevicesMapping[$ideviceId];
-                    $ideviceResourcesMapping = $idevicesMapping['odeFileNames']['odeComponents'][$newIdeviceId];
-                    $filemanagerResourcesMapping = $idevicesMapping['odeFileNames']['fileManager'];
+                    $ideviceResourcesMapping = $idevicesMapping['odeFileNames']['odeComponents'][$newIdeviceId] ?? [];
+                    $filemanagerResourcesMapping = $idevicesMapping['odeFileNames']['fileManager'] ?? [];
 
                     $odeComponentsSyncClone = clone $odeComponentsSync;
 
                     // Page file path/url
-                    $pageData = $pagesFileData[$odeNavStructureSync->getOdePageId()];
+                    $pageId = $odeNavStructureSync->getOdePageId();
+                    if (!isset($pagesFileData[$pageId])) {
+                        continue;
+                    }
+                    $pageData = $pagesFileData[$pageId];
 
                     // In case it is not a preview we need to adjust the url of the links since we will be in a subfolder
                     if (!$pageData['isIndex'] && !$isPreview && Constants::EXPORT_TYPE_HTML5_SP != $exportType) {
@@ -1497,9 +1515,6 @@ class OdeExportService implements OdeExportServiceInterface
                 throw new \InvalidArgumentException(sprintf('Page "%s" not found in project.', $pageId));
             }
             $selectedIds[] = $pageId;
-            if ($scope->includeDescendants()) {
-                $selectedIds = array_merge($selectedIds, $this->collectDescendantIds($odeNavStructureSyncs, $pageId));
-            }
         }
 
         $selectedIds = array_values(array_unique($selectedIds));
@@ -1540,23 +1555,59 @@ class OdeExportService implements OdeExportServiceInterface
         return array_values($clones);
     }
 
-    /**
-     * @param OdeNavStructureSync[] $nodes
-     *
-     * @return string[]
-     */
-    private function collectDescendantIds(array $nodes, string $parentId): array
+    private function getPrimaryPageNameForScope(array $odeNavStructureSyncs, PageExportOptions $scope): ?string
     {
-        $ids = [];
-        foreach ($nodes as $node) {
-            if ($node->getOdeParentPageId() === $parentId) {
-                $childId = (string) $node->getOdePageId();
-                $ids[] = $childId;
-                $ids = array_merge($ids, $this->collectDescendantIds($nodes, $childId));
+        $primaryId = $scope->getPrimaryPageId();
+        foreach ($odeNavStructureSyncs as $node) {
+            if ($node->getOdePageId() === $primaryId) {
+                return (string) $node->getPageName();
             }
         }
 
-        return $ids;
+        $first = reset($odeNavStructureSyncs);
+        if ($first instanceof OdeNavStructureSync) {
+            return (string) $first->getPageName();
+        }
+
+        return null;
+    }
+
+    private function buildScopedExportFileName(string $pageName, string $extension): string
+    {
+        $base = $pageName !== '' ? $pageName : 'page';
+        $slug = strtolower($this->slugger->slug($base));
+        if ('' === $slug) {
+            $slug = 'page';
+        }
+
+        if ($extension) {
+            $normalizedExt = '.'.ltrim($extension, '.');
+            if (!str_ends_with($slug, $normalizedExt)) {
+                return $slug.$normalizedExt;
+            }
+        }
+
+        return $slug;
+    }
+
+    private function renameExportFileIfPossible(string $dirPath, string $currentName, string $desiredName): string
+    {
+        if ($currentName === $desiredName) {
+            return $currentName;
+        }
+
+        $currentPath = $dirPath.$currentName;
+        $desiredPath = $dirPath.$desiredName;
+
+        if (!file_exists($currentPath)) {
+            return $currentName;
+        }
+
+        if (@rename($currentPath, $desiredPath)) {
+            return $desiredName;
+        }
+
+        return $currentName;
     }
 
     /**

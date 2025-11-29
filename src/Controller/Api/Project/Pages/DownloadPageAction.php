@@ -30,7 +30,6 @@ class DownloadPageAction extends AbstractController
         try {
             $payload = $this->extractPayload($request);
             $format = (string) ($payload['format'] ?? 'elpx');
-            $includeSubtree = $this->toBool($payload['includeSubtree'] ?? false);
             $sessionId = isset($payload['sessionId']) ? (string) $payload['sessionId'] : null;
 
             $result = $this->pageDownloadService->generateDownload(
@@ -38,7 +37,6 @@ class DownloadPageAction extends AbstractController
                 $projectId,
                 $pageId,
                 $format,
-                $includeSubtree,
                 $sessionId,
                 (string) $request->getBaseURL()
             );
