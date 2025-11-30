@@ -1,9 +1,12 @@
 /* The New eXeLearning */
-.exe-figure{margin:1.5em 0}
-.position-center{margin:1.5em auto}
-.position-right{margin:1.5em 0 1.5em auto}
+img:not(.position-left):not(.position-center):not(.position-right):not(.float-left):not(.float-right){vertical-align:baseline}
+.exe-figure{display:inline-block;margin:1.5em 0}
+.position-left{display:block;margin:1.5em auto 1.5em 0}
+.position-center{display:block;margin:1.5em auto}
+.position-right{display:block;margin:1.5em 0 1.5em auto}
 .float-left{float:left;margin:.5em 1.5em 1em 0}
 .float-right{float:right;margin:.5em 0 1em 1.5em}
+.exe-figure.position-center{display:block;margin:1.5em auto}
 .figcaption{padding-top:.2em}
 .figcaption.header{padding-top:0;padding-bottom:.2em}
 /* /The New eXeLearning */
