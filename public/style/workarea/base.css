@@ -194,28 +194,28 @@
 /* TinyMCE: Images and media */
 .exe-figure {
     display: inline-block;
-    margin: 1.5em 0;
+    margin: 2em 0;
     max-width: 100%
 }
 
 .position-left {
     display: block;
-    margin: 1.5em auto 1.5em 0
+    margin: 2em auto 2em 0
 }
 
 .position-center {
     display: block;
-    margin: 1.5em auto
+    margin: 2em auto
 }
 
 .position-right {
     display: block;
-    margin: 1.5em 0 1.5em auto
+    margin: 2em 0 2em auto
 }
 
 .float-left {
     float: left;
-    margin: .5em 1.5em 1em 0
+    margin: .5em 2em 1em 0
 }
 
 .float-right {
@@ -225,7 +225,7 @@
 
 .exe-figure.position-center {
     display: block;
-    margin: 1.5em auto
+    margin: 2em auto
 }
 
 .figcaption {
@@ -287,7 +287,7 @@
 }
 
 pre.mermaid {
-    margin: 1.5em 0;
+    margin: 2em 0;
     text-align: center;
 }
 
