@@ -193,8 +193,12 @@
 
 /* TinyMCE: Images and media */
 .exe-figure {
-    margin: 2em 0;
+    margin: 1em 0;
     max-width: 100%
+}
+
+figure.exe-media {
+    margin: 1em 0
 }
 
 .position-center {
@@ -659,7 +663,7 @@ video {
     }
 
     .exe-layout-3-cols .exe-col .exe-figure {
-        margin: 2em auto
+        margin: 1em auto
     }
 }
 
@@ -675,7 +679,7 @@ video {
     }
 
     .exe-layout-2-cols .exe-col .exe-figure {
-        margin: 2em auto
+        margin: 1em auto
     }
 }
 
