@@ -202,11 +202,18 @@ figure.exe-media {
 }
 
 .position-center {
-    margin: 2em auto
+    display: block;
+    margin: 1em auto
 }
 
 .position-right {
-    margin: 2em 0 2em auto
+    display: block;
+    margin: 1em 0 1em auto
+}
+
+.position-left {
+    display: block;
+    margin: 1.5em auto 1.5em 0
 }
 
 .float-left {
@@ -233,7 +240,7 @@ audio.position-center,
 iframe.position-center,
 embed.position-center {
     display: block;
-    margin: 2em auto
+    margin: 1em auto
 }
 
 video.position-right,
@@ -241,7 +248,7 @@ audio.position-right,
 iframe.position-right,
 embed.position-right {
     display: block;
-    margin: 2em 0 2em auto
+    margin: 1em 0 1em auto
 }
 
 video.float-left,
