@@ -13049,6 +13049,18 @@
         <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
         <target>~Editarea colaborativă este experimentală și s-ar putea să nu funcționeze corect. Folosiți-o doar pentru teste, deoarece datele ar putea fi pierdute. Doriți să continuați?</target>
       </trans-unit>
+      <trans-unit id="JO9aYD_" resname="Mermaid diagram">
+        <source>Mermaid diagram</source>
+        <target>~Diagramă Mermaid</target>
+      </trans-unit>
+      <trans-unit id="cqg82Ug" resname="Mermaid code">
+        <source>Mermaid code</source>
+        <target>~Cod Mermaid</target>
+      </trans-unit>
+      <trans-unit id="uk.Vvql" resname="Need help? Visit %s">
+        <source>Need help? Visit %s</source>
+        <target>~Ai nevoie de ajutor? Vizitează %s</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

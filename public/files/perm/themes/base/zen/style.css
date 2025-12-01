@@ -42,10 +42,23 @@
     width: 100%;
 }
 
+.package-header:has(.package-subtitle) .package-title,
+.main-header:has(.package-subtitle) .package-title {
+    position: relative;
+    top: -10px;
+}
+
 .package-subtitle {
+    width: 100%;
     position: absolute;
-    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
-    clip: rect(1px, 1px, 1px, 1px);
+    left: 30px;
+    bottom: -.2em;
+    font-size: .9em;
+    color: #FFF;
+}
+
+.exe-web-site .package-subtitle {
+    left: 80px;
 }
 
 main header:not(#head) {
@@ -69,6 +82,12 @@ main header:not(#head) {
 .exe-epub .siteNav-off .page > header .package-title,
 .exe-ims .page > header .package-title {
     width: 100%;
+}
+
+.exe-scorm .page > header,
+.exe-epub .page > header,
+.exe-ims .page > header {
+    display: block !important;
 }
 
 .page > header {
@@ -153,18 +172,35 @@ body.exe-single-page #teacher-mode-toggler-wrapper {
     z-index: 1000;
 }
 
+body.exe-scorm .package-title,
+body.exe-ims .package-title,
+body.exe-epub .package-title {
+    top: 15px !important;
+}
+body.exe-scorm:has(.package-subtitle) .package-title,
+body.exe-scorm:has(.package-subtitle) .package-title,
+body.exe-scorm:has(.package-subtitle) .package-title {
+    top: 10px !important;
+}
 body.exe-scorm .package-subtitle,
 body.exe-ims .package-subtitle,
 body.exe-epub .package-subtitle {
-    position: absolute;
-    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
-    clip: rect(1px, 1px, 1px, 1px);
+    top: 28px;
+    font-size: .8em;
+    left: 32px;
 }
-
 body.exe-scorm .page-title,
 body.exe-ims .page-title,
 body.exe-epub .page-title {
     padding: 0 32px;
+    position: absolute;
+    bottom: 5px;
+    color: #FFF;
+}
+body.exe-scorm:has(.package-subtitle) .page-title,
+body.exe-scorm:has(.package-subtitle) .page-title,
+body.exe-scorm:has(.package-subtitle) .page-title {
+    bottom: 0;
 }
 
 @media (max-width: 750px) {
@@ -177,6 +213,11 @@ body.exe-epub .page-title {
     body.exe-ims .page > header .package-title,
     body.exe-epub .page > header .package-title {
         padding-left: 24px;
+    }
+    body.exe-scorm .package-subtitle,
+    body.exe-ims .package-subtitle,
+    body.exe-epub .package-subtitle {
+        left: 24px;
     }
 }
 
@@ -742,7 +783,8 @@ button.toggler:focus {
 }
 
 /* iDevice buttons */
-.exe-content .iDevice_buttons input {
+.exe-content .iDevice_buttons input,
+.exe-content .iDevice_buttons button {
     background: #1a8fa9;
     color: #fff;
     border: 1px solid #1a8fa9;
@@ -751,7 +793,9 @@ button.toggler:focus {
     transition: 0.5s ease;
 }
 .exe-content .iDevice_buttons input:hover,
-.exe-content .iDevice_buttons input:focus {
+.exe-content .iDevice_buttons input:focus,
+.exe-content .iDevice_buttons button:hover,
+.exe-content .iDevice_buttons button:focus {
     background: #005771;
     border-color: #005771;
 }
@@ -984,6 +1028,10 @@ body.siteNav-off button#searchBarTogger {
         padding: 0 20px;
     }
 
+    .exe-web-site .package-subtitle {
+        left: 32px;
+    }
+
     #sidebar-nav {
         position: static !important;
         width: 100%;
@@ -1148,6 +1196,13 @@ body.siteNav-off button#searchBarTogger {
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
+    }
+    .main-header:has(.package-subtitle) .package-title {
+        font-size: 1.2em;
+        line-height: 1.1em;
+    }
+    .exe-web-site .package-subtitle {
+        left: 20px;
     }
     .nav-buttons .nav-button-left,
     .nav-buttons .nav-button-right {

@@ -751,7 +751,8 @@ body.siteNav-off button#siteNavToggler .sr-av {
 }
 
 /* iDevice buttons */
-.exe-content .iDevice_buttons input {
+.exe-content .iDevice_buttons input,
+.exe-content .iDevice_buttons button {
     background: #fff;
     color: #555;
     border: 1px solid #ccc;
@@ -760,7 +761,9 @@ body.siteNav-off button#siteNavToggler .sr-av {
     transition: 0.5s ease;
 }
 .exe-content .iDevice_buttons input:hover,
-.exe-content .iDevice_buttons input:focus {
+.exe-content .iDevice_buttons input:focus,
+.exe-content .iDevice_buttons button:hover,
+.exe-content .iDevice_buttons button:focus {
     box-shadow: 2px 2px 4px #dbdbdb;
     color: #000;
     border-color: #bbb;

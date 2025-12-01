@@ -61,19 +61,10 @@
                     {% endif %}
                     <li class="dropdown-divider"></li>
                     <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ "Print" | trans }}</a></li>
-                    {#<li class="dropdown dropend exe-advanced">
-                        <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Upload to" | trans }}</a>
-                        <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
-                            <li><a id="navbar-button-uploadtodrive" class="dropdown-item" href="#">{{ "Google Drive" | trans }}</a></li>
-                            <li><a id="navbar-button-uploadtodropbox" class="dropdown-item" href="#">{{ "Dropbox" | trans }}</a></li>
-                            {% if config.platformIntegration %}
-                                <li><a id="navbar-button-uploadtoplatform" class="dropdown-item" href="#">{{ config.platformName | trans }}</a></li>
-                            {% endif %}
-                        </ul>
-                    </li>#}
                     {% if config.platformIntegration %}
-                        <li class="dropdown dropend exe-advanced">
-                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ "Upload to" | trans }}</a>
+                        <li class="dropdown-divider"></li>
+                        <li class="dropdown dropend">
+                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon upload-cloud-icon-green"></span> {{ "Upload to" | trans }}</a>
                             <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
                                 <li><a id="navbar-button-uploadtoplatform" class="dropdown-item" href="#">{{ config.platformName | trans }}</a></li>
                             </ul>

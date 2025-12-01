@@ -13049,6 +13049,18 @@
         <source>Collaborative editing is experimental and may not work correctly. Use it for testing only, as data could be lost. Do you want to continue?</source>
         <target>~Elkarrekin editatzea esperimentala da eta ez da behar bezala funtziona dezake. Erabili probetarako bakarrik, datuak galdu daitezke. Jarraitu nahi duzu?</target>
       </trans-unit>
+      <trans-unit id="JO9aYD_" resname="Mermaid diagram">
+        <source>Mermaid diagram</source>
+        <target>~Mermaid diagrama</target>
+      </trans-unit>
+      <trans-unit id="cqg82Ug" resname="Mermaid code">
+        <source>Mermaid code</source>
+        <target>~Mermaid kodea</target>
+      </trans-unit>
+      <trans-unit id="uk.Vvql" resname="Need help? Visit %s">
+        <source>Need help? Visit %s</source>
+        <target>~Laguntza behar duzu? Bisitatu %s</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

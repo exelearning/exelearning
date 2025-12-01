@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v3.0.1 – 2025-11-27
+## v3.0.1 – 2025-12-01
 
 ### Added
 
@@ -14,6 +14,7 @@
 - New "Highlight page" option in page settings with styles compatibility
 - New Mermaid diagrams plugin added to the TinyMCE Insert menu
 - Added touch support for drag-and-drop iDevices (Classify, Sort, Drag and drop, Complete) to improve mobile interaction.
+- Complete iDevice: added configurable background image support
 - Form iDevice improvements: edition/form.js refactor and new feedback/hint options
 - Responsive improvements in Puzzle and Word Search iDevices
 - Allow text/xml files (like .gpx) and .gltf files
@@ -42,6 +43,7 @@
 - Optimizations for handling large files (over 100MB) in the ODE import workflow
 - Path normalization on Windows (fix incorrect directory separators)
 - Styles and iDevices import and installation issues (user-specific files served from new directories)
+- File + Upload to: added missing icon
 - Sanitize JSON to avoid errors caused by unescaped control characters in legacy iDevices
 - ".elpx" extension missing in the Save As dialog
 - Multiple Word Search iDevice instances per page
@@ -49,10 +51,13 @@
 - Puzzle iDevice presentation on mobile devices
 - Improved Crossword iDevice performance and word placement
 - Floated images overflowing in Form iDevice questions
+- Case Study iDevice: missing feedback button CSS class
+- Crossword iDevice: background image display issue
 - SCORM fixes: improved score recovery and better suspend_data handling
 - Metadata error in profiler when using MariaDB
 - PostgreSQL compatibility issues caused by use of reserved keywords
 - TinyMCE fullscreen mode z-index issue (last line selection)
+- TinyMCE image plugin bugs
 
 ### Upgraded
 

@@ -30,7 +30,7 @@ body.exe-web-site {
 }
 
 .js .exe-export .exe-content {
-    min-height: calc(100vh - 30px);
+    min-height: 100vh;
 }
 
 .js .in-iframe .exe-content {
@@ -483,7 +483,8 @@ button.toggler:focus {
 }
 
 /* iDevice buttons */
-.exe-content .iDevice_buttons input {
+.exe-content .iDevice_buttons input,
+.exe-content .iDevice_buttons button {
     background: #fff;
     color: #555;
     border: 1px solid #ccc;
@@ -492,7 +493,9 @@ button.toggler:focus {
     transition: 0.5s ease;
 }
 .exe-content .iDevice_buttons input:hover,
-.exe-content .iDevice_buttons input:focus {
+.exe-content .iDevice_buttons input:focus,
+.exe-content .iDevice_buttons button:hover,
+.exe-content .iDevice_buttons button:focus {
     box-shadow: 2px 2px 4px #dbdbdb;
     color: #000;
     border-color: #bbb;
