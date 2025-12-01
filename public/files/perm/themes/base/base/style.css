@@ -30,7 +30,7 @@ body.exe-web-site {
 }
 
 .js .exe-export .exe-content {
-    min-height: calc(100vh - 30px);
+    min-height: 100vh;
 }
 
 .js .in-iframe .exe-content {
