@@ -159,14 +159,19 @@ Common functionality found in built-in eXe styles:
 - Package the style into a `.zip` file:
   - The `.zip` file name must match the `<name>` in `config.xml`.
   - The `.zip` must not contain extra parent folders — all files (`config.xml`, CSS, JS, `icons/`, etc.) must be in the root.
+- Test your style in eXeLearning to ensure everything works correctly and your CSS does not interfere with the application’s presentation.
 
 ---
 
 ### How to Create a New Style Easily
 
-- Download any of the styles included in eXeLearning. Choose the one that most closely resembles what you want to achieve.  
-- Unzip the `.zip` folder.  
-- Edit the `config.xml` file to modify all the information you need.  
+The easiest way is to use this tool: [eXeLearning Style Designer](https://github.com/exelearning/exelearning-style-designer) and follow the instructions in its `README.md`.
+
+If you prefer to create the style without that tool, we recommend the following steps:
+
+- Download any of the styles included in eXeLearning. Choose the one that most closely resembles what you want to achieve.
+- Unzip the `.zip` folder.
+- Edit the `config.xml` file to modify all the information you need.
 - Follow the steps described in the **"Final Recommendations"** section to complete the creation of your style.
 
 ---
