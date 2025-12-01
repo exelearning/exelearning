@@ -186,6 +186,44 @@
     width: 100%;
 }
 
+.CMPT-GameContainer.has-background::before {
+    content: '';
+    position: absolute;
+    top: 1.7em;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+
+.CMPT-GameContainer > * {
+    position: relative;
+    z-index: 2;
+}
+
+/* Background image support */
+.CMPT-GameContainer.has-background .CMPT-Multimedia p {
+    background-color: rgba(255, 255, 255, 0.70);
+    padding: 0.5em !important;
+    margin: 0.5em !important;
+    border-radius: 0.3em;
+}
+
+.CMPT-AuthorBackImage {
+    width: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    color: #666;
+    font-style: italic;
+    font-size: 0.9em;
+    margin-top: 0.5em;
+    padding: 0.3em;
+}
+
 .CMPT-Cubierta {
     width: 100%;
     position: absolute;
@@ -332,6 +370,10 @@
     text-align: center;
     user-select: none;
     width: 100%;
+}
+
+.CMPT-StartGame a {
+    font-size: 1.2em;
 }
 
 .CMPT-StartGame a:hover {

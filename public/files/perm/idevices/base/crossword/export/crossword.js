@@ -28,7 +28,7 @@ var $eXeCrucigrama = {
         grey: '#777777',
         incorrect: '#F22420',
         correct: '#3DA75A',
-        game: 'rgba(0, 255, 0, 0.3)',
+        game: 'rgba(0, 255, 0, 0.3)'
     },
     options: [],
     domCache: {},
