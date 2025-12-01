@@ -14,6 +14,7 @@
 - New "Highlight page" option in page settings with styles compatibility
 - New Mermaid diagrams plugin added to the TinyMCE Insert menu
 - Added touch support for drag-and-drop iDevices (Classify, Sort, Drag and drop, Complete) to improve mobile interaction.
+- Complete iDevice: added configurable background image support
 - Form iDevice improvements: edition/form.js refactor and new feedback/hint options
 - Responsive improvements in Puzzle and Word Search iDevices
 - Allow text/xml files (like .gpx) and .gltf files
@@ -51,6 +52,7 @@
 - Improved Crossword iDevice performance and word placement
 - Floated images overflowing in Form iDevice questions
 - Case Study iDevice: missing feedback button CSS class
+- Crossword iDevice: background image display issue
 - SCORM fixes: improved score recovery and better suspend_data handling
 - Metadata error in profiler when using MariaDB
 - PostgreSQL compatibility issues caused by use of reserved keywords
