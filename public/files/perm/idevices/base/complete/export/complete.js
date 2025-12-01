@@ -14,7 +14,7 @@ var $eXeCompleta = {
         green: '#2a9315',
         red: '#ff0000',
         white: '#ffffff',
-        yellow: '#f3d55a'
+        yellow: '#f3d55a',
     },
     colors: {
         black: '#1c1b1b',
@@ -472,13 +472,14 @@ var $eXeCompleta = {
 
         // Background image
         if (mOptions.hasBack) {
-            const backgroundUrl = mOptions.urlBack.length < 4
-                ? `${mOptions.idevicePath}cmptbackground.png`
-                : mOptions.urlBack;
-            
+            const backgroundUrl =
+                mOptions.urlBack.length < 4
+                    ? `${mOptions.idevicePath}cmptbackground.png`
+                    : mOptions.urlBack;
+
             const $container = $(`#cmptGameContainer-${instance}`);
             $container.addClass('has-background');
-            
+
             // Apply background to ::before pseudo-element via inline style
             const style = document.createElement('style');
             style.textContent = `
@@ -487,7 +488,7 @@ var $eXeCompleta = {
                 }
             `;
             document.head.appendChild(style);
-            
+
             if (mOptions.authorBackImage.length > 0) {
                 $(`#cmptAuthorBackImage-${instance}`)
                     .text(mOptions.authorBackImage)

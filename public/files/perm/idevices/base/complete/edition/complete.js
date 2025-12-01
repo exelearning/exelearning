@@ -16,7 +16,7 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'complete',
     version: 1,
-    id: false, 
+    id: false,
     ci18n: {},
     init: function (element, previousData, path) {
         this.ideviceBody = element;
