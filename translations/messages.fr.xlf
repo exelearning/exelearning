@@ -13051,15 +13051,15 @@
       </trans-unit>
       <trans-unit id="JO9aYD_" resname="Mermaid diagram">
         <source>Mermaid diagram</source>
-        <target></target>
+        <target>~Diagramme Mermaid</target>
       </trans-unit>
       <trans-unit id="cqg82Ug" resname="Mermaid code">
         <source>Mermaid code</source>
-        <target></target>
+        <target>~Code Mermaid</target>
       </trans-unit>
       <trans-unit id="uk.Vvql" resname="Need help? Visit %s">
         <source>Need help? Visit %s</source>
-        <target></target>
+        <target>~Besoin d’aide? Visitez %s</target>
       </trans-unit>
     </body>
   </file>
