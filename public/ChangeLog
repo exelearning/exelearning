@@ -57,7 +57,7 @@
 - Metadata error in profiler when using MariaDB
 - PostgreSQL compatibility issues caused by use of reserved keywords
 - TinyMCE fullscreen mode z-index issue (last line selection)
-- TinyMCE image plugin bugs
+- TinyMCE image and media plugins bugs
 
 ### Upgraded
 

@@ -3,7 +3,7 @@ var $exeTinyMCE = {
     // colorpicker contextmenu textcolor . Añadidos al core, no hace falta añadir en plugins?
     plugins:
         'tooltips exeaudio edicuatex abcmusic exemindmap exemermaid rssfeed modalwindow exeimage exemedia toggletoolbars exeeffects easyattributes advlist lists autolink exelink charmap preview anchor searchreplace visualchars visualblocks code codemagic fullscreen insertdatetime table paste template hr clearfloat addcontent definitionlist blockquoteandcite pastecode abbr exegames_hangman directionality',
-    // DESACTIVADO: exealign (conflicto con exemedia alignment)
+    // exealign is disabled to avoid conflicts with exemedia alignment
     // These buttons will be visible when the others are hidden
     buttons0:
         'toggletoolbars | undo redo | bold italic | formatselect | alignleft aligncenter alignright alignjustify | exelink unlink | bullist numlist | exeimage exemedia | fullscreen',
