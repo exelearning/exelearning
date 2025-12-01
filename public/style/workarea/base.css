@@ -197,6 +197,12 @@
     max-width: 100%
 }
 
+.exe-figure img {
+    display: block;
+    position: relative;
+    z-index: 0
+}
+
 figure.exe-media {
     margin: 2em 0
 }
@@ -268,12 +274,16 @@ embed.float-right {
 }
 
 .figcaption {
-    padding-top: .2em
+    padding-top: .2em;
+    position: relative;
+    z-index: 1
 }
 
 .figcaption.header {
     padding-top: 0;
-    padding-bottom: .2em
+    padding-bottom: .2em;
+    position: relative;
+    z-index: 1
 }
 
 /* TinyMCE templates */
