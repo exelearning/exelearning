@@ -148,7 +148,10 @@ var $eXeSopa = {
             $container.show();
         });
 
-        $exeDevices.iDevice.gamification.math.updateLatex('.sopa-IDevice');
+        var sopaHtml = $('.sopa-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(sopaHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('.sopa-IDevice');
+        }
     },
 
     recreatePuzzle: function (instanceId) {
@@ -556,9 +559,8 @@ var $eXeSopa = {
             $container.find('#sopaMAuthorPoint-' + instanceId).show();
         }
 
-        const html = $container.find('#sopaFDetails-' + instanceId).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
-        if (latex) {
+        var html = $container.find('#sopaFDetails-' + instanceId).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#sopaFDetails-' + instanceId
             );
@@ -1356,6 +1358,7 @@ $(function () {
                             S = 0,
                             x = 0;
                         x < l;
+
                     )
                         if (p(S, x, l, f, d)) {
                             var w = u(a, t, S, x, $);
@@ -1423,6 +1426,7 @@ $(function () {
                                 void 0 === s.preferOverlap || s.preferOverlap,
                         };
                     !i;
+
                 ) {
                     for (; !i && l++ < d.maxAttempts; ) i = a(o, d);
                     if (!i) {

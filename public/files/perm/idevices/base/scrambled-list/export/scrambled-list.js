@@ -185,7 +185,10 @@ var $scrambledlist = {
             $exeDevices.iDevice.gamification.scorm.registerActivity(ldata);
         }
 
-        $exeDevices.iDevice.gamification.math.updateLatex('#sl' + ldata.id);
+        const listHtml = $('#sl' + ldata.id).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(listHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('#sl' + ldata.id);
+        }
 
         setTimeout(function () {
             $exeDevices.iDevice.gamification.report.updateEvaluationIcon(
@@ -501,7 +504,10 @@ var $scrambledlist = {
                     .fadeIn();
             }
         }
-        $exeDevices.iDevice.gamification.math.updateLatex('#sl' + data.id);
+        const listHtml = $('#sl' + data.id).html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(listHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex('#sl' + data.id);
+        }
     },
 
     saveEvaluation: function (nRightAnswers, total, data) {

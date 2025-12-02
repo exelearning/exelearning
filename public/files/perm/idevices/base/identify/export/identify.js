@@ -1119,7 +1119,7 @@ var $eXeIdentifica = {
         $eXeIdentifica.showMessage(0, '', instance);
 
         const html = $(`#idfGameContainer-${instance}`).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(

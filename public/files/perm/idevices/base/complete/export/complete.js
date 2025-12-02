@@ -337,7 +337,7 @@ var $eXeCompleta = {
         });
 
         const html = $(`#cmptGameContainer-${instance}`).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (mOptions.isScorm > 0) {
             $exeDevices.iDevice.gamification.scorm.registerActivity(mOptions);
@@ -639,7 +639,7 @@ var $eXeCompleta = {
         $eXeCompleta.showFeedBack(instance);
 
         const html = $(`#cmptGameContainer-${instance}`).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(

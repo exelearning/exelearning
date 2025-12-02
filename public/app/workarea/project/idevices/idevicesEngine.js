@@ -1554,6 +1554,9 @@ export default class IdevicesEngine {
                 pageTitleElement.innerText = properties.titlePage.value;
                 pageTitleElement.classList.add('hidden');
             }
+            if (typeof $exe !== 'undefined' && $exe.math && $exe.math.refresh) {
+                $exe.math.refresh(pageTitleElement);
+            }
         }
     }
 

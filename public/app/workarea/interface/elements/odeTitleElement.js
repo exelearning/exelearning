@@ -38,7 +38,11 @@ export default class OdeTitleMenu {
         let odeTitleText = odeTitleProperty.value
             ? odeTitleProperty.value
             : _('Untitled document');
-        this.odeTitleMenuHeadElement.textContent = odeTitleText;
+        this.odeTitleMenuHeadElement.innerHTML = odeTitleText;
+        this.odeTitleMenuHeadElement.dataset.originalTitle = odeTitleText;
+        if (typeof $exe !== 'undefined' && $exe.math && $exe.math.refresh) {
+            $exe.math.refresh(this.odeTitleMenuHeadElement);
+        }
         //this.odeTitleMenuHeadElement.setAttribute('title', odeTitleText);
     }
 
@@ -68,6 +72,9 @@ export default class OdeTitleMenu {
             }
 
             title.setAttribute('contenteditable', 'true');
+            if (title.dataset.originalTitle) {
+                title.innerHTML = title.dataset.originalTitle;
+            }
             this.attachPasteAsPlain(title);
             this.titleContainer.classList.add('title-editing');
             this.titleContainer.classList.remove('title-not-editing');
@@ -97,8 +104,18 @@ export default class OdeTitleMenu {
                 this.titleContainer.classList.remove('title-editing');
                 this.titleContainer.classList.add('title-not-editing');
 
-                this.saveTitle(title.textContent)
+                const newTitle = title.innerHTML.trim();
+                title.dataset.originalTitle = newTitle;
+
+                this.saveTitle(newTitle)
                     .then((response) => {
+                        if (
+                            typeof $exe !== 'undefined' &&
+                            $exe.math &&
+                            $exe.math.refresh
+                        ) {
+                            $exe.math.refresh(title);
+                        }
                         this.checkTitleLineCount();
                         if (response.responseMessage === 'OK') {
                             let toastData = {

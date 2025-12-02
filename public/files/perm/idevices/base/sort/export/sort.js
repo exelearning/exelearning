@@ -694,7 +694,7 @@ var $eXeOrdena = {
         $eXeOrdena.addCardsPhrase(shuffledWords, instance);
 
         const html = $('#ordenaPhrasesContainer-' + instance).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -779,7 +779,7 @@ var $eXeOrdena = {
         const $text = $card.find('.ODNP-EText'),
             latex =
                 $text.find('mjx-container').length > 0 ||
-                /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test($text.text());
+                $exeDevices.iDevice.gamification.math.hasLatex($text.text());
         if (!latex) {
             $eXeOrdena.adjustFontSize($card);
         } else {
@@ -1136,7 +1136,7 @@ var $eXeOrdena = {
         $('#ordenaHistsGame-' + instance).text('');
 
         const html = $multimedia.html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#ordenaMultimedia-' + instance
@@ -1707,7 +1707,7 @@ var $eXeOrdena = {
             $eXeOrdena.showCard($(this));
         });
         const html = $('#ordenaMultimedia-' + instance).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#ordenaMultimedia-' + instance

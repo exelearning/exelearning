@@ -1318,7 +1318,7 @@ var $eXeMapa = {
             }
         );
         let html = $('#mapaQuestionDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaFTests-' + instance
@@ -1361,7 +1361,7 @@ var $eXeMapa = {
         );
 
         const html = $('#mapaQuestionDiv1-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -1439,7 +1439,7 @@ var $eXeMapa = {
         if (!solution) $('#mapaDefinition-' + instance).text(definition);
 
         const html = $('#mapaWordDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaWordDiv-' + instance
@@ -1514,7 +1514,9 @@ var $eXeMapa = {
             $mapaDefinition.text(definition);
         }
 
-        if (/\\\(|\\\[|\\begin\{.*?}/.test($mapaWordDiv.html())) {
+        if (
+            $exeDevices.iDevice.gamification.math.hasLatex($mapaWordDiv.html())
+        ) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaWordDiv1-' + instance
             );
@@ -1723,7 +1725,7 @@ var $eXeMapa = {
             }
 
             const html = $('#mapaTPQuestions-' + instance).html(),
-                latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+                latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
             if (latex)
                 $exeDevices.iDevice.gamification.math.updateLatex(
                     '#mapaTPQuestions-' + instance
@@ -2357,7 +2359,7 @@ var $eXeMapa = {
 
         mOptions.showDetail = false;
         let html = $('#mapaMainContainer-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaMainContainer-' + instance
@@ -3300,7 +3302,7 @@ var $eXeMapa = {
         }
 
         const html = $('#mapaToolTipText-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaToolTipText-' + instance
@@ -3408,7 +3410,7 @@ var $eXeMapa = {
             $('#mapaTextPoint-' + instance).append($divText);
         }
         let html = $('#mapaTextPoint-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaTextPoint-' + instance
@@ -4952,7 +4954,7 @@ var $eXeMapa = {
         }
         $eXeMapa.saveEvaluation(instance);
         let html = $('#mapaFDetails-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#mapaFDetails-' + instance
