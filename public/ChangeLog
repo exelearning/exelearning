@@ -14,7 +14,7 @@
 - New "Highlight page" option in page settings with styles compatibility
 - New Mermaid diagrams plugin added to the TinyMCE Insert menu
 - Added touch support for drag-and-drop iDevices (Classify, Sort, Drag and drop, Complete) to improve mobile interaction.
-- Complete iDevice: added configurable background image support
+- Complete iDevice: added custom font color and configurable background image support
 - Form iDevice improvements: edition/form.js refactor and new feedback/hint options
 - Responsive improvements in Puzzle and Word Search iDevices
 - Allow text/xml files (like .gpx) and .gltf files
