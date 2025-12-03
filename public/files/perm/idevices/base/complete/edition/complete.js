@@ -262,6 +262,10 @@ var $exeDevice = {
                                 <img class="CMPT-EMedia1" src="" id="cmptEImageBack" alt="${_('Image')}" />
                                 <img class="CMPT-EMedia1" src="${$exeDevice.idevicePath}cmptbackground.png" id="cmptEImageNoBack" alt="${_('No image')}" />
                             </div>
+                            <div id="cmptFontColorDiv" class="CMPT-FontColor d-none align-items-center gap-2 flex-nowrap mb-3">
+                                <label for="cmptEFontColor" class="mb-0">${_('Font color')}: </label>
+                                <input type="color" id="cmptEFontColor" class="form-control form-control-color" value="#000000"/>
+                            </div>
                             <div id="cmptAuthorBackDiv" class="CMPT-AuthorBack d-none align-items-center gap-2 flex-nowrap mb-3">
                                 <label for="cmptAuthorBack" class="mb-0">${_('Authorship')}: </label>
                                 <input type="text" class="CMPT-EURLImage form-control" id="cmptAuthorBack"/>
@@ -363,6 +367,8 @@ var $exeDevice = {
             typeof game.authorBackImage !== 'undefined'
                 ? game.authorBackImage
                 : '';
+        game.fontColor =
+            typeof game.fontColor !== 'undefined' ? game.fontColor : '';
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
@@ -391,6 +397,7 @@ var $exeDevice = {
         $('#cmptBack0').prop('checked', game.hasBack);
         $('#cmptEURLBack').val(game.urlBack);
         $('#cmptAuthorBack').val(game.authorBackImage);
+        $('#cmptEFontColor').val(game.fontColor || '#000000');
 
         $exeDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
@@ -426,6 +433,11 @@ var $exeDevice = {
         }
 
         $exeDevice.showImageBack(game.hasBack, game.urlBack);
+
+        // Show font color selector if background is configured
+        if (game.hasBack && game.urlBack && game.urlBack.length > 4) {
+            $('#cmptFontColorDiv').removeClass('d-none').addClass('d-flex');
+        }
     },
 
     importGame: function (content) {
@@ -571,6 +583,7 @@ var $exeDevice = {
             hasBack = $('#cmptBack0').is(':checked'),
             urlBack = $('#cmptEURLBack').val().trim(),
             authorBackImage = $('#cmptAuthorBack').val(),
+            fontColor = $('#cmptEFontColor').val(),
             id = $exeDevice.getIdeviceID();
         if (!itinerary) return;
 
@@ -621,6 +634,7 @@ var $exeDevice = {
             hasBack: hasBack,
             urlBack: urlBack,
             authorBackImage: authorBackImage,
+            fontColor: fontColor,
             id: id,
         };
     },
@@ -725,11 +739,15 @@ var $exeDevice = {
 
         $('#cmptBack0').on('change', function () {
             if ($(this).is(':checked')) {
-                $('#cmptbackground, #cmptbackground1, #cmptAuthorBackDiv')
+                $(
+                    '#cmptbackground, #cmptbackground1, #cmptAuthorBackDiv, #cmptFontColorDiv'
+                )
                     .removeClass('d-none')
                     .addClass('d-flex');
             } else {
-                $('#cmptbackground, #cmptbackground1, #cmptAuthorBackDiv')
+                $(
+                    '#cmptbackground, #cmptbackground1, #cmptAuthorBackDiv, #cmptFontColorDiv'
+                )
                     .removeClass('d-flex')
                     .addClass('d-none');
             }
@@ -766,7 +784,6 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
-        // Inicialización de toggles con su estado actual
         $form.find('.toggle-input').each(function () {
             const checked = $(this).is(':checked');
             $(this).attr('aria-checked', checked).trigger('change');
