@@ -420,9 +420,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Bump Homebrew cask PR
-        uses: macauley/action-homebrew-bump-cask@v1
+        uses: eugenesvk/action-homebrew-bump-cask@master
         with:
           token: ${{ secrets.WINGET_TOKEN }}
           tap: homebrew/cask
-          # TODO: Remove @beta on 3.0.0 release!
-          cask: exelearning@beta
+          cask: exelearning
