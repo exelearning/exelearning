@@ -183,7 +183,12 @@
     max-width: 1024px;
     padding: 0 1em 0 1em;
     position: relative;
+    z-index: 0;
     width: 100%;
+}
+
+.CMPT-GameContainer.has-background {
+    background-color: transparent;
 }
 
 .CMPT-GameContainer.has-background::before {
@@ -196,12 +201,11 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    z-index: 0;
+    z-index: -1;
 }
 
 .CMPT-GameContainer > * {
     position: relative;
-    z-index: 2;
 }
 
 /* Background image support */
