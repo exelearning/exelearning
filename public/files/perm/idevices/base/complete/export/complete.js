@@ -54,6 +54,7 @@ var $eXeCompleta = {
 
         $eXeCompleta.activities.each(function (i) {
             const dl = $('.completa-DataGame', this),
+                $imageBack = $('.completa-LinkBack', this),
                 mOption = $eXeCompleta.loadDataGame(dl),
                 msg = mOption.msgs.msgPlayStart;
 
@@ -61,6 +62,14 @@ var $eXeCompleta = {
             mOption.idevicePath = $eXeCompleta.idevicePath;
             mOption.main = 'cmptMainContainer-' + i;
             mOption.idevice = 'completa-IDevice';
+
+            if ($imageBack.length == 1) {
+                mOption.urlBack = $imageBack.attr('href') || '';
+            }
+            mOption.urlBack =
+                mOption.urlBack.length < 4
+                    ? `${mOption.idevicePath}cmptbackground.png`
+                    : mOption.urlBack;
 
             $eXeCompleta.options.push(mOption);
             const completa = $eXeCompleta.createInterfaceCompleta(i);
@@ -128,6 +137,8 @@ var $eXeCompleta = {
             typeof mOptions.authorBackImage === 'undefined'
                 ? ''
                 : mOptions.authorBackImage;
+        mOptions.fontColor =
+            typeof mOptions.fontColor === 'undefined' ? '' : mOptions.fontColor;
 
         return mOptions;
     },
@@ -470,7 +481,6 @@ var $eXeCompleta = {
                 $eXeCompleta.isDragging = false;
             });
 
-        // Background image
         if (mOptions.hasBack) {
             const backgroundUrl =
                 mOptions.urlBack.length < 4
@@ -480,7 +490,6 @@ var $eXeCompleta = {
             const $container = $(`#cmptGameContainer-${instance}`);
             $container.addClass('has-background');
 
-            // Apply background to ::before pseudo-element via inline style
             const style = document.createElement('style');
             style.textContent = `
                 #cmptGameContainer-${instance}.has-background::before {
@@ -488,6 +497,13 @@ var $eXeCompleta = {
                 }
             `;
             document.head.appendChild(style);
+
+            if (mOptions.fontColor && mOptions.fontColor.length > 0) {
+                $(`#cmptMultimedia-${instance} p`).css(
+                    'color',
+                    mOptions.fontColor
+                );
+            }
 
             if (mOptions.authorBackImage.length > 0) {
                 $(`#cmptAuthorBackImage-${instance}`)
