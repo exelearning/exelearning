@@ -211,7 +211,7 @@ class DropboxApiController extends DefaultApiController
     #[Route('/redirect/close', methods: ['GET'], name: 'api_dropbox_redirect_close')]
     public function redirectAndCloseActionDropbox(Request $request)
     {
-        $code = $request->request->get('code');
+        $code = $request->query->get('code');
         $session = $request->getSession();
         $session->set(Constants::SESSION_DROPBOX_CODE, $code);
 

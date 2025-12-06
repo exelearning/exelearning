@@ -214,7 +214,7 @@ class GoogleApiController extends DefaultApiController
     #[Route('/redirect/close', methods: ['GET'], name: 'api_google_drive_redirect_close')]
     public function redirectAndCloseAction(Request $request)
     {
-        $code = $request->request->get('code');
+        $code = $request->query->get('code');
         $session = $request->getSession();
         $session->set(Constants::SESSION_GOOGLE_CODE, $code);
 
