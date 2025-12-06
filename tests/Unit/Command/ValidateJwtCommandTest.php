@@ -24,7 +24,7 @@ class ValidateJwtCommandTest extends TestCase
         $jwt = JWT::encode($payload, $secret, 'HS256');
 
         $app = new Application();
-        $app->add(new ValidateJwtCommand($secret, $issuer, $audience));
+        $app->addCommand(new ValidateJwtCommand($secret, $issuer, $audience));
         $command = $app->find('app:jwt:validate');
         $tester = new CommandTester($command);
 
@@ -50,7 +50,7 @@ class ValidateJwtCommandTest extends TestCase
         $jwt = JWT::encode($payload, $secret, 'HS256');
 
         $app = new Application();
-        $app->add(new ValidateJwtCommand($secret, 'exelearning', 'clients'));
+        $app->addCommand(new ValidateJwtCommand($secret, 'exelearning', 'clients'));
         $command = $app->find('app:jwt:validate');
         $tester = new CommandTester($command);
 

@@ -17,7 +17,7 @@ class GenerateJwtCommandTest extends TestCase
         $audience = 'clients';
 
         $app = new Application();
-        $app->add(new GenerateJwtCommand($secret, $issuer, $audience));
+        $app->addCommand(new GenerateJwtCommand($secret, $issuer, $audience));
         $command = $app->find('app:jwt:generate');
         $tester = new CommandTester($command);
 
