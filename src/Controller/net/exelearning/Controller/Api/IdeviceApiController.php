@@ -141,8 +141,8 @@ class IdeviceApiController extends DefaultApiController
         $user = $this->getUser();
 
         // Upload zip file parameters
-        $base64String = $request->get('file');
-        $filename = $request->get('filename');
+        $base64String = $request->request->get('file');
+        $filename = $request->request->get('filename');
 
         // Validate received data
         if ((empty($base64String)) || (empty($filename))) {
@@ -187,7 +187,7 @@ class IdeviceApiController extends DefaultApiController
 
         $user = $this->getUser();
 
-        $ideviceId = $request->get('id');
+        $ideviceId = $request->request->get('id');
 
         if ($ideviceId) {
             $idevicesInstalled = $this->getInstalledIdevicesAction($request, false);
@@ -510,32 +510,32 @@ class IdeviceApiController extends DefaultApiController
         $user = $this->getUser();
 
         // collect parameters
-        $odeComponentsSyncId = $request->get('odeComponentsSyncId'); // optional, if it is not received a new component is created
+        $odeComponentsSyncId = $request->request->get('odeComponentsSyncId'); // optional, if it is not received a new component is created
         $isDefinedOdeComponentsSyncId = $request->request->has('odeComponentsSyncId');
 
         // optional, used when odeComponentsSyncId is not received
-        $odePagStructureSyncId = $request->get('odePagStructureSyncId');
+        $odePagStructureSyncId = $request->request->get('odePagStructureSyncId');
         $isDefinedOdePagStructureSyncId = $request->request->has('odePagStructureSyncId');
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
         $isDefinedOdeNavStructureSyncId = $request->request->has('odeNavStructureSyncId');
 
         // required if $odeComponentsSyncId is not received
-        $odeVersionId = $request->get('odeVersionId');
+        $odeVersionId = $request->request->get('odeVersionId');
         // $isDefinedOdeVersionId = $request->request->has('odeVersionId');
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
         // $isDefinedOdeSessionId = $request->request->has('odeSessionId');
-        $odePageId = $request->get('odePageId');
+        $odePageId = $request->request->get('odePageId');
         $isDefinedOdePageId = $request->request->has('odePageId');
-        $odeBlockId = $request->get('odeBlockId');
+        $odeBlockId = $request->request->get('odeBlockId');
         $isDefinedOdeBlockId = $request->request->has('odeBlockId');
-        $odeIdeviceId = $request->get('odeIdeviceId');
+        $odeIdeviceId = $request->request->get('odeIdeviceId');
         // $isDefinedOdeIdeviceId = $request->request->has('odeIdeviceId');
-        $odeIdeviceTypeName = $request->get('odeIdeviceTypeName');
+        $odeIdeviceTypeName = $request->request->get('odeIdeviceTypeName');
         // $isDefinedOdeIdeviceTypeName = $request->request->has('odeIdeviceTypeName');
 
-        $htmlView = $request->get('htmlView'); // required for saveHtmlView
+        $htmlView = $request->request->get('htmlView'); // required for saveHtmlView
         $isDefinedHtmlView = $request->request->has('htmlView');
-        $jsonProperties = $request->get('jsonProperties');
+        $jsonProperties = $request->request->get('jsonProperties');
         $isDefinedJsonProperties = $request->request->has('jsonProperties');
 
         $session = $request->getSession();
@@ -559,7 +559,7 @@ class IdeviceApiController extends DefaultApiController
         // optional, used if OdeNavStructureSync or OdePagStructureSync are created
         $isDefinedBlockName = $request->request->has('blockName');
         if ($isDefinedBlockName) {
-            $blockName = $request->get('blockName');
+            $blockName = $request->request->get('blockName');
         } elseif (!empty($iDevice)) {
             $blockName = $iDevice->getTitle();
         } else {
@@ -568,19 +568,19 @@ class IdeviceApiController extends DefaultApiController
 
         $isDefinedIconName = $request->request->has('iconName');
         if ($isDefinedIconName) {
-            $iconName = $request->get('iconName');
+            $iconName = $request->request->get('iconName');
         } elseif (!empty($iDevice)) {
             $iconName = $iDevice->getIcon();
         } else {
             $iconName = null;
         }
 
-        $pageName = $request->get('pageName');
+        $pageName = $request->request->get('pageName');
         if (empty($pageName)) {
             $pageName = Constants::ODE_PAGE_NAME;
         }
 
-        $order = $request->get('order');
+        $order = $request->request->get('order');
         if (isset($order)) {
             $order = intval($order);
         }
@@ -588,7 +588,7 @@ class IdeviceApiController extends DefaultApiController
 
         $orderDefault = Constants::ORDER_DEFAULT_VALUE;
 
-        $odePagStructureSyncOrder = $request->get('odePagStructureSyncOrder');
+        $odePagStructureSyncOrder = $request->request->get('odePagStructureSyncOrder');
         if (isset($odePagStructureSyncOrder)) {
             $odePagStructureSyncOrder = intval($odePagStructureSyncOrder);
         }
@@ -1087,10 +1087,10 @@ class IdeviceApiController extends DefaultApiController
 
         $modifiedOdeComponentsSyncs = [];
 
-        $odeComponentsSyncId = $request->get('odeComponentsSyncId');
+        $odeComponentsSyncId = $request->request->get('odeComponentsSyncId');
         $isDefinedOdeComponentsSyncId = $request->request->has('odeComponentsSyncId');
 
-        $newOrder = $request->get('order');
+        $newOrder = $request->request->get('order');
         if ((!empty($newOrder)) && (!is_int($newOrder))) {
             $newOrder = intval($newOrder);
         }
@@ -1280,11 +1280,11 @@ class IdeviceApiController extends DefaultApiController
     public function uploadFileToResourcesAction(Request $request)
     {
         // collect parameters
-        $odeSessionId = $request->get('odeSessionId');
-        $odeIdeviceId = $request->get('odeIdeviceId');
-        $base64String = $request->get('file');
-        $filename = $request->get('filename');
-        $createThumbnail = $request->get('createThumbnail');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odeIdeviceId = $request->request->get('odeIdeviceId');
+        $base64String = $request->request->get('file');
+        $filename = $request->request->get('filename');
+        $createThumbnail = $request->request->get('createThumbnail');
 
         // Validate received data
         if (
@@ -1421,10 +1421,10 @@ class IdeviceApiController extends DefaultApiController
     public function uploadLargeFileToResourcesAction(Request $request)
     {
         // collect parameters
-        $odeSessionId = $request->get('odeSessionId');
-        $odeIdeviceId = $request->get('odeIdeviceId');
-        $filename = $request->get('filename');
-        $createThumbnail = $request->get('createThumbnail');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odeIdeviceId = $request->request->get('odeIdeviceId');
+        $filename = $request->request->get('filename');
+        $createThumbnail = $request->request->get('createThumbnail');
 
         $file = $request->files->get('file');
 
@@ -1605,9 +1605,9 @@ class IdeviceApiController extends DefaultApiController
         $responseData = [];
 
         // collect parameters
-        $elpFileName = $request->get('odeFileName');
-        $elpFilePath = $request->get('odeFilePath');
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
+        $elpFileName = $request->request->get('odeFileName');
+        $elpFilePath = $request->request->get('odeFilePath');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
@@ -1708,7 +1708,7 @@ class IdeviceApiController extends DefaultApiController
     #[Route('/force/download/file/resources', methods: ['GET'], name: 'api_idevices_force_download_file_resources')]
     public function forceDownloadFileFromResourcesAction(Request $request)
     {
-        $resource = $request->get('resource');
+        $resource = $request->request->get('resource');
 
         $resource = str_replace('files/', '', $resource);
 
@@ -1763,7 +1763,7 @@ class IdeviceApiController extends DefaultApiController
         $responseData['odeComponentsSync'] = null;
 
         // collect parameters
-        $odeComponentsSyncId = $request->get('odeComponentsSyncId');
+        $odeComponentsSyncId = $request->request->get('odeComponentsSyncId');
         $isDefinedOdeComponentsSyncId = $request->request->has('odeComponentsSyncId');
 
         // Validate received data
@@ -1789,7 +1789,7 @@ class IdeviceApiController extends DefaultApiController
 
                 foreach ($odeComponentsSync->getOdeComponentsSyncProperties() as $odeComponentsSyncProperties) {
                     if (null != $odeComponentsSyncProperties->getKey()) {
-                        $value = $request->get($odeComponentsSyncProperties->getKey());
+                        $value = $request->request->get($odeComponentsSyncProperties->getKey());
                         $isDefinedValue = $request->request->has($odeComponentsSyncProperties->getKey());
 
                         // set received value for property
@@ -1842,7 +1842,7 @@ class IdeviceApiController extends DefaultApiController
         $responseData['odeComponentsSyncs'] = null;
 
         // collect parameters
-        $odeComponentsSyncId = $request->get('odeComponentsSyncId');
+        $odeComponentsSyncId = $request->request->get('odeComponentsSyncId');
         $isDefinedOdeComponentsSyncId = $request->request->has('odeComponentsSyncId');
 
         // Validate received data

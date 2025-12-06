@@ -130,7 +130,7 @@ class DefaultApiController extends AbstractController
      */
     protected function getOdeSessionId($request, $parameterOdeSessionId = null)
     {
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
 
         if (null !== $odeSessionId) {
             $odeSessionId = $odeSessionId;

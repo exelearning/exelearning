@@ -50,11 +50,11 @@ class OdeOperationsLogApiController extends DefaultApiController
     public function getOdeOperationLogAction(Request $request)
     {
         // Collect paramaters
-        $odeSessionId = $request->get('odeSessionId');
-        $odeDestinationId = $request->get('odeDestinationId');
-        $odeSourceId = $request->get('odeSourceId');
-        $actionType = $request->get('actionType');
-        $additionalData = $request->get('additionalData');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odeDestinationId = $request->request->get('odeDestinationId');
+        $odeSourceId = $request->request->get('odeSourceId');
+        $actionType = $request->request->get('actionType');
+        $additionalData = $request->request->get('additionalData');
 
         // Get user
         $user = $this->getUser();

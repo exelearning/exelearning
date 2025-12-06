@@ -87,8 +87,8 @@ class FilemanagerMethodController extends DefaultApiController
      */
     public function input(Request $request, $key, $default = null)
     {
-        // first try GET, then POST
-        $value = $request->get($key, $request->query->get($key));
+        // first try POST, then GET
+        $value = $request->request->get($key) ?? $request->query->get($key);
 
         // then look into JSON content, fallback to default
         if (null === $value) {

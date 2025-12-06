@@ -105,8 +105,8 @@ class ThemeApiController extends DefaultApiController
         $user = $this->getUser();
 
         // Upload zip file parameters
-        $base64String = $request->get('file');
-        $filename = $request->get('filename');
+        $base64String = $request->request->get('file');
+        $filename = $request->request->get('filename');
 
         // Validate received data
         if ((empty($base64String)) || (empty($filename))) {
@@ -165,8 +165,8 @@ class ThemeApiController extends DefaultApiController
             return new JsonResponse($jsonData, $this->status, [], true);
         }
 
-        $odeSessionId = $request->get('odeSessionId');
-        $themeDirname = $request->get('themeDirname');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $themeDirname = $request->request->get('themeDirname');
 
         $user = $this->getUser();
         $dbUser = $this->userHelper->getDatabaseUser($user);
@@ -221,7 +221,7 @@ class ThemeApiController extends DefaultApiController
 
         $user = $this->getUser();
 
-        $themeId = $request->get('id');
+        $themeId = $request->request->get('id');
 
         if ($themeId) {
             $themesInstalled = $this->getInstalledThemesAction($request, false);
@@ -313,7 +313,7 @@ class ThemeApiController extends DefaultApiController
             return new JsonResponse($jsonData, $this->status, [], true);
         }
 
-        $data = $request->get('data');
+        $data = $request->request->get('data');
         if (!$data) {
             $responseData['error'] = 'Invalid data';
             $jsonData = $this->getJsonSerialized($responseData);
@@ -350,7 +350,7 @@ class ThemeApiController extends DefaultApiController
     {
         $user = $this->getUser();
 
-        $data = $request->get('data');
+        $data = $request->request->get('data');
         if (!$data) {
             $responseData = [];
             $responseData['error'] = 'Invalid data';

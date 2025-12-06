@@ -106,9 +106,9 @@ class DropboxApiController extends DefaultApiController
     public function uploadFileToDropboxAction(Request $request)
     {
         // collect parameters
-        $odeSessionId = $request->get('odeSessionId');
-        $odeId = $request->get('odeId');
-        $odeVersion = $request->get('odeVersion');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odeId = $request->request->get('odeId');
+        $odeVersion = $request->request->get('odeVersion');
 
         // Get user
         $user = $this->getUser();
@@ -135,7 +135,7 @@ class DropboxApiController extends DefaultApiController
                     $access_token = $session->get(Constants::SESSION_DROPBOX_ACCESS_TOKEN);
                 } else {
                     $redirectUri = $this->getRedirectUri();
-                    $code = $request->get('code');
+                    $code = $request->request->get('code');
 
                     $data = DropboxUtil::getAccessDropboxToken($redirectUri, $code);
 
@@ -151,7 +151,7 @@ class DropboxApiController extends DefaultApiController
 
                 if (!empty($access_token)) {
                     // Get the folder id that was selected
-                    $file_id = $request->get('folder');
+                    $file_id = $request->request->get('folder');
 
                     if ('null' != $file_id) {
                         // Add the folder path to the file
@@ -211,7 +211,7 @@ class DropboxApiController extends DefaultApiController
     #[Route('/redirect/close', methods: ['GET'], name: 'api_dropbox_redirect_close')]
     public function redirectAndCloseActionDropbox(Request $request)
     {
-        $code = $request->get('code');
+        $code = $request->request->get('code');
         $session = $request->getSession();
         $session->set(Constants::SESSION_DROPBOX_CODE, $code);
 

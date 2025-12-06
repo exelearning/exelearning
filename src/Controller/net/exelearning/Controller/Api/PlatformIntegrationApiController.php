@@ -71,7 +71,7 @@ class PlatformIntegrationApiController extends DefaultApiController
         $symfonyBasePath = $request->getBaseURL();
         $symfonyFullUrl = $symfonyBaseUrl.$symfonyBasePath;
 
-        $jwtToken = $request->get('jwt_token');
+        $jwtToken = $request->request->get('jwt_token');
 
         $redirect = new RedirectResponse('/');
         $redirect->setTargetUrl($symfonyFullUrl.'/workarea?newOde=new&jwt_token='.$jwtToken.'');
@@ -88,8 +88,8 @@ class PlatformIntegrationApiController extends DefaultApiController
         $responseData = [];
 
         // collect parameters
-        $odeSessionId = $request->get('odeSessionId');
-        $jwtToken = $request->get('jwt_token');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $jwtToken = $request->request->get('jwt_token');
         $integrationParams = $this->integrationUtil->getPlatformIntegrationParams($jwtToken, 'set');
 
         // if $odeSessionId is set load data from database
@@ -190,9 +190,9 @@ class PlatformIntegrationApiController extends DefaultApiController
 
         // collect parameters
         // Get odeId from the platform
-        $odeId = $request->get('ode_id');
+        $odeId = $request->request->get('ode_id');
 
-        $jwtToken = $request->get('jwt_token');
+        $jwtToken = $request->request->get('jwt_token');
         // TO DO: stop the application if the JWT is not valid because this is the entry point of the integration
 
         // Debug redirect
@@ -222,14 +222,14 @@ class PlatformIntegrationApiController extends DefaultApiController
         $symfonyBasePath = $request->getBaseURL();
         $symfonyFullUrl = $symfonyBaseUrl.$symfonyBasePath;
 
-        $jwtToken = $request->get('jwt_token');
+        $jwtToken = $request->request->get('jwt_token');
         $integrationParams = $this->integrationUtil->getParamsMoodleIntegration($jwtToken, 'get');
 
         // Get parameters
         // odeId from platform
         $odePlatformId = $integrationParams['cmid'];
 
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
 
         // Get user
         $user = $integrationParams['userid'];

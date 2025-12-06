@@ -133,7 +133,7 @@ class OdeApiController extends DefaultApiController
         $responseData = [];
 
         // collect parameters
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
 
         // In case version control is active do the save
         if ($this->getParameter('app.version_control')) {
@@ -268,9 +268,9 @@ class OdeApiController extends DefaultApiController
         $responseData = [];
 
         // collect parameters
-        $odeId = $request->get('odeId');
-        $odeVersion = $request->get('odeVersion');
-        $odeSessionId = $request->get('odeSessionId');
+        $odeId = $request->request->get('odeId');
+        $odeVersion = $request->request->get('odeVersion');
+        $odeSessionId = $request->request->get('odeSessionId');
 
         // If the function autosave is active
         if ($this->getParameter('app.autosave_ode_files_function')) {
@@ -420,8 +420,8 @@ class OdeApiController extends DefaultApiController
         $responseData = [];
 
         // Collect parameters
-        $odeSessionId = $request->get('odeSessionId');
-        $title = $request->get('title');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $title = $request->request->get('title');
 
         // In case version control is active do the save
         if ($this->getParameter('app.version_control')) {
@@ -560,8 +560,8 @@ class OdeApiController extends DefaultApiController
     #[Route('/get/ode/session/brokenlinks', methods: ['POST'], name: 'api_odes_session_get_broken_links')]
     public function getOdeSessionBrokenLinksAction(Request $request)
     {
-        $odeSessionId = $request->get('odeSessionId');
-        $csv = $request->get('csv');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $csv = $request->request->get('csv');
 
         if (!empty($odeSessionId)) {
             // Base URL
@@ -601,9 +601,9 @@ class OdeApiController extends DefaultApiController
     #[Route('/get/ode/session/used/files', methods: ['POST'], name: 'api_odes_session_get_used_files')]
     public function getOdeSessionUsedFilesAction(Request $request)
     {
-        $odeSessionId = $request->get('odeSessionId');
-        $csv = $request->get('csv');
-        $resourceReport = $request->get('resourceReport');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $csv = $request->request->get('csv');
+        $resourceReport = $request->request->get('resourceReport');
 
         $responseData = [];
 
@@ -649,9 +649,9 @@ class OdeApiController extends DefaultApiController
     #[Route('/check/before/leave/ode/session', methods: ['POST'], name: 'api_odes_check_before_leave_ode_session')]
     public function checkBeforeLeaveOdeSessionAction(Request $request): JsonResponse
     {
-        $odeSessionId = (string) $request->get('odeSessionId');
-        $odeVersionId = $request->get('odeVersionId');
-        $odeId = $request->get('odeId');
+        $odeSessionId = (string) $request->request->get('odeSessionId');
+        $odeVersionId = $request->request->get('odeVersionId');
+        $odeId = $request->request->get('odeId');
 
         $responseData = [];
 
@@ -690,7 +690,7 @@ class OdeApiController extends DefaultApiController
         $responseData = [];
 
         // collect parameters
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
@@ -733,9 +733,9 @@ class OdeApiController extends DefaultApiController
         $responseData = [];
 
         // Collect parameters
-        $elpFileName = $request->get('elpFileName');
-        $odeSessionId = $request->get('odeSessionId');
-        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession');
+        $elpFileName = $request->request->get('elpFileName');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $forceCloseOdeUserPreviousSession = $request->request->get('forceCloseOdeUserPreviousSession');
 
         if (
             $request->request->has('forceCloseOdeUserPreviousSession')
@@ -817,9 +817,9 @@ class OdeApiController extends DefaultApiController
         $responseData = [];
 
         // Collect parameters from both form data and JSON body
-        $elpFileName = $request->get('odeFileName') ?? $request->getPayload()->get('odeFileName');
-        $elpFilePath = $request->get('odeFilePath') ?? $request->getPayload()->get('odeFilePath');
-        $forceCloseOdeUserPreviousSession = $request->get('forceCloseOdeUserPreviousSession') ?? $request->getPayload()->get('forceCloseOdeUserPreviousSession');
+        $elpFileName = $request->request->get('odeFileName') ?? $request->getPayload()->get('odeFileName');
+        $elpFilePath = $request->request->get('odeFilePath') ?? $request->getPayload()->get('odeFilePath');
+        $forceCloseOdeUserPreviousSession = $request->request->get('forceCloseOdeUserPreviousSession') ?? $request->getPayload()->get('forceCloseOdeUserPreviousSession');
 
         $themesInstallationEnabled = $this->getParameter('app.online_themes_install');
         $isOnline = $this->getParameter('app.online_mode');
@@ -1125,9 +1125,9 @@ class OdeApiController extends DefaultApiController
         // Parse JSON body (relies on DefaultApiController::hydrateRequestBody supporting POST)
         $this->hydrateRequestBody($request);
 
-        $odeSessionId = $request->get('odeSessionId');
-        $odeFileName = $request->get('odeFileName');
-        $odeFilePath = $request->get('odeFilePath');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odeFileName = $request->request->get('odeFileName');
+        $odeFilePath = $request->request->get('odeFilePath');
 
         if (empty($odeSessionId) || empty($odeFileName) || empty($odeFilePath)) {
             $responseData['responseMessage'] = $this->translator->trans('Invalid request data');
@@ -1198,8 +1198,8 @@ class OdeApiController extends DefaultApiController
         $responseData = [];
 
         // Collect parameters
-        $xmlFileName = $request->get('odeFileName');
-        $xmlFilePath = $request->get('odeFilePath');
+        $xmlFileName = $request->request->get('odeFileName');
+        $xmlFilePath = $request->request->get('odeFilePath');
         $forceCloseOdeUserPreviousSession = true;
         $isImportProperties = true;
 
@@ -1264,10 +1264,10 @@ class OdeApiController extends DefaultApiController
         $odeValues = [];
 
         // Collect parameters
-        $elpFiles = $request->get('odeFiles');
+        $elpFiles = $request->request->get('odeFiles');
         $elpFilesNames = $elpFiles['odeFileName'];
         $elpFilesPath = $elpFiles['odeFilePath'];
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
 
         $odeNavStructureSync = null;
         if (Constants::ROOT_NODE_IDENTIFIER != $odeNavStructureSyncId) {
@@ -1385,8 +1385,8 @@ class OdeApiController extends DefaultApiController
     {
         $odeFilesSyncRepo = $this->entityManager->getRepository(OdeFiles::class);
 
-        $odeFileId = $request->get('id');
-        $odeFilesId = $request->get('odeFilesId');
+        $odeFileId = $request->request->get('id');
+        $odeFilesId = $request->request->get('odeFilesId');
 
         if (!empty($odeFileId)) {
             $odeFileSync = $odeFilesSyncRepo->find($odeFileId);
@@ -1418,7 +1418,7 @@ class OdeApiController extends DefaultApiController
         $odeFilesSyncRepo = $this->entityManager->getRepository(OdeFiles::class);
 
         // Get parameters
-        $msDate = $request->get('date');
+        $msDate = $request->request->get('date');
         $secondsDate = $msDate / 1000;
         $dateString = date('Y-m-d H:i:s', $secondsDate);
         $date = new \DateTime($dateString);
@@ -1513,7 +1513,7 @@ class OdeApiController extends DefaultApiController
 
         $user = $this->getUser();
 
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
         $databaseOdePropertiesData = $this->odeService->getOdePropertiesFromDatabase($odeSessionId, $user);
 
         // Get current database properties values
@@ -1669,7 +1669,7 @@ class OdeApiController extends DefaultApiController
         $responseData = [];
 
         // collect parameters
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
 
         // User name
         $user = $this->getUser();

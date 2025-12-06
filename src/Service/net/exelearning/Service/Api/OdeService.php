@@ -3225,7 +3225,7 @@ class OdeService implements OdeServiceInterface
 
         // Set value to property from request
         $odeProperty = $databaseOdePropertiesData[$odePropertiesConfigKey];
-        $odePropertyNewValue = $request->get($odePropertiesConfigKey);
+        $odePropertyNewValue = $request->request->get($odePropertiesConfigKey);
         if (null !== $odePropertyNewValue) {
             $odeProperty->setValue($odePropertyNewValue);
         }
@@ -3244,7 +3244,7 @@ class OdeService implements OdeServiceInterface
                 while (true) {
                     $propertyMultipleKey = $prefixKeyProperty.$i.$sufixKeyProperty;
                     // PUT request property
-                    $propertyMultipleValueRequest = $request->get($propertyMultipleKey);
+                    $propertyMultipleValueRequest = $request->request->get($propertyMultipleKey);
                     // Database property
                     $propertyMultipleValueDb = null;
                     if (isset($databaseOdePropertiesData[$propertyMultipleKey])) {

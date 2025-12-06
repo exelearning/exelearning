@@ -59,43 +59,43 @@ class PagStructureApiController extends DefaultApiController
 
         $responseData = new OdePagStructureSyncDataSaveDto();
 
-        $odePagStructureSyncId = $request->get('odePagStructureSyncId');
+        $odePagStructureSyncId = $request->request->get('odePagStructureSyncId');
         $isDefinedOdePagStructureSyncId = $request->request->has('odePagStructureSyncId');
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
         $isDefinedOdeNavStructureSyncId = $request->request->has('odeNavStructureSyncId');
 
         // required if $odePagStructureSyncId is not received
-        $odeVersionId = $request->get('odeVersionId');
+        $odeVersionId = $request->request->get('odeVersionId');
         // $isDefinedOdeVersionId = $request->request->has('odeVersionId');
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
         // $isDefinedOdeSessionId = $request->request->has('odeSessionId');
-        $odePageId = $request->get('odePageId');
+        $odePageId = $request->request->get('odePageId');
         $isDefinedOdePageId = $request->request->has('odePageId');
-        $odeBlockId = $request->get('odeBlockId');
+        $odeBlockId = $request->request->get('odeBlockId');
         // $isDefinedOdeBlockId = $request->request->has('odeBlockId');
         $isUndoLastAction = $request->request->has('isUndoLastAction');
 
         // optional, used if OdeNavStructureSync or OdePagStructureSync are created
         $isDefinedBlockName = $request->request->has('blockName');
         if ($isDefinedBlockName) {
-            $blockName = $request->get('blockName');
+            $blockName = $request->request->get('blockName');
         } else {
             $blockName = '';
         }
 
         $isDefinedIconName = $request->request->has('iconName');
         if ($isDefinedIconName) {
-            $iconName = $request->get('iconName');
+            $iconName = $request->request->get('iconName');
         } else {
             $iconName = null;
         }
 
-        $pageName = $request->get('pageName');
+        $pageName = $request->request->get('pageName');
         if (empty($pageName)) {
             $pageName = Constants::ODE_PAGE_NAME;
         }
 
-        $order = $request->get('order');
+        $order = $request->request->get('order');
         if (isset($order)) {
             $order = intval($order);
         }
@@ -315,10 +315,10 @@ class PagStructureApiController extends DefaultApiController
 
         $modifiedOdePagStructureSyncs = [];
 
-        $odePagStructureSyncId = $request->get('odePagStructureSyncId');
+        $odePagStructureSyncId = $request->request->get('odePagStructureSyncId');
         $isDefinedOdePagStructureSyncId = $request->request->has('odePagStructureSyncId');
 
-        $newOrder = $request->get('order');
+        $newOrder = $request->request->get('order');
         if ((!empty($newOrder)) && (!is_int($newOrder))) {
             $newOrder = intval($newOrder);
         }
@@ -463,10 +463,10 @@ class PagStructureApiController extends DefaultApiController
         $responseData['odePagStructureSync'] = null;
 
         // collect parameters
-        $odePagStructureSyncId = $request->get('odePagStructureSyncId');
+        $odePagStructureSyncId = $request->request->get('odePagStructureSyncId');
         $isDefinedOdePagStructureSyncId = $request->request->has('odePagStructureSyncId');
 
-        $updateChildsPropertiesParam = $request->get('updateChildsProperties');
+        $updateChildsPropertiesParam = $request->request->get('updateChildsProperties');
         if ((!empty($updateChildsPropertiesParam)) && ('true' == $updateChildsPropertiesParam)) {
             $updateChildsProperties = true;
         } else {
@@ -496,7 +496,7 @@ class PagStructureApiController extends DefaultApiController
 
                 foreach ($odePagStructureSync->getOdePagStructureSyncProperties() as $odePagStructureSyncProperty) {
                     if (null != $odePagStructureSyncProperty->getKey()) {
-                        $value = $request->get($odePagStructureSyncProperty->getKey());
+                        $value = $request->request->get($odePagStructureSyncProperty->getKey());
                         $isDefinedValue = $request->request->has($odePagStructureSyncProperty->getKey());
 
                         // set received value for property
@@ -567,7 +567,7 @@ class PagStructureApiController extends DefaultApiController
         $responseData['odePagStructureSyncs'] = null;
 
         // collect parameters
-        $odePagStructureSyncId = $request->get('odePagStructureSyncId');
+        $odePagStructureSyncId = $request->request->get('odePagStructureSyncId');
         $isDefinedOdePagStructureSyncId = $request->request->has('odePagStructureSyncId');
 
         // Validate received data

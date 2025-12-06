@@ -63,11 +63,11 @@ class WorkareaController extends DefaultWorkareaController
     public function workareaAction(Request $request)
     {
         // Get odeSessionId
-        $odeSessionId = $request->get('shareCode');
+        $odeSessionId = $request->request->get('shareCode');
 
         // Get elpFileName
-        $odePlatformNew = $request->get('newOde');
-        $odePlatformId = $request->get('odeId');
+        $odePlatformNew = $request->request->get('newOde');
+        $odePlatformId = $request->request->get('odeId');
 
         // Check installation type
         $isOfflineInstallation = SettingsUtil::installationTypeIsOffline();

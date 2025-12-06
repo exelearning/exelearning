@@ -115,23 +115,23 @@ class NavStructureApiController extends DefaultApiController
 
         $responseData = new OdeNavStructureSyncDataSaveDto();
 
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
         $isDefinedOdeNavStructureSyncId = $request->request->has('odeNavStructureSyncId');
 
         // required if $odeNavStructureSyncId is not received
-        $odeVersionId = $request->get('odeVersionId');
-        $odeSessionId = $request->get('odeSessionId');
-        $odePageId = $request->get('odePageId');
+        $odeVersionId = $request->request->get('odeVersionId');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odePageId = $request->request->get('odePageId');
 
-        $odeNavStructureSyncIdParent = $request->get('odeNavStructureSyncIdParent');
+        $odeNavStructureSyncIdParent = $request->request->get('odeNavStructureSyncIdParent');
         $isDefinedOdeNavStructureSyncIdParent = $request->request->has('odeNavStructureSyncIdParent');
 
-        $odeParentPageId = $request->get('odeParentPageId');
+        $odeParentPageId = $request->request->get('odeParentPageId');
 
-        $pageName = $request->get('pageName');
+        $pageName = $request->request->get('pageName');
         $isDefinedPageName = $request->request->has('pageName');
 
-        $order = $request->get('order');
+        $order = $request->request->get('order');
         if (isset($order)) {
             $order = intval($order);
         }
@@ -374,10 +374,10 @@ class NavStructureApiController extends DefaultApiController
 
         $modifiedOdeNavStructureSyncs = [];
 
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
         $isDefinedOdeNavStructureSyncId = $request->request->has('odeNavStructureSyncId');
 
-        $newOrder = $request->get('order');
+        $newOrder = $request->request->get('order');
         if ((!empty($newOrder)) && (!is_int($newOrder))) {
             $newOrder = intval($newOrder);
         }
@@ -616,10 +616,10 @@ class NavStructureApiController extends DefaultApiController
         $responseData['odeNavStructureSync'] = null;
 
         // collect parameters
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
         $isDefinedOdeNavStructureSyncId = $request->request->has('odeNavStructureSyncId');
 
-        $updateChildsPropertiesParam = $request->get('updateChildsProperties');
+        $updateChildsPropertiesParam = $request->request->get('updateChildsProperties');
         if ((!empty($updateChildsPropertiesParam)) && ('true' == $updateChildsPropertiesParam)) {
             $updateChildsProperties = true;
         } else {
@@ -651,7 +651,7 @@ class NavStructureApiController extends DefaultApiController
 
                 foreach ($odeNavStructureSync->getOdeNavStructureSyncProperties() as $odeNavStructureSyncProperty) {
                     if (null != $odeNavStructureSyncProperty->getKey()) {
-                        $value = $request->get($odeNavStructureSyncProperty->getKey());
+                        $value = $request->request->get($odeNavStructureSyncProperty->getKey());
                         $isDefinedValue = $request->request->has($odeNavStructureSyncProperty->getKey());
 
                         // set received value for property
@@ -744,7 +744,7 @@ class NavStructureApiController extends DefaultApiController
         $responseData['odeNavStructureSyncs'] = null;
 
         // collect parameters
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
         $isDefinedOdeNavStructureSyncId = $request->request->has('odeNavStructureSyncId');
 
         // Set locale on request by user preferences (by default request->locale is null)

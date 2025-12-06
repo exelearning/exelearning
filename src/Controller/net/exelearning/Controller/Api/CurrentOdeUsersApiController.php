@@ -124,19 +124,19 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $this->logger->info('Force Unlock Debug - Request payload: '.json_encode($request->request->all()));
 
         // Get parameters with proper type casting
-        $odeComponentFlag = $request->get('odeComponentFlag');
+        $odeComponentFlag = $request->request->get('odeComponentFlag');
 
         // Get parameters
-        $odeSessionId = $request->get('odeSessionId');
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
-        $odeBlockId = $request->get('blockId');
-        $odeIdeviceId = $request->get('odeIdeviceId');
-        $actionType = $request->get('actionType');
-        $pageId = $request->get('pageId');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
+        $odeBlockId = $request->request->get('blockId');
+        $odeIdeviceId = $request->request->get('odeIdeviceId');
+        $actionType = $request->request->get('actionType');
+        $pageId = $request->request->get('pageId');
 
         // Active or deactive flags
-        $odePagStructureFlag = $request->get('odePagStructureFlag');
-        $odeNavStructureFlag = $request->get('odeNavStructureFlag');
+        $odePagStructureFlag = $request->request->get('odePagStructureFlag');
+        $odeNavStructureFlag = $request->request->get('odeNavStructureFlag');
 
         // Create flag array
         $odeCurrentUsersFlags = [
@@ -154,7 +154,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $odeNavStructureSync = $odeNavStructureSyncRepo->find($odeNavStructureSyncId);
 
         $lockParams = [
-            'resourceId' => $request->get('blockId'),
+            'resourceId' => $request->request->get('blockId'),
             'user' => $user,
             'odeSessionId' => $odeSessionId,
             'forceUnlock' => (false === $odeComponentFlag), // Explicit force flag
@@ -216,10 +216,10 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $responseData = [];
 
         // Get parameters
-        $odeSessionId = $request->get('odeSessionId');
-        $odeNavStructureSyncId = $request->get('odeNavStructureSyncId');
-        $odeBlockId = $request->get('blockId');
-        $odeIdeviceId = $request->get('odeIdeviceId');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odeNavStructureSyncId = $request->request->get('odeNavStructureSyncId');
+        $odeBlockId = $request->request->get('blockId');
+        $odeIdeviceId = $request->request->get('odeIdeviceId');
 
         $user = $this->getUser();
         $databaseUser = $this->userHelper->getDatabaseUser($user);
@@ -242,7 +242,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
     public function currentOdeUsersOnPageIdAction(Request $request)
     {
         // Get parameters
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
 
         // Get user
         $user = $this->getUser();
@@ -263,16 +263,16 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $databaseUser = $this->userHelper->getDatabaseUser($user);
 
         // Get parameters
-        $odeSessionId = $request->get('odeSessionId');
-        $odeIdeviceId = $request->get('odeIdeviceId');
-        $odeBlockId = $request->get('blockId');
-        $odePagId = $request->get('odePageId');
-        $destinationPageId = $request->get('destinationPageId');
-        $actionType = $request->get('actionType');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odeIdeviceId = $request->request->get('odeIdeviceId');
+        $odeBlockId = $request->request->get('blockId');
+        $odePagId = $request->request->get('odePageId');
+        $destinationPageId = $request->request->get('destinationPageId');
+        $actionType = $request->request->get('actionType');
         $userEmail = $databaseUser->getUserIdentifier();
-        $odeComponentFlag = $request->get('odeComponentFlag');
-        $timeIdeviceEditing = $request->get('timeIdeviceEditing');
-        $pageId = $request->get('pageId'); // Collaborative
+        $odeComponentFlag = $request->request->get('odeComponentFlag');
+        $timeIdeviceEditing = $request->request->get('timeIdeviceEditing');
+        $pageId = $request->request->get('pageId'); // Collaborative
 
         // If not empty odPagId synchronize changes even if you're not on the same page
         if (!empty($odePagId)) {
@@ -382,7 +382,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $currentOdeSessionForUser = $currentOdeUsersRepository->getCurrentSessionForUser($user->getUserIdentifier());
 
         // Collect parameters
-        $odeBlockId = $request->get('odeBlockId');
+        $odeBlockId = $request->request->get('odeBlockId');
 
         $odeComponentsSyncRepository = $this->entityManager->getRepository(OdePagStructureSync::class);
         $odePagStructureSync = $odeComponentsSyncRepository->findBy(['odeBlockId' => $odeBlockId]);
@@ -426,7 +426,7 @@ class CurrentOdeUsersApiController extends DefaultApiController
         $response = [];
 
         // Get parameters
-        $odeSessionId = $request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId');
 
         // Get user
         $user = $this->getUser();

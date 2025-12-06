@@ -20,10 +20,8 @@ class Tmpfs implements TmpfsInterface
     public function __construct(RequestStack $requestStack, FileHelper $fileHelper, LoggerInterface $logger)
     {
         $request = $requestStack->getCurrentRequest();
-        $odeSessionId = $request->get('odeSessionId');
-        if (null != $odeSessionId) {
-            $odeSessionId = $odeSessionId;
-        } else {
+        $odeSessionId = $request->query->get('odeSessionId') ?? $request->request->get('odeSessionId');
+        if (null == $odeSessionId) {
             $session = $request->getSession();
             $odeSessionId = $session->get('odeSessionId');
         }

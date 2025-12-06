@@ -107,9 +107,9 @@ class GoogleApiController extends DefaultApiController
     public function uploadFileToGoogleDriveAction(Request $request)
     {
         // collect parameters
-        $odeSessionId = $request->get('odeSessionId');
-        $odeId = $request->get('odeId');
-        $odeVersion = $request->get('odeVersion');
+        $odeSessionId = $request->request->get('odeSessionId');
+        $odeId = $request->request->get('odeId');
+        $odeVersion = $request->request->get('odeVersion');
 
         // Get user
         $user = $this->getUser();
@@ -144,7 +144,7 @@ class GoogleApiController extends DefaultApiController
                     $googleClientId = $this->getParameter('google_client_id');
                     $googleClientSecret = $this->getParameter('google_client_secret');
 
-                    $code = $request->get('code');
+                    $code = $request->request->get('code');
 
                     $data = GoogleUtil::getAccessToken($googleClientId, $googleClientSecret, $redirectUri, $code);
                     if (is_array($data)) {
@@ -178,7 +178,7 @@ class GoogleApiController extends DefaultApiController
                         ];
 
                         // Update the metadata of the file and sets the folder of the upload
-                        $addParents = $request->get('folder');
+                        $addParents = $request->request->get('folder');
                         $drive_file_meta = GoogleUtil::updateFileMetaToDrive($access_token, $drive_file_id, $file_meta, $addParents);
 
                         $status = 'Success';
@@ -214,7 +214,7 @@ class GoogleApiController extends DefaultApiController
     #[Route('/redirect/close', methods: ['GET'], name: 'api_google_drive_redirect_close')]
     public function redirectAndCloseAction(Request $request)
     {
-        $code = $request->get('code');
+        $code = $request->request->get('code');
         $session = $request->getSession();
         $session->set(Constants::SESSION_GOOGLE_CODE, $code);
 

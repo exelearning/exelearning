@@ -163,8 +163,8 @@ class UserApiController extends DefaultApiController
             if (isset($databaseUserPreferencesData[$userPreferencesConfigKey])) {
                 // Set value to property from request
                 $userPreferences = $databaseUserPreferencesData[$userPreferencesConfigKey];
-                if (null !== $request->get($userPreferencesConfigKey)) {
-                    $userPreferences->setValue($request->get($userPreferencesConfigKey));
+                if (null !== $request->request->get($userPreferencesConfigKey)) {
+                    $userPreferences->setValue($request->request->get($userPreferencesConfigKey));
                 }
                 // Save
                 $this->entityManager->persist($userPreferences);
