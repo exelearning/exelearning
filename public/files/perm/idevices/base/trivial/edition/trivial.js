@@ -721,11 +721,11 @@ var $exeDevice = {
         const soundVideo = $('#trivialECheckSoundVideo').is(':checked') ? 1 : 0,
             imageVideo = $('#trivialECheckImageVideo').is(':checked') ? 1 : 0,
             url = $('#trivialEURLYoutube').val().trim();
-        (id = $exeDevices.iDevice.gamification.media.getIDYoutube(url)),
+        ((id = $exeDevices.iDevice.gamification.media.getIDYoutube(url)),
             (idLocal =
                 $exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
                     url
-                ));
+                )));
 
         let iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                 $('#trivialEInitVideo').val()
@@ -1603,8 +1603,8 @@ var $exeDevice = {
                 }
 
                 const iq = parseInt($(this).text());
-                ($imagesLink = $('.trivial-LinkImages-' + i, wrapper)),
-                    ($audiosLink = $('.trivial-LinkAudios-' + i, wrapper));
+                (($imagesLink = $('.trivial-LinkImages-' + i, wrapper)),
+                    ($audiosLink = $('.trivial-LinkAudios-' + i, wrapper)));
                 $imagesLink.each(function () {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < tema.length) {
@@ -3079,10 +3079,10 @@ var $exeDevice = {
                     var answer = answers[j],
                         answerHtml = $(answer).find('text').eq(0).text().trim(),
                         answerTextParts = answerHtml.split('\n');
-                    (answerText = answerTextParts[0].trim()),
+                    ((answerText = answerTextParts[0].trim()),
                         (currentFraction = parseInt(
                             $(answer).attr('fraction')
-                        ));
+                        )));
                     if (currentFraction > maxFraction) {
                         maxFraction = currentFraction;
                         solutionQuestion = answerText;
