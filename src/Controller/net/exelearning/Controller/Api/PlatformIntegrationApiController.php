@@ -71,7 +71,7 @@ class PlatformIntegrationApiController extends DefaultApiController
         $symfonyBasePath = $request->getBaseURL();
         $symfonyFullUrl = $symfonyBaseUrl.$symfonyBasePath;
 
-        $jwtToken = $request->request->get('jwt_token');
+        $jwtToken = $request->query->get('jwt_token');
 
         $redirect = new RedirectResponse('/');
         $redirect->setTargetUrl($symfonyFullUrl.'/workarea?newOde=new&jwt_token='.$jwtToken.'');
@@ -190,9 +190,9 @@ class PlatformIntegrationApiController extends DefaultApiController
 
         // collect parameters
         // Get odeId from the platform
-        $odeId = $request->request->get('ode_id');
+        $odeId = $request->query->get('ode_id');
 
-        $jwtToken = $request->request->get('jwt_token');
+        $jwtToken = $request->query->get('jwt_token');
         // TO DO: stop the application if the JWT is not valid because this is the entry point of the integration
 
         // Debug redirect
@@ -222,14 +222,14 @@ class PlatformIntegrationApiController extends DefaultApiController
         $symfonyBasePath = $request->getBaseURL();
         $symfonyFullUrl = $symfonyBaseUrl.$symfonyBasePath;
 
-        $jwtToken = $request->request->get('jwt_token');
+        $jwtToken = $request->request->get('jwt_token') ?? $request->query->get('jwt_token');
         $integrationParams = $this->integrationUtil->getParamsMoodleIntegration($jwtToken, 'get');
 
         // Get parameters
         // odeId from platform
         $odePlatformId = $integrationParams['cmid'];
 
-        $odeSessionId = $request->request->get('odeSessionId');
+        $odeSessionId = $request->request->get('odeSessionId') ?? $request->query->get('odeSessionId');
 
         // Get user
         $user = $integrationParams['userid'];

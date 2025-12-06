@@ -1708,7 +1708,7 @@ class IdeviceApiController extends DefaultApiController
     #[Route('/force/download/file/resources', methods: ['GET'], name: 'api_idevices_force_download_file_resources')]
     public function forceDownloadFileFromResourcesAction(Request $request)
     {
-        $resource = $request->request->get('resource');
+        $resource = $request->query->get('resource');
 
         $resource = str_replace('files/', '', $resource);
 
