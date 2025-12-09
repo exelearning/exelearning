@@ -953,7 +953,7 @@ var $exeDevice = {
         } else {
             $('#eXeIdeviceTextAfter').val(unescape(tAfter));
         }
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
     },
 
     validTime: function (time) {

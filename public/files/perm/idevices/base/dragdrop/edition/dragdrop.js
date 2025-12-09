@@ -1545,7 +1545,7 @@ var $exeDevice = {
         $exeDevice.showCard($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateCardsNumber();
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importSopa: function (data) {

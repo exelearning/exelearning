@@ -1840,7 +1840,7 @@ var $exeDevice = {
         tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
         tinyMCE.get('slcmEFeedBackEditor').setContent(unescape(textFeedBack));
 
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
         $exeDevice.showPhrase(0, false);
     },
 

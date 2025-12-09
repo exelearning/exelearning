@@ -483,7 +483,7 @@ var $exeDevice = {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         }
-        $('.exe-form-tabs li:first-child a').click();
+        //$('.exe-form-tabs li:first-child a').click();
     },
 
     escapeHtml: function (string) {

@@ -64,52 +64,37 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 /* MATHJAX */
-window.MathJax = window.MathJax || (function() {
-    var isWorkarea = typeof window.eXeLearning !== 'undefined' || document.querySelector('script[src*="app/common/exe_math"]');
-    var isIndex = document.documentElement.id === 'exe-index';
-    var basePath = isWorkarea ? '/app/common/exe_math' : (isIndex ? './libs/exe_math' : '../libs/exe_math');
-    
-    var externalExtensions = [
-        'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel', 
-        'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose', 
-        'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
-        'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb', 
-        'setoptions',
-        'bbm', 'bboldx', 'begingroup', 'colorv2', 'dsfont', 'texhtml', 'units'
-    ];
-    
-    return {
-        tex: {
-            inlineMath: [["\\(", "\\)"]],
-            displayMath: [["$$", "$$"], ["\\[", "\\]"]],
-            processEscapes: true,
-            tags: 'ams',
-            packages: { '[+]': externalExtensions }
-        },
-        loader: {
-            paths: { mathjax: basePath },
-            load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
-        },
-        options: {
-            enableMenu: false,
-            menuOptions: {
-                settings: {
-                    enrich: false,      // ← DESACTIVA el semantic enrichment (y el explorer)
-                    speech: false,      // ← Desactiva generación de speech
-                    braille: false,     // ← Desactiva generación de Braille
-                    assistiveMml: false
-                }
-            },
-            renderActions: {
-                addMenu: [],
-                checkLoading: [],
-                assistiveMml: []
+window.MathJax = {
+    loader: {
+        load: ['[tex]/color', '[tex]/mhchem']
+    },
+    tex: {
+        inlineMath: [
+            ['\\(', '\\)']],
+        displayMath: [
+            ['$$', '$$'],
+            ['\\[', '\\]']
+        ],
+        processEscapes: true,
+        packages: {
+            '[+]': ['cases', 'mathtools', 'color', 'mhchem']
+        }
+    },
+    svg: {
+        fontCache: 'local'
+    },
+    startup: {
+        ready: () => {
+            MathJax.startup.defaultReady();
+            // This function is defined below in the main script
+            if (window.initializeLatexEditor) {
+                window.initializeLatexEditor();
             }
         }
-    };
-})();
+    }
+};
 document.addEventListener("DOMContentLoaded", function() {
-    var url = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/4.0.0/es5/tex-svg.min.js";
+    var url = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js";
 
     if (isInExe) {
         url = parent.tinymce.activeEditor.settings.edicuatex_mathjax_url;
