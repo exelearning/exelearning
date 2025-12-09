@@ -197,34 +197,17 @@
     max-width: 100%
 }
 
-.exe-figure img {
-    display: block;
-    position: relative;
-    z-index: 0
-}
-
-figure.exe-media {
-    margin: 2em 0
-}
-
 .position-center {
-    display: block;
     margin: 2em auto
 }
 
 .position-right {
-    display: block;
     margin: 2em 0 2em auto
-}
-
-.position-left {
-    display: block;
-    margin: 2em auto 2em 0
 }
 
 .float-left {
     float: left;
-    margin: .5em 2em 1em 0
+    margin: .5em 1.5em 1em 0
 }
 
 .float-right {
@@ -232,58 +215,13 @@ figure.exe-media {
     margin: .5em 0 1em 2em
 }
 
-/* Media elements (video, audio, iframe, embed) with alignment classes */
-video.position-left,
-audio.position-left,
-iframe.position-left,
-embed.position-left {
-    display: block;
-    margin: 2em auto 2em 0
-}
-
-video.position-center,
-audio.position-center,
-iframe.position-center,
-embed.position-center {
-    display: block;
-    margin: 2em auto
-}
-
-video.position-right,
-audio.position-right,
-iframe.position-right,
-embed.position-right {
-    display: block;
-    margin: 2em 0 2em auto
-}
-
-video.float-left,
-audio.float-left,
-iframe.float-left,
-embed.float-left {
-    float: left;
-    margin: .5em 2em 1em 0
-}
-
-video.float-right,
-audio.float-right,
-iframe.float-right,
-embed.float-right {
-    float: right;
-    margin: .5em 0 1em 2em
-}
-
 .figcaption {
-    padding-top: .2em;
-    position: relative;
-    z-index: 1
+    padding-top: .2em
 }
 
 .figcaption.header {
     padding-top: 0;
-    padding-bottom: .2em;
-    position: relative;
-    z-index: 1
+    padding-bottom: .2em
 }
 
 /* TinyMCE templates */
@@ -680,7 +618,7 @@ video {
     }
 
     .exe-layout-3-cols .exe-col .exe-figure {
-        margin: 1em auto
+        margin: 2em auto
     }
 }
 
@@ -696,7 +634,7 @@ video {
     }
 
     .exe-layout-2-cols .exe-col .exe-figure {
-        margin: 1em auto
+        margin: 2em auto
     }
 }
 
