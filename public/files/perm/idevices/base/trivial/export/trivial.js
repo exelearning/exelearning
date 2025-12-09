@@ -2721,7 +2721,7 @@ var $eXeTrivial = {
             $('#trivialDefinition-' + instance).text(definition);
         }
         const html = $('#trivialWordDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -3153,7 +3153,7 @@ var $eXeTrivial = {
             });
 
         const html = $('#trivialQuestionDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '.trivial-IDevice'

@@ -54,15 +54,7 @@ var $casestudy = {
         }
         this.addEvents(data);
         const dataString = JSON.stringify(data);
-        var hasLatex =
-            $exeDevices.iDevice.gamification.math.hasLatex(dataString);
-
-        if (!hasLatex) return;
-        const mathjaxLoaded = typeof window.MathJax !== 'undefined';
-
-        if (!mathjaxLoaded) {
-            $exeDevices.iDevice.gamification.math.loadMathJax();
-        } else {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(dataString)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '.exe-casestudy-container'
             );

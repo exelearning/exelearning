@@ -2602,6 +2602,44 @@ class ExportXmlUtil
             $odeNavStructureSyncs = [$odeNavStructureSyncs];
         }
 
+        // LaTeX regex pattern for detection
+        $latexRegex = '/\\\((.*?)\\\)|\\\[(.*?)\\\]/';
+        $mathLibAlreadyIncluded = in_array($commonPath.'exe_math', $librariesToCopy);
+
+        if (!$mathLibAlreadyIncluded) {
+            $packageTitle = isset($odeProperties['pp_title']) ? $odeProperties['pp_title']->getValue() : '';
+            if ('' !== $packageTitle && preg_match($latexRegex, $packageTitle)) {
+                $librariesToCopy[] = $commonPath.'exe_math';
+                $filesToCopy[] = [$dm.'tex-mml-svg.js'];
+                $mathLibAlreadyIncluded = true;
+            }
+        }
+
+        if (!$mathLibAlreadyIncluded) {
+            $packageSubtitle = isset($odeProperties['pp_subtitle']) ? $odeProperties['pp_subtitle']->getValue() : '';
+            if ('' !== $packageSubtitle && preg_match($latexRegex, $packageSubtitle)) {
+                $librariesToCopy[] = $commonPath.'exe_math';
+                $filesToCopy[] = [$dm.'tex-mml-svg.js'];
+                $mathLibAlreadyIncluded = true;
+            }
+        }
+
+        if (!$mathLibAlreadyIncluded) {
+            foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
+                $pageProperties = $odeNavStructureSync->getOdeNavStructureSyncProperties();
+                foreach ($pageProperties as $property) {
+                    if ('titlePage' === $property->getKey() && null !== $property->getValue()) {
+                        if (preg_match($latexRegex, $property->getValue())) {
+                            $librariesToCopy[] = $commonPath.'exe_math';
+                            $filesToCopy[] = [$dm.'tex-mml-svg.js'];
+                            $mathLibAlreadyIncluded = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {

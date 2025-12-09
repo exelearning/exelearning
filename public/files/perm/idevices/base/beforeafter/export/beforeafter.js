@@ -73,9 +73,12 @@ var $eXeBeforeAfter = {
                 node
             );
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.beforeafter-IDevice'
-        );
+        const html = $('.beforeafter-IDevice').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.beforeafter-IDevice'
+            );
+        }
     },
 
     loadDataGame: function (data, sthis) {

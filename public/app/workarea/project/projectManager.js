@@ -1793,6 +1793,11 @@ export default class projectManager {
         );
         odeTitleMenuHeadElement.innerHTML =
             this.app.project.properties.properties.pp_title.value;
+        odeTitleMenuHeadElement.dataset.originalTitle =
+            this.app.project.properties.properties.pp_title.value;
+        if (typeof $exe !== 'undefined' && $exe.math && $exe.math.refresh) {
+            $exe.math.refresh(odeTitleMenuHeadElement);
+        }
     }
 
     /**

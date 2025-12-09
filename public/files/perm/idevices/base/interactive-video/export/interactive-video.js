@@ -344,9 +344,12 @@ var $interactivevideo = {
                 '</div>'
         );
 
-        $exeDevices.iDevice.gamification.math.updateLatex(
-            '.exe-interactive-video'
-        );
+        const videoHtml = $('.exe-interactive-video').html();
+        if ($exeDevices.iDevice.gamification.math.hasLatex(videoHtml)) {
+            $exeDevices.iDevice.gamification.math.updateLatex(
+                '.exe-interactive-video'
+            );
+        }
 
         if (this.type == 'mediateca') {
             eXe.app.loadScript(

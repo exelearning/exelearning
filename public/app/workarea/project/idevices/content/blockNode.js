@@ -324,6 +324,7 @@ export default class IdeviceBlockNode {
         this.blockNameElementText.classList.add('box-title');
         this.blockNameElementText.classList.add('idevice-element-in-content');
         this.blockNameElementText.innerHTML = this.blockName;
+        this.blockNameElementText.dataset.originalTitle = this.blockName;
 
         const btnEdit = document.createElement('button');
         btnEdit.classList.add(
@@ -352,6 +353,10 @@ export default class IdeviceBlockNode {
                             contentId: 'error',
                         });
                     } else {
+                        if (this.blockNameElementText.dataset.originalTitle) {
+                            this.blockNameElementText.innerHTML =
+                                this.blockNameElementText.dataset.originalTitle;
+                        }
                         this.blockNameElementText.setAttribute(
                             'contenteditable',
                             'true'
@@ -372,9 +377,11 @@ export default class IdeviceBlockNode {
                                 'contenteditable'
                             );
                             btnEdit.style.display = '';
-                            this.apiUpdateTitle(
-                                this.blockNameElementText.textContent.trim()
-                            );
+                            const newTitle =
+                                this.blockNameElementText.innerHTML.trim();
+                            this.blockNameElementText.dataset.originalTitle =
+                                newTitle;
+                            this.apiUpdateTitle(newTitle);
                         };
                         const onKeydown = (e) => {
                             if (e.key === 'Enter') {
@@ -400,6 +407,12 @@ export default class IdeviceBlockNode {
 
         // Add event
         this.addBehaviourChangeIcon();
+
+        setTimeout(() => {
+            if (typeof $exe !== 'undefined' && $exe.math && $exe.math.refresh) {
+                $exe.math.refresh(this.blockNameElementText);
+            }
+        }, 0);
 
         return container;
     }
@@ -1254,6 +1267,10 @@ export default class IdeviceBlockNode {
         // Save new title text
         this.blockName = title;
         this.blockNameElementText.innerHTML = title;
+        this.blockNameElementText.dataset.originalTitle = title;
+        if (typeof $exe !== 'undefined' && $exe.math && $exe.math.refresh) {
+            $exe.math.refresh(this.blockNameElementText);
+        }
         // If block exist save in bbdd
         if (this.id) {
             this.apiSendDataService('putSaveBlock', params).then((response) => {

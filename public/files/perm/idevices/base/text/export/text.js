@@ -219,15 +219,7 @@ var $text = {
             });
         }
         const dataString = $node.html() || '';
-        const hasLatex =
-            $exeDevices.iDevice.gamification.math.hasLatex(dataString);
-
-        if (!hasLatex) return;
-        const mathjaxLoaded = typeof window.MathJax !== 'undefined';
-
-        if (!mathjaxLoaded) {
-            $exeDevices.iDevice.gamification.math.loadMathJax();
-        } else {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(dataString)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '.exe-text-template'
             );

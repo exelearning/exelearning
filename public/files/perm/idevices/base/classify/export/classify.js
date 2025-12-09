@@ -484,7 +484,7 @@ var $eXeClasifica = {
         $eXeClasifica.updateQuestionNumber(instance);
 
         const html = $('#clasificaMultimedia-' + instance).html(),
-            latex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
         if (latex)
             $exeDevices.iDevice.gamification.math.updateLatex(
                 '#clasificaMultimedia-' + instance
@@ -1007,7 +1007,9 @@ var $eXeClasifica = {
                 $text = $card.find('.CQP-EText'),
                 latex =
                     $text.find('mjx-container').length > 0 ||
-                    /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test($text.text());
+                    $exeDevices.iDevice.gamification.math.hasLatex(
+                        $text.text()
+                    );
             if (!latex) {
                 $eXeClasifica.adjustFontSize($text);
             } else {
@@ -1414,7 +1416,7 @@ var $eXeClasifica = {
             $eXeClasifica.showCard($(this), instance);
         });
 
-        const hasLatex = /(?:\$|\\\(|\\\[|\\begin\{.*?})/.test(
+        const hasLatex = $exeDevices.iDevice.gamification.math.hasLatex(
             $('#clasificaMultimedia-' + instance).html()
         );
         if (hasLatex) {

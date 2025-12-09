@@ -1645,7 +1645,7 @@ var $quickquestionsmultiplechoice = {
         }
 
         const htmlContent = $(`#seleccionaWordDiv-${instance}`).html();
-        if (/(?:\\\(|\\\[|\\begin\{.*?})/.test(htmlContent)) {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(htmlContent)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 `seleccionaWordDiv-${instance}`
             );
@@ -2473,7 +2473,7 @@ var $quickquestionsmultiplechoice = {
         );
 
         const html = $(`#seleccionaQuestionDiv-${instance}`).html();
-        if (/(?:\\\(|\\\[|\\begin\{.*?})/.test(html)) {
+        if ($exeDevices.iDevice.gamification.math.hasLatex(html)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
                 `seleccionaQuestionDiv-${instance}`
             );

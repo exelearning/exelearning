@@ -749,7 +749,7 @@ var $eXeHiddenImage = {
         $eXeHiddenImage.drawQuestions(instance);
 
         const html = $('#hiPQuestionDiv-' + instance).html(),
-            latex = /(?:\\\(|\\\[|\\begin\{.*?})/.test(html);
+            latex = $exeDevices.iDevice.gamification.math.hasLatex(html);
 
         if (latex) {
             $exeDevices.iDevice.gamification.math.updateLatex(
