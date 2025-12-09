@@ -2640,6 +2640,22 @@ class ExportXmlUtil
             }
         }
 
+        if (!$mathLibAlreadyIncluded) {
+            foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
+                foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
+                    $blockName = $odePagStructureSync->getBlockName();
+                    if (null !== $blockName && '' !== $blockName) {
+                        if (preg_match($latexRegex, $blockName)) {
+                            $librariesToCopy[] = $commonPath.'exe_math';
+                            $filesToCopy[] = [$dm.'tex-mml-svg.js'];
+                            $mathLibAlreadyIncluded = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+
         foreach ($odeNavStructureSyncs as $odeNavStructureSync) {
             foreach ($odeNavStructureSync->getOdePagStructureSyncs() as $odePagStructureSync) {
                 foreach ($odePagStructureSync->getOdeComponentsSyncs() as $odeComponentsSync) {
