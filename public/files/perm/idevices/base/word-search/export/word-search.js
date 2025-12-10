@@ -363,7 +363,7 @@ var $eXeSopa = {
                 </div>
                  <div class="SPP-ResolveDiv ">
                     <button class="btn btn-primary" id="sopaResolve-${instanceId}">${msgs.msgEnd}</button>
-                 </div>                
+                 </div>
                 <div class="SPP-Cubierta" id="sopaCubierta-${instanceId}">
                     <div class="SPP-CodeAccessDiv" id="sopaCodeAccessDiv-${instanceId}">
                         <div class="SPP-MessageCodeAccessE" id="sopaMesajeAccesCodeE-${instanceId}"></div>
@@ -1358,7 +1358,6 @@ $(function () {
                             S = 0,
                             x = 0;
                         x < l;
-
                     )
                         if (p(S, x, l, f, d)) {
                             var w = u(a, t, S, x, $);
@@ -1426,7 +1425,6 @@ $(function () {
                                 void 0 === s.preferOverlap || s.preferOverlap,
                         };
                     !i;
-
                 ) {
                     for (; !i && l++ < d.maxAttempts; ) i = a(o, d);
                     if (!i) {
