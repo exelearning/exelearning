@@ -12841,6 +12841,15 @@ class BrowserResourceProvider {
     const blobMap = await this.fetcher.fetchSchemas(format);
     return this.convertBlobMapToBufferMap(blobMap);
   }
+  normalizeIdeviceType(ideviceType) {
+    const typeMap = {
+      freetextidevice: "text",
+      textidevice: "text",
+      freetext: "text"
+    };
+    const normalized = ideviceType.toLowerCase().replace(/idevice$/i, "");
+    return typeMap[normalized] || typeMap[ideviceType.toLowerCase()] || normalized || "text";
+  }
   async convertBlobMapToBufferMap(blobMap) {
     const result = new Map;
     const entries = Array.from(blobMap.entries());
@@ -13473,13 +13482,29 @@ ${contentHtml}
   fixAssetUrls(content, basePath) {
     if (!content)
       return "";
-    let result = content.replace(/asset:\/\/([^"']+)/g, (_match, assetPath) => {
+    let result = content;
+    result = result.replace(/\{\{context_path\}\}\/([^"'\s]+)/g, (_match, assetPath) => {
+      if (assetPath.startsWith("blob:") || assetPath.startsWith("data:")) {
+        return _match;
+      }
+      return `${basePath}content/resources/${assetPath}`;
+    });
+    result = result.replace(/asset:\/\/([^"']+)/g, (_match, assetPath) => {
+      if (assetPath.startsWith("blob:") || assetPath.startsWith("data:")) {
+        return _match;
+      }
       return `${basePath}content/resources/${assetPath}`;
     });
     result = result.replace(/files\/tmp\/[^"'\s]+\/([^/]+\/[^"'\s]+)/g, (_match, relativePath) => {
+      if (relativePath.startsWith("blob:") || relativePath.startsWith("data:")) {
+        return _match;
+      }
       return `${basePath}content/resources/${relativePath}`;
     });
     result = result.replace(/["']\/files\/tmp\/[^"']+\/([^"']+)["']/g, (_match, path) => {
+      if (path.startsWith("blob:") || path.startsWith("data:")) {
+        return _match;
+      }
       return `"${basePath}content/resources/${path}"`;
     });
     return result;
@@ -13621,7 +13646,7 @@ ${this.renderScripts(basePath, isScorm)}
       usedIdevices,
       customStyles,
       extraHeadScripts = "",
-      isScorm = false
+      isScorm: _isScorm = false
     } = options;
     let head = `<meta charset="utf-8">
 <meta name="generator" content="eXeLearning 4.0 - exelearning.net">
@@ -13630,7 +13655,7 @@ ${this.renderScripts(basePath, isScorm)}
 <script>document.querySelector("html").classList.add("js");</script>
 <link rel="stylesheet" href="${basePath}libs/bootstrap/bootstrap.min.css">
 <link rel="stylesheet" href="${basePath}content/css/base.css">
-<link rel="stylesheet" href="${basePath}theme/content.css">`;
+<link rel="stylesheet" href="${basePath}theme/style.css">`;
     const cssLinks = this.ideviceRenderer.getCssLinks(usedIdevices, basePath);
     for (const link of cssLinks) {
       head += `
@@ -13757,12 +13782,12 @@ ${extraHeadScripts}`;
 </footer>`;
     return html;
   }
-  renderScripts(basePath, isScorm = false) {
+  renderScripts(basePath, _isScorm = false) {
     return `<script type="text/javascript" src="${basePath}libs/jquery/jquery.min.js"></script>
 <script type="text/javascript" src="${basePath}libs/exe_export.js"></script>
 <script type="text/javascript" src="${basePath}libs/common_i18n.js"></script>
 <script type="text/javascript" src="${basePath}libs/common.js"></script>
-<script type="text/javascript" src="${basePath}theme/default.js"></script>`;
+<script type="text/javascript" src="${basePath}theme/style.js"></script>`;
   }
   renderSinglePage(allPages, options = {}) {
     const {
@@ -13793,7 +13818,7 @@ ${this.renderPageContent(page, "")}
 <script>document.querySelector("html").classList.add("js");</script>
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">
 <link rel="stylesheet" href="content/css/base.css">
-<link rel="stylesheet" href="theme/content.css">
+<link rel="stylesheet" href="theme/style.css">
 ${this.ideviceRenderer.getCssLinks(usedIdevices, "").join(`
 `)}
 ${customStyles ? `<style>
@@ -14088,7 +14113,8 @@ class BaseExporter {
       for (const asset of assets) {
         const assetId = asset.id;
         const filename = asset.filename || `asset-${assetId}`;
-        const zipPath = prefix ? `${prefix}${asset.path || `${assetId}/${filename}`}` : asset.path || `${assetId}/${filename}`;
+        const assetPath = asset.originalPath || `${assetId}/${filename}`;
+        const zipPath = prefix ? `${prefix}${assetPath}` : assetPath;
         this.zip.addFile(zipPath, asset.data);
         assetsAdded++;
       }
@@ -14102,9 +14128,14 @@ class BaseExporter {
     try {
       const assets = await this.assets.getAllAssets();
       for (const asset of assets) {
-        const assetId = asset.id;
-        const filename = asset.filename || `asset-${assetId}`;
-        const zipPath = `content/resources/${assetId}/${filename}`;
+        let assetPath = asset.originalPath || `${asset.id}/${asset.filename || `asset-${asset.id}`}`;
+        if (assetPath.startsWith("content/resources/")) {
+          assetPath = assetPath.substring("content/resources/".length);
+        }
+        if (assetPath.startsWith("content/")) {
+          assetPath = assetPath.substring("content/".length);
+        }
+        const zipPath = `content/resources/${assetPath}`;
         this.zip.addFile(zipPath, asset.data);
         assetsAdded++;
       }
@@ -14192,7 +14223,7 @@ class BaseExporter {
     if (assetMap.size === 0) {
       return content;
     }
-    return content.replace(/asset:\/\/([a-f0-9-]+)(?![\/a-zA-Z0-9._-])/gi, (match, uuid) => {
+    return content.replace(/asset:\/\/([a-f0-9-]+)(?![/a-zA-Z0-9._-])/gi, (match, uuid) => {
       const filename = assetMap.get(uuid);
       if (filename) {
         return `asset://${uuid}/${filename}`;
@@ -14204,8 +14235,8 @@ class BaseExporter {
     for (const page of pages) {
       for (const block of page.blocks || []) {
         for (const component of block.components || []) {
-          if (component.htmlContent) {
-            component.htmlContent = await this.addFilenamesToAssetUrls(component.htmlContent);
+          if (component.content) {
+            component.content = await this.addFilenamesToAssetUrls(component.content);
           }
         }
       }
@@ -14217,8 +14248,8 @@ class BaseExporter {
     for (const page of pages) {
       for (const block of page.blocks || []) {
         for (const component of block.components || []) {
-          if (component.htmlContent) {
-            htmlParts.push(component.htmlContent);
+          if (component.content) {
+            htmlParts.push(component.content);
           }
         }
       }
@@ -14303,8 +14334,8 @@ class BaseExporter {
     let xml = `    <odeComponent odeComponentId="${this.escapeXml(compId)}" `;
     xml += `odeIdeviceTypeDirName="${this.escapeXml(ideviceType)}" odeComponentOrder="${order}">
 `;
-    if (component.htmlContent) {
-      xml += `      <htmlView><![CDATA[${component.htmlContent}]]></htmlView>
+    if (component.content) {
+      xml += `      <htmlView><![CDATA[${component.content}]]></htmlView>
 `;
     }
     if (component.properties && Object.keys(component.properties).length > 0) {
@@ -14469,7 +14500,7 @@ class Html5Exporter extends BaseExporter {
     try {
       let pages = this.buildPageList();
       const meta = this.getMetadata();
-      const themeName = meta.theme || "base";
+      const themeName = html5Options?.theme || meta.theme || "base";
       pages = await this.preprocessPagesForExport(pages);
       for (let i2 = 0;i2 < pages.length; i2++) {
         const page = pages[i2];
@@ -14482,12 +14513,15 @@ class Html5Exporter extends BaseExporter {
       this.zip.addFile("content/css/base.css", this.getBaseCss());
       try {
         const themeFiles = await this.resources.fetchTheme(themeName);
-        for (const [path, content] of themeFiles) {
-          this.zip.addFile(`theme/${path}`, content);
+        console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFiles.size}`);
+        for (const [filePath, content] of themeFiles) {
+          console.log(`[Html5Exporter] Adding theme file: theme/${filePath}`);
+          this.zip.addFile(`theme/${filePath}`, content);
         }
-      } catch {
-        this.zip.addFile("theme/content.css", this.getFallbackThemeCss());
-        this.zip.addFile("theme/default.js", this.getFallbackThemeJs());
+      } catch (e) {
+        console.warn(`[Html5Exporter] Failed to fetch theme: ${themeName}`, e);
+        this.zip.addFile("theme/style.css", this.getFallbackThemeCss());
+        this.zip.addFile("theme/style.js", this.getFallbackThemeJs());
       }
       const allHtmlContent = this.collectAllHtmlContent(pages);
       const allRequiredFiles = this.libraryDetector.getAllRequiredFiles(allHtmlContent, {
@@ -14509,9 +14543,10 @@ class Html5Exporter extends BaseExporter {
       const usedIdevices = this.getUsedIdevices(pages);
       for (const idevice of usedIdevices) {
         try {
+          const normalizedType = this.resources.normalizeIdeviceType(idevice);
           const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
-          for (const [path, content] of ideviceFiles) {
-            this.zip.addFile(`idevices/${idevice}/${path}`, content);
+          for (const [filePath, content] of ideviceFiles) {
+            this.zip.addFile(`idevices/${normalizedType}/${filePath}`, content);
           }
         } catch {}
       }
@@ -14568,7 +14603,7 @@ class PageExporter extends Html5Exporter {
     try {
       let pages = this.buildPageList();
       const meta = this.getMetadata();
-      const themeName = meta.theme || "base";
+      const themeName = options?.theme || meta.theme || "base";
       pages = await this.preprocessPagesForExport(pages);
       const usedIdevices = this.getUsedIdevices(pages);
       const html = this.generateSinglePageHtml(pages, meta, usedIdevices);
@@ -15083,7 +15118,7 @@ class Scorm12Exporter extends Html5Exporter {
     try {
       let pages = this.buildPageList();
       const meta = this.getMetadata();
-      const themeName = meta.theme || "base";
+      const themeName = options?.theme || meta.theme || "base";
       const projectId = this.generateProjectId();
       pages = await this.preprocessPagesForExport(pages);
       this.manifestGenerator = new Scorm12ManifestGenerator(projectId, pages, {
@@ -15535,7 +15570,7 @@ class Scorm2004Exporter extends Html5Exporter {
     try {
       let pages = this.buildPageList();
       const meta = this.getMetadata();
-      const themeName = meta.theme || "base";
+      const themeName = options?.theme || meta.theme || "base";
       const projectId = this.generateProjectId();
       pages = await this.preprocessPagesForExport(pages);
       this.manifestGenerator = new Scorm2004ManifestGenerator(projectId, pages, {
@@ -16024,7 +16059,7 @@ class ImsExporter extends Html5Exporter {
     try {
       let pages = this.buildPageList();
       const meta = this.getMetadata();
-      const themeName = meta.theme || "base";
+      const themeName = options?.theme || meta.theme || "base";
       const projectId = this.generateProjectId();
       pages = await this.preprocessPagesForExport(pages);
       this.manifestGenerator = new ImsManifestGenerator(projectId, pages, {

@@ -66,6 +66,7 @@ let databaseUrl;
 let mainWindow;
 let loadingWindow;
 let isShuttingDown = false; // Flag to ensure the app only shuts down once
+let serverProcess = null;   // Elysia server process handle
 let updaterInited = false; // guard
 
 // Environment variables container
@@ -281,8 +282,7 @@ function initializeEnv() {
   const isDev = determineDevMode();
   const appEnv  = isDev ? 'dev' : 'prod';
   // For Electron mode, use port 3001 for local development
-  // NEST_PORT is the only port variable used by the app (APP_PORT is for Docker only)
-  const nestPort = '3001';
+  const serverPort = '3001';
 
   // Get the appropriate app data path based on platform
 customEnv = {
@@ -290,7 +290,7 @@ customEnv = {
   APP_DEBUG: process.env.APP_DEBUG ?? (isDev ? 1 : 0),
   EXELEARNING_DEBUG_MODE: (process.env.EXELEARNING_DEBUG_MODE ?? (isDev ? '1' : '0')).toString(),
   APP_SECRET: process.env.APP_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
-  NEST_PORT: nestPort,
+  APP_PORT: serverPort,
   APP_ONLINE_MODE: process.env.APP_ONLINE_MODE ?? '0',
   APP_AUTH_METHODS: process.env.APP_AUTH_METHODS || 'none',
   TEST_USER_EMAIL: process.env.TEST_USER_EMAIL || 'user@exelearning.net',
@@ -353,14 +353,13 @@ function combineEnv() {
 }
 
 function applyCombinedEnvToProcess() {
-  // Ensure the spawned backend (Nest) sees the combined env variables.
+  // Ensure the spawned backend sees the combined env variables.
   Object.assign(process.env, env || {});
 }
 
 function getServerPort() {
-  // NEST_PORT is the only port variable used by the app (APP_PORT is for Docker external mapping only)
   try {
-    return Number(customEnv?.NEST_PORT || process.env.NEST_PORT || 3001);
+    return Number(customEnv?.APP_PORT || process.env.APP_PORT || 3001);
   } catch (_e) {
     return 3001;
   }
@@ -438,12 +437,12 @@ function createWindow() {
   // Create the loading window
   createLoadingWindow();
 
-  // Start the NestJS server only in production (in dev, assume it's already running)
+  // Start the Elysia server only in production (in dev, assume it's already running)
   const isDev = determineDevMode();
   if (!isDev) {
-    startNestServer();
+    startElysiaServer();
   } else {
-    console.log('Development mode: skipping NestJS in-process loading (assuming external server running)');
+    console.log('Development mode: skipping server startup (assuming external server running)');
   }
 
   // Wait for the server to be available before loading the main window
@@ -1020,6 +1019,13 @@ function handleAppExit() {
     if (isShuttingDown) return;
     isShuttingDown = true;
 
+    // Kill the server process if it's running
+    if (serverProcess && !serverProcess.killed) {
+      console.log('Stopping Elysia server...');
+      serverProcess.kill('SIGTERM');
+      serverProcess = null;
+    }
+
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.destroy();
     }
@@ -1153,56 +1159,72 @@ function checkAndCreateDatabase() {
 }
 
 /**
- * Starts the NestJS backend (built output must exist at dist/main.js).
- * We require it in-process to keep packaging simpler (asar-friendly).
+ * Starts the Elysia backend as a standalone executable (built with bun build --compile).
+ * The server runs as an external process, not in-process.
  */
-function startNestServer() {
+function startElysiaServer() {
   try {
+    const isWindows = process.platform === 'win32';
+    const execName = isWindows ? 'exelearning-server.exe' : 'exelearning-server';
+
     const candidates = [
-      // Prefer asar-packed build (has node_modules alongside)
-      path.join(app.getAppPath(), 'dist', 'main.js'),
-      path.join(app.getAppPath(), 'dist', 'src', 'main.js'),
-      // Prefer unpacked path in packaged apps (read/write friendly) if present
-      path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'main.js'),
-      path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'src', 'main.js'),
-      // ExtraResources path (outside asar)
-      path.join(process.resourcesPath, 'dist', 'main.js'),
-      // Build output keeps "src" directory (tsconfig has no rootDir)
-      path.join(process.resourcesPath, 'dist', 'src', 'main.js'),
+      // ExtraResources path (outside asar) - packaged app
+      path.join(process.resourcesPath, 'dist', execName),
       // Dev path
-      path.join(__dirname, 'dist', 'main.js'),
-      path.join(__dirname, 'dist', 'src', 'main.js'),
+      path.join(__dirname, 'dist', execName),
     ];
 
-    const nestMain = candidates.find((p) => fs.existsSync(p));
-    if (!nestMain) {
-      showErrorDialog('NestJS backend build not found. Run "npm run build" before packaging.');
+    const serverBinary = candidates.find((p) => fs.existsSync(p));
+    if (!serverBinary) {
+      showErrorDialog('Server executable not found. Run "bun run build:standalone" before packaging.');
       app.quit();
       return;
     }
 
-    console.log(`Starting Nest backend from ${nestMain} on port ${getServerPort()}`);
-    applyCombinedEnvToProcess();
+    const port = getServerPort();
+    console.log(`Starting Elysia server from ${serverBinary} on port ${port}`);
 
-    // Set process.resourcesPath to the project root in development mode
-    // This helps NestJS find views/ and other resources correctly
-    if (!app.isPackaged && !process.resourcesPath) {
-      process.resourcesPath = app.getAppPath();
-      console.log(`Development mode: Set process.resourcesPath to ${process.resourcesPath}`);
-    }
+    // Build environment for the server process
+    const serverEnv = {
+      ...process.env,
+      APP_PORT: String(port),
+      DB_PATH: customEnv?.DB_PATH || databasePath,
+      FILES_DIR: customEnv?.FILES_DIR || path.join(appDataPath, 'data'),
+      APP_ONLINE_MODE: '0',
+      APP_SECRET: customEnv?.APP_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
+      API_JWT_SECRET: customEnv?.API_JWT_SECRET || 'CHANGE_THIS_FOR_A_SECRET',
+    };
 
-    const prevCwd = process.cwd();
-    const targetCwd = path.dirname(nestMain);
-    const canChdir = !targetCwd.includes('.asar') && fs.existsSync(targetCwd) && fs.statSync(targetCwd).isDirectory();
-    try {
-      if (canChdir) process.chdir(targetCwd);
-      require(nestMain);
-    } finally {
-      if (canChdir) process.chdir(prevCwd);
-    }
+    serverProcess = spawn(serverBinary, [], {
+      env: serverEnv,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      cwd: app.isPackaged ? process.resourcesPath : __dirname,
+    });
+
+    serverProcess.stdout.on('data', (data) => {
+      console.log(`[Server] ${data.toString().trim()}`);
+    });
+
+    serverProcess.stderr.on('data', (data) => {
+      console.error(`[Server] ${data.toString().trim()}`);
+    });
+
+    serverProcess.on('error', (err) => {
+      console.error('Failed to start server process:', err);
+      showErrorDialog(`Failed to start server: ${err.message}`);
+      app.quit();
+    });
+
+    serverProcess.on('close', (code) => {
+      if (code !== 0 && code !== null && !isShuttingDown) {
+        console.error(`Server process exited unexpectedly with code ${code}`);
+      }
+      serverProcess = null;
+    });
+
   } catch (err) {
-    console.error('Error starting Nest backend:', err);
-    showErrorDialog(`Error starting Nest backend: ${err.message}`);
+    console.error('Error starting Elysia server:', err);
+    showErrorDialog(`Error starting server: ${err.message}`);
     app.quit();
   }
 }

@@ -8,7 +8,7 @@
  * - Uses AbortController for safe cleanup (no orphan timers)
  */
 import type { ServerWebSocket } from 'bun';
-import { getConfig, DEBUG } from './config';
+import { getConfig, isDebugEnabled } from './config';
 
 /**
  * WebSocket data interface (must match yjs-websocket.ts)
@@ -63,7 +63,7 @@ export function startHeartbeat(clientId: string, ws: ServerWebSocket<WsData>): v
         // Check if pong was received within timeout
         const timeSinceLastPong = Date.now() - state.lastPong;
         if (timeSinceLastPong > config.pingInterval + config.pongTimeout) {
-            if (DEBUG) {
+            if (isDebugEnabled()) {
                 console.log(`[Heartbeat] Client ${clientId} timed out (${timeSinceLastPong}ms since last pong)`);
             }
             ws.close(4008, 'Heartbeat timeout');
@@ -74,11 +74,11 @@ export function startHeartbeat(clientId: string, ws: ServerWebSocket<WsData>): v
         // Send ping - Bun's ServerWebSocket supports native ping()
         try {
             ws.ping();
-            if (DEBUG) {
+            if (isDebugEnabled()) {
                 console.log(`[Heartbeat] Sent ping to ${clientId}`);
             }
         } catch (err) {
-            if (DEBUG) {
+            if (isDebugEnabled()) {
                 console.error(`[Heartbeat] Failed to send ping to ${clientId}:`, err);
             }
             // Connection likely closed, cleanup will happen via close handler
@@ -92,7 +92,7 @@ export function startHeartbeat(clientId: string, ws: ServerWebSocket<WsData>): v
         ws,
     });
 
-    if (DEBUG) {
+    if (isDebugEnabled()) {
         console.log(`[Heartbeat] Started for ${clientId} (interval: ${config.pingInterval}ms)`);
     }
 }
@@ -107,7 +107,7 @@ export function onPong(clientId: string): void {
     const state = heartbeats.get(clientId);
     if (state) {
         state.lastPong = Date.now();
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(`[Heartbeat] Received pong from ${clientId}`);
         }
     }
@@ -129,7 +129,7 @@ export function stopHeartbeat(clientId: string): void {
         // Remove from map
         heartbeats.delete(clientId);
 
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(`[Heartbeat] Stopped for ${clientId}`);
         }
     }
@@ -152,7 +152,7 @@ export function stopAllHeartbeats(): void {
     for (const clientId of heartbeats.keys()) {
         stopHeartbeat(clientId);
     }
-    if (DEBUG) {
+    if (isDebugEnabled()) {
         console.log('[Heartbeat] Stopped all heartbeats');
     }
 }

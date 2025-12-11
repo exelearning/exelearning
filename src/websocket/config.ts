@@ -67,6 +67,15 @@ export function getConfigValue<K extends keyof WsConfig>(key: K, override?: WsCo
 }
 
 /**
- * Debug flag
+ * Debug flag (constant - evaluated at module load time)
+ * Use isDebugEnabled() for testable debug checks
  */
 export const DEBUG = process.env.APP_DEBUG === '1';
+
+/**
+ * Debug flag function (evaluated at call time - testable)
+ * Use this instead of DEBUG constant when you need testable debug branches
+ */
+export function isDebugEnabled(): boolean {
+    return process.env.APP_DEBUG === '1';
+}

@@ -513,6 +513,60 @@ describe('HTML5 Export Service', () => {
 
             expect(result.success).toBe(true);
         });
+
+        it('should copy theme files when they exist', async () => {
+            // Create theme files in the expected location
+            const themeDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base');
+            await fs.ensureDir(themeDir);
+            await fs.writeFile(path.join(themeDir, 'style.css'), '.theme-style { color: red; }');
+            await fs.writeFile(path.join(themeDir, 'style.js'), '// theme javascript');
+            await fs.writeFile(path.join(themeDir, 'config.xml'), '<config><name>base</name></config>');
+            await fs.ensureDir(path.join(themeDir, 'icons'));
+            await fs.writeFile(path.join(themeDir, 'icons', 'icon.png'), 'fake icon data');
+            await fs.ensureDir(path.join(themeDir, 'img'));
+            await fs.writeFile(path.join(themeDir, 'img', 'bg.png'), 'fake bg image');
+
+            const result = await service.exportToHtml5('test-session', {
+                preview: true,
+                tempPath: 'theme-copy-test/',
+            });
+
+            const exportDir = result.filePath;
+
+            // Verify theme files were copied with renamed filenames
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'content.css'))).toBe(true);
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'default.js'))).toBe(true);
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'config.xml'))).toBe(true);
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'icons'))).toBe(true);
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'img'))).toBe(true);
+
+            // Verify content was copied correctly
+            const cssContent = await fs.readFile(path.join(exportDir, 'theme', 'content.css'), 'utf-8');
+            expect(cssContent).toBe('.theme-style { color: red; }');
+
+            const jsContent = await fs.readFile(path.join(exportDir, 'theme', 'default.js'), 'utf-8');
+            expect(jsContent).toBe('// theme javascript');
+        });
+
+        it('should copy theme files partially when some are missing', async () => {
+            // Create theme directory with only some files
+            const themeDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base');
+            await fs.ensureDir(themeDir);
+            await fs.writeFile(path.join(themeDir, 'style.css'), '.partial-theme {}');
+            // Don't create style.js, config.xml, icons, img
+
+            const result = await service.exportToHtml5('test-session', {
+                preview: true,
+                tempPath: 'theme-partial-test/',
+            });
+
+            const exportDir = result.filePath;
+
+            // Only style.css should be copied (as content.css)
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'content.css'))).toBe(true);
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'default.js'))).toBe(false);
+            expect(await fs.pathExists(path.join(exportDir, 'theme', 'config.xml'))).toBe(false);
+        });
     });
 
     describe('Multiple Pages Export', () => {
