@@ -7,7 +7,7 @@
  *
  */
 
-/* eslint-disable no-undef */
+ 
 
 // Test functions available globally from vitest setup
 

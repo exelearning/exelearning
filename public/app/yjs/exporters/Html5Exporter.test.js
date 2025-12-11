@@ -4,7 +4,7 @@
  * Unit tests for Html5Exporter - exports content to HTML5 format.
  */
 
-/* eslint-disable no-undef */
+ 
 
 // Import BaseExporter first and make it globally available
 // This simulates the browser loading order where BaseExporter.js is loaded before Html5Exporter.js

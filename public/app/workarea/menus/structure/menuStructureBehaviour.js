@@ -881,6 +881,7 @@ export default class MenuStructureBehaviour {
             return Promise.resolve(null);
         }
         eXeLearning.app.project.unlockIdevices();
+        // eslint-disable-next-line no-async-promise-executor
         return new Promise(async (resolve, reject) => {
             let response = false;
             let time = 50;

@@ -1,4 +1,3 @@
-import RealTimeEventNotifier from '../../../../RealTimeEventNotifier/RealTimeEventNotifier.js';
 import {
     downloadComponentFile,
     buildComponentFileName,
@@ -59,14 +58,6 @@ export default class IdeviceNode {
         // Check if is valid
         this.checkIsValid();
 
-        this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
-
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey
-            );
-        }
         this.nodeContainer = document.querySelector('#node-content-container');
 
         this.timeIdeviceEditing = null;
@@ -3273,7 +3264,9 @@ export default class IdeviceNode {
             // let buffer = await this.readFile(file);
             // await this.addUploadImage(buffer, file.name, id, type);
             await this.addUploadImage(file, file.name, id, type);
-        } catch (err) {}
+        } catch (err) {
+            // Intentional: silently handle image upload failures
+        }
     }
 
     /**

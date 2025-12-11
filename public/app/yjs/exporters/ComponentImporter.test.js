@@ -5,7 +5,7 @@
  * Tests the component/iDevice import functionality including XML parsing and Yjs insertion.
  */
 
-/* eslint-disable no-undef */
+ 
 
 // Import ComponentImporter
 const ComponentImporter = require('./ComponentImporter');

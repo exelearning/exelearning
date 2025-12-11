@@ -1,4 +1,3 @@
-import RealTimeEventNotifier from '../../../../RealTimeEventNotifier/RealTimeEventNotifier.js';
 import {
     downloadComponentFile,
     buildComponentFileName,
@@ -42,14 +41,6 @@ export default class IdeviceBlockNode {
         this.blockNameElementText = null;
         this.toggleElement = null;
         this.blockButtons = null;
-        this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
-
-        if (!this.offlineInstallation) {
-            this.realTimeEventNotifier = new RealTimeEventNotifier(
-                eXeLearning.mercure.url,
-                eXeLearning.mercure.jwtSecretKey
-            );
-        }
     }
 
     /**
@@ -1577,7 +1568,9 @@ export default class IdeviceBlockNode {
             if (orders.length) return Math.max(...orders) + 1;
 
             return 1;
-        } catch (_) {}
+        } catch (_) {
+            // Intentional: return default order if calculation fails
+        }
 
         return 1;
     }

@@ -1,13 +1,14 @@
 // Test functions available globally from vitest setup
+/* eslint-disable @typescript-eslint/no-this-alias */
 
 /**
  * YjsModules Index Tests
  *
  * Unit tests for the YjsModules index - exports all Yjs-related classes.
- *
+ * Note: Mock constructors use `this` which requires the eslint disable above.
  */
 
-/* eslint-disable no-undef */
+ 
 
 describe('YjsModules (index.js)', () => {
   let savedValues;

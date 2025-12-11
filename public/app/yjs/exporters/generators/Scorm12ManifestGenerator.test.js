@@ -4,7 +4,7 @@
  * Tests for SCORM 1.2 imsmanifest.xml generation.
  */
 
-/* eslint-disable no-undef */
+ 
 
 const Scorm12ManifestGenerator = require('./Scorm12ManifestGenerator');
 

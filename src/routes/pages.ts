@@ -607,11 +607,6 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     token: authToken,
                 };
 
-                const mercure = {
-                    url: null,
-                    jwtSecretKey: null,
-                };
-
                 // Server-side translations using XLF files
                 const t = {
                     file: trans('File', {}, locale),
@@ -686,7 +681,6 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     user,
                     config,
                     symfony,
-                    mercure,
                     locale,
                     projectId: projectUuid || null,
                     t,

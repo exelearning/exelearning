@@ -475,7 +475,9 @@ class App {
     async runCustomJavaScriptCode() {
         try {
             $eXeLearningCustom.init();
-        } catch (e) {}
+        } catch (e) {
+            // Intentional: suppress errors from optional custom JavaScript
+        }
     }
 
     /**
@@ -520,7 +522,9 @@ class App {
                     this.toasts.createToast(toastData);
                 }
             });
-        } catch (_e) {}
+        } catch (_e) {
+            // Intentional: Electron API may not exist in browser
+        }
     }
 
     /**
@@ -562,7 +566,7 @@ class App {
             const blob = new Blob([bytes], { type: 'application/octet-stream' });
 
             // Extract filename from path
-            const filename = filePath.split(/[\\\/]/).pop() || 'project.elpx';
+            const filename = filePath.split(/[\\/]/).pop() || 'project.elpx';
             const file = new File([blob], filename, {
                 type: 'application/octet-stream',
                 lastModified: res.mtimeMs || Date.now(),
@@ -606,7 +610,7 @@ class App {
                 expires = parseInt(expires);
                 if (!isNaN(expires) && expires != -1) {
                     var date = new Date();
-                    var date = date
+                    date = date
                         .toISOString()
                         .slice(0, 10)
                         .replace(/-/g, '');

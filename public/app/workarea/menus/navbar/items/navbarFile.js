@@ -1421,7 +1421,7 @@ export default class NavbarFile {
                     });
                     // Derive filename in a cross-platform way (Windows/Mac/Linux)
                     const filename =
-                        (filePath && filePath.split(/[\\\/]/).pop()) ||
+                        (filePath && filePath.split(/[\\/]/).pop()) ||
                         'project.elpx';
                     const file = new File([blob], filename, {
                         type: 'application/octet-stream',
@@ -1430,7 +1430,9 @@ export default class NavbarFile {
                     // Store original local path so we can remember it after open
                     try {
                         window.__originalElpPath = filePath;
-                    } catch (_e) {}
+                    } catch (_e) {
+                        // Intentional: Electron-specific assignment may fail
+                    }
                     eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                         file
                     );
@@ -2809,7 +2811,9 @@ export default class NavbarFile {
                         else if (/xml/i.test(suggested))
                             typeKey = 'export-xml-properties';
                         else if (/\.zip$/i.test(suggested)) typeKey = 'export';
-                    } catch (_e) {}
+                    } catch (_e) {
+                        // Intentional: defaults to generic export type if parsing fails
+                    }
                     const safeName = this.normalizeSuggestedName(
                         suggested,
                         typeKey
@@ -2874,7 +2878,9 @@ export default class NavbarFile {
                     if (titleProp && titleProp.trim()) {
                         base = titleProp.trim();
                     }
-                } catch (_e) {}
+                } catch (_e) {
+                    // Intentional: use default name if project properties unavailable
+                }
                 if (!base || !base.trim()) base = 'project';
                 base = this.appendSuffixForType(base, typeKey);
             }

@@ -4,7 +4,7 @@
  * Tests for LOM (Learning Object Metadata) imslrm.xml generation.
  */
 
-/* eslint-disable no-undef */
+ 
 
 const LomMetadataGenerator = require('./LomMetadataGenerator');
 

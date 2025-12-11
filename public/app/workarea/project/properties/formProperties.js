@@ -667,7 +667,7 @@ export default class FormProperties {
             childrenLabel.id = newId;
             childrenLabel.setAttribute('for', newId);
             childrenLabel.addEventListener('click', () => {
-                childrenValue && childrenValue.focus();
+                childrenValue?.focus();
             });
         }
         if (childrenValue) {

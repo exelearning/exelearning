@@ -7,7 +7,7 @@
 
 // Test functions available globally from vitest setup
 
-/* eslint-disable no-undef */
+ 
 
 // Clear window.ElpxExporter to test the fallback implementation
 delete window.ElpxExporter;

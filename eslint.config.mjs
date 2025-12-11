@@ -19,6 +19,7 @@ export default tseslint.config(
             'nestjs_legacy/**',
             'public/libs/**',
             'public/app/common/**',
+            'public/app/dist/**',
             'public/files/**',
             '**/*.d.ts',
             '**/*.bundle.js',

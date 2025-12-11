@@ -1,7 +1,6 @@
 import ProjectProperties from './properties/projectProperties.js';
 import IdevicesEngine from './idevices/idevicesEngine.js';
 import StructureEngine from './structure/structureEngine.js';
-import RealTimeEventNotifier from '../../RealTimeEventNotifier/RealTimeEventNotifier.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -15,13 +14,6 @@ export default class projectManager {
         this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
         this.clientIntervalUpdate = eXeLearning.config.clientIntervalUpdate;
         this.syncIntervalTime = 250;
-        // if (!this.offlineInstallation) {
-        //     this.realTimeEventNotifier = new RealTimeEventNotifier(
-        //         this.app.eXeLearning.mercure.url,
-        //         this.app.eXeLearning.mercure.jwtSecretKey
-        //     );
-        //     this.eventSource;
-        // }
 
         // Collaborative
         this.activeLocks = new Map(); // Map<pageId, { user, gravatar }>
@@ -1099,75 +1091,10 @@ export default class projectManager {
             });
     }
 
-    // TODO MERCURE SESSION; TO MIGRATE TO ANOTHER SOLUTION
-
+    // Placeholder for future real-time collaboration (Mercure was removed)
     async subscribeToSessionAndNotify() {
-    //     // It's very important to close if the connection is not longer needed.
-    //     // Opened connections have a continuous buffer that will drain your application resources.
-    //     if (this.eventSource != null) {
-    //         this.eventSource.close();
-    //     }
-
-    //     // Subscription to the session messages odeSession.
-    //     // Here it checks any message receive and send a local event in order to be
-    //     // managed by whatever file it need to respond to.
-    //     this.eventSource = this.realTimeEventNotifier.getSubscription(
-    //         this.odeSession
-    //     );
-
-    //     this.eventSource.onmessage = (event) => {
-    //         let message = JSON.parse(event.data);
-
-    //         // // TO-DO: Here we can control messages passed
-    //         // switch (message.name) {
-    //         //     case 'test-message':
-
-    //         //         break;
-    //         // }
-
-    //         let localEvent;
-    //         Logger.log('Received message from mercure: ', message);
-
-    //         if (event.lastEventId !== undefined) {
-    //             this.realTimeEventNotifier.setLastEventID(event.lastEventId);
-    //         }
-
-    //         // Manage user editing
-    //         this.handleBlockEditingOverlay(message.name, this.app.user.name);
-
-    //         // Server-Sent Event is translated to a local event. This way the SSE subscription is
-    //         // made in one only place when app starts.
-    //         localEvent = new CustomEvent(message.name, {
-    //             detail: { user: message.payload },
-    //         });
-
-    //         window.dispatchEvent(localEvent);
-    //     };
-
-    //     // A new `new-user-editing` message is sent to notify that there is a new user editing
-    //     this.realTimeEventNotifier.notify(this.odeSession, {
-    //         name: 'new-user-editing',
-    //         payload: this.app.user.name,
-    //     });
-
-    //     // Update resource
-    //     window.addEventListener('new-content-published', (e) => {
-    //         let pageId = this.structure.getSelectNodeNavId();
-    //         setTimeout(() => {
-    //             this.checkUserUpdateFlag(pageId);
-    //         }, 500);
-    //     });
-
-    //     // Update structure.
-    //     window.addEventListener('structure-changed', (e) => {
-    //         this.reloadStructure();
-    //     });
-
-    //     window.addEventListener('save-menu-head-button', (e) => {
-    //         this.saveMenuHeadButton(e.detail.user || false);
-    //     });
+        // No-op: Mercure integration removed
     }
-    // END TODO MERCURE SESSION; TO MIGRATE TO ANOTHER SOLUTION
 
     async saveMenuHeadButton(disableButton) {
         const saveMenuHeadButton = document.querySelector(
@@ -1438,7 +1365,9 @@ export default class projectManager {
             // Expose a stable project key for Electron (per-project save path)
             try {
                 window.__currentProjectId = this.odeId || 'default';
-            } catch (e) {}
+            } catch (e) {
+                // Intentional: Electron global assignment may fail in browser
+            }
 
             // Offline Save As is now provided by a dedicated menu item
         } else {

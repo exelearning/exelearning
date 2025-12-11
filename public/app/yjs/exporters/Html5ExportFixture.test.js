@@ -10,7 +10,7 @@
  * Run with: bun test public/app/yjs/exporters/__tests__/Html5ExportFixture.jest.test.js
  */
 
-/* eslint-disable no-undef */
+ 
 
 // Test functions available globally from vitest setup
 import { readFileSync, existsSync, readdirSync } from 'fs';

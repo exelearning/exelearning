@@ -1547,7 +1547,9 @@ export default class modalOpenUserOdeFiles extends Modal {
                 // Ensure Electron saves target under current project key immediately
                 try {
                     window.__currentProjectId = response.odeId;
-                } catch (_e) {}
+                } catch (_e) {
+                    // Intentional: Electron global may not exist
+                }
                 // Remember the chosen local ELP path (prefer original local path if available)
                 try {
                     const originalPath = window.__originalElpPath;
@@ -1565,7 +1567,9 @@ export default class modalOpenUserOdeFiles extends Modal {
                             originalPath || odeFilePath
                         );
                     }
-                } catch (_e) {}
+                } catch (_e) {
+                    // Intentional: Electron API call may fail in browser
+                }
 
                 // If server returned a Yjs project UUID, redirect to the new URL-based workarea
                 // with import parameter so frontend can use ElpxImporter
@@ -1684,7 +1688,9 @@ export default class modalOpenUserOdeFiles extends Modal {
             // Ensure Electron saves target under current project key immediately
             try {
                 window.__currentProjectId = response.odeId;
-            } catch (_e) {}
+            } catch (_e) {
+                // Intentional: Electron global may not exist
+            }
             // Remember the chosen local ELP path (prefer original local path if available)
             try {
                 const originalPath = window.__originalElpPath;
@@ -1702,7 +1708,9 @@ export default class modalOpenUserOdeFiles extends Modal {
                         originalPath || odeFilePath
                     );
                 }
-            } catch (_e) {}
+            } catch (_e) {
+                // Intentional: Electron API call may fail in browser
+            }
 
             // If server returned a Yjs project UUID, redirect with import param
             if (response.projectUuid && response.elpImportPath) {

@@ -4,7 +4,7 @@
  * Tests for SCORM 1.2 package export functionality.
  */
 
-/* eslint-disable no-undef */
+ 
 
 // Test functions available globally from vitest setup
 

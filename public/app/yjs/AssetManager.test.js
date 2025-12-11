@@ -7,7 +7,7 @@
 
 // Test functions available globally from vitest setup
 
-/* eslint-disable no-undef */
+ 
 
 const AssetManager = require('./AssetManager');
 

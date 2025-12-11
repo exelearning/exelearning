@@ -5,7 +5,7 @@
  * Based on Symfony's ExportXmlUtil::getPathForLibrariesInIdevices() behavior.
  */
 
-/* eslint-disable no-undef */
+ 
 
 const LibraryDetector = require('./LibraryDetector');
 

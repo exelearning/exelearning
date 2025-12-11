@@ -5,7 +5,7 @@
  * with both string and object inputs.
  */
 
-/* eslint-disable no-undef */
+ 
 
 // Mock minimal dependencies for IdeviceNode
 const originalWindow = global.window;

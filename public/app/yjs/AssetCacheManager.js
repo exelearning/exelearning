@@ -306,7 +306,7 @@ class AssetCacheManager {
 
     // Pattern 2: files/tmp/YYYY/MM/DD/sessionId/path/to/file.jpg
     // Extract the asset path after the sessionId directory
-    const serverUrlRegex = /files\/tmp\/\d{4}\/\d{2}\/\d{2}\/([^\/]+)\/([^"'\s<>]+)/g;
+    const serverUrlRegex = /files\/tmp\/\d{4}\/\d{2}\/\d{2}\/([^/]+)\/([^"'\s<>]+)/g;
     resolvedHtml = resolvedHtml.replace(serverUrlRegex, (fullMatch, sessionId, assetPath) => {
       // The asset path in cache includes the ideviceId folder
       const fullAssetPath = assetPath;

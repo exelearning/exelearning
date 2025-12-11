@@ -109,7 +109,9 @@ export default class modalTemplateSelection extends Modal {
             // Clear the original file path to prevent it from being used
             try {
                 delete window.__originalElpPath;
-            } catch (_e) {}
+            } catch (_e) {
+                // Intentional: property may not exist or be non-configurable
+            }
 
             // Fetch the template file
             const response = await fetch(template.path);

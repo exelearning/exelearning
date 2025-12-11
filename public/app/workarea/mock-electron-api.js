@@ -1,13 +1,10 @@
 // ./public/app/workarea/mock-electron-api.js
+// Use global AppLogger for debug-controlled logging
+const Logger = window.AppLogger || console;
+
 Logger.log('Mock Electron API Loaded for E2E testing.');
 // Expose a deterministic flag the tests can assert without relying on console logs
-// Use global AppLogger for debug-controlled logging
-const Logger = window.AppLogger || console;
-
 window.__MockElectronLoaded = true;
-
-// Use global AppLogger for debug-controlled logging
-const Logger = window.AppLogger || console;
 
 window.electronAPI = {
     save: (options) => {

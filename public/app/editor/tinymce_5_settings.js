@@ -266,7 +266,6 @@ var $exeTinyMCE = {
                     });
                 }
             },
-            image_title: true,
             /* enable automatic uploads of images represented by blob or data URIs*/
             automatic_uploads: true,
             file_picker_types: 'file image media',

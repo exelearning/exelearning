@@ -9,7 +9,9 @@ function isKeyRemembered(storageKey) {
             rememberedComponentKeys.add(storageKey);
             return true;
         }
-    } catch (_e) {}
+    } catch (_e) {
+        // Intentional: localStorage may be unavailable (private browsing)
+    }
     return false;
 }
 
@@ -17,7 +19,9 @@ function markKeyRemembered(storageKey) {
     rememberedComponentKeys.add(storageKey);
     try {
         window.localStorage.setItem(STORAGE_PREFIX + storageKey, '1');
-    } catch (_e) {}
+    } catch (_e) {
+        // Intentional: localStorage may be unavailable (private browsing)
+    }
 }
 
 function getStorageKey(typeKeySuffix) {

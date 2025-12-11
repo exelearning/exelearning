@@ -6,7 +6,7 @@
  * Run with: bun test
  */
 
-/* eslint-disable no-undef */
+ 
 
 // Test functions available globally from vitest setup
 

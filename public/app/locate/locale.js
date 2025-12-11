@@ -9,7 +9,7 @@ export default class Locale {
         };
         window.c_ = (s) => {
             // elp → elpx (to review - #498)
-            var s = this.getContentTranslation(s);
+            s = this.getContentTranslation(s);
             s = s.replace(' (elp)', ' (elpx)');
             s = s.replace(' .elp ', ' .elpx ');
             s = s.replace(' elp ', ' elpx ');

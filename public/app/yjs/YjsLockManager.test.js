@@ -6,7 +6,7 @@
  *
  */
 
-/* eslint-disable no-undef */
+ 
 
 const YjsLockManager = require('./YjsLockManager');
 

@@ -580,7 +580,7 @@ class BaseExporter {
 
     // Transform asset://uuid to asset://uuid/filename (keeping asset:// protocol)
     // The renderers will later convert asset:// to content/resources/ with basePath
-    return content.replace(/asset:\/\/([a-f0-9-]+)(?![\/a-zA-Z0-9._-])/gi, (match, uuid) => {
+    return content.replace(/asset:\/\/([a-f0-9-]+)(?![/a-zA-Z0-9._-])/gi, (match, uuid) => {
       const filename = this._assetFilenameMap.get(uuid);
       if (filename) {
         return `asset://${uuid}/${filename}`;

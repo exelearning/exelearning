@@ -1,5 +1,4 @@
 import Modal from '../modal.js';
-import RealTimeEventNotifier from '../../../../RealTimeEventNotifier/RealTimeEventNotifier.js';
 
 export default class ModalSessionLogout extends Modal {
     constructor(manager) {
@@ -18,14 +17,6 @@ export default class ModalSessionLogout extends Modal {
         // Modal footer content element
         this.modalFooterContent =
             this.modalElement.querySelector('.modal-footer');
-        this.offlineInstallation = eXeLearning.config.isOfflineInstallation;
-
-        // if (!this.offlineInstallation) {
-        //     this.realTimeEventNotifier = new RealTimeEventNotifier(
-        //         eXeLearning.mercure.url,
-        //         eXeLearning.mercure.jwtSecretKey
-        //     );
-        // }
     }
 
     /**

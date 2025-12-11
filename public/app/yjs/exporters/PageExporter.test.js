@@ -4,7 +4,7 @@
  * Tests for single-page HTML export functionality.
  */
 
-/* eslint-disable no-undef */
+ 
 
 // Test functions available globally from vitest setup
 

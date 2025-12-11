@@ -167,6 +167,7 @@ export default class ApiCallBaseFunctions {
      */
     async doAjax(url, method, data, waiting = true) {
         if (waiting) this.addWaitingPetition();
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
         let response = {};
         try {
@@ -209,6 +210,7 @@ export default class ApiCallBaseFunctions {
      */
     async doJsonAjax(url, method, data, waiting = true) {
         if (waiting) this.addWaitingPetition();
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
         let response = {};
         try {
@@ -250,6 +252,7 @@ export default class ApiCallBaseFunctions {
      */
     async doFileSendAjax(url, method, data, waiting = true) {
         if (waiting) this.addWaitingPetition();
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const self = this;
         let response = {};
         try {

@@ -84,6 +84,7 @@ const YjsProjectManagerMixin = {
      * @private
      */
     projectManager._setupTinyMCEHook = function () {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
       const self = this;
 
       // Store original hook if exists

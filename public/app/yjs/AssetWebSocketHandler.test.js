@@ -8,7 +8,7 @@
 // Test functions available globally from vitest setup
 import { decodeAssetMessage } from '../test-helpers/mock-websocket.js';
 
-/* eslint-disable no-undef */
+ 
 
 const AssetWebSocketHandler = require('./AssetWebSocketHandler');
 

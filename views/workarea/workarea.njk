@@ -51,7 +51,6 @@
             user: `{{ user | dump | safe }}`,
             config: `{{ config | dump | safe }}`,
             symfony: `{{ symfony | dump | safe }}`,
-            mercure: {% if mercure %}`{{ mercure | dump | safe }}`{% else %}null{% endif %},
             projectId: {% if projectId %}"{{ projectId }}"{% else %}null{% endif %}
         }
     </script>
